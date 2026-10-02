@@ -12,7 +12,7 @@ mod tests {
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::timetree::marginal::initialize_marginal_timetree;
+  use crate::partition::timetree::marginal::marginal_update_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
@@ -51,13 +51,12 @@ mod tests {
       .map(AlignmentRecord::from)
       .collect();
     let dense_partition = PartitionTimetree::Dense(DenseReconstruction::seeded(
-      PartitionMarginalDense::new(0, ALPHABET.clone(), case.sequence_length()),
+      PartitionMarginalDense::new(0, ALPHABET.clone(), &graph, &node_seq_inputs(&graph, &names, aln))?,
       jc69(JC69Params::default())?,
-      std::collections::BTreeMap::new(),
     ));
 
     let partitions: Vec<PartitionTimetree> = vec![dense_partition];
-    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &node_seq_inputs(&graph, &names, aln))?;
+    let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 

@@ -67,19 +67,6 @@ pub trait MarginalPasses {
     })
   }
 
-  fn marginal_states(
-    &self,
-    gtr: &GTR,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: BTreeMap<GraphNodeKey, Self::Node>,
-  ) -> Result<MarginalStates<Self::Node>, Report> {
-    let MarginalUpdate {
-      node_states, log_lh, ..
-    } = self.marginal_update(gtr, graph, branch_lengths, node_states)?;
-    Ok(MarginalStates { node_states, log_lh })
-  }
-
   fn get_log_lh(&self, node_states: &BTreeMap<GraphNodeKey, Self::Node>, node_key: GraphNodeKey) -> LogLh {
     node_states
       .get(&node_key)
@@ -120,12 +107,6 @@ impl<Backward, Forward, Estimate> Default for MarginalEdges<Backward, Forward, E
       estimates: BTreeMap::new(),
     }
   }
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct MarginalStates<Node> {
-  pub(crate) node_states: BTreeMap<GraphNodeKey, Node>,
-  pub(crate) log_lh: LogLh,
 }
 
 #[derive(Clone, Debug, Serialize)]

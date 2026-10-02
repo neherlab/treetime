@@ -17,7 +17,6 @@ use crate::optimize::run_loop::{
   apply_initial_guess_mode, marginal_update_dense, marginal_update_sparse, normalize_partition_rates, run_optimize_loop,
 };
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::marginal::dense::reroot::reroot_dense;
 use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::progress::ProgressSink;
 use crate::reroot::div_stats::DivStats;
@@ -81,8 +80,7 @@ pub fn run(
       dense_partitions = vec![];
     },
     MarginalPartition::Dense(partition) => {
-      let node_states = partition.attach_sequences(&input.graph, &node_inputs)?;
-      dense_partitions = vec![DenseReconstruction::seeded(partition, gtr, node_states)];
+      dense_partitions = vec![DenseReconstruction::seeded(partition, gtr)];
       sparse_partitions = vec![];
     },
   }
@@ -345,7 +343,7 @@ fn reroot_optimize(
     .try_collect()?;
   let dense_partitions: Vec<_> = dense_partitions
     .into_iter()
-    .map(|family| reroot_dense(family.partition, family.gtr, family.node_states, &changes))
+    .map(|family| DenseReconstruction::seeded(family.partition, family.gtr))
     .collect();
 
   let profile_lengths = branch_lengths_or_zero(branch_lengths);

@@ -35,7 +35,7 @@ pub(super) mod tests {
   use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
   use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
-  use treetime_primitives::{AsciiChar, LogLh, Seq};
+  use treetime_primitives::{AsciiChar, Seq};
   use treetime_utils::io::json::{JsonPretty, json_read_file, json_read_str, json_write_str};
 
   #[test]
@@ -362,8 +362,6 @@ pub(super) mod tests {
     use std::io;
     use treetime::gtr::gtr::GTR;
     use treetime::mugration::pipeline::MugrationOutput;
-    use treetime::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
-    use treetime::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
     use treetime::partition::storage::discrete::DiscreteStates;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
@@ -845,44 +843,22 @@ pub(super) mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
       let states = DiscreteStates::from_values(["CH", "US"].into_iter(), "?");
       let gtr = GTR::builder().n_states(2).mu(1.0).pi(array![0.5, 0.5]).build()?;
-      let partition = PartitionMarginalDiscrete::new(states, 1e-8, false);
-      let node_states: BTreeMap<GraphNodeKey, DenseNodeState> = graph
+      let (reconstructed_traits, confidences) = graph
         .get_nodes()
         .enumerate()
         .map(|(index, node)| {
           let key = node.key();
-          let profile = if index % 2 == 0 {
-            array![[1.0, 0.0]]
+          let (state, profile) = if index % 2 == 0 {
+            ("CH", array![1.0, 0.0])
           } else {
-            array![[0.0, 1.0]]
+            ("US", array![0.0, 1.0])
           };
-          (
-            key,
-            DenseNodeState {
-              seq: DenseSeqInfo::default(),
-              profile: DenseSeqDistribution::new(profile, LogLh::ZERO),
-            },
-          )
+          ((key, Some(state.to_owned())), (key, Some(profile)))
         })
-        .collect();
-
-      let reconstructed_traits = graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (key, partition.get_reconstructed_trait(&node_states, key))
-        })
-        .collect();
-      let confidences = graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (key, partition.get_confidence(&node_states, key))
-        })
-        .collect();
+        .unzip();
       let output = MugrationOutput {
-        n_states: partition.n_states(),
-        states: partition.states,
+        n_states: 2,
+        states,
         gtr,
         graph,
         reconstructed_traits,

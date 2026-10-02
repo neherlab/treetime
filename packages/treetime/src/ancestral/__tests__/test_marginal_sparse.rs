@@ -9,8 +9,9 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
 
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::SparseReconstruction;
+  use crate::ancestral::reconstruction::Reconstruction;
   use crate::ancestral::sample::SampleMode;
   use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -20,13 +21,11 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::composition::Composition;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::find_node_key_by_name;
+  use crate::test_utils::{emitted_sequences_by_name, find_node_key_by_name};
   use eyre::Report;
   use indoc::indoc;
   use rstest::rstest;
   use treetime_graph::graph::Graph;
-  use treetime_graph::graph_traverse::GraphNodeForward;
-  use treetime_utils::assert_error;
 
   use ndarray::prelude::*;
   use pretty_assertions::assert_eq;
@@ -170,37 +169,18 @@ mod tests {
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
 
-    let (mut recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
 
-    let mut actual = BTreeMap::new();
-    {
-      let SparseReconstruction {
-        partition,
-        node_states,
-        edges,
-        ..
-      } = &mut recon;
-      let mut rng = rand::thread_rng();
-      ancestral_reconstruction(&graph, |node| {
-        let Some(seq) = partition.reconstruct_node_sequence(
-          node_states,
-          &edges.forward,
-          node,
-          TipStates {
-            include_leaves: false,
-            impute: false,
-          },
-          SampleMode::Argmax,
-          &mut rng,
-        )?
-        else {
-          return Ok(false);
-        };
-        actual.insert(names[&node.key].clone(), seq.to_string());
-        Ok(true)
-      })?;
-    }
+    let actual = emitted_sequences_by_name(
+      &names,
+      &recon.reconstruct_sequences(
+        &graph,
+        TipStates::default(),
+        SampleMode::Argmax,
+        &mut rand::thread_rng(),
+      )?,
+    );
 
     assert_eq!(
       json_write_str(&expected, JsonPretty(false))?,
@@ -471,7 +451,7 @@ mod tests {
     let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, make_nonuniform_gtr()?, node_states);
-    let (mut recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let actual_by_edge = {
       graph
@@ -484,77 +464,23 @@ mod tests {
         .collect::<Result<BTreeMap<_, _>, Report>>()?
     };
 
-    let mut seqs_by_name = BTreeMap::new();
-    {
-      let SparseReconstruction {
-        partition,
-        node_states,
-        edges,
-        ..
-      } = &mut recon;
-      let mut rng = rand::thread_rng();
-      ancestral_reconstruction(&graph, |node| {
-        let Some(seq) = partition.reconstruct_node_sequence(
-          node_states,
-          &edges.forward,
-          node,
-          TipStates {
-            include_leaves: true,
-            impute: false,
-          },
-          SampleMode::Argmax,
-          &mut rng,
-        )?
-        else {
-          return Ok(false);
-        };
-        seqs_by_name.insert(names[&node.key].clone().expect("all test nodes should have names"), seq);
-        Ok(true)
-      })?;
-    }
-
-    let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, &recon.partition, &seqs_by_name)?;
-
-    assert_eq!(expected_by_edge, actual_by_edge);
-    Ok(())
-  }
-
-  #[test]
-  fn test_marginal_sparse_reconstruct_node_without_parent_errors_and_keeps_state() -> Result<(), Report> {
-    let (graph, names, mut recon) = helpers::small_sparse_reconstruction()?;
-    let key = find_node_key_by_name(&graph, &names, "AB").expect("node AB not found");
-    let orphan = GraphNodeForward {
-      is_root: false,
-      is_leaf: false,
-      key,
-      parent_keys: vec![],
-      child_edge_keys: vec![],
-    };
-    let before = json_write_str(&recon.node_states, JsonPretty(false))?;
-
-    let SparseReconstruction {
-      partition,
-      node_states,
-      edges,
-      ..
-    } = &mut recon;
-    let result = partition.reconstruct_node_sequence(
-      node_states,
-      &edges.forward,
-      &orphan,
+    let Reconstruction { sequences, .. } = recon.reconstruct_sequences(
+      &graph,
       TipStates {
         include_leaves: true,
         impute: false,
       },
       SampleMode::Argmax,
       &mut rand::thread_rng(),
-    );
+    )?;
+    let seqs_by_name = sequences
+      .into_iter()
+      .map(|(key, seq)| (names[&key].clone().expect("all test nodes should have names"), seq))
+      .collect::<BTreeMap<_, _>>();
 
-    assert_error!(
-      result,
-      format!("When reconstructing the sequence of node {key}: Expected exactly one element, but found 0")
-    );
-    assert_eq!(before, json_write_str(&recon.node_states, JsonPretty(false))?);
+    let expected_by_edge = helpers::expected_edge_subs_by_edge(&graph, &names, &recon.partition, &seqs_by_name)?;
+
+    assert_eq!(expected_by_edge, actual_by_edge);
     Ok(())
   }
 
@@ -569,32 +495,15 @@ mod tests {
     #[case] include_leaves: bool,
     #[case] expected_returned: bool,
   ) -> Result<(), Report> {
-    let (graph, names, mut recon) = helpers::small_sparse_reconstruction()?;
+    let (graph, names, recon) = helpers::small_sparse_reconstruction()?;
     let key = find_node_key_by_name(&graph, &names, name).expect("node not found");
-    let mut actual = None;
-    {
-      let SparseReconstruction {
-        partition,
-        node_states,
-        edges,
-        ..
-      } = &mut recon;
-      ancestral_reconstruction(&graph, |node| {
-        let seq = partition.reconstruct_node_sequence(
-          node_states,
-          &edges.forward,
-          node,
-          TipStates { include_leaves, impute: false },
-          SampleMode::Argmax,
-          &mut rand::thread_rng(),
-        )?;
-        if node.key == key {
-          actual = seq.map(|seq| seq.to_string());
-        }
-        Ok(true)
-      })?;
-    }
-    assert_eq!(expected_returned, actual.is_some());
+    let Reconstruction { emitted_nodes, .. } = recon.reconstruct_sequences(
+      &graph,
+      TipStates { include_leaves, impute: false },
+      SampleMode::Argmax,
+      &mut rand::thread_rng(),
+    )?;
+    assert_eq!(expected_returned, emitted_nodes.contains(&key));
     Ok(())
   }
 

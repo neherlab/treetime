@@ -23,9 +23,13 @@ pub(super) mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&input.alignment)?;
 
-    let partition = PartitionMarginalDense::new(0, alphabet, length);
-    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, input.alignment.clone()))?;
-    let recon = DenseReconstruction::seeded(partition, input.gtr.clone(), node_states);
+    let partition = PartitionMarginalDense::new(
+      0,
+      alphabet,
+      &graph,
+      &node_seq_inputs(&graph, &names, input.alignment.clone()),
+    )?;
+    let recon = DenseReconstruction::seeded(partition, input.gtr.clone());
     let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))

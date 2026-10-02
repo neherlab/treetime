@@ -98,13 +98,16 @@ pub fn run(
 
   let partition = PartitionMarginalDiscrete::new(
     discrete_states,
+    &graph,
+    &traits,
+    names,
     MIN_BRANCH_LENGTH_FRACTION,
     params.filter_uninformative_root,
-  );
-  let node_states = partition.attach_traits(&graph, &traits, names, progress)?;
+    progress,
+  )?;
 
   let profile_lengths = branch_lengths_or_zero(&branch_lengths);
-  let update = partition.marginal_update(&gtr, &graph, &profile_lengths, node_states)?;
+  let update = partition.marginal_update(&gtr, &graph, &profile_lengths, BTreeMap::new())?;
   progress_info!(
     progress,
     "Mugration: initial log likelihood = {:.4}",

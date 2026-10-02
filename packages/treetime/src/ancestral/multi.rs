@@ -1,7 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
-use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
+use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{AncestralPartition, DenseReconstruction, SparseReconstruction};
+use crate::ancestral::reconstruction::Reconstruction;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
 use crate::gtr::get_gtr::GtrModelName;
@@ -52,58 +53,37 @@ pub(crate) fn reconstruct_marginal_partition(
   )?;
   let gtr = created.gtr;
 
+  let tips = TipStates {
+    include_leaves: params.include_leaves,
+    impute: params.impute_missing_data,
+  };
+
   let partition: AncestralPartition = match created.partition {
     MarginalPartition::Sparse(partition, node_states) => {
-      let MarginalUpdate {
-        mut node_states, edges, ..
-      } = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
-      ancestral_reconstruction(graph, |node| {
-        partition.advance_node_state(
-          &mut node_states,
-          &edges.forward,
-          node,
-          TipStates {
-            include_leaves: params.include_leaves,
-            impute: params.impute_missing_data,
-          },
-          params.sample_from_profile,
-          rng,
-        )
-      })?;
-      AncestralPartition::Sparse(SparseReconstruction {
+      let MarginalUpdate { node_states, edges, .. } =
+        partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
+      let family = SparseReconstruction {
         partition,
         gtr,
         node_states,
         edges,
-      })
+      };
+      let Reconstruction { sequences, .. } =
+        family.reconstruct_sequences(graph, tips, params.sample_from_profile, rng)?;
+      AncestralPartition::Sparse { family, sequences }
     },
     MarginalPartition::Dense(partition) => {
-      let node_states = partition.attach_sequences(graph, &node_inputs)?;
-      let MarginalUpdate {
-        mut node_states, edges, ..
-      } = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
-      ancestral_reconstruction(graph, |node| {
-        Ok(
-          partition
-            .reconstruct_node_sequence(
-              &mut node_states,
-              node,
-              TipStates {
-                include_leaves: params.include_leaves,
-                impute: params.impute_missing_data,
-              },
-              params.sample_from_profile,
-              rng,
-            )
-            .is_some(),
-        )
-      })?;
-      AncestralPartition::Dense(DenseReconstruction {
+      let MarginalUpdate { node_states, edges, .. } =
+        partition.marginal_update(&gtr, graph, &profile_lengths, BTreeMap::new())?;
+      let family = DenseReconstruction {
         partition,
         gtr,
         node_states,
         edges,
-      })
+      };
+      let Reconstruction { sequences, .. } =
+        family.reconstruct_sequences(graph, tips, params.sample_from_profile, rng)?;
+      AncestralPartition::Dense { family, sequences }
     },
   };
 

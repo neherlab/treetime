@@ -8,34 +8,32 @@ mod tests {
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::o;
   use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, MarginalUpdate};
-  use crate::progress::NoopProgress;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
   #[test]
-  fn test_discrete_marginal_attach_traits_maps_observed_and_missing_profiles() -> Result<(), Report> {
+  fn test_discrete_marginal_new_maps_observed_and_missing_profiles() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
-    let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
+    let graph: Graph = nwk_parsed.graph;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("?"),
     };
 
-    let node_states = partition.attach_traits(&graph, &traits, &names, &NoopProgress)?;
+    let (partition, _) = helpers::make_partition(["usa", "germany"], &graph, &traits, &names)?;
 
-    let node_a_profile = helpers::get_node_profile(&graph, &names, &node_states, "A");
+    let node_a_profile = helpers::get_leaf_observation(&graph, &names, &partition, "A");
     assert_abs_diff_eq!(node_a_profile[0], 0.0, epsilon = 1e-10);
     assert_abs_diff_eq!(node_a_profile[1], 1.0, epsilon = 1e-10);
 
-    let node_b_profile = helpers::get_node_profile(&graph, &names, &node_states, "B");
+    let node_b_profile = helpers::get_leaf_observation(&graph, &names, &partition, "B");
     assert_abs_diff_eq!(node_b_profile[0], 0.5, epsilon = 1e-10);
     assert_abs_diff_eq!(node_b_profile[1], 0.5, epsilon = 1e-10);
 
@@ -43,42 +41,38 @@ mod tests {
   }
 
   #[test]
-  fn test_discrete_marginal_attach_traits_rejects_tree_leaf_missing_from_metadata() -> Result<(), Report> {
+  fn test_discrete_marginal_new_rejects_tree_leaf_missing_from_metadata() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
-    let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
+    let graph: Graph = nwk_parsed.graph;
     let traits = btreemap! {
       o!("A") => o!("usa"),
     };
 
-    let result = partition.attach_traits(&graph, &traits, &names, &NoopProgress);
+    let result = helpers::make_partition(["usa", "germany"], &graph, &traits, &names);
     assert_error!(result, "Mugration: tree leaves missing from metadata: B");
 
     Ok(())
   }
 
   #[test]
-  fn test_discrete_marginal_attach_traits_accepts_metadata_name_missing_from_tree() -> Result<(), Report> {
+  fn test_discrete_marginal_new_accepts_metadata_name_missing_from_tree() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
-    let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
+    let graph: Graph = nwk_parsed.graph;
     let traits = btreemap! {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
       o!("C") => o!("usa"),
     };
 
-    let node_states = partition.attach_traits(&graph, &traits, &names, &NoopProgress)?;
+    let (partition, _) = helpers::make_partition(["usa", "germany"], &graph, &traits, &names)?;
 
-    let node_a_profile = helpers::get_node_profile(&graph, &names, &node_states, "A");
+    let node_a_profile = helpers::get_leaf_observation(&graph, &names, &partition, "A");
     assert_abs_diff_eq!(node_a_profile[0], 0.0, epsilon = 1e-10);
     assert_abs_diff_eq!(node_a_profile[1], 1.0, epsilon = 1e-10);
 
-    let node_b_profile = helpers::get_node_profile(&graph, &names, &node_states, "B");
+    let node_b_profile = helpers::get_leaf_observation(&graph, &names, &partition, "B");
     assert_abs_diff_eq!(node_b_profile[0], 1.0, epsilon = 1e-10);
     assert_abs_diff_eq!(node_b_profile[1], 0.0, epsilon = 1e-10);
 
@@ -88,14 +82,12 @@ mod tests {
   #[test]
   fn test_discrete_marginal_passes_normalize_backward_and_forward_profiles() -> Result<(), Report> {
     let (graph, names, raw_branch_lengths) = helpers::make_fixture_graph()?;
-    let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
-
-    let node_states = partition.attach_traits(&graph, &traits, &names, &NoopProgress)?;
+    let (partition, gtr) = helpers::make_partition(["usa", "germany"], &graph, &traits, &names)?;
 
     let branch_lengths = branch_lengths_or_zero(&raw_branch_lengths);
     let MarginalBackward { node_states, backward } =
-      partition.marginal_backward(&gtr, &graph, &branch_lengths, &node_states)?;
+      partition.marginal_backward(&gtr, &graph, &branch_lengths, &BTreeMap::new())?;
 
     let root_profile = helpers::get_node_profile(&graph, &names, &node_states, "root");
     helpers::assert_profile_normalized(&root_profile);
@@ -128,14 +120,17 @@ mod tests {
   #[test]
   fn test_discrete_marginal_run_returns_finite_log_lh_and_reconstructs_internal_trait() -> Result<(), Report> {
     let (graph, names, raw_branch_lengths) = helpers::make_fixture_graph()?;
-    let (partition, gtr) = helpers::make_partition(["usa", "germany"])?;
     let traits = helpers::make_fixture_traits();
-
-    let node_states = partition.attach_traits(&graph, &traits, &names, &NoopProgress)?;
+    let (partition, gtr) = helpers::make_partition(["usa", "germany"], &graph, &traits, &names)?;
 
     let MarginalUpdate {
       node_states, log_lh, ..
-    } = partition.marginal_update(&gtr, &graph, &branch_lengths_or_zero(&raw_branch_lengths), node_states)?;
+    } = partition.marginal_update(
+      &gtr,
+      &graph,
+      &branch_lengths_or_zero(&raw_branch_lengths),
+      BTreeMap::new(),
+    )?;
     let actual_log_lh = log_lh.value();
 
     assert!(actual_log_lh.is_finite());
@@ -162,6 +157,7 @@ mod tests {
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
     use crate::partition::storage::discrete::DiscreteStates;
+    use crate::progress::NoopProgress;
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
     use maplit::btreemap;
@@ -173,7 +169,12 @@ mod tests {
     use treetime_io::nwk::nwk_read_str;
     use treetime_utils::pretty_assert_abs_diff_eq;
 
-    pub(super) fn make_partition(states: [&str; 2]) -> Result<(PartitionMarginalDiscrete, GTR), Report> {
+    pub(super) fn make_partition(
+      states: [&str; 2],
+      graph: &Graph,
+      traits: &BTreeMap<String, String>,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+    ) -> Result<(PartitionMarginalDiscrete, GTR), Report> {
       let discrete_states = DiscreteStates::from_values(states.into_iter(), "?");
       let n_states = discrete_states.len();
       let gtr = GTR::builder()
@@ -181,11 +182,27 @@ mod tests {
         .mu(1.0)
         .pi(Array1::from_elem(n_states, 1.0 / n_states as f64))
         .build()?;
+      let partition = PartitionMarginalDiscrete::new(
+        discrete_states,
+        graph,
+        traits,
+        names,
+        MIN_BRANCH_LENGTH_FRACTION,
+        false,
+        &NoopProgress,
+      )?;
+      Ok((partition, gtr))
+    }
 
-      Ok((
-        PartitionMarginalDiscrete::new(discrete_states, MIN_BRANCH_LENGTH_FRACTION, false),
-        gtr,
-      ))
+    pub(super) fn get_leaf_observation(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      partition: &PartitionMarginalDiscrete,
+      name: &str,
+    ) -> Array1<f64> {
+      partition.obs_leaves[&get_node_key(graph, names, name)]
+        .row(0)
+        .to_owned()
     }
 
     pub(super) fn make_fixture_graph() -> Result<

@@ -9,7 +9,6 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::NodeSeqInput;
-use crate::seq::alignment::get_common_length_of_node_inputs;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -45,17 +44,16 @@ pub(crate) fn create_marginal_partition(
     let fitch = create_fitch_partition(graph, index, alphabet, node_inputs)?;
     let gtr = infer_gtr_fitch(&fitch, graph, branch_lengths, progress)?;
     log_gtr(&gtr, model_name, progress);
-    let partition = fitch.into_marginal_dense();
+    let partition = fitch.into_marginal_dense(graph, node_inputs)?;
     Ok(PartitionCreated {
       partition: MarginalPartition::Dense(partition),
       gtr,
       model_name,
     })
   } else {
-    let length = get_common_length_of_node_inputs(node_inputs)?;
+    let partition = PartitionMarginalDense::new(index, alphabet, graph, node_inputs)?;
     let gtr = get_gtr_by_name(model_name)?;
     log_gtr(&gtr, model_name, progress);
-    let partition = PartitionMarginalDense::new(index, alphabet, length);
     Ok(PartitionCreated {
       partition: MarginalPartition::Dense(partition),
       gtr,

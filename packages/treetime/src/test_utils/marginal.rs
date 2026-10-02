@@ -1,16 +1,19 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::marginal::branch_lengths_or_zero;
+use crate::ancestral::reconstruction::Reconstruction;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
-use crate::seq::alignment::{get_common_length, node_seq_inputs};
+use crate::seq::alignment::node_seq_inputs;
 use eyre::Report;
+use std::collections::BTreeMap;
 use std::sync::LazyLock;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta_str;
 use treetime_io::nwk::nwk_read_str;
-use treetime_primitives::AlignmentRecord;
+use treetime_primitives::{AlignmentRecord, Seq};
 
 pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -25,12 +28,9 @@ pub(crate) fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &
     .map(AlignmentRecord::from)
     .collect();
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-  let length = get_common_length(&aln)?;
-  let partition = PartitionMarginalDense::new(0, alphabet, length);
-
-  let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
+  let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
   let MarginalUpdate { log_lh, .. } =
-    partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), node_states)?;
+    partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), BTreeMap::new())?;
   Ok(log_lh.value())
 }
 
@@ -52,4 +52,20 @@ pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: 
   let MarginalUpdate { log_lh, .. } =
     partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), node_states)?;
   Ok(log_lh.value())
+}
+
+pub(crate) fn emitted_sequences_by_name(
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  reconstruction: &Reconstruction,
+) -> BTreeMap<String, Seq> {
+  reconstruction
+    .emitted_nodes
+    .iter()
+    .map(|key| {
+      (
+        names[key].clone().expect("all test nodes are named"),
+        reconstruction.sequences[key].clone(),
+      )
+    })
+    .collect()
 }

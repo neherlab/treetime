@@ -21,7 +21,6 @@ mod tests {
 
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
@@ -60,13 +59,13 @@ mod tests {
       .map(AlignmentRecord::from)
       .collect();
 
-    let dense_partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
-    let dense_node_states = dense_partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.clone()))?;
-    let dense_partitions = vec![DenseReconstruction::seeded(
-      dense_partition,
-      get_gtr_by_name(model)?,
-      dense_node_states,
-    )];
+    let dense_partition = PartitionMarginalDense::new(
+      0,
+      Alphabet::new(AlphabetName::Nuc)?,
+      graph,
+      &node_seq_inputs(graph, names, aln.clone()),
+    )?;
+    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, get_gtr_by_name(model)?)];
 
     let fitch = create_fitch_partition(
       graph,

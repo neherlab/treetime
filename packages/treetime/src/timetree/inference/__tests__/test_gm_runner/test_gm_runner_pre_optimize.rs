@@ -21,7 +21,7 @@ mod tests {
     gather_timetree_edge_contributions, gather_timetree_edge_indel_counts, timetree_total_sequence_length,
   };
   use crate::optimize::params::BranchOptMethod;
-  use crate::partition::timetree::marginal::{initialize_marginal_timetree, marginal_update_timetree};
+  use crate::partition::timetree::marginal::marginal_update_timetree;
   use crate::timetree::inference::bad_branches::undated_leaves;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::inference::time_inference::{likely_times, unit_gammas};
@@ -56,12 +56,12 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln.clone()))?;
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 
     let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
-    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &node_seq_inputs(&graph, &names, aln))?;
+    let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
 
     let before = extract_branch_lengths(&graph, &branch_lengths);
 
@@ -113,12 +113,12 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln.clone()))?;
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 
     let partitions: Vec<PartitionTimetree> = vec![sparse_partition];
-    let (partitions, _) = initialize_marginal_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions, &node_seq_inputs(&graph, &names, aln))?;
+    let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
     let mut clock_state = ClockState::new(&graph);
     initialize_node_divergences(&graph, &mut clock_state, &branch_lengths, &names)?;
 

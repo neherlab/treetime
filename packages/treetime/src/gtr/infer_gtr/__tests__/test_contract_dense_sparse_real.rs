@@ -11,7 +11,6 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
 
   use eyre::Report;
@@ -99,15 +98,18 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let partition = PartitionMarginalDense::new(0, DENSE_NUC_ALPHABET.clone(), get_common_length(&aln)?);
-      let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln.clone()))?;
+      let partition = PartitionMarginalDense::new(
+        0,
+        DENSE_NUC_ALPHABET.clone(),
+        &graph,
+        &node_seq_inputs(&graph, &names, aln.clone()),
+      )?;
       let recon = DenseReconstruction::seeded(
         partition,
         jc69(JC69Params {
           alphabet: AlphabetName::Nuc,
           ..JC69Params::default()
         })?,
-        node_states,
       );
       let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let counts = recon.partition.count_transitions(

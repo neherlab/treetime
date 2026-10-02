@@ -2,7 +2,6 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::shared::update::MarginalNodeState;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
-use eyre::Report;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -15,28 +14,38 @@ pub struct DenseNodeState {
   pub profile: DenseSeqDistribution,
 }
 
-impl DenseNodeState {
-  pub(crate) fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct DenseLeafObs {
+  sequence: Seq,
+  gaps: Vec<(usize, usize)>,
+  unknown: Vec<(usize, usize)>,
+  non_char: Vec<(usize, usize)>,
+}
+
+impl DenseLeafObs {
+  pub(crate) fn new(seq: &Seq, alphabet: &Alphabet) -> Self {
     let gaps = find_letter_ranges(seq, alphabet.gap());
     let unknown = find_letter_ranges(seq, alphabet.unknown());
     let non_char = range_union(&[unknown.clone(), gaps.clone()]);
-
-    Ok(Self {
-      seq: DenseSeqInfo {
-        gaps,
-        unknown,
-        non_char,
-        variable_indel: BTreeSet::new(),
-        sequence: seq.to_owned(),
-      },
-      profile: DenseSeqDistribution::default(),
-    })
+    Self {
+      sequence: seq.to_owned(),
+      gaps,
+      unknown,
+      non_char,
+    }
   }
 
-  pub(crate) fn empty() -> Self {
-    Self {
-      seq: DenseSeqInfo::default(),
-      profile: DenseSeqDistribution::default(),
+  pub(crate) fn sequence(&self) -> &Seq {
+    &self.sequence
+  }
+
+  pub(crate) fn seq_info(&self) -> DenseSeqInfo {
+    DenseSeqInfo {
+      gaps: self.gaps.clone(),
+      unknown: self.unknown.clone(),
+      non_char: self.non_char.clone(),
+      variable_indel: BTreeSet::new(),
+      sequence: self.sequence.clone(),
     }
   }
 }

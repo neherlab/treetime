@@ -9,7 +9,6 @@ pub(super) mod tests {
   use crate::partition::storage::dense::DenseSeqDistribution;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::pretty_assert_ulps_eq;
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use treetime_graph::graph::Graph;
@@ -71,9 +70,8 @@ pub(super) mod tests {
       .collect();
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
+    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+    let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))

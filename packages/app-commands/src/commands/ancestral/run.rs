@@ -304,7 +304,9 @@ fn write_tree_for_partition(
 ) -> Result<(), Report> {
   let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, graph);
   let providers = match partition {
-    Some(AncestralPartition::Sparse(_) | AncestralPartition::Dense(_)) => CommentProviders::new().with(&provider),
+    Some(AncestralPartition::Sparse { .. } | AncestralPartition::Dense { .. }) => {
+      CommentProviders::new().with(&provider)
+    },
     Some(AncestralPartition::Fitch(_)) | None => CommentProviders::new(),
   };
   write_ancestral_tree_outputs(

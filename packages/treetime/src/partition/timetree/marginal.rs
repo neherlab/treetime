@@ -1,18 +1,18 @@
+use crate::ancestral::reconstruction::Reconstruction;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
 use crate::partition::marginal::shared::update::MarginalPasses;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::seq::alignment::NodeSeqInput;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::Report;
+use rand::RngCore;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{LogLh, Seq, seq};
+use treetime_primitives::{LogLh, Seq};
 
 pub(crate) fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<LogLh, Report> {
   let root_key = graph.get_exactly_one_root()?.key();
@@ -23,18 +23,6 @@ pub(crate) fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> R
     .into_iter()
     .sum();
   Ok(log_lh)
-}
-
-pub(crate) fn initialize_marginal_timetree(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  mut partitions: Vec<PartitionTimetree>,
-  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
-) -> Result<(Vec<PartitionTimetree>, LogLh), Report> {
-  for partition in &mut partitions {
-    partition.attach_sequences(graph, node_inputs)?;
-  }
-  marginal_update_timetree(graph, branch_lengths, partitions)
 }
 
 pub(crate) fn marginal_update_timetree(
@@ -51,39 +39,6 @@ pub(crate) fn marginal_update_timetree(
     })
 }
 
-pub(crate) fn ancestral_reconstruction_timetree(
-  graph: &Graph,
-  tips: TipStates,
-  partitions: &mut [PartitionTimetree],
-  sample_mode: SampleMode,
-  rng: &mut dyn rand::RngCore,
-  mut visitor: impl FnMut(GraphNodeKey, &Seq) -> Result<(), Report>,
-) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
-  let mut node_sequences = BTreeMap::new();
-  graph.iter_depth_first_preorder_forward(|node| {
-    if partitions.is_empty() {
-      if !tips.include_leaves && node.is_leaf {
-        return Ok(());
-      }
-      let seq = seq![];
-      visitor(node.key, &seq)?;
-      node_sequences.insert(node.key, seq);
-      return Ok(());
-    }
-
-    let reconstructed = partitions[0].reconstruct_node_sequence(&node, tips, sample_mode, rng)?;
-    match reconstructed {
-      Some(seq) => {
-        visitor(node.key, &seq)?;
-        node_sequences.insert(node.key, seq);
-        Ok(())
-      },
-      None => Ok(()),
-    }
-  })?;
-  Ok(node_sequences)
-}
-
 impl PartitionTimetree {
   pub(crate) fn get_sequence_length(&self) -> usize {
     match self {
@@ -97,17 +52,6 @@ impl PartitionTimetree {
       Self::Dense(family) => family.partition.get_log_lh(&family.node_states, node_key),
       Self::Sparse(family) => family.partition.get_log_lh(&family.node_states, node_key),
     }
-  }
-
-  fn attach_sequences(
-    &mut self,
-    graph: &Graph,
-    node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
-  ) -> Result<(), Report> {
-    if let Self::Dense(family) = self {
-      family.node_states = family.partition.attach_sequences(graph, node_inputs)?;
-    }
-    Ok(())
   }
 
   fn marginal_update(
@@ -138,29 +82,16 @@ impl PartitionTimetree {
     }
   }
 
-  fn reconstruct_node_sequence(
-    &mut self,
-    node: &GraphNodeForward,
+  pub(crate) fn reconstruct_sequences(
+    &self,
+    graph: &Graph,
     tips: TipStates,
     sample_mode: SampleMode,
-    rng: &mut dyn rand::RngCore,
-  ) -> Result<Option<Seq>, Report> {
+    rng: &mut dyn RngCore,
+  ) -> Result<Reconstruction, Report> {
     match self {
-      Self::Dense(family) => {
-        Ok(
-          family
-            .partition
-            .reconstruct_node_sequence(&mut family.node_states, node, tips, sample_mode, rng),
-        )
-      },
-      Self::Sparse(family) => family.partition.reconstruct_node_sequence(
-        &mut family.node_states,
-        &family.edges.forward,
-        node,
-        tips,
-        sample_mode,
-        rng,
-      ),
+      Self::Dense(family) => family.reconstruct_sequences(graph, tips, sample_mode, rng),
+      Self::Sparse(family) => family.reconstruct_sequences(graph, tips, sample_mode, rng),
     }
   }
 

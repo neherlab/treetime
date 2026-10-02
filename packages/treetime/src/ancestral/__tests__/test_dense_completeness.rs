@@ -42,9 +42,8 @@ NNGTACGTAC
       .collect();
     let length = get_common_length(&aln)?;
 
-    let partition = PartitionMarginalDense::new(0, alphabet, length);
-    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
+    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon))
   }
@@ -172,9 +171,8 @@ ACGTACGTAC
       .collect();
     let length = get_common_length(&aln)?;
 
-    let partition = PartitionMarginalDense::new(0, alphabet, length);
-    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
+    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon))
   }

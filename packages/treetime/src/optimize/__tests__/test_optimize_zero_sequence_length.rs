@@ -9,15 +9,30 @@ mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalEdges;
+  use crate::seq::alignment::NodeSeqInput;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
 
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::seq;
   use treetime_utils::assert_error;
 
-  fn zero_length_partitions(_graph: &Graph) -> (Vec<DenseReconstruction>, Vec<SparseReconstruction>) {
+  fn zero_length_partitions(graph: &Graph) -> (Vec<DenseReconstruction>, Vec<SparseReconstruction>) {
+    let node_inputs = graph
+      .get_leaves()
+      .map(|leaf| {
+        (
+          leaf.key(),
+          NodeSeqInput {
+            name: None,
+            seq: Some(seq![]),
+          },
+        )
+      })
+      .collect();
     let dense = vec![DenseReconstruction {
-      partition: PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc).unwrap(), 0),
+      partition: PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc).unwrap(), graph, &node_inputs)
+        .unwrap(),
       gtr: jc69(JC69Params::default()).unwrap(),
       node_states: BTreeMap::new(),
       edges: MarginalEdges::default(),

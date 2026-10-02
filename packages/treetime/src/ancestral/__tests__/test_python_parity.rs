@@ -7,8 +7,9 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
+  use crate::ancestral::reconstruction::Reconstruction;
   use crate::ancestral::sample::SampleMode;
   use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -44,9 +45,8 @@ mod tests {
     index: usize,
     gtr: GTR,
   ) -> Result<DenseReconstruction, Report> {
-    let partition = PartitionMarginalDense::new(index, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
+    let partition = PartitionMarginalDense::new(index, alphabet, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
+    let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     Ok(recon)
   }
@@ -83,33 +83,16 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let mut recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
+    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
 
-    let mut root_seq = String::new();
-    {
-      let DenseReconstruction {
-        partition, node_states, ..
-      } = &mut recon;
-      let mut rng = rand::thread_rng();
-      ancestral_reconstruction(&graph, |node| {
-        let Some(seq) = partition.reconstruct_node_sequence(
-          node_states,
-          node,
-          TipStates {
-            include_leaves: false,
-            impute: false,
-          },
-          SampleMode::Argmax,
-          &mut rng,
-        ) else {
-          return Ok(false);
-        };
-        if names[&node.key].as_deref() == Some("NODE_0000000") {
-          root_seq = seq.to_string();
-        }
-        Ok(true)
-      })?;
-    }
+    let Reconstruction { sequences, .. } = recon.reconstruct_sequences(
+      &graph,
+      TipStates::default(),
+      SampleMode::Argmax,
+      &mut rand::thread_rng(),
+    )?;
+    let root_key = find_node_key_by_name(&graph, &names, "NODE_0000000").expect("root node must exist");
+    let root_seq = sequences[&root_key].to_string();
 
     let expected = "ATGAATCCAAATCAAAAGATAATAACGATTGGCTCTGTTTCTCTCACCATTTCCACAATATGCTTCTTCATGCAAATTGCCATCTTGATAACTACTGTAACATTGCATTTCAAGCAATATGAATTCAACTCCCCCCCAAACAACCAAGTGATGCTGTGTGAACCAACAATAATAGAAAGAAACATAACAGAGATAGTGTATCTGACCAACACCACCATAGAGAAGGAAATATGCCCCAAACCAGCAGAATACAGAAATTGGTCAAAACCGCAATGTGGCATTACAGGATTTGCACCTTTCTCTAAGGACAATTCGATTAGGCTTTCCGCTGGTGGGGACATCTGGGTGACAAGAGAACCTTATGTGTCATGCGATCCTGACAAGTGTTATCAATTTGCCCTTGGACAGGGAACAACACTAAACAACGTGCATTCAAATAACACAGTACGTGATAGGACCCCTTATCGGACTCTATTGATGAATGAGTTGGGTGTTCCTTTTCATCTGGGGACCAAGCAAGTGTGCATAGCATGGTCCAGCTCAAGTTGTCACGATGGAAAAGCATGGCTGCATGTTTGTATAACGGGGGATGATAAAAATGCAACTGCTAGCTTCATTTACAATGGGAGGCTTGTAGATAGTGTTGTTTCATGGTCCAAAGAAATTCTCAGGACCCAGGAGTCAGAATGCGTTTGTATCAATGGAACTTGTACAGTAGTAATGACTGATGGAAGTGCTTCAGGAAAAGCTGATACTAAAATACTATTCATTGAGGAGGGGAAAATCGTTCATACTAGCACATTGTCAGGAAGTGCTCAGCATGTCGAAGAGTGCTCTTGCTATCCTCGATATCCTGGTGTCAGATGTGTCTGCAGAGACAACTGGAAAGGCTCCAATCGGCCCATCGTAGATATAAACATAAAGGATCATAGCATTGTTTCCAGTTATGTGTGTTCAGGACTTGTTGGAGACACACCCAGAAAAAACGACAGCTCCAGCAGTAGCCATTGTTTGGATCCTAACAATGAAGAAGGTGGTCATGGAGTGAAAGGCTGGGCCTTTGATGATGGAAATGACGTGTGGATGGGAAGAACAATCAACGAGACGTCACGCTTAGGGTATGAAACCTTCAAAGTCATTGAAGGCTGGTCCAACCCTAAGTCCAAATTGCAGATAAATAGGCAAGTCATAGTTGACAGAGGTGATAGGTCCGGTTATTCTGGTATTTTCTCTGTTGAAGGCAAAAGCTGCATCAATCGGTGCTTTTATGTGGAGTTGATTAGGGGAAGAAAAGAGGAAACTGAAGTCTTGTGGACCTCAAACAGTATTGTTGTGTTTTGTGGCACCTCAGGTACATATGGAACAGGCTCATGGCCTGATGGGGCGGACCTCAATCTCATGCCTATA";
 
@@ -365,9 +348,13 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&aln)?;
 
-    let dense_partition = PartitionMarginalDense::new(0, alphabet.clone(), length);
-    let dense_node_states = dense_partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln.clone()))?;
-    let dense_recon = DenseReconstruction::seeded(dense_partition, gtr.clone(), dense_node_states);
+    let dense_partition = PartitionMarginalDense::new(
+      0,
+      alphabet.clone(),
+      &graph,
+      &node_seq_inputs(&graph, &names, aln.clone()),
+    )?;
+    let dense_recon = DenseReconstruction::seeded(dense_partition, gtr.clone());
     let (dense_recon, dense_log_lh) = dense_recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let dense_log_lh = dense_log_lh.value();
 

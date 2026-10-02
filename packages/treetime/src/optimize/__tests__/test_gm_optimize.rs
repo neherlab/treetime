@@ -230,12 +230,11 @@ mod tests {
       )];
 
       let length = get_common_length(&aln)?;
-      let dense_partition = PartitionMarginalDense::new(1, alphabet_dense, length);
-      let dense_node_states = dense_partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
+      let dense_partition =
+        PartitionMarginalDense::new(1, alphabet_dense, &graph, &node_seq_inputs(&graph, &names, aln))?;
       let dense_partitions = vec![DenseReconstruction::seeded(
         dense_partition,
         jc69(JC69Params::default())?,
-        dense_node_states,
       )];
 
       let (sparse_partitions, _) =

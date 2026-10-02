@@ -23,7 +23,6 @@ pub(super) mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -425,9 +424,8 @@ pub(super) mod tests {
 
     let mut graph: Graph = graph;
 
-    let dense_partition = PartitionMarginalDense::new(0, nuc, get_common_length(&aln)?);
-    let dense_node_states = dense_partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
-    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, jc69(JC69Params::default())?, dense_node_states)];
+    let dense_partition = PartitionMarginalDense::new(0, nuc, &graph, &node_seq_inputs(&graph, &names, aln))?;
+    let dense_partitions = vec![DenseReconstruction::seeded(dense_partition, jc69(JC69Params::default())?)];
 
     let (mut dense_partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), dense_partitions)?;
 

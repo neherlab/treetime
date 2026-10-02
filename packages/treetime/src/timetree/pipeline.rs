@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
+use crate::ancestral::reconstruction::Reconstruction;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
 use crate::cancel::Cancel;
@@ -26,9 +27,7 @@ use crate::optimize::gather::{
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchLengthMode, BranchOptMethod};
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
-use crate::partition::timetree::marginal::{
-  ancestral_reconstruction_timetree, initialize_marginal_timetree, marginal_update_timetree,
-};
+use crate::partition::timetree::marginal::marginal_update_timetree;
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
 use crate::seq::alignment::node_seq_inputs;
@@ -180,19 +179,11 @@ pub fn run(
     },
   };
 
-  if let Some(aln) = input.sequences.as_deref() {
-    if params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
-      progress_info!(progress, "### ML branch-length optimization (pre-reroot)");
-      let node_inputs = node_seq_inputs(&input.graph, names, aln.to_vec());
-      (partitions, _) = initialize_marginal_timetree(
-        &input.graph,
-        &branch_lengths_or_zero(&branch_lengths),
-        partitions,
-        &node_inputs,
-      )?;
-      partitions = optimize_branch_lengths_pre_step(&input.graph, partitions, params.no_indels, &mut branch_lengths)
-        .wrap_err("ML branch-length optimization (pre-reroot) failed")?;
-    }
+  if input.sequences.is_some() && params.branch_length_mode == BranchLengthMode::Marginal && !partitions.is_empty() {
+    progress_info!(progress, "### ML branch-length optimization (pre-reroot)");
+    (partitions, _) = marginal_update_timetree(&input.graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
+    partitions = optimize_branch_lengths_pre_step(&input.graph, partitions, params.no_indels, &mut branch_lengths)
+      .wrap_err("ML branch-length optimization (pre-reroot) failed")?;
   }
 
   if !params.keep_root {
@@ -613,24 +604,27 @@ pub fn run(
       let branch_lengths_final = timetree_branch_lengths(&input.graph, &branch_lengths, &clock_branch_lengths);
       (partitions, _) = marginal_update_timetree(&input.graph, &branch_lengths_final, partitions)?;
       let mut rng = get_random_number_generator(params.seed);
-      ancestral_reconstruction_timetree(
+      let Reconstruction {
+        sequences,
+        emitted_nodes,
+      } = partitions[0].reconstruct_sequences(
         &input.graph,
         TipStates {
           include_leaves: params.include_leaves,
           impute: params.impute_missing_data,
         },
-        &mut partitions,
         SampleMode::Argmax,
         &mut rng,
-        |key, seq| match seq_sink.as_mut() {
-          Some(sink) => sink.emit(SeqItem {
+      )?;
+      if let Some(sink) = seq_sink.as_mut() {
+        for key in emitted_nodes {
+          sink.emit(SeqItem {
             key,
             track: SeqTrack::Nuc,
-            seq,
-          }),
-          None => Ok(()),
-        },
-      )?;
+            seq: &sequences[&key],
+          })?;
+        }
+      }
     }
   }
 
@@ -729,7 +723,7 @@ fn initialize_partitions_from_params(
       PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, created.gtr, node_states))
     },
     MarginalPartition::Dense(partition) => {
-      PartitionTimetree::Dense(DenseReconstruction::seeded(partition, created.gtr, BTreeMap::new()))
+      PartitionTimetree::Dense(DenseReconstruction::seeded(partition, created.gtr))
     },
   };
 

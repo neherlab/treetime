@@ -19,7 +19,6 @@ mod tests {
   use crate::optimize::run_loop::{marginal_update_dense, marginal_update_sparse};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::optimize::contribution::OptimizationContribution;
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -290,13 +289,8 @@ mod tests {
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<Vec<DenseReconstruction>, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
-    let partitions = vec![DenseReconstruction::seeded(
-      partition,
-      jc69(JC69Params::default())?,
-      node_states,
-    )];
+    let partition = PartitionMarginalDense::new(0, alphabet, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
+    let partitions = vec![DenseReconstruction::seeded(partition, jc69(JC69Params::default())?)];
 
     let (partitions, _) = marginal_update_dense(graph, &branch_lengths_or_zero(branch_lengths), partitions)?;
 

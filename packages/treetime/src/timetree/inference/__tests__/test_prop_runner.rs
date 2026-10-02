@@ -9,10 +9,10 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalEdges;
-  use crate::partition::timetree::marginal::initialize_marginal_timetree;
+  use crate::partition::timetree::marginal::marginal_update_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::{get_common_length, node_seq_inputs};
+  use crate::seq::alignment::node_seq_inputs;
   use crate::timetree::inference::bad_branches::undated_leaves;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::inference::time_inference::{TimeInference, unit_gammas};
@@ -125,17 +125,12 @@ mod tests {
         .map(AlignmentRecord::from)
         .collect();
       let partitions = vec![PartitionTimetree::Dense(DenseReconstruction {
-        partition: PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?),
+        partition: PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),
       })];
-      let (partitions, _) = initialize_marginal_timetree(
-        &graph,
-        &branch_lengths_or_zero(&branch_lengths),
-        partitions,
-        &node_seq_inputs(&graph, &names, aln),
-      )?;
+      let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
 
       let dates: DatesMap = case
         .dates

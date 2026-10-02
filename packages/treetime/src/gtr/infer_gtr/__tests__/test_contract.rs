@@ -13,7 +13,6 @@ mod tests {
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalPasses;
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use pretty_assertions::assert_eq;
 
@@ -53,9 +52,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
+    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln.to_vec()))?;
+    let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
   }

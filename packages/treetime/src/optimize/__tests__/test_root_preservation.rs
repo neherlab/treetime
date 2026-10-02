@@ -9,7 +9,6 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::run_loop::marginal_update_dense;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -36,9 +35,8 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let gtr = jc69(JC69Params::default())?;
-    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
-    let partitions = vec![DenseReconstruction::seeded(partition, gtr, node_states)];
+    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+    let partitions = vec![DenseReconstruction::seeded(partition, gtr)];
     let (partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
     Ok((graph, partitions, branch_lengths))
   }

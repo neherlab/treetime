@@ -6,7 +6,6 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
   use eyre::Report;
@@ -35,7 +34,7 @@ mod tests {
     let parent_posterior = array![[0.0, 0.0, 1.0, 0.0]];
     let child_posterior = array![[0.0, 0.0, 1.0, 0.0]];
 
-    let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, 1);
+    let partition = helpers::partition_with_leaves_of_length(&graph, &names, Alphabet::new(AlphabetName::Nuc)?, 1)?;
     let node_states = btreemap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
@@ -71,7 +70,7 @@ mod tests {
     let parent_state = alphabet.char(0);
     let child_state = alphabet.char(1);
 
-    let partition = PartitionMarginalDense::new(0, alphabet, 1);
+    let partition = helpers::partition_with_leaves_of_length(&graph, &names, alphabet, 1)?;
     let node_states = btreemap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
@@ -98,9 +97,13 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
+    let partition = PartitionMarginalDense::new(
+      0,
+      Alphabet::new(AlphabetName::Nuc)?,
+      &graph,
+      &node_seq_inputs(&graph, &names, aln),
+    )?;
+    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
@@ -159,7 +162,7 @@ mod tests {
     ];
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(0, alphabet.clone(), 4);
+    let partition = helpers::partition_with_leaves_of_length(&graph, &names, alphabet.clone(), 4)?;
     let node_states = btreemap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
@@ -186,9 +189,13 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let partition = PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, get_common_length(&aln)?);
-    let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
+    let partition = PartitionMarginalDense::new(
+      0,
+      Alphabet::new(AlphabetName::Nuc)?,
+      &graph,
+      &node_seq_inputs(&graph, &names, aln),
+    )?;
+    let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     for edge_ref in graph.get_edges() {
@@ -227,8 +234,16 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
+    use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::storage::dense::DenseNodeState;
+    use crate::seq::alignment::node_seq_inputs;
     use crate::seq::mutation::Sub;
+    use eyre::Report;
+    use itertools::Itertools;
+    use std::collections::BTreeMap;
+    use treetime_graph::graph::Graph;
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_primitives::{AlignmentRecord, seq};
     use treetime_utils::array::ndarray::argmax_first;
 
     pub(super) fn diff_map_states(
@@ -257,6 +272,23 @@ mod tests {
         }
       }
       subs
+    }
+
+    pub(super) fn partition_with_leaves_of_length(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      alphabet: Alphabet,
+      length: usize,
+    ) -> Result<PartitionMarginalDense, Report> {
+      let fill = alphabet.char(0);
+      let aln = graph
+        .get_leaves()
+        .map(|leaf| AlignmentRecord {
+          name: names[&leaf.key()].clone().expect("named leaf"),
+          seq: seq![fill; length],
+        })
+        .collect_vec();
+      PartitionMarginalDense::new(0, alphabet, graph, &node_seq_inputs(graph, names, aln))
     }
   }
 }

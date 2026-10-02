@@ -17,7 +17,6 @@ pub(super) mod tests {
   };
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
@@ -542,13 +541,8 @@ pub(super) mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
 
-      let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(&aln)?);
-      let node_states = partition.attach_sequences(&graph, &node_seq_inputs(&graph, &names, aln))?;
-      let partitions = vec![DenseReconstruction::seeded(
-        partition,
-        jc69(JC69Params::default())?,
-        node_states,
-      )];
+      let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+      let partitions = vec![DenseReconstruction::seeded(partition, jc69(JC69Params::default())?)];
 
       let (partitions, _) = marginal_update_dense(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
 

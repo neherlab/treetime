@@ -69,9 +69,6 @@ impl SparseNodeObs {
 pub struct SparseNodeState {
   pub(crate) sequence: Seq,
   pub(crate) profile: SparseSeqDistribution,
-
-  #[serde(default)]
-  pub(crate) emitted: Option<Seq>,
 }
 
 impl SparseNodeState {
@@ -79,7 +76,6 @@ impl SparseNodeState {
     Self {
       sequence: seq![],
       profile: SparseSeqDistribution::default(),
-      emitted: None,
     }
   }
 
@@ -87,7 +83,6 @@ impl SparseNodeState {
     Self {
       sequence: seq.to_owned(),
       profile: SparseSeqDistribution::default(),
-      emitted: None,
     }
   }
 }

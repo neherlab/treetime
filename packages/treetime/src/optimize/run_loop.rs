@@ -380,14 +380,8 @@ pub(crate) fn prune_and_merge_in_loop(
       )
     })
     .collect_vec();
-  let dense_partitions = izip!(dense_obs, dense_gtrs, dense_node_states)
-    .map(|(partition, gtr, node_states)| {
-      DenseReconstruction::seeded(
-        partition,
-        gtr,
-        reconcile_node_states(node_states, &live_nodes, DenseNodeState::empty),
-      )
-    })
+  let dense_partitions = izip!(dense_obs, dense_gtrs)
+    .map(|(partition, gtr)| DenseReconstruction::seeded(partition, gtr))
     .collect_vec();
 
   Ok(TopologyCleanup {

@@ -28,7 +28,6 @@ pub(super) mod tests {
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::pretty_assert_neg_inf;
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
   use approx::assert_abs_diff_eq;
@@ -78,12 +77,11 @@ pub(super) mod tests {
     let alphabet_dense = Alphabet::new(AlphabetName::Nuc)?;
     let alphabet_sparse = Alphabet::new(AlphabetName::Nuc)?;
 
-    let dense_partition = PartitionMarginalDense::new(0, alphabet_dense, get_common_length(&aln)?);
-    let dense_node_states = dense_partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.clone()))?;
+    let dense_partition =
+      PartitionMarginalDense::new(0, alphabet_dense, graph, &node_seq_inputs(graph, names, aln.clone()))?;
     let dense_partitions = vec![DenseReconstruction::seeded(
       dense_partition,
       jc69(JC69Params::default())?,
-      dense_node_states,
     )];
 
     let fitch = create_fitch_partition(graph, 1, alphabet_sparse, &node_seq_inputs(graph, names, aln))?;

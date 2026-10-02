@@ -1,7 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
-use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
+use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::params::MethodAncestral;
+use crate::ancestral::reconstruction::Reconstruction;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
 use crate::cancel::Cancel;
@@ -12,7 +13,7 @@ use crate::gtr::refinement::refine_gtr_model;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
-use crate::partition::marginal::shared::update::{MarginalPasses, MarginalStates, MarginalUpdate};
+use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
@@ -23,6 +24,7 @@ use crate::seq::alignment::AncestralInput;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::Report;
+use rand::RngCore;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use strum::VariantNames;
@@ -117,6 +119,11 @@ pub fn run(
       let gtr = created.gtr;
       let refine = params.gtr_iterations > 0 && params.model == GtrModelName::Infer;
 
+      let tips = TipStates {
+        include_leaves: params.include_leaves,
+        impute: params.impute_missing_data,
+      };
+
       match created.partition {
         MarginalPartition::Sparse(partition, node_states) => {
           cancel.check()?;
@@ -137,48 +144,35 @@ pub fn run(
           } else {
             (gtr, update)
           };
-          let MarginalUpdate {
-            mut node_states, edges, ..
-          } = update;
+          let MarginalUpdate { node_states, edges, .. } = update;
+          let family = SparseReconstruction {
+            partition,
+            gtr,
+            node_states,
+            edges,
+          };
 
           cancel.check()?;
           progress.report("Reconstructing sequences", 0.6, "");
-          let emitted_nodes = ancestral_reconstruction(graph, |node| {
-            partition.advance_node_state(
-              &mut node_states,
-              &edges.forward,
-              node,
-              TipStates {
-                include_leaves: params.include_leaves,
-                impute: params.impute_missing_data,
-              },
-              params.sample_from_profile,
-              &mut rng,
-            )
-          })?;
+          let Reconstruction {
+            sequences,
+            emitted_nodes,
+          } = family.reconstruct_sequences(graph, tips, params.sample_from_profile, &mut rng)?;
 
           Ok(AncestralOutputFull {
             output: AncestralOutput {
-              gtr: Some(gtr.clone()),
+              gtr: Some(family.gtr.clone()),
               model_name,
               mask,
               emitted_nodes,
             },
-            partition: Some(AncestralPartition::Sparse(SparseReconstruction {
-              partition,
-              gtr,
-              node_states,
-              edges,
-            })),
+            partition: Some(AncestralPartition::Sparse { family, sequences }),
           })
         },
         MarginalPartition::Dense(partition) => {
           cancel.check()?;
           progress.report("Marginal reconstruction", 0.4, "");
-          let node_states = partition.attach_sequences(graph, node_inputs)?;
-          let MarginalStates { node_states, .. } =
-            partition.marginal_states(&gtr, graph, &profile_lengths, node_states)?;
-          let update = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
+          let update = partition.marginal_update(&gtr, graph, &profile_lengths, BTreeMap::new())?;
 
           let (gtr, update) = if refine {
             refine_gtr_model(
@@ -194,42 +188,29 @@ pub fn run(
           } else {
             (gtr, update)
           };
-          let MarginalUpdate {
-            mut node_states, edges, ..
-          } = update;
+          let MarginalUpdate { node_states, edges, .. } = update;
+          let family = DenseReconstruction {
+            partition,
+            gtr,
+            node_states,
+            edges,
+          };
 
           cancel.check()?;
           progress.report("Reconstructing sequences", 0.6, "");
-          let emitted_nodes = ancestral_reconstruction(graph, |node| {
-            Ok(
-              partition
-                .reconstruct_node_sequence(
-                  &mut node_states,
-                  node,
-                  TipStates {
-                    include_leaves: params.include_leaves,
-                    impute: params.impute_missing_data,
-                  },
-                  params.sample_from_profile,
-                  &mut rng,
-                )
-                .is_some(),
-            )
-          })?;
+          let Reconstruction {
+            sequences,
+            emitted_nodes,
+          } = family.reconstruct_sequences(graph, tips, params.sample_from_profile, &mut rng)?;
 
           Ok(AncestralOutputFull {
             output: AncestralOutput {
-              gtr: Some(gtr.clone()),
+              gtr: Some(family.gtr.clone()),
               model_name,
               mask,
               emitted_nodes,
             },
-            partition: Some(AncestralPartition::Dense(DenseReconstruction {
-              partition,
-              gtr,
-              node_states,
-              edges,
-            })),
+            partition: Some(AncestralPartition::Dense { family, sequences }),
           })
         },
       }
@@ -270,40 +251,45 @@ pub struct AncestralOutputFull {
 #[serde(rename_all = "kebab-case")]
 pub enum AncestralPartition {
   Fitch(PartitionFitch),
-  Sparse(SparseReconstruction),
-  Dense(DenseReconstruction),
+  Sparse {
+    family: SparseReconstruction,
+    sequences: BTreeMap<GraphNodeKey, Seq>,
+  },
+  Dense {
+    family: DenseReconstruction,
+    sequences: BTreeMap<GraphNodeKey, Seq>,
+  },
 }
 
 impl AncestralPartition {
   pub fn sequence_length(&self) -> usize {
     match self {
       Self::Fitch(partition) => partition.sequence_length(),
-      Self::Sparse(partition) => partition.sequence_length(),
-      Self::Dense(partition) => partition.sequence_length(),
+      Self::Sparse { family, .. } => family.sequence_length(),
+      Self::Dense { family, .. } => family.sequence_length(),
     }
   }
 
   pub fn ambiguous_char(&self) -> AsciiChar {
     match self {
       Self::Fitch(partition) => partition.ambiguous_char(),
-      Self::Sparse(partition) => partition.ambiguous_char(),
-      Self::Dense(partition) => partition.ambiguous_char(),
+      Self::Sparse { family, .. } => family.ambiguous_char(),
+      Self::Dense { family, .. } => family.ambiguous_char(),
     }
   }
 
   pub fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
     match self {
       Self::Fitch(partition) => partition.node_sequence(node_key),
-      Self::Sparse(partition) => partition.augur_node_sequence(node_key),
-      Self::Dense(partition) => partition.augur_node_sequence(node_key),
+      Self::Sparse { sequences, .. } | Self::Dense { sequences, .. } => sequences[&node_key].clone(),
     }
   }
 
   pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
     match self {
       Self::Fitch(partition) => partition.root_sequence(graph),
-      Self::Sparse(partition) => partition.root_sequence(graph),
-      Self::Dense(partition) => partition.root_sequence(graph),
+      Self::Sparse { family, .. } => family.root_sequence(graph),
+      Self::Dense { family, .. } => family.root_sequence(graph),
     }
   }
 
@@ -314,16 +300,16 @@ impl AncestralPartition {
   pub fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     match self {
       Self::Fitch(partition) => partition.edge_subs(graph, edge_key),
-      Self::Sparse(partition) => partition.edge_subs(edge_key),
-      Self::Dense(partition) => partition.edge_subs(graph, edge_key),
+      Self::Sparse { family, .. } => family.edge_subs(edge_key),
+      Self::Dense { family, .. } => family.edge_subs(graph, edge_key),
     }
   }
 
   pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     match self {
       Self::Fitch(partition) => partition.edge_indels(edge_key),
-      Self::Sparse(partition) => partition.edge_indels(edge_key),
-      Self::Dense(partition) => partition.edge_indels(edge_key),
+      Self::Sparse { family, .. } => family.edge_indels(edge_key),
+      Self::Dense { family, .. } => family.edge_indels(edge_key),
     }
   }
 
@@ -381,10 +367,6 @@ impl SparseReconstruction {
     self.partition.edge_indel_count(edge_key)
   }
 
-  fn node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    self.partition.node_sequence(&self.node_states, node_key)
-  }
-
   pub fn root_sequence(&self, _graph: &Graph) -> Result<Seq, Report> {
     Ok(self.partition.root_sequence())
   }
@@ -397,8 +379,16 @@ impl SparseReconstruction {
     combine_edge_mutations(self.edge_subs(edge_key)?, &self.edge_indels(edge_key), track)
   }
 
-  fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    self.node_sequence(node_key)
+  pub(crate) fn reconstruct_sequences(
+    &self,
+    graph: &Graph,
+    tips: TipStates,
+    sample_mode: SampleMode,
+    rng: &mut dyn RngCore,
+  ) -> Result<Reconstruction, Report> {
+    self
+      .partition
+      .reconstruct_sequences(graph, &self.node_states, &self.edges.forward, tips, sample_mode, rng)
   }
 
   fn ambiguous_char(&self) -> AsciiChar {
@@ -442,15 +432,11 @@ pub struct DenseReconstruction {
 }
 
 impl DenseReconstruction {
-  pub(crate) fn seeded(
-    partition: PartitionMarginalDense,
-    gtr: GTR,
-    node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
-  ) -> Self {
+  pub(crate) fn seeded(partition: PartitionMarginalDense, gtr: GTR) -> Self {
     Self {
       partition,
       gtr,
-      node_states,
+      node_states: BTreeMap::new(),
       edges: DenseMarginalEdges::default(),
     }
   }
@@ -494,8 +480,16 @@ impl DenseReconstruction {
     combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), track)
   }
 
-  fn augur_node_sequence(&self, node_key: GraphNodeKey) -> Seq {
-    self.node_states[&node_key].seq.sequence.clone()
+  pub(crate) fn reconstruct_sequences(
+    &self,
+    graph: &Graph,
+    tips: TipStates,
+    sample_mode: SampleMode,
+    rng: &mut dyn RngCore,
+  ) -> Result<Reconstruction, Report> {
+    self
+      .partition
+      .reconstruct_sequences(graph, &self.node_states, tips, sample_mode, rng)
   }
 
   fn ambiguous_char(&self) -> AsciiChar {

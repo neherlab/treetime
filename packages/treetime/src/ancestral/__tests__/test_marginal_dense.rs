@@ -7,7 +7,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::alphabet::alphabet::AlphabetName;
-  use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
+  use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::ancestral::sample::SampleMode;
   use crate::ancestral::tip_states::TipStates;
@@ -15,8 +15,8 @@ mod tests {
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::pretty_assert_ulps_eq;
-  use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::emitted_sequences_by_name;
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
@@ -68,9 +68,8 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, DenseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(0, alphabet, get_common_length(aln)?);
-    let node_states = partition.attach_sequences(graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, gtr, node_states);
+    let partition = PartitionMarginalDense::new(0, alphabet, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
+    let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
@@ -144,31 +143,17 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (_, mut recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
+    let (_, recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
-    let mut actual = BTreeMap::new();
-    {
-      let DenseReconstruction {
-        partition, node_states, ..
-      } = &mut recon;
-      let mut rng = rand::thread_rng();
-      ancestral_reconstruction(&graph, |node| {
-        let Some(seq) = partition.reconstruct_node_sequence(
-          node_states,
-          node,
-          TipStates {
-            include_leaves: false,
-            impute: false,
-          },
-          SampleMode::Argmax,
-          &mut rng,
-        ) else {
-          return Ok(false);
-        };
-        actual.insert(names[&node.key].clone(), seq.to_string());
-        Ok(true)
-      })?;
-    }
+    let actual = emitted_sequences_by_name(
+      &names,
+      &recon.reconstruct_sequences(
+        &graph,
+        TipStates::default(),
+        SampleMode::Argmax,
+        &mut rand::thread_rng(),
+      )?,
+    );
 
     assert_eq!(
       json_write_str(&expected, JsonPretty(false))?,

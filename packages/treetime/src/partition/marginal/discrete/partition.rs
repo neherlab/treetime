@@ -4,77 +4,61 @@ use crate::partition::marginal::discrete::input::{one_hot_profile, uniform_profi
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses};
-use crate::partition::storage::dense::{
-  DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
-};
+use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
 use crate::partition::storage::discrete::DiscreteStates;
 use crate::progress::ProgressSink;
 use eyre::Report;
-use ndarray::Array1;
+use ndarray::{Array1, Array2};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::argmax_first;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalDiscrete {
-  pub inputs: DenseInputs,
-  pub states: DiscreteStates,
+  pub(crate) inputs: DenseInputs,
+  pub(crate) states: DiscreteStates,
+  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, Array2<f64>>,
 }
 
 impl PartitionMarginalDiscrete {
-  pub fn new(states: DiscreteStates, min_branch_length: f64, filter_uninformative_root: bool) -> Self {
-    Self {
+  pub(crate) fn new(
+    states: DiscreteStates,
+    graph: &Graph,
+    traits: &BTreeMap<String, String>,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    min_branch_length: f64,
+    filter_uninformative_root: bool,
+    progress: &dyn ProgressSink,
+  ) -> Result<Self, Report> {
+    validate_trait_names(graph, traits, names, progress)?;
+    let n_states = states.len();
+    let obs_leaves = graph
+      .get_leaves()
+      .map(|leaf| {
+        let leaf_key = leaf.key();
+        let leaf_name = names[&leaf_key].clone().unwrap_or_default();
+        let profile = traits
+          .get(&leaf_name)
+          .and_then(|trait_value| states.get_index(trait_value))
+          .map_or_else(|| uniform_profile(n_states), |index| one_hot_profile(index, n_states));
+        (leaf_key, profile)
+      })
+      .collect();
+    Ok(Self {
       inputs: DenseInputs {
         min_branch_length,
         filter_uninformative_root,
       },
       states,
-    }
+      obs_leaves,
+    })
   }
 
   pub fn n_states(&self) -> usize {
     self.states.len()
-  }
-
-  pub(crate) fn attach_traits(
-    &self,
-    graph: &Graph,
-    traits: &BTreeMap<String, String>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-    progress: &dyn ProgressSink,
-  ) -> Result<BTreeMap<GraphNodeKey, DenseNodeState>, Report> {
-    let n_states = self.n_states();
-    validate_trait_names(graph, traits, names, progress)?;
-
-    let mut node_states = BTreeMap::new();
-    for leaf in graph.get_leaves() {
-      let leaf_key = leaf.key();
-      let leaf_name = names[&leaf_key].clone().unwrap_or_default();
-
-      let profile = if let Some(trait_value) = traits.get(&leaf_name) {
-        if let Some(index) = self.states.get_index(trait_value) {
-          one_hot_profile(index, n_states)
-        } else {
-          uniform_profile(n_states)
-        }
-      } else {
-        uniform_profile(n_states)
-      };
-
-      node_states.insert(
-        leaf_key,
-        DenseNodeState {
-          seq: crate::partition::storage::dense::DenseSeqInfo::default(),
-          profile: DenseSeqDistribution::new(profile, LogLh::ZERO),
-        },
-      );
-    }
-
-    Ok(node_states)
   }
 
   pub fn get_reconstructed_trait(
@@ -96,6 +80,12 @@ impl PartitionMarginalDiscrete {
     let node = node_states.get(&node_key)?;
     Some(node.profile.dis.row(0).to_owned())
   }
+
+  fn indexed_kind(&self) -> IndexedKind<'_> {
+    IndexedKind::Discrete {
+      leaves: &self.obs_leaves,
+    }
+  }
 }
 
 impl MarginalPasses for PartitionMarginalDiscrete {
@@ -109,18 +99,9 @@ impl MarginalPasses for PartitionMarginalDiscrete {
     gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    _node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
   ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
-    indexed_backward(
-      &self.inputs,
-      gtr,
-      None,
-      1,
-      IndexedKind::Discrete,
-      graph,
-      branch_lengths,
-      node_states,
-    )
+    indexed_backward(&self.inputs, gtr, 1, self.indexed_kind(), graph, branch_lengths)
   }
 
   fn marginal_forward(
@@ -134,8 +115,7 @@ impl MarginalPasses for PartitionMarginalDiscrete {
     indexed_forward(
       &self.inputs,
       gtr,
-      None,
-      IndexedKind::Discrete,
+      self.indexed_kind(),
       graph,
       branch_lengths,
       node_states,

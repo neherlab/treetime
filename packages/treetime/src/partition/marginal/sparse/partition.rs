@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::reconstruction::{Reconstruction, reconstruct_preorder};
 use crate::ancestral::sample::{Resolve, SampleMode};
 use crate::ancestral::tip_states::TipStates;
 use crate::gtr::gtr::GTR;
@@ -18,7 +19,6 @@ use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::collections::container::get_exactly_one;
@@ -59,17 +59,6 @@ impl PartitionMarginalSparse {
     self.root_sequence.clone()
   }
 
-  pub(crate) fn node_sequence(
-    &self,
-    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-    node_key: GraphNodeKey,
-  ) -> Seq {
-    match node_states.get(&node_key) {
-      Some(node) => node.emitted.clone().unwrap_or_else(|| map_seq(node, &self.alphabet)),
-      None => seq![],
-    }
-  }
-
   pub(crate) fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     let (parent_key, child_key) = graph.edge_endpoints(edge_key)?;
     let parent_non_char = &self.obs_nodes[&parent_key].non_char;
@@ -107,7 +96,9 @@ impl PartitionMarginalSparse {
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     node_key: GraphNodeKey,
   ) -> Seq {
-    self.node_sequence(node_states, node_key)
+    node_states
+      .get(&node_key)
+      .map_or_else(|| seq![], |node| map_seq(node, &self.alphabet))
   }
 
   pub(crate) fn reconcile_topology(&mut self, graph: &Graph) {
@@ -127,64 +118,43 @@ impl PartitionMarginalSparse {
     self.obs_edges.retain(|k, _| graph_edge_keys.contains(k));
   }
 
-  pub(crate) fn advance_node_state(
+  pub(crate) fn reconstruct_sequences(
     &self,
-    node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
+    graph: &Graph,
+    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
-    node: &GraphNodeForward,
     tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
-  ) -> Result<bool, Report> {
-    let (parent_state, msg_from_parent) = if node.is_root {
-      (None, None)
-    } else {
-      let (parent_key, edge_key) = get_exactly_one(&node.parent_keys)
-        .wrap_err_with(|| format!("When reconstructing the sequence of node {}", node.key))?;
-      (
-        Some(node_states[parent_key].clone()),
-        Some(forward[edge_key].msg_from_parent.clone()),
-      )
-    };
-
-    let node_obs = &self.obs_nodes[&node.key];
-    let node_data = &node_states[&node.key];
-    let emitted = if node.is_leaf {
-      Some(reconstruct_leaf_sequence(
-        node_data,
-        node_obs,
-        msg_from_parent.as_ref(),
-        parent_state.as_ref(),
-        tips.impute,
-        &self.alphabet,
-      ))
-    } else if sample_mode.samples_node(node.is_root) {
-      Some(map_seq_sampled(node_data, &self.alphabet, &mut Resolve::Sample(rng)))
-    } else {
-      None
-    };
-    if let Some(seq) = emitted {
-      node_states
-        .entry(node.key)
-        .and_modify(|node_data| node_data.emitted = Some(seq));
-    }
-
-    Ok(tips.include_leaves || !node.is_leaf)
-  }
-
-  pub(crate) fn reconstruct_node_sequence(
-    &self,
-    node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
-    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
-    node: &GraphNodeForward,
-    tips: TipStates,
-    sample_mode: SampleMode,
-    rng: &mut dyn rand::RngCore,
-  ) -> Result<Option<Seq>, Report> {
-    if !self.advance_node_state(node_states, forward, node, tips, sample_mode, rng)? {
-      return Ok(None);
-    }
-    Ok(Some(self.node_sequence(node_states, node.key)))
+  ) -> Result<Reconstruction, Report> {
+    reconstruct_preorder(graph, tips.include_leaves, |node| {
+      let node_data = &node_states[&node.key];
+      if node.is_leaf {
+        let (parent_state, msg_from_parent) = if node.is_root {
+          (None, None)
+        } else {
+          let (parent_key, edge_key) = get_exactly_one(&node.parent_keys)
+            .wrap_err_with(|| format!("When reconstructing the sequence of node {}", node.key))?;
+          (Some(&node_states[parent_key]), Some(&forward[edge_key].msg_from_parent))
+        };
+        Ok(reconstruct_leaf_sequence(
+          node_data,
+          &self.obs_nodes[&node.key],
+          msg_from_parent,
+          parent_state,
+          tips.impute,
+          &self.alphabet,
+        ))
+      } else if sample_mode.samples_node(node.is_root) {
+        Ok(map_seq_sampled(
+          node_data,
+          &self.alphabet,
+          &mut Resolve::Sample(&mut *rng),
+        ))
+      } else {
+        Ok(map_seq(node_data, &self.alphabet))
+      }
+    })
   }
 }
 

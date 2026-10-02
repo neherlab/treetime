@@ -1,9 +1,7 @@
 use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
-use crate::partition::marginal::dense::reroot::reroot_dense;
 use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
 use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::partition::optimize::contribution::OptimizationContribution;
-use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::partition::timetree::partition::PartitionTimetree;
 use eyre::Report;
@@ -39,7 +37,7 @@ impl PartitionTimetree {
 
   pub(crate) fn apply_reroot(self, changes: &RerootChanges) -> Result<Self, Report> {
     Ok(match self {
-      Self::Dense(family) => Self::Dense(reroot_dense(family.partition, family.gtr, family.node_states, changes)),
+      Self::Dense(family) => Self::Dense(DenseReconstruction::seeded(family.partition, family.gtr)),
       Self::Sparse(family) => Self::Sparse(reroot_sparse(
         family.partition,
         family.gtr,
@@ -53,11 +51,7 @@ impl PartitionTimetree {
   pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
     let live_nodes = live_node_keys(graph);
     match self {
-      Self::Dense(family) => Self::Dense(DenseReconstruction::seeded(
-        family.partition,
-        family.gtr,
-        reconcile_node_states(family.node_states, &live_nodes, DenseNodeState::empty),
-      )),
+      Self::Dense(family) => Self::Dense(DenseReconstruction::seeded(family.partition, family.gtr)),
       Self::Sparse(family) => {
         let mut partition = family.partition;
         partition.reconcile_topology(graph);

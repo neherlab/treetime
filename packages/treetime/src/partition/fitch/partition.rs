@@ -4,6 +4,7 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{
   FitchNodeData, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
 };
+use crate::seq::alignment::NodeSeqInput;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use serde::Serialize;
@@ -40,7 +41,6 @@ impl PartitionFitch {
         SparseNodeState {
           sequence,
           profile: SparseSeqDistribution::default(),
-          emitted: None,
         },
       );
       obs_nodes.insert(
@@ -66,8 +66,12 @@ impl PartitionFitch {
     Ok((partition, node_states))
   }
 
-  pub(crate) fn into_marginal_dense(self) -> PartitionMarginalDense {
-    PartitionMarginalDense::new(self.index, self.alphabet, self.length)
+  pub(crate) fn into_marginal_dense(
+    self,
+    graph: &Graph,
+    node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+  ) -> Result<PartitionMarginalDense, Report> {
+    PartitionMarginalDense::new(self.index, self.alphabet, graph, node_inputs)
   }
 
   pub(crate) fn sequence_length(&self) -> usize {

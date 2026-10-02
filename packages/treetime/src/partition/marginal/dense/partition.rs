@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::reconstruction::{Reconstruction, reconstruct_preorder};
 use crate::ancestral::sample::{Resolve, SampleMode, resolve_profile};
 use crate::ancestral::tip_states::TipStates;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
@@ -10,9 +11,10 @@ use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, in
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalPasses};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::{
-  DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState, DenseSeqDistribution,
+  DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseLeafObs, DenseNodeState, DenseSeqDistribution,
 };
-use crate::seq::alignment::NodeSeqInput;
+use crate::seq::alignment::{NodeSeqInput, get_common_length_of_node_inputs};
+use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::izip;
@@ -20,7 +22,6 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
@@ -33,6 +34,7 @@ pub struct PartitionMarginalDense {
   pub(crate) index: usize,
   pub(crate) alphabet: Alphabet,
   pub(crate) length: usize,
+  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, DenseLeafObs>,
 }
 
 impl PartitionMarginalDense {
@@ -40,9 +42,27 @@ impl PartitionMarginalDense {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub(crate) fn new(index: usize, alphabet: Alphabet, length: usize) -> Self {
+  pub(crate) fn new(
+    index: usize,
+    alphabet: Alphabet,
+    graph: &Graph,
+    node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+  ) -> Result<Self, Report> {
+    let length = get_common_length_of_node_inputs(node_inputs)?;
+    let obs_leaves = graph
+      .get_leaves()
+      .map(|leaf| {
+        let leaf_key = leaf.key();
+        let node = &node_inputs[&leaf_key];
+        let seq = node
+          .seq
+          .as_ref()
+          .ok_or_else(|| make_report!("Leaf sequence not found: '{}'", node.name.as_deref().unwrap_or("")))?;
+        Ok((leaf_key, DenseLeafObs::new(seq, &alphabet)))
+      })
+      .collect::<Result<BTreeMap<_, _>, Report>>()?;
     let min_branch_length = MIN_BRANCH_LENGTH_FRACTION / length as f64;
-    Self {
+    Ok(Self {
       inputs: DenseInputs {
         min_branch_length,
         filter_uninformative_root: true,
@@ -50,27 +70,8 @@ impl PartitionMarginalDense {
       index,
       alphabet,
       length,
-    }
-  }
-
-  pub(crate) fn attach_sequences(
-    &self,
-    graph: &Graph,
-    node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
-  ) -> Result<BTreeMap<GraphNodeKey, DenseNodeState>, Report> {
-    let mut node_states = BTreeMap::new();
-    for leaf in graph.get_leaves() {
-      let leaf_key = leaf.key();
-      let node = &node_inputs[&leaf_key];
-
-      let seq = node
-        .seq
-        .as_ref()
-        .ok_or_else(|| make_report!("Leaf sequence not found: '{}'", node.name.as_deref().unwrap_or("")))?;
-
-      node_states.insert(leaf_key, DenseNodeState::new(seq, &self.alphabet)?);
-    }
-    Ok(node_states)
+      obs_leaves,
+    })
   }
 
   pub(crate) fn edge_subs(
@@ -110,7 +111,7 @@ impl PartitionMarginalDense {
     &self,
     estimates: &BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
     edge_key: GraphEdgeKey,
-  ) -> Vec<crate::seq::indel::InDel> {
+  ) -> Vec<InDel> {
     estimates[&edge_key].indels.clone()
   }
 
@@ -170,48 +171,48 @@ impl PartitionMarginalDense {
     }
   }
 
-  pub(crate) fn reconstruct_node_sequence(
+  pub(crate) fn reconstruct_sequences(
     &self,
-    node_states: &mut BTreeMap<GraphNodeKey, DenseNodeState>,
-    node: &GraphNodeForward,
+    graph: &Graph,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
-  ) -> Option<Seq> {
-    let seq = {
+  ) -> Result<Reconstruction, Report> {
+    reconstruct_preorder(graph, tips.include_leaves, |node| {
       let seq_info = &node_states[&node.key];
       if node.is_leaf {
-        let mut seq = seq_info.seq.sequence.clone();
-        if tips.impute && seq_info.profile.dis.nrows() == seq.len() {
-          for pos in 0..seq.len() {
-            let ch = seq[pos];
-            if !self.alphabet.is_canonical(ch) && !self.alphabet.is_gap(ch) {
-              if let Some(idx) = argmax_first(&seq_info.profile.dis.row(pos)) {
-                seq[pos] = self.alphabet.char(idx);
-              }
-            }
+        return Ok(self.reconstruct_leaf_sequence(seq_info, tips.impute));
+      }
+      let mut resolve = if sample_mode.samples_node(node.is_root) {
+        Resolve::Sample(&mut *rng)
+      } else {
+        Resolve::Argmax
+      };
+      Ok(assign_sequence_sampled(seq_info, &self.alphabet, &mut resolve))
+    })
+  }
+
+  fn reconstruct_leaf_sequence(&self, seq_info: &DenseNodeState, impute: bool) -> Seq {
+    let mut seq = seq_info.seq.sequence.clone();
+    if impute && seq_info.profile.dis.nrows() == seq.len() {
+      for pos in 0..seq.len() {
+        let ch = seq[pos];
+        if !self.alphabet.is_canonical(ch) && !self.alphabet.is_gap(ch) {
+          if let Some(idx) = argmax_first(&seq_info.profile.dis.row(pos)) {
+            seq[pos] = self.alphabet.char(idx);
           }
         }
-        seq
-      } else {
-        let mut resolve = if sample_mode.samples_node(node.is_root) {
-          Resolve::Sample(rng)
-        } else {
-          Resolve::Argmax
-        };
-        assign_sequence_sampled(seq_info, &self.alphabet, &mut resolve)
       }
-    };
-
-    node_states
-      .entry(node.key)
-      .and_modify(|node_data| node_data.seq.sequence = seq.clone());
-
-    if !tips.include_leaves && node.is_leaf {
-      return None;
     }
+    seq
+  }
 
-    Some(seq)
+  fn indexed_kind(&self) -> IndexedKind<'_> {
+    IndexedKind::Dense {
+      alphabet: &self.alphabet,
+      leaves: &self.obs_leaves,
+    }
   }
 }
 
@@ -226,17 +227,15 @@ impl MarginalPasses for PartitionMarginalDense {
     gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    _node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
   ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
     indexed_backward(
       &self.inputs,
       gtr,
-      Some(&self.alphabet),
       self.length,
-      IndexedKind::Dense,
+      self.indexed_kind(),
       graph,
       branch_lengths,
-      node_states,
     )
   }
 
@@ -251,8 +250,7 @@ impl MarginalPasses for PartitionMarginalDense {
     indexed_forward(
       &self.inputs,
       gtr,
-      Some(&self.alphabet),
-      IndexedKind::Dense,
+      self.indexed_kind(),
       graph,
       branch_lengths,
       node_states,

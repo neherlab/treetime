@@ -8,6 +8,7 @@ pub mod mask;
 pub mod multi;
 pub mod params;
 pub mod pipeline;
+pub(crate) mod reconstruction;
 pub mod sample;
 pub mod tip_states;
 

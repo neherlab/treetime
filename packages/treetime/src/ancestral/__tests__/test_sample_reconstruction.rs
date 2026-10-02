@@ -53,7 +53,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::fitch::create_fitch_partition;
-    use crate::ancestral::marginal::{ancestral_reconstruction, branch_lengths_or_zero};
+    use crate::ancestral::marginal::branch_lengths_or_zero;
     use crate::ancestral::pipeline::SparseReconstruction;
     use crate::ancestral::sample::SampleMode;
     use crate::ancestral::tip_states::TipStates;
@@ -101,37 +101,22 @@ mod tests {
       let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
       let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
 
-      let (mut recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+      let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-      let mut rng = StdRng::seed_from_u64(seed);
-      let mut out = BTreeMap::new();
-      {
-        let SparseReconstruction {
-          partition,
-          node_states,
-          edges,
-          ..
-        } = &mut recon;
-        ancestral_reconstruction(&graph, |node| {
-          let Some(seq) = partition.reconstruct_node_sequence(
-            node_states,
-            &edges.forward,
-            node,
-            TipStates {
-              include_leaves: false,
-              impute: false,
-            },
-            mode,
-            &mut rng,
-          )?
-          else {
-            return Ok(false);
-          };
-          out.insert(names[&node.key].clone().unwrap_or_default(), seq.to_string());
-          Ok(true)
-        })?;
-      }
-      Ok(out)
+      let reconstruction =
+        recon.reconstruct_sequences(&graph, TipStates::default(), mode, &mut StdRng::seed_from_u64(seed))?;
+      Ok(
+        reconstruction
+          .emitted_nodes
+          .iter()
+          .map(|key| {
+            (
+              names[key].clone().unwrap_or_default(),
+              reconstruction.sequences[key].to_string(),
+            )
+          })
+          .collect(),
+      )
     }
   }
 }
