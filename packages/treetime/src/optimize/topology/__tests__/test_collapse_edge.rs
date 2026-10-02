@@ -58,9 +58,8 @@ mod tests {
   fn test_topology_collapse_edge_sparse_composes_subs() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
@@ -114,9 +113,8 @@ mod tests {
   fn test_topology_collapse_edge_graph_cleanup() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let i_key = find_node_key_by_name(&graph, &names, "I").unwrap();
@@ -143,9 +141,8 @@ mod tests {
   fn test_topology_collapse_edge_branch_length_sum() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
@@ -174,9 +171,8 @@ mod tests {
   fn test_topology_collapse_edge_branch_length_sum_with_zero() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.0)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
@@ -205,9 +201,8 @@ mod tests {
   fn test_topology_collapse_edge_branch_length_none_plus_some() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
 
@@ -235,9 +230,8 @@ mod tests {
   fn test_topology_collapse_edge_branch_length_some_plus_none() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
     let mut sparse: Vec<PartitionMarginalSparse> = vec![];
@@ -266,10 +260,8 @@ mod tests {
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-
-    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
@@ -318,9 +310,8 @@ mod tests {
   fn test_topology_collapse_edge_reversion_cancels() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1)I:0.0)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
@@ -365,9 +356,8 @@ mod tests {
   fn test_topology_collapse_edge_no_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let i_node_key = find_node_key_by_name(&graph, &names, "I").unwrap();
 
@@ -388,9 +378,8 @@ mod tests {
   fn test_topology_collapse_edge_multiple_sparse_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();

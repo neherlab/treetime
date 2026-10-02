@@ -39,7 +39,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     {
@@ -84,7 +83,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     {

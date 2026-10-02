@@ -24,9 +24,8 @@ mod tests {
   fn test_hoist_reversions_large_t_not_duplicated() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -63,9 +62,8 @@ mod tests {
   fn test_hoist_reversions_chain_composed() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -96,9 +94,8 @@ mod tests {
   fn test_hoist_reversions_reversion_removed_reduces_count() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -133,9 +130,8 @@ mod tests {
   fn test_hoist_reversions_branch_length_distance_preserved() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
     let ru = find_edge_key(&graph, &names, "root", "U").unwrap();
@@ -173,9 +169,8 @@ mod tests {
   fn test_hoist_reversions_multi_partition() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -221,9 +216,8 @@ mod tests {
   fn test_hoist_reversions_indel_cancellation() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -261,9 +255,8 @@ mod tests {
   fn test_hoist_reversions_indel_overlap_fallback() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -305,9 +298,8 @@ mod tests {
   fn test_hoist_reversions_indel_no_interaction_hoisted() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(NWK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
     let va = find_edge_key(&graph, &names, "V", "A").unwrap();
 
@@ -349,7 +341,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_v = find_edge_key(&graph, &names, "root", "V").unwrap();
     let root_s = find_edge_key(&graph, &names, "root", "S").unwrap();
@@ -382,9 +373,8 @@ mod tests {
   fn test_hoist_reversions_slide_then_hoist_removes_cross_root_reversion() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str(NWK_BIFURCATING)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
     let root_v = find_edge_key(&graph, &names, "root", "V").unwrap();
     let root_s = find_edge_key(&graph, &names, "root", "S").unwrap();

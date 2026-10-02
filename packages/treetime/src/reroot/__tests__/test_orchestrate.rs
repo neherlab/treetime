@@ -44,9 +44,8 @@ mod tests {
   fn test_orchestrate_reroot_reduces_rtt_variance() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
@@ -71,9 +70,8 @@ mod tests {
   fn test_orchestrate_brent_finds_equidistant_root() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
@@ -99,7 +97,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
@@ -125,9 +122,8 @@ mod tests {
   fn test_orchestrate_no_split_snaps_to_nearer_endpoint() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.5)i:0.02,C:0.2)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let variance = VarianceModel::default();
     let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
     let root_before = graph.get_exactly_one_root().unwrap().key();

@@ -103,7 +103,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
@@ -143,7 +142,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
@@ -180,7 +178,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::JC69, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
@@ -360,7 +357,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;

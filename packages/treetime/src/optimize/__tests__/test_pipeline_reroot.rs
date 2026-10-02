@@ -1,91 +1,16 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::Alphabet;
   use crate::cancel::NoopCancel;
   use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
-  use crate::gtr::get_gtr::GtrModelName;
-  use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
-  use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
+  use crate::optimize::pipeline::{OptimizeInput, run};
   use crate::progress::NoopProgress;
   use eyre::Report;
-  use std::collections::BTreeMap;
-  use std::path::Path;
-  use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::nwk::nwk_read_file;
-  use treetime_primitives::AlignmentRecord;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
-  fn load() -> Result<
-    (
-      Graph,
-      BTreeMap<GraphNodeKey, Option<String>>,
-      Alphabet,
-      Vec<AlignmentRecord>,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
-    let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
-      .parent()
-      .and_then(Path::parent)
-      .expect("workspace root");
-    let alphabet = Alphabet::default();
-    let nwk_parsed = nwk_read_file(workspace_root.join("data/flu/h3n2/20/tree.nwk"))?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let aln = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
-    let sequences: Vec<AlignmentRecord> = read_many_fasta_path(&[aln.to_str().expect("utf-8 path")], &alphabet)?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-    Ok((graph, names, alphabet, sequences, branch_lengths))
-  }
-
-  fn params_with(reroot_spec: Option<RerootSpec>) -> OptimizeParams {
-    OptimizeParams {
-      model: GtrModelName::JC69,
-      dense: Some(false),
-      max_iter: 2,
-      dp: 0.1,
-      damping: 0.75,
-      opt_method: BranchOptMethod::default(),
-      initial_guess: InitialGuessMode::default(),
-      no_indels: false,
-      reroot_spec,
-      topology_ops: TopologyOps::default(),
-    }
-  }
-
-  fn assert_branch_lengths_valid(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) {
-    for edge in graph.get_edges() {
-      let bl = branch_lengths[&edge.key()].expect("every edge has a branch length after optimization");
-      assert!(bl.is_finite() && bl >= 0.0, "invalid branch length {bl}");
-    }
-  }
-
-  fn root_key(graph: &Graph) -> GraphNodeKey {
-    graph.get_exactly_one_root().unwrap().key()
-  }
-
-  fn root_child_keys(graph: &Graph) -> Vec<GraphNodeKey> {
-    let root = graph.get_exactly_one_root().unwrap();
-    root
-      .outbound()
-      .iter()
-      .map(|&edge_key| graph.get_edge(edge_key).unwrap().target())
-      .collect()
-  }
-
-  fn leaf_names(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<String> {
-    graph
-      .get_leaves()
-      .map(|leaf| names.get(&leaf.key()).cloned().flatten().expect("leaf has a name"))
-      .collect()
-  }
+  use helpers::{
+    assert_branch_lengths_valid, leaf_names, load, load_with_unary_root, params_with, root_child_keys, root_key,
+  };
 
   #[test]
   fn test_optimize_pipeline_reroot_min_dev_changes_root() -> Result<(), Report> {
@@ -169,6 +94,46 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::dense(  true)]
+  #[case::sparse( false)]
+  #[trace]
+  fn test_optimize_pipeline_reroot_min_dev_removes_a_unary_root(#[case] dense: bool) -> Result<(), Report> {
+    let (graph, names, alphabet, sequences, branch_lengths) = load_with_unary_root()?;
+    let mut expected: Vec<String> = sequences.iter().map(|record| record.name.clone()).collect();
+    expected.sort();
+
+    let mut params = params_with(Some(RerootSpec::Method(RerootMethod::MinDev)));
+    params.dense = Some(dense);
+    let output = run(
+      &params,
+      OptimizeInput {
+        graph,
+        alphabet,
+        sequences,
+        branch_lengths,
+      },
+      &names,
+      &NoopCancel,
+      &NoopProgress,
+      &NoopProgress,
+    )?;
+
+    let mut actual = leaf_names(&output.graph, &output.names);
+    actual.sort();
+    assert_eq!(expected, actual);
+    assert!(
+      output
+        .graph
+        .get_nodes()
+        .all(|node| output.names[&node.key()].as_deref() != Some("UNARYROOT")),
+      "the unary root is removed from the graph"
+    );
+    assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
+    Ok(())
+  }
+
   #[test]
   fn test_optimize_pipeline_keep_root_completes() -> Result<(), Report> {
     let (graph, names, alphabet, sequences, branch_lengths) = load()?;
@@ -190,5 +155,102 @@ mod tests {
     assert_eq!(output.graph.get_leaves().count(), leaves_before);
     assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
     Ok(())
+  }
+
+  mod helpers {
+    use crate::alphabet::alphabet::Alphabet;
+    use crate::clock::find_best_root::params::RerootSpec;
+    use crate::gtr::get_gtr::GtrModelName;
+    use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
+    use crate::optimize::pipeline::OptimizeParams;
+    use eyre::Report;
+    use std::collections::BTreeMap;
+    use std::fs::read_to_string;
+    use std::path::{Path, PathBuf};
+    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_io::fasta::read_many_fasta_path;
+    use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
+    use treetime_primitives::AlignmentRecord;
+
+    pub(super) type Loaded = (
+      Graph,
+      BTreeMap<GraphNodeKey, Option<String>>,
+      Alphabet,
+      Vec<AlignmentRecord>,
+      BTreeMap<GraphEdgeKey, Option<f64>>,
+    );
+
+    pub(super) fn load() -> Result<Loaded, Report> {
+      loaded(nwk_read_file(workspace_root().join("data/flu/h3n2/20/tree.nwk"))?)
+    }
+
+    pub(super) fn load_with_unary_root() -> Result<Loaded, Report> {
+      let newick = read_to_string(workspace_root().join("data/flu/h3n2/20/tree.nwk"))?;
+      let subtree = newick.trim_end().trim_end_matches(';');
+      loaded(nwk_read_str(format!("({subtree}:0.001)UNARYROOT;"))?)
+    }
+
+    pub(super) fn params_with(reroot_spec: Option<RerootSpec>) -> OptimizeParams {
+      OptimizeParams {
+        model: GtrModelName::JC69,
+        dense: Some(false),
+        max_iter: 2,
+        dp: 0.1,
+        damping: 0.75,
+        opt_method: BranchOptMethod::default(),
+        initial_guess: InitialGuessMode::default(),
+        no_indels: false,
+        reroot_spec,
+        topology_ops: TopologyOps::default(),
+      }
+    }
+
+    pub(super) fn assert_branch_lengths_valid(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) {
+      for edge in graph.get_edges() {
+        let bl = branch_lengths[&edge.key()].expect("every edge has a branch length after optimization");
+        assert!(bl.is_finite() && bl >= 0.0, "invalid branch length {bl}");
+      }
+    }
+
+    pub(super) fn root_key(graph: &Graph) -> GraphNodeKey {
+      graph.get_exactly_one_root().unwrap().key()
+    }
+
+    pub(super) fn root_child_keys(graph: &Graph) -> Vec<GraphNodeKey> {
+      let root = graph.get_exactly_one_root().unwrap();
+      root
+        .outbound()
+        .iter()
+        .map(|&edge_key| graph.get_edge(edge_key).unwrap().target())
+        .collect()
+    }
+
+    pub(super) fn leaf_names(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<String> {
+      graph
+        .get_leaves()
+        .map(|leaf| names.get(&leaf.key()).cloned().flatten().expect("leaf has a name"))
+        .collect()
+    }
+
+    fn workspace_root() -> PathBuf {
+      Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("workspace root")
+        .to_path_buf()
+    }
+
+    fn loaded(nwk_parsed: NwkParse) -> Result<Loaded, Report> {
+      let alphabet = Alphabet::default();
+      let names = nwk_parsed.names();
+      let aln = workspace_root().join("data/flu/h3n2/20/aln.fasta.xz");
+      let sequences: Vec<AlignmentRecord> = read_many_fasta_path(&[aln.to_str().expect("utf-8 path")], &alphabet)?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
+      Ok((nwk_parsed.graph, names, alphabet, sequences, nwk_parsed.branch_lengths))
+    }
   }
 }

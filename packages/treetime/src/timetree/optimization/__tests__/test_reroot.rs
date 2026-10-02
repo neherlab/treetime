@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
-  use crate::test_utils::sparse_edge_obs;
+  use crate::test_utils::{half_residual_sum_of_squares, sparse_edge_obs};
 
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
@@ -36,7 +36,9 @@ mod tests {
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AlignmentRecord, AsciiChar, Seq, seq};
+  use treetime_utils::least_squares::LineFit;
   use treetime_utils::make_report;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
@@ -149,9 +151,17 @@ mod tests {
     assert!(r_squared > 0.5, "R² should be > 0.5 for this tree, got {r_squared}");
 
     let chisq = clock_model.chisq().expect("Clock model should have chisq");
-    assert!(
-      chisq.is_finite() && chisq >= 0.0,
-      "Chisq should be finite and non-negative"
+    let dates = [2013.0, 2022.0, 2017.0, 2005.0];
+    let divs_after_split_at_a_tenth_of_root_cd = [0.205, 0.305, 0.245, 0.165];
+    pretty_assert_abs_diff_eq!(
+      half_residual_sum_of_squares(&dates, &divs_after_split_at_a_tenth_of_root_cd),
+      chisq,
+      epsilon = 1e-12
+    );
+    pretty_assert_abs_diff_eq!(
+      LineFit::least_squares(&dates, &divs_after_split_at_a_tenth_of_root_cd).slope,
+      clock_model.clock_rate(),
+      epsilon = 1e-12
     );
 
     Ok(())

@@ -15,7 +15,6 @@ mod tests {
   use crate::test_utils::sparse_reconstruction_mut;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
@@ -26,9 +25,8 @@ mod tests {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let max_iter = 5;
@@ -56,9 +54,8 @@ mod tests {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
@@ -100,9 +97,8 @@ mod tests {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let max_iter = 50;
@@ -132,9 +128,8 @@ mod tests {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_3 = names.clone();
@@ -161,9 +156,8 @@ mod tests {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let names_tt_2 = names.clone();
@@ -191,9 +185,8 @@ mod tests {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(first_edge_key, Some(0.1));

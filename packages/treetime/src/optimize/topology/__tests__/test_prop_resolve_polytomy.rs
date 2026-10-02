@@ -140,7 +140,6 @@ mod tests {
       let node_names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
 
       let parent_subs: Vec<Sub> = (0..k).map(|pos| Sub::new(c(b'A'), pos, c(b'C')).unwrap()).collect();
 
@@ -193,7 +192,6 @@ mod tests {
       let node_names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
 
       let mut edge_mutations: Vec<(String, String, Vec<Sub>)> = vec![(
         "root".to_owned(),

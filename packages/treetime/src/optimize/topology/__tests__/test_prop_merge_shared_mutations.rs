@@ -202,9 +202,8 @@ mod tests {
   fn test_merge_all_children_share_same_mutation() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
       &names,
@@ -239,9 +238,8 @@ mod tests {
   fn test_merge_overlapping_groups_greedy_selection() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
       &names,
@@ -266,9 +264,8 @@ mod tests {
   fn test_merge_polytomy_reduced_to_binary_stops() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
       &names,
@@ -296,9 +293,8 @@ mod tests {
   fn test_merge_multiple_polytomies_in_one_tree() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1,C:0.1)I:0.1,D:0.1,E:0.1,F:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = helpers::make_partition_from_static(
       &graph,
       &names,
@@ -326,9 +322,8 @@ mod tests {
   fn test_merge_disjoint_sub_and_indel_groups_same_round() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let mut partition = helpers::make_partition_from_static(
       &graph,
       &names,
@@ -363,9 +358,8 @@ mod tests {
   fn test_merge_multi_partition_asymmetric_sharing() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let p1 = helpers::make_partition_from_static(
       &graph,
@@ -431,7 +425,6 @@ mod tests {
       let node_names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
 
       let mut pos_counter = 0_usize;
       let shared: Vec<Sub> = (pos_counter..pos_counter + n_shared).map(sub_at).collect();

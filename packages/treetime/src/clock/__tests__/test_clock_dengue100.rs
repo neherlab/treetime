@@ -1,63 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::cancel::NoopCancel;
   use crate::clock::clock_regression::ClockVarianceParams;
-  use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
-  use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
   use crate::o;
-  use crate::progress::NoopProgress;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use itertools::Itertools;
   use pretty_assertions::assert_eq;
-  use std::path::Path;
-  use treetime_io::dates_csv::read_dates;
-  use treetime_io::nwk::nwk_read_file;
 
-  const DATA_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/dengue/100");
-
-  fn run_clock(clock_params: ClockVarianceParams, clock_filter: f64, keep_root: bool) -> Result<ClockOutput, Report> {
-    let data_dir = Path::new(DATA_DIR);
-    let nwk_parsed = nwk_read_file(data_dir.join("tree.nwk"))?;
-    let names = nwk_parsed.names();
-    let dates = read_dates(
-      data_dir.join("metadata.tsv"),
-      &[',', '\t', ';'],
-      &[],
-      &Some(o!("genbank_accession")),
-      &Some(o!("date")),
-    )?;
-    let params = ClockParams {
-      clock_params,
-      clock_filter,
-      keep_root,
-      allow_negative_rate: false,
-      branch_params: BranchPointOptimizationParams::default(),
-      reroot_spec: RerootSpec::default(),
-    };
-    let input = ClockInput {
-      graph: nwk_parsed.graph,
-      dates,
-      branch_lengths: nwk_parsed.branch_lengths,
-    };
-    Ok(pipeline::run(
-      &params,
-      input,
-      &names,
-      &NoopCancel,
-      &NoopProgress,
-      &NoopProgress,
-    )?)
-  }
-
-  fn get_outlier_names(output: &ClockOutput) -> Vec<String> {
-    output
-      .outliers
-      .iter()
-      .map(|key| output.names[key].clone().unwrap())
-      .sorted()
-      .collect()
-  }
+  use helpers::{get_outlier_names, prefilter_outlier_names, run_clock};
 
   #[test]
   fn test_dengue100_clock_pipeline_structural_properties() -> Result<(), Report> {
@@ -110,10 +59,10 @@ mod tests {
     let outlier_names = get_outlier_names(&output);
 
     assert_abs_diff_eq!(clock_model.clock_rate(), 6.787225349993138e-04, epsilon = 1e-10);
-    assert_abs_diff_eq!(clock_model.intercept(), -1.116032990518721, epsilon = 1e-6);
+    assert_abs_diff_eq!(clock_model.intercept(), -1.116032990518721, epsilon = 1e-7);
 
     let r_val = clock_model.r_val().expect("should have r_val");
-    assert_abs_diff_eq!(r_val, 0.810694218745354, epsilon = 1e-6);
+    assert_abs_diff_eq!(r_val, 0.810694218745354, epsilon = 1e-7);
 
     let chisq = clock_model.chisq().expect("should have chisq");
     assert_abs_diff_eq!(chisq, 3.297162543922308e-03, epsilon = 1e-9);
@@ -136,9 +85,11 @@ mod tests {
       variance_offset_leaf: 1e-4,
     };
 
+    let expected_outliers = prefilter_outlier_names(&custom_params)?;
     let custom_outliers = get_outlier_names(&run_clock(custom_params, 3.0, false)?);
     let default_outliers = get_outlier_names(&run_clock(ClockVarianceParams::default(), 3.0, false)?);
 
+    assert_eq!(expected_outliers, custom_outliers);
     assert_ne!(default_outliers, custom_outliers);
     Ok(())
   }
@@ -152,5 +103,116 @@ mod tests {
       output.clock_model.clock_rate()
     );
     Ok(())
+  }
+
+  mod helpers {
+    use crate::cancel::NoopCancel;
+    use crate::clock::assign_dates::assign_dates;
+    use crate::clock::clock_filter::clock_filter;
+    use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+    use crate::clock::clock_state::ClockInputs;
+    use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
+    use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
+    use crate::clock::reroot::RerootParams;
+    use crate::o;
+    use crate::progress::NoopProgress;
+    use eyre::Report;
+    use itertools::Itertools;
+    use std::collections::{BTreeMap, BTreeSet};
+    use std::path::Path;
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_io::dates_csv::read_dates;
+    use treetime_io::nwk::{NwkParse, nwk_read_file};
+    use treetime_primitives::date::DatesMap;
+
+    const DATA_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/dengue/100");
+
+    pub(super) fn run_clock(
+      clock_params: ClockVarianceParams,
+      clock_filter: f64,
+      keep_root: bool,
+    ) -> Result<ClockOutput, Report> {
+      let (nwk_parsed, dates) = load()?;
+      let names = nwk_parsed.names();
+      let params = ClockParams {
+        clock_params,
+        clock_filter,
+        keep_root,
+        allow_negative_rate: false,
+        branch_params: BranchPointOptimizationParams::default(),
+        reroot_spec: RerootSpec::default(),
+      };
+      let input = ClockInput {
+        graph: nwk_parsed.graph,
+        dates,
+        branch_lengths: nwk_parsed.branch_lengths,
+      };
+      Ok(pipeline::run(
+        &params,
+        input,
+        &names,
+        &NoopCancel,
+        &NoopProgress,
+        &NoopProgress,
+      )?)
+    }
+
+    pub(super) fn prefilter_outlier_names(clock_params: &ClockVarianceParams) -> Result<Vec<String>, Report> {
+      let (nwk_parsed, dates) = load()?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let mut inputs = ClockInputs::new(&graph);
+      assign_dates(&graph, &dates, &mut inputs, &names)?;
+      let (tree, result) = estimate_clock_model_with_reroot_policy(
+        ClockTree {
+          graph,
+          branch_lengths: nwk_parsed.branch_lengths,
+          inputs,
+        },
+        &BTreeSet::new(),
+        clock_params,
+        None,
+        false,
+        &BranchPointOptimizationParams::default(),
+        &RerootParams::new(RerootSpec::default(), false),
+        None,
+        &names,
+        &NoopProgress,
+      )?;
+      let filtered = clock_filter(
+        &tree.graph,
+        &tree.inputs,
+        result.regression(),
+        &tree.branch_lengths,
+        3.0,
+        &NoopProgress,
+      )?;
+      Ok(sorted_names(&names, &filtered.outliers))
+    }
+
+    pub(super) fn get_outlier_names(output: &ClockOutput) -> Vec<String> {
+      sorted_names(&output.names, &output.outliers)
+    }
+
+    fn load() -> Result<(NwkParse, DatesMap), Report> {
+      let data_dir = Path::new(DATA_DIR);
+      let nwk_parsed = nwk_read_file(data_dir.join("tree.nwk"))?;
+      let dates = read_dates(
+        data_dir.join("metadata.tsv"),
+        &[',', '\t', ';'],
+        &[],
+        &Some(o!("genbank_accession")),
+        &Some(o!("date")),
+      )?;
+      Ok((nwk_parsed, dates))
+    }
+
+    fn sorted_names(names: &BTreeMap<GraphNodeKey, Option<String>>, keys: &BTreeSet<GraphNodeKey>) -> Vec<String> {
+      keys
+        .iter()
+        .map(|key| names[key].clone().expect("outliers are named"))
+        .sorted()
+        .collect()
+    }
   }
 }

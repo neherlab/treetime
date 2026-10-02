@@ -207,9 +207,8 @@ mod tests {
         .collect();
       let nwk_parsed = nwk_read_file(&tree_path)?;
       let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
+      let mut graph = nwk_parsed.graph;
       let mut branch_lengths = nwk_parsed.branch_lengths;
-      let mut graph: Graph = graph;
 
       let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
       let reconstruction =

@@ -49,7 +49,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
@@ -81,7 +80,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
@@ -124,7 +122,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 2)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
@@ -272,7 +269,6 @@ pub(super) mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let graph: Graph = graph;
     let (reconstruction, rate) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
@@ -474,7 +470,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let (reconstruction, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
@@ -499,7 +494,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let (reconstruction, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
@@ -524,7 +518,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let (reconstruction, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
@@ -549,7 +542,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let (reconstruction, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;

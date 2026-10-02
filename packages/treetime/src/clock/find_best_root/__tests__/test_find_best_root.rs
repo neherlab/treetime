@@ -4,31 +4,54 @@ mod tests {
     BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams,
   };
   use crate::o;
-  use crate::pretty_assert_ulps_eq;
+  use crate::pretty_assert_abs_diff_eq;
+  use crate::test_utils::half_residual_sum_of_squares;
   use eyre::Report;
-  use helpers::{RootSearch, dates_negative_rate, dates_positive_rate, search_root};
+  use helpers::{
+    NEGATIVE_RATE_DATES, OPTIMAL_ROOT_CD_SPLIT, POSITIVE_RATE_DATES, RootSearch, dates_negative_rate,
+    dates_positive_rate, divs_on_root_ab_edge, divs_on_root_cd_edge, search_root,
+  };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_utils::assert_error;
+  use treetime_utils::least_squares::LineFit;
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::grid(                     BranchPointOptimizationParams::Grid(GridSearchParams::default()),                                                     0.00026106623586340597)]
-  #[case::grid_with_params(         BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }),                                           0.000_256_025_848_142_593_5)]
-  #[case::brent(                    BranchPointOptimizationParams::Brent(BrentParams::default()),                                                         0.000_255_999_999_998_356_5)]
-  #[case::brent_with_params(        BranchPointOptimizationParams::brent_with(BrentParams { brent_max_iters: 25, brent_tolerance: 1e-8 }),                0.000_255_999_999_998_356_5)]
-  #[case::golden_section(           BranchPointOptimizationParams::GoldenSection(GoldenSectionParams::default()),                                         0.00025599999999690367)]
-  #[case::golden_section_with_params(BranchPointOptimizationParams::golden_section_with(GoldenSectionParams { golden_max_iters: 25, golden_tolerance: 1e-8 }), 0.000_255_999_999_998_999_2)]
+  #[case::grid(                     BranchPointOptimizationParams::Grid(GridSearchParams::default()),                                                     0.1)]
+  #[case::grid_with_params(         BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }),                                           0.14)]
+  #[case::brent(                    BranchPointOptimizationParams::Brent(BrentParams::default()),                                                         OPTIMAL_ROOT_CD_SPLIT)]
+  #[case::brent_with_params(        BranchPointOptimizationParams::brent_with(BrentParams { brent_max_iters: 25, brent_tolerance: 1e-8 }),                OPTIMAL_ROOT_CD_SPLIT)]
   #[trace]
   fn test_find_best_root_splits_the_root_to_cd_branch(
     #[case] params: BranchPointOptimizationParams,
-    #[case] expected_chisq: f64,
+    #[case] expected_split: f64,
   ) -> Result<(), Report> {
+    let expected_chisq = half_residual_sum_of_squares(&POSITIVE_RATE_DATES, &divs_on_root_cd_edge(expected_split));
+
     let search = search_root(&dates_positive_rate(), &params, true, None)?;
 
-    pretty_assert_ulps_eq!(expected_chisq, search.result.regression().chisq(), max_ulps = 4);
     assert_eq!(Some((o!("root"), o!("CD"))), search.split_edge);
-    let split = search.split.expect("the root search splits a branch");
-    assert!((0.0..=1.0).contains(&split), "split should be in [0, 1]");
+    pretty_assert_abs_diff_eq!(expected_split, search.split.expect("the root search splits a branch"), epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(expected_chisq, search.result.regression().chisq(), epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::golden_section(            BranchPointOptimizationParams::GoldenSection(GoldenSectionParams::default()))]
+  #[case::golden_section_with_params(BranchPointOptimizationParams::golden_section_with(GoldenSectionParams { golden_max_iters: 25, golden_tolerance: 1e-8 }))]
+  #[trace]
+  fn test_find_best_root_golden_section_splits_the_root_to_cd_branch(
+    #[case] params: BranchPointOptimizationParams,
+  ) -> Result<(), Report> {
+    let expected_chisq = half_residual_sum_of_squares(&POSITIVE_RATE_DATES, &divs_on_root_cd_edge(OPTIMAL_ROOT_CD_SPLIT));
+
+    let search = search_root(&dates_positive_rate(), &params, true, None)?;
+
+    assert_eq!(Some((o!("root"), o!("CD"))), search.split_edge);
+    pretty_assert_abs_diff_eq!(OPTIMAL_ROOT_CD_SPLIT, search.split.expect("the root search splits a branch"), epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(expected_chisq, search.result.regression().chisq(), epsilon = 1e-12);
     Ok(())
   }
 
@@ -69,6 +92,30 @@ mod tests {
   }
 
   #[test]
+  fn test_find_best_root_fixed_rate_minimizes_the_residuals_around_the_fixed_slope() -> Result<(), Report> {
+    let brent = BranchPointOptimizationParams::Brent(BrentParams::default());
+    let rate = 1e-3;
+
+    let fixed = search_root(&dates_positive_rate(), &brent, true, Some(rate))?;
+    let estimated = search_root(&dates_positive_rate(), &brent, true, None)?;
+
+    assert_eq!(Some((o!("root"), o!("AB"))), fixed.split_edge);
+    pretty_assert_abs_diff_eq!(
+      0.1675,
+      fixed.split.expect("the root search splits a branch"),
+      epsilon = 1e-7
+    );
+    assert_eq!(Some((o!("root"), o!("CD"))), estimated.split_edge);
+    let intercept = (0.92 - rate * 8057.0) / 4.0;
+    pretty_assert_abs_diff_eq!(
+      intercept,
+      fixed.result.into_clock_fit()?.model.intercept(),
+      epsilon = 1e-12
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_find_best_root_force_positive_true_rejects_negative_rate() -> Result<(), Report> {
     let result = search_root(
       &dates_negative_rate(),
@@ -77,24 +124,21 @@ mod tests {
       None,
     );
 
-    let err_msg = format!(
-      "{:?}",
-      result
-        .err()
-        .expect("force_positive=true should reject all-negative-rate graph")
-    );
-    assert!(
-      err_msg.contains("Clock rate is negative"),
-      "Error message should mention negative rate, got: {err_msg}"
+    assert_error!(
+      result,
+      "Clock rate is negative for all root positions. The data may lack temporal signal. Please specify --clock-rate explicitly."
     );
     Ok(())
   }
 
   #[test]
   fn test_find_best_root_force_positive_false_accepts_negative_rate() -> Result<(), Report> {
+    let expected_split = 0.0125;
+    let expected_chisq = half_residual_sum_of_squares(&NEGATIVE_RATE_DATES, &divs_on_root_ab_edge(expected_split));
+
     let search = search_root(
       &dates_negative_rate(),
-      &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
+      &BranchPointOptimizationParams::Brent(BrentParams::default()),
       false,
       None,
     )?;
@@ -105,11 +149,13 @@ mod tests {
       "rate should be negative for this test graph, got {:.6e}",
       regression.clock_rate()
     );
-    assert!(regression.chisq() >= 0.0, "chisq should be non-negative");
-    assert!(regression.chisq().is_finite(), "chisq should be finite");
-    if let Some(split) = search.split {
-      assert!((0.0..=1.0).contains(&split), "split should be in [0, 1]");
-    }
+    assert_eq!(Some((o!("root"), o!("AB"))), search.split_edge);
+    pretty_assert_abs_diff_eq!(
+      expected_split,
+      search.split.expect("the root search splits a branch"),
+      epsilon = 1e-7
+    );
+    pretty_assert_abs_diff_eq!(expected_chisq, regression.chisq(), epsilon = 1e-12);
     Ok(())
   }
 
@@ -119,12 +165,27 @@ mod tests {
 
     let search = search_root(
       &dates_negative_rate(),
-      &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
+      &BranchPointOptimizationParams::Brent(BrentParams::default()),
       true,
       Some(rate),
     )?;
 
-    pretty_assert_ulps_eq!(rate, search.result.into_clock_fit()?.model.clock_rate(), max_ulps = 4);
+    assert_eq!(Some((o!("root"), o!("AB"))), search.split_edge);
+    pretty_assert_abs_diff_eq!(
+      0.225,
+      search.split.expect("the root search splits a branch"),
+      epsilon = 1e-7
+    );
+    let fit = search.result.into_clock_fit()?;
+    let intercept = (0.92 - rate * 8054.0) / 4.0;
+    pretty_assert_abs_diff_eq!(intercept, fit.model.intercept(), epsilon = 1e-12);
+    let dates: Vec<f64> = fit.points.iter().map(|point| point.date.expect("dated leaf")).collect();
+    let divs: Vec<f64> = fit.points.iter().map(|point| point.div).collect();
+    let estimated_slope = LineFit::least_squares(&dates, &divs).slope;
+    assert!(
+      estimated_slope < 0.0,
+      "the estimated rate at the fixed-rate root should be negative, got {estimated_slope:.6e}"
+    );
     Ok(())
   }
 
@@ -138,9 +199,22 @@ mod tests {
     use crate::o;
     use crate::progress::NoopProgress;
     use eyre::Report;
-    use maplit::btreemap;
     use std::collections::{BTreeMap, BTreeSet};
     use treetime_io::nwk::nwk_read_str;
+
+    pub(super) const LEAF_NAMES: [&str; 4] = ["A", "B", "C", "D"];
+
+    pub(super) const POSITIVE_RATE_DATES: [f64; 4] = [2013.0, 2022.0, 2017.0, 2005.0];
+
+    pub(super) const NEGATIVE_RATE_DATES: [f64; 4] = [2017.0, 2005.0, 2010.0, 2022.0];
+
+    pub(super) const OPTIMAL_ROOT_CD_SPLIT: f64 = 6.18 / 45.0;
+
+    const ROOT_TO_TIP_DIVS: [f64; 4] = [0.2, 0.3, 0.25, 0.17];
+
+    const ROOT_AB_LENGTH: f64 = 0.1;
+
+    const ROOT_CD_LENGTH: f64 = 0.05;
 
     pub(super) struct RootSearch {
       pub result: ClockRerootResult,
@@ -149,21 +223,19 @@ mod tests {
     }
 
     pub(super) fn dates_positive_rate() -> BTreeMap<String, f64> {
-      btreemap! {
-        o!("A") => 2013.0,
-        o!("B") => 2022.0,
-        o!("C") => 2017.0,
-        o!("D") => 2005.0,
-      }
+      named_dates(POSITIVE_RATE_DATES)
     }
 
     pub(super) fn dates_negative_rate() -> BTreeMap<String, f64> {
-      btreemap! {
-        o!("A") => 2017.0,
-        o!("B") => 2005.0,
-        o!("C") => 2010.0,
-        o!("D") => 2022.0,
-      }
+      named_dates(NEGATIVE_RATE_DATES)
+    }
+
+    pub(super) fn divs_on_root_cd_edge(split: f64) -> [f64; 4] {
+      shifted_divs(ROOT_CD_LENGTH * split)
+    }
+
+    pub(super) fn divs_on_root_ab_edge(split: f64) -> [f64; 4] {
+      shifted_divs(-ROOT_AB_LENGTH * split)
     }
 
     pub(super) fn search_root(
@@ -216,6 +288,15 @@ mod tests {
         split_edge,
         split,
       })
+    }
+
+    fn named_dates(dates: [f64; 4]) -> BTreeMap<String, f64> {
+      LEAF_NAMES.iter().map(|name| o!(*name)).zip(dates).collect()
+    }
+
+    fn shifted_divs(toward_cd: f64) -> [f64; 4] {
+      let [a, b, c, d] = ROOT_TO_TIP_DIVS;
+      [a + toward_cd, b + toward_cd, c - toward_cd, d - toward_cd]
     }
   }
 }

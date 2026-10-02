@@ -13,8 +13,6 @@ mod tests {
 
   use pretty_assertions::assert_eq;
 
-  use treetime_graph::graph::Graph;
-
   use treetime_io::nwk::nwk_read_str;
 
   use crate::optimize::__tests__::test_topology_cleanup::tests::helpers::*;
@@ -23,9 +21,8 @@ mod tests {
   fn test_optimize_prune_and_merge_empty_list() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
 
     let mut names_tt_13 = names;
@@ -48,9 +45,8 @@ mod tests {
   fn test_optimize_prune_and_merge_collapses_and_merges() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
@@ -114,9 +110,8 @@ mod tests {
   fn test_optimize_prune_and_merge_hoists_reversion_without_collapse() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let mut partition = empty_sparse_recon()?;
     populate_test_nodes(&mut partition, &graph);
@@ -175,9 +170,8 @@ mod tests {
   fn test_optimize_prune_and_merge_names_new_nodes() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
@@ -241,9 +235,8 @@ mod tests {
   fn test_optimize_prune_and_merge_merge_disabled_keeps_polytomy() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
 
@@ -306,9 +299,8 @@ mod tests {
   fn test_optimize_prune_and_merge_flip_disabled_keeps_reversion() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let mut partition = empty_sparse_recon()?;
     populate_test_nodes(&mut partition, &graph);
@@ -367,9 +359,8 @@ mod tests {
   fn test_optimize_prune_and_merge_all_ops_disabled_is_noop() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let mut partition = empty_sparse_recon()?;
     populate_test_nodes(&mut partition, &graph);

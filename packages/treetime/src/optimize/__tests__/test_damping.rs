@@ -11,7 +11,6 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
 
   #[test]
@@ -20,7 +19,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let saved = branch_lengths;
     let edges = graph.get_edges().collect::<Vec<_>>();
     assert_eq!(saved.len(), edges.len());
@@ -37,7 +35,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let original = branch_lengths;
 
     let mut optimized: BTreeMap<GraphEdgeKey, Option<f64>> =
@@ -64,7 +61,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let old_bls = branch_lengths;
 
     let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
@@ -83,7 +79,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let old_bls = branch_lengths;
 
     let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> =
@@ -111,7 +106,6 @@ mod tests {
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
       let old_bls = branch_lengths;
       let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(optimized_bl))).collect();
 
@@ -141,9 +135,8 @@ mod tests {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let (reconstruction, initial_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
 
@@ -195,9 +188,8 @@ mod tests {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let (reconstruction, initial_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;

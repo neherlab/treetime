@@ -32,7 +32,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let gtr = jc69(JC69Params::default())?;
     let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
     let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr));

@@ -49,7 +49,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
     Ok(())
   }
@@ -60,7 +59,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let nan_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(nan_edge_key, Some(f64::NAN));
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
@@ -73,7 +71,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     set_first_branch_length(&graph, &mut branch_lengths, -0.1);
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
     Ok(())
@@ -85,7 +82,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     set_branch_length_by_target_name(&names, &graph, &mut branch_lengths, "A", -0.1);
     set_branch_length_by_target_name(&names, &graph, &mut branch_lengths, "C", f64::INFINITY);
 
@@ -107,7 +103,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     assert!(invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
     Ok(())
   }
@@ -539,7 +534,6 @@ pub(super) mod tests {
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
 
       let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
       let reconstruction =

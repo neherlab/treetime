@@ -9,4 +9,5 @@ mod test_pass;
 mod test_prop_graph_ops_collapse_edge;
 mod test_prop_reachability;
 mod test_reachability;
+mod test_reroot;
 mod test_topology_order;

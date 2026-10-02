@@ -95,9 +95,8 @@ mod tests {
   fn test_merge_no_polytomy() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)internal:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -121,9 +120,8 @@ mod tests {
   fn test_merge_polytomy_no_shared_mutations() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -147,9 +145,8 @@ mod tests {
   fn test_merge_polytomy_two_siblings_share_all_mutations() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
     let partition = make_partition(
       &graph,
@@ -203,9 +200,8 @@ mod tests {
   fn test_merge_polytomy_partial_overlap() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -257,9 +253,8 @@ mod tests {
   fn test_merge_greedy_picks_best_pair() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3,D:0.4)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -306,9 +301,8 @@ mod tests {
   fn test_merge_branch_length_adjustment() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
     let partition = make_partition(
       &graph,
@@ -348,9 +342,8 @@ mod tests {
   fn test_merge_child_bl_zero_when_all_shared() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.05,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let shared: Vec<Sub> = (0..10).map(|i| sub(b'A', i, b'T')).collect();
     let partition = make_partition(
       &graph,
@@ -385,9 +378,8 @@ mod tests {
   fn test_merge_multiple_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let p1 = make_partition(
       &graph,
@@ -467,9 +459,8 @@ mod tests {
   fn test_merge_repeated_until_exhausted() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -499,9 +490,8 @@ mod tests {
   fn test_merge_empty_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let mut partitions: Vec<PartitionMarginalSparse> = vec![];
 
     let mut branch_lengths = branch_lengths;
@@ -514,9 +504,8 @@ mod tests {
   fn test_merge_preserves_tree_structure_for_non_polytomies() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1,C:0.1)internal1:0.1,D:0.2)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -548,9 +537,8 @@ mod tests {
   fn test_merge_single_mutation_shared() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.05,B:0.05,C:0.05)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -586,9 +574,8 @@ mod tests {
   fn test_merge_branch_length_jc_correction_differs_from_raw() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let shared: Vec<Sub> = (0..10).map(|i| sub(b'A', i, b'T')).collect();
     let partition = make_partition(
       &graph,
@@ -639,9 +626,8 @@ mod tests {
     let newick = format!("(A:{newick_bl},B:{newick_bl},C:{newick_bl})root;");
     let nwk_parsed = nwk_read_str(&newick)?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let edge_subs = helpers::build_shared_unique_subs(n_shared, n_unique_a, n_unique_b);
     let partition = make_partition(&graph, &names, length, &edge_subs)?;
@@ -664,9 +650,8 @@ mod tests {
   fn test_merge_child_bl_includes_indels_in_remaining() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
     let mut partition = make_partition(
       &graph,
@@ -702,9 +687,8 @@ mod tests {
   fn test_merge_child_bl_across_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let p1 = make_partition(
       &graph,
@@ -751,9 +735,8 @@ mod tests {
   fn test_merge_group_three_siblings_same_mutation() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let partition = make_partition(
       &graph,
       &names,
@@ -785,9 +768,8 @@ mod tests {
   fn test_merge_shared_indels_only() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let mut partition = make_partition(
       &graph,
       &names,
@@ -820,9 +802,8 @@ mod tests {
   fn test_merge_shared_subs_and_indels_split_correctly() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
     let mut partition = make_partition(
       &graph,
       &names,

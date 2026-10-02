@@ -8,7 +8,6 @@ mod tests {
   use crate::reroot::variance::VarianceModel;
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
-  use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
 
   #[test]
@@ -17,7 +16,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     assert_ulps_eq!(field.root_stats.count(), 2.0, max_ulps = 4);
     assert_ulps_eq!(field.root_stats.d_sum(), 0.4, max_ulps = 4);
@@ -32,7 +30,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     let best = find_best_root(
       &graph,
@@ -55,7 +52,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     let best = find_best_root(
       &graph,
@@ -77,7 +73,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     let best = find_best_root(
       &graph,
@@ -99,7 +94,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     assert_eq!(field.edge_stats.len(), graph.get_edges().count());
     for (to_parent, to_child) in field.edge_stats.values() {
@@ -115,7 +109,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let field = compute_div_stats(&graph, &branch_lengths, &VarianceModel::default())?;
     let score = <DivStats as RootStats>::score(&field.root_stats);
     assert_ulps_eq!(score, 0.01, max_ulps = 8);

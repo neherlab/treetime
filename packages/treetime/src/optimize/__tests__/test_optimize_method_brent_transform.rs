@@ -22,8 +22,6 @@ mod tests {
 
   use rstest::rstest;
 
-  use treetime_graph::graph::Graph;
-
   use treetime_io::nwk::nwk_read_str;
 
   use crate::optimize::__tests__::test_optimize_method::tests::helpers::*;
@@ -34,7 +32,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
@@ -86,7 +83,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
@@ -138,7 +134,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;

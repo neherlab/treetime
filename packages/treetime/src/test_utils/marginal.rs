@@ -6,7 +6,7 @@ use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::sequences::ReconstructedSequences;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
-use crate::seq::alignment::node_seq_inputs;
+use crate::seq::alignment::{NodeSeqInput, node_seq_inputs};
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -14,7 +14,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta_str;
 use treetime_io::nwk::nwk_read_str;
-use treetime_primitives::{AlignmentRecord, Seq};
+use treetime_primitives::{AlignmentRecord, Seq, seq};
 
 pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -23,7 +23,6 @@ pub(crate) fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
-  let graph: Graph = graph;
   let aln: Vec<AlignmentRecord> = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?
     .into_iter()
     .map(AlignmentRecord::from)
@@ -40,7 +39,6 @@ pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: 
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
-  let graph: Graph = graph;
   let aln: Vec<AlignmentRecord> = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?
     .into_iter()
     .map(AlignmentRecord::from)
@@ -99,4 +97,23 @@ pub(crate) fn dense_reconstruction(reconstruction: &MarginalReconstruction) -> &
     MarginalReconstruction::Dense(dense) => dense,
     MarginalReconstruction::Sparse(_) => panic!("expected a dense reconstruction, got a sparse one"),
   }
+}
+
+pub(crate) fn dense_partition_with_constant_leaves(
+  graph: &Graph,
+  alphabet: Alphabet,
+  length: usize,
+) -> Result<PartitionMarginalDense, Report> {
+  let fill = alphabet.char(0);
+  let node_inputs = graph
+    .get_leaves()
+    .map(|leaf| {
+      let input = NodeSeqInput {
+        name: None,
+        seq: Some(seq![fill; length]),
+      };
+      (leaf.key(), input)
+    })
+    .collect();
+  PartitionMarginalDense::new(0, alphabet, graph, &node_inputs)
 }

@@ -7,3 +7,4 @@ mod test_clock_state;
 mod test_date_constraints;
 mod test_divergence;
 mod test_reroot;
+mod test_rtt;

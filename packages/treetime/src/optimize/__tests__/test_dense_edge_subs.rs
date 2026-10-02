@@ -8,13 +8,13 @@ mod tests {
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
+  use crate::test_utils::dense_partition_with_constant_leaves;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_graph::graph::Graph;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
@@ -23,9 +23,7 @@ mod tests {
   #[test]
   fn test_dense_edge_subs_no_false_mutation_from_uniform_outgroup() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
-    let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
     let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
     let edge_key = edge_ref.key();
     let parent_key = graph.get_source_node_key(edge_key)?;
@@ -34,7 +32,7 @@ mod tests {
     let parent_posterior = array![[0.0, 0.0, 1.0, 0.0]];
     let child_posterior = array![[0.0, 0.0, 1.0, 0.0]];
 
-    let partition = helpers::partition_with_leaves_of_length(&graph, &names, Alphabet::new(AlphabetName::Nuc)?, 1)?;
+    let partition = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 1)?;
     let node_states = btreemap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
@@ -55,9 +53,7 @@ mod tests {
   #[test]
   fn test_dense_edge_subs_detects_real_mutation_hidden_by_edge_messages() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
-    let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
     let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
     let edge_key = edge_ref.key();
     let parent_key = graph.get_source_node_key(edge_key)?;
@@ -70,7 +66,7 @@ mod tests {
     let parent_state = alphabet.char(0);
     let child_state = alphabet.char(1);
 
-    let partition = helpers::partition_with_leaves_of_length(&graph, &names, alphabet, 1)?;
+    let partition = dense_partition_with_constant_leaves(&graph, alphabet, 1)?;
     let node_states = btreemap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
@@ -96,7 +92,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let partition = PartitionMarginalDense::new(
       0,
       Alphabet::new(AlphabetName::Nuc)?,
@@ -138,9 +133,7 @@ mod tests {
   #[test]
   fn test_dense_edge_subs_excludes_gap_positions_with_posteriors() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.2):0.01;")?;
-    let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
     let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];
     let edge_key = edge_ref.key();
     let parent_key = graph.get_source_node_key(edge_key)?;
@@ -162,7 +155,7 @@ mod tests {
     ];
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = helpers::partition_with_leaves_of_length(&graph, &names, alphabet.clone(), 4)?;
+    let partition = dense_partition_with_constant_leaves(&graph, alphabet.clone(), 4)?;
     let node_states = btreemap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
@@ -188,7 +181,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let partition = PartitionMarginalDense::new(
       0,
       Alphabet::new(AlphabetName::Nuc)?,
@@ -234,16 +226,8 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::storage::dense::DenseNodeState;
-    use crate::seq::alignment::node_seq_inputs;
     use crate::seq::mutation::Sub;
-    use eyre::Report;
-    use itertools::Itertools;
-    use std::collections::BTreeMap;
-    use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
-    use treetime_primitives::{AlignmentRecord, seq};
     use treetime_utils::array::ndarray::argmax_first;
 
     pub(super) fn diff_map_states(
@@ -272,23 +256,6 @@ mod tests {
         }
       }
       subs
-    }
-
-    pub(super) fn partition_with_leaves_of_length(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      alphabet: Alphabet,
-      length: usize,
-    ) -> Result<PartitionMarginalDense, Report> {
-      let fill = alphabet.char(0);
-      let aln = graph
-        .get_leaves()
-        .map(|leaf| AlignmentRecord {
-          name: names[&leaf.key()].clone().expect("named leaf"),
-          seq: seq![fill; length],
-        })
-        .collect_vec();
-      PartitionMarginalDense::new(0, alphabet, graph, &node_seq_inputs(graph, names, aln))
     }
   }
 }

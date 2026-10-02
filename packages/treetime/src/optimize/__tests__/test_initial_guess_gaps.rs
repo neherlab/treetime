@@ -125,7 +125,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
@@ -144,7 +143,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
@@ -166,7 +164,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
@@ -188,7 +185,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
@@ -210,7 +206,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     let mut found_reduced = false;
@@ -236,7 +231,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     for edge_ref in graph.get_edges() {

@@ -5,7 +5,6 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
 
   use super::super::test_convergence_support::tests::{compute_total_lh, setup_reconstruction, simple_alignment};
@@ -26,7 +25,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
 
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
@@ -69,7 +67,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
 
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
@@ -112,7 +109,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
 
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();

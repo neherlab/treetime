@@ -14,8 +14,6 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
 
-  use treetime_graph::graph::Graph;
-
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
 
@@ -25,7 +23,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
     let aln: Vec<AlignmentRecord> = read_many_fasta_str(

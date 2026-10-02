@@ -11,7 +11,6 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
 
   use super::super::test_dense_sparse_equivalence_support::tests::{
@@ -33,7 +32,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_dense_only(&graph, &names, &aln, &branch_lengths)?;
 
     let (mut reconstruction, initial_lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -92,7 +90,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_sparse_only(&graph, &names, &aln, &branch_lengths)?;
 
     let (mut reconstruction, initial_lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

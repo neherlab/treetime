@@ -10,7 +10,6 @@ mod tests {
   use approx::assert_ulps_eq;
   use eyre::Report;
   use std::path::Path;
-  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::nwk_read_file;
   use treetime_primitives::AlignmentRecord;
@@ -31,7 +30,6 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    let graph: Graph = graph;
     let sequences: Vec<AlignmentRecord> = read_many_fasta_path(&[aln_path.to_str().expect("utf-8 path")], &alphabet)?
       .into_iter()
       .map(AlignmentRecord::from)

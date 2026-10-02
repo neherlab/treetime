@@ -23,7 +23,6 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
 
@@ -105,7 +104,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();

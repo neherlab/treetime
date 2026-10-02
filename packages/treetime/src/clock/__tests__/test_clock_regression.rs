@@ -13,6 +13,7 @@ mod tests {
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
+  use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
@@ -85,18 +86,15 @@ mod tests {
   fn test_clock_regression_points_are_root_to_tip_distances_of_the_leaves() -> Result<(), Report> {
     let (_, points) = helpers::fit(TREE_4, &dates_4(), &[], true, None)?;
 
-    #[rustfmt::skip]
-    let expected = [
-      (o!("A"), Some(2013.0), 0.2,  false),
-      (o!("B"), Some(2022.0), 0.3,  false),
-      (o!("C"), Some(2017.0), 0.25, false),
-      (o!("D"), Some(2005.0), 0.17, false),
+    let expected_rows = vec![
+      (o!("A"), Some(2013.0), false),
+      (o!("B"), Some(2022.0), false),
+      (o!("C"), Some(2017.0), false),
+      (o!("D"), Some(2005.0), false),
     ];
-    assert_eq!(expected.len(), points.len());
-    for ((name, date, div, is_outlier), actual) in expected.iter().zip_eq(&points) {
-      assert_eq!((name, date, is_outlier), (&actual.0, &actual.1, &actual.3));
-      pretty_assert_ulps_eq!(*div, actual.2, max_ulps = 4);
-    }
+    let (rows, divs) = helpers::rows_and_divs(&points);
+    assert_eq!(expected_rows, rows);
+    pretty_assert_abs_diff_eq!(array![0.2, 0.3, 0.25, 0.17], divs, epsilon = 1e-12);
     Ok(())
   }
 
@@ -104,11 +102,8 @@ mod tests {
   fn test_clock_regression_points_use_clock_lengths_when_the_previous_rate_is_given() -> Result<(), Report> {
     let (_, points) = helpers::fit(TREE_4, &dates_4(), &[], true, Some(0.01))?;
 
-    let (_, input_lengths) = helpers::fit(TREE_4, &dates_4(), &[], true, None)?;
-
-    for ((_, _, div, _), (_, _, input_div, _)) in points.iter().zip_eq(&input_lengths) {
-      pretty_assert_ulps_eq!(3.0 * input_div, *div, max_ulps = 4);
-    }
+    let (_, divs) = helpers::rows_and_divs(&points);
+    pretty_assert_abs_diff_eq!(array![0.6, 0.9, 0.75, 0.51], divs, epsilon = 1e-12);
     Ok(())
   }
 
@@ -282,6 +277,17 @@ mod tests {
         &NoopProgress,
       )?;
       Ok(result.regression().clone())
+    }
+
+    pub(super) fn rows_and_divs(
+      points: &[(String, Option<f64>, f64, bool)],
+    ) -> (Vec<(String, Option<f64>, bool)>, Array1<f64>) {
+      let rows = points
+        .iter()
+        .map(|(name, date, _, is_outlier)| (name.clone(), *date, *is_outlier))
+        .collect();
+      let divs = points.iter().map(|(_, _, div, _)| *div).collect();
+      (rows, divs)
     }
 
     pub(super) fn regression_bits(regression: &ClockRegression) -> [u64; 4] {

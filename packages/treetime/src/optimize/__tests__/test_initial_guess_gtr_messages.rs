@@ -143,7 +143,6 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = setup_dense_jc69(&graph, &names, &aln, &branch_lengths)?;
     let (mut reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     *reconstruction.gtr_mut() = f81_gtr.clone();

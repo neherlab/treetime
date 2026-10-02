@@ -80,7 +80,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -96,7 +95,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -121,7 +119,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -158,7 +155,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -182,7 +178,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -264,7 +259,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let mut reconstruction = setup_identical_reconstruction(&graph, &names, &mut branch_lengths)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
@@ -299,7 +293,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let mut reconstruction = setup_identical_reconstruction(&graph, &names, &mut branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
@@ -346,7 +339,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -380,7 +372,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let aln = simple_alignment()?;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
@@ -414,7 +405,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let mut reconstruction = setup_identical_reconstruction(&graph, &names, &mut branch_lengths)?;
 
     for edge_ref in graph.get_edges() {
@@ -658,7 +648,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let mut reconstruction = setup_identical_reconstruction(&graph, &names, &mut branch_lengths)?;
 
     let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];

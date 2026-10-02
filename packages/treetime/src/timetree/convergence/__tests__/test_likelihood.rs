@@ -5,15 +5,13 @@ mod tests {
   use crate::coalescent::node_time::CoalescentNodeTimes;
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::NodeSeqInput;
-  use crate::test_utils::find_node_key_by_name;
   use crate::test_utils::{constraint_coalescent_node_times, empty_time_inference};
+  use crate::test_utils::{dense_partition_with_constant_leaves, find_node_key_by_name};
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::convergence::likelihood::{
     compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
@@ -31,7 +29,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::{LogLh, seq};
+  use treetime_primitives::LogLh;
   use treetime_utils::{o, pretty_assert_ulps_eq};
 
   #[test]
@@ -168,21 +166,7 @@ mod tests {
       root_key: GraphNodeKey,
       log_lh: f64,
     ) -> Result<MarginalReconstruction, Report> {
-      let alphabet = Alphabet::default();
-      let fill = alphabet.char(0);
-      let node_inputs = graph
-        .get_leaves()
-        .map(|leaf| {
-          (
-            leaf.key(),
-            NodeSeqInput {
-              name: None,
-              seq: Some(seq![fill]),
-            },
-          )
-        })
-        .collect();
-      let partition = PartitionMarginalDense::new(0, alphabet, graph, &node_inputs)?;
+      let partition = dense_partition_with_constant_leaves(graph, Alphabet::default(), 1)?;
       let node_states = btreemap! {
         root_key => DenseNodeState {
           seq: DenseSeqInfo::default(),

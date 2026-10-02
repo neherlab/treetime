@@ -52,7 +52,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
     let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(edges.len(), 0);
@@ -65,7 +64,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
     let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(edges.len(), 0);
@@ -78,7 +76,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
     let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(edges.len(), 1);
@@ -98,7 +95,6 @@ pub(super) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
     let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
     let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(edges.len(), 2);
@@ -135,9 +131,8 @@ pub(super) mod tests {
 
     let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
@@ -221,10 +216,9 @@ pub(super) mod tests {
 
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
@@ -291,10 +285,8 @@ pub(super) mod tests {
 
     let nwk_parsed = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-
-    let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
@@ -338,9 +330,8 @@ pub(super) mod tests {
   fn test_optimize_cascading_collapse_parent_child_both_zero() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
 
     let ri1_key = find_edge_key(&graph, &names, "root", "I1").unwrap();
     let i1i2_key = find_edge_key(&graph, &names, "I1", "I2").unwrap();
@@ -407,10 +398,9 @@ pub(super) mod tests {
 
     let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let mut graph: Graph = graph;
 
     let dense_partition = PartitionMarginalDense::new(0, nuc, &graph, &node_seq_inputs(&graph, &names, aln))?;
     let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(dense_partition, jc69(JC69Params::default())?));
@@ -488,10 +478,9 @@ pub(super) mod tests {
 
     let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
@@ -554,10 +543,8 @@ pub(super) mod tests {
 
     let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
     let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
+    let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-
-    let mut graph: Graph = graph;
 
     let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
