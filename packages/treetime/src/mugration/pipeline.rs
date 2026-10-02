@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::branch_lengths_or_zero;
+use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::error::OperationError;

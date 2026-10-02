@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::sample::{Resolve, resolve_profile};
+use crate::partition::marginal::sample::{Resolve, resolve_profile};
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::array::ndarray::argmax_first;

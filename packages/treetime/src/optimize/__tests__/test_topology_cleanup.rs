@@ -1,8 +1,7 @@
 #[cfg(test)]
 pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::gather::{
@@ -13,6 +12,7 @@ pub(super) mod tests {
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
+  use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};

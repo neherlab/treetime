@@ -5,11 +5,11 @@
 )]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::fitch::gtr_inference::get_mutation_counts_fitch;
   use crate::partition::fitch::partition::PartitionFitch;
+  use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::shared::update::MarginalPasses;

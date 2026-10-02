@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::branch_lengths_or_zero;
+use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;

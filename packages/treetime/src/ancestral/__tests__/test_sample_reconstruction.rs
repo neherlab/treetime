@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::sample::SampleMode;
+  use crate::partition::marginal::sample::SampleMode;
   use eyre::Report;
   use pretty_assertions::assert_eq;
 
@@ -52,12 +52,12 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::ancestral::fitch::create_fitch_partition;
-    use crate::ancestral::marginal::branch_lengths_or_zero;
-    use crate::ancestral::sample::SampleMode;
-    use crate::ancestral::tip_states::TipStates;
+    use crate::branch_lengths::branch_lengths_or_zero;
     use crate::gtr::get_gtr::{JC69Params, jc69};
+    use crate::partition::fitch::passes::create_fitch_partition;
     use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
+    use crate::partition::marginal::sample::SampleMode;
+    use crate::partition::marginal::sequences::TipStates;
     use crate::seq::alignment::node_seq_inputs;
     use crate::test_utils::emitted_sequences_by_name;
     use eyre::Report;

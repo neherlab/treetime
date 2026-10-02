@@ -1,5 +1,5 @@
-use crate::ancestral::sample::SampleMode;
 use crate::gtr::get_gtr::GtrModelName;
+use crate::partition::marginal::sample::SampleMode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::VariantNames;

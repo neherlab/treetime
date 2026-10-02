@@ -4,7 +4,7 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
 
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;

@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::branch_lengths_or_zero;
+use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::clock_filter::{ClockFilterResult, clock_filter};
 use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};

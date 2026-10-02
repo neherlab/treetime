@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::reconstruction::sample_internal_sequences;
-use crate::ancestral::sample::{Resolve, SampleMode};
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
+use crate::partition::marginal::sample::{Resolve, SampleMode};
+use crate::partition::marginal::sequences::sample_internal_sequences;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalPasses};
 use crate::partition::marginal::sparse::count::count_transitions_sparse;
 use crate::partition::marginal::sparse::reconstruct::{map_seq, map_seq_sampled, reconstruct_leaf_sequence};

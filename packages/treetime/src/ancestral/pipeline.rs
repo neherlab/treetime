@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::params::AncestralParams;
 use crate::ancestral::partition::AncestralPartition;
 use crate::ancestral::plan::{ReconOptions, ReconstructedPartition, reconstruct_partition, resolve_plan};
+use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;

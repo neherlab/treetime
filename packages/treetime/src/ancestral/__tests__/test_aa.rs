@@ -4,8 +4,8 @@ mod tests {
   use crate::ancestral::aa::{
     AaCdsNodeData, AaParams, annotation_cds_nuc_length, collect_aa_cds_node_data, diff_sequences, reconstruct_aa,
   };
-  use crate::ancestral::sample::SampleMode;
   use crate::cancel::NoopCancel;
+  use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
   use crate::seq::mutation::{MutationEvent, Sub};
   use maplit::btreemap;
@@ -131,9 +131,9 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::ancestral::aa::CdsInput;
-    use crate::ancestral::fitch::create_fitch_partition;
     use crate::ancestral::partition::AncestralPartition;
     use crate::gtr::get_gtr::GtrModelName;
+    use crate::partition::fitch::passes::create_fitch_partition;
     use crate::seq::alignment::node_seq_inputs;
     use std::collections::BTreeMap;
     use std::fmt::Write;

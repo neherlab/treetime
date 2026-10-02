@@ -1,10 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::fitch::create_fitch_partition;
-use crate::ancestral::gtr_inference::infer_gtr_fitch;
 use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
 use crate::gtr::gtr::GTR;
 use crate::partition::algo::infer_dense::infer_dense;
+use crate::partition::fitch::gtr_inference::infer_gtr_fitch;
 use crate::partition::fitch::partition::PartitionFitch;
+use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::progress::LogSink;

@@ -1,4 +1,4 @@
-use crate::ancestral::marginal::branch_lengths_or_zero;
+use crate::branch_lengths::branch_lengths_or_zero;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::LogSink;
 use crate::progress_info;

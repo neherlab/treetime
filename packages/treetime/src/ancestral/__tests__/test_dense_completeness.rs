@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
   use crate::seq::alignment::get_common_length;

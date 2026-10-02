@@ -1,4 +1,4 @@
-use crate::ancestral::sample::SampleMode;
+use crate::partition::marginal::sample::SampleMode;
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -36,4 +36,10 @@ pub(crate) fn sample_internal_sequences(
 pub(crate) struct ReconstructedSequences {
   pub sampled: BTreeMap<GraphNodeKey, Seq>,
   pub emitted_nodes: Vec<GraphNodeKey>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct TipStates {
+  pub(crate) include_leaves: bool,
+  pub(crate) impute: bool,
 }

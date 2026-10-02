@@ -1,9 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::reconstruction::sample_internal_sequences;
-use crate::ancestral::sample::{Resolve, SampleMode, resolve_profile};
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
+use crate::partition::marginal::sample::{Resolve, SampleMode, resolve_profile};
+use crate::partition::marginal::sequences::sample_internal_sequences;
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalPasses};

@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::gtr_inference::get_mutation_counts_fitch;
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
+  use crate::partition::fitch::gtr_inference::get_mutation_counts_fitch;
+  use crate::partition::fitch::passes::create_fitch_partition;
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;

@@ -5,14 +5,14 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::sparse_edge_obs;
 
-  use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
   use crate::clock::date_constraints::DateConstraints;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
+  use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;

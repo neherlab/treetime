@@ -7,3 +7,10 @@ pub fn branch_lengths_or_zero(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64
     .map(|(key, raw)| (*key, raw.unwrap_or(0.0)))
     .collect()
 }
+
+pub(crate) fn branch_length_or_zero(
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  edge_key: GraphEdgeKey,
+) -> f64 {
+  branch_lengths[&edge_key].unwrap_or(0.0)
+}

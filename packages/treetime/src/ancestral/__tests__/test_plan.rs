@@ -3,10 +3,10 @@ mod tests {
   use crate::ancestral::params::AncestralParams;
   use crate::ancestral::params::MethodAncestral;
   use crate::ancestral::plan::{ReconPlan, resolve_plan};
-  use crate::ancestral::sample::SampleMode;
   use crate::error::OperationError;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::Representation;
+  use crate::partition::marginal::sample::SampleMode;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 

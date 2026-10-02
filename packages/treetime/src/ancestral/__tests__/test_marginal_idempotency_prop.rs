@@ -5,7 +5,7 @@ mod tests {
     arb_discrete_input, arb_marginal_input_gap_runs, arb_marginal_input_small,
   };
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
   use crate::gtr::gtr::GTR;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;

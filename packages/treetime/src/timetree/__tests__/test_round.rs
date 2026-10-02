@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_regression::{
     ClockFit, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
   };

@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::fitch::compress_sequences;
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::fitch::passes::compress_sequences;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
 
   use crate::partition::fitch::partition::PartitionFitch;

@@ -1,3 +1,4 @@
+use crate::branch_lengths::branch_length_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::assign_dates::assign_dates;
 use crate::clock::clock_filter::clock_filter;
@@ -70,7 +71,7 @@ pub fn run(
   let outliers = filter_outliers.unwrap_or_default();
 
   let names = restrict_node_names(names, &graph);
-  let divergences = root_to_node_divergences(&graph, |edge_key| branch_lengths[&edge_key].unwrap_or_default())?;
+  let divergences = root_to_node_divergences(&graph, |edge_key| branch_length_or_zero(&branch_lengths, edge_key))?;
   let regression_results =
     gather_clock_regression_results(&graph, &inputs, &divergences, &outliers, &clock_model, &names);
 

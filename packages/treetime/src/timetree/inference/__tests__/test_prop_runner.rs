@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::gtr::get_gtr::{JC69Params, jc69};

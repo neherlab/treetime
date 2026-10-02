@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::ancestral::fitch::compress_sequences;
   use crate::partition::fitch::partition::PartitionFitch;
+  use crate::partition::fitch::passes::compress_sequences;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;

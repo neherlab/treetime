@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::sample::{Resolve, SampleMode, resolve_profile, sample_from_profile};
+  use crate::partition::marginal::sample::{Resolve, SampleMode, resolve_profile, sample_from_profile};
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rand::SeedableRng;

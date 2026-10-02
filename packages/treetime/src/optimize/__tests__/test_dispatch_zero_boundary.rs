@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::gather::{
@@ -14,6 +13,7 @@ mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
+  use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
 
   use crate::partition::optimize;

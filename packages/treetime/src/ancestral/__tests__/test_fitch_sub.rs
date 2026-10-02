@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
-  use crate::ancestral::fitch_sub::{
+  use crate::partition::fitch::sub::{
     discover_fixed_disagreements_backward, finalize_sequence_forward, resolve_nonroot_substitutions_forward,
     resolve_root_forward, resolve_variable_positions_backward,
   };

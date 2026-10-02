@@ -1,3 +1,4 @@
+use crate::branch_lengths::branch_length_or_zero;
 use crate::clock::clock_model::ClockLine;
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::divergence::root_to_node_divergences;
@@ -36,7 +37,7 @@ pub(crate) fn clock_filter(
     clock_line.intercept()
   );
 
-  let divergences = root_to_node_divergences(graph, |edge_key| branch_lengths[&edge_key].unwrap_or_default())?;
+  let divergences = root_to_node_divergences(graph, |edge_key| branch_length_or_zero(branch_lengths, edge_key))?;
 
   let leaf_clock_deviations: Vec<f64> = graph
     .get_leaves()

@@ -8,14 +8,14 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::seq::alignment::node_seq_inputs;
 
-  use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::branch_lengths_or_zero;
-  use crate::ancestral::reconstruction::ReconstructedSequences;
-  use crate::ancestral::sample::SampleMode;
-  use crate::ancestral::tip_states::TipStates;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
+  use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
+  use crate::partition::marginal::sample::SampleMode;
+  use crate::partition::marginal::sequences::ReconstructedSequences;
+  use crate::partition::marginal::sequences::TipStates;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::pretty_assert_ulps_eq;

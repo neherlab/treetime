@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::marginal::branch_lengths_or_zero;
+use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::error::OperationError;

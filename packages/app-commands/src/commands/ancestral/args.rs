@@ -17,7 +17,7 @@ use smart_default::SmartDefault;
 use std::path::{Path, PathBuf};
 use treetime::ancestral::params::AncestralParams;
 use treetime::ancestral::params::MethodAncestral;
-use treetime::ancestral::sample::SampleMode;
+use treetime::partition::marginal::sample::SampleMode;
 
 pub fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams {
   AncestralParams {

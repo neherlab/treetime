@@ -1,5 +1,6 @@
 pub mod alphabet;
 pub mod ancestral;
+pub mod branch_lengths;
 pub mod cancel;
 pub mod clock;
 pub mod coalescent;

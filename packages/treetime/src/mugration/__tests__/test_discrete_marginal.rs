@@ -5,7 +5,7 @@
 
 #[cfg(test)]
 mod tests {
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::o;
   use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, MarginalUpdate};
   use approx::assert_abs_diff_eq;

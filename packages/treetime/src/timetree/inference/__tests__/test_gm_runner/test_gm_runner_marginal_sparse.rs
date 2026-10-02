@@ -6,14 +6,14 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
 
-  use crate::ancestral::fitch::create_fitch_partition;
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};

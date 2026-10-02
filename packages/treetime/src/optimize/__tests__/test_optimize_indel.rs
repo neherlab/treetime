@@ -6,7 +6,7 @@
 #[cfg(test)]
 pub(super) mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::ancestral::marginal::branch_lengths_or_zero;
+  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_reconstruction, simple_alignment,

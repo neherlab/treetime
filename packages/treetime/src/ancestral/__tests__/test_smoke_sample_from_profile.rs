@@ -5,9 +5,9 @@ mod tests {
   use crate::ancestral::mask::create_mask;
   use crate::ancestral::params::AncestralParams;
   use crate::ancestral::params::MethodAncestral;
-  use crate::ancestral::sample::SampleMode;
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;
+  use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::{AncestralInput, EdgeSeqInput, node_seq_inputs};

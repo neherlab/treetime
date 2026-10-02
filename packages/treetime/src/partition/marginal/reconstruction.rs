@@ -1,8 +1,8 @@
-use crate::ancestral::reconstruction::{ReconstructedSequences, emitted_nodes};
-use crate::ancestral::sample::SampleMode;
-use crate::ancestral::tip_states::TipStates;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
+use crate::partition::marginal::sample::SampleMode;
+use crate::partition::marginal::sequences::TipStates;
+use crate::partition::marginal::sequences::{ReconstructedSequences, emitted_nodes};
 use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};

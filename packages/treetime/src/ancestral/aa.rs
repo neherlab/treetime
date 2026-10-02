@@ -1,13 +1,13 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
-use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::partition::AncestralPartition;
 use crate::ancestral::plan::{ReconOptions, ReconPlan, ReconstructedPartition, reconstruct_partition};
-use crate::ancestral::sample::SampleMode;
+use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::make_error;
 use crate::partition::create::Representation;
+use crate::partition::marginal::sample::SampleMode;
 use crate::progress::{LogSink, NoopProgress};
 use crate::seq::alignment::node_seq_inputs;
 use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};

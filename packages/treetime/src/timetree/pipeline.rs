@@ -1,6 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::ancestral::marginal::branch_lengths_or_zero;
-use crate::ancestral::reconstruction::emitted_nodes;
+use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockFit, ClockTree, ClockVarianceParams};
@@ -17,6 +16,7 @@ use crate::gtr::gtr::GTR;
 use crate::optimize::params::BranchLengthMode;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
+use crate::partition::marginal::sequences::emitted_nodes;
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::node_seq_inputs;
 use crate::seq::gap_fill::GapFill;

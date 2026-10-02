@@ -1,3 +1,4 @@
+use crate::branch_lengths::branch_length_or_zero;
 use crate::clock::divergence::root_to_node_divergences;
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -11,7 +12,7 @@ pub(crate) fn final_divergences(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   filter_divergences: Option<&BTreeMap<GraphNodeKey, f64>>,
 ) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
-  let divergences = root_to_node_divergences(graph, |edge_key| branch_lengths[&edge_key].unwrap_or_default())?;
+  let divergences = root_to_node_divergences(graph, |edge_key| branch_length_or_zero(branch_lengths, edge_key))?;
   Ok(
     graph
       .get_nodes()

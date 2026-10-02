@@ -1,9 +1,8 @@
 #[cfg(test)]
 pub(super) mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::ancestral::fitch::{
-    ancestral_reconstruction_fitch, attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward,
-  };
+  use crate::ancestral::fitch::ancestral_reconstruction_fitch;
+  use crate::partition::fitch::passes::{attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward};
 
   use crate::o;
   use crate::partition::fitch::partition::PartitionFitch;
