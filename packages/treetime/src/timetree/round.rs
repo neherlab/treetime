@@ -1,3 +1,4 @@
+use crate::branch_lengths::one_mutation;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{
   ClockFit, ClockRegressionPoint, ClockTree, estimate_clock_model_with_reroot_policy,
@@ -256,11 +257,7 @@ fn relax_clock(relax: &[f64], state: RoundState, total_length: usize, log: &dyn 
 
   let RelaxedClockPrior { slack, coupling } = RelaxedClockPrior::of(relax);
   progress_info!(log, "Applying relaxed clock with slack={slack}, coupling={coupling}");
-  #[expect(
-    clippy::as_conversions,
-    reason = "a sequence length is far below 2^53, so the conversion to f64 is exact"
-  )]
-  let one_mutation = 1.0 / total_length as f64;
+  let one_mutation = one_mutation(total_length);
   let gammas = apply_relaxed_clock(
     &state.graph,
     &state.branch_lengths,

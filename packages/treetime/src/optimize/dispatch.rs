@@ -1,3 +1,4 @@
+use crate::branch_lengths::one_mutation;
 use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
 use crate::optimize::indel::estimate_indel_rate;
 use crate::optimize::likelihood::evaluate_with_indels;
@@ -84,7 +85,7 @@ pub(crate) fn run_optimize_mixed_inner(
     return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
   }
 
-  let one_mutation = 1.0 / total_length as f64;
+  let one_mutation = one_mutation(total_length);
 
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.key();
@@ -272,7 +273,7 @@ pub(crate) fn initial_guess_mixed(
     return make_error!("Total sequence length across all partitions is zero; cannot compute initial guess");
   }
 
-  let one_mutation = 1.0 / total_length as f64;
+  let one_mutation = one_mutation(total_length);
   let indel_rate = if no_indels {
     0.0
   } else {

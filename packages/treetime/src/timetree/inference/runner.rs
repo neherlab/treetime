@@ -1,3 +1,4 @@
+use crate::branch_lengths::one_mutation;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
@@ -159,11 +160,7 @@ fn compute_branch_distributions_marginal_mode(
   log: &dyn LogSink,
 ) -> Result<BTreeMap<GraphEdgeKey, BranchLikelihood>, Report> {
   let total_sites = partition.sequence_length();
-  #[expect(
-    clippy::as_conversions,
-    reason = "a sequence length is far below 2^53, so the conversion to f64 is exact"
-  )]
-  let one_mutation = 1.0 / total_sites as f64;
+  let one_mutation = one_mutation(total_sites);
 
   let indel_counts = gather_edge_indel_counts(graph, partition);
   let indel_rate = if no_indels {
