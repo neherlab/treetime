@@ -9,7 +9,7 @@ v0 resolves polytomies unless `--keep-polytomies` is given. v1 resolves them onl
 
 ## v1 behavior
 
-- `--resolve-polytomies` is an opt-in bool ([packages/app-cli/src/commands/timetree/args.rs](../../packages/app-cli/src/commands/timetree/args.rs)) mapped to `TopologyRefinement` in [packages/treetime/src/timetree/pipeline.rs](../../packages/treetime/src/timetree/pipeline.rs)
+- `--resolve-polytomies` is an opt-in bool ([packages/app-cli/src/commands/timetree/args.rs](../../packages/app-cli/src/commands/timetree/args.rs)) read by `refine_topology` in [packages/treetime/src/timetree/round.rs](../../packages/treetime/src/timetree/round.rs)
 - `keep_polytomies` is copied into `TimetreeParams` and never read
 - The only method is stochastic ([kb/decisions/timetree-stochastic-polytomy-resolution.md](../decisions/timetree-stochastic-polytomy-resolution.md), which approves the method but not the default). The seed is random unless `--seed` is given
 

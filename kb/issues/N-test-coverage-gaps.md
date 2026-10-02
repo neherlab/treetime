@@ -28,8 +28,7 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 
 ### Timetree optimization and output
 
-- `fn report_bad_branches`: zero tests
-- `fn collect_outliers()` and `fn report_bad_branches()`: unverified
+- `fn report_outliers()` and `fn collect_outlier_records()`: zero tests
 - `fn compute_rate_susceptibility()`: no integration coverage for upper/lower/restored rate passes
 - `fn write_confidence_intervals()`: untested for TSV serialization
 

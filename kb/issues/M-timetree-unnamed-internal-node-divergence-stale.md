@@ -1,6 +1,6 @@
 # Unnamed internal nodes report a stale root-to-node divergence
 
-The timetree output column `div` (`TimetreeNodeOut.div`) is computed once, after the last time inference, by `fn final_divergences` ([packages/treetime/src/timetree/divergence.rs#L8](../../packages/treetime/src/timetree/divergence.rs#L8)), called from the result step of `pipeline::run` ([packages/treetime/src/timetree/pipeline.rs#L689](../../packages/treetime/src/timetree/pipeline.rs#L689)). The value of a node depends on whether it has a name in the node names of the last time inference (the names before the final `assign_node_names`):
+The timetree output column `div` (`TimetreeNodeOut.div`) is computed once, after the last time inference, by `fn final_divergences` ([packages/treetime/src/timetree/divergence.rs#L8](../../packages/treetime/src/timetree/divergence.rs#L8)), called from the result step of `pipeline::run` ([packages/treetime/src/timetree/pipeline.rs#L501](../../packages/treetime/src/timetree/pipeline.rs#L501)). The value of a node depends on whether it has a name in the node names of the last time inference (the names before the final `assign_node_names`):
 
 - Named nodes get the root-to-node divergence on the final tree and final branch lengths
 - Unnamed nodes get the divergence the clock filter computed for them ([packages/treetime/src/timetree/pre_loop.rs#L243](../../packages/treetime/src/timetree/pre_loop.rs#L243)), when the filter ran and the node existed at that time

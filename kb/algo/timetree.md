@@ -177,9 +177,9 @@ After resolution, partition data is reconciled with the new topology before infe
 
 IQD-based outlier detection that marks leaves with anomalous root-to-tip divergence as bad branches.
 
-v1: [`packages/treetime/src/timetree/optimization/clock_filter.rs`](../../packages/treetime/src/timetree/optimization/clock_filter.rs).
+v1: the IQD filter in [`packages/treetime/src/clock/clock_filter.rs`](../../packages/treetime/src/clock/clock_filter.rs), the timetree outlier report and leaf flags in [`packages/treetime/src/timetree/optimization/outliers.rs`](../../packages/treetime/src/timetree/optimization/outliers.rs).
 
-- `mark_outlier_leaves()` (`#mark_outlier_leaves`) [packages/treetime/src/timetree/optimization/clock_filter.rs](../../packages/treetime/src/timetree/optimization/clock_filter.rs): adds the outlier leaves to the leaf bad-branch flags, which start as the leaves without a date
+- `mark_outlier_leaves()` (`#mark_outlier_leaves`) [packages/treetime/src/timetree/optimization/outliers.rs](../../packages/treetime/src/timetree/optimization/outliers.rs): adds the outlier leaves to the leaf bad-branch flags, which start as the leaves without a date
 - `derive_bad_branches()` (`#derive_bad_branches`) [packages/treetime/src/timetree/inference/bad_branches.rs](../../packages/treetime/src/timetree/inference/bad_branches.rs): derives the flags of the current tree at the start of every time inference. A node with its own date is never bad; any other internal node is bad when all its children are bad. See [kb/decisions/timetree-dated-internal-node-never-bad-branch.md](../decisions/timetree-dated-internal-node-never-bad-branch.md)
 
 ---
@@ -211,7 +211,7 @@ Component and total scalar boundaries use `LogLh`, while positional distribution
 
 Alternates sequence reconstruction (E-step) and time inference (M-step), iterating until convergence ([[3](#ref-3)], Section 2.4). Each iteration optionally applies relaxed clock rate estimation, resolves polytomies, and re-estimates the clock model.
 
-v1: [`packages/treetime/src/timetree/round.rs`](../../packages/treetime/src/timetree/round.rs), driven by [`packages/treetime/src/timetree/optimization_loop.rs`](../../packages/treetime/src/timetree/optimization_loop.rs).
+v1: [`packages/treetime/src/timetree/round.rs`](../../packages/treetime/src/timetree/round.rs), driven by [`packages/treetime/src/timetree/refinement_loop.rs`](../../packages/treetime/src/timetree/refinement_loop.rs).
 
 - `refinement_round()` (`#refinement_round`) [packages/treetime/src/timetree/round.rs](../../packages/treetime/src/timetree/round.rs): takes one round state by value and names each state transition: relaxed-clock update (`relax_clock`), topology refinement (`refine_topology`), inference rebuild (`refresh_times`), ancestral-state comparison, and clock re-estimation (`update_clock_model`). `TopologyOutcome` distinguishes an unchanged tree from a changed tree with a resolved-node count, so callers handle topology status explicitly. A changed topology triggers partition reconciliation, a reset of the relaxed-clock rate multipliers to 1, marginal reconstruction, coalescent-free time inference, and then inference with the active coalescent prior. The round returns the latest `TimeInference` and rate multipliers as values.
 
