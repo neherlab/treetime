@@ -7,7 +7,6 @@ use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::skyline::SkylineParams;
-use crate::error::OperationError;
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
@@ -34,7 +33,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-use treetime_utils::make_report;
 
 pub(crate) struct InitialRound {
   pub state: RoundState,
@@ -51,7 +49,7 @@ pub(crate) fn run_initial_round(
   input_names: &BTreeMap<GraphNodeKey, Option<String>>,
   pre_loop: PreLoopState,
   log: &dyn LogSink,
-) -> Result<InitialRound, OperationError> {
+) -> Result<InitialRound, Report> {
   let PreLoopState {
     graph,
     branch_lengths,
@@ -81,12 +79,6 @@ pub(crate) fn run_initial_round(
   };
   let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, log);
   let time_inference = run(None)?;
-
-  if params.n_branches_posterior.is_some() {
-    return Err(OperationError::InvalidParams(make_report!(
-      "--n-branches-posterior is not yet implemented"
-    )));
-  }
 
   let (coalescent, timescale) = setup_coalescent(params, &graph, &time_inference, &names, log)?;
   let time_inference = if coalescent.prior_wanted() {

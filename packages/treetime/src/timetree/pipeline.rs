@@ -64,6 +64,7 @@ pub fn run(
   log: &dyn LogSink,
 ) -> Result<TimetreeOutput, OperationError> {
   progress_info!(log, "# TreeTime Timetree Estimation");
+  validate_params(params)?;
   let context = prepare_inputs(params, &input, names, log)?;
 
   cancel.check()?;
@@ -240,6 +241,15 @@ impl CoalescentSetup {
   pub(crate) fn prior_wanted(&self) -> bool {
     self.mode != CoalescentMode::Disabled
   }
+}
+
+fn validate_params(params: &TimetreeParams) -> Result<(), OperationError> {
+  if params.n_branches_posterior.is_some() {
+    return Err(OperationError::InvalidParams(make_report!(
+      "--n-branches-posterior is not yet implemented"
+    )));
+  }
+  Ok(())
 }
 
 fn prepare_inputs(
