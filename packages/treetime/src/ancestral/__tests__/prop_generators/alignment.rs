@@ -49,6 +49,33 @@ pub(crate) fn arb_alignment_no_gaps(taxa: Vec<String>, seq_len: usize) -> impl S
   })
 }
 
+fn arb_sequence_with_runs(len: usize) -> impl Strategy<Value = String> {
+  let runs = prop::collection::vec((0..len, 1_usize..=4, prop::sample::select(vec!['N', '-'])), 0..=3);
+  (prop::collection::vec(arb_nucleotide_no_gaps(), len), runs).prop_map(move |(mut chars, runs)| {
+    for (start, run_len, ch) in runs {
+      chars[start..(start + run_len).min(len)].fill(ch);
+    }
+    chars.into_iter().collect()
+  })
+}
+
+pub(crate) fn arb_alignment_with_runs(
+  taxa: Vec<String>,
+  seq_len: usize,
+) -> impl Strategy<Value = Vec<AlignmentRecord>> {
+  let n = taxa.len();
+  prop::collection::vec(arb_sequence_with_runs(seq_len), n).prop_map(move |sequences| {
+    taxa
+      .iter()
+      .zip(sequences)
+      .map(|(name, seq_str)| AlignmentRecord {
+        name: name.clone(),
+        seq: Seq::try_from_str(&seq_str).expect("Generated sequence should be valid ASCII"),
+      })
+      .collect()
+  })
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

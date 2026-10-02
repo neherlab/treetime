@@ -21,6 +21,7 @@ mod tests {
   use crate::test_utils::{emitted_sequences_by_name, find_node_key_by_name};
   use eyre::Report;
   use indoc::indoc;
+  use itertools::Itertools;
   use treetime_graph::graph::Graph;
 
   use ndarray::{Array1, array};
@@ -291,6 +292,58 @@ mod tests {
     let sparse_branch_subs = edge_subs_by_edge_name(&graph, &names, |key| sparse_partition.edge_subs(key))?;
     assert_eq!(dense_branch_subs, sparse_branch_subs);
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_marginal_consistency_leaf_unknown_under_gapped_ancestor_stays_unknown() -> Result<(), Report> {
+    let aln = read_many_fasta_str(
+      indoc! {r#"
+      >L1
+      ACNNGT
+      >L2
+      ACNNGT
+      >L3
+      AC--GT
+    "#},
+      &*NUC_ALPHABET,
+    )?
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect_vec();
+    let nwk_parsed = nwk_read_str("((L1:0.1,L2:0.1)X:0.1,L3:0.1)root:0.01;")?;
+    let names = nwk_parsed.names();
+    let graph: Graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
+    let x_key = find_node_key_by_name(&graph, &names, "X").expect("node X must exist");
+
+    let (_, dense) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, jc69(JC69Params::default())?)?;
+    let (dense, _) = dense.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let (_, sparse) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, jc69(JC69Params::default())?)?;
+
+    let expected = "ACNNGT";
+    let dense_x = dense.reconstruct_sequences(
+      &graph,
+      TipStates::default(),
+      SampleMode::Argmax,
+      &mut rand::thread_rng(),
+    )?;
+    let sparse_x = sparse.reconstruct_sequences(
+      &graph,
+      TipStates::default(),
+      SampleMode::Argmax,
+      &mut rand::thread_rng(),
+    )?;
+    assert_eq!(
+      expected,
+      dense_x.sequences[&x_key].to_string(),
+      "X has only unknown children at columns 2-3, so a pass that reads observed leaf gaps keeps them unknown"
+    );
+    assert_eq!(
+      expected,
+      sparse_x.sequences[&x_key].to_string(),
+      "sparse reads observed leaf gaps from its single Fitch pass"
+    );
     Ok(())
   }
 

@@ -21,7 +21,6 @@ pub(super) mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let length = get_common_length(&input.alignment)?;
 
     let partition = PartitionMarginalDense::new(
       0,
