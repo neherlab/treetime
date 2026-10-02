@@ -99,13 +99,9 @@ fn run_pre_loop_step(
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
   match step {
-    PreLoopStep::MlOptimizePreReroot if inputs.has_alignment => ml_optimize(
-      state,
-      params.no_indels,
-      "### ML branch-length optimization (pre-reroot)",
-      "ML branch-length optimization (pre-reroot) failed",
-      log,
-    ),
+    PreLoopStep::MlOptimizePreReroot if inputs.has_alignment => {
+      ml_optimize(state, params.no_indels, RerootPhase::PreReroot, log)
+    },
     PreLoopStep::RerootPreAncestral if !params.keep_root => {
       progress_info!(log, "First reroot (pre-ancestral)");
       reroot(
@@ -123,13 +119,7 @@ fn run_pre_loop_step(
         progress_info!(log, "Using input branch lengths for timetree inference");
         return Ok(state);
       }
-      ml_optimize(
-        state,
-        params.no_indels,
-        "### ML branch-length optimization (post-reroot)",
-        "ML branch-length optimization (post-reroot) failed",
-        log,
-      )
+      ml_optimize(state, params.no_indels, RerootPhase::PostReroot, log)
     },
     PreLoopStep::InitialRoundCheckpoint => {
       cancel.check()?;
@@ -156,20 +146,35 @@ fn run_pre_loop_step(
   }
 }
 
+#[derive(Clone, Copy)]
+enum RerootPhase {
+  PreReroot,
+  PostReroot,
+}
+
+impl RerootPhase {
+  const fn label(self) -> &'static str {
+    match self {
+      Self::PreReroot => "pre-reroot",
+      Self::PostReroot => "post-reroot",
+    }
+  }
+}
+
 fn ml_optimize(
   state: PreLoopState,
   no_indels: bool,
-  banner: &str,
-  failure: &'static str,
+  phase: RerootPhase,
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let BranchModel::Marginal(partition) = state.branch_model else {
     return Ok(state);
   };
-  progress_info!(log, "{banner}");
+  let label = phase.label();
+  progress_info!(log, "### ML branch-length optimization ({label})");
   let (partition, _) = partition.marginal_update(&state.graph, &branch_lengths_or_zero(&state.branch_lengths))?;
-  let (partition, branch_lengths) =
-    optimize_branch_lengths(&state.graph, partition, state.branch_lengths, no_indels).wrap_err(failure)?;
+  let (partition, branch_lengths) = optimize_branch_lengths(&state.graph, partition, state.branch_lengths, no_indels)
+    .wrap_err_with(|| format!("ML branch-length optimization ({label}) failed"))?;
   Ok(PreLoopState {
     branch_model: BranchModel::Marginal(partition),
     branch_lengths,
@@ -282,8 +287,7 @@ fn optimize_branch_lengths(
       0.0,
       true,
       &mut branch_lengths,
-    )
-    .wrap_err("ML branch-length optimization pre-step failed")?;
+    )?;
   } else {
     run_optimize_mixed(
       graph,
@@ -292,8 +296,7 @@ fn optimize_branch_lengths(
       &indel_counts,
       BranchOptMethod::BrentSqrt,
       &mut branch_lengths,
-    )
-    .wrap_err("ML branch-length optimization pre-step failed")?;
+    )?;
   }
 
   apply_damping(&mut branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
