@@ -8,7 +8,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
 use strum_macros::IntoStaticStr;
 use treetime::cancel::{Cancel, CancelledError};
-use treetime::progress::{LogEvent, LogLevel, ProgressSink};
+use treetime::progress::{LogEvent, LogLevel, LogSink, StageSink};
 use treetime::timetree::convergence::metrics::IterationRecord;
 use treetime_schema::ProgressEvent;
 use treetime_utils::error::{ReportChain, panic_message};
@@ -205,7 +205,7 @@ impl<F: Fn(JobEvent) + Send + Sync> JobProgress<F> {
   }
 }
 
-impl<F: Fn(JobEvent) + Send + Sync> ProgressSink for JobProgress<F> {
+impl<F: Fn(JobEvent) + Send + Sync> StageSink for JobProgress<F> {
   fn report(&self, stage: &str, fraction: f64, message: &str) {
     (self.emit)(JobEvent::Progress(ProgressEvent {
       stage: stage.to_owned(),
@@ -214,6 +214,12 @@ impl<F: Fn(JobEvent) + Send + Sync> ProgressSink for JobProgress<F> {
     }));
   }
 
+  fn iteration(&self, record: &IterationRecord) {
+    (self.emit)(JobEvent::Iteration(IterationEvent::from(record)));
+  }
+}
+
+impl<F: Fn(JobEvent) + Send + Sync> LogSink for JobProgress<F> {
   fn log(&self, level: LogLevel, message: &str) {
     (self.emit)(JobEvent::Log(LogEvent {
       level,
@@ -223,9 +229,5 @@ impl<F: Fn(JobEvent) + Send + Sync> ProgressSink for JobProgress<F> {
 
   fn log_enabled(&self, _level: LogLevel) -> bool {
     true
-  }
-
-  fn iteration(&self, record: &IterationRecord) {
-    (self.emit)(JobEvent::Iteration(IterationEvent::from(record)));
   }
 }

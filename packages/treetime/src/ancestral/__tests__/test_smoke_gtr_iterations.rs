@@ -62,7 +62,15 @@ mod tests {
       graph: parse.graph,
     };
 
-    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopCancel, &NoopProgress)?;
+    let result = crate::ancestral::pipeline::run(
+      &params,
+      &input,
+      alphabet,
+      mask,
+      &NoopCancel,
+      &NoopProgress,
+      &NoopProgress,
+    )?;
 
     let gtr = result.output.gtr.expect("GTR should be fitted with --model=infer");
     assert!(
@@ -110,7 +118,15 @@ mod tests {
       graph: parse.graph,
     };
 
-    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopCancel, &NoopProgress)?;
+    let result = crate::ancestral::pipeline::run(
+      &params,
+      &input,
+      alphabet,
+      mask,
+      &NoopCancel,
+      &NoopProgress,
+      &NoopProgress,
+    )?;
 
     let gtr = result.output.gtr.expect("GTR should be fitted with --model=infer");
     assert!(

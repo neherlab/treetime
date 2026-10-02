@@ -56,7 +56,7 @@ mod tests {
       branch_lengths,
     };
 
-    let output = run(&params, input, &names, &NoopCancel, &NoopProgress)?;
+    let output = run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
     assert_ulps_eq!(output.gtr.mu, 1.0, max_ulps = 4);
 

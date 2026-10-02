@@ -81,7 +81,7 @@ mod tests {
         ],
         ..TreetimePruneArgsRaw::default()
       })?;
-      run_prune(&args, &NoopCancel, &NoopProgress)?;
+      run_prune(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
       Ok(())
     }
 

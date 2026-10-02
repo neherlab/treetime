@@ -8,7 +8,7 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::skyline::SkylineParams;
 use crate::error::OperationError;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent_timescale::{CoalescentTimescale, coalescent_mode, coalescent_timescale};
@@ -49,7 +49,7 @@ pub(crate) fn run_initial_round(
   context: &TimetreeContext,
   input_names: &BTreeMap<GraphNodeKey, Option<String>>,
   pre_loop: PreLoopState,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<InitialRound, OperationError> {
   let PreLoopState {
     graph,
@@ -78,7 +78,7 @@ pub(crate) fn run_initial_round(
     clock_model: &clock_model,
     no_indels: params.no_indels,
   };
-  let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, progress);
+  let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, log);
   let time_inference = run(None)?;
 
   if params.n_branches_posterior.is_some() {
@@ -87,7 +87,7 @@ pub(crate) fn run_initial_round(
     )));
   }
 
-  let (coalescent, timescale) = setup_coalescent(params, &graph, &time_inference, &names, progress)?;
+  let (coalescent, timescale) = setup_coalescent(params, &graph, &time_inference, &names, log)?;
   let time_inference = if coalescent.prior_wanted() {
     let prior = CoalescentModel::new(&coalescent.lineage_counts, &timescale.distribution)?;
     run(Some(&prior))?
@@ -107,7 +107,7 @@ pub(crate) fn run_initial_round(
   };
 
   Ok(InitialRound {
-    state: state.blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_UNDAMPED, progress),
+    state: state.blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_UNDAMPED, log),
     leaf_bad_branches,
     outliers,
     filter_divergences,
@@ -122,15 +122,15 @@ pub(crate) fn refinement_round(
   prior: Option<&CoalescentModel>,
   state: RoundState,
   rng: &mut dyn RngCore,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(RoundState, RoundOutcome), Report> {
   let total_length = state.branch_model.sequence_length();
-  let state = relax_clock(&inputs.params.relax, state, total_length, progress)?;
+  let state = relax_clock(&inputs.params.relax, state, total_length, log)?;
 
   let previous_times = capture_node_times(&state.graph, &state.time_inference);
   let previous_states = capture_ancestral_states(&state.graph, &state.branch_model);
-  let (state, topology) = refine_topology(inputs, state, total_length, merger_rate, rng, progress)?;
-  let state = refresh_times(inputs, prior, topology.changed(), state, progress)?;
+  let (state, topology) = refine_topology(inputs, state, total_length, merger_rate, rng, log)?;
+  let state = refresh_times(inputs, prior, topology.changed(), state, log)?;
 
   let current_states = capture_ancestral_states(&state.graph, &state.branch_model);
   let current_times = capture_node_times(&state.graph, &state.time_inference);
@@ -139,7 +139,7 @@ pub(crate) fn refinement_round(
     time_change: measure_node_time_change(&previous_times, &current_times),
     topology,
   };
-  let state = update_clock_model(inputs, state, progress)?;
+  let state = update_clock_model(inputs, state, log)?;
   Ok((state, outcome))
 }
 
@@ -147,15 +147,15 @@ pub(crate) fn final_marginal_round(
   inputs: &RoundInputs<'_>,
   prior: Option<&CoalescentModel>,
   state: RoundState,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<RoundState, Report> {
   let time_inference =
-    run_timetree(&state.time_inference_inputs(inputs), prior, progress).wrap_err("Final timetree inference failed")?;
+    run_timetree(&state.time_inference_inputs(inputs), prior, log).wrap_err("Final timetree inference failed")?;
   RoundState {
     time_inference,
     ..state
   }
-  .blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_UNDAMPED, progress)
+  .blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_UNDAMPED, log)
   .marginal_update()
 }
 
@@ -186,7 +186,7 @@ impl RoundState {
     }
   }
 
-  fn blend_clock_branch_lengths(self, damping: f64, progress: &dyn ProgressSink) -> Self {
+  fn blend_clock_branch_lengths(self, damping: f64, log: &dyn LogSink) -> Self {
     let clock_branch_lengths = blended_clock_branch_lengths(
       &self.graph,
       self.clock_model.clock_rate(),
@@ -194,7 +194,7 @@ impl RoundState {
       &self.clock_branch_lengths,
       &self.time_inference.node_times(),
       &self.gammas,
-      progress,
+      log,
     );
     Self {
       clock_branch_lengths,
@@ -241,28 +241,20 @@ impl TopologyOutcome {
   }
 }
 
-fn relax_clock(
-  relax: &[f64],
-  state: RoundState,
-  total_length: usize,
-  progress: &dyn ProgressSink,
-) -> Result<RoundState, Report> {
+fn relax_clock(relax: &[f64], state: RoundState, total_length: usize, log: &dyn LogSink) -> Result<RoundState, Report> {
   if relax.is_empty() {
     return Ok(state);
   }
   if total_length == 0 {
     progress_info!(
-      progress,
+      log,
       "Skipping relaxed clock: no sequence data (partitions empty or zero-length)"
     );
     return Ok(state);
   }
 
   let RelaxedClockPrior { slack, coupling } = RelaxedClockPrior::of(relax);
-  progress_info!(
-    progress,
-    "Applying relaxed clock with slack={slack}, coupling={coupling}"
-  );
+  progress_info!(log, "Applying relaxed clock with slack={slack}, coupling={coupling}");
   #[expect(
     clippy::as_conversions,
     reason = "a sequence length is far below 2^53, so the conversion to f64 is exact"
@@ -285,7 +277,7 @@ fn refine_topology(
   total_length: usize,
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn RngCore,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(RoundState, TopologyOutcome), Report> {
   if !inputs.params.resolve_polytomies {
     return Ok((state, TopologyOutcome::Unchanged));
@@ -322,7 +314,7 @@ fn refine_topology(
     return Ok((state, TopologyOutcome::Unchanged));
   }
 
-  progress_info!(progress, "Resolved polytomies, introduced {resolved_nodes} new nodes");
+  progress_info!(log, "Resolved polytomies, introduced {resolved_nodes} new nodes");
   let names = assign_node_names(state.names, &graph)?;
   node_times.extend(merger_times.into_iter().map(|(key, time)| (key, Some(time))));
   require_internal_node_times(&graph, &node_times).wrap_err("Failed to prepare tree after topology change")?;
@@ -335,7 +327,7 @@ fn refine_topology(
     &state.clock_branch_lengths,
     &node_times,
     &gammas,
-    progress,
+    log,
   );
 
   let state = RoundState {
@@ -355,19 +347,19 @@ fn refresh_times(
   prior: Option<&CoalescentModel>,
   topology_changed: bool,
   state: RoundState,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<RoundState, Report> {
   if state.branch_model.is_marginal() {
-    progress_info!(progress, "Updating ancestral sequences via marginal reconstruction");
+    progress_info!(log, "Updating ancestral sequences via marginal reconstruction");
   }
   let state = state.marginal_update()?;
-  let time_inference = infer_times(inputs, prior, topology_changed, &state, progress)?;
+  let time_inference = infer_times(inputs, prior, topology_changed, &state, log)?;
   Ok(
     RoundState {
       time_inference,
       ..state
     }
-    .blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_DAMPING, progress),
+    .blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_DAMPING, log),
   )
 }
 
@@ -376,14 +368,14 @@ fn infer_times(
   prior: Option<&CoalescentModel>,
   topology_changed: bool,
   state: &RoundState,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
   let time_inputs = state.time_inference_inputs(inputs);
-  let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, progress);
+  let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, log);
 
   if topology_changed {
     progress_info!(
-      progress,
+      log,
       "Tree structure changed - rebuilding node-time state before coalescent inference"
     );
     let time_inference = run(None).wrap_err("Coalescent-free timetree rebuild failed")?;
@@ -391,17 +383,13 @@ fn infer_times(
       return Ok(time_inference);
     }
   } else {
-    progress_info!(progress, "Updating node times via timetree inference");
+    progress_info!(log, "Updating node times via timetree inference");
   }
 
   run(prior).wrap_err("Timetree inference failed")
 }
 
-fn update_clock_model(
-  inputs: &RoundInputs<'_>,
-  state: RoundState,
-  progress: &dyn ProgressSink,
-) -> Result<RoundState, Report> {
+fn update_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn LogSink) -> Result<RoundState, Report> {
   let edge_inputs: BTreeMap<GraphEdgeKey, (Option<f64>, f64)> = state
     .time_inference
     .branches
@@ -434,7 +422,7 @@ fn update_clock_model(
     &RerootParams::default(),
     Some(previous_clock_rate),
     &state.names,
-    progress,
+    log,
   )
   .wrap_err("Failed to update clock model")?;
   let ClockFit { model, points } = clock_reroot.into_clock_fit()?;
@@ -452,7 +440,7 @@ fn setup_coalescent(
   graph: &Graph,
   time_inference: &TimeInference,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(CoalescentSetup, CoalescentTimescale), Report> {
   let skyline_params = SkylineParams {
     n_points: params.skyline_n_points,
@@ -464,7 +452,7 @@ fn setup_coalescent(
   let coalescent_node_times = time_inference.coalescent_node_times()?;
   let lineage_counts =
     compute_lineage_counts(graph, &coalescent_node_times).wrap_err("Failed to compute coalescent lineage counts")?;
-  let timescale = coalescent_timescale(mode, graph, &skyline_params, &coalescent_node_times, names, progress)?;
+  let timescale = coalescent_timescale(mode, graph, &skyline_params, &coalescent_node_times, names, log)?;
   let setup = CoalescentSetup {
     mode,
     skyline_params,

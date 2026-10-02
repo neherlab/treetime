@@ -37,7 +37,7 @@ mod tests {
       ..marginal_timetree_params()
     };
 
-    let output = pipeline::run(&params, input, &names, None, None, &NoopCancel, &NoopProgress)?;
+    let output = pipeline::run(&params, input, &names, None, None, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
     let n_changed = input_branch_lengths
       .iter()

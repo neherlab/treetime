@@ -9,7 +9,7 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Reroot
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::error::OperationError;
-use crate::progress::ProgressSink;
+use crate::progress::{LogSink, StageSink};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use serde::Serialize;
@@ -25,15 +25,16 @@ pub fn run(
   input: ClockInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<ClockOutput, OperationError> {
   cancel.check()?;
-  progress.report("Assigning dates", 0.1, "");
+  stages.report("Assigning dates", 0.1, "");
   let mut inputs = ClockInputs::new(&input.graph);
   assign_dates(&input.graph, &input.dates, &mut inputs, names).map_err(OperationError::InvalidInput)?;
 
   cancel.check()?;
-  progress.report("Clock regression", 0.3, "");
+  stages.report("Clock regression", 0.3, "");
   let tree = ClockTree {
     graph: input.graph,
     branch_lengths: input.branch_lengths,
@@ -56,12 +57,12 @@ pub fn run(
     params.allow_negative_rate,
     &params.reroot_spec,
     names,
-    progress,
+    log,
   )?;
 
   if let Some(outliers) = &filter_outliers {
     progress_info!(
-      progress,
+      log,
       "Clock filter changed outlier status for {} leaf nodes",
       outliers.len()
     );
@@ -131,7 +132,7 @@ fn estimate_clock_model_with_prefilter(
   allow_negative_rate: bool,
   reroot_spec: &RerootSpec,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockModel, Option<BTreeSet<GraphNodeKey>>), Report> {
   let (tree, filter_outliers) = if clock_filter_threshold > 0.0 {
     let reroot_params = RerootParams::new(reroot_spec.clone(), false);
@@ -145,12 +146,12 @@ fn estimate_clock_model_with_prefilter(
       &reroot_params,
       None,
       names,
-      progress,
+      log,
     )?;
     let regression = result.regression();
     if regression.clock_rate() < 0.0 {
       progress_warn!(
-        progress,
+        log,
         "Pre-filter clock rate is negative ({:.6e}). Outlier detection proceeds with this model.",
         regression.clock_rate()
       );
@@ -161,7 +162,7 @@ fn estimate_clock_model_with_prefilter(
       regression,
       &tree.branch_lengths,
       clock_filter_threshold,
-      progress,
+      log,
     )?;
     (tree, Some(filtered.outliers))
   } else {
@@ -186,8 +187,8 @@ fn estimate_clock_model_with_prefilter(
     &reroot_params,
     None,
     names,
-    progress,
+    log,
   )
   .wrap_err(failure)?;
-  Ok((tree, result.into_clock_model_allow_negative(progress), filter_outliers))
+  Ok((tree, result.into_clock_model_allow_negative(log), filter_outliers))
 }

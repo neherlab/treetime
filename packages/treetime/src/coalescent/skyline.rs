@@ -3,7 +3,7 @@ use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood
 use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::make_error;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, Array2, array};
@@ -22,7 +22,7 @@ pub(crate) fn optimize_skyline(
   params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<SkylineResult, Report> {
   if params.n_points < 1 {
     return make_error!(
@@ -38,14 +38,14 @@ pub(crate) fn optimize_skyline(
   }
 
   progress_info!(
-    progress,
+    log,
     "Starting skyline optimization with {} segments, stiffness={}",
     params.n_points,
     params.stiffness
   );
 
   let lineage_counts = compute_lineage_counts(graph, node_times)?;
-  let edges = collect_coalescent_edges(graph, node_times, names, progress)?;
+  let edges = collect_coalescent_edges(graph, node_times, names, log)?;
 
   let breakpoints = lineage_counts.breakpoints();
   if breakpoints.len() < 2 {
@@ -59,7 +59,7 @@ pub(crate) fn optimize_skyline(
 
   let boundaries = equal_width_boundaries(t_min, t_max, params.n_points);
 
-  let (i_seg, m_seg) = accumulate_segment_terms(&lineage_counts, &edges, &boundaries, progress);
+  let (i_seg, m_seg) = accumulate_segment_terms(&lineage_counts, &edges, &boundaries, log);
 
   let i_tot: f64 = i_seg.iter().sum();
   let m_tot: f64 = m_seg.iter().sum();
@@ -72,14 +72,7 @@ pub(crate) fn optimize_skyline(
     );
   }
 
-  let (z, hessian) = solve_log_tc(
-    &i_seg,
-    &m_seg,
-    params.stiffness,
-    params.tolerance,
-    params.max_iter,
-    progress,
-  )?;
+  let (z, hessian) = solve_log_tc(&i_seg, &m_seg, params.stiffness, params.tolerance, params.max_iter, log)?;
 
   let tc_values = Array1::from_iter(z.iter().map(|&zi| zi.exp()));
   let confidence = skyline_confidence_band(&hessian, params.n_std, &tc_values)?;
@@ -93,14 +86,14 @@ pub(crate) fn optimize_skyline(
   let log_likelihood = coalescent_log_likelihood(&edges, &model)?;
 
   progress_info!(
-    progress,
+    log,
     "Skyline optimization completed: log_likelihood={:.4}",
     log_likelihood.value()
   );
-  progress_info!(progress, "Skyline Tc(t) trajectory ({} segments):", tc_values.len());
+  progress_info!(log, "Skyline Tc(t) trajectory ({} segments):", tc_values.len());
   for (i, &tc) in tc_values.iter().enumerate() {
     progress_info!(
-      progress,
+      log,
       "  segment {i}: [{:.4}, {:.4}]  Tc = {tc:.6e} [{:.6e}, {:.6e}]",
       boundaries[i],
       boundaries[i + 1],
@@ -172,7 +165,7 @@ fn accumulate_segment_terms(
   lineage_counts: &PiecewiseConstantFn,
   edges: &[CoalescentEdgeData],
   boundaries: &[f64],
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> (Vec<f64>, Vec<f64>) {
   let n_seg = boundaries.len() - 1;
   let breakpoints = lineage_counts.breakpoints();
@@ -212,12 +205,7 @@ fn accumulate_segment_terms(
   }
 
   for i in 0..n_seg {
-    progress_info!(
-      progress,
-      "Skyline segment {i}: I = {:.6e}, M = {:.6e}",
-      i_seg[i],
-      m_seg[i]
-    );
+    progress_info!(log, "Skyline segment {i}: I = {:.6e}, M = {:.6e}", i_seg[i], m_seg[i]);
   }
 
   (i_seg, m_seg)
@@ -229,7 +217,7 @@ fn solve_log_tc(
   stiffness: f64,
   tolerance: f64,
   max_iter: u64,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(Vec<f64>, Tridiagonal<f64>), Report> {
   let n = i_seg.len();
 
@@ -289,7 +277,7 @@ fn solve_log_tc(
   }
 
   progress_warn!(
-    progress,
+    log,
     "Skyline optimization did not converge within {max_iter} iterations"
   );
   let hessian = skyline_hessian(&z, i_seg, stiffness)?;

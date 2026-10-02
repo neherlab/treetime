@@ -1,6 +1,6 @@
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
@@ -53,7 +53,7 @@ impl BranchModel {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     reroot: &RerootResult,
-    progress: &dyn ProgressSink,
+    log: &dyn LogSink,
   ) -> Result<Self, Report> {
     let Self::Marginal(partition) = self else {
       return Ok(self);
@@ -63,7 +63,7 @@ impl BranchModel {
       edge_merge: reroot.edge_merge.clone(),
       inverted_edge_keys: reroot.inverted_edge_keys.clone(),
     };
-    progress_info!(progress, "Applying reroot changes to 1 partitions");
+    progress_info!(log, "Applying reroot changes to 1 partitions");
     let partition = partition
       .apply_reroot(&changes)
       .wrap_err("Failed to apply reroot changes to partition")?

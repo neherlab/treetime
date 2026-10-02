@@ -65,7 +65,7 @@ mod tests {
         ..TreetimeAncestralArgsRaw::default()
       })?;
 
-      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress)?;
+      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
       Ok(
         read_many_fasta_path(&[out_path], &Alphabet::default())?

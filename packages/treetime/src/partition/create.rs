@@ -7,7 +7,7 @@ use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::SparseNodeState;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::seq::alignment::NodeSeqInput;
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -23,17 +23,17 @@ pub(crate) fn create_marginal_partition(
   model_name: GtrModelName,
   dense: Option<bool>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<PartitionCreated, Report> {
   let dense = dense.unwrap_or_else(infer_dense);
 
   if !dense {
     let fitch = create_fitch_partition(graph, index, alphabet, node_inputs)?;
     let gtr = match model_name {
-      GtrModelName::Infer => infer_gtr_fitch(&fitch, graph, branch_lengths, progress)?,
+      GtrModelName::Infer => infer_gtr_fitch(&fitch, graph, branch_lengths, log)?,
       _ => get_gtr_by_name(model_name)?,
     };
-    log_gtr(&gtr, model_name, progress);
+    log_gtr(&gtr, model_name, log);
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     Ok(PartitionCreated {
       partition: MarginalPartition::Sparse(partition, node_states),
@@ -42,8 +42,8 @@ pub(crate) fn create_marginal_partition(
     })
   } else if model_name == GtrModelName::Infer {
     let fitch = create_fitch_partition(graph, index, alphabet, node_inputs)?;
-    let gtr = infer_gtr_fitch(&fitch, graph, branch_lengths, progress)?;
-    log_gtr(&gtr, model_name, progress);
+    let gtr = infer_gtr_fitch(&fitch, graph, branch_lengths, log)?;
+    log_gtr(&gtr, model_name, log);
     let partition = fitch.into_marginal_dense(graph, node_inputs)?;
     Ok(PartitionCreated {
       partition: MarginalPartition::Dense(partition),
@@ -53,7 +53,7 @@ pub(crate) fn create_marginal_partition(
   } else {
     let partition = PartitionMarginalDense::new(index, alphabet, graph, node_inputs)?;
     let gtr = get_gtr_by_name(model_name)?;
-    log_gtr(&gtr, model_name, progress);
+    log_gtr(&gtr, model_name, log);
     Ok(PartitionCreated {
       partition: MarginalPartition::Dense(partition),
       gtr,

@@ -40,7 +40,14 @@ mod tests {
       dates,
       branch_lengths: nwk_parsed.branch_lengths,
     };
-    Ok(pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress)?)
+    Ok(pipeline::run(
+      &params,
+      input,
+      &names,
+      &NoopCancel,
+      &NoopProgress,
+      &NoopProgress,
+    )?)
   }
 
   fn get_outlier_names(output: &ClockOutput) -> Vec<String> {

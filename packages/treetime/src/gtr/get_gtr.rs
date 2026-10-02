@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::GTR;
 use crate::make_error;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use bon::bon;
 use eyre::Report;
@@ -18,10 +18,10 @@ use treetime_utils::io::json::{JsonPretty, json_write_file, json_write_str};
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName, progress: &dyn ProgressSink) {
+pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName, log: &dyn LogSink) {
   let output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
   let json = json_write_str(&output, JsonPretty(true)).expect("GTR JSON serialization failed");
-  progress_info!(progress, "GTR model initialized:\n{json}");
+  progress_info!(log, "GTR model initialized:\n{json}");
 }
 
 pub fn write_gtr_json(output: &GtrOutput, path: impl AsRef<Path>) -> Result<(), Report> {

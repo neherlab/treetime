@@ -7,6 +7,7 @@ mod tests {
   use rstest::rstest;
   use tempfile::tempdir;
   use treetime::cancel::NoopCancel;
+  use treetime::progress::NoopProgress;
   use treetime_utils::pretty_assert_ulps_eq;
 
   #[rstest]
@@ -21,7 +22,7 @@ mod tests {
     let outdir = tempdir().unwrap();
     let prepared = command.prepare_value(&config_for(command, outdir.path())).unwrap();
     let progress = RecordingProgress::new(outdir.path().to_path_buf());
-    let outcome = prepared.args.run(&NoopCancel, &progress).unwrap();
+    let outcome = prepared.args.run(&NoopCancel, &progress, &NoopProgress).unwrap();
 
     let events = progress.events();
     let fractions: Vec<f64> = events.iter().map(|event| event.fraction).collect();
@@ -67,7 +68,7 @@ mod tests {
     config["method_anc"] = "parsimony".into();
     let prepared = AppCommand::Ancestral.prepare_value(&config).unwrap();
     let progress = RecordingProgress::new(outdir.path().to_path_buf());
-    prepared.args.run(&NoopCancel, &progress).unwrap();
+    prepared.args.run(&NoopCancel, &progress, &NoopProgress).unwrap();
     let stages: Vec<String> = progress.events().into_iter().map(|event| event.stage).collect();
     assert_eq!(
       vec![
@@ -87,7 +88,7 @@ mod tests {
     use serde_json::{Value, json};
     use std::fs;
     use std::path::{Path, PathBuf};
-    use treetime::progress::{LogLevel, ProgressSink};
+    use treetime::progress::StageSink;
 
     pub(super) fn config_for(command: AppCommand, outdir: &Path) -> Value {
       let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
@@ -167,7 +168,7 @@ mod tests {
       }
     }
 
-    impl ProgressSink for RecordingProgress {
+    impl StageSink for RecordingProgress {
       fn report(&self, stage: &str, fraction: f64, _message: &str) {
         let files = if stage == "Done" { self.files() } else { vec![] };
         self.events.lock().push(RecordedStage {
@@ -175,12 +176,6 @@ mod tests {
           fraction,
           files,
         });
-      }
-
-      fn log(&self, _level: LogLevel, _message: &str) {}
-
-      fn log_enabled(&self, _level: LogLevel) -> bool {
-        false
       }
     }
   }

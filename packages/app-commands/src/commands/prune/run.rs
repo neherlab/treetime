@@ -13,7 +13,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use treetime::progress::ProgressSink;
+use treetime::progress::{LogSink, StageSink};
 use treetime::progress_warn;
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
 use treetime::seq::mutation::MutationTrack;
@@ -31,12 +31,13 @@ use treetime_primitives::AlignmentRecord;
 pub fn run_prune(
   args: &TreetimePruneArgs,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<PruneResult, Report> {
   validate_args(args)?;
 
   cancel.check()?;
-  progress.report("Reading input", 0.0, "");
+  stages.report("Reading input", 0.0, "");
 
   let parse = nwk_read_file(args.tree())?;
   let confidences = parse.confidences();
@@ -78,8 +79,8 @@ pub fn run_prune(
   };
 
   cancel.check()?;
-  progress.report("Pruning", 0.4, "");
-  let output = pipeline::run(&params, input, &names, cancel, progress).map_err(|err| err.into_report())?;
+  stages.report("Pruning", 0.4, "");
+  let output = pipeline::run(&params, input, &names, cancel, log).map_err(|err| err.into_report())?;
   let pipeline::PruneOutput {
     mut graph,
     gtr,
@@ -98,7 +99,7 @@ pub fn run_prune(
     .topology_order
     .resolve_topology_order(&graph, &names, Some(input_order))?;
   topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
-  progress.report("Writing output", 0.8, "");
+  stages.report("Writing output", 0.8, "");
 
   let nodes: BTreeMap<GraphNodeKey, PruneNodeOut> = graph
     .get_nodes()
@@ -141,7 +142,7 @@ pub fn run_prune(
         );
       },
       None => progress_warn!(
-        progress,
+        log,
         "Skipping GTR output: no GTR model was fitted (prune fits it from the alignment only for --prune-empty or --merge-shared-mutations)"
       ),
     }
@@ -158,7 +159,7 @@ pub fn run_prune(
     )?;
   }
 
-  progress.report("Done", 1.0, "");
+  stages.report("Done", 1.0, "");
   Ok(PruneResult { graph, nodes, edges })
 }
 

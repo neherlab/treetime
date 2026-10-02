@@ -2,7 +2,7 @@ use crate::clock::clock_model::ClockLine;
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::divergence::root_to_node_divergences;
 use crate::make_error;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
 use itertools::Itertools;
@@ -27,9 +27,9 @@ pub(crate) fn clock_filter(
   clock_line: &(impl ClockLine + Sync),
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   threshold: f64,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<ClockFilterResult, Report> {
-  progress_info!(progress, "### Filtering outliers (threshold={threshold})");
+  progress_info!(log, "### Filtering outliers (threshold={threshold})");
   log::debug!(
     "Clock model for filtering: rate={:.6e}, intercept={:.4}",
     clock_line.clock_rate(),
@@ -73,7 +73,7 @@ pub(crate) fn clock_filter(
     .collect();
 
   progress_info!(
-    progress,
+    log,
     "Outlier filtering: {} leaves changed status, IQD={iqd:.6e}",
     outliers.len()
   );

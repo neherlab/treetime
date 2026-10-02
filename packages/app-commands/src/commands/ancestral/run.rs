@@ -22,7 +22,7 @@ use treetime::ancestral::pipeline::{self, AncestralPartition};
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
-use treetime::progress::ProgressSink;
+use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::MutationTrack;
@@ -42,7 +42,8 @@ use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 pub fn run_ancestral_reconstruction(
   args: &TreetimeAncestralArgs,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<AncestralResult, Report> {
   validate_aa_args(
     args.translations.as_deref(),
@@ -57,7 +58,7 @@ pub fn run_ancestral_reconstruction(
     alphabet,
     descs,
     confidences,
-  } = read_nwk_fasta(args, cancel, progress)?;
+  } = read_nwk_fasta(args, cancel, stages, log)?;
   let names = input.names();
   let branch_lengths = input.branch_lengths();
 
@@ -76,7 +77,7 @@ pub fn run_ancestral_reconstruction(
 
   let params = ancestral_params(args);
 
-  let result = pipeline::run(&params, &input, alphabet, mask, cancel, progress).map_err(|err| err.into_report())?;
+  let result = pipeline::run(&params, &input, alphabet, mask, cancel, stages, log).map_err(|err| err.into_report())?;
 
   let aa_fasta_template: Option<String> = resolved
     .non_tree_outputs
@@ -92,7 +93,8 @@ pub fn run_ancestral_reconstruction(
       &names,
       &branch_lengths,
       cancel,
-      progress,
+      stages,
+      log,
     )?)
   } else {
     if aa_fasta_template.is_some() {
@@ -100,7 +102,7 @@ pub fn run_ancestral_reconstruction(
         return make_error!("--output-reconstructed-aa-fasta requires --translations");
       }
       progress_warn!(
-        progress,
+        log,
         "Skipping reconstructed amino-acid FASTA output: --translations not provided"
       );
     }
@@ -139,7 +141,7 @@ pub fn run_ancestral_reconstruction(
   };
 
   topology_order.apply(&mut input.graph, &names, &branch_lengths)?;
-  progress.report("Writing output", 0.9, "");
+  stages.report("Writing output", 0.9, "");
 
   let nodes: BTreeMap<GraphNodeKey, AncestralNodeOut> = input
     .nodes
@@ -184,10 +186,10 @@ pub fn run_ancestral_reconstruction(
         aa_annotations,
         path,
       )?;
-      progress_info!(progress, "Wrote augur node data JSON to {}", path.display());
+      progress_info!(log, "Wrote augur node data JSON to {}", path.display());
     } else {
       progress_warn!(
-        progress,
+        log,
         "Skipping augur node data: the run reconstructed no sequences to annotate"
       );
     }
@@ -203,7 +205,7 @@ pub fn run_ancestral_reconstruction(
         return make_error!("GTR output requested but no GTR model was fitted. Use --model=infer or --gtr-iterations.");
       },
       None => progress_warn!(
-        progress,
+        log,
         "Skipping GTR output: no GTR model was fitted (use --model=infer or --gtr-iterations)"
       ),
     }
@@ -222,7 +224,7 @@ pub fn run_ancestral_reconstruction(
     )?;
   }
 
-  progress.report("Done", 1.0, "");
+  stages.report("Done", 1.0, "");
   Ok(AncestralResult {
     graph: input.graph,
     nodes,
@@ -233,16 +235,17 @@ pub fn run_ancestral_reconstruction(
 fn read_nwk_fasta(
   args: &TreetimeAncestralArgs,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<AncestralReadInputs, Report> {
   let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
   cancel.check()?;
-  progress.report("Reading input", 0.0, "");
+  stages.report("Reading input", 0.0, "");
 
   let mut aln = if args.alignment.alignment.is_empty() {
-    progress_info!(progress, "Reading input fasta from standard input");
+    progress_info!(log, "Reading input fasta from standard input");
     let reader = FastaReader::new(open_stdin()?, &alphabet);
     read_many_fasta(reader)?
   } else {
@@ -256,14 +259,14 @@ fn read_nwk_fasta(
   let descs = sequence_descriptions(&aln);
 
   cancel.check()?;
-  progress.report("Parsing tree", 0.1, "");
+  stages.report("Parsing tree", 0.1, "");
   let parse = nwk_read_file(args.tree())?;
 
   let confidences = parse.confidences();
 
   let names = parse.names();
   let aln = aln.into_iter().map(AlignmentRecord::from).collect();
-  let aln = complete_alignment_for_leaves(&parse.graph, aln, &alphabet, args.ignore_missing_alns, &names, progress)?;
+  let aln = complete_alignment_for_leaves(&parse.graph, aln, &alphabet, args.ignore_missing_alns, &names, log)?;
   let alignment_length = get_common_length(&aln)?;
   let mask = create_mask(&aln, alignment_length, &alphabet);
 
@@ -406,7 +409,8 @@ fn run_aa_reconstructions(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<(AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>), Report> {
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
   let aa_model = ancestral_args.aa_model.resolve();
@@ -429,7 +433,7 @@ fn run_aa_reconstructions(
   let aa_root_sequences = read_aa_root_sequences(ancestral_args.aa_root_sequence.as_deref(), &cdses, &recon_alphabet)?;
 
   cancel.check()?;
-  progress.report("AA ancestral reconstruction", 0.75, "");
+  stages.report("AA ancestral reconstruction", 0.75, "");
 
   let params = MarginalPartitionParams {
     dense: ancestral_args.dense,
@@ -458,7 +462,7 @@ fn run_aa_reconstructions(
     }
     if sanitized > 0 {
       progress_warn!(
-        progress,
+        log,
         "CDS '{cds}': mapped {sanitized} out-of-alphabet amino-acid characters (e.g. stop '*') to '{}'.",
         char::from(recon_alphabet.unknown())
       );
@@ -482,7 +486,7 @@ fn run_aa_reconstructions(
     .filter_map(|cds| annotations.get(cds).map(|entry| (cds.clone(), entry.clone())))
     .collect();
 
-  let node_data = reconstruct_aa(graph, names, branch_lengths, &params, plans, seq_sink, progress)?;
+  let node_data = reconstruct_aa(graph, names, branch_lengths, &params, plans, seq_sink, log)?;
   Ok((node_data, cds_annotations))
 }
 

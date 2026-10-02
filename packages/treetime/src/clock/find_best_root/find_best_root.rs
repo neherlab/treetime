@@ -3,7 +3,7 @@ use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::make_error;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
 use log::debug;
@@ -28,10 +28,10 @@ pub(crate) fn find_best_root(
   force_positive: bool,
   objective: RootObjective,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
   progress_info!(
-    progress,
+    log,
     "Starting root optimization with method: {params:?}, force_positive={force_positive}"
   );
 
@@ -103,7 +103,7 @@ pub(crate) fn find_best_root(
       params,
       objective,
       names,
-      progress,
+      log,
     )?;
     debug!(
       "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
@@ -132,7 +132,7 @@ pub(crate) fn find_best_root(
       params,
       objective,
       names,
-      progress,
+      log,
     )?;
     debug!(
       "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
@@ -157,7 +157,7 @@ pub(crate) fn find_best_root(
   }
 
   progress_info!(
-    progress,
+    log,
     "Root optimization completed. Final chi-squared: {:.6e}, split: {:.6}",
     best_res.chisq,
     best_res.split

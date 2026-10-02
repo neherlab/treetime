@@ -6,7 +6,7 @@ use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, in
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses};
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
 use crate::partition::storage::discrete::DiscreteStates;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use serde::Serialize;
@@ -31,9 +31,9 @@ impl PartitionMarginalDiscrete {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     min_branch_length: f64,
     filter_uninformative_root: bool,
-    progress: &dyn ProgressSink,
+    log: &dyn LogSink,
   ) -> Result<Self, Report> {
-    validate_trait_names(graph, traits, names, progress)?;
+    validate_trait_names(graph, traits, names, log)?;
     let n_states = states.len();
     let obs_leaves = graph
       .get_leaves()

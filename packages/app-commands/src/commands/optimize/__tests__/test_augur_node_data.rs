@@ -157,7 +157,7 @@ mod tests {
       branch_lengths,
     };
 
-    let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).unwrap();
+    let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();
 
     let data = helpers::build_augur_node_data_json_from_output(
       &names,

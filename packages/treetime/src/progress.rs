@@ -3,17 +3,23 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 
-pub trait ProgressSink: Send + Sync {
+pub trait StageSink: Send + Sync {
   fn report(&self, stage: &str, fraction: f64, message: &str);
+  fn iteration(&self, _record: &IterationRecord) {}
+}
+
+pub trait LogSink: Send + Sync {
   fn log(&self, level: LogLevel, message: &str);
   fn log_enabled(&self, level: LogLevel) -> bool;
-  fn iteration(&self, _record: &IterationRecord) {}
 }
 
 pub struct NoopProgress;
 
-impl ProgressSink for NoopProgress {
+impl StageSink for NoopProgress {
   fn report(&self, _stage: &str, _fraction: f64, _message: &str) {}
+}
+
+impl LogSink for NoopProgress {
   fn log(&self, _level: LogLevel, _message: &str) {}
   fn log_enabled(&self, _level: LogLevel) -> bool {
     false

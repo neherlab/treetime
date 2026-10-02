@@ -1,6 +1,6 @@
 use crate::cancel::Cancel;
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::progress::ProgressSink;
+use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
 use crate::timetree::coalescent_timescale::{CoalescentTimescale, coalescent_timescale};
 use crate::timetree::convergence::metrics::IterationClock;
@@ -17,11 +17,12 @@ pub(crate) fn run_refinement_loop(
   state: RoundState,
   trace_sink: Option<Box<dyn TraceSink + '_>>,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<(RoundState, CoalescentTimescale), Report> {
   cancel.check()?;
-  progress.report("Optimization", 0.3, "");
-  progress_info!(progress, "### TreeTime: Optimisation rounds");
+  stages.report("Optimization", 0.3, "");
+  progress_info!(log, "### TreeTime: Optimisation rounds");
   let params = inputs.params;
   let mut optimizer = TimetreeOptimizer::new(params.max_iter, false);
   if let Some(sink) = trace_sink {
@@ -32,7 +33,7 @@ pub(crate) fn run_refinement_loop(
   let seed = params.seed.unwrap_or_else(rand::random);
   if params.resolve_polytomies {
     progress_info!(
-      progress,
+      log,
       "Polytomy resolution is stochastic; seed {seed} (pass --seed to reproduce this run)"
     );
   }
@@ -40,14 +41,14 @@ pub(crate) fn run_refinement_loop(
 
   let mut state = state;
   let mut timescale = timescale;
-  while let Some(IterationContext { i }) = optimizer.next_iter(progress) {
+  while let Some(IterationContext { i }) = optimizer.next_iter(log) {
     cancel.check()?;
     #[expect(
       clippy::as_conversions,
       reason = "iteration counts are far below 2^53, so the conversion to f64 is exact"
     )]
     let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
-    progress.report(
+    stages.report(
       "Optimization",
       iter_fraction,
       &format!("iteration {}/{max_iter}", i + 1),
@@ -60,7 +61,7 @@ pub(crate) fn run_refinement_loop(
         &coalescent.skyline_params,
         &state.time_inference.coalescent_node_times()?,
         &state.names,
-        progress,
+        log,
       )?;
     }
     let coalescent_model = CoalescentModel::new(&coalescent.lineage_counts, &timescale.distribution)?;
@@ -73,7 +74,7 @@ pub(crate) fn run_refinement_loop(
       coalescent.prior_wanted().then_some(&coalescent_model),
       state,
       &mut rng,
-      progress,
+      log,
     )
     .wrap_err_with(|| format!("When running round {i}"))?;
     state = next_state;
@@ -89,7 +90,7 @@ pub(crate) fn run_refinement_loop(
         coalescent.prior_wanted().then_some(&timescale.distribution),
         iteration_clock,
         &state.names,
-        progress,
+        log,
       )
       .wrap_err("Failed to record convergence metrics")
       .wrap_err_with(|| format!("When running round {i}"))?;

@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
 use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
-use treetime::progress::ProgressSink;
+use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime_graph::graph::Graph;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
@@ -21,10 +21,11 @@ use treetime_utils::io::file::write_file_or_stdout;
 pub fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<MugrationResult, Report> {
   cancel.check()?;
-  progress.report("Reading input", 0.0, "");
+  stages.report("Reading input", 0.0, "");
   let parse = nwk_read_file(&mugration_args.tree)?;
   let confidences = parse.confidences();
   let names = parse.names();
@@ -60,7 +61,7 @@ pub fn run_mugration(
   };
 
   cancel.check()?;
-  progress.report("Mugration inference", 0.3, "");
+  stages.report("Mugration inference", 0.3, "");
   let params = MugrationParams {
     missing_data: mugration_args.missing_data.clone(),
     pc: mugration_args.pc,
@@ -76,13 +77,13 @@ pub fn run_mugration(
     weights,
     branch_lengths: branch_lengths.clone(),
   };
-  let mut output = pipeline::run(&params, input, &names, cancel, progress).map_err(|err| err.into_report())?;
+  let mut output = pipeline::run(&params, input, &names, cancel, log).map_err(|err| err.into_report())?;
 
   let topology_order = mugration_args
     .topology_order
     .resolve_topology_order(&output.graph, &names, None)?;
   topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
-  progress.report("Writing output", 0.8, "");
+  stages.report("Writing output", 0.8, "");
 
   let result = MugrationResult::new(
     &output,
@@ -125,9 +126,9 @@ pub fn run_mugration(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     write_augur_node_data_json(&result, &output, path)?;
-    progress_info!(progress, "Wrote augur node data JSON to {}", path.display());
+    progress_info!(log, "Wrote augur node data JSON to {}", path.display());
   }
 
-  progress.report("Done", 1.0, "");
+  stages.report("Done", 1.0, "");
   Ok(result)
 }

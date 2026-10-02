@@ -74,7 +74,15 @@ mod tests {
       graph: parse.graph,
     };
 
-    let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopCancel, &NoopProgress);
+    let result = crate::ancestral::pipeline::run(
+      &params,
+      &input,
+      alphabet,
+      mask,
+      &NoopCancel,
+      &NoopProgress,
+      &NoopProgress,
+    );
     assert!(result.is_err(), "parsimony with posterior sampling must be rejected");
     let err = result.err().unwrap().to_string();
     assert!(
@@ -132,7 +140,15 @@ mod tests {
         graph: parse.graph,
       };
 
-      let result = crate::ancestral::pipeline::run(&params, &input, alphabet, mask, &NoopCancel, &NoopProgress)?;
+      let result = crate::ancestral::pipeline::run(
+        &params,
+        &input,
+        alphabet,
+        mask,
+        &NoopCancel,
+        &NoopProgress,
+        &NoopProgress,
+      )?;
       let partition = result.partition.expect("marginal reconstruction produces a partition");
       let captured: BTreeMap<String, String> = result
         .output

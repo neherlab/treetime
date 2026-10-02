@@ -40,7 +40,7 @@ mod tests {
     })
     .unwrap();
 
-    run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
+    run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
     let csv_content = read_to_string(&tracelog_path).wrap_err("When reading the trace log")?;
     let lines: Vec<&str> = csv_content.lines().collect();
@@ -124,7 +124,7 @@ mod tests {
     })
     .unwrap();
 
-    run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
+    run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
     let tree: AuspiceTree = json_read_file(output.path().join("timetree.auspice.json"))?;
     let actual = tree.tree.children.iter().map(count_leaves).collect::<Vec<_>>();
@@ -157,7 +157,7 @@ mod tests {
     })
     .unwrap();
 
-    run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
+    run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
     let tsv_path = output.path().join("timetree.coalescent.tsv");
     assert!(tsv_path.exists(), "default --output-all must write the coalescent TSV");

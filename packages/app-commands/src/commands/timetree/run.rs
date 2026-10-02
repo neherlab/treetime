@@ -22,7 +22,7 @@ use treetime::clock::clock_output::write_clock_model;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::partition::timetree::partition::PartitionTimetree;
-use treetime::progress::ProgressSink;
+use treetime::progress::{LogSink, StageSink};
 use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::mutation::MutationTrack;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
@@ -42,12 +42,13 @@ use treetime_utils::io::file::create_file_or_stdout;
 pub fn run_timetree_estimation(
   args: &TreetimeTimetreeArgs,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<TimetreeResult, Report> {
   cancel.check()?;
-  progress.report("Loading input", 0.0, "");
+  stages.report("Loading input", 0.0, "");
 
-  let input_data = load_input_data(args, progress)?;
+  let input_data = load_input_data(args, log)?;
   let input_leaf_order = input_data.input_leaf_order.clone();
   let confidences = input_data.confidences;
   let parse_names = input_data.names;
@@ -58,7 +59,7 @@ pub fn run_timetree_estimation(
       .non_tree_outputs
       .get(&OutputSelection::Tracelog)
       .map(PathBuf::as_path),
-    progress,
+    stages,
   )?;
 
   let params = TimetreeParams {
@@ -130,12 +131,13 @@ pub fn run_timetree_estimation(
     Some(trace_sink),
     recon_sink,
     cancel,
-    progress,
+    stages,
+    log,
   )
   .map_err(|err| err.into_report())?;
   if let Some(path) = &reconstructed_nuc_fasta {
     progress_info!(
-      progress,
+      log,
       "Wrote reconstructed nucleotide FASTA to {path}",
       path = path.display()
     );
@@ -194,8 +196,8 @@ pub fn run_timetree_estimation(
   } = output;
   let maps = gather_timetree_output_maps(&graph, &partitions)?;
 
-  progress.report("Writing output", 0.95, "");
-  progress_info!(progress, "### TreeTime: writing outputs");
+  stages.report("Writing output", 0.95, "");
+  progress_info!(log, "### TreeTime: writing outputs");
 
   let topology_order = args
     .topology_order
@@ -220,7 +222,7 @@ pub fn run_timetree_estimation(
     match confidence_intervals.as_ref() {
       Some(intervals) => {
         write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
-        progress_info!(progress, "Wrote confidence intervals to {path}", path = path.display());
+        progress_info!(log, "Wrote confidence intervals to {path}", path = path.display());
       },
       None if args.output_confidence_tsv.is_some() => {
         return make_error!(
@@ -229,7 +231,7 @@ pub fn run_timetree_estimation(
         );
       },
       None => progress_warn!(
-        progress,
+        log,
         "Skipping confidence-interval output: no confidence intervals were computed (use --time-marginal)"
       ),
     }
@@ -241,7 +243,7 @@ pub fn run_timetree_estimation(
       path,
       args.output_coalescent_tsv.is_some(),
       |output, path| write_coalescent_delimited(output, path, b'\t'),
-      progress,
+      log,
     )?;
   }
 
@@ -251,7 +253,7 @@ pub fn run_timetree_estimation(
       path,
       args.output_coalescent_csv.is_some(),
       |output, path| write_coalescent_delimited(output, path, b','),
-      progress,
+      log,
     )?;
   }
 
@@ -261,7 +263,7 @@ pub fn run_timetree_estimation(
       path,
       args.output_coalescent_json.is_some(),
       |output, path| write_coalescent_json(output, path),
-      progress,
+      log,
     )?;
   }
 
@@ -283,7 +285,7 @@ pub fn run_timetree_estimation(
         return make_error!("GTR output requested but no GTR model was fitted. Provide sequence alignment input.");
       },
       _ => progress_warn!(
-        progress,
+        log,
         "Skipping GTR output: no GTR model was fitted (provide sequence alignment input)"
       ),
     }
@@ -329,10 +331,10 @@ pub fn run_timetree_estimation(
       mutation_counts.as_ref(),
       path,
     )?;
-    progress_info!(progress, "Wrote augur node data JSON to {path}", path = path.display());
+    progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
 
-  progress.report("Done", 1.0, "");
+  stages.report("Done", 1.0, "");
   Ok(TimetreeResult { graph, nodes, edges })
 }
 
@@ -465,12 +467,12 @@ fn write_coalescent_output(
   path: &Path,
   explicit: bool,
   write: impl FnOnce(&CoalescentOutput, &Path) -> Result<(), Report>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   match coalescent {
     Some(output) => {
       write(output, path)?;
-      progress_info!(progress, "Wrote coalescent output to {path}", path = path.display());
+      progress_info!(log, "Wrote coalescent output to {path}", path = path.display());
     },
     None if explicit => {
       return make_error!(

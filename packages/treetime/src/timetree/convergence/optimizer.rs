@@ -1,4 +1,4 @@
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::convergence::likelihood::{
@@ -38,13 +38,13 @@ impl<'a> TimetreeOptimizer<'a> {
     self
   }
 
-  pub(crate) fn next_iter(&mut self, progress: &dyn ProgressSink) -> Option<IterationContext> {
+  pub(crate) fn next_iter(&mut self, log: &dyn LogSink) -> Option<IterationContext> {
     if self.has_converged() || self.has_reached_max_iterations() {
       return None;
     }
 
     self.i += 1;
-    progress_info!(progress, "### Timetree iteration {}/{}", self.i, self.max_iterations);
+    progress_info!(log, "### Timetree iteration {}/{}", self.i, self.max_iterations);
 
     Some(IterationContext { i: self.i })
   }
@@ -60,17 +60,11 @@ impl<'a> TimetreeOptimizer<'a> {
     coalescent_tc: Option<&Distribution>,
     clock: IterationClock,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    progress: &dyn ProgressSink,
+    log: &dyn LogSink,
   ) -> Result<(), Report> {
     let log_lh_seq = compute_sequence_log_lh(graph, branch_model);
     let log_lh_pos = compute_positional_log_lh(graph, inference);
-    let log_lh_coal = compute_coalescent_log_lh(
-      graph,
-      coalescent_tc,
-      &inference.coalescent_node_times()?,
-      names,
-      progress,
-    );
+    let log_lh_coal = compute_coalescent_log_lh(graph, coalescent_tc, &inference.coalescent_node_times()?, names, log);
     let log_lh_total = [log_lh_seq, log_lh_pos, log_lh_coal]
       .into_iter()
       .flatten()
@@ -96,7 +90,7 @@ impl<'a> TimetreeOptimizer<'a> {
     }
 
     progress_info!(
-      progress,
+      log,
       "  Iteration {}: max_dt={:.4}, rms_dt={:.4}, n_diff={n_diff}, n_resolved={n_resolved}, log_lh_seq={:.2}, log_lh_pos={:.2}, log_lh_coal={:.2}, log_lh_total={:.2}{}",
       self.i,
       metric.max_time_change.unwrap_or(f64::NAN),

@@ -9,7 +9,7 @@ use crate::optimize::gather::{gather_timetree_edge_contributions, gather_timetre
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::BranchOptMethod;
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::progress::ProgressSink;
+use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::time_inference::likely_times;
@@ -37,10 +37,11 @@ pub(crate) fn run_pre_loop(
   inputs: &PreLoopInputs<'_>,
   state: PreLoopState,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   PRE_LOOP_SCHEDULE.into_iter().try_fold(state, |state, step| {
-    run_pre_loop_step(step, inputs, state, cancel, progress)
+    run_pre_loop_step(step, inputs, state, cancel, stages, log)
   })
 }
 
@@ -96,7 +97,8 @@ fn run_pre_loop_step(
   inputs: &PreLoopInputs<'_>,
   state: PreLoopState,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
   match step {
@@ -105,23 +107,23 @@ fn run_pre_loop_step(
       params.no_indels,
       "### ML branch-length optimization (pre-reroot)",
       "ML branch-length optimization (pre-reroot) failed",
-      progress,
+      log,
     ),
     PreLoopStep::RerootPreAncestral if !params.keep_root => {
-      progress_info!(progress, "First reroot (pre-ancestral)");
+      progress_info!(log, "First reroot (pre-ancestral)");
       reroot(
         inputs,
         state,
         RerootOutliers::None,
         &ClockVarianceParams::default(),
-        progress,
+        log,
       )
       .wrap_err("Failed to reroot tree (pre-ancestral)")
     },
-    PreLoopStep::ClockFilter if params.clock_filter > 0.0 => filter_clock_outliers(inputs, state, progress),
+    PreLoopStep::ClockFilter if params.clock_filter > 0.0 => filter_clock_outliers(inputs, state, log),
     PreLoopStep::MlOptimizePostReroot if inputs.has_alignment => {
       if matches!(state.branch_model, BranchModel::Input) {
-        progress_info!(progress, "Using input branch lengths for timetree inference");
+        progress_info!(log, "Using input branch lengths for timetree inference");
         return Ok(state);
       }
       ml_optimize(
@@ -129,23 +131,23 @@ fn run_pre_loop_step(
         params.no_indels,
         "### ML branch-length optimization (post-reroot)",
         "ML branch-length optimization (post-reroot) failed",
-        progress,
+        log,
       )
     },
     PreLoopStep::InitialRoundCheckpoint => {
       cancel.check()?;
-      progress.report("Initial timetree inference", 0.2, "");
-      progress_info!(progress, "### TreeTime: initial round");
+      stages.report("Initial timetree inference", 0.2, "");
+      progress_info!(log, "### TreeTime: initial round");
       Ok(state)
     },
     PreLoopStep::RerootPostAncestral if !params.keep_root => {
-      progress_info!(progress, "Reroot (post-ancestral)");
+      progress_info!(log, "Reroot (post-ancestral)");
       reroot(
         inputs,
         state,
         RerootOutliers::Filtered,
         &inputs.context.covariation_clock_params,
-        progress,
+        log,
       )
       .wrap_err("Failed to reroot tree (post-ancestral)")
     },
@@ -162,12 +164,12 @@ fn ml_optimize(
   no_indels: bool,
   banner: &str,
   failure: &'static str,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let BranchModel::Marginal(partition) = state.branch_model else {
     return Ok(state);
   };
-  progress_info!(progress, "{banner}");
+  progress_info!(log, "{banner}");
   let partition = partition.marginal_update(&state.graph, &branch_lengths_or_zero(&state.branch_lengths))?;
   let (partition, branch_lengths) =
     optimize_branch_lengths(&state.graph, partition, state.branch_lengths, no_indels).wrap_err(failure)?;
@@ -183,7 +185,7 @@ fn reroot(
   state: PreLoopState,
   outliers: RerootOutliers,
   clock_params: &ClockVarianceParams,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
   let no_outliers = BTreeSet::new();
@@ -207,7 +209,7 @@ fn reroot(
     &inputs.context.branch_params,
     &RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate),
     inputs.names,
-    progress,
+    log,
   )?;
   Ok(PreLoopState {
     graph,
@@ -227,7 +229,7 @@ enum RerootOutliers {
 fn filter_clock_outliers(
   inputs: &PreLoopInputs<'_>,
   state: PreLoopState,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let graph = &state.graph;
   let given_dates = likely_times(graph, &inputs.context.date_constraints, None)?;
@@ -242,7 +244,7 @@ fn filter_clock_outliers(
     &state.clock_fit.model,
     &state.branch_lengths,
     inputs.params.clock_filter,
-    progress,
+    log,
   )?;
   report_outliers(
     graph,
@@ -252,7 +254,7 @@ fn filter_clock_outliers(
     iqd,
     &given_dates,
     inputs.names,
-    progress,
+    log,
   );
   let leaf_bad_branches = mark_outlier_leaves(graph, &outliers, &state.leaf_bad_branches);
   Ok(PreLoopState {

@@ -1,7 +1,7 @@
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::GridSearchParams;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
 use log::debug;
@@ -17,10 +17,10 @@ pub(crate) fn optimize_grid_search(
   cost_fn: &BranchPointCostFunction,
   params: &GridSearchParams,
   branch: &str,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
   progress_info!(
-    progress,
+    log,
     "Starting Grid Search optimization on the branch above {branch} with {} points",
     params.n_points
   );
@@ -52,7 +52,7 @@ pub(crate) fn optimize_grid_search(
   }
 
   progress_info!(
-    progress,
+    log,
     "Grid Search optimization completed: evaluated {} points, best_split = {:.6}, best_cost = {:.6e}",
     params.n_points,
     best_split,

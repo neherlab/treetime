@@ -11,7 +11,7 @@ mod tests {
   use std::thread;
   use tempfile::tempdir;
   use treetime::cancel::{Cancel, NoopCancel};
-  use treetime::progress::{NoopProgress, ProgressSink};
+  use treetime::progress::{LogSink, NoopProgress, StageSink};
   use treetime_utils::assert_error;
 
   #[test]
@@ -22,7 +22,7 @@ mod tests {
       AppCommand::Timetree
         .prepare_value(&timetree_config(outdir.path()))?
         .args
-        .run(&NoopCancel, &NoopProgress)
+        .run(&NoopCancel, &NoopProgress, &NoopProgress)
     });
     let TerminalEvent::Ok { job_id: id, result } = terminal else {
       panic!("expected ok, got {terminal:?}");
@@ -47,7 +47,7 @@ mod tests {
       AppCommand::Clock
         .prepare_value(&json!({ "tree": "t.nwk", "no_such_setting": 1 }))?
         .args
-        .run(&NoopCancel, &NoopProgress)
+        .run(&NoopCancel, &NoopProgress, &NoopProgress)
     });
     assert_eq!(
       json!({
@@ -69,7 +69,7 @@ mod tests {
       AppCommand::Timetree
         .prepare_value(&config)?
         .args
-        .run(&NoopCancel, &NoopProgress)
+        .run(&NoopCancel, &NoopProgress, &NoopProgress)
     });
     let TerminalEvent::Error { message, causes, .. } = terminal else {
       panic!("expected error, got {terminal:?}");
@@ -91,7 +91,7 @@ mod tests {
       AppCommand::Timetree
         .prepare_value(&timetree_config(outdir.path()))?
         .args
-        .run(&token, &NoopProgress)
+        .run(&token, &NoopProgress, &NoopProgress)
     });
     assert_eq!(
       json!({ "status": "cancelled", "job_id": "job-4" }),
@@ -143,7 +143,7 @@ mod tests {
           AppCommand::Timetree
             .prepare_value(&timetree_config(dir_first.path()))?
             .args
-            .run(&first, &cancel_on_first_event)
+            .run(&first, &cancel_on_first_event, &cancel_on_first_event)
         })
       });
       let second_job = scope.spawn(|| {
@@ -151,7 +151,7 @@ mod tests {
           AppCommand::Timetree
             .prepare_value(&timetree_config(dir_second.path()))?
             .args
-            .run(&second, &NoopProgress)
+            .run(&second, &NoopProgress, &NoopProgress)
         })
       });
       (first_job.join().unwrap(), second_job.join().unwrap())

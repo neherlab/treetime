@@ -17,7 +17,7 @@ use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::clock::pipeline::{self, ClockInput, ClockParams};
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime::make_report;
-use treetime::progress::ProgressSink;
+use treetime::progress::{LogSink, StageSink};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::read_dates;
@@ -30,10 +30,11 @@ use treetime_io::nwk::nwk_read_file;
 pub fn run_clock(
   clock_args: &TreetimeClockArgs,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<ClockResult, Report> {
   cancel.check()?;
-  progress.report("Reading input", 0.0, "");
+  stages.report("Reading input", 0.0, "");
 
   let nwk_parsed = nwk_read_file(&clock_args.tree)?;
   let names = nwk_parsed.names();
@@ -83,7 +84,7 @@ pub fn run_clock(
     branch_lengths,
   };
 
-  let output = pipeline::run(&params, input, &names, cancel, progress).map_err(|err| err.into_report())?;
+  let output = pipeline::run(&params, input, &names, cancel, stages, log).map_err(|err| err.into_report())?;
   let pipeline::ClockOutput {
     mut graph,
     inputs,
@@ -98,7 +99,7 @@ pub fn run_clock(
     .topology_order
     .resolve_topology_order(&graph, &names, Some(input_order))?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
-  progress.report("Writing output", 0.8, "");
+  stages.report("Writing output", 0.8, "");
 
   let nodes = gather_clock_outputs(&graph, &inputs, &divergences, &outliers, &names);
 
@@ -122,10 +123,10 @@ pub fn run_clock(
 
   if let Some(outdir) = &clock_args.output.output_all {
     write_clock_regression_chart_svg(&regression_results, &clock_model, outdir.join("clock.svg"))?;
-    write_clock_regression_chart_png(&regression_results, &clock_model, outdir.join("clock.png"), progress)?;
+    write_clock_regression_chart_png(&regression_results, &clock_model, outdir.join("clock.png"), log)?;
   }
 
-  progress.report("Done", 1.0, "");
+  stages.report("Done", 1.0, "");
   Ok(ClockResult {
     clock_model,
     regression_results,

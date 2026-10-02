@@ -18,7 +18,7 @@ use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, Spa
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
-use crate::progress::ProgressSink;
+use crate::progress::{LogSink, StageSink};
 use crate::progress_warn;
 use crate::seq::alignment::AncestralInput;
 use crate::seq::indel::InDel;
@@ -47,7 +47,8 @@ pub fn run(
   alphabet: Alphabet,
   mask: Vec<bool>,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<AncestralOutputFull, OperationError> {
   let branch_lengths = input.branch_lengths();
   let profile_lengths = branch_lengths_or_zero(&branch_lengths);
@@ -73,13 +74,13 @@ pub fn run(
   match params.method {
     MethodAncestral::Parsimony => {
       cancel.check()?;
-      progress.report("Fitch parsimony", 0.3, "");
+      stages.report("Fitch parsimony", 0.3, "");
       let partition = create_fitch_partition(graph, 0, alphabet, node_inputs)?;
       let mut partitions_parsimony = vec![partition];
 
       if params.impute_missing_data {
         progress_warn!(
-          progress,
+          log,
           "--impute-missing-data has no effect with --method-anc=parsimony: Fitch parsimony produces no \
            posterior profile to impute missing tip states from. Leaf states are emitted as observed."
         );
@@ -103,7 +104,7 @@ pub fn run(
     },
     MethodAncestral::Marginal => {
       cancel.check()?;
-      progress.report("Inferring GTR model", 0.2, "");
+      stages.report("Inferring GTR model", 0.2, "");
 
       let created = create_marginal_partition(
         graph,
@@ -113,7 +114,7 @@ pub fn run(
         params.model,
         params.dense,
         &profile_lengths,
-        progress,
+        log,
       )?;
       let model_name = created.model_name;
       let gtr = created.gtr;
@@ -127,7 +128,7 @@ pub fn run(
       match created.partition {
         MarginalPartition::Sparse(partition, node_states) => {
           cancel.check()?;
-          progress.report("Marginal reconstruction", 0.4, "");
+          stages.report("Marginal reconstruction", 0.4, "");
           let update = partition.marginal_update(&gtr, graph, &profile_lengths, node_states)?;
 
           let (gtr, update) = if refine {
@@ -139,7 +140,7 @@ pub fn run(
               1.0,
               graph,
               &profile_lengths,
-              progress,
+              log,
             )?
           } else {
             (gtr, update)
@@ -153,7 +154,7 @@ pub fn run(
           };
 
           cancel.check()?;
-          progress.report("Reconstructing sequences", 0.6, "");
+          stages.report("Reconstructing sequences", 0.6, "");
           let ReconstructedSequences {
             sequences,
             emitted_nodes,
@@ -171,7 +172,7 @@ pub fn run(
         },
         MarginalPartition::Dense(partition) => {
           cancel.check()?;
-          progress.report("Marginal reconstruction", 0.4, "");
+          stages.report("Marginal reconstruction", 0.4, "");
           let update = partition.marginal_update(&gtr, graph, &profile_lengths, BTreeMap::new())?;
 
           let (gtr, update) = if refine {
@@ -183,7 +184,7 @@ pub fn run(
               1.0,
               graph,
               &profile_lengths,
-              progress,
+              log,
             )?
           } else {
             (gtr, update)
@@ -197,7 +198,7 @@ pub fn run(
           };
 
           cancel.check()?;
-          progress.report("Reconstructing sequences", 0.6, "");
+          stages.report("Reconstructing sequences", 0.6, "");
           let ReconstructedSequences {
             sequences,
             emitted_nodes,

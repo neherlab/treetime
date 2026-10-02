@@ -2,7 +2,7 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::coalescent::time_coordinate::CalendarTime;
 use crate::node_label::node_label;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_warn;
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -19,7 +19,7 @@ pub(crate) fn collect_coalescent_edges(
   graph: &Graph,
   node_times: &CoalescentNodeTimes,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<Vec<CoalescentEdgeData>, Report> {
   let mut edges = Vec::new();
 
@@ -29,7 +29,7 @@ pub(crate) fn collect_coalescent_edges(
     }
     if node_times.get(&node.key).is_some_and(|entry| entry.bad_branch) {
       progress_warn!(
-        progress,
+        log,
         "Coalescent edge data: skipping {} with a bad branch",
         node_label(names, node.key)
       );
@@ -38,7 +38,7 @@ pub(crate) fn collect_coalescent_edges(
 
     let Some(child_time) = node_times.get(&node.key).and_then(node_time) else {
       progress_warn!(
-        progress,
+        log,
         "Coalescent edge data: skipping {} without an inferred date",
         node_label(names, node.key)
       );
@@ -47,7 +47,7 @@ pub(crate) fn collect_coalescent_edges(
     let parent_node_key = node.parent_keys[0].0;
     let Some(parent_time) = node_times.get(&parent_node_key).and_then(node_time) else {
       progress_warn!(
-        progress,
+        log,
         "Coalescent edge data: skipping {} whose parent has no inferred date",
         node_label(names, node.key)
       );

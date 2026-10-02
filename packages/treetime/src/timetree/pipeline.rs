@@ -20,7 +20,7 @@ use crate::gtr::gtr::GTR;
 use crate::optimize::params::BranchLengthMode;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::timetree::partition::PartitionTimetree;
-use crate::progress::ProgressSink;
+use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::node_seq_inputs;
 use crate::seq::gap_fill::GapFill;
 use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
@@ -63,17 +63,18 @@ pub fn run(
   trace_sink: Option<Box<dyn TraceSink + '_>>,
   seq_sink: Option<Box<dyn SeqSink>>,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<TimetreeOutput, OperationError> {
-  progress_info!(progress, "# TreeTime Timetree Estimation");
-  let (context, leaf_bad_branches) = prepare_inputs(params, &input, names, progress)?;
+  progress_info!(log, "# TreeTime Timetree Estimation");
+  let (context, leaf_bad_branches) = prepare_inputs(params, &input, names, log)?;
 
   cancel.check()?;
-  progress.report("Clock regression", 0.1, "");
+  stages.report("Clock regression", 0.1, "");
   let (graph, branch_lengths, clock_fit) =
-    estimate_initial_clock(params, &context, input.graph, input.branch_lengths, names, progress)?;
+    estimate_initial_clock(params, &context, input.graph, input.branch_lengths, names, log)?;
   let aln = input.sequences.as_deref();
-  let init = initialize_branch_model(params, &graph, &branch_lengths, input.alphabet, aln, names, progress)?;
+  let init = initialize_branch_model(params, &graph, &branch_lengths, input.alphabet, aln, names, log)?;
   let pre_loop_inputs = PreLoopInputs {
     params,
     context: &context,
@@ -81,9 +82,9 @@ pub fn run(
     has_alignment: aln.is_some(),
   };
   let pre_loop_state = PreLoopState::new(graph, branch_lengths, init.branch_model, clock_fit, leaf_bad_branches);
-  let pre_loop = run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, progress)?;
+  let pre_loop = run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, stages, log)?;
 
-  let initial = run_initial_round(params, &context, names, pre_loop, progress)?;
+  let initial = run_initial_round(params, &context, names, pre_loop, log)?;
   let round_inputs = RoundInputs {
     params,
     context: &context,
@@ -98,14 +99,15 @@ pub fn run(
     initial.state,
     trace_sink,
     cancel,
-    progress,
+    stages,
+    log,
   )?;
-  report_coalescent_size(params, coalescent.mode, &timescale, progress);
+  report_coalescent_size(params, coalescent.mode, &timescale, log);
 
   cancel.check()?;
-  progress.report("Postprocessing", 0.85, "");
-  progress_info!(progress, "### TreeTime: postprocessing");
-  let final_times = refine_final_times(&round_inputs, coalescent, &timescale, state, progress)?;
+  stages.report("Postprocessing", 0.85, "");
+  progress_info!(log, "### TreeTime: postprocessing");
+  let final_times = refine_final_times(&round_inputs, coalescent, &timescale, state, log)?;
   let filter_divergences = initial.filter_divergences.as_ref();
   let results = gather_results(
     params,
@@ -115,7 +117,7 @@ pub fn run(
     filter_divergences,
     final_times,
   )?;
-  let state = emit_sequences(params, seq_sink, results.state, progress)?;
+  let state = emit_sequences(params, seq_sink, results.state, log)?;
 
   Ok(TimetreeOutput {
     graph: state.graph,
@@ -247,7 +249,7 @@ fn prepare_inputs(
   params: &TimetreeParams,
   input: &TimetreeInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(TimetreeContext, BTreeMap<GraphNodeKey, bool>), OperationError> {
   debug!(
     "Branch length mode: {:?}, Keep root: {}",
@@ -259,7 +261,7 @@ fn prepare_inputs(
     params.confidence,
     params.clock_std_dev,
     params.covariation,
-    progress,
+    log,
   );
 
   let covariation_clock_params = build_covariation_clock_params(
@@ -267,12 +269,12 @@ fn prepare_inputs(
     params.sequence_length,
     params.tip_slack,
     input.sequences.as_deref(),
-    progress,
+    log,
   )
   .map_err(OperationError::InvalidParams)?;
 
   let date_constraints = if let Some(dates) = &input.dates {
-    load_date_constraints(dates, &input.graph, names, progress)
+    load_date_constraints(dates, &input.graph, names, log)
       .wrap_err("Failed to load date constraints")
       .map_err(OperationError::InvalidInput)?
   } else {
@@ -296,7 +298,7 @@ fn estimate_initial_clock(
   graph: Graph,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>, ClockFit), Report> {
   let reroot_params = RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate);
   let fit = DatedClockFit {
@@ -313,7 +315,7 @@ fn estimate_initial_clock(
       graph, branch_lengths, ..
     },
     clock_reroot,
-  ) = fit_clock_to_dates(graph, branch_lengths, &context.date_constraints, &fit, names, progress)?;
+  ) = fit_clock_to_dates(graph, branch_lengths, &context.date_constraints, &fit, names, log)?;
   Ok((graph, branch_lengths, clock_reroot.into_clock_fit()?))
 }
 
@@ -330,11 +332,11 @@ fn initialize_branch_model(
   alphabet: Alphabet,
   aln: Option<&[AlignmentRecord]>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<BranchModelInit, Report> {
   match params.branch_length_mode {
     BranchLengthMode::Input => {
-      progress_info!(progress, "Branch length mode: Input - using tree branch lengths");
+      progress_info!(log, "Branch length mode: Input - using tree branch lengths");
       Ok(BranchModelInit {
         branch_model: BranchModel::Input,
         gtr: None,
@@ -343,7 +345,7 @@ fn initialize_branch_model(
     },
     BranchLengthMode::Marginal => {
       progress_info!(
-        progress,
+        log,
         "Branch length mode: Marginal - initializing partitions from alignment"
       );
       let aln_data = aln.ok_or_else(|| make_report!("Alignment required for marginal reconstruction"))?;
@@ -356,7 +358,7 @@ fn initialize_branch_model(
         params.model,
         params.dense,
         &branch_lengths_or_zero(branch_lengths),
-        progress,
+        log,
       )?;
       let gtr = created.gtr.clone();
       let partition = match created.partition {
@@ -380,21 +382,21 @@ fn report_coalescent_size(
   params: &TimetreeParams,
   mode: CoalescentMode,
   timescale: &CoalescentTimescale,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) {
   if mode.output_mode().is_none() {
     return;
   }
   let tc_values = timescale.schedule.values();
   progress_info!(
-    progress,
+    log,
     "Coalescent effective population size (gen_per_year={:.4}, {} segment(s)):",
     params.gen_per_year,
     tc_values.len()
   );
   for (i, &tc) in tc_values.iter().enumerate() {
     progress_info!(
-      progress,
+      log,
       "  segment {i}: Tc = {tc:.6e}  N_e = {:.6e}",
       effective_population_size(tc, params.gen_per_year)
     );
@@ -412,11 +414,11 @@ fn refine_final_times(
   coalescent: &CoalescentSetup,
   timescale: &CoalescentTimescale,
   state: RoundState,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<FinalTimes, Report> {
   let params = inputs.params;
   let rate_std = if params.confidence {
-    determine_rate_std(params.clock_std_dev, params.covariation, &state.clock_model, progress)?
+    determine_rate_std(params.clock_std_dev, params.covariation, &state.clock_model, log)?
   } else {
     None
   };
@@ -425,10 +427,9 @@ fn refine_final_times(
   let final_prior = coalescent.prior_wanted().then_some(&final_model);
 
   let (state, rate_susceptibility_dates) = if let Some(rate_std) = rate_std {
-    progress_info!(progress, "### Rate susceptibility analysis (rate_std={rate_std:.6e})");
-    let RateSusceptibility { dates, central } =
-      compute_rate_susceptibility(inputs, &state, final_prior, rate_std, progress)
-        .wrap_err("Rate susceptibility analysis failed")?;
+    progress_info!(log, "### Rate susceptibility analysis (rate_std={rate_std:.6e})");
+    let RateSusceptibility { dates, central } = compute_rate_susceptibility(inputs, &state, final_prior, rate_std, log)
+      .wrap_err("Rate susceptibility analysis failed")?;
     let state = RoundState {
       time_inference: central,
       ..state
@@ -439,11 +440,8 @@ fn refine_final_times(
   };
 
   let state = if inputs.context.time_marginal == TimeMarginalMode::OnlyFinal {
-    progress_info!(
-      progress,
-      "### Final round: marginal reconstruction for confidence intervals"
-    );
-    final_marginal_round(inputs, final_prior, state, progress)?
+    progress_info!(log, "### Final round: marginal reconstruction for confidence intervals");
+    final_marginal_round(inputs, final_prior, state, log)?
   } else {
     state
   };
@@ -523,7 +521,7 @@ fn emit_sequences(
   params: &TimetreeParams,
   mut seq_sink: Option<Box<dyn SeqSink>>,
   state: RoundState,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<RoundState, OperationError> {
   if seq_sink.is_none() && !params.include_leaves && !params.impute_missing_data {
     return Ok(state);
@@ -538,7 +536,7 @@ fn emit_sequences(
         )));
       }
       progress_warn!(
-        progress,
+        log,
         "Ignoring tip-state flags (--include-leaves / --impute-missing-data / --reconstruct-tip-states): \
          no ancestral reconstruction was performed under --branch-length-mode=input"
       );

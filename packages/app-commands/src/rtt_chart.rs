@@ -5,7 +5,7 @@ use plotters::prelude::*;
 use std::path::Path;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
-use treetime::progress::ProgressSink;
+use treetime::progress::LogSink;
 #[cfg(not(feature = "png"))]
 use treetime::progress_warn;
 use treetime_utils::make_error;
@@ -33,7 +33,7 @@ pub fn write_clock_regression_chart_png(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
   filepath: impl AsRef<Path>,
-  _progress: &dyn ProgressSink,
+  _progress: &dyn LogSink,
 ) -> Result<(), Report> {
   let img = write_clock_regression_chart_bitmap(results, clock_model)?;
   let mut f = &mut create_file_or_stdout(filepath)?;
@@ -47,10 +47,10 @@ pub fn write_clock_regression_chart_png(
   _results: &[ClockRegressionResult],
   _clock_model: &ClockModel,
   _filepath: impl AsRef<Path>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   progress_warn!(
-    progress,
+    log,
     "PNG chart output requested but binary was built without the 'png' feature"
   );
   Ok(())

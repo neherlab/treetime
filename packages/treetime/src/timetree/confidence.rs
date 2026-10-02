@@ -1,7 +1,7 @@
 use crate::clock::clock_model::{ClockModel, ClockModelStats};
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_error;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
 use crate::timetree::inference::time_inference::{NodePosterior, TimeInference};
 use crate::timetree::round::{RoundInputs, RoundState};
@@ -26,7 +26,7 @@ pub(crate) fn compute_rate_susceptibility(
   state: &RoundState,
   coalescent: Option<&CoalescentModel>,
   rate_std: f64,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<RateSusceptibility, Report> {
   let graph = &state.graph;
   let current_rate = state.clock_model.clock_rate();
@@ -44,25 +44,16 @@ pub(crate) fn compute_rate_susceptibility(
       gammas: &scaled_gammas,
       ..state.time_inference_inputs(inputs)
     };
-    run_timetree(&time_inputs, coalescent, progress)
+    run_timetree(&time_inputs, coalescent, log)
   };
 
-  progress_info!(
-    progress,
-    "Rate susceptibility: running with upper rate {upper_rate:.6e}"
-  );
+  progress_info!(log, "Rate susceptibility: running with upper rate {upper_rate:.6e}");
   let upper = run_scaled(upper_rate / current_rate).wrap_err("Rate susceptibility: timetree at upper rate failed")?;
 
-  progress_info!(
-    progress,
-    "Rate susceptibility: running with lower rate {lower_rate:.6e}"
-  );
+  progress_info!(log, "Rate susceptibility: running with lower rate {lower_rate:.6e}");
   let lower = run_scaled(lower_rate / current_rate).wrap_err("Rate susceptibility: timetree at lower rate failed")?;
 
-  progress_info!(
-    progress,
-    "Rate susceptibility: running with central rate {current_rate:.6e}"
-  );
+  progress_info!(log, "Rate susceptibility: running with central rate {current_rate:.6e}");
   let central = run_scaled(1.0).wrap_err("Rate susceptibility: timetree at central rate failed")?;
 
   let dates = graph
@@ -78,7 +69,7 @@ pub(crate) fn compute_rate_susceptibility(
     })
     .collect();
 
-  progress_info!(progress, "Rate susceptibility analysis completed");
+  progress_info!(log, "Rate susceptibility analysis completed");
   Ok(RateSusceptibility { dates, central })
 }
 
@@ -175,7 +166,7 @@ pub(crate) fn determine_rate_std(
   clock_std_dev: Option<f64>,
   covariation: bool,
   clock_model: &ClockModel,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<Option<f64>, Report> {
   if let Some(std_dev) = clock_std_dev {
     if std_dev <= 0.0 {
@@ -193,7 +184,7 @@ pub(crate) fn determine_rate_std(
       let rate_variance = stats.cov[[0, 0]];
       if rate_variance <= 0.0 {
         progress_warn!(
-          progress,
+          log,
           "Rate variance from regression covariance is non-positive ({rate_variance:.4e}), skipping rate susceptibility"
         );
         return Ok(None);

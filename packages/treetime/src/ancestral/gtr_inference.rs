@@ -1,7 +1,7 @@
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::partition::fitch::partition::PartitionFitch;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use ndarray::{Array1, Array2};
@@ -13,10 +13,10 @@ pub(crate) fn infer_gtr_fitch(
   partition: &PartitionFitch,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<GTR, Report> {
   let counts = get_mutation_counts_fitch(graph, partition, branch_lengths)?;
-  let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default(), progress)?;
+  let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default(), log)?;
   let n_states = partition.alphabet.n_canonical();
   let W = Some(W);
   GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()

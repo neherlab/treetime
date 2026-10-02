@@ -15,7 +15,7 @@ use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
-use treetime::progress::ProgressSink;
+use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::gap_fill::apply_gap_fill;
@@ -31,10 +31,11 @@ use treetime_primitives::{AlignmentRecord, Seq};
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<OptimizeResult, Report> {
   cancel.check()?;
-  progress.report("Reading input", 0.0, "");
+  stages.report("Reading input", 0.0, "");
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
   let gap_fill = args.gap_fill_args.effective_gap_fill();
@@ -70,7 +71,7 @@ pub fn run_optimize(
     branch_lengths,
   };
 
-  let output = pipeline::run(&params, input, &names, cancel, progress).map_err(|err| err.into_report())?;
+  let output = pipeline::run(&params, input, &names, cancel, stages, log).map_err(|err| err.into_report())?;
   let pipeline::OptimizeOutput {
     mut graph,
     gtr,
@@ -86,7 +87,7 @@ pub fn run_optimize(
 
   let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
-  progress.report("Writing output", 0.9, "");
+  stages.report("Writing output", 0.9, "");
 
   let nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut> = graph
     .get_nodes()
@@ -152,10 +153,10 @@ pub fn run_optimize(
       mutation_counts.as_ref(),
       path,
     )?;
-    progress_info!(progress, "Wrote augur node data JSON to {path}", path = path.display());
+    progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
 
-  progress.report("Done", 1.0, "");
+  stages.report("Done", 1.0, "");
 
   Ok(OptimizeResult { graph, nodes, edges })
 }

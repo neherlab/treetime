@@ -40,7 +40,7 @@ use std::path::{Path, PathBuf};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr, VariantNames};
 use treetime::cancel::Cancel;
-use treetime::progress::ProgressSink;
+use treetime::progress::{LogSink, StageSink};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_error;
 
@@ -209,19 +209,19 @@ impl CommandArgs {
     }
   }
 
-  pub fn execute(&self, cancel: &dyn Cancel, progress: &dyn ProgressSink) -> Result<(), Report> {
+  pub fn execute(&self, cancel: &dyn Cancel, stages: &dyn StageSink, log: &dyn LogSink) -> Result<(), Report> {
     match self {
-      Self::Timetree(args) => run_timetree_estimation(args, cancel, progress).map(|_| ()),
-      Self::Optimize(args) => run_optimize(args, cancel, progress).map(|_| ()),
-      Self::Prune(args) => run_prune(args, cancel, progress).map(|_| ()),
-      Self::Ancestral(args) => run_ancestral_reconstruction(args, cancel, progress).map(|_| ()),
-      Self::Clock(args) => run_clock(args, cancel, progress).map(|_| ()),
-      Self::Mugration(args) => run_mugration(args, cancel, progress).map(|_| ()),
+      Self::Timetree(args) => run_timetree_estimation(args, cancel, stages, log).map(|_| ()),
+      Self::Optimize(args) => run_optimize(args, cancel, stages, log).map(|_| ()),
+      Self::Prune(args) => run_prune(args, cancel, stages, log).map(|_| ()),
+      Self::Ancestral(args) => run_ancestral_reconstruction(args, cancel, stages, log).map(|_| ()),
+      Self::Clock(args) => run_clock(args, cancel, stages, log).map(|_| ()),
+      Self::Mugration(args) => run_mugration(args, cancel, stages, log).map(|_| ()),
     }
   }
 
-  pub fn run(&self, cancel: &dyn Cancel, progress: &dyn ProgressSink) -> Result<CommandOutcome, Report> {
-    self.execute(cancel, progress)?;
+  pub fn run(&self, cancel: &dyn Cancel, stages: &dyn StageSink, log: &dyn LogSink) -> Result<CommandOutcome, Report> {
+    self.execute(cancel, stages, log)?;
     let outputs = match self {
       Self::Timetree(args) => args.resolve_outputs()?,
       Self::Optimize(args) => args.resolve_outputs()?,

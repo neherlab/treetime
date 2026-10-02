@@ -8,7 +8,7 @@ use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::discrete::DiscreteStates;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::{make_error, make_report};
 use crate::{progress_info, progress_warn};
 use eyre::Report;
@@ -26,7 +26,7 @@ pub fn run(
   input: MugrationInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<MugrationOutput, OperationError> {
   cancel.check()?;
 
@@ -54,7 +54,7 @@ pub fn run(
 
       if !coverage.missing_values.is_empty() {
         progress_warn!(
-          progress,
+          log,
           "Mugration: discrete attributes missing from weights file: {} (ratio: {:.3})",
           coverage.missing_values.iter().join(", "),
           coverage.missing_ratio
@@ -76,7 +76,7 @@ pub fn run(
   }
 
   progress_info!(
-    progress,
+    log,
     "Mugration: found {n_states} discrete states: {}",
     discrete_states.iter().join(", ")
   );
@@ -103,16 +103,12 @@ pub fn run(
     names,
     MIN_BRANCH_LENGTH_FRACTION,
     params.filter_uninformative_root,
-    progress,
+    log,
   )?;
 
   let profile_lengths = branch_lengths_or_zero(&branch_lengths);
   let update = partition.marginal_update(&gtr, &graph, &profile_lengths, BTreeMap::new())?;
-  progress_info!(
-    progress,
-    "Mugration: initial log likelihood = {:.4}",
-    update.log_lh.value()
-  );
+  progress_info!(log, "Mugration: initial log likelihood = {:.4}", update.log_lh.value());
 
   let (gtr, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
     &partition,
@@ -124,7 +120,7 @@ pub fn run(
     params.sampling_bias_correction,
     &graph,
     &profile_lengths,
-    progress,
+    log,
   )?;
 
   let (reconstructed_traits, confidences) = gather_reconstruction_maps(&graph, &partition, &node_states);

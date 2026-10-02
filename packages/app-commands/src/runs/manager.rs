@@ -355,7 +355,7 @@ impl StartedRun {
         Ok(())
       })?;
       run.token.check()?;
-      prepared.args.run(&run.token, &progress)
+      prepared.args.run(&run.token, &progress, &progress)
     });
 
     let duration = clock.elapsed().as_secs_f64();

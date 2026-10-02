@@ -2,7 +2,7 @@ use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::make_error;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::timetree::coalescent::{
   CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
 };
@@ -37,13 +37,13 @@ pub(crate) fn coalescent_timescale(
   skyline_params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<CoalescentTimescale, Report> {
   let mode = match mode {
     CoalescentMode::Disabled => CoalescentMode::Constant,
     mode @ (CoalescentMode::Fixed(_) | CoalescentMode::Constant | CoalescentMode::Skyline) => mode,
   };
-  estimate_coalescent_tc(mode, graph, skyline_params, node_times, names, progress)
+  estimate_coalescent_tc(mode, graph, skyline_params, node_times, names, log)
     .wrap_err("Failed to estimate the coalescent timescale")?
     .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
 }
@@ -54,7 +54,7 @@ pub(crate) fn estimate_coalescent_tc(
   skyline_params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<Option<CoalescentTimescale>, Report> {
   let n_points = match mode {
     CoalescentMode::Disabled => return Ok(None),
@@ -70,7 +70,7 @@ pub(crate) fn estimate_coalescent_tc(
     },
     node_times,
     names,
-    progress,
+    log,
   )?;
   Ok(Some(CoalescentTimescale {
     distribution: result.tc_distribution,

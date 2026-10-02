@@ -21,7 +21,7 @@ mod tests {
         events.lock().push(iteration);
       }
     });
-    prepared.args.run(&NoopCancel, &progress).unwrap();
+    prepared.args.run(&NoopCancel, &progress, &progress).unwrap();
     let events = events.into_inner();
 
     let from_events: Vec<Vec<String>> = events
@@ -65,7 +65,7 @@ mod tests {
         events.lock().push(iteration);
       }
     });
-    prepared.args.run(&NoopCancel, &progress).unwrap();
+    prepared.args.run(&NoopCancel, &progress, &progress).unwrap();
     let events = events.into_inner();
     assert!(!events.is_empty());
     assert!(
@@ -89,7 +89,7 @@ mod tests {
         events.lock().push(iteration);
       }
     });
-    prepared.args.run(&NoopCancel, &progress).unwrap();
+    prepared.args.run(&NoopCancel, &progress, &progress).unwrap();
     let summary: Vec<(f64, bool)> = events
       .into_inner()
       .iter()

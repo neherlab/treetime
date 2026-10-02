@@ -1,5 +1,5 @@
 use crate::make_error;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_warn;
 use eyre::Report;
 use indexmap::IndexSet;
@@ -27,7 +27,7 @@ pub(crate) fn validate_trait_names(
   graph: &Graph,
   traits: &BTreeMap<String, String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   let leaf_names: IndexSet<String> = graph
     .get_leaves()
@@ -48,7 +48,7 @@ pub(crate) fn validate_trait_names(
     let sample = missing_in_tree.iter().take(10).join(", ");
     let suffix = if missing_in_tree.len() > 10 { "..." } else { "" };
     progress_warn!(
-      progress,
+      log,
       "Mugration: {} metadata names not present in tree: {sample}{suffix}",
       missing_in_tree.len()
     );

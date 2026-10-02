@@ -5,7 +5,7 @@ use crate::clock::clock_state::ClockInputs;
 use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::time_inference::likely_times;
@@ -30,10 +30,10 @@ pub(crate) fn reroot_tree(
   branch_params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<RerootedTree, Report> {
   progress_info!(
-    progress,
+    log,
     "Reroot params: split_edge={}, remove_trivial_root={}, force_positive_rate={}",
     reroot_params.split_edge,
     reroot_params.remove_trivial_root,
@@ -54,10 +54,10 @@ pub(crate) fn reroot_tree(
       graph, branch_lengths, ..
     },
     clock_reroot_result,
-  ) = fit_clock_to_dates(graph, branch_lengths, constraints, &fit, names, progress)?;
+  ) = fit_clock_to_dates(graph, branch_lengths, constraints, &fit, names, log)?;
 
   let branch_model = match clock_reroot_result.reroot_result() {
-    Some(reroot) => branch_model.apply_reroot(&graph, &branch_lengths, reroot, progress)?,
+    Some(reroot) => branch_model.apply_reroot(&graph, &branch_lengths, reroot, log)?,
     None => branch_model,
   };
 
@@ -75,7 +75,7 @@ pub(crate) fn fit_clock_to_dates(
   constraints: &DateConstraints,
   fit: &DatedClockFit<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockRerootResult), Report> {
   let times = likely_times(&graph, constraints, None)?;
   let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
@@ -93,7 +93,7 @@ pub(crate) fn fit_clock_to_dates(
     fit.reroot_params,
     None,
     names,
-    progress,
+    log,
   )
   .wrap_err(fit.failure)
 }

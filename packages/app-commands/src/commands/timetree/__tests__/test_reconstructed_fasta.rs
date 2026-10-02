@@ -144,7 +144,7 @@ mod tests {
       .unwrap();
       configure(&mut args);
 
-      run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
+      run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
       read_many_fasta_path(&[fasta], &Alphabet::default())
     }
   }

@@ -114,7 +114,7 @@ mod tests {
         output_dir.to_string_lossy().into_owned(),
       ];
       let args = treetime_parse_cli_args(argv).unwrap();
-      run_command(args.command, &NoopProgress).unwrap();
+      run_command(args.command, &NoopProgress, &NoopProgress).unwrap();
     }
 
     pub(super) struct ServerRun {

@@ -1,6 +1,6 @@
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_warn;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::time_inference::TimeInference;
@@ -67,13 +67,13 @@ pub(crate) fn compute_coalescent_log_lh(
   coalescent_tc: Option<&Distribution>,
   node_times: &CoalescentNodeTimes,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Option<LogLh> {
   let tc = coalescent_tc?;
-  match compute_coalescent_total_lh(graph, tc, node_times, names, progress) {
+  match compute_coalescent_total_lh(graph, tc, node_times, names, log) {
     Ok(lh) => Some(lh),
     Err(e) => {
-      progress_warn!(progress, "Coalescent log-likelihood unavailable: {e}");
+      progress_warn!(log, "Coalescent log-likelihood unavailable: {e}");
       None
     },
   }

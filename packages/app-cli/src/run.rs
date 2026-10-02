@@ -16,8 +16,9 @@ use app_commands::commands::homoplasy::run::run_homoplasy;
 use eyre::Report;
 use log::info;
 use std::env;
+use std::sync::Arc;
 use treetime::cancel::NoopCancel;
-use treetime::progress::{NoopProgress, ProgressSink};
+use treetime::progress::{LogSink, NoopProgress, StageSink};
 use treetime_utils::init::global::setup_logger;
 use treetime_utils::init::thread_pool::init_thread_pool;
 use treetime_utils::io::console::is_tty;
@@ -32,33 +33,33 @@ pub fn run_cli() -> Result<(), Report> {
 
   init_thread_pool(args.jobs.jobs)?;
 
-  let progress = make_progress(&args.verbosity)?;
-  run_command(args.command, &*progress)
+  let (stages, log) = make_progress(&args.verbosity)?;
+  run_command(args.command, &*stages, &*log)
 }
 
-pub(crate) fn run_command(command: TreetimeCommands, progress: &dyn ProgressSink) -> Result<(), Report> {
+pub(crate) fn run_command(command: TreetimeCommands, stages: &dyn StageSink, log: &dyn LogSink) -> Result<(), Report> {
   match command {
     TreetimeCommands::Completions { shell } => {
       generate_shell_completions(&shell)?;
     },
-    TreetimeCommands::Timetree(args) => CommandArgs::try_from(*args)?.execute(&NoopCancel, progress)?,
-    TreetimeCommands::Optimize(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, progress)?,
-    TreetimeCommands::Prune(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, progress)?,
-    TreetimeCommands::Ancestral(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, progress)?,
+    TreetimeCommands::Timetree(args) => CommandArgs::try_from(*args)?.execute(&NoopCancel, stages, log)?,
+    TreetimeCommands::Optimize(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, stages, log)?,
+    TreetimeCommands::Prune(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, stages, log)?,
+    TreetimeCommands::Ancestral(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, stages, log)?,
     TreetimeCommands::Clock(clock_args) => {
       let clock_args = TreetimeClockArgs::try_from(clock_args)?;
-      let result = run_clock(&clock_args, &NoopCancel, progress)?;
+      let result = run_clock(&clock_args, &NoopCancel, stages, log)?;
       if is_tty() {
         print_clock_regression_chart(&result.regression_results, &result.clock_model)?;
       }
     },
     TreetimeCommands::Homoplasy(homoplasy_args) => {
       let homoplasy_args = TreetimeHomoplasyArgs::try_from(homoplasy_args)?;
-      run_homoplasy(&homoplasy_args, &NoopCancel, progress)?;
+      run_homoplasy(&homoplasy_args, &NoopCancel)?;
     },
-    TreetimeCommands::Mugration(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, progress)?,
+    TreetimeCommands::Mugration(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, stages, log)?,
     TreetimeCommands::Pipeline(pipeline_args) => {
-      run_pipeline_command(&pipeline_args, progress)?;
+      run_pipeline_command(&pipeline_args, stages, log)?;
     },
     TreetimeCommands::Arg(_) => {},
     TreetimeCommands::Schema(TreetimeSchemaArgs { target, output }) => {
@@ -75,15 +76,21 @@ pub(crate) fn run_command(command: TreetimeCommands, progress: &dyn ProgressSink
   Ok(())
 }
 
-fn make_progress(verbosity: &Verbosity) -> Result<Box<dyn ProgressSink>, Report> {
+fn make_progress(verbosity: &Verbosity) -> Result<(Arc<dyn StageSink>, Arc<dyn LogSink>), Report> {
   Ok(match verbosity.get_log_level() {
-    None => Box::new(NoopProgress),
+    None => shared_sink(NoopProgress),
     Some(min_level) => {
       if !verbosity.no_progress && is_tty() {
-        Box::new(BarProgress::new(min_level)?)
+        shared_sink(BarProgress::new(min_level)?)
       } else {
-        Box::new(TextProgress::new(min_level))
+        shared_sink(TextProgress::new(min_level))
       }
     },
   })
+}
+
+fn shared_sink<S: StageSink + LogSink + 'static>(sink: S) -> (Arc<dyn StageSink>, Arc<dyn LogSink>) {
+  let sink = Arc::new(sink);
+  let stages: Arc<dyn StageSink> = Arc::<S>::clone(&sink);
+  (stages, sink)
 }

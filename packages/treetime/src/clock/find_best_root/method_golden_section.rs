@@ -3,7 +3,7 @@ use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::GoldenSectionParams;
 use crate::make_report;
 use crate::optimize::observer::OptimizationObserver;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use argmin::core::Executor;
 use argmin::core::observers::ObserverMode;
@@ -21,10 +21,10 @@ pub(crate) fn optimize_golden_section(
   cost_fn: &BranchPointCostFunction,
   params: &GoldenSectionParams,
   branch: &str,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
   progress_info!(
-    progress,
+    log,
     "Starting Golden Section optimization on the branch above {branch} with max_iters={}, tolerance={:.2e}",
     params.golden_max_iters,
     params.golden_tolerance
@@ -55,7 +55,7 @@ pub(crate) fn optimize_golden_section(
   let best_chisq = result.state.best_cost;
 
   progress_info!(
-    progress,
+    log,
     "Golden Section optimization completed after {} iterations: best_split = {:.6}, best_cost = {:.6e}",
     result.state.iter,
     best_split,

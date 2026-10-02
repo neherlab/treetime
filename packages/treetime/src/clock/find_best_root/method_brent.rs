@@ -3,7 +3,7 @@ use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::BrentParams;
 use crate::make_report;
 use crate::optimize::observer::OptimizationObserver;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use argmin::core::Executor;
 use argmin::core::observers::ObserverMode;
@@ -21,10 +21,10 @@ pub(crate) fn optimize_brent(
   cost_fn: &BranchPointCostFunction,
   params: &BrentParams,
   branch: &str,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
   progress_info!(
-    progress,
+    log,
     "Starting Brent optimization on the branch above {branch} with max_iters={}, tolerance={:.2e}",
     params.brent_max_iters,
     params.brent_tolerance
@@ -52,7 +52,7 @@ pub(crate) fn optimize_brent(
   let best_chisq = result.state.best_cost;
 
   progress_info!(
-    progress,
+    log,
     "Brent optimization completed after {} iterations: best_split = {:.6}, best_cost = {:.6e}",
     result.state.iter,
     best_split,

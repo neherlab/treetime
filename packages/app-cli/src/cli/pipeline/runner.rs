@@ -11,18 +11,22 @@ use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 use std::path::Path;
 use treetime::cancel::NoopCancel;
-use treetime::progress::ProgressSink;
+use treetime::progress::{LogSink, StageSink};
 use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::make_error;
 
-pub(crate) fn run_pipeline_command(args: &TreetimePipelineArgs, progress: &dyn ProgressSink) -> Result<(), Report> {
+pub(crate) fn run_pipeline_command(
+  args: &TreetimePipelineArgs,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
   let pipeline = load_pipeline(&args.config)?;
   let selected = (!args.steps.is_empty()).then(|| args.steps.iter().cloned().collect::<BTreeSet<String>>());
   validate_plan(&pipeline, selected.as_ref())?;
   if args.check {
     print_pipeline_plan(&pipeline, selected.as_ref())
   } else {
-    run_pipeline(&pipeline, selected.as_ref(), progress)
+    run_pipeline(&pipeline, selected.as_ref(), stages, log)
   }
 }
 
@@ -47,13 +51,14 @@ fn process_env() -> Value {
 pub(crate) fn run_pipeline(
   pipeline: &ResolvedPipeline,
   selected: Option<&BTreeSet<String>>,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   let steps = select_steps(pipeline, selected)?;
 
   let mut completed: Vec<&ResolvedStep> = Vec::new();
   for (position, step) in steps.iter().enumerate() {
-    if let Err(err) = run_step(step, progress) {
+    if let Err(err) = run_step(step, stages, log) {
       let remaining = steps[position..].iter().map(|step| step.name.as_str()).join(",");
       return Err(err.wrap_err(failure_report(step, &completed, &remaining)));
     }
@@ -91,8 +96,8 @@ pub(crate) fn select_steps<'a>(
   )
 }
 
-fn run_step(step: &ResolvedStep, progress: &dyn ProgressSink) -> Result<(), Report> {
-  step.command.args()?.execute(&NoopCancel, progress)
+fn run_step(step: &ResolvedStep, stages: &dyn StageSink, log: &dyn LogSink) -> Result<(), Report> {
+  step.command.args()?.execute(&NoopCancel, stages, log)
 }
 
 fn failure_report(failed: &ResolvedStep, completed: &[&ResolvedStep], remaining: &str) -> String {

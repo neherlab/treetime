@@ -154,7 +154,7 @@ mod tests {
       };
       configure(&mut raw);
       let args = TreetimeTimetreeArgs::try_from(raw)?;
-      run_timetree_estimation(&args, &NoopCancel, &NoopProgress)?;
+      run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
       let rows = csv_read_file(output.join("timetree.clock.csv"), b',')?;
       let model = json_read_file(output.join("timetree.clock-model.json"))?;
       Ok((rows, model))

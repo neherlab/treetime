@@ -1,6 +1,6 @@
 use crate::clock::clock_regression::ClockVarianceParams;
 use crate::make_report;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::seq::alignment::get_common_length;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
@@ -15,18 +15,18 @@ pub(crate) fn compute_effective_time_marginal(
   confidence: bool,
   clock_std_dev: Option<f64>,
   covariation: bool,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> TimeMarginalMode {
   if confidence && time_marginal == TimeMarginalMode::Never {
     if clock_std_dev.is_some() || covariation {
       progress_info!(
-        progress,
+        log,
         "--confidence: promoting time-marginal from never to only-final for CI estimation"
       );
       TimeMarginalMode::OnlyFinal
     } else {
       progress_warn!(
-        progress,
+        log,
         "Cannot estimate confidence intervals without clock rate uncertainty. \
          Specify --clock-std-dev or rerun with --covariation. \
          Proceeding without confidence estimation."
@@ -56,7 +56,7 @@ pub(crate) fn build_covariation_clock_params(
   sequence_length: Option<usize>,
   tip_slack: Option<f64>,
   aln: Option<&[AlignmentRecord]>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<Option<ClockVarianceParams>, Report> {
   if !covariation {
     return Ok(None);
@@ -72,7 +72,7 @@ pub(crate) fn build_covariation_clock_params(
   let tip_slack = tip_slack.unwrap_or(10.0);
 
   progress_info!(
-    progress,
+    log,
     "Covariation-aware clock regression: seq_len={seq_len}, tip_slack={tip_slack}"
   );
 

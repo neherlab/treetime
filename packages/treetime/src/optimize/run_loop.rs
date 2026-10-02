@@ -16,7 +16,7 @@ use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_no
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_warn;
 use eyre::Report;
 use itertools::{Itertools, izip};
@@ -443,11 +443,11 @@ pub(crate) fn apply_initial_guess_mode(
   no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   let invalid_branch_lengths = invalid_branch_length_descriptions(graph, branch_lengths, names)?;
   if let Some(message) = invalid_branch_length_warning(&invalid_branch_lengths) {
-    progress_warn!(progress, "{message}");
+    progress_warn!(log, "{message}");
   }
 
   match mode {

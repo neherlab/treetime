@@ -1,5 +1,5 @@
 use crate::gtr::gtr::avg_transition;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_warn;
 use eyre::Report;
 use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
@@ -13,7 +13,7 @@ const TINY_NUMBER: f64 = 1e-12;
 pub(crate) fn infer_gtr_impl(
   counts: &MutationCounts,
   options: &InferGtrOptions,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<InferGtrResult, Report> {
   let MutationCounts { nij, Ti, root_state } = counts;
   let InferGtrOptions {
@@ -69,12 +69,12 @@ pub(crate) fn infer_gtr_impl(
 
   if distance(&pi_old, &pi) > *dp {
     progress_warn!(
-      progress,
+      log,
       "When inferring GTR parameters: The iterative scheme has not converged."
     );
   } else if (pi.sum() - 1.0).abs() > *dp {
     progress_warn!(
-      progress,
+      log,
       "When inferring GTR parameters: Proper normalization was not reached."
     );
   }

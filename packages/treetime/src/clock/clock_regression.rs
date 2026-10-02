@@ -5,7 +5,7 @@ use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::reroot::{RerootParams, reroot_clock_tree};
 use crate::node_label::node_label;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
 use log::debug;
@@ -35,18 +35,18 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   reroot_params: &RerootParams,
   prev_clock_rate: Option<f64>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockRerootResult), Report> {
   if let Some(rate) = clock_rate {
     progress_info!(
-      progress,
+      log,
       "## Estimating clock model with fixed rate {rate:.6e} (keep_root={keep_root})"
     );
   } else {
-    progress_info!(progress, "## Estimating clock model (keep_root={keep_root})");
+    progress_info!(log, "## Estimating clock model (keep_root={keep_root})");
   }
 
-  progress_info!(progress, "### Running backward regression");
+  progress_info!(log, "### Running backward regression");
   let state = clock_regression_backward(
     &tree.graph,
     &tree.inputs,
@@ -58,7 +58,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   debug!("Backward regression completed");
 
   let (tree, state, reroot_result) = if keep_root {
-    progress_info!(progress, "### Keeping original root (--keep-root enabled)");
+    progress_info!(log, "### Keeping original root (--keep-root enabled)");
     (tree, state, None)
   } else {
     let reroot_params = clock_rate.map_or_else(
@@ -71,7 +71,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
       reroot_params: &reroot_params,
       prev_clock_rate,
     };
-    let (tree, state, reroot_result) = reroot_at_best_root(tree, state, &reroot, names, progress)?;
+    let (tree, state, reroot_result) = reroot_at_best_root(tree, state, &reroot, names, log)?;
     (tree, state, Some(reroot_result))
   };
 
@@ -83,15 +83,15 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
     prev_clock_rate,
   )?;
 
-  progress_info!(progress, "### Extracting clock model from root");
+  progress_info!(log, "### Extracting clock model from root");
   let root_key = tree.graph.get_exactly_one_root()?.key();
   let root_clock_set = state.node(root_key).clock_set.clone();
 
   let (regression, clock_model) = if let Some(rate) = clock_rate {
-    progress_info!(progress, "### Using fixed clock rate: {rate:.6e}");
+    progress_info!(log, "### Using fixed clock rate: {rate:.6e}");
     (None, Some(ClockModel::with_fixed_rate(&root_clock_set, rate)?))
   } else {
-    progress_info!(progress, "### Using estimated clock rate");
+    progress_info!(log, "### Using estimated clock rate");
     let regression = ClockRegression::try_from(&root_clock_set)?;
     (Some(regression), None)
   };
@@ -102,12 +102,12 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   let intercept = clock_model
     .as_ref()
     .map_or_else(|| regression.as_ref().unwrap().intercept(), |m| m.intercept());
-  progress_info!(progress, "**Clock rate:** {rate:.6e}");
-  progress_info!(progress, "**Intercept:** {intercept:.4}");
+  progress_info!(log, "**Clock rate:** {rate:.6e}");
+  progress_info!(log, "**Intercept:** {intercept:.4}");
   if let Some(reg) = &regression {
-    progress_info!(progress, "**R²:** {:.4}", reg.r_squared());
-    progress_info!(progress, "**χ²:** {:.4}", reg.chisq());
-    progress_info!(progress, "**Hessian:**\n{}", reg.hessian());
+    progress_info!(log, "**R²:** {:.4}", reg.r_squared());
+    progress_info!(log, "**χ²:** {:.4}", reg.chisq());
+    progress_info!(log, "**Hessian:**\n{}", reg.hessian());
   }
 
   Ok((
@@ -133,9 +133,9 @@ fn reroot_at_best_root(
   state: ClockState,
   search: &RootSearch<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockState, RerootResult), Report> {
-  progress_info!(progress, "### Running forward regression to find optimal root");
+  progress_info!(log, "### Running forward regression to find optimal root");
   let state = clock_regression_forward(
     &tree.graph,
     &tree.inputs,
@@ -146,7 +146,7 @@ fn reroot_at_best_root(
   )?;
   debug!("Forward regression completed");
 
-  progress_info!(progress, "### Finding best root and rerooting tree");
+  progress_info!(log, "### Finding best root and rerooting tree");
   let (tree, state, reroot_result) = reroot_clock_tree(
     tree,
     state,
@@ -154,13 +154,9 @@ fn reroot_at_best_root(
     search.optimization_params,
     search.reroot_params,
     names,
-    progress,
+    log,
   )?;
-  progress_info!(
-    progress,
-    "Rerooted to {}",
-    node_label(names, reroot_result.new_root_key)
-  );
+  progress_info!(log, "Rerooted to {}", node_label(names, reroot_result.new_root_key));
   debug!("Rerooting completed");
   Ok((tree, state, reroot_result))
 }
@@ -221,14 +217,14 @@ impl ClockRerootResult {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  pub(crate) fn into_clock_model_allow_negative(self, progress: &dyn ProgressSink) -> ClockModel {
+  pub(crate) fn into_clock_model_allow_negative(self, log: &dyn LogSink) -> ClockModel {
     if let Some(model) = self.clock_model {
       return model;
     }
     let regression = self
       .regression
       .expect("ClockRerootResult has neither regression nor clock_model");
-    ClockModel::from_regression_allow_negative(&regression, progress)
+    ClockModel::from_regression_allow_negative(&regression, log)
   }
 
   #[allow(

@@ -6,7 +6,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::clock::date_constraints::load_date_constraints;
 use treetime::make_error;
 use treetime::optimize::params::BranchLengthMode;
-use treetime::progress::ProgressSink;
+use treetime::progress::LogSink;
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -15,7 +15,7 @@ use treetime_io::dates_csv::{DatesMap, read_dates};
 use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
 use treetime_io::nwk::nwk_read_file;
 
-pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, progress: &dyn ProgressSink) -> Result<InputData, Report> {
+pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) -> Result<InputData, Report> {
   let nwk_parsed = nwk_read_file(&args.tree).wrap_err("Failed to load tree from file")?;
   let confidences = nwk_parsed.confidences();
   let names = nwk_parsed.names();
@@ -50,7 +50,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, progress: &dyn Progre
       &args.date_column.date_column,
     )
     .wrap_err("When reading dates")?;
-    load_date_constraints(&dates, &graph, &names, progress).wrap_err("Failed to load date constraints")?;
+    load_date_constraints(&dates, &graph, &names, log).wrap_err("Failed to load date constraints")?;
     Some(dates)
   } else {
     None

@@ -18,7 +18,7 @@ use crate::optimize::run_loop::{
 };
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::sparse::reroot::reroot_sparse;
-use crate::progress::ProgressSink;
+use crate::progress::{LogSink, StageSink};
 use crate::reroot::div_stats::DivStats;
 use crate::reroot::div_stats_traversal::compute_div_stats;
 use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_in_place};
@@ -46,7 +46,8 @@ pub fn run(
   mut input: OptimizeInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
 ) -> Result<OptimizeOutput, OperationError> {
   if !(0.0..1.0).contains(&params.damping) {
     return Err(OperationError::InvalidParams(make_report!(
@@ -67,7 +68,7 @@ pub fn run(
     params.model,
     params.dense,
     &branch_lengths_or_zero(&branch_lengths),
-    progress,
+    log,
   )?;
   let model_name = created.model_name;
   let gtr = created.gtr;
@@ -89,13 +90,13 @@ pub fn run(
   if sparse_partitions.is_empty() {
     if !params.topology_ops.merge_siblings {
       progress_warn!(
-        progress,
+        log,
         "--no-merge-siblings has no effect in dense mode: sibling merging requires the sparse sequence representation"
       );
     }
     if !params.topology_ops.flip_parent_child {
       progress_warn!(
-        progress,
+        log,
         "--no-flip-parent-child has no effect in dense mode: the reversion hoist requires the sparse sequence representation"
       );
     }
@@ -133,13 +134,13 @@ pub fn run(
       params.no_indels,
       &mut branch_lengths,
       names,
-      progress,
+      log,
     )?;
   }
 
   if let Some(spec) = &params.reroot_spec {
-    progress_info!(progress, "Rerooting before optimization: {spec:?}");
-    progress.report("Rerooting", 0.2, "");
+    progress_info!(log, "Rerooting before optimization: {spec:?}");
+    stages.report("Rerooting", 0.2, "");
     (sparse_partitions, dense_partitions) = pre_reroot_optimize(
       &input.graph,
       sparse_partitions,
@@ -161,7 +162,7 @@ pub fn run(
   let loop_names = restrict_node_names(names, &input.graph);
 
   cancel.check()?;
-  progress.report("Optimizing branch lengths", 0.3, "");
+  stages.report("Optimizing branch lengths", 0.3, "");
   let loop_result = run_optimize_loop(
     &mut input.graph,
     sparse_partitions,
@@ -177,10 +178,7 @@ pub fn run(
   )?;
   let branch_lengths = loop_result.branch_lengths;
 
-  progress_info!(
-    progress,
-    "Re-running marginal to populate subs_ml after optimization loop"
-  );
+  progress_info!(log, "Re-running marginal to populate subs_ml after optimization loop");
   let marginal_bl = branch_lengths_or_zero(&branch_lengths);
   let (sparse_partitions, _) = marginal_update_sparse(&input.graph, &marginal_bl, loop_result.sparse_partitions)?;
   let (dense_partitions, _) = marginal_update_dense(&input.graph, &marginal_bl, loop_result.dense_partitions)?;

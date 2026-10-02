@@ -103,6 +103,7 @@ mod tests {
       &names,
       &NoopCancel,
       &NoopProgress,
+      &NoopProgress,
     )?;
 
     assert_eq!(output.graph.get_leaves().count(), leaves_before);
@@ -132,6 +133,7 @@ mod tests {
       &names,
       &NoopCancel,
       &NoopProgress,
+      &NoopProgress,
     )?;
 
     assert_eq!(output.graph.get_leaves().count(), leaves_before);
@@ -159,6 +161,7 @@ mod tests {
       &names,
       &NoopCancel,
       &NoopProgress,
+      &NoopProgress,
     )?;
 
     assert_eq!(output.graph.get_leaves().count(), leaves_before);
@@ -180,6 +183,7 @@ mod tests {
       },
       &names,
       &NoopCancel,
+      &NoopProgress,
       &NoopProgress,
     )?;
 

@@ -7,7 +7,7 @@ use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::create::{MarginalPartition, create_marginal_partition};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::prune::prune::prune_nodes;
 use crate::seq::alignment::node_seq_inputs;
 use eyre::eyre;
@@ -25,7 +25,7 @@ pub fn run(
   mut input: PruneInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) -> Result<PruneOutput, OperationError> {
   cancel.check()?;
 
@@ -48,13 +48,13 @@ pub fn run(
       GtrModelName::JC69,
       None,
       &branch_lengths_or_zero(&branch_lengths),
-      progress,
+      log,
     )?;
     let (partition, gtr) = match created.partition {
       MarginalPartition::Sparse(partition, _) => (partition, created.gtr),
       MarginalPartition::Dense(_) => {
         let gtr = get_gtr_by_name(GtrModelName::JC69)?;
-        log_gtr(&gtr, GtrModelName::JC69, progress);
+        log_gtr(&gtr, GtrModelName::JC69, log);
         let fitch =
           crate::ancestral::fitch::create_fitch_partition(&input.graph, 0, input.alphabet.clone(), &node_inputs)?;
         let (partition, _) = fitch.into_marginal_sparse(&input.graph)?;

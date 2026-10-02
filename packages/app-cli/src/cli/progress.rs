@@ -2,7 +2,7 @@ use eyre::{Report, WrapErr};
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{Level, log};
 use parking_lot::Mutex;
-use treetime::progress::{LogLevel, ProgressSink};
+use treetime::progress::{LogLevel, LogSink, StageSink};
 
 pub(crate) struct BarProgress {
   bar: ProgressBar,
@@ -27,7 +27,7 @@ impl Drop for BarProgress {
   }
 }
 
-impl ProgressSink for BarProgress {
+impl StageSink for BarProgress {
   #[allow(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
@@ -43,7 +43,9 @@ impl ProgressSink for BarProgress {
       self.bar.finish_and_clear();
     }
   }
+}
 
+impl LogSink for BarProgress {
   fn log(&self, level: LogLevel, message: &str) {
     if self.log_enabled(level) {
       self.bar.suspend(|| write_log(level, message));
@@ -73,10 +75,10 @@ impl TextProgress {
   dylint_lib = "treetime_lints",
   expect(
     debug_remnants,
-    reason = "the progress sink renders progress and log lines on stderr and has no error channel"
+    reason = "the stage sink renders stage lines on stderr and has no error channel"
   )
 )]
-impl ProgressSink for TextProgress {
+impl StageSink for TextProgress {
   fn report(&self, stage: &str, _fraction: f64, _message: &str) {
     if self.log_enabled(LogLevel::Info) {
       let mut last = self.last_stage.lock();
@@ -86,7 +88,9 @@ impl ProgressSink for TextProgress {
       }
     }
   }
+}
 
+impl LogSink for TextProgress {
   fn log(&self, level: LogLevel, message: &str) {
     if self.log_enabled(level) {
       write_log(level, message);
@@ -97,6 +101,7 @@ impl ProgressSink for TextProgress {
     level >= self.min_level
   }
 }
+
 fn write_log(level: LogLevel, message: &str) {
   let level = match level {
     LogLevel::Trace => Level::Trace,

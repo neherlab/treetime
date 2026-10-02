@@ -40,7 +40,8 @@ mod tests {
         "--config".to_owned(),
         path.to_string_lossy().into_owned(),
       ];
-      let result = treetime_parse_cli_args(argv).and_then(|args| run_command(args.command, &NoopProgress));
+      let result =
+        treetime_parse_cli_args(argv).and_then(|args| run_command(args.command, &NoopProgress, &NoopProgress));
       match result {
         Ok(()) => panic!("the CLI accepted the config"),
         Err(report) => report_to_string(&report),

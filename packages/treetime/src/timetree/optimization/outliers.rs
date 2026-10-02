@@ -1,5 +1,5 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
-use crate::progress::ProgressSink;
+use crate::progress::LogSink;
 use crate::progress_warn;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -16,16 +16,16 @@ pub(crate) fn report_outliers(
   iqd: f64,
   given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  progress: &dyn ProgressSink,
+  log: &dyn LogSink,
 ) {
   let records = collect_outlier_records(graph, outliers, divergences, clock_model, iqd, given_dates, names);
   if records.is_empty() {
     return;
   }
 
-  progress_warn!(progress, "Clock filter marked {} outliers:", records.len());
+  progress_warn!(log, "Clock filter marked {} outliers:", records.len());
   progress_warn!(
-    progress,
+    log,
     "{:>20} {:>12} {:>14} {:>10}",
     "name",
     "given_date",
@@ -34,7 +34,7 @@ pub(crate) fn report_outliers(
   );
   for r in &records {
     progress_warn!(
-      progress,
+      log,
       "{:>20} {:>12.2} {:>14.2} {:>10.2}",
       truncate_right_with_ellipsis(&r.name, 20),
       r.given_date,

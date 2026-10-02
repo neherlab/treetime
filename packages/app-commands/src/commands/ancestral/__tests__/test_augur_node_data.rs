@@ -306,7 +306,7 @@ mod tests {
       })
       .unwrap();
 
-      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress).unwrap();
+      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();
       std::fs::read_to_string(node_data_path).unwrap()
     }
 
@@ -346,7 +346,7 @@ mod tests {
       })
       .unwrap();
 
-      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress).unwrap();
+      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();
       json_read_str(std::fs::read_to_string(node_data_path).unwrap()).unwrap()
     }
 

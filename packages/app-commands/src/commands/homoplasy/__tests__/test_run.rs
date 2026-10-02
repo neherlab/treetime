@@ -6,7 +6,6 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::path::PathBuf;
   use treetime::cancel::NoopCancel;
-  use treetime::progress::NoopProgress;
 
   #[test]
   fn test_run_homoplasy_reports_not_implemented() {
@@ -19,7 +18,7 @@ mod tests {
     };
     let args = TreetimeHomoplasyArgs::try_from(raw).unwrap();
 
-    let err = run_homoplasy(&args, &NoopCancel, &NoopProgress).unwrap_err();
+    let err = run_homoplasy(&args, &NoopCancel).unwrap_err();
     assert_eq!("The homoplasy operation is not yet implemented in v1", err.to_string());
   }
 }
