@@ -334,7 +334,12 @@ mod tests {
         seed: Some(ROUND_TEST_SEED),
         ..marginal_timetree_params()
       };
-      let inputs = RoundInputs::new(&params, context, &leaf_bad_branches, &outliers);
+      let inputs = RoundInputs {
+        params: &params,
+        context,
+        leaf_bad_branches: &leaf_bad_branches,
+        outliers: &outliers,
+      };
 
       refinement_round(
         &inputs,

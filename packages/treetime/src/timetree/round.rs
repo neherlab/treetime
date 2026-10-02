@@ -1,10 +1,8 @@
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{
-  ClockFit, ClockRegressionPoint, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
+  ClockFit, ClockRegressionPoint, ClockTree, estimate_clock_model_with_reroot_policy,
 };
 use crate::clock::clock_state::ClockInputs;
-use crate::clock::date_constraints::DateConstraints;
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::progress::ProgressSink;
@@ -40,11 +38,11 @@ pub(crate) fn refinement_round(
   progress: &dyn ProgressSink,
 ) -> Result<(RoundState, RoundOutcome), Report> {
   let total_length = state.branch_model.sequence_length();
-  let state = relax_clock(inputs.relax, state, total_length, progress)?;
+  let state = relax_clock(&inputs.params.relax, state, total_length, progress)?;
 
   let previous_times = capture_node_times(&state.graph, &state.time_inference);
   let previous_states = capture_ancestral_states(&state.graph, &state.branch_model);
-  let (state, topology) = refine_topology(inputs.topology, state, total_length, merger_rate, rng, progress)?;
+  let (state, topology) = refine_topology(inputs, state, total_length, merger_rate, rng, progress)?;
   let state = refresh_times(inputs, prior, topology.changed(), state, progress)?;
 
   let current_states = capture_ancestral_states(&state.graph, &state.branch_model);
@@ -71,46 +69,10 @@ pub(crate) struct RoundState {
 }
 
 pub(crate) struct RoundInputs<'a> {
-  constraints: &'a DateConstraints,
-  leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
-  outliers: &'a BTreeSet<GraphNodeKey>,
-  clock_params: &'a ClockVarianceParams,
-  branch_params: &'a BranchPointOptimizationParams,
-  relax: &'a [f64],
-  topology: TopologyRefinement,
-  clock_rate: Option<f64>,
-  no_indels: bool,
-}
-
-impl<'a> RoundInputs<'a> {
-  pub(crate) fn new(
-    params: &'a TimetreeParams,
-    context: &'a TimetreeContext,
-    leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
-    outliers: &'a BTreeSet<GraphNodeKey>,
-  ) -> Self {
-    Self {
-      constraints: &context.date_constraints,
-      leaf_bad_branches,
-      outliers,
-      clock_params: &context.covariation_clock_params,
-      branch_params: &context.branch_params,
-      relax: &params.relax,
-      topology: if params.resolve_polytomies {
-        TopologyRefinement::Resolve
-      } else {
-        TopologyRefinement::Disabled
-      },
-      clock_rate: params.clock_rate,
-      no_indels: params.no_indels,
-    }
-  }
-}
-
-#[derive(Clone, Copy)]
-enum TopologyRefinement {
-  Disabled,
-  Resolve,
+  pub params: &'a TimetreeParams,
+  pub context: &'a TimetreeContext,
+  pub leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
+  pub outliers: &'a BTreeSet<GraphNodeKey>,
 }
 
 pub(crate) struct RoundOutcome {
@@ -180,14 +142,14 @@ fn relax_clock(
   reason = "count/index numeric cast is exact for the domain range"
 )]
 fn refine_topology(
-  topology: TopologyRefinement,
+  inputs: &RoundInputs<'_>,
   state: RoundState,
   total_length: usize,
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn RngCore,
   progress: &dyn ProgressSink,
 ) -> Result<(RoundState, TopologyOutcome), Report> {
-  if matches!(topology, TopologyRefinement::Disabled) {
+  if !inputs.params.resolve_polytomies {
     return Ok((state, TopologyOutcome::Unchanged));
   }
 
@@ -287,7 +249,7 @@ fn infer_times(
   let run = |prior: Option<&CoalescentModel>| {
     run_timetree(
       &state.graph,
-      inputs.constraints,
+      &inputs.context.date_constraints,
       inputs.leaf_bad_branches,
       &state.gammas,
       &state.branch_model,
@@ -295,7 +257,7 @@ fn infer_times(
       &state.names,
       &state.clock_model,
       prior,
-      inputs.no_indels,
+      inputs.params.no_indels,
       progress,
     )
   };
@@ -327,7 +289,11 @@ fn update_clock_model(
     .iter()
     .map(|(key, branch)| (*key, (branch.time_length, state.gammas[key])))
     .collect();
-  let times = likely_times(&state.graph, inputs.constraints, Some(&state.time_inference))?;
+  let times = likely_times(
+    &state.graph,
+    &inputs.context.date_constraints,
+    Some(&state.time_inference),
+  )?;
   let clock_inputs = ClockInputs::from_times(&state.graph, &times, &edge_inputs);
   let previous_clock_rate = state.clock_model.clock_rate();
   let (
@@ -342,10 +308,10 @@ fn update_clock_model(
       inputs: clock_inputs,
     },
     inputs.outliers,
-    inputs.clock_params,
-    inputs.clock_rate,
+    &inputs.context.covariation_clock_params,
+    inputs.params.clock_rate,
     true,
-    inputs.branch_params,
+    &inputs.context.branch_params,
     &RerootParams::default(),
     Some(previous_clock_rate),
     &state.names,

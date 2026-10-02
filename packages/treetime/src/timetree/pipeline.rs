@@ -79,15 +79,24 @@ pub fn run(
     estimate_initial_clock(params, &context, input.graph, input.branch_lengths, names, progress)?;
   let aln = input.sequences.as_deref();
   let init = initialize_branch_model(params, &graph, &branch_lengths, input.alphabet, aln, names, progress)?;
-  let pre_loop_inputs = PreLoopInputs::new(params, &context, names, aln.is_some());
+  let pre_loop_inputs = PreLoopInputs {
+    params,
+    context: &context,
+    names,
+    has_alignment: aln.is_some(),
+  };
   let pre_loop_state = PreLoopState::new(graph, branch_lengths, init.branch_model, clock_fit, leaf_bad_branches);
   let pre_loop = run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, progress)?;
 
   let initial = run_initial_round(params, &context, names, pre_loop, progress)?;
-  let round_inputs = RoundInputs::new(params, &context, &initial.leaf_bad_branches, &initial.outliers);
+  let round_inputs = RoundInputs {
+    params,
+    context: &context,
+    leaf_bad_branches: &initial.leaf_bad_branches,
+    outliers: &initial.outliers,
+  };
   let coalescent = &initial.coalescent;
   let (state, timescale) = run_optimization_loop(
-    params,
     &round_inputs,
     coalescent,
     initial.timescale,
@@ -101,16 +110,7 @@ pub fn run(
   cancel.check()?;
   progress.report("Postprocessing", 0.85, "");
   progress_info!(progress, "### TreeTime: postprocessing");
-  let leaf_bad_branches = &initial.leaf_bad_branches;
-  let final_times = refine_final_times(
-    params,
-    &context,
-    leaf_bad_branches,
-    coalescent,
-    &timescale,
-    state,
-    progress,
-  )?;
+  let final_times = refine_final_times(&round_inputs, coalescent, &timescale, state, progress)?;
   let filter_divergences = initial.filter_divergences.as_ref();
   let results = gather_results(
     params,
@@ -531,15 +531,15 @@ struct FinalTimes {
 }
 
 fn refine_final_times(
-  params: &TimetreeParams,
-  context: &TimetreeContext,
-  leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
+  inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,
   timescale: &CoalescentTimescale,
   state: RoundState,
   progress: &dyn ProgressSink,
 ) -> Result<FinalTimes, Report> {
-  let constraints = &context.date_constraints;
+  let params = inputs.params;
+  let constraints = &inputs.context.date_constraints;
+  let leaf_bad_branches = inputs.leaf_bad_branches;
   let rate_std = if params.confidence {
     determine_rate_std(params.clock_std_dev, params.covariation, &state.clock_model, progress)?
   } else {
@@ -575,7 +575,7 @@ fn refine_final_times(
     (state, BTreeMap::new())
   };
 
-  let state = if context.time_marginal == TimeMarginalMode::OnlyFinal {
+  let state = if inputs.context.time_marginal == TimeMarginalMode::OnlyFinal {
     progress_info!(
       progress,
       "### Final round: marginal reconstruction for confidence intervals"

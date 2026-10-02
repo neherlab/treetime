@@ -5,7 +5,7 @@ use crate::progress_info;
 use crate::timetree::coalescent_timescale::{CoalescentTimescale, coalescent_timescale};
 use crate::timetree::convergence::metrics::IterationClock;
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer, TraceSink};
-use crate::timetree::pipeline::{CoalescentSetup, TimetreeParams};
+use crate::timetree::pipeline::CoalescentSetup;
 use crate::timetree::round::{RoundInputs, RoundState, refinement_round};
 use eyre::{Report, WrapErr};
 use treetime_utils::sync::random::get_random_number_generator;
@@ -15,7 +15,6 @@ use treetime_utils::sync::random::get_random_number_generator;
   reason = "count/index numeric cast is exact for the domain range"
 )]
 pub(crate) fn run_optimization_loop(
-  params: &TimetreeParams,
   inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,
   timescale: CoalescentTimescale,
@@ -27,6 +26,7 @@ pub(crate) fn run_optimization_loop(
   cancel.check()?;
   progress.report("Optimization", 0.3, "");
   progress_info!(progress, "### TreeTime: Optimisation rounds");
+  let params = inputs.params;
   let mut optimizer = TimetreeOptimizer::new(params.max_iter, false);
   if let Some(sink) = trace_sink {
     optimizer = optimizer.with_trace_sink(sink);

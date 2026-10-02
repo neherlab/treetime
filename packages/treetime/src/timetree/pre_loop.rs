@@ -55,26 +55,10 @@ enum PreLoopStep {
 }
 
 pub(crate) struct PreLoopInputs<'a> {
-  params: &'a TimetreeParams,
-  context: &'a TimetreeContext,
-  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  has_alignment: bool,
-}
-
-impl<'a> PreLoopInputs<'a> {
-  pub(crate) fn new(
-    params: &'a TimetreeParams,
-    context: &'a TimetreeContext,
-    names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-    has_alignment: bool,
-  ) -> Self {
-    Self {
-      params,
-      context,
-      names,
-      has_alignment,
-    }
-  }
+  pub params: &'a TimetreeParams,
+  pub context: &'a TimetreeContext,
+  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub has_alignment: bool,
 }
 
 pub(crate) struct PreLoopState {
