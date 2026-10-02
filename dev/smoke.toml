@@ -249,6 +249,20 @@ variant = "translations"
 datasets = ["rsv/a/20"]
 args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --cdses=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
 selection = "nwk,augur-node-data,reconstructed-nuc-fasta,reconstructed-aa-fasta"
+outputs = [
+  "ancestral.nwk",
+  "ancestral.reconstructed-aa.NS1.fasta",
+  "ancestral.reconstructed-aa.NS2.fasta",
+  "ancestral.reconstructed-aa.N.fasta",
+  "ancestral.reconstructed-aa.P.fasta",
+  "ancestral.reconstructed-aa.M.fasta",
+  "ancestral.reconstructed-aa.SH.fasta",
+  "ancestral.reconstructed-aa.G.fasta",
+  "ancestral.reconstructed-aa.F.fasta",
+  "ancestral.reconstructed-aa.M2-1.fasta",
+  "ancestral.reconstructed-aa.M2-2.fasta",
+  "ancestral.reconstructed-aa.L.fasta",
+]
 
 # Input formats of the reference implementation: a Nexus tree and a PHYLIP alignment
 [[ancestral]]
