@@ -7,7 +7,7 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::time_inference::likely_times;
-  use crate::timetree::optimization::clock_filter::mark_outlier_leaves;
+  use crate::timetree::optimization::outliers::mark_outlier_leaves;
   use eyre::Report;
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;

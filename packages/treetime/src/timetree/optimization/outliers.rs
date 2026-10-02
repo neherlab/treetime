@@ -8,7 +8,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
-pub(crate) fn report_bad_branches(
+pub(crate) fn report_outliers(
   graph: &Graph,
   outliers: &BTreeSet<GraphNodeKey>,
   divergences: &BTreeMap<GraphNodeKey, f64>,

@@ -13,7 +13,7 @@ use crate::progress::ProgressSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::time_inference::likely_times;
-use crate::timetree::optimization::clock_filter::{mark_outlier_leaves, report_bad_branches};
+use crate::timetree::optimization::outliers::{mark_outlier_leaves, report_outliers};
 use crate::timetree::optimization::reroot::{RerootedTree, reroot_tree};
 use crate::timetree::pipeline::{TimetreeContext, TimetreeParams};
 use eyre::{Report, WrapErr};
@@ -260,7 +260,7 @@ fn filter_clock_outliers(
     inputs.params.clock_filter,
     progress,
   )?;
-  report_bad_branches(
+  report_outliers(
     graph,
     &outliers,
     &divergences,
