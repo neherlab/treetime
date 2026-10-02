@@ -21,8 +21,12 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
-use treetime_utils::{make_internal_error, make_internal_report};
+use treetime_utils::make_internal_error;
 
+#[expect(
+  clippy::zero_sized_map_values,
+  reason = "the graph pass takes a per-node input map; this pass has no per-node input and reads leaf observations by key"
+)]
 pub(crate) fn indexed_backward(
   inputs: &DenseInputs,
   gtr: &GTR,
@@ -38,29 +42,29 @@ pub(crate) fn indexed_backward(
       length,
       leaves,
     } => pass.map_backward(
-      leaves,
+      &BTreeMap::new(),
       branch_lengths,
-      |_| Ok(None),
+      |_| Ok(()),
       |context| {
         indexed_node_backward(
           gtr,
           min_branch_length,
           &context,
-          |obs| dense_leaf_backward(alphabet, obs),
+          |key| dense_leaf_backward(alphabet, &leaves[&key]),
           |children| backward_internal_dense(children, length),
         )
       },
     )?,
     IndexedKind::Discrete { leaves } => pass.map_backward(
-      leaves,
+      &BTreeMap::new(),
       branch_lengths,
-      |_| Ok(None),
+      |_| Ok(()),
       |context| {
         indexed_node_backward(
           gtr,
           min_branch_length,
           &context,
-          |obs| Ok(discrete_leaf_backward(obs)),
+          |key| Ok(discrete_leaf_backward(&leaves[&key])),
           |_| DenseSeqInfo::default(),
         )
       },
@@ -72,23 +76,19 @@ pub(crate) fn indexed_backward(
   })
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
+  reason = "the graph pass publishes every child edge message before its parent and gives every non-root node its parent edge"
 )]
-fn indexed_node_backward<O>(
+fn indexed_node_backward(
   gtr: &GTR,
   min_branch_length: f64,
-  context: &GraphPassBackwardContext<'_, Option<O>, f64, DenseNodeState, DenseEdgeBackward>,
-  leaf_backward: impl Fn(&O) -> Result<(DenseNodeState, DenseSeqDistribution), Report>,
+  context: &GraphPassBackwardContext<'_, (), f64, DenseNodeState, DenseEdgeBackward>,
+  leaf_backward: impl Fn(GraphNodeKey) -> Result<(DenseNodeState, DenseSeqDistribution), Report>,
   internal_seq: impl Fn(&[&DenseNodeState]) -> DenseSeqInfo,
 ) -> Result<GraphPassNodeOutput<DenseNodeState, DenseEdgeBackward>, Report> {
   let (mut node, msg_to_parent) = if context.is_leaf {
-    let obs = context
-      .input
-      .as_ref()
-      .ok_or_else(|| make_internal_report!("Leaf {} has no observation in the marginal backward pass", context.key))?;
-    leaf_backward(obs)?
+    leaf_backward(context.key)?
   } else {
     let children = context.children.iter().map(|child| child.node).collect_vec();
     let seq = internal_seq(&children);
@@ -276,10 +276,10 @@ pub(crate) enum IndexedKind<'a> {
   Dense {
     alphabet: &'a Alphabet,
     length: usize,
-    leaves: &'a BTreeMap<GraphNodeKey, Option<DenseLeafObs>>,
+    leaves: &'a BTreeMap<GraphNodeKey, DenseLeafObs>,
   },
   Discrete {
-    leaves: &'a BTreeMap<GraphNodeKey, Option<Array2<f64>>>,
+    leaves: &'a BTreeMap<GraphNodeKey, Array2<f64>>,
   },
 }
 

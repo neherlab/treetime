@@ -20,7 +20,7 @@ use treetime_utils::array::ndarray::argmax_first;
 pub struct PartitionMarginalDiscrete {
   pub(crate) inputs: DenseInputs,
   pub(crate) states: DiscreteStates,
-  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, Option<Array2<f64>>>,
+  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, Array2<f64>>,
 }
 
 impl PartitionMarginalDiscrete {
@@ -44,7 +44,7 @@ impl PartitionMarginalDiscrete {
           .get(&leaf_name)
           .and_then(|trait_value| states.get_index(trait_value))
           .map_or_else(|| uniform_profile(n_states), |index| one_hot_profile(index, n_states));
-        (leaf_key, Some(profile))
+        (leaf_key, profile)
       })
       .collect();
     Ok(Self {

@@ -195,8 +195,6 @@ mod tests {
       name: &str,
     ) -> Array1<f64> {
       partition.obs_leaves[&get_node_key(graph, names, name)]
-        .as_ref()
-        .expect("leaf has an observation")
         .row(0)
         .to_owned()
     }

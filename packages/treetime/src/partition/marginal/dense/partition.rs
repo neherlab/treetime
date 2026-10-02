@@ -34,7 +34,7 @@ pub struct PartitionMarginalDense {
   pub(crate) index: usize,
   pub(crate) alphabet: Alphabet,
   pub(crate) length: usize,
-  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, Option<DenseLeafObs>>,
+  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, DenseLeafObs>,
 }
 
 impl PartitionMarginalDense {
@@ -58,7 +58,7 @@ impl PartitionMarginalDense {
           .seq
           .as_ref()
           .ok_or_else(|| make_report!("Leaf sequence not found: '{}'", node.name.as_deref().unwrap_or("")))?;
-        Ok((leaf_key, Some(DenseLeafObs::new(seq, &alphabet))))
+        Ok((leaf_key, DenseLeafObs::new(seq, &alphabet)))
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;
     let min_branch_length = MIN_BRANCH_LENGTH_FRACTION / length as f64;
