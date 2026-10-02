@@ -59,7 +59,7 @@ Because the stored sequence is no longer the emitted one, every reader must go t
 
 Internal-node sequences change at two classes of position: where an ancestor's most likely state deviates from parsimony and the node itself resolved the position, and where a node inherited a deletion. Per-edge `ml_subs` follow, since they are derived from the corrected sequences, and the `parent + mutations == child` invariant continues to hold. Posteriors, the marginal log-likelihood, the inferred GTR, tip sequences, and the dense backend are unchanged.
 
-Sparse and dense now agree byte-for-byte on the 676-tip dataset at 1000, 1500, 3000, and the full 29903 columns (950 nodes each). On `data/sc2/4500` the remaining sparse/dense differences at positions 28369 and 23009 are ones the previous implementation shared, and are tracked in [M-ancestral-sparse-dense-internal-gap-placement-diverges](../issues/M-ancestral-sparse-dense-internal-gap-placement-diverges.md).
+Sparse and dense now agree byte-for-byte on the 676-tip dataset at 1000, 1500, 3000, and the full 29903 columns (950 nodes each). On `data/sc2/4500` the two backends place every gap and unknown character at the same positions since [kb/decisions/ancestral-dense-gap-rule-observed-leaf-gaps.md](ancestral-dense-gap-rule-observed-leaf-gaps.md); the remaining differences in reconstructed residues are tracked in [kb/issues/M-ancestral-sparse-dense-internal-residues-diverge.md](../issues/M-ancestral-sparse-dense-internal-residues-diverge.md).
 
 ## Test coverage
 

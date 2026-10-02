@@ -13,11 +13,11 @@ Felsenstein pruning (<a id="cite-1"></a>[Felsenstein 1981](https://doi.org/10.10
 v1: shared marginal infrastructure in [`packages/treetime/src/partition/marginal_core.rs`](../../packages/treetime/src/partition/marginal_core.rs) with discrete-specific partition [`packages/treetime/src/partition/marginal_discrete.rs`](../../packages/treetime/src/partition/marginal_discrete.rs).
 v0: [`packages/legacy/treetime/treetime/wrappers.py#L653-L811`](../../packages/legacy/treetime/treetime/wrappers.py#L653-L811).
 
-Key functions: `update_marginal_mut()`, `PartitionMarginalDiscrete::attach_traits()`.
+Key functions: `MarginalPasses::marginal_update()`, `PartitionMarginalDiscrete::new()`.
 
 ### Algorithm
 
-Initialization (`attach_traits()` in [`packages/treetime/src/partition/marginal_discrete.rs#L44`](../../packages/treetime/src/partition/marginal_discrete.rs#L44)):
+Initialization (`PartitionMarginalDiscrete::new()` in [`packages/treetime/src/partition/marginal/discrete/partition.rs#L27`](../../packages/treetime/src/partition/marginal/discrete/partition.rs#L27)) stores one observation per leaf, and every backward pass starts from it:
 
 For each leaf node:
 

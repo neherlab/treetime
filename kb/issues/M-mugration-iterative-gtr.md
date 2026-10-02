@@ -17,7 +17,13 @@ Per project rules, numerical error > 1e-6 against the v0 oracle is a defect. Thi
 
 - **Stale forward messages**: v0 runs a full marginal pass under the first fitted GTR before its rate-and-GTR iterations (`infer_ancestral_sequences` calls `_ml_anc` after `infer_gtr`, [packages/legacy/treetime/treetime/treeanc.py#L564-L566](../../packages/legacy/treetime/treetime/treeanc.py#L564-L566)). v1 `refine_gtr_model_and_rate` ([packages/treetime/src/gtr/refinement.rs](../../packages/treetime/src/gtr/refinement.rs)) refreshes the backward messages through the rate optimization but keeps the forward messages from the initial GTR for every iteration. The claim in [kb/proposals/mugration-full-reconstruction-per-iteration.md](../proposals/mugration-full-reconstruction-per-iteration.md) that v1 matches v0 here does not hold
 - **Rate-optimizer evaluation point**: v0's `optimize_gtr_rate` sets the rate to the optimum without a new backward pass, so its subtree messages come from the last Brent evaluation; v1 recomputes them at the optimum
-- **Leaf evidence overwritten**: the shared dense/discrete forward pass overwrites each leaf's observed profile with its posterior ([packages/treetime/src/partition/marginal/shared/pass.rs](../../packages/treetime/src/partition/marginal/shared/pass.rs)), and the rate optimization then runs a backward pass on that state. A leaf with a missing trait feeds its own posterior back as evidence. v0 never reassigns leaf subtree likelihoods ([packages/legacy/treetime/treetime/treeanc.py#L840-L849](../../packages/legacy/treetime/treetime/treeanc.py#L840-L849))
+
+## Leaf evidence
+
+Discrete leaves keep their observed trait as evidence in every pass ([packages/treetime/src/partition/marginal/discrete/partition.rs](../../packages/treetime/src/partition/marginal/discrete/partition.rs)), as v0 does, so a leaf posterior never feeds back as evidence. This is not the cause of the divergence above:
+
+- The golden master datasets have no leaf with a missing trait. Their outputs do not depend on this rule, and zika_20_country root `NODE_0000000` is `0.4800` (v0 `0.4812`)
+- Inputs with missing traits diverge more. On `data/zika/20` with the country of three leaves set to `?`, v1 fits the rate 7.7146 and v0 fits 6.4068. The cause is not localized
 
 ## Affected golden master tests
 
