@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::params::AncestralParams;
   use crate::ancestral::params::MethodAncestral;
-  use crate::ancestral::plan::{ReconPlan, resolve_plan};
+  use crate::ancestral::plan::{ReconstructionPlan, resolve_plan};
   use crate::error::OperationError;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::Representation;
@@ -13,7 +13,7 @@ mod tests {
   #[test]
   fn test_plan_parsimony_resolves_to_fitch() {
     let params = helpers::params(MethodAncestral::Parsimony);
-    assert!(matches!(resolve_plan(&params), Ok(ReconPlan::Fitch)));
+    assert!(matches!(resolve_plan(&params), Ok(ReconstructionPlan::Fitch)));
   }
 
   #[rustfmt::skip]
@@ -27,7 +27,7 @@ mod tests {
       dense,
       ..helpers::params(MethodAncestral::Marginal)
     };
-    let Ok(ReconPlan::Marginal { representation, .. }) = resolve_plan(&params) else {
+    let Ok(ReconstructionPlan::Marginal { representation, .. }) = resolve_plan(&params) else {
       panic!("marginal method must resolve to a marginal plan");
     };
     assert_eq!(expected_dense, matches!(representation, Representation::Dense));
@@ -49,7 +49,7 @@ mod tests {
       gtr_iterations,
       ..helpers::params(MethodAncestral::Marginal)
     };
-    let Ok(ReconPlan::Marginal { gtr_refinement, .. }) = resolve_plan(&params) else {
+    let Ok(ReconstructionPlan::Marginal { gtr_refinement, .. }) = resolve_plan(&params) else {
       panic!("marginal method must resolve to a marginal plan");
     };
     assert_eq!(expected, gtr_refinement);
@@ -61,7 +61,7 @@ mod tests {
       model: GtrModelName::HKY85,
       ..helpers::params(MethodAncestral::Marginal)
     };
-    let Ok(ReconPlan::Marginal { model, .. }) = resolve_plan(&params) else {
+    let Ok(ReconstructionPlan::Marginal { model, .. }) = resolve_plan(&params) else {
       panic!("marginal method must resolve to a marginal plan");
     };
     assert!(matches!(model, GtrModelName::HKY85));

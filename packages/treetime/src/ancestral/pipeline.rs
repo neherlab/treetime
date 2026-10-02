@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::params::AncestralParams;
 use crate::ancestral::partition::AncestralPartition;
-use crate::ancestral::plan::{ReconOptions, ReconstructedPartition, reconstruct_partition, resolve_plan};
+use crate::ancestral::plan::{ReconstructedPartition, ReconstructionOptions, reconstruct_partition, resolve_plan};
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
@@ -23,7 +23,7 @@ pub fn run(
   log: &dyn LogSink,
 ) -> Result<AncestralOutputFull, OperationError> {
   let plan = resolve_plan(params)?;
-  let options = ReconOptions::new(
+  let options = ReconstructionOptions::new(
     params.include_leaves,
     params.impute_missing_data,
     params.sample_from_profile,

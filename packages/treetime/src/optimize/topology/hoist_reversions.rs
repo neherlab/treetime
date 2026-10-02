@@ -140,8 +140,8 @@ pub(crate) fn hoist_reverting_child(
   let mut splits = Vec::with_capacity(sparse.len());
   let mut total_parent_subs = 0_usize;
   let mut total_hoisted_subs = 0_usize;
-  for family in sparse.iter() {
-    let obs_edges = &family.obs_edges;
+  for partition in sparse.iter() {
+    let obs_edges = &partition.obs_edges;
     let parent_subs = obs_edges
       .get(&parent_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());

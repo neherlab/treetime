@@ -51,8 +51,8 @@ impl<'a> TimetreeOptimizer<'a> {
 
   pub(crate) fn record(
     &mut self,
-    n_diff: usize,
-    n_resolved: usize,
+    sequence_changes: usize,
+    resolved_nodes: usize,
     time_change: NodeTimeChange,
     graph: &Graph,
     branch_model: &BranchModel,
@@ -71,8 +71,8 @@ impl<'a> TimetreeOptimizer<'a> {
       .reduce(|acc, v| acc + v);
 
     let metric = ConvergenceMetrics {
-      n_diff,
-      n_resolved,
+      n_diff: sequence_changes,
+      n_resolved: resolved_nodes,
       max_time_change: time_change.max,
       rms_time_change: time_change.rms,
       log_lh_seq,
@@ -91,7 +91,7 @@ impl<'a> TimetreeOptimizer<'a> {
 
     progress_info!(
       log,
-      "  Iteration {}: max_dt={:.4}, rms_dt={:.4}, n_diff={n_diff}, n_resolved={n_resolved}, log_lh_seq={:.2}, log_lh_pos={:.2}, log_lh_coal={:.2}, log_lh_total={:.2}{}",
+      "  Iteration {}: max_dt={:.4}, rms_dt={:.4}, n_diff={sequence_changes}, n_resolved={resolved_nodes}, log_lh_seq={:.2}, log_lh_pos={:.2}, log_lh_coal={:.2}, log_lh_total={:.2}{}",
       self.i,
       metric.max_time_change.unwrap_or(f64::NAN),
       metric.rms_time_change.unwrap_or(f64::NAN),

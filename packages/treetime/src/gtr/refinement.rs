@@ -22,7 +22,7 @@ pub(crate) fn refine_gtr_model<P: MarginalPasses>(
   iterations: usize,
   pc: f64,
   graph: &Graph,
-  profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
 ) -> Result<(GTR, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report> {
   let MarginalUpdate {
@@ -37,12 +37,12 @@ pub(crate) fn refine_gtr_model<P: MarginalPasses>(
 
   let mut gtr = gtr;
   for i in 0..=iterations {
-    let counts = partition.count_transitions(&gtr, graph, profile_lengths, &node_states, &backward, &forward)?;
+    let counts = partition.count_transitions(&gtr, graph, branch_lengths, &node_states, &backward, &forward)?;
     gtr = infer_gtr(&counts, &options, gtr.pi.len(), log)?;
     debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu);
   }
 
-  let update = partition.marginal_update(&gtr, graph, profile_lengths, P::backward_input(&node_states))?;
+  let update = partition.marginal_update(&gtr, graph, branch_lengths, P::backward_input(&node_states))?;
   log_final(&gtr, update.log_lh, log);
   Ok((gtr, update))
 }
@@ -56,7 +56,7 @@ pub(crate) fn refine_gtr_model_and_rate<P: MarginalPasses>(
   pc: f64,
   sampling_bias_correction: Option<f64>,
   graph: &Graph,
-  profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
 ) -> Result<(GTR, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report>
 where
@@ -77,9 +77,9 @@ where
   let mut nodes = node_states;
   let mut backward = backward;
   for i in 0..=iterations {
-    let counts = partition.count_transitions(&gtr, graph, profile_lengths, &nodes, &backward, &forward)?;
+    let counts = partition.count_transitions(&gtr, graph, branch_lengths, &nodes, &backward, &forward)?;
     gtr = infer_gtr(&counts, &options, gtr.pi.len(), log)?;
-    (gtr, nodes, backward) = optimize_gtr_rate(partition, gtr, &nodes, graph, profile_lengths, log)?;
+    (gtr, nodes, backward) = optimize_gtr_rate(partition, gtr, &nodes, graph, branch_lengths, log)?;
     debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu);
   }
 
@@ -92,7 +92,7 @@ where
     );
   }
 
-  let update = partition.marginal_update(&gtr, graph, profile_lengths, P::backward_input(&nodes))?;
+  let update = partition.marginal_update(&gtr, graph, branch_lengths, P::backward_input(&nodes))?;
   log_final(&gtr, update.log_lh, log);
   Ok((gtr, update))
 }
@@ -131,7 +131,7 @@ fn optimize_gtr_rate<P: MarginalPasses>(
   gtr: GTR,
   nodes: &BTreeMap<GraphNodeKey, P::Node>,
   graph: &Graph,
-  profile_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
 ) -> Result<
   (
@@ -153,8 +153,8 @@ where
   let evaluate = |sqrt_mu: f64| -> (f64, Option<GtrRateCandidate<P>>) {
     let mut candidate_gtr = gtr.clone();
     candidate_gtr.mu = sqrt_mu * sqrt_mu;
-    let input = P::backward_input_with_reset_log_lh(nodes);
-    match partition.marginal_backward(&candidate_gtr, graph, profile_lengths, &input) {
+    let input = P::fresh_backward_input(nodes);
+    match partition.marginal_backward(&candidate_gtr, graph, branch_lengths, &input) {
       Ok(MarginalBackward {
         node_states: candidate_nodes,
         backward,
@@ -222,7 +222,7 @@ where
         (gtr, nodes, backward)
       } else {
         let MarginalBackward { node_states, backward } =
-          partition.marginal_backward(&gtr, graph, profile_lengths, P::backward_input(nodes))?;
+          partition.marginal_backward(&gtr, graph, branch_lengths, P::backward_input(nodes))?;
         (gtr, node_states, backward)
       };
     restored_gtr.mu = old_mu;

@@ -12,8 +12,8 @@ use treetime_utils::sync::random::get_random_number_generator;
 pub(crate) fn run_refinement_loop(
   inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,
-  timescale: CoalescentTimescale,
-  state: RoundState,
+  mut timescale: CoalescentTimescale,
+  mut state: RoundState,
   trace_sink: Option<Box<dyn TraceSink + '_>>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
@@ -38,8 +38,6 @@ pub(crate) fn run_refinement_loop(
   }
   let mut rng = get_random_number_generator(Some(seed));
 
-  let mut state = state;
-  let mut timescale = timescale;
   while let Some(IterationContext { i }) = optimizer.next_iter(log) {
     cancel.check()?;
     #[expect(

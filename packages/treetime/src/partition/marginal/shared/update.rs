@@ -17,7 +17,7 @@ pub trait MarginalPasses {
 
   fn backward_input(node_states: &BTreeMap<GraphNodeKey, Self::Node>) -> &Self::BackwardInput;
 
-  fn backward_input_with_reset_log_lh(node_states: &BTreeMap<GraphNodeKey, Self::Node>) -> Self::BackwardInput;
+  fn fresh_backward_input(node_states: &BTreeMap<GraphNodeKey, Self::Node>) -> Self::BackwardInput;
 
   fn marginal_backward(
     &self,

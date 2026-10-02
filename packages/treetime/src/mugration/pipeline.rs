@@ -106,8 +106,8 @@ pub fn run(
     log,
   )?;
 
-  let profile_lengths = branch_lengths_or_zero(&branch_lengths);
-  let update = partition.marginal_update(&gtr, &graph, &profile_lengths, &())?;
+  let branch_lengths = branch_lengths_or_zero(&branch_lengths);
+  let update = partition.marginal_update(&gtr, &graph, &branch_lengths, &())?;
   progress_info!(log, "Mugration: initial log likelihood = {:.4}", update.log_lh.value());
 
   let (gtr, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
@@ -119,7 +119,7 @@ pub fn run(
     params.pc.unwrap_or(1.0),
     params.sampling_bias_correction,
     &graph,
-    &profile_lengths,
+    &branch_lengths,
     log,
   )?;
 

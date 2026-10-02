@@ -236,7 +236,7 @@ impl MarginalPasses for PartitionMarginalDense {
     &()
   }
 
-  fn backward_input_with_reset_log_lh(_node_states: &BTreeMap<GraphNodeKey, DenseNodeState>) -> Self::BackwardInput {}
+  fn fresh_backward_input(_node_states: &BTreeMap<GraphNodeKey, DenseNodeState>) -> Self::BackwardInput {}
 
   fn marginal_backward(
     &self,

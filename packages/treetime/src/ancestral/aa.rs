@@ -1,7 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::partition::AncestralPartition;
-use crate::ancestral::plan::{ReconOptions, ReconPlan, ReconstructedPartition, reconstruct_partition};
+use crate::ancestral::plan::{
+  ReconstructedPartition, ReconstructionOptions, ReconstructionPlan, reconstruct_partition,
+};
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::gtr::get_gtr::GtrModelName;
@@ -34,13 +36,13 @@ pub fn reconstruct_aa(
   log: &dyn LogSink,
 ) -> Result<AaNodeData, Report> {
   let mut rng = get_random_number_generator(params.seed);
-  let options = ReconOptions::new(
+  let options = ReconstructionOptions::new(
     params.include_leaves,
     params.impute_missing_data,
     params.sample_from_profile,
   );
   let representation = Representation::resolve(params.dense);
-  let profile_lengths = branch_lengths_or_zero(branch_lengths);
+  let branch_lengths = branch_lengths_or_zero(branch_lengths);
   let mut aa_node_data = AaNodeData::default();
   if let Some(sink) = seq_sink.as_mut() {
     sink.on_topology(graph)?;
@@ -56,7 +58,7 @@ pub fn reconstruct_aa(
     } = cds;
     let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names, log)?;
     let node_inputs = node_seq_inputs(graph, names, sequences);
-    let plan = ReconPlan::Marginal {
+    let plan = ReconstructionPlan::Marginal {
       representation,
       model: gtr_model,
       gtr_refinement: None,
@@ -67,7 +69,7 @@ pub fn reconstruct_aa(
       index,
       alphabet,
       &node_inputs,
-      &profile_lengths,
+      &branch_lengths,
       &options,
       &mut rng,
       cancel,

@@ -33,7 +33,7 @@ pub fn write_clock_regression_chart_png(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
   filepath: impl AsRef<Path>,
-  _progress: &dyn LogSink,
+  _log: &dyn LogSink,
 ) -> Result<(), Report> {
   let img = write_clock_regression_chart_bitmap(results, clock_model)?;
   let mut f = &mut create_file_or_stdout(filepath)?;

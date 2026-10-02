@@ -400,6 +400,7 @@ fn update_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn Log
   )?;
   let clock_inputs = ClockInputs::from_times(&state.graph, &times, &edge_inputs);
   let previous_clock_rate = state.clock_model.clock_rate();
+  let keep_root = true;
   let (
     ClockTree {
       graph, branch_lengths, ..
@@ -414,7 +415,7 @@ fn update_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn Log
     inputs.outliers,
     &inputs.context.covariation_clock_params,
     inputs.params.clock_rate,
-    true,
+    keep_root,
     &inputs.context.branch_params,
     &RerootParams::default(),
     Some(previous_clock_rate),

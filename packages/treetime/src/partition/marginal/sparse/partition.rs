@@ -176,7 +176,7 @@ impl MarginalPasses for PartitionMarginalSparse {
     node_states
   }
 
-  fn backward_input_with_reset_log_lh(node_states: &BTreeMap<GraphNodeKey, SparseNodeState>) -> Self::BackwardInput {
+  fn fresh_backward_input(node_states: &BTreeMap<GraphNodeKey, SparseNodeState>) -> Self::BackwardInput {
     let mut input = node_states.clone();
     for node in input.values_mut() {
       node.profile.log_lh = LogLh::ZERO;

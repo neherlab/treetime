@@ -28,7 +28,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_utils::{make_internal_report, make_report};
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum ReconPlan {
+pub(crate) enum ReconstructionPlan {
   Fitch,
   Marginal {
     representation: Representation,
@@ -37,12 +37,12 @@ pub(crate) enum ReconPlan {
   },
 }
 
-pub(crate) struct ReconOptions {
+pub(crate) struct ReconstructionOptions {
   pub(crate) tips: TipStates,
   pub(crate) sample_mode: SampleMode,
 }
 
-impl ReconOptions {
+impl ReconstructionOptions {
   pub(crate) const fn new(include_leaves: bool, impute: bool, sample_mode: SampleMode) -> Self {
     Self {
       tips: TipStates { include_leaves, impute },
@@ -56,7 +56,7 @@ pub(crate) struct ReconstructedPartition {
   pub(crate) emitted_nodes: Vec<GraphNodeKey>,
 }
 
-pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconPlan, OperationError> {
+pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPlan, OperationError> {
   if params.site_specific_gtr {
     return Err(OperationError::InvalidParams(make_report!(
       "--site-specific-gtr is not implemented"
@@ -73,8 +73,8 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconPlan, Operat
   }
 
   match params.method {
-    MethodAncestral::Parsimony => Ok(ReconPlan::Fitch),
-    MethodAncestral::Marginal => Ok(ReconPlan::Marginal {
+    MethodAncestral::Parsimony => Ok(ReconstructionPlan::Fitch),
+    MethodAncestral::Marginal => Ok(ReconstructionPlan::Marginal {
       representation: Representation::resolve(params.dense),
       model: params.model,
       gtr_refinement: (params.gtr_iterations > 0 && params.model == GtrModelName::Infer)
@@ -96,20 +96,22 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconPlan, Operat
 
 pub(crate) fn reconstruct_partition(
   graph: &Graph,
-  plan: &ReconPlan,
+  plan: &ReconstructionPlan,
   index: usize,
   alphabet: Alphabet,
   node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  options: &ReconOptions,
+  options: &ReconstructionOptions,
   rng: &mut dyn RngCore,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<ReconstructedPartition, Report> {
   match *plan {
-    ReconPlan::Fitch => reconstruct_fitch(graph, index, alphabet, node_inputs, options.tips, cancel, stages, log),
-    ReconPlan::Marginal {
+    ReconstructionPlan::Fitch => {
+      reconstruct_fitch(graph, index, alphabet, node_inputs, options.tips, cancel, stages, log)
+    },
+    ReconstructionPlan::Marginal {
       representation,
       model,
       gtr_refinement,
@@ -177,7 +179,7 @@ fn reconstruct_marginal(
   reconstruction: MarginalReconstruction,
   gtr_refinement: Option<usize>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  options: &ReconOptions,
+  options: &ReconstructionOptions,
   rng: &mut dyn RngCore,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
