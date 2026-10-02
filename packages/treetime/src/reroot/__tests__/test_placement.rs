@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves};
-  use crate::test_utils::{find_edge_key, find_node_key_by_name};
+  use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves, root_moves};
+  use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_graph::reroot::StemRemovalInfo;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
 
@@ -41,39 +40,33 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_root_target_after_stem_removal_moves_a_split_of_the_stem_edge_to_the_stem_child() -> Result<(), Report> {
-    let (_, edge_key, source_key, target_key) = edge_fixture()?;
-    let stem = StemRemovalInfo {
-      removed_node_key: source_key,
-      removed_edge_key: edge_key,
-      new_root_key: target_key,
-    };
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::split_at_the_root(        0.0,  true,  false)]
+  #[case::interior_split(           0.25, true,  true)]
+  #[case::snap_to_the_root(         0.25, false, false)]
+  #[case::snap_to_the_child(        0.75, false, true)]
+  #[trace]
+  fn test_root_moves_on_a_root_edge(
+    #[case] split: f64,
+    #[case] split_edge: bool,
+    #[case] expected: bool,
+  ) -> Result<(), Report> {
+    let (graph, edge_key, _, _) = edge_fixture()?;
 
-    let actual = RootTarget::Split { edge_key, split: 0.25 }.after_stem_removal(&stem);
+    let actual = root_moves(&graph, Some(edge_key), split, split_edge)?;
 
-    assert_eq!(RootTarget::Node(target_key), actual);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
   #[test]
-  fn test_root_target_after_stem_removal_keeps_targets_off_the_stem_edge() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3)STEM;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let stem = StemRemovalInfo {
-      removed_node_key: find_node_key_by_name(&graph, &names, "STEM").expect("STEM exists"),
-      removed_edge_key: find_edge_key(&graph, &names, "STEM", "AB").expect("STEM->AB exists"),
-      new_root_key: find_node_key_by_name(&graph, &names, "AB").expect("AB exists"),
-    };
-    let edge_key = find_edge_key(&graph, &names, "AB", "A").expect("AB->A exists");
-    let a_key = find_node_key_by_name(&graph, &names, "A").expect("A exists");
+  fn test_root_moves_without_an_edge_is_false() -> Result<(), Report> {
+    let (graph, _, _, _) = edge_fixture()?;
 
-    let split = RootTarget::Split { edge_key, split: 0.25 }.after_stem_removal(&stem);
-    let node = RootTarget::Node(a_key).after_stem_removal(&stem);
+    let actual = root_moves(&graph, None, 0.5, true)?;
 
-    assert_eq!(RootTarget::Split { edge_key, split: 0.25 }, split);
-    assert_eq!(RootTarget::Node(a_key), node);
+    assert!(!actual);
     Ok(())
   }
 

@@ -15,9 +15,7 @@ use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_ra
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::{LogSink, StageSink};
-use crate::reroot::div_stats::DivStats;
-use crate::reroot::div_stats_traversal::compute_div_stats;
-use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_in_place};
+use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_min_dev};
 use crate::reroot::params::BrentParams;
 use crate::reroot::variance::VarianceModel;
 use crate::seq::alignment::node_seq_inputs;
@@ -245,17 +243,7 @@ fn reroot_optimize(
 
   let reroot_result = match spec {
     RerootSpec::Method(RerootMethod::MinDev) => {
-      let field = compute_div_stats(graph, branch_lengths, &variance)?;
-      reroot_in_place::<DivStats>(
-        graph,
-        &field.edge_stats,
-        &field.root_stats,
-        &variance,
-        &opt_params,
-        topo,
-        branch_lengths,
-        names,
-      )?
+      reroot_min_dev(graph, &variance, &opt_params, topo, branch_lengths, names)?
     },
     RerootSpec::Tips(tips) => {
       let tip_keys = resolve_tip_keys(graph, tips, names)?;

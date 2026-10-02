@@ -25,40 +25,26 @@ use treetime_graph::reroot::{
 pub(crate) fn reroot_clock_tree(
   mut tree: ClockTree,
   mut state: ClockState,
+  best_root: FindRootResult,
   options: &ClockVarianceParams,
-  params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
+  stem_removal: Option<StemRemovalInfo>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockState, RerootResult), Report> {
-  let best_root = select_root(
-    &tree.graph,
-    &tree.inputs,
-    &state,
-    options,
-    params,
-    reroot_params,
-    &tree.branch_lengths,
-    names,
-    log,
-  )?;
-
   let old_root_key = tree.graph.root_key()?;
+  let unchanged = RerootResult {
+    stem_removal: stem_removal.clone(),
+    ..RerootResult::unchanged(old_root_key)
+  };
   let Some(edge_key) = best_root.edge else {
-    return Ok((tree, state, RerootResult::unchanged(old_root_key)));
+    return Ok((tree, state, unchanged));
   };
   let target = RootTarget::on_edge(&tree.graph, edge_key, best_root.split, reroot_params.split_edge)?;
   if target == RootTarget::Node(old_root_key) {
-    return Ok((tree, state, RerootResult::unchanged(old_root_key)));
+    return Ok((tree, state, unchanged));
   }
 
   let leaves_before = leaf_keys(&tree.graph);
-  let stem_removal = remove_undated_stem(&mut tree, &mut state, old_root_key)?;
-  let (current_root_key, target) = match &stem_removal {
-    Some(stem) => (stem.new_root_key, target.after_stem_removal(stem)),
-    None => (old_root_key, target),
-  };
-
   let (new_root_key, edge_split) = match target {
     RootTarget::Node(key) => (key, None),
     RootTarget::Split { edge_key, split } => {
@@ -66,19 +52,14 @@ pub(crate) fn reroot_clock_tree(
       (split_info.new_node_key, Some(split_info))
     },
   };
-
-  let (inverted_edge_keys, edge_merge) = if new_root_key == current_root_key {
-    (vec![], None)
-  } else {
-    move_root(
-      &mut tree,
-      &mut state,
-      current_root_key,
-      new_root_key,
-      reroot_params,
-      options,
-    )?
-  };
+  let (inverted_edge_keys, edge_merge) = move_root(
+    &mut tree,
+    &mut state,
+    old_root_key,
+    new_root_key,
+    reroot_params,
+    options,
+  )?;
 
   require_dated_new_leaves(
     &tree.graph,
@@ -97,11 +78,8 @@ pub(crate) fn reroot_clock_tree(
   Ok((tree, state, result))
 }
 
-fn remove_undated_stem(
-  tree: &mut ClockTree,
-  state: &mut ClockState,
-  root_key: GraphNodeKey,
-) -> Result<Option<StemRemovalInfo>, Report> {
+pub(crate) fn remove_undated_stem(tree: &mut ClockTree) -> Result<Option<StemRemovalInfo>, Report> {
+  let root_key = tree.graph.root_key()?;
   if tree.inputs.likely_time(root_key).is_some() {
     return Ok(None);
   }
@@ -111,8 +89,6 @@ fn remove_undated_stem(
   tree.branch_lengths.remove(&stem.removed_edge_key);
   tree.inputs.nodes.remove(&stem.removed_node_key);
   tree.inputs.edges.remove(&stem.removed_edge_key);
-  state.nodes.remove(&stem.removed_node_key);
-  state.edges.remove(&stem.removed_edge_key);
   Ok(Some(stem))
 }
 
@@ -191,7 +167,7 @@ fn create_new_root_node(
   Ok(split_info)
 }
 
-fn select_root(
+pub(crate) fn select_root(
   graph: &Graph,
   inputs: &ClockInputs,
   state: &ClockState,

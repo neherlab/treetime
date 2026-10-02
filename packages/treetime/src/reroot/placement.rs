@@ -5,7 +5,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::reroot::StemRemovalInfo;
 use treetime_utils::make_error;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -29,14 +28,18 @@ impl RootTarget {
       Self::Node(target_key)
     })
   }
+}
 
-  #[must_use]
-  pub(crate) fn after_stem_removal(self, stem: &StemRemovalInfo) -> Self {
-    match self {
-      Self::Split { edge_key, .. } if edge_key == stem.removed_edge_key => Self::Node(stem.new_root_key),
-      target => target,
-    }
-  }
+pub(crate) fn root_moves(
+  graph: &Graph,
+  edge_key: Option<GraphEdgeKey>,
+  split: f64,
+  split_edge: bool,
+) -> Result<bool, Report> {
+  let Some(edge_key) = edge_key else {
+    return Ok(false);
+  };
+  Ok(RootTarget::on_edge(graph, edge_key, split, split_edge)? != RootTarget::Node(graph.root_key()?))
 }
 
 pub(crate) fn leaf_keys(graph: &Graph) -> BTreeSet<GraphNodeKey> {

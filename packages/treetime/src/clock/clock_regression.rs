@@ -2,11 +2,13 @@ use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockEdgeState, ClockInputs, ClockState};
 use crate::clock::divergence::root_to_node_divergences;
+use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
-use crate::clock::reroot::{RerootParams, reroot_clock_tree};
+use crate::clock::reroot::{RerootParams, remove_undated_stem, reroot_clock_tree, select_root};
 use crate::node_label::node_label;
 use crate::progress::LogSink;
 use crate::progress_info;
+use crate::reroot::placement::root_moves;
 use eyre::Report;
 use log::debug;
 use schemars::JsonSchema;
@@ -19,7 +21,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
-use treetime_graph::reroot::RerootResult;
+use treetime_graph::reroot::{RerootResult, StemRemovalInfo};
 
 #[allow(
   clippy::unwrap_used,
@@ -66,6 +68,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
       |rate| reroot_params.with_objective(RootObjective::FixedRate(rate)),
     );
     let reroot = RootSearch {
+      outliers,
       options,
       optimization_params,
       reroot_params: &reroot_params,
@@ -122,6 +125,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
 }
 
 struct RootSearch<'a> {
+  outliers: &'a BTreeSet<GraphNodeKey>,
   options: &'a ClockVarianceParams,
   optimization_params: &'a BranchPointOptimizationParams,
   reroot_params: &'a RerootParams,
@@ -147,18 +151,80 @@ fn reroot_at_best_root(
   debug!("Forward regression completed");
 
   progress_info!(log, "### Finding best root and rerooting tree");
+  let best_root = search_root(&tree, &state, search, names, log)?;
+  let (tree, state, best_root, stem_removal) = if root_moves(
+    &tree.graph,
+    best_root.edge,
+    best_root.split,
+    search.reroot_params.split_edge,
+  )? {
+    without_undated_stem(tree, state, best_root, search, names, log)?
+  } else {
+    (tree, state, best_root, None)
+  };
   let (tree, state, reroot_result) = reroot_clock_tree(
     tree,
     state,
+    best_root,
     search.options,
-    search.optimization_params,
     search.reroot_params,
+    stem_removal,
     names,
-    log,
   )?;
   progress_info!(log, "Rerooted to {}", node_label(names, reroot_result.new_root_key));
   debug!("Rerooting completed");
   Ok((tree, state, reroot_result))
+}
+
+fn without_undated_stem(
+  mut tree: ClockTree,
+  state: ClockState,
+  best_root: FindRootResult,
+  search: &RootSearch<'_>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
+) -> Result<(ClockTree, ClockState, FindRootResult, Option<StemRemovalInfo>), Report> {
+  let Some(stem) = remove_undated_stem(&mut tree)? else {
+    return Ok((tree, state, best_root, None));
+  };
+  let state = clock_regression_backward(
+    &tree.graph,
+    &tree.inputs,
+    search.outliers,
+    search.options,
+    &tree.branch_lengths,
+    search.prev_clock_rate,
+  )?;
+  let state = clock_regression_forward(
+    &tree.graph,
+    &tree.inputs,
+    state,
+    search.options,
+    &tree.branch_lengths,
+    search.prev_clock_rate,
+  )?;
+  let best_root = search_root(&tree, &state, search, names, log)?;
+  Ok((tree, state, best_root, Some(stem)))
+}
+
+fn search_root(
+  tree: &ClockTree,
+  state: &ClockState,
+  search: &RootSearch<'_>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
+) -> Result<FindRootResult, Report> {
+  select_root(
+    &tree.graph,
+    &tree.inputs,
+    state,
+    search.options,
+    search.optimization_params,
+    search.reroot_params,
+    &tree.branch_lengths,
+    names,
+    log,
+  )
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -235,6 +235,27 @@ mod tests {
   }
 
   #[test]
+  fn test_reroot_least_squares_root_ignores_an_undated_stem_root() -> Result<(), Report> {
+    let without_stem = helpers::setup_unstemmed_graph(&helpers::leaf_dates())?;
+    let with_stem = helpers::setup_stem_graph(&helpers::leaf_dates())?;
+    let names_without_stem = without_stem.names.clone();
+    let names_with_stem = with_stem.names.clone();
+
+    let (tree_without_stem, result_without_stem) = helpers::reroot_with_result(without_stem, &RerootParams::default())?;
+    let (tree_with_stem, result_with_stem) = helpers::reroot_with_result(with_stem, &RerootParams::default())?;
+
+    assert!(result_with_stem.stem_removal.is_some());
+    let expected = helpers::root_child_lengths(
+      &tree_without_stem,
+      &names_without_stem,
+      result_without_stem.new_root_key,
+    )?;
+    let actual = helpers::root_child_lengths(&tree_with_stem, &names_with_stem, result_with_stem.new_root_key)?;
+    pretty_assert_map_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[test]
   fn test_reroot_keeps_a_dated_stem_root_as_a_dated_leaf() -> Result<(), Report> {
     let mut dates = helpers::leaf_dates();
     dates.insert(o!("STEM"), 1990.0);
@@ -295,6 +316,8 @@ mod tests {
 
     const STEM_TREE: &str = "(((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)R:0.001)STEM;";
 
+    const UNSTEMMED_TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)R;";
+
     pub(super) struct RerootFixture {
       pub tree: ClockTree,
       pub names: BTreeMap<GraphNodeKey, Option<String>>,
@@ -319,6 +342,10 @@ mod tests {
 
     pub(super) fn setup_stem_graph(dates: &BTreeMap<String, f64>) -> Result<RerootFixture, Report> {
       setup_graph(STEM_TREE, dates)
+    }
+
+    pub(super) fn setup_unstemmed_graph(dates: &BTreeMap<String, f64>) -> Result<RerootFixture, Report> {
+      setup_graph(UNSTEMMED_TREE, dates)
     }
 
     pub(super) fn estimate(

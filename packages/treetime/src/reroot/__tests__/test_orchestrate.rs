@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::reroot::div_stats::DivStats;
   use crate::reroot::div_stats_traversal::compute_div_stats;
-  use crate::reroot::orchestrate::{RerootTopologyParams, reroot_in_place};
+  use crate::reroot::orchestrate::{RerootTopologyParams, reroot_min_dev};
   use crate::reroot::params::BrentParams;
   use crate::reroot::search::find_best_root;
   use crate::reroot::variance::VarianceModel;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -47,12 +47,9 @@ mod tests {
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let variance = VarianceModel::default();
-    let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
-    reroot_in_place::<DivStats>(
+    reroot_min_dev(
       &mut graph,
-      &field.edge_stats,
-      &field.root_stats,
       &variance,
       &BrentParams::default(),
       RerootTopologyParams::default(),
@@ -67,18 +64,52 @@ mod tests {
   }
 
   #[test]
+  fn test_orchestrate_reroot_min_dev_removes_an_undated_stem_before_the_root_search() -> Result<(), Report> {
+    let nwk_parsed = nwk_read_str("(((A:0.1,B:0.3)X:0.05,C:0.4)R:0.7)STEM;")?;
+    let names = nwk_parsed.names();
+    let mut graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
+    let unstemmed = nwk_read_str("((A:0.1,B:0.3)X:0.05,C:0.4)R;")?;
+    let unstemmed_names = unstemmed.names();
+    let mut unstemmed_graph = unstemmed.graph;
+    let mut unstemmed_branch_lengths = unstemmed.branch_lengths;
+    let variance = VarianceModel::default();
+
+    let result = reroot_min_dev(
+      &mut graph,
+      &variance,
+      &BrentParams::default(),
+      RerootTopologyParams::default(),
+      &mut branch_lengths,
+      &names,
+    )?;
+    reroot_min_dev(
+      &mut unstemmed_graph,
+      &variance,
+      &BrentParams::default(),
+      RerootTopologyParams::default(),
+      &mut unstemmed_branch_lengths,
+      &unstemmed_names,
+    )?;
+
+    assert!(result.stem_removal.is_some());
+    assert_eq!(3, graph.get_leaves().count());
+    let expected = root_to_tip_distances(&unstemmed_graph, &unstemmed_branch_lengths);
+    let actual = root_to_tip_distances(&graph, &branch_lengths);
+    assert_abs_diff_eq!(expected.as_slice(), actual.as_slice(), epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[test]
   fn test_orchestrate_brent_finds_equidistant_root() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let variance = VarianceModel::default();
-    let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
 
-    reroot_in_place::<DivStats>(
+    reroot_min_dev(
       &mut graph,
-      &field.edge_stats,
-      &field.root_stats,
       &variance,
       &BrentParams::default(),
       RerootTopologyParams::default(),
@@ -125,13 +156,10 @@ mod tests {
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let variance = VarianceModel::default();
-    let field = compute_div_stats(&graph, &branch_lengths, &variance)?;
     let root_before = graph.get_exactly_one_root().unwrap().key();
 
-    reroot_in_place::<DivStats>(
+    reroot_min_dev(
       &mut graph,
-      &field.edge_stats,
-      &field.root_stats,
       &variance,
       &BrentParams::default(),
       RerootTopologyParams {
