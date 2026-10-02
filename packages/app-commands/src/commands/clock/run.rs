@@ -7,12 +7,12 @@ use app_output::clock_tree_output::write_clock_tree_outputs;
 use app_output::output_plan::OutputSelection;
 use app_output::rtt::write_clock_regression_result_csv;
 use eyre::{Report, WrapErr};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime::cancel::Cancel;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::clock_output::write_clock_model;
 use treetime::clock::clock_regression::ClockVarianceParams;
-use treetime::clock::clock_state::{ClockInputs, ClockState};
+use treetime::clock::clock_state::ClockInputs;
 use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::clock::pipeline::{self, ClockInput, ClockParams};
 use treetime::clock::rtt::ClockRegressionResult;
@@ -87,7 +87,8 @@ pub fn run_clock(
   let pipeline::ClockOutput {
     mut graph,
     inputs,
-    state,
+    divergences,
+    outliers,
     clock_model,
     regression_results,
     names,
@@ -99,7 +100,7 @@ pub fn run_clock(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   progress.report("Writing output", 0.8, "");
 
-  let nodes = gather_clock_outputs(&graph, &inputs, &state, &names);
+  let nodes = gather_clock_outputs(&graph, &inputs, &divergences, &outliers, &names);
 
   if !resolved.tree_outputs.is_empty() {
     write_clock_tree_outputs(
@@ -139,7 +140,8 @@ pub struct ClockResult {
 fn gather_clock_outputs(
   graph: &Graph,
   inputs: &ClockInputs,
-  state: &ClockState,
+  divergences: &BTreeMap<GraphNodeKey, f64>,
+  outliers: &BTreeSet<GraphNodeKey>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> BTreeMap<GraphNodeKey, ClockNodeOut> {
   graph
@@ -147,13 +149,12 @@ fn gather_clock_outputs(
     .map(|node| {
       let key = node.key();
       let name = names[&key].clone();
-      let node_state = state.node(key);
       let node_input = inputs.node(key);
       let out = ClockNodeOut {
         name,
-        div: node_state.div,
+        div: divergences[&key],
         time: node_input.time,
-        is_outlier: node_state.is_outlier,
+        is_outlier: outliers.contains(&key),
         bad_branch: node_input.bad_branch,
       };
       (key, out)

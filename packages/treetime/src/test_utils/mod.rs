@@ -10,4 +10,4 @@ pub(crate) use marginal::{
   NUC_ALPHABET, emitted_sequences_by_name, run_dense_marginal_with_newick, run_sparse_marginal_with_newick,
 };
 pub(crate) use sparse::sparse_edge_obs;
-pub(crate) use timetree::{constraint_coalescent_node_times, empty_time_inference};
+pub(crate) use timetree::{constraint_coalescent_node_times, empty_time_inference, marginal_timetree_params};

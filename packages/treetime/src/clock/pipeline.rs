@@ -1,9 +1,10 @@
 use crate::cancel::Cancel;
 use crate::clock::assign_dates::assign_dates;
-use crate::clock::clock_filter::clock_filter_inplace;
+use crate::clock::clock_filter::clock_filter;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockVarianceParams, estimate_clock_model_with_reroot_policy};
-use crate::clock::clock_state::{ClockInputs, ClockState};
+use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_state::ClockInputs;
+use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
@@ -12,7 +13,7 @@ use crate::progress::ProgressSink;
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -20,7 +21,7 @@ use treetime_primitives::date::DatesMap;
 
 pub fn run(
   params: &ClockParams,
-  mut input: ClockInput,
+  input: ClockInput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
   progress: &dyn ProgressSink,
@@ -29,45 +30,59 @@ pub fn run(
   progress.report("Assigning dates", 0.1, "");
   let mut inputs = ClockInputs::new(&input.graph);
   assign_dates(&input.graph, &input.dates, &mut inputs, names).map_err(OperationError::InvalidInput)?;
-  let state = ClockState::new(&input.graph);
 
   cancel.check()?;
   progress.report("Clock regression", 0.3, "");
-  let mut branch_lengths = input.branch_lengths;
-  let (mut state, clock_model, new_outliers) = estimate_clock_model_with_prefilter(
-    &mut input.graph,
-    &mut inputs,
-    state,
+  let tree = ClockTree {
+    graph: input.graph,
+    branch_lengths: input.branch_lengths,
+    inputs,
+  };
+  let (
+    ClockTree {
+      graph,
+      branch_lengths,
+      inputs,
+    },
+    clock_model,
+    filter_outliers,
+  ) = estimate_clock_model_with_prefilter(
+    tree,
     &params.clock_params,
     params.keep_root,
     &params.branch_params,
     params.clock_filter,
     params.allow_negative_rate,
     &params.reroot_spec,
-    &mut branch_lengths,
     names,
     progress,
   )?;
 
-  if let Some(delta) = new_outliers {
-    progress_info!(progress, "Clock filter changed outlier status for {delta} leaf nodes");
+  if let Some(outliers) = &filter_outliers {
+    progress_info!(
+      progress,
+      "Clock filter changed outlier status for {} leaf nodes",
+      outliers.len()
+    );
   }
+  let outliers = filter_outliers.unwrap_or_default();
 
-  let names: BTreeMap<GraphNodeKey, Option<String>> = input
-    .graph
+  let names: BTreeMap<GraphNodeKey, Option<String>> = graph
     .get_nodes()
     .map(|node| {
       let key = node.key();
       (key, names.get(&key).cloned().flatten())
     })
     .collect();
+  let divergences = root_to_node_divergences(&graph, |edge_key| branch_lengths[&edge_key].unwrap_or_default())?;
   let regression_results =
-    gather_clock_regression_results(&input.graph, &inputs, &mut state, &clock_model, &names, &branch_lengths)?;
+    gather_clock_regression_results(&graph, &inputs, &divergences, &outliers, &clock_model, &names);
 
   Ok(ClockOutput {
-    graph: input.graph,
+    graph,
     inputs,
-    state,
+    divergences,
+    outliers,
     clock_model,
     regression_results,
     names,
@@ -97,7 +112,9 @@ pub struct ClockOutput {
   #[serde(skip)]
   pub inputs: ClockInputs,
   #[serde(skip)]
-  pub state: ClockState,
+  pub divergences: BTreeMap<GraphNodeKey, f64>,
+  #[serde(skip)]
+  pub outliers: BTreeSet<GraphNodeKey>,
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
   #[serde(skip)]
@@ -110,46 +127,31 @@ pub struct ClockOutput {
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
 )]
-#[allow(
-  clippy::useless_let_if_seq,
-  reason = "the conditional branch runs fallible pre-filter root finding with ?; folding it into a let-if-else would nest a large fallible block in the initializer"
-)]
 fn estimate_clock_model_with_prefilter(
-  graph: &mut Graph,
-  inputs: &mut ClockInputs,
-  mut state: ClockState,
+  tree: ClockTree,
   options: &ClockVarianceParams,
   keep_root: bool,
   branch_params: &BranchPointOptimizationParams,
   clock_filter_threshold: f64,
   allow_negative_rate: bool,
   reroot_spec: &RerootSpec,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   progress: &dyn ProgressSink,
-) -> Result<(ClockState, ClockModel, Option<i32>), Report> {
-  let mut delta = None;
-  if clock_filter_threshold > 0.0 {
-    let reroot_params = RerootParams {
-      spec: reroot_spec.clone(),
-      force_positive_rate: false,
-      ..RerootParams::default()
-    };
-    let (new_state, result) = estimate_clock_model_with_reroot_policy(
-      graph,
-      inputs,
-      state,
+) -> Result<(ClockTree, ClockModel, Option<BTreeSet<GraphNodeKey>>), Report> {
+  let (tree, filter_outliers) = if clock_filter_threshold > 0.0 {
+    let reroot_params = RerootParams::new(reroot_spec.clone(), false);
+    let (tree, result) = estimate_clock_model_with_reroot_policy(
+      tree,
+      &BTreeSet::new(),
       options,
       None,
       keep_root,
       branch_params,
       &reroot_params,
-      branch_lengths,
       None,
       names,
       progress,
     )?;
-    state = new_state;
     let regression = result.regression();
     if regression.clock_rate() < 0.0 {
       progress_warn!(
@@ -158,32 +160,39 @@ fn estimate_clock_model_with_prefilter(
         regression.clock_rate()
       );
     }
-    delta = Some(
-      clock_filter_inplace(
-        graph,
-        inputs,
-        &mut state,
-        regression,
-        branch_lengths,
-        clock_filter_threshold,
-        progress,
-      )?
-      .new_outliers,
-    );
-  }
-
-  let reroot_params = RerootParams {
-    spec: reroot_spec.clone(),
-    force_positive_rate: !allow_negative_rate,
-    ..RerootParams::default()
+    let filtered = clock_filter(
+      &tree.graph,
+      &tree.inputs,
+      regression,
+      &tree.branch_lengths,
+      clock_filter_threshold,
+      progress,
+    )?;
+    (tree, Some(filtered.outliers))
+  } else {
+    (tree, None)
   };
-  let (state, result) = estimate_clock_model_with_reroot_policy(graph, inputs, state, options, None, keep_root, branch_params, &reroot_params, branch_lengths, None, names, progress)
-    .wrap_err_with(|| {
-      if delta.is_some() {
-        "Clock model estimation failed after outlier filtering. The pre-filter step removed outliers but the clock rate remains negative at all root positions.".to_owned()
-      } else {
-        "Clock model estimation failed".to_owned()
-      }
-    })?;
-  Ok((state, result.into_clock_model_allow_negative(progress), delta))
+
+  let reroot_params = RerootParams::new(reroot_spec.clone(), !allow_negative_rate);
+  let no_outliers = BTreeSet::new();
+  let outliers = filter_outliers.as_ref().unwrap_or(&no_outliers);
+  let failure = if filter_outliers.is_some() {
+    "Clock model estimation failed after outlier filtering. The pre-filter step removed outliers but the clock rate remains negative at all root positions."
+  } else {
+    "Clock model estimation failed"
+  };
+  let (tree, result) = estimate_clock_model_with_reroot_policy(
+    tree,
+    outliers,
+    options,
+    None,
+    keep_root,
+    branch_params,
+    &reroot_params,
+    None,
+    names,
+    progress,
+  )
+  .wrap_err(failure)?;
+  Ok((tree, result.into_clock_model_allow_negative(progress), filter_outliers))
 }

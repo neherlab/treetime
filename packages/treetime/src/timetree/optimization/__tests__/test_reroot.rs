@@ -8,29 +8,26 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::SparseReconstruction;
-  use crate::clock::clock_regression::{
-    ClockFit, ClockVarianceParams, clock_regression_backward, clock_regression_forward,
-  };
-  use crate::clock::clock_state::{ClockInputs, ClockState};
+  use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
   use crate::clock::date_constraints::DateConstraints;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
+  use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-  use crate::partition::timetree::marginal::marginal_update_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::seq::indel::InDel;
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
-  use crate::timetree::inference::time_inference::likely_times;
-  use crate::timetree::optimization::reroot::reroot_tree;
+  use crate::timetree::branch_model::BranchModel;
+  use crate::timetree::optimization::reroot::{RerootedTree, reroot_tree};
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+  use std::collections::{BTreeMap, BTreeSet};
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
@@ -94,8 +91,7 @@ mod tests {
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let constraints = date_constraints(&names, &graph);
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -109,43 +105,26 @@ mod tests {
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
     let clock_params = ClockVarianceParams::default();
-    let clock_inputs = ClockInputs::seed_from_times(&graph, &likely_times(&graph, &constraints, None)?);
-    let mut clock_state = ClockState::new(&graph);
-    clock_regression_backward(
-      &graph,
-      &clock_inputs,
-      &mut clock_state,
-      &clock_params,
-      &branch_lengths,
-      None,
-    )?;
-    clock_regression_forward(
-      &graph,
-      &clock_inputs,
-      &mut clock_state,
-      &clock_params,
-      &branch_lengths,
-      None,
-    )?;
-
-    let partitions = vec![sparse_partition];
+    let branch_model = BranchModel::Marginal(sparse_partition);
 
     let initial_leaf_count = graph.get_leaves().count();
     let initial_node_count = graph.get_nodes().count();
 
-    let names_tt_3 = names;
-    let (ClockFit { model: clock_model, .. }, partitions) = reroot_tree(
-      &mut graph,
+    let RerootedTree {
+      graph,
+      clock_fit: ClockFit { model: clock_model, .. },
+      ..
+    } = reroot_tree(
+      graph,
+      branch_lengths,
+      branch_model,
       &constraints,
-      &mut clock_state,
-      partitions,
+      &BTreeSet::new(),
       &clock_params,
       None,
       &BranchPointOptimizationParams::default(),
-      &RerootSpec::default(),
-      true,
-      &mut branch_lengths,
-      &names_tt_3,
+      &RerootParams::new(RerootSpec::default(), true),
+      &names,
       &NoopProgress,
     )?;
 
@@ -459,8 +438,7 @@ mod tests {
     let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut graph: Graph = graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
     let constraints = date_constraints(&names, &graph);
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -474,49 +452,35 @@ mod tests {
     let sparse_partition = PartitionTimetree::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
     let clock_params = ClockVarianceParams::default();
-    let clock_inputs = ClockInputs::seed_from_times(&graph, &likely_times(&graph, &constraints, None)?);
-    let mut clock_state = ClockState::new(&graph);
-    clock_regression_backward(
-      &graph,
-      &clock_inputs,
-      &mut clock_state,
-      &clock_params,
-      &branch_lengths,
-      None,
-    )?;
-    clock_regression_forward(
-      &graph,
-      &clock_inputs,
-      &mut clock_state,
-      &clock_params,
-      &branch_lengths,
-      None,
-    )?;
-
-    let partitions = vec![sparse_partition];
+    let branch_model = BranchModel::Marginal(sparse_partition);
 
     let initial_leaf_count = graph.get_leaves().count();
 
-    let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
+    let branch_model = match branch_model {
+      BranchModel::Marginal(partition) => {
+        BranchModel::Marginal(partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?)
+      },
+      BranchModel::Input => BranchModel::Input,
+    };
 
-    let names_tt_2 = names.clone();
-    let (
-      ClockFit {
+    let RerootedTree {
+      graph,
+      branch_lengths,
+      branch_model,
+      clock_fit: ClockFit {
         model: clock_model_1, ..
       },
-      partitions,
-    ) = reroot_tree(
-      &mut graph,
+    } = reroot_tree(
+      graph,
+      branch_lengths,
+      branch_model,
       &constraints,
-      &mut clock_state,
-      partitions,
+      &BTreeSet::new(),
       &clock_params,
       None,
       &BranchPointOptimizationParams::default(),
-      &RerootSpec::default(),
-      true,
-      &mut branch_lengths,
-      &names_tt_2,
+      &RerootParams::new(RerootSpec::default(), true),
+      &names,
       &NoopProgress,
     )?;
 
@@ -529,24 +493,23 @@ mod tests {
 
     let r_squared_1 = clock_model_1.r_squared();
 
-    let names_tt_1 = names;
-    let (
-      ClockFit {
+    let RerootedTree {
+      graph,
+      clock_fit: ClockFit {
         model: clock_model_2, ..
       },
-      partitions,
-    ) = reroot_tree(
-      &mut graph,
+      ..
+    } = reroot_tree(
+      graph,
+      branch_lengths,
+      branch_model,
       &constraints,
-      &mut clock_state,
-      partitions,
+      &BTreeSet::new(),
       &clock_params,
       Some(clock_model_1.clock_rate()),
       &BranchPointOptimizationParams::default(),
-      &RerootSpec::default(),
-      true,
-      &mut branch_lengths,
-      &names_tt_1,
+      &RerootParams::new(RerootSpec::default(), true),
+      &names,
       &NoopProgress,
     )?;
 

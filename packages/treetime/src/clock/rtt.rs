@@ -1,62 +1,37 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_regression::ClockRegressionPoint;
-use crate::clock::clock_state::{ClockInputs, ClockState};
-use eyre::Report;
+use crate::clock::clock_state::ClockInputs;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::GraphPassNodeOutput;
 use treetime_utils::array::serde::{false_if_missing, skip_serializing_if_false};
 
-#[allow(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub(crate) fn gather_clock_regression_results(
   graph: &Graph,
   inputs: &ClockInputs,
-  state: &mut ClockState,
+  divergences: &BTreeMap<GraphNodeKey, f64>,
+  outliers: &BTreeSet<GraphNodeKey>,
   clock_model: &ClockModel,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<Vec<ClockRegressionResult>, Report> {
-  state.map_forward(graph, |context| {
-    let mut node = context.input.clone();
-    let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
-      let parent = context.parent.expect("Non-root node must have a parent");
-      let branch_length = branch_lengths[&edge_key].unwrap_or_default();
-      node.div = parent.div + branch_length;
-      Some(edge.clone())
-    } else {
-      node.div = 0.0;
-      None
-    };
-    Ok(GraphPassNodeOutput { node, parent_message })
-  })?;
-
+) -> Vec<ClockRegressionResult> {
   graph
     .get_nodes()
     .map(|node| {
-      let is_leaf = node.is_leaf();
-      let name = names[&node.key()].clone();
-      let node_state = state.node(node.key());
-      let div = node_state.div;
-      let time = inputs.likely_time(node.key());
-      let predicted_date = clock_model.date(div);
-      let clock_deviation = time.map(|time| clock_model.clock_deviation(time, div));
-      Ok(ClockRegressionResult {
-        name,
+      let key = node.key();
+      let div = divergences[&key];
+      let time = inputs.likely_time(key);
+      ClockRegressionResult {
+        name: names[&key].clone(),
         div,
         date: time,
-        predicted_date,
-        clock_deviation,
-        is_outlier: node_state.is_outlier,
-        is_leaf,
+        predicted_date: clock_model.date(div),
+        clock_deviation: time.map(|time| clock_model.clock_deviation(time, div)),
+        is_outlier: outliers.contains(&key),
+        is_leaf: node.is_leaf(),
         date_source: None,
-      })
+      }
     })
     .collect()
 }

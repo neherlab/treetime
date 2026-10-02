@@ -1,8 +1,9 @@
 use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockEdgeState, ClockInputs, ClockNodeState, ClockState};
+use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
-use crate::clock::reroot::{RerootParams, reroot_in_place};
+use crate::clock::reroot::{RerootParams, reroot_clock_tree};
 use crate::node_label::node_label;
 use crate::progress::ProgressSink;
 use crate::progress_info;
@@ -11,7 +12,7 @@ use log::debug;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 use std::mem;
 use treetime_graph::edge::GraphEdgeKey;
@@ -25,19 +26,17 @@ use treetime_graph::reroot::RerootResult;
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
 pub(crate) fn estimate_clock_model_with_reroot_policy(
-  graph: &mut Graph,
-  inputs: &mut ClockInputs,
-  mut state: ClockState,
+  tree: ClockTree,
+  outliers: &BTreeSet<GraphNodeKey>,
   options: &ClockVarianceParams,
   clock_rate: Option<f64>,
   keep_root: bool,
   optimization_params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   progress: &dyn ProgressSink,
-) -> Result<(ClockState, ClockRerootResult), Report> {
+) -> Result<(ClockTree, ClockRerootResult), Report> {
   if let Some(rate) = clock_rate {
     progress_info!(
       progress,
@@ -48,47 +47,44 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   }
 
   progress_info!(progress, "### Running backward regression");
-  clock_regression_backward(graph, inputs, &mut state, options, branch_lengths, prev_clock_rate)?;
+  let state = clock_regression_backward(
+    &tree.graph,
+    &tree.inputs,
+    outliers,
+    options,
+    &tree.branch_lengths,
+    prev_clock_rate,
+  )?;
   debug!("Backward regression completed");
 
-  let reroot_result = if !keep_root {
-    progress_info!(progress, "### Running forward regression to find optimal root");
-    clock_regression_forward(graph, inputs, &mut state, options, branch_lengths, prev_clock_rate)?;
-    debug!("Forward regression completed");
-
-    progress_info!(progress, "### Finding best root and rerooting tree");
+  let (tree, state, reroot_result) = if keep_root {
+    progress_info!(progress, "### Keeping original root (--keep-root enabled)");
+    (tree, state, None)
+  } else {
     let reroot_params = clock_rate.map_or_else(
       || reroot_params.clone(),
       |rate| reroot_params.with_objective(RootObjective::FixedRate(rate)),
     );
-    let (new_state, reroot_result) = reroot_in_place(
-      graph,
-      inputs,
-      state,
+    let reroot = RootSearch {
       options,
       optimization_params,
-      &reroot_params,
-      branch_lengths,
-      names,
-      progress,
-    )?;
-    state = new_state;
-    progress_info!(
-      progress,
-      "Rerooted to {}",
-      node_label(names, reroot_result.new_root_key)
-    );
-    debug!("Rerooting completed");
-    Some(reroot_result)
-  } else {
-    progress_info!(progress, "### Keeping original root (--keep-root enabled)");
-    None
+      reroot_params: &reroot_params,
+      prev_clock_rate,
+    };
+    let (tree, state, reroot_result) = reroot_at_best_root(tree, state, &reroot, names, progress)?;
+    (tree, state, Some(reroot_result))
   };
 
-  let points = clock_regression_points(graph, inputs, &state, branch_lengths, prev_clock_rate)?;
+  let points = clock_regression_points(
+    &tree.graph,
+    &tree.inputs,
+    outliers,
+    &tree.branch_lengths,
+    prev_clock_rate,
+  )?;
 
   progress_info!(progress, "### Extracting clock model from root");
-  let root_key = graph.get_exactly_one_root()?.key();
+  let root_key = tree.graph.get_exactly_one_root()?.key();
   let root_clock_set = state.node(root_key).clock_set.clone();
 
   let (regression, clock_model) = if let Some(rate) = clock_rate {
@@ -115,7 +111,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   }
 
   Ok((
-    state,
+    tree,
     ClockRerootResult {
       regression,
       clock_model,
@@ -125,6 +121,50 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   ))
 }
 
+struct RootSearch<'a> {
+  options: &'a ClockVarianceParams,
+  optimization_params: &'a BranchPointOptimizationParams,
+  reroot_params: &'a RerootParams,
+  prev_clock_rate: Option<f64>,
+}
+
+fn reroot_at_best_root(
+  tree: ClockTree,
+  state: ClockState,
+  search: &RootSearch<'_>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
+) -> Result<(ClockTree, ClockState, RerootResult), Report> {
+  progress_info!(progress, "### Running forward regression to find optimal root");
+  let state = clock_regression_forward(
+    &tree.graph,
+    &tree.inputs,
+    state,
+    search.options,
+    &tree.branch_lengths,
+    search.prev_clock_rate,
+  )?;
+  debug!("Forward regression completed");
+
+  progress_info!(progress, "### Finding best root and rerooting tree");
+  let (tree, state, reroot_result) = reroot_clock_tree(
+    tree,
+    state,
+    search.options,
+    search.optimization_params,
+    search.reroot_params,
+    names,
+    progress,
+  )?;
+  progress_info!(
+    progress,
+    "Rerooted to {}",
+    node_label(names, reroot_result.new_root_key)
+  );
+  debug!("Rerooting completed");
+  Ok((tree, state, reroot_result))
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClockRerootResult {
   regression: Option<ClockRegression>,
@@ -132,6 +172,12 @@ pub struct ClockRerootResult {
   reroot_result: Option<RerootResult>,
   #[serde(skip)]
   points: Vec<ClockRegressionPoint>,
+}
+
+pub(crate) struct ClockTree {
+  pub graph: Graph,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub inputs: ClockInputs,
 }
 
 #[derive(Clone, Debug)]
@@ -161,7 +207,7 @@ impl ClockRerootResult {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  pub(crate) fn into_clock_model(self) -> Result<ClockModel, Report> {
+  fn into_clock_model(self) -> Result<ClockModel, Report> {
     if let Some(model) = self.clock_model {
       return Ok(model);
     }
@@ -201,17 +247,19 @@ impl ClockRerootResult {
   }
 }
 
-pub(crate) fn clock_regression_backward(
+fn clock_regression_backward(
   graph: &Graph,
   inputs: &ClockInputs,
-  state: &mut ClockState,
+  outliers: &BTreeSet<GraphNodeKey>,
   options: &ClockVarianceParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
-) -> Result<(), Report> {
+) -> Result<ClockState, Report> {
+  let mut state = ClockState::new(graph);
   state.map_backward(graph, |context| {
-    clock_regression_backward_node(options, prev_clock_rate, branch_lengths, inputs, &context)
-  })
+    clock_regression_backward_node(options, prev_clock_rate, branch_lengths, inputs, outliers, &context)
+  })?;
+  Ok(state)
 }
 
 #[allow(
@@ -223,13 +271,14 @@ fn clock_regression_backward_node(
   prev_clock_rate: Option<f64>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   inputs: &ClockInputs,
+  outliers: &BTreeSet<GraphNodeKey>,
   context: &GraphPassBackwardContext<'_, ClockNodeState, ClockEdgeState, ClockNodeState, ClockEdgeState>,
 ) -> Result<GraphPassNodeOutput<ClockNodeState, ClockEdgeState>, Report> {
   let mut node = context.input.clone();
   let is_leaf = context.is_leaf;
   let date = inputs.likely_time(context.key);
   let q_to_parent = if is_leaf {
-    if node.is_outlier {
+    if outliers.contains(&context.key) {
       ClockSet::outlier_contribution()
     } else {
       ClockSet::leaf_contribution(date)
@@ -272,14 +321,14 @@ fn clock_regression_backward_node(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
-pub(crate) fn clock_regression_forward(
+fn clock_regression_forward(
   graph: &Graph,
   inputs: &ClockInputs,
-  state: &mut ClockState,
+  mut state: ClockState,
   options: &ClockVarianceParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
-) -> Result<(), Report> {
+) -> Result<ClockState, Report> {
   state.map_forward(graph, |context| {
     let mut node = context.input.clone();
     let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
@@ -305,39 +354,34 @@ pub(crate) fn clock_regression_forward(
       None
     };
     Ok(GraphPassNodeOutput { node, parent_message })
-  })
+  })?;
+  Ok(state)
 }
 
-pub(crate) fn clock_regression_points(
+fn clock_regression_points(
   graph: &Graph,
   inputs: &ClockInputs,
-  state: &ClockState,
+  outliers: &BTreeSet<GraphNodeKey>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<Vec<ClockRegressionPoint>, Report> {
-  let mut divs: BTreeMap<GraphNodeKey, f64> = BTreeMap::new();
+  let divergences = root_to_node_divergences(graph, |edge_key| {
+    let edge_input = inputs.edge(edge_key);
+    edge_divergence(
+      branch_lengths[&edge_key],
+      edge_input.time_length,
+      edge_input.gamma,
+      prev_clock_rate,
+    )
+  })?;
   let mut points = vec![];
   graph.iter_depth_first_preorder_forward(|node| {
-    let div = match node.parent_keys.first() {
-      Some((parent_key, edge_key)) => {
-        let edge_input = inputs.edge(*edge_key);
-        divs[parent_key]
-          + edge_divergence(
-            branch_lengths[edge_key],
-            edge_input.time_length,
-            edge_input.gamma,
-            prev_clock_rate,
-          )
-      },
-      None => 0.0,
-    };
-    divs.insert(node.key, div);
     if node.is_leaf {
       points.push(ClockRegressionPoint {
         key: node.key,
         date: inputs.likely_time(node.key),
-        div,
-        is_outlier: state.node(node.key).is_outlier,
+        div: divergences[&node.key],
+        is_outlier: outliers.contains(&node.key),
       });
     }
     Ok(())

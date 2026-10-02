@@ -74,9 +74,9 @@ fn propagate_distributions_forward_node(
     subtree.as_deref(),
   )?;
   let (distribution, contradicted) = match refinement {
-    Refinement::Refined(distribution) => (Some(Arc::new(distribution)), false),
-    Refinement::Unrefined => (subtree.clone(), false),
-    Refinement::ContradictedGivenDate => (subtree.clone(), true),
+    ForwardRefinement::Refined(distribution) => (Some(Arc::new(distribution)), false),
+    ForwardRefinement::Unrefined => (subtree.clone(), false),
+    ForwardRefinement::ContradictedGivenDate => (subtree.clone(), true),
   };
 
   let time = commit_node_time(
@@ -116,24 +116,24 @@ fn refine_distribution_from_parent(
   parent: Option<&NodePosterior>,
   edge: Option<ParentEdge<'_>>,
   subtree: Option<&Distribution<NegLog>>,
-) -> Result<Refinement, Report> {
+) -> Result<ForwardRefinement, Report> {
   let Some(parent) = parent else {
-    return Ok(Refinement::Unrefined);
+    return Ok(ForwardRefinement::Unrefined);
   };
   if has_exact_date(date_constraint) {
-    return Ok(Refinement::Unrefined);
+    return Ok(ForwardRefinement::Unrefined);
   }
 
   let edge = edge.expect("Non-root indexed node must own its parent edge");
 
   let (Some(parent_time_dist), Some(branch_dist)) = (&parent.distribution, &edge.branch.distribution) else {
-    return Ok(Refinement::Unrefined);
+    return Ok(ForwardRefinement::Unrefined);
   };
 
   let Some(subtree_dist) = subtree else {
     let dist_from_parent = convolve_across_edge(parent_time_dist, branch_dist, Side::Right, EPS, GRID_POINTS)?;
     log_refinement(names, key, parent_time_dist, &dist_from_parent);
-    return Ok(Refinement::Refined(dist_from_parent));
+    return Ok(ForwardRefinement::Refined(dist_from_parent));
   };
 
   let parent_except_subtree = match edge.msg_to_parent {
@@ -149,13 +149,13 @@ fn refine_distribution_from_parent(
 
   if combined.likely_time()?.is_none() && date_constraint.is_some() {
     log_kept_given_date(names, key, date_constraint, &dist_from_parent);
-    return Ok(Refinement::ContradictedGivenDate);
+    return Ok(ForwardRefinement::ContradictedGivenDate);
   }
-  Ok(Refinement::Refined(combined))
+  Ok(ForwardRefinement::Refined(combined))
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum Refinement {
+enum ForwardRefinement {
   Unrefined,
   Refined(Distribution<NegLog>),
   ContradictedGivenDate,

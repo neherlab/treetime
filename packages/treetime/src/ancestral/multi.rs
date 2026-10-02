@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::pipeline::{AncestralPartition, DenseReconstruction, SparseReconstruction};
-use crate::ancestral::reconstruction::Reconstruction;
+use crate::ancestral::reconstruction::ReconstructedSequences;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
 use crate::gtr::get_gtr::GtrModelName;
@@ -68,7 +68,7 @@ pub(crate) fn reconstruct_marginal_partition(
         node_states,
         edges,
       };
-      let Reconstruction { sequences, .. } =
+      let ReconstructedSequences { sequences, .. } =
         family.reconstruct_sequences(graph, tips, params.sample_from_profile, rng)?;
       AncestralPartition::Sparse { family, sequences }
     },
@@ -81,7 +81,7 @@ pub(crate) fn reconstruct_marginal_partition(
         node_states,
         edges,
       };
-      let Reconstruction { sequences, .. } =
+      let ReconstructedSequences { sequences, .. } =
         family.reconstruct_sequences(graph, tips, params.sample_from_profile, rng)?;
       AncestralPartition::Dense { family, sequences }
     },

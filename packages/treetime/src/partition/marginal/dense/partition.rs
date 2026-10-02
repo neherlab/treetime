@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::reconstruction::{Reconstruction, reconstruct_preorder};
+use crate::ancestral::reconstruction::{ReconstructedSequences, reconstruct_preorder};
 use crate::ancestral::sample::{Resolve, SampleMode, resolve_profile};
 use crate::ancestral::tip_states::TipStates;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
@@ -178,7 +178,7 @@ impl PartitionMarginalDense {
     tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
-  ) -> Result<Reconstruction, Report> {
+  ) -> Result<ReconstructedSequences, Report> {
     reconstruct_preorder(graph, tips.include_leaves, |node| {
       let seq_info = &node_states[&node.key];
       if node.is_leaf {

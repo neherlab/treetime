@@ -1,10 +1,9 @@
 use crate::clock::clock_model::{ClockModel, ClockModelStats};
-use crate::clock::clock_state::ClockState;
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_error;
-use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
+use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::runner::run_timetree;
 use crate::timetree::inference::time_inference::{NodePosterior, TimeInference};
 use crate::{progress_info, progress_warn};
@@ -33,13 +32,12 @@ pub(crate) fn compute_rate_susceptibility(
   constraints: &DateConstraints,
   leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
   gammas: &BTreeMap<GraphEdgeKey, f64>,
-  partitions: &[PartitionTimetree],
+  branch_model: &BranchModel,
   clock_model: &ClockModel,
   coalescent: Option<&CoalescentModel>,
   rate_std: f64,
   no_indels: bool,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  clock_state: &mut ClockState,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   progress: &dyn ProgressSink,
 ) -> Result<RateSusceptibility, Report> {
@@ -48,7 +46,7 @@ pub(crate) fn compute_rate_susceptibility(
   let upper_rate = current_rate + rate_std;
   let lower_rate = (0.1 * current_rate).max(current_rate - rate_std);
 
-  let mut run_scaled = |scale: f64| {
+  let run_scaled = |scale: f64| {
     let scaled_gammas = gammas
       .iter()
       .map(|(key, gamma)| (*key, gamma * scale))
@@ -58,13 +56,12 @@ pub(crate) fn compute_rate_susceptibility(
       constraints,
       leaf_bad_branches,
       &scaled_gammas,
-      partitions,
+      branch_model,
       branch_lengths,
       names,
       clock_model,
       coalescent,
       no_indels,
-      clock_state,
       progress,
     )
   };

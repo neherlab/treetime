@@ -28,21 +28,11 @@ impl ClockInputs {
     Self { nodes, edges }
   }
 
-  pub(crate) fn seed_from_times(graph: &Graph, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> Self {
-    let mut inputs = Self::new(graph);
-    for node in graph.get_nodes() {
-      let key = node.key();
-      inputs.nodes.entry(key).or_default().time = times.get(&key).copied().flatten();
-    }
-    inputs
-  }
-
-  pub(crate) fn reseed_from_times(
-    &mut self,
+  pub(crate) fn from_times(
     graph: &Graph,
     times: &BTreeMap<GraphNodeKey, Option<f64>>,
     edge_inputs: &BTreeMap<GraphEdgeKey, (Option<f64>, f64)>,
-  ) {
+  ) -> Self {
     let nodes = graph
       .get_nodes()
       .map(|node| {
@@ -64,8 +54,7 @@ impl ClockInputs {
         (key, ClockEdgeInput { time_length, gamma })
       })
       .collect();
-    self.nodes = nodes;
-    self.edges = edges;
+    Self { nodes, edges }
   }
 
   #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
@@ -114,8 +103,8 @@ pub struct ClockEdgeInput {
   pub(crate) gamma: f64,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct ClockState {
+#[derive(Debug)]
+pub(crate) struct ClockState {
   pub(crate) nodes: BTreeMap<GraphNodeKey, ClockNodeState>,
   pub(crate) edges: BTreeMap<GraphEdgeKey, ClockEdgeState>,
 }
@@ -133,48 +122,12 @@ impl ClockState {
     Self { nodes, edges }
   }
 
-  pub(crate) fn reseed_transitional(&mut self, graph: &Graph) {
-    let nodes = graph
-      .get_nodes()
-      .map(|node| {
-        let key = node.key();
-        let (div, is_outlier) = self
-          .nodes
-          .get(&key)
-          .map_or((0.0, false), |state| (state.div, state.is_outlier));
-        (
-          key,
-          ClockNodeState {
-            clock_set: ClockSet::default(),
-            div,
-            is_outlier,
-          },
-        )
-      })
-      .collect();
-    let edges = graph
-      .get_edges()
-      .map(|edge| (edge.key(), ClockEdgeState::default()))
-      .collect();
-    self.nodes = nodes;
-    self.edges = edges;
-  }
-
   #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
-  pub fn node(&self, key: GraphNodeKey) -> &ClockNodeState {
+  pub(crate) fn node(&self, key: GraphNodeKey) -> &ClockNodeState {
     self
       .nodes
       .get(&key)
-      .unwrap_or_else(|| panic!("Clock state is missing node {key}"))
-  }
-
-  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
-  #[must_use]
-  pub(crate) fn node_mut(&mut self, key: GraphNodeKey) -> &mut ClockNodeState {
-    self
-      .nodes
-      .get_mut(&key)
       .unwrap_or_else(|| panic!("Clock state is missing node {key}"))
   }
 
@@ -221,14 +174,12 @@ impl ClockState {
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct ClockNodeState {
+pub(crate) struct ClockNodeState {
   pub clock_set: ClockSet,
-  pub div: f64,
-  pub is_outlier: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct ClockEdgeState {
+pub(crate) struct ClockEdgeState {
   pub(crate) clock_to_parent: ClockSet,
   pub(crate) clock_to_child: ClockSet,
   pub(crate) clock_from_child: ClockSet,

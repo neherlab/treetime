@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::fitch::create_fitch_partition;
 use crate::ancestral::marginal::branch_lengths_or_zero;
-use crate::ancestral::reconstruction::Reconstruction;
+use crate::ancestral::reconstruction::ReconstructedSequences;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
@@ -56,7 +56,7 @@ pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: 
 
 pub(crate) fn emitted_sequences_by_name(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  reconstruction: &Reconstruction,
+  reconstruction: &ReconstructedSequences,
 ) -> BTreeMap<String, Seq> {
   reconstruction
     .emitted_nodes

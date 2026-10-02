@@ -1,6 +1,6 @@
-use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
 use crate::progress_info;
+use crate::timetree::branch_model::BranchModel;
 use crate::timetree::convergence::likelihood::{
   compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
 };
@@ -55,14 +55,14 @@ impl<'a> TimetreeOptimizer<'a> {
     n_resolved: usize,
     time_change: NodeTimeChange,
     graph: &Graph,
-    partitions: &[PartitionTimetree],
+    branch_model: &BranchModel,
     inference: &TimeInference,
     coalescent_tc: Option<&Distribution>,
     clock: IterationClock,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     progress: &dyn ProgressSink,
   ) -> Result<(), Report> {
-    let log_lh_seq = compute_sequence_log_lh(graph, partitions);
+    let log_lh_seq = compute_sequence_log_lh(graph, branch_model);
     let log_lh_pos = compute_positional_log_lh(graph, inference);
     let log_lh_coal = compute_coalescent_log_lh(
       graph,

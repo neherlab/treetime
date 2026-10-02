@@ -1,90 +1,116 @@
-use crate::ancestral::marginal::branch_lengths_or_zero;
-use crate::clock::clock_regression::{ClockFit, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
-use crate::clock::clock_state::{ClockInputs, ClockState};
+use crate::clock::clock_regression::{
+  ClockFit, ClockRerootResult, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
+};
+use crate::clock::clock_state::ClockInputs;
 use crate::clock::date_constraints::DateConstraints;
-use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
+use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
-use crate::partition::timetree::marginal::marginal_update_timetree;
-use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
 use crate::progress_info;
+use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::time_inference::likely_times;
 use eyre::{Report, WrapErr};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::reroot::RerootChanges;
 
 #[expect(
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
 )]
 pub(crate) fn reroot_tree(
-  graph: &mut Graph,
+  graph: Graph,
+  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_model: BranchModel,
   constraints: &DateConstraints,
-  clock_state: &mut ClockState,
-  mut partitions: Vec<PartitionTimetree>,
+  outliers: &BTreeSet<GraphNodeKey>,
   clock_params: &ClockVarianceParams,
   clock_rate: Option<f64>,
   branch_params: &BranchPointOptimizationParams,
-  reroot_spec: &RerootSpec,
-  force_positive_rate: bool,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  reroot_params: &RerootParams,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   progress: &dyn ProgressSink,
-) -> Result<(ClockFit, Vec<PartitionTimetree>), Report> {
-  let reroot_params = RerootParams {
-    spec: reroot_spec.clone(),
-    force_positive_rate,
-    ..RerootParams::default()
-  };
-
+) -> Result<RerootedTree, Report> {
   progress_info!(
     progress,
-    "Reroot params: split_edge={}, remove_trivial_root={}, force_positive_rate={force_positive_rate}",
+    "Reroot params: split_edge={}, remove_trivial_root={}, force_positive_rate={}",
     reroot_params.split_edge,
-    reroot_params.remove_trivial_root
+    reroot_params.remove_trivial_root,
+    reroot_params.force_positive_rate
   );
 
-  clock_state.reseed_transitional(graph);
-  let mut clock_inputs = ClockInputs::seed_from_times(graph, &likely_times(graph, constraints, None)?);
-  let (new_clock_state, clock_reroot_result) = estimate_clock_model_with_reroot_policy(
-    graph,
-    &mut clock_inputs,
-    std::mem::take(clock_state),
+  let fit = DatedClockFit {
+    outliers,
     clock_params,
     clock_rate,
-    false,
+    keep_root: false,
     branch_params,
-    &reroot_params,
+    reroot_params,
+    failure: "Failed to estimate clock model with reroot",
+  };
+  let (
+    ClockTree {
+      graph, branch_lengths, ..
+    },
+    clock_reroot_result,
+  ) = fit_clock_to_dates(graph, branch_lengths, constraints, &fit, names, progress)?;
+
+  let branch_model = match clock_reroot_result.reroot_result() {
+    Some(reroot) => branch_model.apply_reroot(&graph, &branch_lengths, reroot, progress)?,
+    None => branch_model,
+  };
+
+  Ok(RerootedTree {
+    graph,
     branch_lengths,
+    branch_model,
+    clock_fit: clock_reroot_result.into_clock_fit()?,
+  })
+}
+
+pub(crate) fn fit_clock_to_dates(
+  graph: Graph,
+  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  constraints: &DateConstraints,
+  fit: &DatedClockFit<'_>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  progress: &dyn ProgressSink,
+) -> Result<(ClockTree, ClockRerootResult), Report> {
+  let times = likely_times(&graph, constraints, None)?;
+  let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+  estimate_clock_model_with_reroot_policy(
+    ClockTree {
+      graph,
+      branch_lengths,
+      inputs,
+    },
+    fit.outliers,
+    fit.clock_params,
+    fit.clock_rate,
+    fit.keep_root,
+    fit.branch_params,
+    fit.reroot_params,
     None,
     names,
     progress,
   )
-  .wrap_err("Failed to estimate clock model with reroot")?;
-  *clock_state = new_clock_state;
+  .wrap_err(fit.failure)
+}
 
-  if let Some(reroot_result) = clock_reroot_result.reroot_result() {
-    if !partitions.is_empty() {
-      let changes = RerootChanges {
-        edge_split: reroot_result.edge_split.clone(),
-        edge_merge: reroot_result.edge_merge.clone(),
-        inverted_edge_keys: reroot_result.inverted_edge_keys.clone(),
-      };
+pub(crate) struct DatedClockFit<'a> {
+  pub outliers: &'a BTreeSet<GraphNodeKey>,
+  pub clock_params: &'a ClockVarianceParams,
+  pub clock_rate: Option<f64>,
+  pub keep_root: bool,
+  pub branch_params: &'a BranchPointOptimizationParams,
+  pub reroot_params: &'a RerootParams,
+  pub failure: &'static str,
+}
 
-      progress_info!(progress, "Applying reroot changes to {} partitions", partitions.len());
-      partitions = partitions
-        .into_iter()
-        .map(|partition| partition.apply_reroot(&changes))
-        .collect::<Result<Vec<_>, Report>>()
-        .wrap_err("Failed to apply reroot changes to partition")?;
-
-      (partitions, _) = marginal_update_timetree(graph, &branch_lengths_or_zero(branch_lengths), partitions)
-        .wrap_err("Failed to update marginal after reroot")?;
-    }
-  }
-
-  Ok((clock_reroot_result.into_clock_fit()?, partitions))
+pub(crate) struct RerootedTree {
+  pub graph: Graph,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_model: BranchModel,
+  pub clock_fit: ClockFit,
 }

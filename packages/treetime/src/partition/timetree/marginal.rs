@@ -1,4 +1,4 @@
-use crate::ancestral::reconstruction::Reconstruction;
+use crate::ancestral::reconstruction::ReconstructedSequences;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
 use crate::partition::marginal::shared::update::MarginalPasses;
@@ -7,68 +7,30 @@ use crate::seq::indel::InDel;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use eyre::Report;
 use rand::RngCore;
-use rayon::prelude::*;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{LogLh, Seq};
 
-pub(crate) fn graph_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Result<LogLh, Report> {
-  let root_key = graph.get_exactly_one_root()?.key();
-  let log_lh = partitions
-    .par_iter()
-    .map(|partition| partition.get_log_lh(root_key))
-    .collect::<Vec<_>>()
-    .into_iter()
-    .sum();
-  Ok(log_lh)
-}
-
-pub(crate) fn marginal_update_timetree(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  partitions: Vec<PartitionTimetree>,
-) -> Result<(Vec<PartitionTimetree>, LogLh), Report> {
-  partitions
-    .into_iter()
-    .try_fold((Vec::new(), LogLh::ZERO), |(mut updated, total), partition| {
-      let (partition, log_lh) = partition.marginal_update(graph, branch_lengths)?;
-      updated.push(partition);
-      Ok((updated, total + log_lh))
-    })
-}
-
 impl PartitionTimetree {
-  pub(crate) fn get_sequence_length(&self) -> usize {
-    match self {
-      Self::Dense(family) => family.partition.length,
-      Self::Sparse(family) => family.partition.length,
-    }
+  pub(crate) fn graph_log_lh(&self, graph: &Graph) -> Result<LogLh, Report> {
+    let root_key = graph.get_exactly_one_root()?.key();
+    Ok(match self {
+      Self::Dense(family) => family.partition.get_log_lh(&family.node_states, root_key),
+      Self::Sparse(family) => family.partition.get_log_lh(&family.node_states, root_key),
+    })
   }
 
-  fn get_log_lh(&self, node_key: GraphNodeKey) -> LogLh {
-    match self {
-      Self::Dense(family) => family.partition.get_log_lh(&family.node_states, node_key),
-      Self::Sparse(family) => family.partition.get_log_lh(&family.node_states, node_key),
-    }
-  }
-
-  fn marginal_update(
+  pub(crate) fn marginal_update(
     self,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  ) -> Result<(Self, LogLh), Report> {
-    match self {
-      Self::Dense(family) => {
-        let (family, log_lh) = family.marginal_update(graph, branch_lengths)?;
-        Ok((Self::Dense(family), log_lh))
-      },
-      Self::Sparse(family) => {
-        let (family, log_lh) = family.marginal_update(graph, branch_lengths)?;
-        Ok((Self::Sparse(family), log_lh))
-      },
-    }
+  ) -> Result<Self, Report> {
+    Ok(match self {
+      Self::Dense(family) => Self::Dense(family.marginal_update(graph, branch_lengths)?.0),
+      Self::Sparse(family) => Self::Sparse(family.marginal_update(graph, branch_lengths)?.0),
+    })
   }
 
   pub(crate) fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
@@ -88,7 +50,7 @@ impl PartitionTimetree {
     tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn RngCore,
-  ) -> Result<Reconstruction, Report> {
+  ) -> Result<ReconstructedSequences, Report> {
     match self {
       Self::Dense(family) => family.reconstruct_sequences(graph, tips, sample_mode, rng),
       Self::Sparse(family) => family.reconstruct_sequences(graph, tips, sample_mode, rng),

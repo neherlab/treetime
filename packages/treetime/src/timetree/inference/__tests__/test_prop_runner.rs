@@ -4,15 +4,14 @@ mod tests {
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::DenseReconstruction;
   use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_state::ClockState;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::shared::update::MarginalEdges;
-  use crate::partition::timetree::marginal::marginal_update_timetree;
   use crate::partition::timetree::partition::PartitionTimetree;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
+  use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::undated_leaves;
   use crate::timetree::inference::runner::run_timetree;
   use crate::timetree::inference::time_inference::{TimeInference, unit_gammas};
@@ -124,13 +123,14 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-      let partitions = vec![PartitionTimetree::Dense(DenseReconstruction {
+      let partition = PartitionTimetree::Dense(DenseReconstruction {
         partition: PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),
-      })];
-      let (partitions, _) = marginal_update_timetree(&graph, &branch_lengths_or_zero(&branch_lengths), partitions)?;
+      });
+      let branch_model =
+        BranchModel::Marginal(partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?);
 
       let dates: DatesMap = case
         .dates
@@ -140,23 +140,21 @@ mod tests {
       let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
       let leaf_bad_branches = undated_leaves(&graph, &constraints);
       let clock_model = ClockModel::for_testing(CLOCK_RATE, 0.0);
-      let mut clock_state = ClockState::new(&graph);
 
       let unit = unit_gammas(&graph);
       let other: BTreeMap<GraphEdgeKey, f64> = unit.keys().map(|key| (*key, case.other_gamma)).collect();
-      let mut run = |gammas: &BTreeMap<GraphEdgeKey, f64>| -> RunResult {
+      let run = |gammas: &BTreeMap<GraphEdgeKey, f64>| -> RunResult {
         run_timetree(
           &graph,
           &constraints,
           &leaf_bad_branches,
           gammas,
-          &partitions,
+          &branch_model,
           &branch_lengths,
           &names,
           &clock_model,
           None,
           false,
-          &mut clock_state,
           &NoopProgress,
         )
         .map_err(|report| format!("{report:?}"))

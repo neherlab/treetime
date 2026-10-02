@@ -14,6 +14,7 @@ mod tests {
   use crate::seq::alignment::NodeSeqInput;
   use crate::test_utils::find_node_key_by_name;
   use crate::test_utils::{constraint_coalescent_node_times, empty_time_inference};
+  use crate::timetree::branch_model::BranchModel;
   use crate::timetree::convergence::likelihood::{
     compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
   };
@@ -34,15 +35,12 @@ mod tests {
   use treetime_utils::{o, pretty_assert_ulps_eq};
 
   #[test]
-  fn test_likelihood_sequence_log_lh_sums_root_components() -> Result<(), Report> {
+  fn test_likelihood_sequence_log_lh_is_the_root_log_lh_of_the_partition() -> Result<(), Report> {
     let (graph, root_key) = helpers::single_root_graph()?;
-    let partitions = [
-      helpers::partition_with_root_log_lh(&graph, root_key, -2.0)?,
-      helpers::partition_with_root_log_lh(&graph, root_key, -3.5)?,
-    ];
-    let expected = -5.5;
+    let branch_model = BranchModel::Marginal(helpers::partition_with_root_log_lh(&graph, root_key, -3.5)?);
+    let expected = -3.5;
 
-    let actual = compute_sequence_log_lh(&graph, &partitions)
+    let actual = compute_sequence_log_lh(&graph, &branch_model)
       .expect("sequence log-likelihood must be available")
       .value();
 
@@ -51,10 +49,10 @@ mod tests {
   }
 
   #[test]
-  fn test_likelihood_sequence_log_lh_absent_without_partitions() -> Result<(), Report> {
+  fn test_likelihood_sequence_log_lh_absent_in_input_mode() -> Result<(), Report> {
     let (graph, _) = helpers::single_root_graph()?;
 
-    let actual = compute_sequence_log_lh(&graph, &[]);
+    let actual = compute_sequence_log_lh(&graph, &BranchModel::Input);
 
     assert_eq!(None, actual);
     Ok(())
@@ -118,7 +116,7 @@ mod tests {
   fn test_likelihood_optimizer_total_sums_available_log_lh_components() -> Result<(), Report> {
     let (graph, names) = helpers::positional_graph()?;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
-    let partitions = [helpers::partition_with_root_log_lh(&graph, root_key, -2.0)?];
+    let branch_model = BranchModel::Marginal(helpers::partition_with_root_log_lh(&graph, root_key, -2.0)?);
     let mut optimizer = TimetreeOptimizer::new(1, false);
     let expected = -2.0 + 0.25_f64.ln();
     let state = helpers::positional_state(&graph, &names);
@@ -129,7 +127,7 @@ mod tests {
       0,
       NodeTimeChange::default(),
       &graph,
-      &partitions,
+      &branch_model,
       &state,
       None,
       helpers::fixed_clock(),

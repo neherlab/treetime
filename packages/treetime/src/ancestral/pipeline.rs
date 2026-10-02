@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::fitch::{ancestral_reconstruction_fitch, create_fitch_partition};
 use crate::ancestral::marginal::branch_lengths_or_zero;
 use crate::ancestral::params::MethodAncestral;
-use crate::ancestral::reconstruction::Reconstruction;
+use crate::ancestral::reconstruction::ReconstructedSequences;
 use crate::ancestral::sample::SampleMode;
 use crate::ancestral::tip_states::TipStates;
 use crate::cancel::Cancel;
@@ -154,7 +154,7 @@ pub fn run(
 
           cancel.check()?;
           progress.report("Reconstructing sequences", 0.6, "");
-          let Reconstruction {
+          let ReconstructedSequences {
             sequences,
             emitted_nodes,
           } = family.reconstruct_sequences(graph, tips, params.sample_from_profile, &mut rng)?;
@@ -198,7 +198,7 @@ pub fn run(
 
           cancel.check()?;
           progress.report("Reconstructing sequences", 0.6, "");
-          let Reconstruction {
+          let ReconstructedSequences {
             sequences,
             emitted_nodes,
           } = family.reconstruct_sequences(graph, tips, params.sample_from_profile, &mut rng)?;
@@ -385,7 +385,7 @@ impl SparseReconstruction {
     tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn RngCore,
-  ) -> Result<Reconstruction, Report> {
+  ) -> Result<ReconstructedSequences, Report> {
     self
       .partition
       .reconstruct_sequences(graph, &self.node_states, &self.edges.forward, tips, sample_mode, rng)
@@ -486,7 +486,7 @@ impl DenseReconstruction {
     tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn RngCore,
-  ) -> Result<Reconstruction, Report> {
+  ) -> Result<ReconstructedSequences, Report> {
     self
       .partition
       .reconstruct_sequences(graph, &self.node_states, tips, sample_mode, rng)

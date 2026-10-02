@@ -1,9 +1,8 @@
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::total_lh::compute_coalescent_total_lh;
-use crate::partition::timetree::marginal::graph_log_lh;
-use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
 use crate::progress_warn;
+use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::time_inference::TimeInference;
 use log::debug;
 use std::collections::BTreeMap;
@@ -12,11 +11,11 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 
-pub(crate) fn compute_sequence_log_lh(graph: &Graph, partitions: &[PartitionTimetree]) -> Option<LogLh> {
-  if partitions.is_empty() {
+pub(crate) fn compute_sequence_log_lh(graph: &Graph, branch_model: &BranchModel) -> Option<LogLh> {
+  let BranchModel::Marginal(partition) = branch_model else {
     return None;
-  }
-  match graph_log_lh(graph, partitions) {
+  };
+  match partition.graph_log_lh(graph) {
     Ok(lh) => Some(lh),
     Err(e) => {
       debug!("Sequence log-likelihood unavailable: {e}");

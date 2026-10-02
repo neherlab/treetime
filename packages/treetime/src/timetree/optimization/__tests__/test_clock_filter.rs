@@ -1,15 +1,15 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::clock_filter::{ClockFilterResult, clock_filter_inplace};
+  use crate::clock::clock_filter::{ClockFilterResult, clock_filter};
   use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_state::{ClockInputs, ClockState};
+  use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::DateConstraints;
   use crate::progress::NoopProgress;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::inference::time_inference::likely_times;
   use crate::timetree::optimization::clock_filter::mark_outlier_leaves;
   use eyre::Report;
-  use maplit::btreemap;
+  use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::Arc;
@@ -37,16 +37,12 @@ mod tests {
     DateConstraints { date_constraints }
   }
 
-  fn seed_clock_state(graph: &Graph, constraints: &DateConstraints) -> (ClockInputs, ClockState) {
-    let inputs = ClockInputs::seed_from_times(graph, &likely_times(graph, constraints, None).unwrap());
-    (inputs, ClockState::new(graph))
-  }
-
-  fn count_outliers(graph: &Graph, state: &ClockState) -> usize {
-    graph
-      .get_leaves()
-      .filter(|leaf| state.node(leaf.key()).is_outlier)
-      .count()
+  fn clock_inputs(graph: &Graph, constraints: &DateConstraints) -> ClockInputs {
+    ClockInputs::from_times(
+      graph,
+      &likely_times(graph, constraints, None).unwrap(),
+      &BTreeMap::new(),
+    )
   }
 
   #[test]
@@ -67,20 +63,12 @@ mod tests {
 
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let (inputs, mut state) = seed_clock_state(&graph, &constraints);
-    let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(
-      &graph,
-      &inputs,
-      &mut state,
-      &clock_model,
-      &branch_lengths,
-      3.0,
-      &NoopProgress,
-    )?;
+    let inputs = clock_inputs(&graph, &constraints);
+    let ClockFilterResult { outliers, iqd, .. } =
+      clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
-    assert_eq!(count_outliers(&graph, &state), 0, "No outliers expected for clean data");
+    assert!(outliers.is_empty(), "No outliers expected for clean data");
     assert!(iqd >= 0.0, "IQD should be non-negative");
-    assert_eq!(new_outliers, 0, "No status changes expected");
 
     Ok(())
   }
@@ -103,33 +91,13 @@ mod tests {
 
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let (inputs, mut state) = seed_clock_state(&graph, &constraints);
-    let ClockFilterResult { new_outliers, iqd } = clock_filter_inplace(
-      &graph,
-      &inputs,
-      &mut state,
-      &clock_model,
-      &branch_lengths,
-      3.0,
-      &NoopProgress,
-    )?;
+    let inputs = clock_inputs(&graph, &constraints);
+    let ClockFilterResult { outliers, iqd, .. } =
+      clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
-    assert!(
-      count_outliers(&graph, &state) >= 1,
-      "At least one outlier expected for data with extreme deviation"
-    );
     assert!(iqd > 0.0, "IQD should be positive with varying dates");
-    assert!(new_outliers >= 1, "At least one status change expected");
-
-    let a_is_outlier = graph.get_leaves().any(|leaf| {
-      let node = leaf;
-      state.node(node.key()).is_outlier
-        && names
-          .get(&node.key())
-          .and_then(|x| x.as_deref())
-          .is_some_and(|x| x == "A")
-    });
-    assert!(a_is_outlier, "Node A should be marked as outlier");
+    let a_key = find_node_key_by_name(&graph, &names, "A").unwrap();
+    assert!(outliers.contains(&a_key), "Node A should be marked as outlier");
 
     Ok(())
   }
@@ -152,16 +120,9 @@ mod tests {
 
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let (inputs, mut state) = seed_clock_state(&graph, &constraints);
-    let ClockFilterResult { iqd, .. } = clock_filter_inplace(
-      &graph,
-      &inputs,
-      &mut state,
-      &clock_model,
-      &branch_lengths,
-      3.0,
-      &NoopProgress,
-    )?;
+    let inputs = clock_inputs(&graph, &constraints);
+    let ClockFilterResult { iqd, .. } =
+      clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     assert!(iqd.is_finite(), "IQD should be a finite number");
 
@@ -186,29 +147,13 @@ mod tests {
 
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let (inputs_low, mut state_low) = seed_clock_state(&graph, &constraints);
-    clock_filter_inplace(
-      &graph,
-      &inputs_low,
-      &mut state_low,
-      &clock_model,
-      &branch_lengths,
-      1.0,
-      &NoopProgress,
-    )?;
-    let outliers_low_threshold = count_outliers(&graph, &state_low);
-
-    let (inputs_high, mut state_high) = seed_clock_state(&graph, &constraints);
-    clock_filter_inplace(
-      &graph,
-      &inputs_high,
-      &mut state_high,
-      &clock_model,
-      &branch_lengths,
-      100.0,
-      &NoopProgress,
-    )?;
-    let outliers_high_threshold = count_outliers(&graph, &state_high);
+    let inputs = clock_inputs(&graph, &constraints);
+    let outliers_low_threshold = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 1.0, &NoopProgress)?
+      .outliers
+      .len();
+    let outliers_high_threshold = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 100.0, &NoopProgress)?
+      .outliers
+      .len();
 
     assert!(
       outliers_high_threshold <= outliers_low_threshold,
@@ -225,15 +170,14 @@ mod tests {
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
 
-    let mut clock_state = ClockState::new(&graph);
-    clock_state.nodes.entry(key("B")).or_default().is_outlier = true;
+    let outliers = btreeset! { key("B") };
     let leaf_bad_branches = btreemap! {
       key("A") => true,
       key("B") => false,
       key("C") => false,
     };
 
-    let actual = mark_outlier_leaves(&graph, &clock_state, &leaf_bad_branches);
+    let actual = mark_outlier_leaves(&graph, &outliers, &leaf_bad_branches);
 
     let expected = btreemap! {
       key("A") => true,

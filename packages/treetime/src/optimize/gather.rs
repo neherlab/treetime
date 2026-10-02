@@ -109,7 +109,7 @@ pub(crate) fn total_sequence_length(dense: &[DenseReconstruction], sparse: &[Spa
 
 pub(crate) fn gather_timetree_edge_contributions(
   graph: &Graph,
-  partitions: &[PartitionTimetree],
+  partition: &PartitionTimetree,
 ) -> Result<BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>, Report> {
   graph
     .get_edges()
@@ -118,11 +118,7 @@ pub(crate) fn gather_timetree_edge_contributions(
     .map(
       |edge_ref| -> Result<(GraphEdgeKey, Vec<OptimizationContribution>), Report> {
         let edge_key = edge_ref.key();
-        let contributions = partitions
-          .iter()
-          .map(|partition| partition.create_edge_contribution(edge_key))
-          .collect::<Result<Vec<_>, _>>()?;
-        Ok((edge_key, contributions))
+        Ok((edge_key, vec![partition.create_edge_contribution(edge_key)?]))
       },
     )
     .collect()
@@ -130,7 +126,7 @@ pub(crate) fn gather_timetree_edge_contributions(
 
 pub(crate) fn gather_timetree_edge_indel_counts(
   graph: &Graph,
-  partitions: &[PartitionTimetree],
+  partition: &PartitionTimetree,
 ) -> BTreeMap<GraphEdgeKey, usize> {
   graph
     .get_edges()
@@ -138,17 +134,7 @@ pub(crate) fn gather_timetree_edge_indel_counts(
     .into_par_iter()
     .map(|edge_ref| {
       let edge_key = edge_ref.key();
-      (
-        edge_key,
-        partitions
-          .iter()
-          .map(|partition| partition.edge_indel_count(edge_key))
-          .sum(),
-      )
+      (edge_key, partition.edge_indel_count(edge_key))
     })
     .collect()
-}
-
-pub(crate) fn timetree_total_sequence_length(partitions: &[PartitionTimetree]) -> usize {
-  partitions.iter().map(PartitionTimetree::sequence_length).sum()
 }

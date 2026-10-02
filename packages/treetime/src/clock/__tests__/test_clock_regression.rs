@@ -1,23 +1,21 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::clock_model::{ClockModel, ClockRegression};
-  use crate::clock::clock_regression::{
-    ClockVarianceParams, clock_regression_backward, estimate_clock_model_with_reroot_policy,
-  };
+  use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_set::ClockSet;
-  use crate::clock::clock_state::{ClockInputs, ClockState};
+  use crate::clock::clock_state::ClockInputs;
+  use crate::clock::divergence::root_to_node_divergences;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
   use crate::o;
   use crate::progress::NoopProgress;
-  use crate::seq::div::{OnlyLeaves, compute_divs};
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
@@ -39,30 +37,20 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read_str(TREE_4)?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    let graph: Graph = graph;
-    let divs = compute_divs(&graph, OnlyLeaves(true), &branch_lengths, &names)?;
+    let divergences = root_to_node_divergences(&graph, |edge_key| branch_lengths[&edge_key].unwrap_or_default())?;
+    let divs: BTreeMap<String, f64> = graph
+      .get_leaves()
+      .map(|leaf| (names[&leaf.key()].clone().unwrap(), divergences[&leaf.key()]))
+      .collect();
     let naive_rate = compute_naive_rate(&dates, &divs);
 
-    let times = helpers::leaf_times(&names, &graph, &dates);
-    let inputs = ClockInputs::seed_from_times(&graph, &times);
-    let mut state = ClockState::new(&graph);
-    let root_key = graph.get_exactly_one_root()?.key();
-
-    clock_regression_backward(
-      &graph,
-      &inputs,
-      &mut state,
-      &ClockVarianceParams::default(),
-      &branch_lengths,
-      None,
-    )?;
-    let clock = ClockModel::from_regression(&ClockRegression::try_from(&state.node(root_key).clock_set)?)?;
-    pretty_assert_abs_diff_eq!(naive_rate, clock.clock_rate(), epsilon = 1e-10);
+    let regression = helpers::root_regression(TREE_4, &dates, &ClockVarianceParams::default())?;
+    pretty_assert_abs_diff_eq!(naive_rate, regression.clock_rate(), epsilon = 1e-10);
 
     let options = &ClockVarianceParams {
       variance_factor: 1.0,
@@ -70,9 +58,8 @@ mod tests {
       variance_offset_leaf: 1.0,
     };
 
-    clock_regression_backward(&graph, &inputs, &mut state, options, &branch_lengths, None)?;
-    let clock = ClockModel::from_regression(&ClockRegression::try_from(&state.node(root_key).clock_set)?)?;
-    pretty_assert_ulps_eq!(0.007710610618916924, clock.clock_rate(), max_ulps = 4);
+    let regression = helpers::root_regression(TREE_4, &dates, options)?;
+    pretty_assert_ulps_eq!(0.007710610618916924, regression.clock_rate(), max_ulps = 4);
 
     Ok(())
   }
@@ -86,16 +73,17 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    let expected = helpers::root_clock_set("(A:0.1,B:0.2,C:0.2,D:0.12)root;", &dates)?;
-    let actual = helpers::root_clock_set("(A:0.1,B:0.2,C:0.2,D:0.12,E:10.0)root;", &dates)?;
+    let options = ClockVarianceParams::default();
+    let expected = helpers::root_regression("(A:0.1,B:0.2,C:0.2,D:0.12)root;", &dates, &options)?;
+    let actual = helpers::root_regression("(A:0.1,B:0.2,C:0.2,D:0.12,E:10.0)root;", &dates, &options)?;
 
-    assert_eq!(expected, actual);
+    assert_eq!(helpers::regression_bits(&expected), helpers::regression_bits(&actual));
     Ok(())
   }
 
   #[test]
   fn test_clock_regression_points_are_root_to_tip_distances_of_the_leaves() -> Result<(), Report> {
-    let (_, points) = helpers::fit(TREE_4, &dates_4(), true, None)?;
+    let (_, points) = helpers::fit(TREE_4, &dates_4(), &[], true, None)?;
 
     #[rustfmt::skip]
     let expected = [
@@ -114,9 +102,9 @@ mod tests {
 
   #[test]
   fn test_clock_regression_points_use_clock_lengths_when_the_previous_rate_is_given() -> Result<(), Report> {
-    let (_, points) = helpers::fit(TREE_4, &dates_4(), true, Some(0.01))?;
+    let (_, points) = helpers::fit(TREE_4, &dates_4(), &[], true, Some(0.01))?;
 
-    let (_, input_lengths) = helpers::fit(TREE_4, &dates_4(), true, None)?;
+    let (_, input_lengths) = helpers::fit(TREE_4, &dates_4(), &[], true, None)?;
 
     for ((_, _, div, _), (_, _, input_div, _)) in points.iter().zip_eq(&input_lengths) {
       pretty_assert_ulps_eq!(3.0 * input_div, *div, max_ulps = 4);
@@ -140,7 +128,7 @@ mod tests {
       o!("D") => 2005.0,
       o!("E") => 2020.0,
     };
-    let (model, points) = helpers::fit(TREE_5, &dates, keep_root, prev_clock_rate)?;
+    let (model, points) = helpers::fit(TREE_5, &dates, &[], keep_root, prev_clock_rate)?;
 
     let mut refit = ClockSet::default();
     for (_, date, div, _) in &points {
@@ -150,6 +138,29 @@ mod tests {
 
     pretty_assert_abs_diff_eq!(model.clock_rate(), refit.clock_rate(), epsilon = 1e-12);
     pretty_assert_abs_diff_eq!(model.intercept(), refit.intercept(), epsilon = 1e-9);
+    Ok(())
+  }
+
+  #[test]
+  fn test_clock_regression_points_flag_the_outliers() -> Result<(), Report> {
+    let (_, points) = helpers::fit(TREE_5, &dates_5(), &["E"], true, None)?;
+
+    let flagged = points
+      .iter()
+      .filter(|(_, _, _, is_outlier)| *is_outlier)
+      .map(|(name, ..)| name.as_str())
+      .collect_vec();
+    assert_eq!(vec!["E"], flagged);
+    Ok(())
+  }
+
+  #[test]
+  #[ignore = "outlier leaves still enter the regression through their parent edge: kb/issues/H-clock-regression-includes-filtered-outliers.md"]
+  fn test_clock_regression_outliers_are_left_out_of_the_fit() -> Result<(), Report> {
+    let (model, _) = helpers::fit(TREE_5, &dates_5(), &["E"], true, None)?;
+    let (model_without_e_date, _) = helpers::fit(TREE_5, &dates_4(), &[], true, None)?;
+
+    pretty_assert_abs_diff_eq!(model_without_e_date.clock_rate(), model.clock_rate(), epsilon = 1e-12);
     Ok(())
   }
 
@@ -166,37 +177,53 @@ mod tests {
     }
   }
 
+  fn dates_5() -> BTreeMap<String, f64> {
+    btreemap! {
+      o!("A") => 2013.0,
+      o!("B") => 2022.0,
+      o!("C") => 2017.0,
+      o!("D") => 2005.0,
+      o!("E") => 2020.0,
+    }
+  }
+
   mod helpers {
     use super::*;
 
     pub(super) fn fit(
       tree: &str,
       dates: &BTreeMap<String, f64>,
+      outlier_names: &[&str],
       keep_root: bool,
       prev_clock_rate: Option<f64>,
     ) -> Result<(ClockModel, Vec<(String, Option<f64>, f64, bool)>), Report> {
       let nwk_parsed = nwk_read_str(tree)?;
       let names = nwk_parsed.names();
-      let mut graph = nwk_parsed.graph;
-      let mut branch_lengths = nwk_parsed.branch_lengths;
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
       let times = leaf_times(&names, &graph, dates);
       let edge_inputs = branch_lengths
         .iter()
         .map(|(&key, length)| (key, (length.map(|length| length * 100.0), 3.0)))
         .collect();
-      let mut inputs = ClockInputs::new(&graph);
-      inputs.reseed_from_times(&graph, &times, &edge_inputs);
-      let state = ClockState::new(&graph);
+      let inputs = ClockInputs::from_times(&graph, &times, &edge_inputs);
+      let outliers: BTreeSet<GraphNodeKey> = names
+        .iter()
+        .filter(|(_, name)| name.as_deref().is_some_and(|name| outlier_names.contains(&name)))
+        .map(|(key, _)| *key)
+        .collect();
       let (_, result) = estimate_clock_model_with_reroot_policy(
-        &mut graph,
-        &mut inputs,
-        state,
+        ClockTree {
+          graph,
+          branch_lengths,
+          inputs,
+        },
+        &outliers,
         &ClockVarianceParams::default(),
         None,
         keep_root,
         &BranchPointOptimizationParams::default(),
         &RerootParams::default(),
-        &mut branch_lengths,
         prev_clock_rate,
         &names,
         &NoopProgress,
@@ -228,26 +255,42 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn root_clock_set(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockSet, Report> {
+    pub(super) fn root_regression(
+      tree: &str,
+      dates: &BTreeMap<String, f64>,
+      options: &ClockVarianceParams,
+    ) -> Result<ClockRegression, Report> {
       let nwk_parsed = nwk_read_str(tree)?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
       let times = leaf_times(&names, &graph, dates);
-      let inputs = ClockInputs::seed_from_times(&graph, &times);
-      let mut state = ClockState::new(&graph);
-      clock_regression_backward(
-        &graph,
-        &inputs,
-        &mut state,
-        &ClockVarianceParams::default(),
-        &branch_lengths,
+      let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+      let (_, result) = estimate_clock_model_with_reroot_policy(
+        ClockTree {
+          graph,
+          branch_lengths: nwk_parsed.branch_lengths,
+          inputs,
+        },
+        &BTreeSet::new(),
+        options,
         None,
+        true,
+        &BranchPointOptimizationParams::default(),
+        &RerootParams::default(),
+        None,
+        &names,
+        &NoopProgress,
       )?;
-      let root_key = graph.get_exactly_one_root()?.key();
-      let clock_set = state.node(root_key).clock_set.clone();
-      Ok(clock_set)
+      Ok(result.regression().clone())
+    }
+
+    pub(super) fn regression_bits(regression: &ClockRegression) -> [u64; 4] {
+      [
+        regression.clock_rate().to_bits(),
+        regression.intercept().to_bits(),
+        regression.chisq().to_bits(),
+        regression.r_squared().to_bits(),
+      ]
     }
   }
 }

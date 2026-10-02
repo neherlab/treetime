@@ -1,506 +1,221 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::clock_regression::{ClockVarianceParams, clock_regression_backward, clock_regression_forward};
-  use crate::clock::clock_state::{ClockInputs, ClockState};
-  use crate::clock::find_best_root::find_best_root::find_best_root;
-  use crate::clock::find_best_root::find_best_split::FindRootResult;
   use crate::clock::find_best_root::params::{
-    BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams, RootObjective,
+    BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams,
   };
   use crate::o;
   use crate::pretty_assert_ulps_eq;
-  use crate::progress::NoopProgress;
   use eyre::Report;
-  use maplit::btreemap;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use helpers::{RootSearch, dates_negative_rate, dates_positive_rate, search_root};
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
-  fn leaf_times(
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-    graph: &Graph,
-    dates: &BTreeMap<String, f64>,
-  ) -> BTreeMap<GraphNodeKey, Option<f64>> {
-    graph
-      .get_leaves()
-      .map(|node| {
-        let name = names[&node.key()].clone().unwrap();
-        (node.key(), dates.get(&name).copied())
-      })
-      .collect()
-  }
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::grid(                     BranchPointOptimizationParams::Grid(GridSearchParams::default()),                                                     0.00026106623586340597)]
+  #[case::grid_with_params(         BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }),                                           0.000_256_025_848_142_593_5)]
+  #[case::brent(                    BranchPointOptimizationParams::Brent(BrentParams::default()),                                                         0.000_255_999_999_998_356_5)]
+  #[case::brent_with_params(        BranchPointOptimizationParams::brent_with(BrentParams { brent_max_iters: 25, brent_tolerance: 1e-8 }),                0.000_255_999_999_998_356_5)]
+  #[case::golden_section(           BranchPointOptimizationParams::GoldenSection(GoldenSectionParams::default()),                                         0.00025599999999690367)]
+  #[case::golden_section_with_params(BranchPointOptimizationParams::golden_section_with(GoldenSectionParams { golden_max_iters: 25, golden_tolerance: 1e-8 }), 0.000_255_999_999_998_999_2)]
+  #[trace]
+  fn test_find_best_root_splits_the_root_to_cd_branch(
+    #[case] params: BranchPointOptimizationParams,
+    #[case] expected_chisq: f64,
+  ) -> Result<(), Report> {
+    let search = search_root(&dates_positive_rate(), &params, true, None)?;
 
-  fn setup_graph_with_dates(
-    dates: &BTreeMap<String, f64>,
-  ) -> Result<
-    (
-      Graph,
-      BTreeMap<GraphNodeKey, Option<String>>,
-      ClockVarianceParams,
-      ClockInputs,
-      ClockState,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let times = leaf_times(&names, &graph, dates);
-
-    let options = ClockVarianceParams::default();
-    let inputs = ClockInputs::seed_from_times(&graph, &times);
-    let mut state = ClockState::new(&graph);
-    clock_regression_backward(&graph, &inputs, &mut state, &options, &branch_lengths, None)?;
-    clock_regression_forward(&graph, &inputs, &mut state, &options, &branch_lengths, None)?;
-
-    Ok((graph, names, options, inputs, state, branch_lengths))
-  }
-
-  fn setup_test_graph() -> Result<
-    (
-      Graph,
-      BTreeMap<GraphNodeKey, Option<String>>,
-      ClockVarianceParams,
-      ClockInputs,
-      ClockState,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
-    let dates = btreemap! {
-      o!("A") => 2013.0,
-      o!("B") => 2022.0,
-      o!("C") => 2017.0,
-      o!("D") => 2005.0,
-    };
-    setup_graph_with_dates(&dates)
-  }
-
-  fn get_edge_node_names(
-    graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-    result: &FindRootResult,
-  ) -> (String, String) {
-    let edge_key = result.edge.expect("result should have an edge");
-    let edge = graph.get_edge(edge_key).expect("edge should exist");
-    let source_name = names
-      .get(&edge.source())
-      .cloned()
-      .flatten()
-      .unwrap_or_else(|| "unnamed".to_owned());
-    let target_name = names
-      .get(&edge.target())
-      .cloned()
-      .flatten()
-      .unwrap_or_else(|| "unnamed".to_owned());
-    (source_name, target_name)
-  }
-
-  #[test]
-  fn test_find_best_root_grid() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_test_graph()?;
-
-    let best_root = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
-      &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
-      &branch_lengths,
-      true,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
-    )?;
-
-    pretty_assert_ulps_eq!(best_root.chisq, 0.00026106623586340597, max_ulps = 4);
-
-    assert!(
-      best_root.split >= 0.0 && best_root.split <= 1.0,
-      "split should be in [0, 1]"
-    );
-
-    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!("root", source);
-    assert_eq!("CD", target);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_find_best_root_grid_with_params() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_test_graph()?;
-
-    let best_root = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
-      &BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }),
-      &branch_lengths,
-      true,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
-    )?;
-
-    pretty_assert_ulps_eq!(best_root.chisq, 0.000_256_025_848_142_593_5, max_ulps = 4);
-
-    assert!(
-      best_root.split >= 0.0 && best_root.split <= 1.0,
-      "split should be in [0, 1]"
-    );
-
-    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!("root", source);
-    assert_eq!("CD", target);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_find_best_root_grid_scores_fixed_rate_objective() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_test_graph()?;
-
-    let best_root = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
-      &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
-      &branch_lengths,
-      true,
-      RootObjective::FixedRate(0.0),
-      &names,
-      &NoopProgress,
-    )?;
-
-    let expected_chisq = best_root.clock_set.chisq_fixed_rate(0.0);
-    pretty_assert_ulps_eq!(best_root.chisq, expected_chisq, max_ulps = 4);
-    assert!(
-      (best_root.chisq - best_root.clock_set.chisq()).abs() > 1e-10,
-      "test must distinguish fixed-rate and estimated-rate objectives"
-    );
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_find_best_root_brent() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_test_graph()?;
-
-    let best_root = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
-      &BranchPointOptimizationParams::Brent(BrentParams::default()),
-      &branch_lengths,
-      true,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
-    )?;
-
-    pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_356_5, max_ulps = 4);
-
-    assert!(
-      best_root.split >= 0.0 && best_root.split <= 1.0,
-      "split should be in [0, 1]"
-    );
-
-    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!("root", source);
-    assert_eq!("CD", target);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_find_best_root_brent_with_params() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_test_graph()?;
-
-    let best_root = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
-      &BranchPointOptimizationParams::brent_with(BrentParams {
-        brent_max_iters: 25,
-        brent_tolerance: 1e-8,
-      }),
-      &branch_lengths,
-      true,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
-    )?;
-
-    pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_356_5, max_ulps = 4);
-
-    assert!(
-      best_root.split >= 0.0 && best_root.split <= 1.0,
-      "split should be in [0, 1]"
-    );
-
-    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!("root", source);
-    assert_eq!("CD", target);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_find_best_root_golden_section() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_test_graph()?;
-
-    let best_root = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
-      &BranchPointOptimizationParams::GoldenSection(GoldenSectionParams::default()),
-      &branch_lengths,
-      true,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
-    )?;
-
-    pretty_assert_ulps_eq!(best_root.chisq, 0.00025599999999690367, max_ulps = 4);
-
-    assert!(
-      best_root.split >= 0.0 && best_root.split <= 1.0,
-      "split should be in [0, 1]"
-    );
-
-    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!("root", source);
-    assert_eq!("CD", target);
-
-    Ok(())
-  }
-
-  #[test]
-  fn test_find_best_root_golden_section_with_params() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_test_graph()?;
-
-    let best_root = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
-      &BranchPointOptimizationParams::golden_section_with(GoldenSectionParams {
-        golden_max_iters: 25,
-        golden_tolerance: 1e-8,
-      }),
-      &branch_lengths,
-      true,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
-    )?;
-
-    pretty_assert_ulps_eq!(best_root.chisq, 0.000_255_999_999_998_999_2, max_ulps = 4);
-
-    assert!(
-      best_root.split >= 0.0 && best_root.split <= 1.0,
-      "split should be in [0, 1]"
-    );
-
-    let (source, target) = get_edge_node_names(&graph, &names, &best_root);
-    assert_eq!("root", source);
-    assert_eq!("CD", target);
-
+    pretty_assert_ulps_eq!(expected_chisq, search.result.regression().chisq(), max_ulps = 4);
+    assert_eq!(Some((o!("root"), o!("CD"))), search.split_edge);
+    let split = search.split.expect("the root search splits a branch");
+    assert!((0.0..=1.0).contains(&split), "split should be in [0, 1]");
     Ok(())
   }
 
   #[test]
   fn test_optimization_methods_improve_on_grid() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_test_graph()?;
-
-    let grid_result = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
+    let dates = dates_positive_rate();
+    let grid = search_root(
+      &dates,
       &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
-      &branch_lengths,
       true,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
+      None,
     )?;
-    let brent_result = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
+    let brent = search_root(
+      &dates,
       &BranchPointOptimizationParams::Brent(BrentParams::default()),
-      &branch_lengths,
       true,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
+      None,
     )?;
-    let golden_result = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
+    let golden = search_root(
+      &dates,
       &BranchPointOptimizationParams::GoldenSection(GoldenSectionParams::default()),
-      &branch_lengths,
       true,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
+      None,
     )?;
 
+    let chisq = |search: &RootSearch| search.result.regression().chisq();
+    assert!(chisq(&brent) <= chisq(&grid), "Brent should achieve <= chisq than grid");
     assert!(
-      brent_result.chisq <= grid_result.chisq,
-      "Brent ({:.6e}) should achieve <= chisq than grid ({:.6e})",
-      brent_result.chisq,
-      grid_result.chisq
+      chisq(&golden) <= chisq(&grid),
+      "Golden section should achieve <= chisq than grid"
     );
-    assert!(
-      golden_result.chisq <= grid_result.chisq,
-      "Golden section ({:.6e}) should achieve <= chisq than grid ({:.6e})",
-      golden_result.chisq,
-      grid_result.chisq
-    );
-
+    assert_eq!(grid.split_edge, brent.split_edge, "Brent should find same edge as grid");
     assert_eq!(
-      grid_result.edge, brent_result.edge,
-      "Brent should find same edge as grid"
-    );
-    assert_eq!(
-      grid_result.edge, golden_result.edge,
+      grid.split_edge, golden.split_edge,
       "Golden section should find same edge as grid"
     );
-
     Ok(())
-  }
-
-  fn setup_negative_rate_graph() -> Result<
-    (
-      Graph,
-      BTreeMap<GraphNodeKey, Option<String>>,
-      ClockVarianceParams,
-      ClockInputs,
-      ClockState,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    ),
-    Report,
-  > {
-    let dates = btreemap! {
-      o!("A") => 2017.0,
-      o!("B") => 2005.0,
-      o!("C") => 2010.0,
-      o!("D") => 2022.0,
-    };
-    setup_graph_with_dates(&dates)
   }
 
   #[test]
   fn test_find_best_root_force_positive_true_rejects_negative_rate() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_negative_rate_graph()?;
-
-    let result = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
+    let result = search_root(
+      &dates_negative_rate(),
       &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
-      &branch_lengths,
       true,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
+      None,
     );
 
-    assert!(
-      result.is_err(),
-      "force_positive=true should reject all-negative-rate graph"
+    let err_msg = format!(
+      "{:?}",
+      result
+        .err()
+        .expect("force_positive=true should reject all-negative-rate graph")
     );
-    let err_msg = result.unwrap_err().to_string();
     assert!(
       err_msg.contains("Clock rate is negative"),
       "Error message should mention negative rate, got: {err_msg}"
     );
-
     Ok(())
   }
 
   #[test]
   fn test_find_best_root_force_positive_false_accepts_negative_rate() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_negative_rate_graph()?;
-
-    let best_root = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
+    let search = search_root(
+      &dates_negative_rate(),
       &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
-      &branch_lengths,
       false,
-      RootObjective::EstimatedRate,
-      &names,
-      &NoopProgress,
+      None,
     )?;
 
-    let det = best_root.clock_set.determinant();
-    assert!(det > 0.0, "determinant should be positive");
-    let rate = best_root.clock_set.clock_rate(det);
+    let regression = search.result.regression();
     assert!(
-      rate < 0.0,
-      "rate should be negative for this test graph, got {rate:.6e}"
+      regression.clock_rate() < 0.0,
+      "rate should be negative for this test graph, got {:.6e}",
+      regression.clock_rate()
     );
-
-    assert!(best_root.chisq >= 0.0, "chisq should be non-negative");
-    assert!(best_root.chisq.is_finite(), "chisq should be finite");
-
-    assert!(
-      best_root.split >= 0.0 && best_root.split <= 1.0,
-      "split should be in [0, 1]"
-    );
-
+    assert!(regression.chisq() >= 0.0, "chisq should be non-negative");
+    assert!(regression.chisq().is_finite(), "chisq should be finite");
+    if let Some(split) = search.split {
+      assert!((0.0..=1.0).contains(&split), "split should be in [0, 1]");
+    }
     Ok(())
   }
 
   #[test]
   fn test_find_best_root_force_positive_accepts_fixed_positive_rate() -> Result<(), Report> {
-    let (graph, names, options, inputs, state, branch_lengths) = setup_negative_rate_graph()?;
     let rate = 1e-3;
 
-    let best_root = find_best_root(
-      &graph,
-      &inputs,
-      &state,
-      &options,
+    let search = search_root(
+      &dates_negative_rate(),
       &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
-      &branch_lengths,
       true,
-      RootObjective::FixedRate(rate),
-      &names,
-      &NoopProgress,
+      Some(rate),
     )?;
 
-    let det = best_root.clock_set.determinant();
-    assert!(
-      best_root.clock_set.clock_rate(det) < 0.0,
-      "estimated rate should be negative for this test graph"
-    );
-    pretty_assert_ulps_eq!(
-      best_root.chisq,
-      best_root.clock_set.chisq_fixed_rate(rate),
-      max_ulps = 4
-    );
-
+    pretty_assert_ulps_eq!(rate, search.result.into_clock_fit()?.model.clock_rate(), max_ulps = 4);
     Ok(())
+  }
+
+  mod helpers {
+    use crate::clock::clock_regression::{
+      ClockRerootResult, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
+    };
+    use crate::clock::clock_state::ClockInputs;
+    use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+    use crate::clock::reroot::RerootParams;
+    use crate::o;
+    use crate::progress::NoopProgress;
+    use eyre::Report;
+    use maplit::btreemap;
+    use std::collections::{BTreeMap, BTreeSet};
+    use treetime_io::nwk::nwk_read_str;
+
+    pub(super) struct RootSearch {
+      pub result: ClockRerootResult,
+      pub split_edge: Option<(String, String)>,
+      pub split: Option<f64>,
+    }
+
+    pub(super) fn dates_positive_rate() -> BTreeMap<String, f64> {
+      btreemap! {
+        o!("A") => 2013.0,
+        o!("B") => 2022.0,
+        o!("C") => 2017.0,
+        o!("D") => 2005.0,
+      }
+    }
+
+    pub(super) fn dates_negative_rate() -> BTreeMap<String, f64> {
+      btreemap! {
+        o!("A") => 2017.0,
+        o!("B") => 2005.0,
+        o!("C") => 2010.0,
+        o!("D") => 2022.0,
+      }
+    }
+
+    pub(super) fn search_root(
+      dates: &BTreeMap<String, f64>,
+      optimization_params: &BranchPointOptimizationParams,
+      force_positive_rate: bool,
+      clock_rate: Option<f64>,
+    ) -> Result<RootSearch, Report> {
+      let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let times = graph
+        .get_leaves()
+        .map(|node| (node.key(), dates.get(names[&node.key()].as_deref().unwrap()).copied()))
+        .collect();
+      let edge_names: BTreeMap<_, _> = graph
+        .get_edges()
+        .map(|edge| {
+          let name = |key| names[&key].clone().unwrap_or_else(|| o!("unnamed"));
+          (edge.key(), (name(edge.source()), name(edge.target())))
+        })
+        .collect();
+      let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+      let reroot_params = RerootParams {
+        force_positive_rate,
+        ..RerootParams::default()
+      };
+
+      let (_, result) = estimate_clock_model_with_reroot_policy(
+        ClockTree {
+          graph,
+          branch_lengths: nwk_parsed.branch_lengths,
+          inputs,
+        },
+        &BTreeSet::new(),
+        &ClockVarianceParams::default(),
+        clock_rate,
+        false,
+        optimization_params,
+        &reroot_params,
+        None,
+        &names,
+        &NoopProgress,
+      )?;
+      let edge_split = result.reroot_result().and_then(|reroot| reroot.edge_split.as_ref());
+      let split_edge = edge_split.map(|split| edge_names[&split.old_edge_key].clone());
+      let split = edge_split.map(|split| split.split_position);
+      Ok(RootSearch {
+        result,
+        split_edge,
+        split,
+      })
+    }
   }
 }

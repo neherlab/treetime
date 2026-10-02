@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::reconstruction::{Reconstruction, reconstruct_preorder};
+use crate::ancestral::reconstruction::{ReconstructedSequences, reconstruct_preorder};
 use crate::ancestral::sample::{Resolve, SampleMode};
 use crate::ancestral::tip_states::TipStates;
 use crate::gtr::gtr::GTR;
@@ -126,7 +126,7 @@ impl PartitionMarginalSparse {
     tips: TipStates,
     sample_mode: SampleMode,
     rng: &mut dyn rand::RngCore,
-  ) -> Result<Reconstruction, Report> {
+  ) -> Result<ReconstructedSequences, Report> {
     reconstruct_preorder(graph, tips.include_leaves, |node| {
       let node_data = &node_states[&node.key];
       if node.is_leaf {

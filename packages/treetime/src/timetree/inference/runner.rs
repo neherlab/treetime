@@ -1,19 +1,16 @@
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_state::ClockState;
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::optimize::gather::{
-  gather_timetree_edge_contributions, gather_timetree_edge_indel_counts, timetree_total_sequence_length,
-};
+use crate::optimize::gather::{gather_timetree_edge_contributions, gather_timetree_edge_indel_counts};
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::timetree::partition::PartitionTimetree;
 use crate::progress::ProgressSink;
+use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::bad_branches::derive_bad_branches;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::propagate_distributions_forward;
 use crate::timetree::inference::time_inference::{BranchLikelihood, TimeInference};
-use crate::timetree::utils::initialize_node_divergences;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
 use log::debug;
@@ -38,19 +35,17 @@ pub(crate) fn run_timetree(
   constraints: &DateConstraints,
   leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
   gammas: &BTreeMap<GraphEdgeKey, f64>,
-  partitions: &[PartitionTimetree],
+  branch_model: &BranchModel,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   clock_model: &ClockModel,
   coalescent: Option<&CoalescentModel>,
   no_indels: bool,
-  clock_state: &mut ClockState,
   progress: &dyn ProgressSink,
 ) -> Result<TimeInference, Report> {
   progress_info!(progress, "# Running timetree inference");
 
   progress_info!(progress, "## Calculating divergence distances");
-  initialize_node_divergences(graph, clock_state, branch_lengths, names)?;
 
   progress_info!(progress, "## Using clock model");
   let clock_rate = clock_model.clock_rate();
@@ -58,20 +53,23 @@ pub(crate) fn run_timetree(
 
   let bad_branches = derive_bad_branches(graph, constraints, leaf_bad_branches)?;
 
-  let branches = if partitions.is_empty() {
-    progress_info!(progress, "## Creating branch distributions from input lengths");
-    create_branch_distributions_input_mode(graph, branch_lengths, gammas, clock_rate)
-  } else {
-    progress_info!(progress, "## Computing branch distributions from partitions");
-    compute_branch_distributions_marginal_mode(
-      graph,
-      partitions,
-      branch_lengths,
-      gammas,
-      clock_rate,
-      no_indels,
-      progress,
-    )?
+  let branches = match branch_model {
+    BranchModel::Input => {
+      progress_info!(progress, "## Creating branch distributions from input lengths");
+      create_branch_distributions_input_mode(graph, branch_lengths, gammas, clock_rate)
+    },
+    BranchModel::Marginal(partition) => {
+      progress_info!(progress, "## Computing branch distributions from partitions");
+      compute_branch_distributions_marginal_mode(
+        graph,
+        partition,
+        branch_lengths,
+        gammas,
+        clock_rate,
+        no_indels,
+        progress,
+      )?
+    },
   };
 
   progress_info!(progress, "## Propagating distributions backward");
@@ -91,16 +89,17 @@ pub(crate) fn run_timetree(
 
 pub(crate) const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;
 
-pub(crate) fn commit_clock_branch_lengths(
+pub(crate) const CLOCK_BRANCH_LENGTH_UNDAMPED: f64 = 1.0;
+
+pub(crate) fn blended_clock_branch_lengths(
   graph: &Graph,
   clock_rate: f64,
   damping: f64,
-  clock_branch_lengths: &mut BTreeMap<GraphEdgeKey, f64>,
+  previous_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_times: &BTreeMap<GraphNodeKey, Option<f64>>,
   gammas: &BTreeMap<GraphEdgeKey, f64>,
   progress: &dyn ProgressSink,
-) {
-  let previous_lengths: &BTreeMap<GraphEdgeKey, f64> = clock_branch_lengths;
+) -> BTreeMap<GraphEdgeKey, f64> {
   let committed: Vec<(GraphEdgeKey, f64, bool)> = graph
     .get_edges()
     .collect::<Vec<_>>()
@@ -123,6 +122,7 @@ pub(crate) fn commit_clock_branch_lengths(
     })
     .collect();
 
+  let mut clock_branch_lengths = previous_lengths.clone();
   let mut inverted = 0_usize;
   for (key, value, is_inverted) in committed {
     clock_branch_lengths.insert(key, value);
@@ -138,6 +138,7 @@ pub(crate) fn commit_clock_branch_lengths(
        nodes to their parent but leaves leaf dates as given."
     );
   }
+  clock_branch_lengths
 }
 
 #[allow(
@@ -146,29 +147,27 @@ pub(crate) fn commit_clock_branch_lengths(
 )]
 fn compute_branch_distributions_marginal_mode(
   graph: &Graph,
-  partitions: &[PartitionTimetree],
+  partition: &PartitionTimetree,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   gammas: &BTreeMap<GraphEdgeKey, f64>,
   clock_rate: f64,
   no_indels: bool,
   progress: &dyn ProgressSink,
 ) -> Result<BTreeMap<GraphEdgeKey, BranchLikelihood>, Report> {
-  let total_sites = timetree_total_sequence_length(partitions);
+  let total_sites = partition.sequence_length();
   let one_mutation = 1.0 / total_sites as f64;
 
-  let indel_counts = gather_timetree_edge_indel_counts(graph, partitions);
+  let indel_counts = gather_timetree_edge_indel_counts(graph, partition);
   let indel_rate = if no_indels {
     0.0
   } else {
     estimate_indel_rate(graph, &indel_counts, branch_lengths)
   };
-  let contributions = gather_timetree_edge_contributions(graph, partitions)?;
+  let contributions = gather_timetree_edge_contributions(graph, partition)?;
 
   progress_info!(
     progress,
-    "Computing branch distributions from {} partition(s) with {} total sites",
-    partitions.len(),
-    total_sites
+    "Computing branch distributions from 1 partition(s) with {total_sites} total sites"
   );
   debug!("One mutation = {one_mutation:.6e} substitutions/site");
   debug!("Indel rate = {indel_rate:.6e} indels/(site*time)");

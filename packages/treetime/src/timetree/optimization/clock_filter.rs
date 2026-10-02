@@ -1,29 +1,29 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
-use crate::clock::clock_state::ClockState;
 use crate::progress::ProgressSink;
 use crate::progress_warn;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
 pub(crate) fn report_bad_branches(
   graph: &Graph,
-  clock_state: &ClockState,
+  outliers: &BTreeSet<GraphNodeKey>,
+  divergences: &BTreeMap<GraphNodeKey, f64>,
   clock_model: &ClockModel,
   iqd: f64,
   given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   progress: &dyn ProgressSink,
 ) {
-  let outliers = collect_outliers(graph, clock_state, clock_model, iqd, given_dates, names);
-  if outliers.is_empty() {
+  let records = collect_outlier_records(graph, outliers, divergences, clock_model, iqd, given_dates, names);
+  if records.is_empty() {
     return;
   }
 
-  progress_warn!(progress, "Clock filter marked {} outliers:", outliers.len());
+  progress_warn!(progress, "Clock filter marked {} outliers:", records.len());
   progress_warn!(
     progress,
     "{:>20} {:>12} {:>14} {:>10}",
@@ -32,7 +32,7 @@ pub(crate) fn report_bad_branches(
     "apparent_date",
     "residual"
   );
-  for r in &outliers {
+  for r in &records {
     progress_warn!(
       progress,
       "{:>20} {:>12.2} {:>14.2} {:>10.2}",
@@ -44,9 +44,10 @@ pub(crate) fn report_bad_branches(
   }
 }
 
-fn collect_outliers(
+fn collect_outlier_records(
   graph: &Graph,
-  clock_state: &ClockState,
+  outliers: &BTreeSet<GraphNodeKey>,
+  divergences: &BTreeMap<GraphNodeKey, f64>,
   clock_model: &ClockModel,
   iqd: f64,
   given_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
@@ -55,14 +56,13 @@ fn collect_outliers(
   graph
     .get_leaves()
     .filter_map(|leaf| {
-      let node = leaf;
-      let state = clock_state.node(node.key());
-      if !state.is_outlier {
+      let key = leaf.key();
+      if !outliers.contains(&key) {
         return None;
       }
-      let name = names[&node.key()].clone()?;
-      let given_date = given_dates.get(&node.key()).copied().flatten()?;
-      let div = state.div;
+      let name = names[&key].clone()?;
+      let given_date = given_dates.get(&key).copied().flatten()?;
+      let div = divergences[&key];
       let apparent_date = clock_model.date(div);
       let clock_deviation = clock_model.clock_deviation(given_date, div);
       let residual = if iqd > 0.0 { clock_deviation / iqd } else { 0.0 };
@@ -78,8 +78,7 @@ fn collect_outliers(
     .collect_vec()
 }
 
-#[derive(Debug, Clone)]
-pub struct OutlierRecord {
+struct OutlierRecord {
   name: String,
   given_date: f64,
   apparent_date: f64,
@@ -88,14 +87,14 @@ pub struct OutlierRecord {
 
 pub(crate) fn mark_outlier_leaves(
   graph: &Graph,
-  clock_state: &ClockState,
+  outliers: &BTreeSet<GraphNodeKey>,
   leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
 ) -> BTreeMap<GraphNodeKey, bool> {
   graph
     .get_leaves()
     .map(|leaf| {
       let key = leaf.key();
-      (key, leaf_bad_branches[&key] || clock_state.node(key).is_outlier)
+      (key, leaf_bad_branches[&key] || outliers.contains(&key))
     })
     .collect()
 }

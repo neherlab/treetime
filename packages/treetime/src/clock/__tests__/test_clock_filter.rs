@@ -5,16 +5,18 @@
 
 #[cfg(test)]
 mod tests {
-  use crate::clock::clock_filter::clock_filter_inplace;
+  use crate::clock::clock_filter::clock_filter;
   use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_state::{ClockInputs, ClockState};
+  use crate::clock::clock_state::ClockInputs;
+  use crate::clock::divergence::root_to_node_divergences;
   use crate::o;
   use crate::progress::NoopProgress;
   use eyre::Report;
+  use itertools::Itertools;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -61,22 +63,13 @@ mod tests {
 
   fn get_outlier_names(
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    graph: &Graph,
-    state: &ClockState,
+    outliers: &BTreeSet<GraphNodeKey>,
   ) -> Vec<String> {
-    let mut result: Vec<String> = graph
-      .get_leaves()
-      .filter_map(|leaf| {
-        let node = leaf;
-        if state.node(node.key()).is_outlier {
-          names.get(&node.key()).cloned().flatten()
-        } else {
-          None
-        }
-      })
-      .collect();
-    result.sort();
-    result
+    outliers
+      .iter()
+      .map(|key| names[key].clone().unwrap())
+      .sorted()
+      .collect()
   }
 
   #[test]
@@ -84,21 +77,15 @@ mod tests {
     let (graph, names, times, branch_lengths) = setup_outlier_graph()?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let inputs = ClockInputs::seed_from_times(&graph, &times);
-    let mut state = ClockState::new(&graph);
-    let result = clock_filter_inplace(
-      &graph,
-      &inputs,
-      &mut state,
-      &clock_model,
-      &branch_lengths,
-      3.0,
-      &NoopProgress,
-    )?;
+    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
-    let outliers = get_outlier_names(&names, &graph, &state);
-    assert_eq!(outliers, vec![o!("G"), o!("H")]);
+    assert_eq!(vec![o!("G"), o!("H")], get_outlier_names(&names, &result.outliers));
+    assert_eq!(
+      root_to_node_divergences(&graph, |edge_key| branch_lengths[&edge_key].unwrap_or_default())?,
+      result.divergences
+    );
 
     Ok(())
   }
@@ -108,21 +95,15 @@ mod tests {
     let (graph, names, times, branch_lengths) = setup_outlier_graph()?;
     let clock_model = ClockModel::for_testing(-0.005, 10.5);
 
-    let inputs = ClockInputs::seed_from_times(&graph, &times);
-    let mut state = ClockState::new(&graph);
-    let result = clock_filter_inplace(
-      &graph,
-      &inputs,
-      &mut state,
-      &clock_model,
-      &branch_lengths,
-      3.0,
-      &NoopProgress,
-    )?;
+    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive");
-    let outliers = get_outlier_names(&names, &graph, &state);
-    assert_eq!(outliers, vec![o!("G"), o!("H")]);
+    assert_eq!(vec![o!("G"), o!("H")], get_outlier_names(&names, &result.outliers));
+    assert_eq!(
+      root_to_node_divergences(&graph, |edge_key| branch_lengths[&edge_key].unwrap_or_default())?,
+      result.divergences
+    );
 
     Ok(())
   }
@@ -132,17 +113,8 @@ mod tests {
     let (graph, times, branch_lengths) = helpers::setup_low_cardinality_graph(0)?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let inputs = ClockInputs::seed_from_times(&graph, &times);
-    let mut state = ClockState::new(&graph);
-    let result = clock_filter_inplace(
-      &graph,
-      &inputs,
-      &mut state,
-      &clock_model,
-      &branch_lengths,
-      3.0,
-      &NoopProgress,
-    );
+    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress);
 
     assert_error!(result, "Clock filtering requires at least one dated leaf");
     Ok(())
@@ -158,9 +130,8 @@ mod tests {
     let (graph, times, branch_lengths) = helpers::setup_low_cardinality_graph(dated_leaf_count)?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let inputs = ClockInputs::seed_from_times(&graph, &times);
-    let mut state = ClockState::new(&graph);
-    let result = clock_filter_inplace(&graph, &inputs, &mut state, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
+    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     assert!(result.iqd.is_finite());
     Ok(())

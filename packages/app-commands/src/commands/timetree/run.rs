@@ -15,11 +15,10 @@ use app_output::timetree_tree_output::write_timetree_tree_outputs;
 use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps, TimetreeResult};
 use eyre::{Report, WrapErr};
 use log::debug;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime::cancel::Cancel;
 use treetime::clock::clock_output::write_clock_model;
-use treetime::clock::clock_state::ClockState;
 use treetime::gtr::get_gtr::{GtrOutput, write_gtr_json};
 use treetime::make_error;
 use treetime::partition::timetree::partition::PartitionTimetree;
@@ -187,7 +186,8 @@ pub fn run_timetree_estimation(
     coalescent,
     rate_susceptibility_dates,
     clock_branch_lengths,
-    clock_state,
+    divergences,
+    outliers,
     time_inference,
     gammas,
     ..
@@ -204,7 +204,8 @@ pub fn run_timetree_estimation(
 
   let (nodes, edges) = gather_timetree_outputs(
     &graph,
-    &clock_state,
+    &divergences,
+    &outliers,
     &time_inference,
     &gammas,
     &rate_susceptibility_dates,
@@ -392,7 +393,8 @@ impl SeqSink for ReconstructedNucSink {
 
 fn gather_timetree_outputs(
   graph: &Graph,
-  clock_state: &ClockState,
+  divergences: &BTreeMap<GraphNodeKey, f64>,
+  outliers: &BTreeSet<GraphNodeKey>,
   time_inference: &TimeInference,
   gammas: &BTreeMap<GraphEdgeKey, f64>,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
@@ -409,14 +411,13 @@ fn gather_timetree_outputs(
     .get_nodes()
     .map(|node| {
       let key = node.key();
-      let clock = clock_state.node(key);
       let out = TimetreeNodeOut {
         name: names[&key].clone(),
         desc: descs[&key].clone(),
         confidence: confidences.get(&key).copied().flatten(),
         time: time_inference.posterior[&key].time,
-        div: clock.div,
-        is_outlier: clock.is_outlier,
+        div: divergences[&key],
+        is_outlier: outliers.contains(&key),
         bad_branch: time_inference.bad_branches[&key],
         rate_susceptibility_dates: rate_susceptibility_dates.get(&key).copied(),
       };

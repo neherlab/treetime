@@ -1,5 +1,6 @@
 use crate::clock::clock_model::ClockLine;
-use crate::clock::clock_state::{ClockInputs, ClockState};
+use crate::clock::clock_state::ClockInputs;
+use crate::clock::divergence::root_to_node_divergences;
 use crate::make_error;
 use crate::progress::ProgressSink;
 use crate::progress_info;
@@ -7,25 +8,22 @@ use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use rayon::prelude::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::GraphPassNodeOutput;
 
 #[allow(
-  clippy::expect_used,
   clippy::integer_division,
-  reason = "expect on a value an upstream invariant guarantees is present; integer division is the intended floor division"
+  reason = "the quartile indices are floor divisions of the leaf count"
 )]
 #[expect(
   clippy::integer_division_remainder_used,
-  reason = "the remainder distributes work evenly across chunks"
+  reason = "the quartile indices are floor divisions of the leaf count"
 )]
-pub(crate) fn clock_filter_inplace(
+pub(crate) fn clock_filter(
   graph: &Graph,
   inputs: &ClockInputs,
-  state: &mut ClockState,
   clock_line: &(impl ClockLine + Sync),
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   threshold: f64,
@@ -38,18 +36,7 @@ pub(crate) fn clock_filter_inplace(
     clock_line.intercept()
   );
 
-  state.map_forward(graph, |context| {
-    let mut node = context.input.clone();
-    let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
-      let parent = context.parent.expect("Non-root node must have a parent");
-      node.div = parent.div + edge_branch_length(edge_key, branch_lengths);
-      Some(edge.clone())
-    } else {
-      node.div = 0.0;
-      None
-    };
-    Ok(GraphPassNodeOutput { node, parent_message })
-  })?;
+  let divergences = root_to_node_divergences(graph, |edge_key| branch_lengths[&edge_key].unwrap_or_default())?;
 
   let leaf_clock_deviations: Vec<f64> = graph
     .get_leaves()
@@ -57,9 +44,8 @@ pub(crate) fn clock_filter_inplace(
     .into_par_iter()
     .filter_map(|leaf| {
       let key = leaf.key();
-      let div = state.node(key).div;
       let time = inputs.likely_time(key);
-      time.map(|time| clock_line.clock_deviation(time, div))
+      time.map(|time| clock_line.clock_deviation(time, divergences[&key]))
     })
     .collect::<Vec<_>>()
     .into_iter()
@@ -76,31 +62,20 @@ pub(crate) fn clock_filter_inplace(
   let iq25 = n / 4;
   let iqd = leaf_clock_deviations[iq75] - leaf_clock_deviations[iq25];
 
-  let outlier_updates: Vec<(GraphNodeKey, bool, i32)> = graph
+  let outliers: BTreeSet<GraphNodeKey> = graph
     .get_leaves()
-    .collect::<Vec<_>>()
-    .into_par_iter()
     .filter_map(|leaf| {
       let key = leaf.key();
-      let node = state.node(key);
-      let div = node.div;
-      let was_outlier = node.is_outlier;
-      inputs.likely_time(key).map(|time| {
-        let clock_deviation = clock_line.clock_deviation(time, div);
-        let is_outlier = clock_deviation.abs() > iqd * threshold;
-        (key, is_outlier, i32::from(was_outlier != is_outlier))
-      })
+      let time = inputs.likely_time(key)?;
+      let clock_deviation = clock_line.clock_deviation(time, divergences[&key]);
+      (clock_deviation.abs() > iqd * threshold).then_some(key)
     })
     .collect();
 
-  let new_outliers = outlier_updates.iter().map(|(_, _, changed)| *changed).sum();
-  for (key, is_outlier, _) in outlier_updates {
-    state.node_mut(key).is_outlier = is_outlier;
-  }
-
   progress_info!(
     progress,
-    "Outlier filtering: {new_outliers} leaves changed status, IQD={iqd:.6e}"
+    "Outlier filtering: {} leaves changed status, IQD={iqd:.6e}",
+    outliers.len()
   );
   log::debug!(
     "Leaf clock deviations (n={}): min={:.6e}, Q1={:.6e}, Q3={:.6e}, max={:.6e}",
@@ -111,15 +86,16 @@ pub(crate) fn clock_filter_inplace(
     leaf_clock_deviations.last().copied().unwrap_or(0.0)
   );
 
-  Ok(ClockFilterResult { new_outliers, iqd })
+  Ok(ClockFilterResult {
+    outliers,
+    divergences,
+    iqd,
+  })
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct ClockFilterResult {
-  pub(crate) new_outliers: i32,
+#[derive(Debug)]
+pub(crate) struct ClockFilterResult {
+  pub(crate) outliers: BTreeSet<GraphNodeKey>,
+  pub(crate) divergences: BTreeMap<GraphNodeKey, f64>,
   pub(crate) iqd: f64,
-}
-
-fn edge_branch_length(edge_key: GraphEdgeKey, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
-  branch_lengths[&edge_key].unwrap_or_default()
 }

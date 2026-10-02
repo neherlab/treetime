@@ -9,7 +9,7 @@ mod tests {
   use crate::ancestral::fitch::create_fitch_partition;
   use crate::ancestral::marginal::branch_lengths_or_zero;
   use crate::ancestral::pipeline::{DenseReconstruction, SparseReconstruction};
-  use crate::ancestral::reconstruction::Reconstruction;
+  use crate::ancestral::reconstruction::ReconstructedSequences;
   use crate::ancestral::sample::SampleMode;
   use crate::ancestral::tip_states::TipStates;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -85,7 +85,7 @@ mod tests {
 
     let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
 
-    let Reconstruction { sequences, .. } = recon.reconstruct_sequences(
+    let ReconstructedSequences { sequences, .. } = recon.reconstruct_sequences(
       &graph,
       TipStates::default(),
       SampleMode::Argmax,
