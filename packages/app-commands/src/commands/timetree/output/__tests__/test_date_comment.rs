@@ -29,7 +29,7 @@ mod tests {
         Sub::new(c(b'T'), 92_usize, c(b'C'))?,
       ],
     )];
-    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[])?;
+    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[]);
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let leaf_key = graph.get_leaves().collect::<Vec<_>>()[0].key();
     let comments = provider.node_comments(leaf_key)?;
@@ -53,7 +53,7 @@ mod tests {
 
     let date_times: BTreeMap<GraphNodeKey, f64> = graph.get_leaves().map(|leaf| (leaf.key(), 2003.84)).collect();
 
-    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[])?;
+    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[]);
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let date_provider = DateCommentProvider::new(&date_times);
     let providers = CommentProviders::new().with(&provider).with(&date_provider);

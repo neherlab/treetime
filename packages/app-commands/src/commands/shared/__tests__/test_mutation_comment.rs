@@ -33,7 +33,7 @@ mod tests {
         sequence: Seq::try_from_str("CG")?,
       }],
     )];
-    let edge_mutations = edge_mutation_map(&graph, edge_subs, edge_deletions)?;
+    let edge_mutations = edge_mutation_map(&graph, edge_subs, edge_deletions);
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let comments = provider.node_comments(leaf_key(&graph))?;
     assert_eq!(comments.get("mutations").map(String::as_str), Some("A1T,C2-,G3-,G6C"));
@@ -46,7 +46,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let edge_subs = &[(0, vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?])];
-    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[])?;
+    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[]);
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let root_key = graph.get_roots().collect::<Vec<_>>()[0].key();
     let comments = provider.node_comments(root_key)?;
@@ -60,7 +60,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let edge_subs = &[(0, vec![])];
-    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[])?;
+    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[]);
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let comments = provider.node_comments(leaf_key(&graph))?;
     assert!(comments.is_empty());
@@ -80,7 +80,7 @@ mod tests {
         Sub::new(c(b'G'), 30_usize, c(b'C'))?,
       ],
     )];
-    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[])?;
+    let edge_mutations = edge_mutation_map(&graph, edge_subs, &[]);
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let comments = provider.node_comments(leaf_key(&graph))?;
     assert_eq!(comments.get("mutations").map(String::as_str), Some("A11T,G31C,C51G"));
