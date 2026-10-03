@@ -285,8 +285,9 @@ impl SparseReconstruction {
       partition,
       gtr,
       node_states,
-      ..
+      edges,
     } = self;
+    drop(edges);
     let MarginalUpdate {
       node_states,
       edges,
@@ -327,7 +328,14 @@ impl DenseReconstruction {
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   ) -> Result<(Self, LogLh), Report> {
-    let Self { partition, gtr, .. } = self;
+    let Self {
+      partition,
+      gtr,
+      node_states,
+      edges,
+    } = self;
+    drop(node_states);
+    drop(edges);
     let MarginalUpdate {
       node_states,
       edges,
