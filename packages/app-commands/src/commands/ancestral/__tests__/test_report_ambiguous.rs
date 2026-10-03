@@ -25,6 +25,7 @@ mod tests {
 
   const UNKNOWN_CLADE_TREE: &str = "(((C1:0.02,C2:0.03)P:0.02,C3:0.04)P2:0.01,((D:0.02,E:0.03)Q:0.02,F:0.02)Q2:0.02)R;";
   const UNKNOWN_CLADE_ALIGNMENT: &str = ">C1\nANGT\n>C2\nANGT\n>C3\nANGT\n>D\nAAGT\n>E\nAAGT\n>F\nAAGT\n";
+  const UNKNOWN_CLADE_WITH_SUB_ALIGNMENT: &str = ">C1\nANTT\n>C2\nANGT\n>C3\nANGT\n>D\nAAGT\n>E\nAAGT\n>F\nAAGT\n";
 
   #[rustfmt::skip]
   #[rstest]
@@ -81,20 +82,40 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  #[ignore = "sparse imputation skips tips below an unknown node: kb/issues/M-ancestral-sparse-imputation-skips-tips-below-unknown-node.md"]
+  fn test_report_ambiguous_sparse_reports_imputed_tips_below_unknown() -> Result<(), Report> {
+    let written = written_mutations(UNKNOWN_CLADE_TREE, UNKNOWN_CLADE_ALIGNMENT, true, true, Some(false))?;
+    let actual: BTreeMap<String, Vec<String>> = written
+      .augur_muts
+      .into_iter()
+      .filter(|(_, muts)| !muts.is_empty())
+      .collect();
+    let expected = btreemap! {
+      o!("C1") => vec_of_owned!["N2A"],
+      o!("C2") => vec_of_owned!["N2A"],
+      o!("C3") => vec_of_owned!["N2A"],
+      o!("P2") => vec_of_owned!["A2N"],
+    };
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
   #[rustfmt::skip]
   #[rstest]
-  #[case::leaf_unknown(        STAR_TREE,          STAR_ALIGNMENT,          false, btreemap! { o!("C") => vec![4] })]
-  #[case::internal_unknown(    UNKNOWN_CLADE_TREE, UNKNOWN_CLADE_ALIGNMENT, false, btreemap! {})]
-  #[case::imputed_below_unknown(UNKNOWN_CLADE_TREE, UNKNOWN_CLADE_ALIGNMENT, true,  btreemap! {})]
+  #[case::leaf_unknown(          STAR_TREE,          STAR_ALIGNMENT,                    false, btreemap! { o!("C") => vec![(4, 3)] })]
+  #[case::internal_unknown(      UNKNOWN_CLADE_TREE, UNKNOWN_CLADE_ALIGNMENT,           false, btreemap! {})]
+  #[case::determined_in_clade(   UNKNOWN_CLADE_TREE, UNKNOWN_CLADE_WITH_SUB_ALIGNMENT,  false, btreemap! { o!("C1") => vec![(3, 2)] })]
+  #[case::imputed_below_unknown( UNKNOWN_CLADE_TREE, UNKNOWN_CLADE_ALIGNMENT,           true,  btreemap! {})]
   #[trace]
   fn test_report_ambiguous_mat_stores_unknown_state_as_missing_data(
     #[case] tree: &str,
     #[case] alignment: &str,
     #[case] impute: bool,
-    #[case] expected: BTreeMap<String, Vec<i32>>,
+    #[case] expected: BTreeMap<String, Vec<(i32, i32)>>,
   ) -> Result<(), Report> {
     let written = written_mutations(tree, alignment, true, impute, Some(true))?;
-    assert_eq!(expected, written.mat_positions);
+    assert_eq!(expected, written.mat_mutations);
     Ok(())
   }
 
@@ -104,7 +125,7 @@ mod tests {
     pub(super) struct WrittenMutations {
       pub(super) augur_muts: BTreeMap<String, Vec<String>>,
       pub(super) nwk: String,
-      pub(super) mat_positions: BTreeMap<String, Vec<i32>>,
+      pub(super) mat_mutations: BTreeMap<String, Vec<(i32, i32)>>,
     }
 
     pub(super) fn written_mutations(
@@ -154,20 +175,24 @@ mod tests {
         .map(|(name, node)| (name, node.muts))
         .collect();
       let mat: UsherTree = json_read_file(&mat_path)?;
-      let mat_positions = mat
+      let mat_mutations = mat
         .condensed_nodes
         .into_iter()
         .zip(mat.node_mutations)
         .filter(|(_, mutations)| !mutations.mutation.is_empty())
         .map(|(node, mutations)| {
-          let positions = mutations.mutation.iter().map(|mutation| mutation.position).collect();
+          let positions = mutations
+            .mutation
+            .iter()
+            .map(|mutation| (mutation.position, mutation.par_nuc))
+            .collect();
           (node.node_name, positions)
         })
         .collect();
       Ok(WrittenMutations {
         augur_muts,
         nwk: read_file_to_string(&nwk_path)?,
-        mat_positions,
+        mat_mutations,
       })
     }
   }
