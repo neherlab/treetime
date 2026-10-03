@@ -166,7 +166,7 @@ fn gather_optimize_output_maps(
   let edge_mutation_counts = edge_state_change_counts(&edge_mutations, reconstruction.alphabet())?;
   Ok(OptimizeOutputMaps {
     root_sequence: reconstruction.root_sequence(graph)?,
-    edge_mutations: filter.reported_edge_mutations(edge_mutations),
+    edge_mutations: filter.reported_edge_mutations(graph, edge_mutations)?,
     edge_mutation_counts,
   })
 }

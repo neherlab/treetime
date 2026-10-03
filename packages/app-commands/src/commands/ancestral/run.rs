@@ -130,7 +130,7 @@ pub fn run_ancestral_reconstruction(
   let maps = AncestralOutputMaps {
     root_sequence,
     edge_mutations: UnknownMutationFilter::new(ambiguous_char, args.report_ambiguous)
-      .reported_edge_mutations(edge_mutations),
+      .reported_edge_mutations(&input.graph, edge_mutations)?,
   };
   let augur_maps = node_sequences.map(|node_sequences| AugurOutputMaps {
     node_sequences,
@@ -402,7 +402,7 @@ fn run_aa_reconstructions(
     sink.finish()?;
   }
   let node_data = UnknownMutationFilter::new(recon_alphabet.unknown(), ancestral_args.report_ambiguous)
-    .reported_aa_node_data(node_data);
+    .reported_aa_node_data(graph, node_data)?;
   Ok((node_data, cds_annotations))
 }
 

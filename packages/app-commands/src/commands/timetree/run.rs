@@ -191,7 +191,8 @@ pub fn run_timetree_estimation(
   let mutation_counts = mutation_units.then_some(edge_mutation_counts);
   let maps = TimetreeOutputMaps {
     root_sequence,
-    edge_mutations: UnknownMutationFilter::new(unknown, args.report_ambiguous).reported_edge_mutations(edge_mutations),
+    edge_mutations: UnknownMutationFilter::new(unknown, args.report_ambiguous)
+      .reported_edge_mutations(&graph, edge_mutations)?,
   };
 
   stages.report("Writing output", 0.95, "");

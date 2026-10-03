@@ -193,7 +193,7 @@ fn gather_prune_output_maps(
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(PruneOutputMaps {
     root_sequence: Some(partition.fitch_root_sequence()),
-    edge_mutations: filter.reported_edge_mutations(edge_mutations),
+    edge_mutations: filter.reported_edge_mutations(graph, edge_mutations)?,
   })
 }
 
