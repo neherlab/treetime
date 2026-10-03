@@ -1,6 +1,6 @@
 # UShER MAT output fails on every run with amino-acid reconstruction
 
-`ancestral` with `--translations` passes the amino-acid mutations of every node to the MAT writers (`mat-pb`, `mat-json`) together with the nucleotide mutations [packages/app-output/src/ancestral_tree_output.rs#L198](../../packages/app-output/src/ancestral_tree_output.rs#L198). `fn mat_mutation()` rejects every mutation that is not on the nucleotide track [packages/app-output/src/tree_output.rs#L515-L517](../../packages/app-output/src/tree_output.rs#L515-L517), so the whole command stops:
+`ancestral` with `--translations` passes the amino-acid mutations of every node to the MAT writers (`mat-pb`, `mat-json`) together with the nucleotide mutations [packages/app-output/src/ancestral_tree_output.rs#L198](../../packages/app-output/src/ancestral_tree_output.rs#L198). `fn mat_mutation()` rejects every mutation that is not on the nucleotide track [packages/app-output/src/tree_output.rs#L511-L513](../../packages/app-output/src/tree_output.rs#L511-L513), so the whole command stops:
 
 ```
 treetime ancestral --tree=data/rsv/a/20/tree.nwk --aln=data/rsv/a/20/aln.fasta.xz --method-anc=marginal \
