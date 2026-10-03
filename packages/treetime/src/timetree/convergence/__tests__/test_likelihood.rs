@@ -114,7 +114,7 @@ mod tests {
     let (graph, names) = helpers::positional_graph()?;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
     let branch_model = BranchModel::Marginal(helpers::partition_with_root_log_lh(&graph, root_key, -2.0)?);
-    let mut optimizer = TimetreeOptimizer::new(1, false);
+    let mut optimizer = TimetreeOptimizer::new(1);
     let expected = -2.0 + 0.25_f64.ln();
     let state = helpers::positional_state(&graph, &names);
 

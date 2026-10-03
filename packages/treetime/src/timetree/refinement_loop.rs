@@ -23,7 +23,7 @@ pub(crate) fn run_refinement_loop(
   stages.report("Refinement loop", 0.3, "");
   progress_info!(log, "### TreeTime: refinement loop");
   let params = inputs.params;
-  let mut optimizer = TimetreeOptimizer::new(params.max_iter, false);
+  let mut optimizer = TimetreeOptimizer::new(params.max_iter);
   if let Some(sink) = trace_sink {
     optimizer = optimizer.with_trace_sink(sink);
   }

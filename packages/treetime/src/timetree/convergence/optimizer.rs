@@ -17,17 +17,15 @@ pub(crate) struct TimetreeOptimizer<'a> {
   pub(crate) trace: Vec<ConvergenceMetrics>,
   trace_sink: Option<&'a mut dyn TraceSink>,
   max_iterations: usize,
-  suppress_convergence: bool,
   pub(crate) i: usize,
 }
 
 impl<'a> TimetreeOptimizer<'a> {
-  pub(crate) fn new(max_iter: usize, suppress_convergence: bool) -> Self {
+  pub(crate) fn new(max_iter: usize) -> Self {
     Self {
       trace: vec![],
       trace_sink: None,
       max_iterations: max_iter,
-      suppress_convergence,
       i: 0,
     }
   }
@@ -107,7 +105,7 @@ impl<'a> TimetreeOptimizer<'a> {
   }
 
   fn has_converged(&self) -> bool {
-    !self.suppress_convergence && self.trace.last().is_some_and(|m| m.has_converged())
+    self.trace.last().is_some_and(|m| m.has_converged())
   }
 
   fn has_reached_max_iterations(&self) -> bool {

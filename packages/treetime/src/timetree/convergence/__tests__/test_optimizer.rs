@@ -16,7 +16,7 @@ mod tests {
   fn test_optimizer_converges_when_n_diff_zero() -> Result<(), Report> {
     let graph = helpers::empty_graph();
     let inference = empty_time_inference(&graph);
-    let mut optimizer = TimetreeOptimizer::new(5, false);
+    let mut optimizer = TimetreeOptimizer::new(5);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(
@@ -43,7 +43,7 @@ mod tests {
   fn test_optimizer_continues_while_node_times_move() -> Result<(), Report> {
     let graph = helpers::empty_graph();
     let inference = empty_time_inference(&graph);
-    let mut optimizer = TimetreeOptimizer::new(5, false);
+    let mut optimizer = TimetreeOptimizer::new(5);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(
@@ -83,7 +83,7 @@ mod tests {
   fn test_optimizer_settled_times_do_not_converge_while_polytomies_resolve() -> Result<(), Report> {
     let graph = helpers::empty_graph();
     let inference = empty_time_inference(&graph);
-    let mut optimizer = TimetreeOptimizer::new(5, false);
+    let mut optimizer = TimetreeOptimizer::new(5);
     let settled = helpers::moved_by(0.1 * NODE_TIME_TOLERANCE_YEARS);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
@@ -124,7 +124,7 @@ mod tests {
   fn test_optimizer_continues_when_n_diff_positive() -> Result<(), Report> {
     let graph = helpers::empty_graph();
     let inference = empty_time_inference(&graph);
-    let mut optimizer = TimetreeOptimizer::new(5, false);
+    let mut optimizer = TimetreeOptimizer::new(5);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(
@@ -184,7 +184,7 @@ mod tests {
   fn test_optimizer_stops_at_max_iterations() -> Result<(), Report> {
     let graph = helpers::empty_graph();
     let inference = empty_time_inference(&graph);
-    let mut optimizer = TimetreeOptimizer::new(3, false);
+    let mut optimizer = TimetreeOptimizer::new(3);
 
     for _ in 0..3 {
       assert!(optimizer.next_iter(&NoopProgress).is_some());
@@ -213,7 +213,7 @@ mod tests {
   fn test_optimizer_n_resolved_prevents_convergence() -> Result<(), Report> {
     let graph = helpers::empty_graph();
     let inference = empty_time_inference(&graph);
-    let mut optimizer = TimetreeOptimizer::new(5, false);
+    let mut optimizer = TimetreeOptimizer::new(5);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(
@@ -255,7 +255,7 @@ mod tests {
     let inference = empty_time_inference(&graph);
     let records = Arc::new(Mutex::new(vec![]));
     let mut sink = helpers::RecordingSink(Arc::clone(&records));
-    let mut optimizer = TimetreeOptimizer::new(3, false).with_trace_sink(&mut sink);
+    let mut optimizer = TimetreeOptimizer::new(3).with_trace_sink(&mut sink);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(
