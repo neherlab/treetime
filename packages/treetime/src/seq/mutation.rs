@@ -60,7 +60,7 @@ pub(crate) fn stream_sequence_mutations(
           let (parent_seq, pending_children) = pending_parents
             .get_mut(parent_key)
             .ok_or_else(|| make_internal_report!("Parent {parent_key} of node {} was not visited first", node.key))?;
-          let subs = sequence_subs(parent_seq, &seq, node.is_leaf, alphabet)?;
+          let subs = sequence_subs(parent_seq, &seq, alphabet)?;
           *pending_children -= 1;
           if *pending_children == 0 {
             pending_parents.remove(parent_key);
@@ -87,12 +87,7 @@ pub(crate) fn stream_sequence_mutations(
   })
 }
 
-pub(crate) fn sequence_subs(
-  parent: &Seq,
-  child: &Seq,
-  child_is_leaf: bool,
-  alphabet: &Alphabet,
-) -> Result<Vec<Sub>, Report> {
+pub(crate) fn sequence_subs(parent: &Seq, child: &Seq, alphabet: &Alphabet) -> Result<Vec<Sub>, Report> {
   if parent.len() != child.len() {
     return make_internal_error!(
       "Parent sequence has length {}, but child sequence has length {}",
@@ -104,11 +99,7 @@ pub(crate) fn sequence_subs(
     .iter()
     .zip(child.iter())
     .enumerate()
-    .filter(|(_, (reff, qry))| {
-      reff != qry
-        && alphabet.is_canonical(**reff)
-        && (alphabet.is_canonical(**qry) || (child_is_leaf && !alphabet.is_gap(**qry)))
-    })
+    .filter(|(_, (reff, qry))| reff != qry && !alphabet.is_gap(**reff) && !alphabet.is_gap(**qry))
     .map(|(pos, (reff, qry))| Sub::new(*reff, pos, *qry))
     .collect()
 }

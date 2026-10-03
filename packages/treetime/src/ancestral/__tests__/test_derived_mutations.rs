@@ -18,9 +18,10 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use std::collections::{BTreeMap, BTreeSet};
   use std::path::PathBuf;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::fasta::read_many_fasta_str;
@@ -165,6 +166,10 @@ mod tests {
         .collect();
       let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names, &NoopProgress)?;
       let node_inputs = node_seq_inputs(&parse.graph, &names, sequences);
+      let observed: BTreeMap<GraphNodeKey, Seq> = node_inputs
+        .iter()
+        .filter_map(|(&key, input)| input.seq.clone().map(|seq| (key, seq)))
+        .collect();
       let options = ReconstructionOptions::new(include_leaves, impute, SampleMode::Argmax);
       let partition = reconstruct_partition(
         &parse.graph,
@@ -190,35 +195,81 @@ mod tests {
           Ok((edge.key(), subs.into_iter().sorted_by_key(Sub::pos).collect()))
         })
         .collect::<Result<EdgeSubs, Report>>()?;
-      let derived = partition.stream_sequences(graph, track, include_leaves, None)?;
+      let mut sink = RecordingSeqSink::default();
+      let derived = partition.stream_sequences(graph, track, include_leaves, Some(&mut sink))?;
       let actual: EdgeSubs = derived
         .edge_mutations
         .into_iter()
         .map(|(edge_key, mutations)| (edge_key, substitutions(mutations)))
         .collect();
+      let streamed: BTreeMap<GraphNodeKey, Seq> = sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
       let alphabet = partition.alphabet();
-      let observed_ambiguous = |subs: &[Sub]| -> Vec<usize> {
+      if !impute {
+        assert_observed_leaf_states(graph, alphabet, &observed, &streamed, &expected, &actual);
+      }
+      let columns = ambiguous_columns(&observed, alphabet);
+      let outside = |subs: &EdgeSubs| -> EdgeSubs {
         subs
           .iter()
-          .filter(|sub| !alphabet.is_canonical(sub.qry()))
-          .map(Sub::pos)
+          .map(|(&edge_key, subs)| {
+            let kept = subs
+              .iter()
+              .filter(|sub| !columns.contains(&sub.pos()))
+              .cloned()
+              .collect();
+            (edge_key, kept)
+          })
           .collect()
       };
-      let without = |subs: Vec<Sub>, positions: &[usize]| -> Vec<Sub> {
-        subs.into_iter().filter(|sub| !positions.contains(&sub.pos())).collect()
-      };
-      let (expected, actual) = expected
-        .into_iter()
-        .map(|(edge_key, expected_subs)| {
-          let actual_subs = actual[&edge_key].clone();
-          let positions = observed_ambiguous(&actual_subs);
-          (
-            (edge_key, without(expected_subs, &positions)),
-            (edge_key, without(actual_subs, &positions)),
-          )
+      Ok((outside(&expected), outside(&actual)))
+    }
+
+    fn ambiguous_columns(observed: &BTreeMap<GraphNodeKey, Seq>, alphabet: &Alphabet) -> BTreeSet<usize> {
+      observed
+        .values()
+        .flat_map(|seq| {
+          seq
+            .iter()
+            .enumerate()
+            .filter(|(_, state)| !alphabet.is_canonical(**state) && !alphabet.is_gap(**state))
+            .map(|(pos, _)| pos)
         })
-        .unzip();
-      Ok((expected, actual))
+        .collect()
+    }
+
+    fn assert_observed_leaf_states(
+      graph: &Graph,
+      alphabet: &Alphabet,
+      observed: &BTreeMap<GraphNodeKey, Seq>,
+      streamed: &BTreeMap<GraphNodeKey, Seq>,
+      expected: &EdgeSubs,
+      actual: &EdgeSubs,
+    ) {
+      for edge in graph.get_edges() {
+        let Some(leaf) = observed.get(&edge.target()) else {
+          continue;
+        };
+        let parent = &streamed[&edge.source()];
+        for (pos, &state) in leaf.iter().enumerate() {
+          if alphabet.is_canonical(state) || alphabet.is_gap(state) || alphabet.is_gap(parent[pos]) {
+            continue;
+          }
+          let derived_qry = actual[&edge.key()].iter().find(|sub| sub.pos() == pos).map(Sub::qry);
+          let expected_derived = (parent[pos] != state).then_some(state);
+          pretty_assertions::assert_eq!(expected_derived, derived_qry, "edge {:?} position {pos}", edge.key());
+          if alphabet.is_canonical(parent[pos]) {
+            let engine_state = expected[&edge.key()]
+              .iter()
+              .find(|sub| sub.pos() == pos)
+              .map_or(parent[pos], Sub::qry);
+            assert!(
+              alphabet.canonical_states(state).contains(engine_state),
+              "edge {:?} position {pos}: engine state {engine_state} is not a resolution of observed {state}",
+              edge.key()
+            );
+          }
+        }
+      }
     }
 
     pub(super) fn ambiguous_leaf_mutations(

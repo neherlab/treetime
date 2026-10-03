@@ -6,15 +6,24 @@ mod tests {
   use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
   use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs};
   use eyre::{Report, WrapErr};
-  use helpers::written_leaf_mutations;
+  use helpers::written_mutations;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use tempfile::tempdir;
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
   use treetime_utils::io::fs::read_file_to_string;
   use treetime_utils::io::json::json_read_file;
+  use treetime_utils::{o, vec_of_owned};
   use util_augur_node_data_json::AugurNodeDataJsonAncestral;
+
+  const STAR_TREE: &str = "(A:0.1,B:0.1,C:0.1)root;";
+  const STAR_ALIGNMENT: &str = ">A\nACGT\n>B\nACGT\n>C\nANGK\n";
+
+  const UNKNOWN_CLADE_TREE: &str = "(((C1:0.02,C2:0.03)P:0.02,C3:0.04)P2:0.01,((D:0.02,E:0.03)Q:0.02,F:0.02)Q2:0.02)R;";
+  const UNKNOWN_CLADE_ALIGNMENT: &str = ">C1\nANGT\n>C2\nANGT\n>C3\nANGT\n>D\nAAGT\n>E\nAAGT\n>F\nAAGT\n";
 
   #[rustfmt::skip]
   #[rstest]
@@ -26,23 +35,73 @@ mod tests {
     #[case] expected: Vec<&str>,
     #[case] expected_nwk: &str,
   ) -> Result<(), Report> {
-    let (augur_muts, nwk) = written_leaf_mutations(report_ambiguous)?;
-    assert_eq!(expected, augur_muts);
-    assert_eq!(expected_nwk, nwk.trim());
+    let written = written_mutations(STAR_TREE, STAR_ALIGNMENT, report_ambiguous, false, None)?;
+    assert_eq!(expected, written.augur_muts.get("C").cloned().unwrap_or_default());
+    assert_eq!(expected_nwk, written.nwk.trim());
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::dense_default_hides_unknown(Some(true), false, false, btreemap! {})]
+  #[case::sparse_default_hides_unknown(Some(false), false, false, btreemap! {})]
+  #[case::dense_default_hides_imputed_from_unknown(Some(true), false, true, btreemap! {})]
+  #[case::dense_reports_unknown_above_clade(Some(true), true, false, btreemap! {
+    o!("P2") => vec_of_owned!["A2N"],
+  })]
+  #[case::sparse_reports_unknown_above_clade(Some(false), true, false, btreemap! {
+    o!("P2") => vec_of_owned!["A2N"],
+  })]
+  #[case::dense_reports_imputed_tips_below_unknown(Some(true), true, true, btreemap! {
+    o!("C1") => vec_of_owned!["N2A"],
+    o!("C2") => vec_of_owned!["N2A"],
+    o!("C3") => vec_of_owned!["N2A"],
+    o!("P2") => vec_of_owned!["A2N"],
+  })]
+  #[trace]
+  fn test_report_ambiguous_shows_transitions_of_internal_unknown_state(
+    #[case] dense: Option<bool>,
+    #[case] report_ambiguous: bool,
+    #[case] impute: bool,
+    #[case] expected: BTreeMap<String, Vec<String>>,
+  ) -> Result<(), Report> {
+    let written = written_mutations(
+      UNKNOWN_CLADE_TREE,
+      UNKNOWN_CLADE_ALIGNMENT,
+      report_ambiguous,
+      impute,
+      dense,
+    )?;
+    let actual: BTreeMap<String, Vec<String>> = written
+      .augur_muts
+      .into_iter()
+      .filter(|(_, muts)| !muts.is_empty())
+      .collect();
+    assert_eq!(expected, actual);
     Ok(())
   }
 
   mod helpers {
     use super::*;
 
-    pub(super) fn written_leaf_mutations(report_ambiguous: bool) -> Result<(Vec<String>, String), Report> {
+    pub(super) struct WrittenMutations {
+      pub(super) augur_muts: BTreeMap<String, Vec<String>>,
+      pub(super) nwk: String,
+    }
+
+    pub(super) fn written_mutations(
+      tree: &str,
+      alignment: &str,
+      report_ambiguous: bool,
+      impute_missing_data: bool,
+      dense: Option<bool>,
+    ) -> Result<WrittenMutations, Report> {
       let dir = tempdir().wrap_err("When creating a temporary directory")?;
       let tree_path = dir.path().join("tree.nwk");
       let fasta_path = dir.path().join("aln.fasta");
       let augur_path = dir.path().join("node_data.json");
       let nwk_path = dir.path().join("out.nwk");
-      std::fs::write(&tree_path, "(A:0.1,B:0.1,C:0.1)root;").wrap_err("When writing the tree fixture")?;
-      std::fs::write(&fasta_path, ">A\nACGT\n>B\nACGT\n>C\nANGK\n").wrap_err("When writing the alignment fixture")?;
+      std::fs::write(&tree_path, tree).wrap_err("When writing the tree fixture")?;
+      std::fs::write(&fasta_path, alignment).wrap_err("When writing the alignment fixture")?;
 
       let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
         alignment: AlignmentArgs {
@@ -53,6 +112,8 @@ mod tests {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()
         },
+        dense,
+        impute_missing_data,
         report_ambiguous,
         output_augur_node_data: Some(augur_path.clone()),
         output: OutputCoreArgs {
@@ -65,9 +126,16 @@ mod tests {
 
       run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
-      let mut node_data: AugurNodeDataJsonAncestral = json_read_file(&augur_path)?;
-      let augur_muts = node_data.nodes.remove("C").map(|node| node.muts).unwrap_or_default();
-      Ok((augur_muts, read_file_to_string(&nwk_path)?))
+      let node_data: AugurNodeDataJsonAncestral = json_read_file(&augur_path)?;
+      let augur_muts = node_data
+        .nodes
+        .into_iter()
+        .map(|(name, node)| (name, node.muts))
+        .collect();
+      Ok(WrittenMutations {
+        augur_muts,
+        nwk: read_file_to_string(&nwk_path)?,
+      })
     }
   }
 }
