@@ -1,19 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::seq::indel::{InDel, compose_indels, sort_indels};
-  use crate::test_utils::deletion;
-  use crate::test_utils::insertion;
+  use helpers::{del, ins};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_primitives::Seq;
-
-  fn del(start: usize, end: usize, seq: &str) -> InDel {
-    deletion((start, end), Seq::try_from_str(seq).unwrap()).unwrap()
-  }
-
-  fn ins(start: usize, end: usize, seq: &str) -> InDel {
-    insertion((start, end), Seq::try_from_str(seq).unwrap())
-  }
 
   #[test]
   fn test_indel_compose_both_empty() {
@@ -221,5 +211,19 @@ mod tests {
     let mut indels = vec![del(5, 7, "AC"), del(1, 3, "CG"), del(3, 5, "GT")];
     sort_indels(&mut indels);
     assert_eq!(indels, vec![del(1, 3, "CG"), del(3, 5, "GT"), del(5, 7, "AC")]);
+  }
+
+  mod helpers {
+    use crate::seq::indel::InDel;
+    use crate::test_utils::{deletion, insertion};
+    use treetime_primitives::Seq;
+
+    pub(super) fn del(start: usize, end: usize, seq: &str) -> InDel {
+      deletion((start, end), Seq::try_from_str(seq).unwrap()).unwrap()
+    }
+
+    pub(super) fn ins(start: usize, end: usize, seq: &str) -> InDel {
+      insertion((start, end), Seq::try_from_str(seq).unwrap())
+    }
   }
 }
