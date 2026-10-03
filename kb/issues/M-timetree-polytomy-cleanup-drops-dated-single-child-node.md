@@ -14,7 +14,13 @@ v0 has the same defect: `TreeTime.resolve_polytomies()` removes every non-root s
 
 ## v1 status
 
-Code evidence only. The v1 run that would show the dropped date fails earlier: [H-timetree-resolve-polytomies-fails-with-single-child-node.md](H-timetree-resolve-polytomies-fails-with-single-child-node.md). Without a polytomy, the cleanup does not run and v1 keeps a dated single-child node with its date (`U` at 2008.5 on `data/flu/h3n2/20` with the node inserted as in that issue).
+v1 has the same defect. `data/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk` is `data/flu/h3n2/20/tree.nwk` with a single-child node `U` and a polytomy. With `U` dated 2008.5 in the metadata, `--resolve-polytomies` removes `U` from the tree and from the node data; `--keep-polytomies` keeps `U` at 2008.5:
+
+```bash
+cp data/flu/h3n2/20/metadata.tsv tmp/metadata.tsv && printf 'U\t2008.5\n' >> tmp/metadata.tsv
+treetime timetree --resolve-polytomies --tree=data/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk \
+  --dates=tmp/metadata.tsv --aln=data/flu/h3n2/20/aln.fasta.xz --output-all=<dir>
+```
 
 ## Proposed fix
 

@@ -60,6 +60,10 @@ treetime timetree --aln data/mpox/clade-ii/1000/aln.fasta.xz \
   --coalescent-opt --max-iter 6
 ```
 
+## Status
+
+The reproduction above does not fail on `rust` at `6a0eaed6` or at `b39d2735`: both complete with exit code 0. The inverted edge depends on the node times of the refinement rounds, so the data or settings that reach it need to be found again before a fix can be tested.
+
 ## Related issues
 
 - [M-timetree-marginal-node-times-can-violate-topology.md](M-timetree-marginal-node-times-can-violate-topology.md)

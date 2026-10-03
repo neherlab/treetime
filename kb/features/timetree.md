@@ -73,7 +73,7 @@
 - [x] Finite input, rate, event-plan, and parent-bound validation before graph mutation
 - [x] `--seed` for reproducible resolution; a generated seed is logged when none is given
 - [/] Remove obsolete single-child nodes after resolution (removes dated single-child nodes too: [kb/issues/M-timetree-polytomy-cleanup-drops-dated-single-child-node.md](../issues/M-timetree-polytomy-cleanup-drops-dated-single-child-node.md))
-- [/] Reconcile partition topology after tree change (fails after removing a single-child node of the input tree: [kb/issues/H-timetree-resolve-polytomies-fails-with-single-child-node.md](../issues/H-timetree-resolve-polytomies-fails-with-single-child-node.md))
+- [x] Reconcile partition topology after tree change
 - [/] `--keep-polytomies` (parsed but never read - [kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md))
 - [ ] Greedy pairwise merging (v0's `--greedy-resolve`; v1 does not provide this method, and v0 deprecates it as unsuitable for large polytomies)
 
