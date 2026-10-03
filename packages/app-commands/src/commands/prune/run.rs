@@ -4,7 +4,7 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::gtr::write_gtr_json;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::OutputSelection;
-use app_output::prune_result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
+use app_output::prune_result::{PruneNodeOut, PruneOutputMaps};
 use app_output::prune_tree_output::write_prune_tree_outputs;
 use eyre::Report;
 use itertools::Itertools;
@@ -35,7 +35,7 @@ pub fn run_prune(
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<PruneResult, Report> {
+) -> Result<(), Report> {
   validate_args(args)?;
 
   cancel.check()?;
@@ -118,20 +118,10 @@ pub fn run_prune(
       )
     })
     .collect();
-  let edges: BTreeMap<GraphEdgeKey, EdgeOut> = graph
+  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph
     .get_edges()
-    .map(|edge| {
-      let key = edge.key();
-      (
-        key,
-        EdgeOut {
-          branch_length: branch_lengths_opt[&key],
-        },
-      )
-    })
+    .map(|edge| (edge.key(), branch_lengths_opt[&edge.key()]))
     .collect();
-  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> =
-    edges.iter().map(|(key, edge)| (*key, edge.branch_length)).collect();
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     match gtr.as_ref() {
@@ -163,7 +153,7 @@ pub fn run_prune(
   }
 
   stages.report("Done", 1.0, "");
-  Ok(PruneResult { graph, nodes, edges })
+  Ok(())
 }
 
 fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {

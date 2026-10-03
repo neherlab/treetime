@@ -24,7 +24,7 @@ pub fn run_mugration(
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<MugrationResult, Report> {
+) -> Result<(), Report> {
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
   let parse = nwk_read_file(&mugration_args.tree)?;
@@ -125,5 +125,5 @@ pub fn run_mugration(
   }
 
   stages.report("Done", 1.0, "");
-  Ok(result)
+  Ok(())
 }

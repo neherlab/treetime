@@ -5,7 +5,7 @@ use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data_optimize::write_augur_node_data_json;
 use app_output::gtr::write_gtr_json;
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::optimize_result::{EdgeOut, OptimizeNodeOut, OptimizeOutputMaps, OptimizeResult};
+use app_output::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
 use app_output::optimize_tree_output::write_optimize_tree_outputs;
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
@@ -20,7 +20,6 @@ use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::{MutationTrack, edge_state_change_counts};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::read_many_fasta_path;
@@ -33,7 +32,7 @@ pub fn run_optimize(
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<OptimizeResult, Report> {
+) -> Result<(), Report> {
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
@@ -101,10 +100,6 @@ pub fn run_optimize(
       )
     })
     .collect();
-  let edges: BTreeMap<GraphEdgeKey, EdgeOut> = branch_lengths
-    .iter()
-    .map(|(&key, &branch_length)| (key, EdgeOut { branch_length }))
-    .collect();
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     let gtr_output = GtrOutput::builder().gtr(&gtr).model_name(model_name).build();
@@ -145,7 +140,7 @@ pub fn run_optimize(
 
   stages.report("Done", 1.0, "");
 
-  Ok(OptimizeResult { graph, nodes, edges })
+  Ok(())
 }
 
 fn gather_optimize_output_maps(
