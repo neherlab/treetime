@@ -35,8 +35,13 @@
 
 ## v1-Only Formats
 
-- [/] PhyloXML (format type model, reader, and writer in `util-phyloxml`; no command reads or writes PhyloXML)
-- [/] UShER MAT (output validates global reference nucleotides and writes indels as missing data: [kb/decisions/io-usher-mat-gaps-as-missing-data.md](../decisions/io-usher-mat-gaps-as-missing-data.md); output rejects amino-acid mutations: [kb/issues/M-io-usher-mat-rejects-amino-acid-mutations.md](../issues/M-io-usher-mat-rejects-amino-acid-mutations.md); input converts missing branch lengths to zero: [kb/issues/M-io-usher-missing-branch-length-becomes-zero.md](../issues/M-io-usher-missing-branch-length-becomes-zero.md))
+- [/] PhyloXML (format type model, reader, and writer in `util-phyloxml`; no command reads or writes PhyloXML: [kb/issues/N-io-phyloxml-crate-unused.md](../issues/N-io-phyloxml-crate-unused.md))
+- [/] UShER MAT output (validates global reference nucleotides and writes indels as missing data: [kb/decisions/io-usher-mat-gaps-as-missing-data.md](../decisions/io-usher-mat-gaps-as-missing-data.md); rejects amino-acid mutations: [kb/issues/M-io-usher-mat-rejects-amino-acid-mutations.md](../issues/M-io-usher-mat-rejects-amino-acid-mutations.md))
+- [ ] UShER MAT input ([kb/issues/N-io-usher-mat-input-not-wired.md](../issues/N-io-usher-mat-input-not-wired.md))
+- [ ] Taxonium JSONL output ([kb/issues/N-io-taxonium-jsonl-output-unsupported.md](../issues/N-io-taxonium-jsonl-output-unsupported.md))
+- [ ] MAPLE alignment input ([kb/issues/N-io-maple-alignment-input-unsupported.md](../issues/N-io-maple-alignment-input-unsupported.md))
+- [ ] Nextclade NDJSON alignment input ([kb/issues/N-io-nextclade-ndjson-input-unsupported.md](../issues/N-io-nextclade-ndjson-input-unsupported.md))
+- [ ] tskit tree sequence input ([kb/issues/N-io-tskit-tree-sequence-input-unsupported.md](../issues/N-io-tskit-tree-sequence-input-unsupported.md))
 - [x] YAML serialization
 - [x] Compressed FASTA output
 - [x] Streaming readers/writers with automatic decompression

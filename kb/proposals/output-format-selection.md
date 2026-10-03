@@ -38,6 +38,7 @@ The `TreeOutputFormat` enum lists all format variants available to analysis comm
 | `phyloxml-json`   | `.phylo.json`      | PhyloXML-JSON                              |
 | `mat-pb`          | `.mat.pb`          | UShER MAT protobuf                         |
 | `mat-json`        | `.mat.json`        | UShER MAT JSON                             |
+| `taxonium`        | `.jsonl`           | Taxonium JSONL                             |
 | `graph-json`      | `.graph.json`      | Internal PhyloGraph JSON                   |
 | `dot`             | `.dot`             | Graphviz DOT                               |
 
@@ -153,3 +154,4 @@ Both produce `BTreeMap<String, String>`. The format variant dispatch applies aft
 - [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) -- format adapter architecture
 - [kb/reports/newick-annotation-dialects.md](../reports/newick-annotation-dialects.md) -- NWK dialect grammars and tool interop
 - [kb/proposals/unified-input-format-support.md](unified-input-format-support.md) -- input-side counterpart (analysis commands accept any format)
+- [kb/proposals/io-format-coverage.md](io-format-coverage.md) -- ranking of formats not supported yet, including Taxonium JSONL ([kb/issues/N-io-taxonium-jsonl-output-unsupported.md](../issues/N-io-taxonium-jsonl-output-unsupported.md))

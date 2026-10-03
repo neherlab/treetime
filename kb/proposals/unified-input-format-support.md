@@ -4,13 +4,13 @@
 
 Analysis commands (`ancestral`, `timetree`, `optimize`, `clock`, `mugration`) currently accept only Newick trees and FASTA alignments as separate files. This two-file model requires name-based matching to reconcile sequences with tree nodes, which remains unreliable (see [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md)).
 
-The codebase already includes format adapters for unified formats where sequence data is bound to tree structure:
+Unified formats bind sequence data to the tree structure:
 
 - Auspice JSON: edge mutations plus root sequence
 - UShER MAT (protobuf): edge mutations in preorder traversal
 - PhyloXML: per-clade sequence elements
 
-Schema adapters exist in `treetime-io` and are used by the `convert` command. Integrating them into analysis commands still requires explicit preservation of embedded input data and construction of the command's partitions after parsing.
+The codebase has parsers for MAT (`packages/util-usher-mat`) and PhyloXML (`packages/util-phyloxml`), and the Auspice types in `packages/treetime-io` derive `Deserialize`. No converter from these formats to the graph exists, and no command reads them. Integrating them into analysis commands requires explicit preservation of embedded input data and construction of the command's partitions after parsing.
 
 ## Proposal
 
@@ -18,20 +18,21 @@ Allow analysis commands to accept unified input formats directly. When a unified
 
 ### Input paths
 
-Two input paths converge to the same internal representation:
+Three input paths converge to the same internal representation:
 
 1. Newick + FASTA (existing): parse tree, parse sequences, match by name, populate partitions
 2. Unified format (proposed): parse tree with embedded data, populate partitions directly
+3. Newick + sparse alignment (proposed): parse tree, parse per-sample differences from a reference (VCF, MAPLE, Nextclade NDJSON), match by name, populate sparse partitions without a dense alignment
 
-The unified path eliminates the name-matching phase entirely.
+The unified path eliminates the name-matching phase entirely. [kb/proposals/io-format-coverage.md](io-format-coverage.md) ranks the formats for each path.
 
 ### Format capabilities
 
-| Format         | Tree | Branch lengths | Mutations | Full sequences | Root sequence |
-| -------------- | ---- | -------------- | --------- | -------------- | ------------- |
-| Newick + FASTA | yes  | yes            | no        | yes (separate) | no            |
-| Auspice JSON   | yes  | via div        | partial   | no             | yes           |
-| UShER MAT      | yes  | no             | partial   | no             | implicit      |
+| Format         | Tree | Branch lengths | Mutations  | Full sequences | Root sequence |
+| -------------- | ---- | -------------- | ---------- | -------------- | ------------- |
+| Newick + FASTA | yes  | yes            | no         | yes (separate) | no            |
+| Auspice JSON   | yes  | via div        | partial    | no             | yes           |
+| UShER MAT      | yes  | no             | partial    | no             | implicit      |
 | PhyloXML       | yes  | yes            | unresolved | yes (embedded) | no            |
 
 For mutation-based formats (Auspice, MAT), full sequences are derived from root sequence plus accumulated mutations along the path from root to each node.
@@ -111,6 +112,10 @@ The graph payload question affects internal organization. This proposal affects 
 - [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md)
 - [kb/issues/N-io-large-dataset-memory-constraint.md](../issues/N-io-large-dataset-memory-constraint.md)
 - [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md)
+- [kb/issues/N-io-usher-mat-input-not-wired.md](../issues/N-io-usher-mat-input-not-wired.md)
+- [kb/issues/N-io-maple-alignment-input-unsupported.md](../issues/N-io-maple-alignment-input-unsupported.md)
+- [kb/issues/N-io-nextclade-ndjson-input-unsupported.md](../issues/N-io-nextclade-ndjson-input-unsupported.md)
+- [kb/issues/M-io-vcf-input-output-unimplemented.md](../issues/M-io-vcf-input-output-unimplemented.md)
 
 ## Related documentation
 
