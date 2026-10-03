@@ -2,11 +2,12 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::cancel::NoopCancel;
+  use crate::clock::divergence::root_to_node_divergences;
   use crate::error::OperationError;
   use crate::optimize::params::BranchLengthMode;
   use crate::progress::NoopProgress;
   use crate::seq::sink::SeqSink;
-  use crate::test_utils::{find_node_key_by_name, marginal_timetree_params};
+  use crate::test_utils::{RecordingSeqSink, find_node_key_by_name, marginal_timetree_params};
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
   use eyre::Report;
@@ -21,7 +22,7 @@ mod tests {
   use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
-  use treetime_utils::assert_error;
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   const STAR_TREE: &str = "(A:0.5,B:1.0,C:1.5,D:2.0)root;";
 
@@ -117,6 +118,52 @@ mod tests {
       "Cannot divide point by point: operation not well-defined",
       report.root_cause().to_string()
     );
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_date_branch_lengths_sum_to_node_dates() -> Result<(), Report> {
+    let (input, _) = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
+    let params = TimetreeParams {
+      clock_rate: Some(ZIKA_CLOCK_RATE),
+      ..marginal_timetree_params()
+    };
+
+    let output = helpers::run(&params, input, None)?;
+
+    let root_date = output.node_dates[&output.graph.root_key()?].expect("the root is dated");
+    let summed = root_to_node_divergences(&output.graph, |edge_key| {
+      output.date_branch_lengths[&edge_key].expect("every branch of a dated tree has a length")
+    })?;
+    for (key, date) in &output.node_dates {
+      pretty_assert_abs_diff_eq!(
+        date.expect("every node is dated"),
+        root_date + summed[key],
+        epsilon = 1e-9
+      );
+    }
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_sequence_outputs_do_not_depend_on_the_sequence_sink() -> Result<(), Report> {
+    let params = TimetreeParams {
+      clock_rate: Some(ZIKA_CLOCK_RATE),
+      reconstructed_sequences: true,
+      ..marginal_timetree_params()
+    };
+    let (input, _) = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
+    let without_sink = helpers::run(&params, input, None)?;
+    let (input, _) = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
+    let with_sink = helpers::run(&params, input, Some(Box::new(RecordingSeqSink::default())))?;
+
+    assert!(without_sink.root_sequence.is_some());
+    assert_eq!(
+      without_sink.graph.get_edges().count(),
+      without_sink.edge_mutations.len()
+    );
+    assert_eq!(without_sink.root_sequence, with_sink.root_sequence);
+    assert_eq!(without_sink.edge_mutations, with_sink.edge_mutations);
     Ok(())
   }
 
