@@ -25,7 +25,7 @@ use treetime::gtr::get_gtr::GtrOutput;
 use treetime::make_error;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
-use treetime::seq::gap_fill::apply_gap_fill;
+use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::{progress_info, progress_warn};
 use treetime_graph::edge::GraphEdgeKey;
@@ -367,39 +367,19 @@ fn run_aa_reconstructions(
     ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
-  let mut cds_inputs = Vec::with_capacity(cdses.len());
-  for cds in &cdses {
-    let path = translation_path(translations, cds);
-    let mut sequences = read_many_fasta_path(&[&path], &read_alphabet)?;
-    let mut sanitized = 0_usize;
-    for record in &mut sequences {
-      let (seq, changed) = sanitize_to_alphabet(&record.seq, &recon_alphabet);
-      record.seq = seq;
-      sanitized += changed;
-      apply_gap_fill(
-        &mut record.seq,
-        gap_fill_mode,
-        recon_alphabet.gap(),
-        recon_alphabet.unknown(),
-      );
-    }
-    if sanitized > 0 {
-      progress_warn!(
-        log,
-        "CDS '{cds}': mapped {sanitized} out-of-alphabet amino-acid characters (e.g. stop '*') to '{}'.",
-        char::from(recon_alphabet.unknown())
-      );
-    }
-
-    cds_inputs.push(CdsInput {
-      name: cds.clone(),
-      alphabet: recon_alphabet.clone(),
-      gtr_model: aa_model.gtr_model,
-      sequences: sequences.into_iter().map(AlignmentRecord::from).collect(),
-      annotation: annotations.get(cds).cloned(),
-      reference_override: aa_root_sequences.get(cds).cloned(),
-    });
-  }
+  let cds_inputs = cdses
+    .iter()
+    .map(|cds| {
+      Ok(CdsInput {
+        name: cds.clone(),
+        alphabet: recon_alphabet.clone(),
+        gtr_model: aa_model.gtr_model,
+        sequences: read_cds_translations(translations, cds, &read_alphabet, &recon_alphabet, gap_fill_mode, log)?,
+        annotation: annotations.get(cds).cloned(),
+        reference_override: aa_root_sequences.get(cds).cloned(),
+      })
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
 
   let mut seq_sink = aa_fasta_template.map(|template| AaFastaSink::new(template.to_owned(), names.clone()));
 
@@ -424,6 +404,38 @@ fn run_aa_reconstructions(
   let node_data = UnknownMutationFilter::new(recon_alphabet.unknown(), ancestral_args.report_ambiguous)
     .reported_aa_node_data(node_data);
   Ok((node_data, cds_annotations))
+}
+
+fn read_cds_translations(
+  translations: &str,
+  cds: &str,
+  read_alphabet: &Alphabet,
+  recon_alphabet: &Alphabet,
+  gap_fill_mode: GapFill,
+  log: &dyn LogSink,
+) -> Result<Vec<AlignmentRecord>, Report> {
+  let path = translation_path(translations, cds);
+  let mut sequences = read_many_fasta_path(&[&path], read_alphabet)?;
+  let mut sanitized = 0_usize;
+  for record in &mut sequences {
+    let (seq, changed) = sanitize_to_alphabet(&record.seq, recon_alphabet);
+    record.seq = seq;
+    sanitized += changed;
+    apply_gap_fill(
+      &mut record.seq,
+      gap_fill_mode,
+      recon_alphabet.gap(),
+      recon_alphabet.unknown(),
+    );
+  }
+  if sanitized > 0 {
+    progress_warn!(
+      log,
+      "CDS '{cds}': mapped {sanitized} out-of-alphabet amino-acid characters (e.g. stop '*') to '{}'.",
+      char::from(recon_alphabet.unknown())
+    );
+  }
+  Ok(sequences.into_iter().map(AlignmentRecord::from).collect())
 }
 
 struct AaFastaSink {
