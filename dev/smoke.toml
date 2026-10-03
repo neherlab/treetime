@@ -714,7 +714,6 @@ datasets = ["ebola/20"]
 args = "--prune-nodes-list-file={dataset}/prune-nodes.txt"
 
 
-
 [[timetree]]
 variant = "basic"
 fail.'dengue/100' = "rejects a negative clock rate: kb/decisions/timetree-rejects-negative-clock-rate.md"
