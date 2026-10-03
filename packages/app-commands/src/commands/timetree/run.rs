@@ -12,7 +12,7 @@ use app_output::coalescent::{write_coalescent_delimited, write_coalescent_json};
 use app_output::confidence::write_confidence_intervals_file;
 use app_output::gtr::write_gtr_json;
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::OutputSelection;
+use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 use app_output::rtt::write_clock_regression_result_csv;
 use app_output::timetree_tree_output::write_timetree_tree_outputs;
 use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
@@ -27,7 +27,7 @@ use treetime::progress::{LogSink, StageSink};
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::params::TimetreeParams;
-use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeSequences};
+use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput, TimetreeSequences};
 use treetime::{make_error, make_internal_error};
 use treetime::{progress_info, progress_warn};
 use treetime_graph::assign_node_names::assign_node_names;
@@ -66,12 +66,7 @@ pub fn run_timetree_estimation(
        incompatible with --branch-length-mode=input"
     );
   }
-  let sequence_outputs_requested = reconstructed_nuc_fasta.is_some()
-    || mutation_units
-    || resolved
-      .tree_outputs
-      .keys()
-      .any(|kind| !matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot));
+  let sequence_outputs_requested = sequence_outputs_requested(&resolved, mutation_units);
   let mut trace_sink = TimetreeTraceSink::new(
     resolved
       .non_tree_outputs
@@ -79,47 +74,10 @@ pub fn run_timetree_estimation(
       .map(PathBuf::as_path),
     stages,
   )?;
-
-  let params = TimetreeParams {
-    model: args.model_args.model_name(),
-    alphabet_name: args.alphabet_args.alphabet_name().unwrap_or_default(),
-    dense: args.dense,
-    gap_fill: args.gap_fill_args.effective_gap_fill(),
-    branch_length_mode: args.branch_length_mode,
-    no_indels: args.no_indels,
-    sequence_length: args.sequence_length,
-    clock_rate: args.clock_rate,
-    clock_std_dev: args.clock_std_dev,
-    keep_root: args.keep_root,
-    reroot_spec: args.reroot.spec(),
-    allow_negative_rate: args.allow_negative_rate,
-    clock_filter: args.clock_filter,
-    covariation: args.covariation,
-    tip_slack: args.tip_slack,
-    max_iter: args.max_iter,
-    resolve_polytomies: args.resolve_polytomies,
-    keep_polytomies: args.keep_polytomies,
-    relax: args.relax.clone(),
-    coalescent: args.coalescent,
-    coalescent_opt: args.coalescent_opt,
-    coalescent_skyline: args.coalescent_skyline,
-    skyline_n_points: args.skyline_n_points,
-    skyline_stiffness: args.skyline_stiffness,
-    coalescent_confidence: args.coalescent_confidence,
-    gen_per_year: args.gen_per_year,
-    n_branches_posterior: args.n_branches_posterior,
-    time_marginal: args.time_marginal,
-    confidence: args.confidence,
-    include_leaves: args.include_leaves,
-    impute_missing_data: args.impute_missing_data,
-    sequence_outputs_requested,
-    zero_based: args.zero_based,
-    seed: args.seed,
-  };
+  let params = timetree_params(args, sequence_outputs_requested);
 
   let aln_descs = sequence_descriptions(input_data.aln.iter().flatten());
   let unknown = input_data.alphabet.unknown();
-
   let input = TimetreeInput {
     graph: input_data.graph,
     names: parse_names.clone(),
@@ -162,49 +120,68 @@ pub fn run_timetree_estimation(
     );
   }
 
-  let pipeline::TimetreeOutput {
-    mut graph,
-    names,
-    node_dates,
-    divergences,
-    outliers,
-    bad_branches,
-    branch_lengths,
-    date_branch_lengths,
-    clock_model,
-    clock_regression,
-    confidence_intervals,
-    gtr,
-    model_name,
-    coalescent,
-    dates,
-    sequences,
-  } = output;
-
-  let filter = UnknownMutationFilter::new(unknown, args.report_ambiguous);
-  let (maps, mutation_counts) = timetree_output_maps(&graph, sequences, filter, mutation_units)?;
-
   stages.report("Writing output", 0.95, "");
   progress_info!(log, "### TreeTime: writing outputs");
+  write_model_outputs(args, &resolved.non_tree_outputs, &output, log)?;
+  let tree_inputs = TreeOutputInputs {
+    confidences,
+    input_leaf_order,
+    filter: UnknownMutationFilter::new(unknown, args.report_ambiguous),
+    mutation_units,
+  };
+  write_tree_outputs(args, &resolved, output, tree_inputs, log)?;
 
-  let topology_order = args
-    .topology_order
-    .resolve_topology_order(&graph, &names, Some(input_leaf_order))?;
-  topology_order.apply(&mut graph, &names, &branch_lengths)?;
+  stages.report("Done", 1.0, "");
+  Ok(())
+}
 
-  let nodes = timetree_node_outputs(
-    &graph,
-    &names,
-    &confidences,
-    &node_dates,
-    &divergences,
-    &outliers,
-    &bad_branches,
-  );
-  let edges = timetree_edge_outputs(&branch_lengths, &date_branch_lengths);
+fn timetree_params(args: &TreetimeTimetreeArgs, sequence_outputs_requested: bool) -> TimetreeParams {
+  TimetreeParams {
+    model: args.model_args.model_name(),
+    alphabet_name: args.alphabet_args.alphabet_name().unwrap_or_default(),
+    dense: args.dense,
+    gap_fill: args.gap_fill_args.effective_gap_fill(),
+    branch_length_mode: args.branch_length_mode,
+    no_indels: args.no_indels,
+    sequence_length: args.sequence_length,
+    clock_rate: args.clock_rate,
+    clock_std_dev: args.clock_std_dev,
+    keep_root: args.keep_root,
+    reroot_spec: args.reroot.spec(),
+    allow_negative_rate: args.allow_negative_rate,
+    clock_filter: args.clock_filter,
+    covariation: args.covariation,
+    tip_slack: args.tip_slack,
+    max_iter: args.max_iter,
+    resolve_polytomies: args.resolve_polytomies,
+    keep_polytomies: args.keep_polytomies,
+    relax: args.relax.clone(),
+    coalescent: args.coalescent,
+    coalescent_opt: args.coalescent_opt,
+    coalescent_skyline: args.coalescent_skyline,
+    skyline_n_points: args.skyline_n_points,
+    skyline_stiffness: args.skyline_stiffness,
+    coalescent_confidence: args.coalescent_confidence,
+    gen_per_year: args.gen_per_year,
+    n_branches_posterior: args.n_branches_posterior,
+    time_marginal: args.time_marginal,
+    confidence: args.confidence,
+    include_leaves: args.include_leaves,
+    impute_missing_data: args.impute_missing_data,
+    sequence_outputs_requested,
+    zero_based: args.zero_based,
+    seed: args.seed,
+  }
+}
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
-    match confidence_intervals.as_ref() {
+fn write_model_outputs(
+  args: &TreetimeTimetreeArgs,
+  outputs: &BTreeMap<OutputSelection, PathBuf>,
+  output: &TimetreeOutput,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  if let Some(path) = outputs.get(&OutputSelection::ConfidenceTsv) {
+    match output.confidence_intervals.as_ref() {
       Some(intervals) => {
         write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
         progress_info!(log, "Wrote confidence intervals to {path}", path = path.display());
@@ -222,46 +199,32 @@ pub fn run_timetree_estimation(
     }
   }
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::CoalescentTsv) {
-    write_coalescent_output(
-      coalescent.as_ref(),
-      path,
-      args.output_coalescent_tsv.is_some(),
-      |output, path| write_coalescent_delimited(output, path, b'\t'),
-      log,
-    )?;
+  let coalescent = output.coalescent.as_ref();
+  if let Some(path) = outputs.get(&OutputSelection::CoalescentTsv) {
+    let explicit = args.output_coalescent_tsv.is_some();
+    let write = |output: &CoalescentOutput, path: &Path| write_coalescent_delimited(output, path, b'\t');
+    write_coalescent_output(coalescent, path, explicit, write, log)?;
+  }
+  if let Some(path) = outputs.get(&OutputSelection::CoalescentCsv) {
+    let explicit = args.output_coalescent_csv.is_some();
+    let write = |output: &CoalescentOutput, path: &Path| write_coalescent_delimited(output, path, b',');
+    write_coalescent_output(coalescent, path, explicit, write, log)?;
+  }
+  if let Some(path) = outputs.get(&OutputSelection::CoalescentJson) {
+    let explicit = args.output_coalescent_json.is_some();
+    let write = |output: &CoalescentOutput, path: &Path| write_coalescent_json(output, path);
+    write_coalescent_output(coalescent, path, explicit, write, log)?;
   }
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::CoalescentCsv) {
-    write_coalescent_output(
-      coalescent.as_ref(),
-      path,
-      args.output_coalescent_csv.is_some(),
-      |output, path| write_coalescent_delimited(output, path, b','),
-      log,
-    )?;
+  if let Some(path) = outputs.get(&OutputSelection::ClockModel) {
+    write_clock_model(&output.clock_model, path)?;
+  }
+  if let Some(path) = outputs.get(&OutputSelection::ClockCsv) {
+    write_clock_regression_result_csv(&output.clock_regression, path, b',')?;
   }
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::CoalescentJson) {
-    write_coalescent_output(
-      coalescent.as_ref(),
-      path,
-      args.output_coalescent_json.is_some(),
-      |output, path| write_coalescent_json(output, path),
-      log,
-    )?;
-  }
-
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
-    write_clock_model(&clock_model, path)?;
-  }
-
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockCsv) {
-    write_clock_regression_result_csv(&clock_regression, path, b',')?;
-  }
-
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    match (gtr.as_ref(), model_name) {
+  if let Some(path) = outputs.get(&OutputSelection::Gtr) {
+    match (output.gtr.as_ref(), output.model_name) {
       (Some(gtr), Some(model_name)) => {
         let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
         write_gtr_json(&gtr_output, path)?;
@@ -275,6 +238,55 @@ pub fn run_timetree_estimation(
       ),
     }
   }
+  Ok(())
+}
+
+struct TreeOutputInputs {
+  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
+  input_leaf_order: Vec<String>,
+  filter: UnknownMutationFilter,
+  mutation_units: bool,
+}
+
+fn write_tree_outputs(
+  args: &TreetimeTimetreeArgs,
+  resolved: &ResolvedOutputs,
+  output: TimetreeOutput,
+  inputs: TreeOutputInputs,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let TimetreeOutput {
+    mut graph,
+    names,
+    node_dates,
+    divergences,
+    outliers,
+    bad_branches,
+    branch_lengths,
+    date_branch_lengths,
+    clock_model,
+    confidence_intervals,
+    dates,
+    sequences,
+    ..
+  } = output;
+  let (maps, mutation_counts) = timetree_output_maps(&graph, sequences, inputs.filter, inputs.mutation_units)?;
+
+  let topology_order = args
+    .topology_order
+    .resolve_topology_order(&graph, &names, Some(inputs.input_leaf_order))?;
+  topology_order.apply(&mut graph, &names, &branch_lengths)?;
+
+  let nodes = timetree_node_outputs(
+    &graph,
+    &names,
+    &inputs.confidences,
+    &node_dates,
+    &divergences,
+    &outliers,
+    &bad_branches,
+  );
+  let edges = timetree_edge_outputs(&branch_lengths, &date_branch_lengths);
 
   if !resolved.tree_outputs.is_empty() {
     let date_times: BTreeMap<GraphNodeKey, f64> = nodes
@@ -318,8 +330,6 @@ pub fn run_timetree_estimation(
     )?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
-
-  stages.report("Done", 1.0, "");
   Ok(())
 }
 
@@ -473,4 +483,15 @@ fn timetree_output_maps(
     edge_mutations: filter.reported_edge_mutations(graph, edge_mutations)?,
   };
   Ok((maps, mutation_units.then_some(edge_mutation_counts)))
+}
+
+fn sequence_outputs_requested(resolved: &ResolvedOutputs, mutation_units: bool) -> bool {
+  mutation_units
+    || resolved
+      .non_tree_outputs
+      .contains_key(&OutputSelection::ReconstructedNucFasta)
+    || resolved
+      .tree_outputs
+      .keys()
+      .any(|kind| !matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot))
 }

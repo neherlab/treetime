@@ -11,7 +11,7 @@ use app_output::ancestral_tree_output::write_ancestral_tree_outputs;
 use app_output::augur_node_data_ancestral::write_augur_node_data_json_with_aa;
 use app_output::gtr::write_gtr_json;
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::OutputSelection;
+use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -21,7 +21,8 @@ use treetime::ancestral::mask::create_mask;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
-use treetime::gtr::get_gtr::GtrOutput;
+use treetime::gtr::get_gtr::{GtrModelName, GtrOutput};
+use treetime::gtr::gtr::GTR;
 use treetime::make_error;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
@@ -62,20 +63,7 @@ pub fn run_ancestral_reconstruction(
   let topology_order = args.topology_order.resolve_topology_order(&input.graph, &names, None)?;
 
   let resolved = args.resolve_outputs()?;
-  let fasta = resolved
-    .non_tree_outputs
-    .get(&OutputSelection::ReconstructedNucFasta)
-    .map(|path| Ok::<_, Report>(FastaWriter::new(create_file_or_stdout(path)?)))
-    .transpose()?;
-  let mut seq_sink = AncestralSeqSink {
-    fasta,
-    names: names.clone(),
-    descs,
-    node_sequences: resolved
-      .non_tree_outputs
-      .contains_key(&OutputSelection::AugurNodeData)
-      .then(BTreeMap::new),
-  };
+  let mut seq_sink = AncestralSeqSink::new(&resolved, names.clone(), descs)?;
 
   let params = ancestral_params(args);
 
@@ -87,73 +75,28 @@ pub fn run_ancestral_reconstruction(
     fasta.finish()?;
   }
 
-  let aa_fasta_template: Option<String> = resolved
-    .non_tree_outputs
-    .get(&OutputSelection::ReconstructedAaFasta)
-    .map(|path| path.to_string_lossy().into_owned());
-
-  let aa_result = if let Some(translations) = &args.translations {
-    Some(run_aa_reconstructions(
-      args,
-      translations,
-      aa_fasta_template.as_deref(),
-      &input.graph,
-      &names,
-      &branch_lengths,
-      cancel,
-      stages,
-      log,
-    )?)
-  } else {
-    if aa_fasta_template.is_some() {
-      if args.output_reconstructed_aa_fasta.is_some() {
-        return make_error!("--output-reconstructed-aa-fasta requires --translations");
-      }
-      progress_warn!(
-        log,
-        "Skipping reconstructed amino-acid FASTA output: --translations not provided"
-      );
-    }
-    None
+  let aa_inputs = AaRunInputs {
+    graph: &input.graph,
+    names: &names,
+    branch_lengths: &branch_lengths,
   };
+  let aa_result = optional_aa_reconstructions(args, &resolved, &aa_inputs, cancel, stages, log)?;
 
-  let pipeline::AncestralOutput {
-    gtr,
-    model_name,
-    method,
-    mask,
-    sequence_length,
-    ambiguous_char,
-    root_sequence,
-    edge_mutations,
-  } = output;
   let maps = AncestralOutputMaps {
-    root_sequence,
-    edge_mutations: UnknownMutationFilter::new(ambiguous_char, args.report_ambiguous)
-      .reported_edge_mutations(&input.graph, edge_mutations)?,
+    root_sequence: output.root_sequence,
+    edge_mutations: UnknownMutationFilter::new(output.ambiguous_char, args.report_ambiguous)
+      .reported_edge_mutations(&input.graph, output.edge_mutations)?,
   };
   let augur_maps = node_sequences.map(|node_sequences| AugurOutputMaps {
     node_sequences,
-    sequence_length,
-    ambiguous_char,
+    sequence_length: output.sequence_length,
+    ambiguous_char: output.ambiguous_char,
   });
 
   topology_order.apply(&mut input.graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  let nodes: BTreeMap<GraphNodeKey, AncestralNodeOut> = input
-    .nodes
-    .iter()
-    .map(|(key, node)| {
-      (
-        *key,
-        AncestralNodeOut {
-          name: node.name.clone(),
-          confidence: confidences.get(key).copied().flatten(),
-        },
-      )
-    })
-    .collect();
+  let nodes = ancestral_node_outputs(&input, &confidences);
 
   let aa_node_data = aa_result.as_ref().map(|(node_data, _)| node_data);
   let empty_aa_annotations = BTreeMap::new();
@@ -169,7 +112,7 @@ pub fn run_ancestral_reconstruction(
       &input.graph,
       &maps,
       augur_maps,
-      &mask,
+      &output.mask,
       &names,
       aa_node_data,
       aa_annotations,
@@ -178,37 +121,110 @@ pub fn run_ancestral_reconstruction(
     progress_info!(log, "Wrote augur node data JSON to {}", path.display());
   }
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    match gtr.as_ref() {
-      Some(gtr) => {
-        let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
-        write_gtr_json(&gtr_output, path)?;
-      },
-      None if args.output_gtr.is_some() => {
-        return make_error!("GTR output requested but no GTR model was fitted. Use --model=infer or --gtr-iterations.");
-      },
-      None => progress_warn!(
-        log,
-        "Skipping GTR output: no GTR model was fitted (use --model=infer or --gtr-iterations)"
-      ),
-    }
-  }
+  write_ancestral_gtr(args, &resolved, output.gtr.as_ref(), output.model_name, log)?;
 
-  if !resolved.tree_outputs.is_empty() {
-    write_ancestral_trees(
-      &input.graph,
-      &nodes,
-      &branch_lengths,
-      &maps,
-      aa_node_data,
-      aa_annotations,
-      &resolved,
-      method,
-    )?;
-  }
+  write_ancestral_trees(
+    &input.graph,
+    &nodes,
+    &branch_lengths,
+    &maps,
+    aa_node_data,
+    aa_annotations,
+    &resolved,
+    output.method,
+  )?;
 
   stages.report("Done", 1.0, "");
   Ok(())
+}
+
+struct AaRunInputs<'a> {
+  graph: &'a Graph,
+  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+}
+
+fn optional_aa_reconstructions(
+  args: &TreetimeAncestralArgs,
+  resolved: &ResolvedOutputs,
+  inputs: &AaRunInputs<'_>,
+  cancel: &dyn Cancel,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<Option<(AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>, Report> {
+  let aa_fasta_template: Option<String> = resolved
+    .non_tree_outputs
+    .get(&OutputSelection::ReconstructedAaFasta)
+    .map(|path| path.to_string_lossy().into_owned());
+  let Some(translations) = &args.translations else {
+    if aa_fasta_template.is_some() {
+      if args.output_reconstructed_aa_fasta.is_some() {
+        return make_error!("--output-reconstructed-aa-fasta requires --translations");
+      }
+      progress_warn!(
+        log,
+        "Skipping reconstructed amino-acid FASTA output: --translations not provided"
+      );
+    }
+    return Ok(None);
+  };
+  run_aa_reconstructions(
+    args,
+    translations,
+    aa_fasta_template.as_deref(),
+    inputs.graph,
+    inputs.names,
+    inputs.branch_lengths,
+    cancel,
+    stages,
+    log,
+  )
+  .map(Some)
+}
+
+fn ancestral_node_outputs(
+  input: &AncestralInput,
+  confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+) -> BTreeMap<GraphNodeKey, AncestralNodeOut> {
+  input
+    .nodes
+    .iter()
+    .map(|(key, node)| {
+      let out = AncestralNodeOut {
+        name: node.name.clone(),
+        confidence: confidences.get(key).copied().flatten(),
+      };
+      (*key, out)
+    })
+    .collect()
+}
+
+fn write_ancestral_gtr(
+  args: &TreetimeAncestralArgs,
+  resolved: &ResolvedOutputs,
+  gtr: Option<&GTR>,
+  model_name: GtrModelName,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) else {
+    return Ok(());
+  };
+  match gtr {
+    Some(gtr) => {
+      let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
+      write_gtr_json(&gtr_output, path)
+    },
+    None if args.output_gtr.is_some() => {
+      make_error!("GTR output requested but no GTR model was fitted. Use --model=infer or --gtr-iterations.")
+    },
+    None => {
+      progress_warn!(
+        log,
+        "Skipping GTR output: no GTR model was fitted (use --model=infer or --gtr-iterations)"
+      );
+      Ok(())
+    },
+  }
 }
 
 struct AncestralSeqSink {
@@ -216,6 +232,29 @@ struct AncestralSeqSink {
   names: BTreeMap<GraphNodeKey, Option<String>>,
   descs: BTreeMap<String, Option<String>>,
   node_sequences: Option<BTreeMap<GraphNodeKey, Seq>>,
+}
+
+impl AncestralSeqSink {
+  fn new(
+    resolved: &ResolvedOutputs,
+    names: BTreeMap<GraphNodeKey, Option<String>>,
+    descs: BTreeMap<String, Option<String>>,
+  ) -> Result<Self, Report> {
+    let fasta = resolved
+      .non_tree_outputs
+      .get(&OutputSelection::ReconstructedNucFasta)
+      .map(|path| Ok::<_, Report>(FastaWriter::new(create_file_or_stdout(path)?)))
+      .transpose()?;
+    Ok(Self {
+      fasta,
+      names,
+      descs,
+      node_sequences: resolved
+        .non_tree_outputs
+        .contains_key(&OutputSelection::AugurNodeData)
+        .then(BTreeMap::new),
+    })
+  }
 }
 
 impl SeqSink for AncestralSeqSink {
@@ -304,9 +343,12 @@ fn write_ancestral_trees(
   maps: &AncestralOutputMaps,
   aa_node_data: Option<&AaNodeData>,
   aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
-  resolved: &app_output::output_plan::ResolvedOutputs,
+  resolved: &ResolvedOutputs,
   method: MethodAncestral,
 ) -> Result<(), Report> {
+  if resolved.tree_outputs.is_empty() {
+    return Ok(());
+  }
   let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, graph);
   let providers = match method {
     MethodAncestral::Marginal => CommentProviders::new().with(&provider),
