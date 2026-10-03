@@ -190,11 +190,11 @@ The Node addon (`packages/app-napi`, a Rust `cdylib`) is built by cargo, like th
 
 The Rust core resolves the folders of the desktop app (`AppPaths` in `packages/app-commands/src/app_paths.rs`), so a later local web mode can use the same ones. Each folder is named `treetime`:
 
-| Content                                         | Linux                          | macOS                                         | Windows                         |
-| ----------------------------------------------- | ------------------------------ | --------------------------------------------- | ------------------------------- |
-| Chromium profile and `settings.yaml`            | `~/.config/treetime`           | `~/Library/Application Support/treetime`      | `%LOCALAPPDATA%\treetime`       |
-| Runs, unless the settings name another folder   | `~/.local/share/treetime/runs` | `~/Library/Application Support/treetime/runs` | `%LOCALAPPDATA%\treetime\runs`  |
-| Logs and crash diagnostics                      | `~/.local/state/treetime/logs` | `~/Library/Logs/treetime`                     | `%LOCALAPPDATA%\treetime\logs`  |
+| Content                                       | Linux                          | macOS                                         | Windows                        |
+| --------------------------------------------- | ------------------------------ | --------------------------------------------- | ------------------------------ |
+| Chromium profile and `settings.yaml`          | `~/.config/treetime`           | `~/Library/Application Support/treetime`      | `%LOCALAPPDATA%\treetime`      |
+| Runs, unless the settings name another folder | `~/.local/share/treetime/runs` | `~/Library/Application Support/treetime/runs` | `%LOCALAPPDATA%\treetime\runs` |
+| Logs and crash diagnostics                    | `~/.local/state/treetime/logs` | `~/Library/Logs/treetime`                     | `%LOCALAPPDATA%\treetime\logs` |
 
 On Linux, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, and `XDG_STATE_HOME` move these folders. `TREETIME_APP_DIR` replaces all of them with one folder that holds `profile/`, `settings.yaml`, `runs/`, and `logs/`. `just desktop` and `just desktop-prod` set it to `tmp/app/treetime-dev` and `tmp/app/treetime-prod` of the checkout, so development never touches the profile of an installed app; `TREETIME_DESKTOP_DEV_DIR` and `TREETIME_DESKTOP_PROD_DIR` in `.env` choose other folders (see `.env.example`).
 
