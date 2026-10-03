@@ -17,31 +17,31 @@ use util_augur_node_data_json::{
 
 pub fn write_augur_node_data_json_with_aa(
   graph: &Graph,
-  output: &AncestralOutputMaps,
-  maps: &AugurOutputMaps,
+  mutations: &AncestralOutputMaps,
+  sequences: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   aa_node_data: Option<&AaNodeData>,
   aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   path: &Path,
 ) -> Result<(), Report> {
-  let data = build_augur_node_data_json(graph, output, maps, mask, names, aa_node_data, aa_annotations)?;
+  let data = build_augur_node_data_json(graph, mutations, sequences, mask, names, aa_node_data, aa_annotations)?;
   json_write_file(path, &data, JsonPretty(true))?;
   Ok(())
 }
 
 pub fn build_augur_node_data_json(
   graph: &Graph,
-  output: &AncestralOutputMaps,
-  maps: &AugurOutputMaps,
+  mutations: &AncestralOutputMaps,
+  sequences: &AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   aa_node_data: Option<&AaNodeData>,
   aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
 ) -> Result<AugurNodeDataJsonAncestral, Report> {
-  let alignment_length = maps.sequence_length;
-  let reference_seq = &output.root_sequence;
-  let ambiguous = maps.ambiguous_char;
+  let alignment_length = sequences.sequence_length;
+  let reference_seq = &mutations.root_sequence;
+  let ambiguous = sequences.ambiguous_char;
 
   let mut annotations = AugurNodeDataJsonAnnotations {
     nuc: Some(AugurNodeDataJsonAnnotationEntry {
@@ -66,7 +66,7 @@ pub fn build_augur_node_data_json(
       .map_or_else(|| format!("node_{}", node_key.0), str::to_owned);
 
     let muts = match graph.node_parent(node_key)? {
-      Some((_parent_key, edge_key)) => output.edge_mutations[&edge_key]
+      Some((_parent_key, edge_key)) => mutations.edge_mutations[&edge_key]
         .iter()
         .filter_map(|mutation| match &mutation.event {
           MutationEvent::Substitution(sub) => Some(sub),
@@ -79,7 +79,7 @@ pub fn build_augur_node_data_json(
       None => Vec::new(),
     };
 
-    let mut sequence = maps.node_sequences[&node_key].clone();
+    let mut sequence = sequences.node_sequences[&node_key].clone();
     for (pos, &masked) in mask.iter().enumerate() {
       if masked && pos < sequence.len() {
         sequence[pos] = ambiguous;
