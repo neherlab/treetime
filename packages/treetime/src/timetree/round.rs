@@ -31,6 +31,7 @@ use crate::timetree::pre_loop::PreLoopState;
 use eyre::{Report, WrapErr};
 use rand::RngCore;
 use std::collections::{BTreeMap, BTreeSet};
+use std::mem;
 use treetime_graph::assign_node_names::{assign_node_names, restrict_node_names};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -351,7 +352,8 @@ fn refresh_times(
   if state.branch_model.is_marginal() {
     progress_info!(log, "Updating ancestral sequences via marginal reconstruction");
   }
-  let state = state.marginal_update()?;
+  let mut state = state.marginal_update()?;
+  drop(mem::take(&mut state.time_inference));
   let time_inference = infer_times(inputs, prior, topology_changed, &state, log)?;
   Ok(
     RoundState {

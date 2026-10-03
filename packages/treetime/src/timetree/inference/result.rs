@@ -8,7 +8,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct TimeInference {
   pub bad_branches: BTreeMap<GraphNodeKey, bool>,
   pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
