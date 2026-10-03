@@ -50,7 +50,7 @@ mod tests {
       .obs_edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
+      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
     let first_edge_key_without = graph_without.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths_without.insert(first_edge_key_without, Some(0.1));
@@ -59,7 +59,7 @@ mod tests {
       .obs_edges
       .get_mut(&first_edge_key_without)
       .unwrap()
-      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
+      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
     let names_tt_4 = graph_with_names.clone();
     let result_with = run_optimize_loop(
@@ -114,7 +114,7 @@ mod tests {
       .obs_edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
+      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
@@ -236,7 +236,7 @@ mod tests {
     let graph_with_indel = nwk_parsed.graph;
     let mut branch_lengths_with_indel = nwk_parsed.branch_lengths;
     let mut reconstruction_with_indel = setup_identical_reconstruction(&graph_with_indel, &graph_with_indel_names, &mut branch_lengths_with_indel)?;
-    let indels = vec![deletion((0, 2), Seq::try_from_str("AC")?)?];
+    let indels = vec![deletion((0, 2), Seq::try_from_str("AC")?)];
     inject_indels_on_first_edge(
       &graph_with_indel,
       &mut reconstruction_with_indel,

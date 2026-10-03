@@ -198,7 +198,7 @@ mod tests {
         AsciiChar::from_byte_unchecked(b'A'),
         AsciiChar::from_byte_unchecked(b'C')
       ],
-    )?;
+    );
 
     let partition = PartitionMarginalSparse {
       index: 0,
@@ -337,7 +337,7 @@ mod tests {
       .ok_or_else(|| make_report!("Edge to A not found"))?;
 
     let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
-    let indel = deletion((2, 4), seq![c(b'G'), c(b'T')])?;
+    let indel = deletion((2, 4), seq![c(b'G'), c(b'T')]);
 
     let partition = PartitionMarginalSparse {
       index: 0,

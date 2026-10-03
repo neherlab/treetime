@@ -45,7 +45,7 @@ mod tests {
       obs_edges: btreemap! {
         stem_edge => sparse_edge_obs(
           vec![Sub::new(c(b'G'), 2_usize, c(b'T'))?],
-          vec![deletion((5, 7), Seq::try_from_slice(b"CG")?)?],
+          vec![deletion((5, 7), Seq::try_from_slice(b"CG")?)],
         ),
         r_a_edge => SparseEdgeObs::default(),
         r_b_edge => SparseEdgeObs::default(),

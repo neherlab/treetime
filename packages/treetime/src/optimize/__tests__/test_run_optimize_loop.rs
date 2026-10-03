@@ -66,7 +66,7 @@ mod tests {
       .obs_edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
+      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
     let (reconstruction, sparse_lh) =
       reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -196,7 +196,7 @@ mod tests {
       .obs_edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
+      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
     let (reconstruction, initial_sparse_lh) =
       reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

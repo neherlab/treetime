@@ -267,7 +267,7 @@ mod tests {
     populate_test_nodes(&mut recon, &graph);
 
     let collapsed_indel = insertion((0, 3), [c(b'A'), c(b'C'), c(b'G')].as_slice());
-    let child_a_indel = deletion((10, 12), [c(b'T'), c(b'T')].as_slice()).unwrap();
+    let child_a_indel = deletion((10, 12), [c(b'T'), c(b'T')].as_slice());
 
     recon
       .obs_edges

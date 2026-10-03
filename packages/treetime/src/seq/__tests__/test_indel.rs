@@ -219,7 +219,7 @@ mod tests {
     use treetime_primitives::Seq;
 
     pub(super) fn del(start: usize, end: usize, seq: &str) -> InDel {
-      deletion((start, end), Seq::try_from_str(seq).unwrap()).unwrap()
+      deletion((start, end), Seq::try_from_str(seq).unwrap())
     }
 
     pub(super) fn ins(start: usize, end: usize, seq: &str) -> InDel {

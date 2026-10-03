@@ -339,7 +339,7 @@ mod tests {
       ],
     )?;
 
-    let shared_indel = deletion((10, 13), Seq::try_from_str("GTA").unwrap()).unwrap();
+    let shared_indel = deletion((10, 13), Seq::try_from_str("GTA").unwrap());
     {
       let p = &mut partition;
       let edge_c = find_edge_key(&graph, &names, "root", "C").expect("edge root->C");

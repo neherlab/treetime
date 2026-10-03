@@ -664,7 +664,7 @@ pub(super) mod tests {
 
       let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       let indels: Vec<InDel> = (0..n_indels)
-        .map(|i| deletion((i * 3, i * 3 + 3), Seq::try_from_str("ACG").unwrap()).unwrap())
+        .map(|i| deletion((i * 3, i * 3 + 3), Seq::try_from_str("ACG").unwrap()))
         .collect();
 
       sparse_reconstruction_mut(&mut reconstruction)

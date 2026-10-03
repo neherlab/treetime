@@ -233,7 +233,7 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'A')]),
       ],
     );
-    let del = deletion((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice())?;
+    let del = deletion((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice());
     let ins = insertion((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice());
     {
       let p = &mut partition;
@@ -272,8 +272,8 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'A')]),
       ],
     );
-    let parent_del = deletion((20, 25), [c(b'A'); 5].as_slice())?;
-    let child_del = deletion((22, 28), [c(b'A'); 6].as_slice())?;
+    let parent_del = deletion((20, 25), [c(b'A'); 5].as_slice());
+    let child_del = deletion((22, 28), [c(b'A'); 6].as_slice());
     {
       let p = &mut partition;
       p.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
@@ -315,8 +315,8 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'A')]),
       ],
     );
-    let parent_del = deletion((20, 23), [c(b'A'); 3].as_slice())?;
-    let child_del = deletion((50, 53), [c(b'A'); 3].as_slice())?;
+    let parent_del = deletion((20, 23), [c(b'A'); 3].as_slice());
+    let child_del = deletion((50, 53), [c(b'A'); 3].as_slice());
     {
       let p = &mut partition;
       p.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];

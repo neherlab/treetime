@@ -514,7 +514,7 @@ pub(super) mod tests {
         .estimates
         .get_mut(&edge_key)
         .unwrap()
-        .indels = vec![deletion((4, 7), Seq::try_from_str("ACG")?)?];
+        .indels = vec![deletion((4, 7), Seq::try_from_str("ACG")?)];
       Ok(())
     }
 

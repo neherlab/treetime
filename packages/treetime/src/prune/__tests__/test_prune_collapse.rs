@@ -737,7 +737,7 @@ mod tests {
       obs_edges: btreemap! {},
     };
 
-    let parent_indel = deletion((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice())?;
+    let parent_indel = deletion((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice());
     let child_indel = insertion((20, 23), [c(b'G'), c(b'G'), c(b'C')].as_slice());
 
     partition
