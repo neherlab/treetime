@@ -234,12 +234,6 @@ variant = "sample-all"
 datasets = ["flu/h3n2/20"]
 args = "--method-anc=marginal --sample-from-profile=all --seed=42"
 
-[[ancestral]]
-variant = "method-joint"
-datasets = ["flu/h3n2/20"]
-args = "--method-anc=joint"
-fail = "joint reconstruction is removed in v1: kb/decisions/ancestral-joint-reconstruction-removed.md"
-
 # A tree with tips that the alignment lacks
 [[ancestral]]
 variant = "ignore-missing-alns"

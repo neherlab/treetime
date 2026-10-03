@@ -4594,8 +4594,7 @@
         "type": "string",
         "enum": [
           "marginal",
-          "parsimony",
-          "joint"
+          "parsimony"
         ]
       },
       "AlphabetName": {
@@ -9989,10 +9988,6 @@
               {
                 "value": "parsimony",
                 "help": ""
-              },
-              {
-                "value": "joint",
-                "help": ""
               }
             ],
             "item_kind": "string",
@@ -13483,10 +13478,6 @@
               {
                 "value": "parsimony",
                 "help": ""
-              },
-              {
-                "value": "joint",
-                "help": ""
               }
             ],
             "item_kind": "string",
@@ -14814,10 +14805,6 @@
               },
               {
                 "value": "parsimony",
-                "help": ""
-              },
-              {
-                "value": "joint",
                 "help": ""
               }
             ],

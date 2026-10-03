@@ -19,7 +19,6 @@ use crate::seq::alignment::NodeSeqInput;
 use eyre::Report;
 use rand::RngCore;
 use std::collections::BTreeMap;
-use strum::VariantNames;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -70,17 +69,6 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPla
       gtr_refinement: (params.gtr_iterations > 0 && params.model == GtrModelName::Infer)
         .then_some(params.gtr_iterations),
     }),
-    MethodAncestral::Joint => {
-      let available = MethodAncestral::VARIANTS
-        .iter()
-        .filter(|v| **v != "joint")
-        .copied()
-        .collect::<Vec<_>>()
-        .join(", ");
-      Err(OperationError::InvalidParams(make_report!(
-        "Joint ancestral reconstruction has been removed. Available methods: {available}"
-      )))
-    },
   }
 }
 

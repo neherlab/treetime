@@ -1132,8 +1132,7 @@
           "type": "string",
           "enum": [
             "marginal",
-            "parsimony",
-            "joint"
+            "parsimony"
           ]
         },
         {

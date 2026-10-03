@@ -73,21 +73,13 @@ mod tests {
     MethodAncestral::Marginal, true, SampleMode::Argmax,
     "--site-specific-gtr is not implemented"
   )]
-  #[case::site_specific_gtr_before_joint(
-    MethodAncestral::Joint, true, SampleMode::Root,
+  #[case::site_specific_gtr_before_sampling(
+    MethodAncestral::Parsimony, true, SampleMode::Root,
     "--site-specific-gtr is not implemented"
   )]
   #[case::sampling_with_parsimony(
     MethodAncestral::Parsimony, false, SampleMode::Root,
     "--sample-from-profile=Root requires --method-anc=marginal. Posterior sampling is only defined for marginal reconstruction; Parsimony has no posterior profile to sample."
-  )]
-  #[case::sampling_before_joint(
-    MethodAncestral::Joint, false, SampleMode::All,
-    "--sample-from-profile=All requires --method-anc=marginal. Posterior sampling is only defined for marginal reconstruction; Joint has no posterior profile to sample."
-  )]
-  #[case::joint(
-    MethodAncestral::Joint, false, SampleMode::Argmax,
-    "Joint ancestral reconstruction has been removed. Available methods: marginal, parsimony"
   )]
   #[trace]
   fn test_plan_rejects_invalid_params(

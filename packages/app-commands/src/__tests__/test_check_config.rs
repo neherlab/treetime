@@ -134,7 +134,7 @@ mod tests {
         "invalid configuration: `margnal` is not a valid value",
         vec!["config::enum".to_owned()],
         vec![Some(
-          "did you mean `marginal`? Valid values: `joint`, `marginal`, `parsimony`".to_owned()
+          "did you mean `marginal`? Valid values: `marginal`, `parsimony`".to_owned()
         )],
       ),
       (

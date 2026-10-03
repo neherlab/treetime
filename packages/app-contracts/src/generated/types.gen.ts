@@ -1968,7 +1968,7 @@ export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest' | 'clock-filte
 
 export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | 'jtt92' | 'infer';
 
-export type MethodAncestral = 'marginal' | 'parsimony' | 'joint';
+export type MethodAncestral = 'marginal' | 'parsimony';
 
 export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
 

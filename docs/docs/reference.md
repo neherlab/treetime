@@ -219,7 +219,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
   Default value: `marginal`
 
-  Possible values: `marginal`, `parsimony`, `joint`
+  Possible values: `marginal`, `parsimony`
 
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
@@ -789,7 +789,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
   Default value: `marginal`
 
-  Possible values: `marginal`, `parsimony`, `joint`
+  Possible values: `marginal`, `parsimony`
 
 * `--dense <DENSE>` — Use dense representation (stores full probability vectors at each position)
 
@@ -1017,7 +1017,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
   Default value: `marginal`
 
-  Possible values: `marginal`, `parsimony`, `joint`
+  Possible values: `marginal`, `parsimony`
 
 * `--clock-filter <CLOCK_FILTER>` — ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off
 
@@ -1207,7 +1207,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
   Default value: `marginal`
 
-  Possible values: `marginal`, `parsimony`, `joint`
+  Possible values: `marginal`, `parsimony`
 
 * `--dense <DENSE>` — Use dense representation (stores full probability vectors at each position)
 

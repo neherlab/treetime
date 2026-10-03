@@ -4556,7 +4556,6 @@ dependencies = [
  "serde_json",
  "smart-default",
  "statrs",
- "strum",
  "strum_macros",
  "tempfile",
  "treetime-distribution",

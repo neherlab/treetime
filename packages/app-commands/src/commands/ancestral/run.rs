@@ -352,7 +352,7 @@ fn write_ancestral_trees(
   let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, graph);
   let providers = match method {
     MethodAncestral::Marginal => CommentProviders::new().with(&provider),
-    MethodAncestral::Parsimony | MethodAncestral::Joint => CommentProviders::new(),
+    MethodAncestral::Parsimony => CommentProviders::new(),
   };
   write_ancestral_tree_outputs(
     graph,

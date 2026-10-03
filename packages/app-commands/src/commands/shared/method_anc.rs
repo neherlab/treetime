@@ -10,7 +10,6 @@ pub enum MethodAncestralCli {
   #[default]
   Marginal,
   Parsimony,
-  Joint,
 }
 
 impl From<MethodAncestralCli> for MethodAncestral {
@@ -18,7 +17,6 @@ impl From<MethodAncestralCli> for MethodAncestral {
     match method {
       MethodAncestralCli::Marginal => MethodAncestral::Marginal,
       MethodAncestralCli::Parsimony => MethodAncestral::Parsimony,
-      MethodAncestralCli::Joint => MethodAncestral::Joint,
     }
   }
 }

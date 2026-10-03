@@ -961,11 +961,7 @@ export const zGtrModelName = z.union([
   z.literal('infer')
 ]);
 
-export const zMethodAncestral = z.enum([
-  'marginal',
-  'parsimony',
-  'joint'
-]);
+export const zMethodAncestral = z.enum(['marginal', 'parsimony']);
 
 export const zAlphabetName = z.enum([
   'nuc',
