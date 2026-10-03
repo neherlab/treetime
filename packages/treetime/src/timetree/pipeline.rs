@@ -160,11 +160,7 @@ fn assemble_output(
     time_inference,
     ..
   } = results.state;
-  let FinalSequences {
-    root_sequence,
-    edge_mutations,
-    edge_mutation_counts,
-  } = reconstruct_final_sequences(
+  let sequences = reconstruct_final_sequences(
     params,
     context,
     seq_sink,
@@ -190,9 +186,7 @@ fn assemble_output(
     bad_branches: time_inference.bad_branches,
     divergences: results.divergences,
     outliers,
-    root_sequence,
-    edge_mutations,
-    edge_mutation_counts,
+    sequences,
     names,
     graph,
   })
@@ -223,7 +217,11 @@ pub struct TimetreeOutput {
   pub model_name: Option<GtrModelName>,
   pub coalescent: Option<CoalescentOutput>,
   pub dates: Option<DatesMap>,
-  pub root_sequence: Option<Seq>,
+  pub sequences: Option<TimetreeSequences>,
+}
+
+pub struct TimetreeSequences {
+  pub root_sequence: Seq,
   pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
   pub edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
 }
@@ -521,13 +519,6 @@ fn gather_results(
   })
 }
 
-#[derive(Default)]
-struct FinalSequences {
-  root_sequence: Option<Seq>,
-  edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
-}
-
 fn reconstruct_final_sequences(
   params: &TimetreeParams,
   context: &TimetreeContext,
@@ -536,7 +527,7 @@ fn reconstruct_final_sequences(
   branch_model: BranchModel,
   final_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
-) -> Result<FinalSequences, OperationError> {
+) -> Result<Option<TimetreeSequences>, OperationError> {
   let BranchModel::Marginal(reconstruction) = branch_model else {
     if params.include_leaves || params.impute_missing_data {
       progress_warn!(
@@ -545,10 +536,10 @@ fn reconstruct_final_sequences(
          no ancestral reconstruction was performed under --branch-length-mode=input"
       );
     }
-    return Ok(FinalSequences::default());
+    return Ok(None);
   };
   if !context.final_sequences {
-    return Ok(FinalSequences::default());
+    return Ok(None);
   }
   let reconstruction = if context.final_marginal_update {
     reconstruction
@@ -575,11 +566,11 @@ fn reconstruct_final_sequences(
   )?;
   let edge_mutation_counts =
     edge_state_change_counts(&edge_mutations, reconstruction.alphabet()).map_err(OperationError::InferenceFailed)?;
-  Ok(FinalSequences {
-    root_sequence: Some(root_sequence),
+  Ok(Some(TimetreeSequences {
+    root_sequence,
     edge_mutations,
     edge_mutation_counts,
-  })
+  }))
 }
 
 pub(crate) fn date_branch_lengths(

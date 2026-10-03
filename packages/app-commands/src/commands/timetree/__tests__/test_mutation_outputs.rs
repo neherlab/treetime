@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
   use crate::commands::shared::output_args::{DivergenceUnits, OutputCoreArgs};
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
@@ -15,7 +16,7 @@ mod tests {
   use treetime::progress::NoopProgress;
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
   use treetime_utils::io::json::json_read_file;
-  use treetime_utils::{o, vec_of_owned};
+  use treetime_utils::{assert_error, o, vec_of_owned};
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
   const TREE: &str = "((A:0.06,B:0.09)AB:0.03,(C:0.07,(D:0.03,E:0.06)DE:0.02)CDE:0.03,F:0.04)root;";
@@ -66,6 +67,20 @@ mod tests {
     };
     assert_eq!(expected, actual);
     Ok(())
+  }
+
+  #[test]
+  fn test_timetree_mutation_units_reject_input_branch_lengths_before_inference() {
+    let dir = tempfile::tempdir().unwrap();
+    let result = run_timetree(dir.path(), false, |raw| {
+      raw.divergence_units = DivergenceUnits::Mutations;
+      raw.branch_length_mode = BranchLengthModeCli::Input;
+      raw.output_augur_node_data = Some(dir.path().join("node_data.json"));
+    });
+    assert_error!(
+      result,
+      "--divergence-units=mutations requires ancestral reconstruction; incompatible with --branch-length-mode=input"
+    );
   }
 
   #[rustfmt::skip]

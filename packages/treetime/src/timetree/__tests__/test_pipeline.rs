@@ -220,13 +220,13 @@ mod tests {
     let input = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
     let with_sink = helpers::run(&params, input, Some(&mut RecordingSeqSink::default()))?;
 
-    assert!(without_sink.root_sequence.is_some());
-    assert_eq!(
-      without_sink.graph.get_edges().count(),
-      without_sink.edge_mutations.len()
-    );
+    let edge_count = without_sink.graph.get_edges().count();
+    let without_sink = without_sink.sequences.expect("sequence outputs were requested");
+    let with_sink = with_sink.sequences.expect("sequence outputs were requested");
+    assert_eq!(edge_count, without_sink.edge_mutations.len());
     assert_eq!(without_sink.root_sequence, with_sink.root_sequence);
     assert_eq!(without_sink.edge_mutations, with_sink.edge_mutations);
+    assert_eq!(without_sink.edge_mutation_counts, with_sink.edge_mutation_counts);
     Ok(())
   }
 

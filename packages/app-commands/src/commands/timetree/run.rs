@@ -22,13 +22,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::GtrOutput;
-use treetime::make_error;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::params::TimetreeParams;
-use treetime::timetree::pipeline::{self, TimetreeInput};
+use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeSequences};
+use treetime::{make_error, make_internal_error};
 use treetime::{progress_info, progress_warn};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
@@ -59,12 +59,6 @@ pub fn run_timetree_estimation(
     .non_tree_outputs
     .get(&OutputSelection::ReconstructedNucFasta)
     .cloned();
-  if reconstructed_nuc_fasta.is_some() && args.branch_length_mode == BranchLengthMode::Input {
-    return make_error!(
-      "Reconstructed sequence output requires ancestral reconstruction; \
-       incompatible with --branch-length-mode=input"
-    );
-  }
   let mutation_units = matches!(args.divergence_units, DivergenceUnits::Mutations);
   if mutation_units && args.branch_length_mode == BranchLengthMode::Input {
     return make_error!(
@@ -184,17 +178,11 @@ pub fn run_timetree_estimation(
     model_name,
     coalescent,
     dates,
-    root_sequence,
-    edge_mutations,
-    edge_mutation_counts,
+    sequences,
   } = output;
 
-  let mutation_counts = mutation_units.then_some(edge_mutation_counts);
-  let maps = TimetreeOutputMaps {
-    root_sequence,
-    edge_mutations: UnknownMutationFilter::new(unknown, args.report_ambiguous)
-      .reported_edge_mutations(&graph, edge_mutations)?,
-  };
+  let filter = UnknownMutationFilter::new(unknown, args.report_ambiguous);
+  let (maps, mutation_counts) = timetree_output_maps(&graph, sequences, filter, mutation_units)?;
 
   stages.report("Writing output", 0.95, "");
   progress_info!(log, "### TreeTime: writing outputs");
@@ -384,9 +372,9 @@ impl SeqSink for ReconstructedNucSink {
         let desc = self.descs[&item.key].clone();
         self.writer.write(&name, &desc, item.seq)
       },
-      SeqTrack::Aa(cds) => treetime_utils::make_internal_error!(
-        "Timetree reconstructed-nucleotide FASTA sink received an amino-acid track '{cds}'"
-      ),
+      SeqTrack::Aa(cds) => {
+        make_internal_error!("Timetree reconstructed-nucleotide FASTA sink received an amino-acid track '{cds}'")
+      },
     }
   }
 }
@@ -457,4 +445,32 @@ fn write_coalescent_output(
     ),
   }
   Ok(())
+}
+
+fn timetree_output_maps(
+  graph: &Graph,
+  sequences: Option<TimetreeSequences>,
+  filter: UnknownMutationFilter,
+  mutation_units: bool,
+) -> Result<(TimetreeOutputMaps, Option<BTreeMap<GraphEdgeKey, usize>>), Report> {
+  let Some(TimetreeSequences {
+    root_sequence,
+    edge_mutations,
+    edge_mutation_counts,
+  }) = sequences
+  else {
+    if mutation_units {
+      return make_internal_error!("Mutation divergence units were requested, but no ancestral reconstruction ran");
+    }
+    let maps = TimetreeOutputMaps {
+      root_sequence: None,
+      edge_mutations: BTreeMap::new(),
+    };
+    return Ok((maps, None));
+  };
+  let maps = TimetreeOutputMaps {
+    root_sequence: Some(root_sequence),
+    edge_mutations: filter.reported_edge_mutations(graph, edge_mutations)?,
+  };
+  Ok((maps, mutation_units.then_some(edge_mutation_counts)))
 }
