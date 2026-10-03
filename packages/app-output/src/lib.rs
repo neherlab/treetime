@@ -18,6 +18,7 @@ pub mod gtr;
 pub mod mugration_result;
 pub mod mugration_tree_output;
 pub mod mutation_comment;
+pub mod mutation_filter;
 pub mod optimize_result;
 pub mod optimize_tree_output;
 pub mod output_plan;

@@ -54,10 +54,6 @@ pub struct TreetimeAncestralArgs {
   pub(crate) zero_based: bool,
   pub(crate) include_leaves: bool,
   pub(crate) impute_missing_data: bool,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
   pub(crate) report_ambiguous: bool,
   pub(crate) ignore_missing_alns: bool,
   pub(crate) output_augur_node_data: Option<PathBuf>,
@@ -213,7 +209,11 @@ pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub reconstruct_tip_states: bool,
 
-  /// Include transitions involving ambiguous states
+  /// Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids)
+  /// in the written mutation lists.
+  ///
+  /// By default these mutations are omitted from tree annotations, Auspice JSON, augur node data,
+  /// and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub report_ambiguous: bool,
 

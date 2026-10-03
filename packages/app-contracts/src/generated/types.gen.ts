@@ -2259,7 +2259,11 @@ export type TimetreeConfig = {
    */
   reconstruct_tip_states?: boolean;
   /**
-   * Include transitions involving ambiguous states
+   * Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids)
+   * in the written mutation lists.
+   *
+   * By default these mutations are omitted from tree annotations, Auspice JSON, augur node data,
+   * and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.
    */
   report_ambiguous?: boolean;
   /**
@@ -3166,7 +3170,11 @@ export type AncestralConfig = {
    */
   reconstruct_tip_states?: boolean;
   /**
-   * Include transitions involving ambiguous states
+   * Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids)
+   * in the written mutation lists.
+   *
+   * By default these mutations are omitted from tree annotations, Auspice JSON, augur node data,
+   * and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.
    */
   report_ambiguous?: boolean;
   /**

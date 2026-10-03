@@ -481,7 +481,11 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub reconstruct_tip_states: bool,
 
-  /// Include transitions involving ambiguous states
+  /// Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids)
+  /// in the written mutation lists.
+  ///
+  /// By default these mutations are omitted from tree annotations, Auspice JSON, augur node data,
+  /// and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub report_ambiguous: bool,
 

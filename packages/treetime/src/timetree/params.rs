@@ -128,7 +128,6 @@ pub struct TimetreeParams {
   pub include_leaves: bool,
   pub impute_missing_data: bool,
   pub reconstructed_sequences: bool,
-  pub report_ambiguous: bool,
   pub zero_based: bool,
   pub seed: Option<u64>,
 }

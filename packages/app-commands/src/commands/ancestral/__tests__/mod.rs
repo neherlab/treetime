@@ -1,3 +1,4 @@
 mod test_aa_node_data;
 mod test_augur_node_data;
 mod test_reconstructed_fasta_descriptions;
+mod test_report_ambiguous;

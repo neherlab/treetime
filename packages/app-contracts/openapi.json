@@ -5104,7 +5104,7 @@
             "x-cli-flag": "--reconstruct-tip-states"
           },
           "report_ambiguous": {
-            "description": "Include transitions involving ambiguous states",
+            "description": "Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids)\nin the written mutation lists.\n\nBy default these mutations are omitted from tree annotations, Auspice JSON, augur node data,\nand MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.",
             "type": "boolean",
             "default": false,
             "x-cli-flag": "--report-ambiguous"
@@ -6290,7 +6290,7 @@
             "x-cli-flag": "--reconstruct-tip-states"
           },
           "report_ambiguous": {
-            "description": "Include transitions involving ambiguous states",
+            "description": "Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids)\nin the written mutation lists.\n\nBy default these mutations are omitted from tree annotations, Auspice JSON, augur node data,\nand MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.",
             "type": "boolean",
             "default": false,
             "x-cli-flag": "--report-ambiguous"
@@ -10181,8 +10181,8 @@
               "REPORT_AMBIGUOUS"
             ],
             "conflicts": [],
-            "help": "Include transitions involving ambiguous states",
-            "more": ""
+            "help": "Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids) in the written mutation lists.",
+            "more": "By default these mutations are omitted from tree annotations, Auspice JSON, augur node data, and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported."
           },
           {
             "key": "divergence_units",
@@ -13675,8 +13675,8 @@
               "REPORT_AMBIGUOUS"
             ],
             "conflicts": [],
-            "help": "Include transitions involving ambiguous states",
-            "more": ""
+            "help": "Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids) in the written mutation lists.",
+            "more": "By default these mutations are omitted from tree annotations, Auspice JSON, augur node data, and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported."
           },
           {
             "key": "aa_root_sequence",

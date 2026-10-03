@@ -4,6 +4,7 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data_optimize::write_augur_node_data_json;
 use app_output::gtr::write_gtr_json;
+use app_output::mutation_filter::AmbiguousMutationFilter;
 use app_output::optimize_result::{EdgeOut, OptimizeNodeOut, OptimizeOutputMaps, OptimizeResult};
 use app_output::optimize_tree_output::write_optimize_tree_outputs;
 use app_output::output_plan::OutputSelection;
@@ -64,6 +65,7 @@ pub fn run_optimize(
     topology_ops: args.topology_ops,
   };
 
+  let ambiguous = alphabet.unknown();
   let input = OptimizeInput {
     graph,
     alphabet,
@@ -81,7 +83,7 @@ pub fn run_optimize(
     names,
   } = output;
 
-  let maps = gather_optimize_output_maps(&graph, &reconstruction)?;
+  let maps = gather_optimize_output_maps(&graph, &reconstruction, AmbiguousMutationFilter::new(ambiguous, false))?;
 
   let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
@@ -150,6 +152,7 @@ pub fn run_optimize(
 fn gather_optimize_output_maps(
   graph: &Graph,
   reconstruction: &MarginalReconstruction,
+  filter: AmbiguousMutationFilter,
 ) -> Result<OptimizeOutputMaps, Report> {
   let edge_mutations = graph
     .get_edges()
@@ -170,7 +173,7 @@ fn gather_optimize_output_maps(
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(OptimizeOutputMaps {
     root_sequence: reconstruction.root_sequence(graph)?,
-    edge_mutations,
+    edge_mutations: filter.reported_edge_mutations(edge_mutations),
     edge_subs,
   })
 }
