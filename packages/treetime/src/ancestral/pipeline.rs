@@ -43,7 +43,7 @@ pub fn run(
     stages,
     log,
   )
-  .map_err(OperationError::from_inference)?;
+  .map_err(OperationError::classify)?;
   seq_sink.on_topology(&input.graph).map_err(OperationError::SinkFailed)?;
   let SequenceMutations {
     root_sequence,

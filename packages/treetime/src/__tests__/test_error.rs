@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::cancel::CancelledError;
-  use crate::error::OperationError;
+  use crate::error::{OperationError, input_error};
   use eyre::{Report, WrapErr, eyre};
   use pretty_assertions::assert_eq;
 
@@ -35,14 +35,27 @@ mod tests {
   }
 
   #[test]
-  fn test_error_from_inference_classifies_cancellation() {
-    let classified = OperationError::from_inference(Report::new(CancelledError));
+  fn test_error_classify_detects_wrapped_cancellation() {
+    let classified = OperationError::classify(Report::new(CancelledError).wrap_err("During the refinement loop"));
     assert!(matches!(classified, OperationError::Cancelled));
   }
 
   #[test]
-  fn test_error_from_inference_defaults_to_inference_failed() {
-    let classified = OperationError::from_inference(eyre!("some numerical failure"));
+  fn test_error_classify_detects_a_wrapped_input_error() {
+    let classified =
+      OperationError::classify(input_error("Reroot tip not found: X").wrap_err("Failed to fit the clock"));
+    let OperationError::InvalidInput(report) = classified else {
+      panic!("an input error must classify as invalid input");
+    };
+    assert_eq!(
+      vec!["Failed to fit the clock", "Reroot tip not found: X"],
+      cause_chain(&report)
+    );
+  }
+
+  #[test]
+  fn test_error_classify_defaults_to_inference_failed() {
+    let classified = OperationError::classify(eyre!("some numerical failure"));
     assert!(matches!(classified, OperationError::InferenceFailed(_)));
   }
 

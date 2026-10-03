@@ -1,4 +1,4 @@
-use crate::make_error;
+use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
@@ -129,13 +129,13 @@ fn validate_minimum_date_constraints(
   coverage_percent: f64,
 ) -> Result<(), Report> {
   if good_leaf_count < 3 {
-    return make_error!(
+    return Err(input_error(format!(
       "Insufficient dated leaves: found {} out of {} ({:.1}% coverage, minimum 3 required). Need {} more dated leaves.",
       good_leaf_count,
       total_leaf_count,
       coverage_percent,
       3 - good_leaf_count
-    );
+    )));
   }
   Ok(())
 }

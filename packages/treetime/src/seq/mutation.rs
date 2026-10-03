@@ -77,7 +77,7 @@ pub(crate) fn stream_sequence_mutations(
     .map_err(|report| {
       sink_error
         .take()
-        .map_or_else(|| OperationError::InferenceFailed(report), OperationError::SinkFailed)
+        .map_or_else(|| OperationError::classify(report), OperationError::SinkFailed)
     })?;
   let root_sequence = root_sequence
     .ok_or_else(|| OperationError::InferenceFailed(make_internal_report!("Graph traversal visited no root")))?;

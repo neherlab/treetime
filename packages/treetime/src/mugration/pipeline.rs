@@ -28,7 +28,7 @@ pub fn run(
   cancel: &dyn Cancel,
   log: &dyn LogSink,
 ) -> Result<MugrationOutput, OperationError> {
-  cancel.check().map_err(OperationError::from_inference)?;
+  cancel.check().map_err(OperationError::classify)?;
 
   let MugrationInput {
     graph,
@@ -99,7 +99,7 @@ pub fn run(
     .mu(1.0)
     .pi(pi)
     .build()
-    .map_err(OperationError::from_inference)?;
+    .map_err(OperationError::classify)?;
 
   let partition = PartitionMarginalDiscrete::new(
     discrete_states,
@@ -115,7 +115,7 @@ pub fn run(
   let branch_lengths = branch_lengths_or_zero(&branch_lengths);
   let update = partition
     .marginal_update(&gtr, &graph, &branch_lengths, &())
-    .map_err(OperationError::from_inference)?;
+    .map_err(OperationError::classify)?;
   progress_info!(log, "Mugration: initial log likelihood = {:.4}", update.log_lh.value());
 
   let (gtr, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
@@ -130,7 +130,7 @@ pub fn run(
     &branch_lengths,
     log,
   )
-  .map_err(OperationError::from_inference)?;
+  .map_err(OperationError::classify)?;
 
   let (reconstructed_traits, confidences) = gather_reconstruction_maps(&graph, &partition, &node_states);
 

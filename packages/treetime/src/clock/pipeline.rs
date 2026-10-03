@@ -29,12 +29,12 @@ pub fn run(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<ClockOutput, OperationError> {
-  cancel.check().map_err(OperationError::from_inference)?;
+  cancel.check().map_err(OperationError::classify)?;
   stages.report("Assigning dates", 0.1, "");
   let mut inputs = ClockInputs::new(&input.graph);
   assign_dates(&input.graph, &input.dates, &mut inputs, names).map_err(OperationError::InvalidInput)?;
 
-  cancel.check().map_err(OperationError::from_inference)?;
+  cancel.check().map_err(OperationError::classify)?;
   stages.report("Clock regression", 0.3, "");
   let tree = ClockTree {
     graph: input.graph,
@@ -60,7 +60,7 @@ pub fn run(
     names,
     log,
   )
-  .map_err(OperationError::InvalidInput)?;
+  .map_err(OperationError::classify)?;
 
   if let Some(outliers) = &filter_outliers {
     progress_info!(log, "Clock filter flagged {} leaf nodes as outliers", outliers.len());
@@ -69,7 +69,7 @@ pub fn run(
 
   let names = restrict_node_names(names, &graph);
   let divergences = root_to_node_divergences(&graph, |edge_key| branch_length_or_zero(&branch_lengths, edge_key))
-    .map_err(OperationError::from_inference)?;
+    .map_err(OperationError::classify)?;
   let regression_results =
     gather_clock_regression_results(&graph, &inputs, &divergences, &outliers, &clock_model, &names);
 

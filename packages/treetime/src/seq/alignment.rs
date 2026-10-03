@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::make_error;
+use crate::error::input_error;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
@@ -96,7 +96,9 @@ pub(crate) fn get_common_length_of_node_inputs(
         })
         .join("\n\n");
 
-      make_error!("Sequences are expected to all have the same length, but found the following lengths:\n\n{message}")
+      Err(input_error(format!(
+        "Sequences are expected to all have the same length, but found the following lengths:\n\n{message}"
+      )))
     },
   }
   .wrap_err("When calculating length of sequences")
@@ -128,7 +130,9 @@ pub fn get_common_length(aln: &[AlignmentRecord]) -> Result<usize, Report> {
         })
         .join("\n\n");
 
-      make_error!("Sequences are expected to all have the same length, but found the following lengths:\n\n{message}")
+      Err(input_error(format!(
+        "Sequences are expected to all have the same length, but found the following lengths:\n\n{message}"
+      )))
     },
   }
   .wrap_err("When calculating length of sequences")

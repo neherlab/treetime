@@ -5,7 +5,7 @@ use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootMethod, RerootSpec, RootObjective};
-use crate::make_error;
+use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves};
 use eyre::Report;
@@ -272,7 +272,9 @@ fn find_oldest_root(
     .min_by(|(lhs, _), (rhs, _)| lhs.total_cmp(rhs))
     .map(|(_, key)| key)
   else {
-    return make_error!("Cannot reroot to oldest tip because no dated leaves were found");
+    return Err(input_error(
+      "Cannot reroot to oldest tip because no dated leaves were found",
+    ));
   };
 
   find_named_root_point(graph, inputs, state, options, oldest_key, branch_lengths, objective)
@@ -289,7 +291,7 @@ fn find_tip_group_root(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<FindRootResult, Report> {
   if tips.is_empty() {
-    return make_error!("--reroot-tips requires at least one tip name");
+    return Err(input_error("--reroot-tips requires at least one tip name"));
   }
 
   let tip_keys = tips
@@ -299,7 +301,7 @@ fn find_tip_group_root(
         .iter()
         .find(|(_, name)| name.as_deref() == Some(tip.as_str()))
         .map(|(key, _)| *key)
-        .ok_or_else(|| eyre::eyre!("Reroot tip not found: {tip}"))
+        .ok_or_else(|| input_error(format!("Reroot tip not found: {tip}")))
     })
     .try_collect::<_, Vec<_>, _>()?;
   let mrca_key = common_ancestor(graph, &tip_keys)?;

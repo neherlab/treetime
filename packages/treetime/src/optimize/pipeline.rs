@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
-use crate::error::OperationError;
+use crate::error::{OperationError, input_error};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
@@ -29,7 +29,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AlignmentRecord;
-use treetime_utils::{make_error, make_report};
+use treetime_utils::{make_internal_error, make_report};
 
 const PRE_REROOT_DAMPING: f64 = 0.75;
 
@@ -48,6 +48,14 @@ pub fn run(
     )));
   }
 
+  if let Some(RerootSpec::Method(method)) = &params.reroot_spec
+    && *method != RerootMethod::MinDev
+  {
+    return Err(OperationError::InvalidParams(make_report!(
+      "optimize cannot reroot with a date-dependent method: {method:?}"
+    )));
+  }
+
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
   let sequences = std::mem::take(&mut input.sequences);
   let node_inputs = node_seq_inputs(&input.graph, names, sequences);
@@ -62,7 +70,7 @@ pub fn run(
     &branch_lengths_or_zero(&branch_lengths),
     log,
   )
-  .map_err(OperationError::InvalidInput)?;
+  .map_err(OperationError::classify)?;
 
   if matches!(reconstruction, MarginalReconstruction::Dense(_)) {
     if !params.topology_ops.merge_siblings {
@@ -81,7 +89,7 @@ pub fn run(
 
   let (mut reconstruction, _) = reconstruction
     .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))
-    .map_err(OperationError::from_inference)?;
+    .map_err(OperationError::classify)?;
 
   if params.model == GtrModelName::Infer {
     let length = reconstruction.sequence_length();
@@ -91,9 +99,9 @@ pub fn run(
   {
     let total_length = reconstruction.sequence_length();
     let indel_counts = gather_edge_indel_counts(&input.graph, &reconstruction);
-    let sub_counts = gather_edge_sub_counts(&input.graph, &reconstruction).map_err(OperationError::from_inference)?;
+    let sub_counts = gather_edge_sub_counts(&input.graph, &reconstruction).map_err(OperationError::classify)?;
     let effective_lengths =
-      gather_edge_effective_lengths(&input.graph, &reconstruction).map_err(OperationError::from_inference)?;
+      gather_edge_effective_lengths(&input.graph, &reconstruction).map_err(OperationError::classify)?;
     apply_initial_guess_mode(
       &input.graph,
       total_length,
@@ -106,7 +114,7 @@ pub fn run(
       names,
       log,
     )
-    .map_err(OperationError::from_inference)?;
+    .map_err(OperationError::classify)?;
   }
 
   if let Some(spec) = &params.reroot_spec {
@@ -119,14 +127,14 @@ pub fn run(
       params.no_indels,
       &mut branch_lengths,
     )
-    .map_err(OperationError::from_inference)?;
+    .map_err(OperationError::classify)?;
     reconstruction = reroot_optimize(&mut input.graph, spec, reconstruction, &mut branch_lengths, names)
-      .map_err(OperationError::InvalidInput)?;
+      .map_err(OperationError::classify)?;
   }
 
   let loop_names = restrict_node_names(names, &input.graph);
 
-  cancel.check().map_err(OperationError::from_inference)?;
+  cancel.check().map_err(OperationError::classify)?;
   stages.report("Optimizing branch lengths", 0.3, "");
   let loop_result = run_optimize_loop(
     &mut input.graph,
@@ -140,14 +148,14 @@ pub fn run(
     branch_lengths,
     &loop_names,
   )
-  .map_err(OperationError::from_inference)?;
+  .map_err(OperationError::classify)?;
   let branch_lengths = loop_result.branch_lengths;
 
   progress_info!(log, "Re-running marginal to populate subs_ml after optimization loop");
   let (reconstruction, _) = loop_result
     .reconstruction
     .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))
-    .map_err(OperationError::from_inference)?;
+    .map_err(OperationError::classify)?;
 
   Ok(OptimizeOutput {
     graph: input.graph,
@@ -259,7 +267,7 @@ fn reroot_optimize(
       reroot_at_node(graph, mrca, topo, branch_lengths, names)?
     },
     RerootSpec::Method(method) => {
-      return make_error!("optimize cannot reroot with a date-dependent method: {method:?}");
+      return make_internal_error!("optimize cannot reroot with a date-dependent method: {method:?}");
     },
   };
 
@@ -283,7 +291,7 @@ fn resolve_tip_keys(
         .iter()
         .find(|(_, name)| name.as_deref() == Some(tip.as_str()))
         .map(|(key, _)| *key)
-        .ok_or_else(|| make_report!("Reroot tip not found: {tip}"))
+        .ok_or_else(|| input_error(format!("Reroot tip not found: {tip}")))
     })
     .collect()
 }

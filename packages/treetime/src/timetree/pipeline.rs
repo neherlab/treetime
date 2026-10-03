@@ -73,10 +73,10 @@ pub fn run(
   } = input;
   let context = prepare_inputs(params, &graph, sequences.as_deref(), dates.as_ref(), &names, log)?;
 
-  cancel.check().map_err(OperationError::from_inference)?;
+  cancel.check().map_err(OperationError::classify)?;
   stages.report("Clock regression", 0.1, "");
   let (graph, branch_lengths, clock_fit) = estimate_initial_clock(params, &context, graph, branch_lengths, &names, log)
-    .map_err(OperationError::InvalidInput)?;
+    .map_err(OperationError::classify)?;
   let init = initialize_branch_model(
     params,
     &graph,
@@ -94,9 +94,9 @@ pub fn run(
   };
   let pre_loop_state = PreLoopState::new(graph, branch_lengths, init.branch_model, clock_fit);
   let pre_loop =
-    run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, stages, log).map_err(OperationError::from_inference)?;
+    run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, stages, log).map_err(OperationError::classify)?;
 
-  let initial = run_initial_round(params, &context, &names, pre_loop, log).map_err(OperationError::from_inference)?;
+  let initial = run_initial_round(params, &context, &names, pre_loop, log).map_err(OperationError::classify)?;
   let round_inputs = RoundInputs {
     params,
     context: &context,
@@ -114,16 +114,16 @@ pub fn run(
     stages,
     log,
   )
-  .map_err(OperationError::from_inference)?;
+  .map_err(OperationError::classify)?;
   report_coalescent_size(params, coalescent.mode, &timescale, log);
 
-  cancel.check().map_err(OperationError::from_inference)?;
+  cancel.check().map_err(OperationError::classify)?;
   stages.report("Postprocessing", 0.85, "");
   progress_info!(log, "### TreeTime: postprocessing");
   let final_times =
-    refine_final_times(&round_inputs, coalescent, &timescale, state, log).map_err(OperationError::from_inference)?;
+    refine_final_times(&round_inputs, coalescent, &timescale, state, log).map_err(OperationError::classify)?;
   let results =
-    gather_results(params, &context, coalescent, &timescale, final_times).map_err(OperationError::from_inference)?;
+    gather_results(params, &context, coalescent, &timescale, final_times).map_err(OperationError::classify)?;
   let RoundState {
     graph,
     names,
@@ -335,7 +335,7 @@ fn initialize_branch_model(
         &branch_lengths_or_zero(branch_lengths),
         log,
       )
-      .map_err(OperationError::InvalidInput)?;
+      .map_err(OperationError::classify)?;
       Ok(BranchModelInit {
         gtr: Some(reconstruction.gtr().clone()),
         branch_model: BranchModel::Marginal(reconstruction),
@@ -515,7 +515,7 @@ fn reconstruct_final_sequences(
   let reconstruction = if context.final_marginal_update {
     reconstruction
       .marginal_update(graph, final_branch_lengths)
-      .map_err(OperationError::from_inference)?
+      .map_err(OperationError::classify)?
       .0
   } else {
     reconstruction

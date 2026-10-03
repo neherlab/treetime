@@ -3,6 +3,16 @@ use derive_more::Display;
 use eyre::Report;
 
 #[derive(Debug, Display)]
+#[display("{_0}")]
+pub struct InputError(String);
+
+impl std::error::Error for InputError {}
+
+pub(crate) fn input_error(message: impl Into<String>) -> Report {
+  Report::new(InputError(message.into()))
+}
+
+#[derive(Debug, Display)]
 pub enum OperationError {
   #[display("{_0}")]
   InvalidParams(Report),
@@ -35,9 +45,11 @@ impl OperationError {
     }
   }
 
-  pub fn from_inference(report: Report) -> Self {
+  pub fn classify(report: Report) -> Self {
     if report.downcast_ref::<CancelledError>().is_some() {
       Self::Cancelled
+    } else if report.downcast_ref::<InputError>().is_some() {
+      Self::InvalidInput(report)
     } else {
       Self::InferenceFailed(report)
     }
