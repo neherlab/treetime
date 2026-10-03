@@ -82,6 +82,8 @@ function WorkspaceForm({ shell, onChanged }: { shell: WorkspaceShell; onChanged:
   const onChoose = useCallback(() => void choose(), [choose]);
   const onResetToDefault = useCallback(() => void apply(null), [apply]);
   const computing = runList?.active_runs ?? 0;
+  const fixedBy = workspace?.fixed_by ?? undefined;
+  const locked = busy || fixedBy !== undefined;
 
   return (
     <>
@@ -93,6 +95,14 @@ function WorkspaceForm({ shell, onChanged }: { shell: WorkspaceShell; onChanged:
         </DialogDescription>
       </DialogHeader>
       <WorkspacePath workspace={workspace} />
+      {fixedBy !== undefined && (
+        <Alert>
+          <AlertDescription>
+            The environment variable <code className="font-mono">{fixedBy}</code> sets this folder. Unset it and restart
+            TreeTime to choose the folder here.
+          </AlertDescription>
+        </Alert>
+      )}
       {computing > 0 && (
         <Alert>
           <AlertDescription>
@@ -104,12 +114,12 @@ function WorkspaceForm({ shell, onChanged }: { shell: WorkspaceShell; onChanged:
       <div className="flex flex-wrap justify-end gap-2">
         <Button
           variant="outline"
-          disabled={busy || workspace === undefined || workspace.path === workspace.default_path}
+          disabled={locked || workspace === undefined || workspace.path === workspace.default_path}
           onClick={onResetToDefault}
         >
           Use the default folder
         </Button>
-        <Button disabled={busy} onClick={onChoose}>
+        <Button disabled={locked} onClick={onChoose}>
           <FolderOpen aria-hidden />
           Choose a folder
         </Button>

@@ -23,7 +23,7 @@ import {
   type WebContents,
 } from "electron";
 
-import { APP_DIR_ENV, checkoutAppDir } from "./app-dir";
+import { checkoutEnv } from "./app-dir";
 import { APP_SCHEME, APP_SCHEME_PRIVILEGES, APP_URL, resolveAppAsset } from "./app-scheme";
 import { shouldRestart, stopReason } from "./backend-process";
 import type { ControlReply, SaveRequest } from "./backend-protocol";
@@ -53,7 +53,7 @@ const devServerUrl = process.env["VITE_DEV_SERVER_URL"];
 const devServer = devServerUrl !== undefined && devServerUrl !== "";
 
 if (!app.isPackaged) {
-  process.env[APP_DIR_ENV] = checkoutAppDir(process.env, devServer ? "dev" : "prod", process.cwd());
+  Object.assign(process.env, checkoutEnv(process.env, devServer ? "dev" : "prod", process.cwd()));
 }
 
 const paths = appPaths();
