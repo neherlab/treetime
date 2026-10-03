@@ -21,6 +21,7 @@ use treetime::progress::{LogSink, StageSink};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::read_dates;
+use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 
 #[expect(
@@ -109,7 +110,7 @@ pub fn run_clock(
       &nodes,
       &branch_lengths,
       &resolved.tree_outputs,
-      &treetime_io::nwk::CommentProviders::new(),
+      &CommentProviders::new(),
     )?;
   }
 
