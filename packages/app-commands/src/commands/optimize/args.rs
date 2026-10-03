@@ -144,8 +144,8 @@ pub struct TreetimeOptimizeArgsRaw {
   /// Units for divergence values in augur node data JSON output.
   ///
   /// `mutations-per-site` (default): branch divergence as substitutions per site.
-  /// `mutations`: absolute count of reconstructed substitutions per branch,
-  /// excluding ambiguous and gap positions.
+  /// `mutations`: count of reconstructed substitutions per branch that change the state:
+  /// gaps, `N`, and ambiguity codes compatible with the parent state do not count.
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = DivergenceUnits::default(), help_heading = "Output"))]
   pub divergence_units: DivergenceUnits,
 

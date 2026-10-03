@@ -251,7 +251,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    When set, branch-length optimization uses substitution-only likelihood and timetree branch distributions exclude the Poisson indel term. Matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and enables v0 parity testing. Default: indels enabled.
 * `--divergence-units <DIVERGENCE_UNITS>` — Units for divergence values in augur node data JSON and auspice output.
 
-   `mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: absolute count of reconstructed substitutions per branch, excluding ambiguous and gap positions. Requires ancestral reconstruction (incompatible with `--branch-length-mode=input`).
+   `mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed substitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state do not count. Requires ancestral reconstruction (incompatible with `--branch-length-mode=input`).
 
   Default value: `mutations-per-site`
 
@@ -490,7 +490,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
    Parent directories are created if missing.
 * `--divergence-units <DIVERGENCE_UNITS>` — Units for divergence values in augur node data JSON output.
 
-   `mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: absolute count of reconstructed substitutions per branch, excluding ambiguous and gap positions.
+   `mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed substitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state do not count.
 
   Default value: `mutations-per-site`
 

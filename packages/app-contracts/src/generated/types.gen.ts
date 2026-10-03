@@ -2280,9 +2280,9 @@ export type TimetreeConfig = {
    * Units for divergence values in augur node data JSON and auspice output.
    *
    * `mutations-per-site` (default): branch divergence as substitutions per site.
-   * `mutations`: absolute count of reconstructed substitutions per branch,
-   * excluding ambiguous and gap positions. Requires ancestral reconstruction
-   * (incompatible with `--branch-length-mode=input`).
+   * `mutations`: count of reconstructed substitutions per branch that change the state:
+   * gaps, `N`, and ambiguity codes compatible with the parent state do not count.
+   * Requires ancestral reconstruction (incompatible with `--branch-length-mode=input`).
    */
   divergence_units?: DivergenceUnits;
   /**
@@ -2698,8 +2698,8 @@ export type OptimizeConfig = {
    * Units for divergence values in augur node data JSON output.
    *
    * `mutations-per-site` (default): branch divergence as substitutions per site.
-   * `mutations`: absolute count of reconstructed substitutions per branch,
-   * excluding ambiguous and gap positions.
+   * `mutations`: count of reconstructed substitutions per branch that change the state:
+   * gaps, `N`, and ambiguity codes compatible with the parent state do not count.
    */
   divergence_units?: DivergenceUnits;
   /**

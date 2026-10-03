@@ -5116,7 +5116,7 @@
             "x-cli-flag": "--no-indels"
           },
           "divergence_units": {
-            "description": "Units for divergence values in augur node data JSON and auspice output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: absolute count of reconstructed substitutions per branch,\nexcluding ambiguous and gap positions. Requires ancestral reconstruction\n(incompatible with `--branch-length-mode=input`).",
+            "description": "Units for divergence values in augur node data JSON and auspice output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: count of reconstructed substitutions per branch that change the state:\ngaps, `N`, and ambiguity codes compatible with the parent state do not count.\nRequires ancestral reconstruction (incompatible with `--branch-length-mode=input`).",
             "$ref": "#/components/schemas/DivergenceUnits",
             "default": "mutations-per-site",
             "x-cli-flag": "--divergence-units"
@@ -5664,7 +5664,7 @@
             "x-cli-flag": "--output-tree-dot"
           },
           "divergence_units": {
-            "description": "Units for divergence values in augur node data JSON output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: absolute count of reconstructed substitutions per branch,\nexcluding ambiguous and gap positions.",
+            "description": "Units for divergence values in augur node data JSON output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: count of reconstructed substitutions per branch that change the state:\ngaps, `N`, and ambiguity codes compatible with the parent state do not count.",
             "$ref": "#/components/schemas/DivergenceUnits",
             "default": "mutations-per-site",
             "x-cli-flag": "--divergence-units"
@@ -10214,7 +10214,7 @@
             ],
             "conflicts": [],
             "help": "Units for divergence values in augur node data JSON and auspice output.",
-            "more": "`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: absolute count of reconstructed substitutions per branch, excluding ambiguous and gap positions. Requires ancestral reconstruction (incompatible with `--branch-length-mode=input`)."
+            "more": "`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed substitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state do not count. Requires ancestral reconstruction (incompatible with `--branch-length-mode=input`)."
           },
           {
             "key": "output_augur_node_data",
@@ -11541,7 +11541,7 @@
             ],
             "conflicts": [],
             "help": "Units for divergence values in augur node data JSON output.",
-            "more": "`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: absolute count of reconstructed substitutions per branch, excluding ambiguous and gap positions."
+            "more": "`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed substitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state do not count."
           },
           {
             "key": "output_augur_node_data",

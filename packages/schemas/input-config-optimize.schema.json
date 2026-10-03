@@ -151,7 +151,7 @@
       "x-cli-flag": "--output-tree-dot"
     },
     "divergence_units": {
-      "description": "Units for divergence values in augur node data JSON output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: absolute count of reconstructed substitutions per branch,\nexcluding ambiguous and gap positions.",
+      "description": "Units for divergence values in augur node data JSON output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: count of reconstructed substitutions per branch that change the state:\ngaps, `N`, and ambiguity codes compatible with the parent state do not count.",
       "$ref": "#/$defs/DivergenceUnits",
       "default": "mutations-per-site",
       "x-cli-flag": "--divergence-units"
