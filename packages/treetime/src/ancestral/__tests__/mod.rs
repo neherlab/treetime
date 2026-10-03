@@ -27,6 +27,7 @@ mod test_marginal_topology;
 mod test_mask;
 mod test_plan;
 mod test_python_parity;
+mod test_root_sequence;
 mod test_sample;
 mod test_sample_reconstruction;
 mod test_smoke_gtr_iterations;
