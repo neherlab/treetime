@@ -66,7 +66,13 @@ pub fn run_timetree_estimation(
     );
   }
   let mutation_units = matches!(args.divergence_units, DivergenceUnits::Mutations);
-  let reconstructed_sequences = reconstructed_nuc_fasta.is_some()
+  if mutation_units && args.branch_length_mode == BranchLengthMode::Input {
+    return make_error!(
+      "--divergence-units=mutations requires ancestral reconstruction; \
+       incompatible with --branch-length-mode=input"
+    );
+  }
+  let sequence_outputs_requested = reconstructed_nuc_fasta.is_some()
     || mutation_units
     || resolved
       .tree_outputs
@@ -112,7 +118,7 @@ pub fn run_timetree_estimation(
     confidence: args.confidence,
     include_leaves: args.include_leaves,
     impute_missing_data: args.impute_missing_data,
-    reconstructed_sequences,
+    sequence_outputs_requested,
     zero_based: args.zero_based,
     seed: args.seed,
   };
@@ -131,18 +137,29 @@ pub fn run_timetree_estimation(
     branch_lengths: input_data.branch_lengths,
   };
 
-  let recon_sink: Option<Box<dyn SeqSink>> = match &reconstructed_nuc_fasta {
-    Some(path) => Some(Box::new(ReconstructedNucSink::new(
-      FastaWriter::new(create_file_or_stdout(path)?),
-      parse_names,
-      aln_descs,
-    ))),
-    None => None,
-  };
+  let mut recon_sink = reconstructed_nuc_fasta
+    .as_ref()
+    .map(|path| {
+      Ok::<_, Report>(ReconstructedNucSink::new(
+        FastaWriter::new(create_file_or_stdout(path)?),
+        parse_names,
+        aln_descs,
+      ))
+    })
+    .transpose()?;
 
-  let output = pipeline::run(&params, input, Some(trace_sink), recon_sink, cancel, stages, log)
-    .map_err(|err| err.into_report())?;
-  if let Some(path) = &reconstructed_nuc_fasta {
+  let output = pipeline::run(
+    &params,
+    input,
+    Some(trace_sink),
+    recon_sink.as_mut().map(|sink| -> &mut dyn SeqSink { sink }),
+    cancel,
+    stages,
+    log,
+  )
+  .map_err(|err| err.into_report())?;
+  if let (Some(sink), Some(path)) = (recon_sink, &reconstructed_nuc_fasta) {
+    sink.writer.finish()?;
     progress_info!(
       log,
       "Wrote reconstructed nucleotide FASTA to {path}",
@@ -171,21 +188,10 @@ pub fn run_timetree_estimation(
     edge_mutation_counts,
   } = output;
 
-  let mutation_counts = if mutation_units {
-    if root_sequence.is_none() {
-      return make_error!(
-        "--divergence-units=mutations requires ancestral reconstruction; \
-         incompatible with --branch-length-mode=input"
-      );
-    }
-    Some(edge_mutation_counts)
-  } else {
-    None
-  };
+  let mutation_counts = mutation_units.then_some(edge_mutation_counts);
   let maps = TimetreeOutputMaps {
     root_sequence,
-    edge_mutations: UnknownMutationFilter::new(unknown, args.report_ambiguous)
-      .reported_edge_mutations(edge_mutations),
+    edge_mutations: UnknownMutationFilter::new(unknown, args.report_ambiguous).reported_edge_mutations(edge_mutations),
   };
 
   stages.report("Writing output", 0.95, "");

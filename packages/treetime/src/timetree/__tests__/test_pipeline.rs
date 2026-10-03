@@ -42,7 +42,7 @@ mod tests {
       n_branches_posterior: Some(2),
       ..marginal_timetree_params()
     };
-    let (input, names) = helpers::star_input(None)?;
+    let input = helpers::star_input(None)?;
 
     assert_error!(
       helpers::run(&params, input, None),
@@ -57,7 +57,7 @@ mod tests {
       clock_rate: Some(STAR_CLOCK_RATE),
       ..marginal_timetree_params()
     };
-    let (input, names) = helpers::star_input(Some(helpers::star_dates()))?;
+    let input = helpers::star_input(Some(helpers::star_dates()))?;
 
     assert_error!(
       helpers::run(&params, input, None),
@@ -67,11 +67,42 @@ mod tests {
   }
 
   #[test]
+  fn test_pipeline_rejects_a_sequence_sink_in_input_mode() -> Result<(), Report> {
+    let params = TimetreeParams {
+      branch_length_mode: BranchLengthMode::Input,
+      sequence_outputs_requested: true,
+      ..marginal_timetree_params()
+    };
+    let input = helpers::star_input(Some(helpers::star_dates()))?;
+
+    assert_error!(
+      helpers::run(&params, input, Some(&mut RecordingSeqSink::default())),
+      "Reconstructed sequence output requires ancestral reconstruction; incompatible with --branch-length-mode=input"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_rejects_a_sequence_sink_without_requested_sequence_outputs() -> Result<(), Report> {
+    let params = TimetreeParams {
+      sequence_outputs_requested: false,
+      ..marginal_timetree_params()
+    };
+    let input = helpers::star_input(Some(helpers::star_dates()))?;
+
+    assert_error!(
+      helpers::run(&params, input, Some(&mut RecordingSeqSink::default())),
+      "A sequence sink was passed, but the parameters request no sequence outputs"
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_pipeline_clock_filter_outlier_is_a_bad_branch_of_the_time_inference() -> Result<(), Report> {
     let mut dates = helpers::zika_dates()?;
     let outlier_name = dates.keys().next().expect("the metadata has samples").clone();
     dates.insert(outlier_name.clone(), Some(DateConstraint::exact(FORCED_OUTLIER_DATE)));
-    let (input, names) = helpers::zika_input(&helpers::zika_newick()?, dates, true)?;
+    let input = helpers::zika_input(&helpers::zika_newick()?, dates, true)?;
     let params = TimetreeParams {
       clock_filter: CLOCK_FILTER_IQD,
       clock_rate: Some(ZIKA_CLOCK_RATE),
@@ -102,7 +133,7 @@ mod tests {
   #[test]
   fn test_pipeline_input_mode_undated_single_child_root_fails_with_point_division_known_issue_h_timetree_input_branch_lengths_abort_on_point_division()
   -> Result<(), Report> {
-    let (input, names) = helpers::zika_input(&helpers::zika_newick_with_stem()?, helpers::zika_dates()?, false)?;
+    let input = helpers::zika_input(&helpers::zika_newick_with_stem()?, helpers::zika_dates()?, false)?;
     let params = TimetreeParams {
       branch_length_mode: BranchLengthMode::Input,
       keep_root: false,
@@ -123,7 +154,7 @@ mod tests {
 
   #[test]
   fn test_pipeline_date_branch_lengths_sum_to_node_dates() -> Result<(), Report> {
-    let (input, _) = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
+    let input = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
     let params = TimetreeParams {
       clock_rate: Some(ZIKA_CLOCK_RATE),
       ..marginal_timetree_params()
@@ -149,13 +180,13 @@ mod tests {
   fn test_pipeline_sequence_outputs_do_not_depend_on_the_sequence_sink() -> Result<(), Report> {
     let params = TimetreeParams {
       clock_rate: Some(ZIKA_CLOCK_RATE),
-      reconstructed_sequences: true,
+      sequence_outputs_requested: true,
       ..marginal_timetree_params()
     };
-    let (input, _) = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
+    let input = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
     let without_sink = helpers::run(&params, input, None)?;
-    let (input, _) = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
-    let with_sink = helpers::run(&params, input, Some(Box::new(RecordingSeqSink::default())))?;
+    let input = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
+    let with_sink = helpers::run(&params, input, Some(&mut RecordingSeqSink::default()))?;
 
     assert!(without_sink.root_sequence.is_some());
     assert_eq!(
@@ -172,7 +203,7 @@ mod tests {
     let newick = helpers::zika_newick_with_stem()?;
     let samples = nwk_read_str(&helpers::zika_newick()?)?;
     let sample_names = helpers::leaf_names(&samples.graph, &samples.names());
-    let (input, names) = helpers::zika_input(&newick, helpers::zika_dates()?, true)?;
+    let input = helpers::zika_input(&newick, helpers::zika_dates()?, true)?;
     let params = TimetreeParams {
       keep_root: false,
       clock_filter: CLOCK_FILTER_IQD,
@@ -193,7 +224,7 @@ mod tests {
     pub(super) fn run(
       params: &TimetreeParams,
       input: TimetreeInput,
-      seq_sink: Option<Box<dyn SeqSink>>,
+      seq_sink: Option<&mut dyn SeqSink>,
     ) -> Result<TimetreeOutput, Report> {
       pipeline::run(params, input, None, seq_sink, &NoopCancel, &NoopProgress, &NoopProgress)
         .map_err(OperationError::into_report)
@@ -208,20 +239,18 @@ mod tests {
       }
     }
 
-    pub(super) fn star_input(
-      dates: Option<DatesMap>,
-    ) -> Result<(TimetreeInput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    pub(super) fn star_input(dates: Option<DatesMap>) -> Result<TimetreeInput, Report> {
       let nwk_parsed = nwk_read_str(STAR_TREE)?;
       let names = nwk_parsed.names();
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
-        names: names.clone(),
+        names,
         alphabet: Alphabet::default(),
         sequences: None,
         dates,
         branch_lengths: nwk_parsed.branch_lengths,
       };
-      Ok((input, names))
+      Ok(input)
     }
 
     pub(super) fn zika_newick() -> Result<String, Report> {
@@ -244,11 +273,7 @@ mod tests {
       )
     }
 
-    pub(super) fn zika_input(
-      newick: &str,
-      dates: DatesMap,
-      with_alignment: bool,
-    ) -> Result<(TimetreeInput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    pub(super) fn zika_input(newick: &str, dates: DatesMap, with_alignment: bool) -> Result<TimetreeInput, Report> {
       let alphabet = Alphabet::default();
       let sequences = if with_alignment {
         let records = read_many_fasta_path(&[zika_path("aln.fasta.xz")], &alphabet)?;
@@ -260,13 +285,13 @@ mod tests {
       let names = nwk_parsed.names();
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
-        names: names.clone(),
+        names,
         alphabet,
         sequences,
         dates: Some(dates),
         branch_lengths: nwk_parsed.branch_lengths,
       };
-      Ok((input, names))
+      Ok(input)
     }
 
     pub(super) fn leaf_names(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> BTreeSet<String> {

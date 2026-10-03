@@ -80,6 +80,12 @@ pub fn run_ancestral_reconstruction(
   let params = ancestral_params(args);
 
   let output = pipeline::run(&params, &input, &mut seq_sink, cancel, stages, log).map_err(|err| err.into_report())?;
+  let AncestralSeqSink {
+    fasta, node_sequences, ..
+  } = seq_sink;
+  if let Some(fasta) = fasta {
+    fasta.finish()?;
+  }
 
   let aa_fasta_template: Option<String> = resolved
     .non_tree_outputs
@@ -126,7 +132,7 @@ pub fn run_ancestral_reconstruction(
     edge_mutations: UnknownMutationFilter::new(ambiguous_char, args.report_ambiguous)
       .reported_edge_mutations(edge_mutations),
   };
-  let augur_maps = seq_sink.node_sequences.map(|node_sequences| AugurOutputMaps {
+  let augur_maps = node_sequences.map(|node_sequences| AugurOutputMaps {
     node_sequences,
     sequence_length,
     ambiguous_char,
@@ -213,10 +219,6 @@ struct AncestralSeqSink {
 }
 
 impl SeqSink for AncestralSeqSink {
-  fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
-    Ok(())
-  }
-
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     if let (Some(writer), true) = (self.fasta.as_mut(), item.emitted) {
       let name = self.names[&item.key].as_deref();
@@ -454,15 +456,11 @@ impl AaFastaSink {
         .map_or_else(|| format!("node_{}", key.0), str::to_owned);
       writer.write(&name, &None, seq)?;
     }
-    Ok(())
+    writer.finish()
   }
 }
 
 impl SeqSink for AaFastaSink {
-  fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
-    Ok(())
-  }
-
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     let SeqTrack::Aa(cds) = item.track else {
       return treetime_utils::make_internal_error!("Amino-acid reconstructed FASTA sink received a nucleotide track");

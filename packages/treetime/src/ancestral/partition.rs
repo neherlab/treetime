@@ -46,7 +46,7 @@ impl AncestralPartition {
     graph: &Graph,
     track: &MutationTrack,
     include_leaves: bool,
-    sink: Option<&mut dyn SeqSink>,
+    sink: Option<&mut (dyn SeqSink + '_)>,
   ) -> Result<SequenceMutations, OperationError> {
     stream_sequence_mutations(
       graph,

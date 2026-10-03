@@ -32,7 +32,7 @@ pub(crate) fn stream_sequence_mutations(
   include_leaves: bool,
   mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
   edge_indels: impl Fn(GraphEdgeKey) -> Vec<InDel>,
-  mut sink: Option<&mut dyn SeqSink>,
+  mut sink: Option<&mut (dyn SeqSink + '_)>,
 ) -> Result<SequenceMutations, OperationError> {
   let seq_track = track.seq_track();
   let mut pending_parents: BTreeMap<GraphNodeKey, (Seq, usize)> = BTreeMap::new();

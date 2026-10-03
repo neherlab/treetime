@@ -80,7 +80,7 @@ pub fn reconstruct_aa(
         graph,
         &MutationTrack::AminoAcid(name.clone()),
         params.include_leaves,
-        seq_sink.as_deref_mut().map(|sink| -> &mut dyn SeqSink { sink }),
+        seq_sink.as_deref_mut(),
       )
       .map_err(OperationError::into_report)?;
     let cds_data = collect_aa_cds_node_data(graph, mutations, unknown, &name, reference_override.as_ref())?;
