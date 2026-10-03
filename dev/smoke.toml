@@ -71,10 +71,12 @@ mugration_attribute = "country"
 # `outputs`: files that must exist and be non-empty after a run.
 #
 # Every case writes every output of its command, so a change in any written file shows up. `ancestral` and
-# `timetree` also write the leaf sequences (`--include-leaves`). A row sets its own `selection` only when the selection
-# is what it tests, or when one output fails for a reason that its own row declares.
+# `timetree` also write the leaf sequences (`--include-leaves`) and pass a fixed `--seed`: profile sampling and
+# polytomy resolution draw random numbers, and smoke compares the outputs byte for byte. Their standalone rows pass
+# the seed themselves. A row sets its own `selection` only when the selection is what it tests, or when one output
+# fails for a reason that its own row declares.
 [commands.ancestral]
-args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
+args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --seed=42"
 outputs = ["ancestral.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,reconstructed-aa-fasta,mat-pb,mat-json"
 
@@ -102,7 +104,7 @@ outputs = ["prune.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,gtr,mat-pb,mat-json"
 
 [commands.timetree]
-args = "--tree={tree} --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
+args = "--tree={tree} --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --seed=42"
 outputs = ["timetree.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,clock-model,clock-csv,confidence-tsv,tracelog,coalescent-tsv,coalescent-csv,coalescent-json,mat-pb,mat-json"
 
@@ -227,19 +229,19 @@ fail = "kb/issues/N-gtr-site-specific-model-not-implemented.md"
 [[ancestral]]
 variant = "sample-root"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --sample-from-profile=root --seed=42"
+args = "--method-anc=marginal --sample-from-profile=root"
 
 [[ancestral]]
 variant = "sample-all"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --sample-from-profile=all --seed=42"
+args = "--method-anc=marginal --sample-from-profile=all"
 
 # A tree with tips that the alignment lacks
 [[ancestral]]
 variant = "ignore-missing-alns"
 datasets = ["zika/20"]
 standalone = true
-args = "--tree={data}/zika/86/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out} --ignore-missing-alns"
+args = "--tree={data}/zika/86/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out} --ignore-missing-alns --seed=42"
 outputs = ["ancestral.nwk"]
 
 # Amino-acid reconstruction of every CDS, from the translations that `data/translate` writes. The CDSes are listed
@@ -304,7 +306,7 @@ fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
 variant = "input-phylip-alignment"
 datasets = ["flu/h3n2/20"]
 standalone = true
-args = "--tree={tree} --aln={dataset}/aln.phylip --output-all={out} --method-anc=marginal"
+args = "--tree={tree} --aln={dataset}/aln.phylip --output-all={out} --method-anc=marginal --seed=42"
 outputs = ["ancestral.nwk"]
 fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
 
@@ -796,7 +798,7 @@ args = "--resolve-polytomies --max-iter=3"
 variant = "resolve-polytomies-single-child"
 datasets = ["flu/h3n2/20"]
 standalone = true
-args = "--tree={data}/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --resolve-polytomies"
+args = "--tree={data}/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --resolve-polytomies --seed=42"
 outputs = ["timetree.nwk"]
 
 # A fixed clock rate far below the substitution rate places the root before 1 CE
@@ -983,12 +985,12 @@ args = "--confidence --covariation --max-iter=3"
 variant = "fixed-clock-tree-opt"
 datasets = ["mpox/clade-ii/1000"]
 tree = "tree_opt.nwk"
-args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
+args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations"
 
 [[timetree]]
 variant = "fixed-clock"
 datasets = ["mpox/clade-ii/1000"]
-args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
+args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations"
 
 
 # A Nexus input tree
