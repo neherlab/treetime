@@ -53,8 +53,16 @@ impl PartitionMarginalSparse {
     self.obs_edges[&edge_key].indels.clone()
   }
 
-  pub fn root_sequence(&self) -> Seq {
+  pub fn fitch_root_sequence(&self) -> Seq {
     self.root_sequence.clone()
+  }
+
+  pub(crate) fn root_sequence(
+    &self,
+    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+    graph: &Graph,
+  ) -> Result<Seq, Report> {
+    Ok(map_seq(&node_states[&graph.root_key()?], &self.alphabet))
   }
 
   pub(crate) fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {

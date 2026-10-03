@@ -34,7 +34,7 @@ mod tests {
   #[test]
   fn test_prune_pipeline_root_sequence_is_hand_derived_fitch_root() -> Result<(), Report> {
     let output = run_prune_empty()?;
-    assert_eq!(Seq::try_from_str("ACGG")?, output.partitions[0].root_sequence());
+    assert_eq!(Seq::try_from_str("ACGG")?, output.partitions[0].fitch_root_sequence());
     Ok(())
   }
 

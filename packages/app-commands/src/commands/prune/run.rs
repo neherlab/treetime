@@ -185,7 +185,7 @@ fn gather_prune_output_maps(graph: &Graph, partitions: &[PartitionMarginalSparse
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(PruneOutputMaps {
-    root_sequence: Some(partition.root_sequence()),
+    root_sequence: Some(partition.fitch_root_sequence()),
     edge_mutations,
   })
 }

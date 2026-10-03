@@ -145,7 +145,9 @@ impl MarginalReconstruction {
       Self::Dense(reconstruction) => reconstruction
         .partition
         .root_sequence(&reconstruction.node_states, graph),
-      Self::Sparse(reconstruction) => Ok(reconstruction.partition.root_sequence()),
+      Self::Sparse(reconstruction) => reconstruction
+        .partition
+        .root_sequence(&reconstruction.node_states, graph),
     }
   }
 
