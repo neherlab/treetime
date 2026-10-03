@@ -328,39 +328,41 @@ def scan_homoplasies(params):
 
 def arg_time_trees(params):
     """
-    This function takes command line arguments and runs treetime
-    on each of the two trees provided.
+    This function takes command line arguments and runs treetime on each of the
+    trees provided, using the other trees' segments where they share a branch.
     """
     from .arg import parse_arg, setup_arg
 
     arg_params = parse_arg(
-        params.trees[0],
-        params.trees[1],
-        params.alignments[0],
-        params.alignments[1],
+        params.trees,
+        params.alignments,
         params.mccs,
         fill_overhangs=not params.keep_overhangs,
     )
 
     dates = utils.parse_dates(params.dates, date_col=params.date_column, name_col=params.name_column)
     root = None if params.keep_root else params.reroot
+    labels = arg_params['labels']
+    masks = arg_params['masks']
 
-    for i, (tree, mask) in enumerate(zip(arg_params['trees'], arg_params['masks'])):
-        outdir = get_outdir(params, f'_ARG-treetime')
+    for i, tree in enumerate(arg_params['trees']):
+        outdir = get_outdir(params, '_ARG-treetime')
         gtr = create_gtr(params)
+        others = [k for k in range(len(labels)) if k != i]
 
         tt = setup_arg(
             tree,
             arg_params['alignment'],
-            arg_params['combined_mask'],
-            mask,
+            masks[i],
+            {labels[k]: masks[k] for k in others},
+            {labels[k]: arg_params['MCCs'][min(i, k), max(i, k)] for k in others},
             dates,
-            arg_params['MCCs'],
             gtr=gtr,
             verbose=params.verbose,
             fill_overhangs=not params.keep_overhangs,
             fixed_clock_rate=params.clock_rate,
             reroot=root,
+            rng_seed=params.rng_seed,
         )
 
         run_timetree(tt, params, outdir, tree_suffix=f'_{i + 1}', prune_short=False, method_anc=params.method_anc)

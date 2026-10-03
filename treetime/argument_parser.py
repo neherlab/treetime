@@ -472,8 +472,16 @@ def make_parser():
         'signal and recalculate branch length unless run with --keep_root.',
     )
     arg_parser.add_argument('--rng-seed', type=int, help='random number generator seed for treetime')
-    arg_parser.add_argument('--trees', nargs=2, required=True, type=str)
-    arg_parser.add_argument('--alignments', nargs=2, required=True, type=str)
+    arg_parser.add_argument(
+        '--trees',
+        nargs='+',
+        required=True,
+        type=str,
+        help='trees of two or more segments; each is analysed in turn as the focal tree (outputs _1, _2, ...)',
+    )
+    arg_parser.add_argument(
+        '--alignments', nargs='+', required=True, type=str, help='one alignment per tree, in the same order'
+    )
     arg_parser.add_argument(
         '--mccs',
         required=True,

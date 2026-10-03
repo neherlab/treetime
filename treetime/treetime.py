@@ -799,9 +799,11 @@ class TreeTime(ClockTree):
                 if n1.mask is None or n2.mask is None:
                     new_node.mask = None
                     new_node.mcc = None
+                    new_node.mccs = {}
                 else:
                     new_node.mask = n1.mask * n2.mask
                     new_node.mcc = n1.mcc if n1.mcc == n2.mcc else None
+                    new_node.mccs = merged_mccs(n1, n2)
                     self.logger(f'TreeTime._poly.merge_nodes: assigning mcc to new node {new_node.mcc}', 4)
 
                 n1.branch_length = new_node.time_before_present - n1.time_before_present
@@ -980,9 +982,11 @@ class TreeTime(ClockTree):
                     if n1.mask is None or n2.mask is None:
                         new_node.mask = None
                         new_node.mcc = None
+                        new_node.mccs = {}
                     else:
                         new_node.mask = n1.mask * n2.mask
                         new_node.mcc = n1.mcc if n1.mcc == n2.mcc else None
+                        new_node.mccs = merged_mccs(n1, n2)
                         self.logger(f'TreeTime._poly.merge_nodes: assigning mcc to new node {new_node.mcc}', 4)
                     new_node.up = parent
                     new_node.tt = self
@@ -1352,3 +1356,10 @@ def treetime_to_newick(tt, outf):
 
 if __name__ == '__main__':
     pass
+
+
+def merged_mccs(n1, n2):
+    """MCCs (per other segment) of a node created by merging `n1` and `n2` in polytomy
+    resolution: the children's MCC if they agree, else None."""
+    m1, m2 = getattr(n1, 'mccs', {}), getattr(n2, 'mccs', {})
+    return {label: m1.get(label) if m1.get(label) == m2.get(label) else None for label in m1}
