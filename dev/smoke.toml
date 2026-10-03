@@ -9,7 +9,6 @@
 # Placeholders in arguments:
 #   {data}       the data directory, `data`
 #   {dataset}    the dataset directory, for example `{data}/flu/h3n2/20`
-#   {tree}       the tree of the case: `{dataset}/tree.nwk`, or `{dataset}/<tree>` when the row sets `tree`
 #   {metadata}   the metadata file of the dataset (`metadata.tsv` or `metadata.tsv.xz`)
 #   {attribute}  the mugration attribute of the dataset family
 #   {out}        the output directory of the case
@@ -66,45 +65,47 @@ mugration_attribute = "cluster"
 mugration_attribute = "country"
 
 
-# Command templates. Every row of a command starts with `treetime <command> <args>`, then adds the family
-# arguments, the row arguments and `--output-selection=<selection>` when the row or the command sets one.
+# Command templates. A case runs `treetime <command>` with three layers of arguments: the template's `args` and
+# `--output-selection=<selection>`, then the family arguments, then the row's `args` and `selection`. A flag in a
+# later layer replaces every occurrence of the same flag in the earlier layers, so a row changes a template flag by
+# passing it again, for example `--tree=...` or `--seed=...`. A flag may repeat within one layer.
 # `outputs`: files that must exist and be non-empty after a run.
 #
 # Every case writes every output of its command, so a change in any written file shows up. `ancestral` and
 # `timetree` also write the leaf sequences (`--include-leaves`) and pass a fixed `--seed`: profile sampling and
-# polytomy resolution draw random numbers, and smoke compares the outputs byte for byte. Their standalone rows pass
-# the seed themselves. A row sets its own `selection` only when the selection is what it tests, or when one output
-# fails for a reason that its own row declares.
+# polytomy resolution draw random numbers, and smoke compares the outputs byte for byte. A row sets its own
+# `selection` only when the selection is what it tests, or when one output fails for a reason that its own row
+# declares.
 [commands.ancestral]
-args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --seed=42"
+args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --seed=42"
 outputs = ["ancestral.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,reconstructed-aa-fasta,mat-pb,mat-json"
 
 [commands.clock]
-args = "--tree={tree} --dates={metadata} --output-all={out}"
+args = "--tree={dataset}/tree.nwk --dates={metadata} --output-all={out}"
 outputs = ["clock.nwk"]
 selection = "all"
 
 [commands.homoplasy]
-args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out}"
+args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out}"
 
 [commands.mugration]
-args = "--tree={tree} --states={metadata} --attribute={attribute} --output-all={out}"
+args = "--tree={dataset}/tree.nwk --states={metadata} --attribute={attribute} --output-all={out}"
 outputs = ["mugration.nwk"]
 selection = "all"
 
 [commands.optimize]
-args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out}"
+args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out}"
 outputs = ["optimize.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,mat-pb,mat-json"
 
 [commands.prune]
-args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out}"
+args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out}"
 outputs = ["prune.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,gtr,mat-pb,mat-json"
 
 [commands.timetree]
-args = "--tree={tree} --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --seed=42"
+args = "--tree={dataset}/tree.nwk --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --seed=42"
 outputs = ["timetree.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,clock-model,clock-csv,confidence-tsv,tracelog,coalescent-tsv,coalescent-csv,coalescent-json,mat-pb,mat-json"
 
@@ -112,10 +113,10 @@ selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-
 # Rows, one `[[<command>]]` table per variant.
 #   variant     last component of the case id (required)
 #   datasets    "all" (default), a size class ("small", "medium", "large"), or a list of dataset names
-#   args        arguments after the command template
+#   args        arguments after the template and family arguments; a flag here replaces the same flag there
 #   selection   `--output-selection` value; replaces the command default
-#   tree        tree file in the dataset directory, default `tree.nwk`
-#   standalone  true: `args` replaces the command template, its `selection` included, instead of following it
+#   standalone  true: `args` replaces the command template, its `selection` included, instead of following it;
+#               only for rows that must leave out a template flag
 #   outputs     replaces the command's required outputs
 #   tier        "quick" or "full"; replaces the tier of the size class
 #   timeout     seconds; replaces the timeout of the size class
@@ -240,9 +241,7 @@ args = "--method-anc=marginal --sample-from-profile=all"
 [[ancestral]]
 variant = "ignore-missing-alns"
 datasets = ["zika/20"]
-standalone = true
-args = "--tree={data}/zika/86/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out} --ignore-missing-alns --seed=42"
-outputs = ["ancestral.nwk"]
+args = "--tree={data}/zika/86/tree.nwk --ignore-missing-alns"
 
 # Amino-acid reconstruction of every CDS, from the translations that `data/translate` writes. The CDSes are listed
 # because the GFF reader rejects the unstranded (`.`) CDS rows of this annotation.
@@ -298,16 +297,13 @@ fail = "kb/issues/M-io-gff3-rejects-unstranded-cds.md"
 [[ancestral]]
 variant = "input-nexus-tree"
 datasets = ["flu/h3n2/20"]
-tree = "tree.nex"
-args = "--method-anc=marginal"
+args = "--tree={dataset}/tree.nex --method-anc=marginal"
 fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
 
 [[ancestral]]
 variant = "input-phylip-alignment"
 datasets = ["flu/h3n2/20"]
-standalone = true
-args = "--tree={tree} --aln={dataset}/aln.phylip --output-all={out} --method-anc=marginal --seed=42"
-outputs = ["ancestral.nwk"]
+args = "--aln={dataset}/aln.phylip --method-anc=marginal"
 fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
 
 # Tree ordering and output options, shared by every command that writes a tree
@@ -449,9 +445,7 @@ args = "--date-column=date"
 [[clock]]
 variant = "tree-without-branch-lengths"
 datasets = ["zika/20"]
-standalone = true
-args = "--tree={data}/smoke/zika-20-tree-without-branch-lengths.nwk --dates={metadata} --output-all={out}"
-outputs = ["clock.nwk"]
+args = "--tree={data}/smoke/zika-20-tree-without-branch-lengths.nwk"
 fail = "kb/issues/M-clock-regression-panics-on-missing-branch-length.md"
 
 
@@ -562,16 +556,15 @@ args = "--dense=false --reroot=min-dev"
 variant = "individual-outputs"
 datasets = "small"
 standalone = true
-args = "--tree={tree} --aln={dataset}/aln.fasta.xz --dense=false --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
+args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --dense=false --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
 outputs = ["bl.json", "opti.auspice.json"]
 
 # An already rerooted input tree
 [[optimize]]
 variant = "rerooted-input"
 datasets = ["mpox/clade-ii/1000"]
-tree = "tree_opt.nwk"
 standalone = true
-args = "--tree={tree} --aln={dataset}/aln.fasta.xz --dense=false --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
+args = "--tree={dataset}/tree_opt.nwk --aln={dataset}/aln.fasta.xz --dense=false --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
 outputs = ["bl.json", "opti.auspice.json"]
 
 [[optimize]]
@@ -797,9 +790,7 @@ args = "--resolve-polytomies --max-iter=3"
 [[timetree]]
 variant = "resolve-polytomies-single-child"
 datasets = ["flu/h3n2/20"]
-standalone = true
-args = "--tree={data}/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --resolve-polytomies --seed=42"
-outputs = ["timetree.nwk"]
+args = "--tree={data}/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk --resolve-polytomies"
 
 # A fixed clock rate far below the substitution rate places the root before 1 CE
 [[timetree]]
@@ -984,20 +975,19 @@ args = "--confidence --covariation --max-iter=3"
 [[timetree]]
 variant = "fixed-clock-tree-opt"
 datasets = ["mpox/clade-ii/1000"]
-tree = "tree_opt.nwk"
-args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations"
+args = "--tree={dataset}/tree_opt.nwk --clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
 
 [[timetree]]
 variant = "fixed-clock"
 datasets = ["mpox/clade-ii/1000"]
-args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations"
+args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
 
 
 # A Nexus input tree
 [[timetree]]
 variant = "input-nexus-tree"
 datasets = ["flu/h3n2/20"]
-tree = "tree.nex"
+args = "--tree={dataset}/tree.nex"
 fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
 
 # Tree output styles and all output formats

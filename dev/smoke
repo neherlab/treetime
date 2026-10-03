@@ -206,7 +206,7 @@ VOLATILE_FIELDS: dict[str, tuple[str, ...]] = {
 }
 
 
-ROW_KEYS = frozenset({"variant", "datasets", "args", "selection", "tree", "standalone", "outputs", "tier", "timeout",
+ROW_KEYS = frozenset({"variant", "datasets", "args", "selection", "standalone", "outputs", "tier", "timeout",
                       "fail", "hang"})
 CLI_ROW_KEYS = frozenset({"variant", "args", "sandbox", "fail"})
 RUNTIME_PLACEHOLDERS = frozenset({"{bin}", "{data}", "{out}"})
@@ -450,8 +450,8 @@ def read_tsv_header(path: Path) -> frozenset[str]:
 
 
 def row_cases(command: str, row: dict, spec: CaseSpec, datasets: dict[str, Dataset]) -> list[Case]:
-  args, _, where = row_arguments(command, row, spec)
-  selected = select_datasets(row.get("datasets", "all"), args, datasets, where)
+  template_args, args, where = row_arguments(command, row, spec)
+  selected = select_datasets(row.get("datasets", "all"), shlex.join(template_args + args), datasets, where)
   expectations = {expect: expected_reasons(row.get(key), selected, f"{where} `{key}`")
                   for key, expect in (("fail", Expect.FAIL), ("hang", Expect.TIMEOUT))}
   if both := expectations[Expect.FAIL].keys() & expectations[Expect.TIMEOUT].keys():
@@ -464,11 +464,17 @@ def row_cases(command: str, row: dict, spec: CaseSpec, datasets: dict[str, Datas
   return cases
 
 
-def row_arguments(command: str, row: dict, spec: CaseSpec) -> tuple[str, bool, str]:
-  """Arguments of a row before placeholders are resolved, whether it replaces the template, and its location text."""
-  standalone = row.get("standalone", False)
-  args = row.get("args", "") if standalone else f"{spec.commands[command].args} {row.get('args', '')}"
-  return args, standalone, f"[[{command}]] variant {row['variant']!r}"
+def row_arguments(command: str, row: dict, spec: CaseSpec) -> tuple[list[str], list[str], str]:
+  """Template and row arguments before placeholders are resolved, each with its output selection, and the location
+  text. A standalone row has no template arguments."""
+  template = spec.commands[command]
+  template_args = [] if row.get("standalone", False) else with_selection(template.args, template.selection)
+  args = with_selection(row.get("args", ""), row.get("selection"))
+  return template_args, args, f"[[{command}]] variant {row['variant']!r}"
+
+
+def with_selection(args: str, selection: str | None) -> list[str]:
+  return shlex.split(args) + ([f"--output-selection={selection}"] if selection else [])
 
 
 def select_datasets(selector: str | list[str], args: str, datasets: dict[str, Dataset], where: str) -> list[Dataset]:
@@ -499,16 +505,14 @@ def expected_reasons(value: str | dict | None, selected: list[Dataset], where: s
 
 def make_case(command: str, row: dict, dataset: Dataset, spec: CaseSpec,
               expectation: tuple[Expect, str | None]) -> Case:
-  template, (args, standalone, where) = spec.commands[command], row_arguments(command, row, spec)
-  family = dataset.family
-  tokens = shlex.split(args)
-  tokens += [] if standalone or "{metadata}" not in template.args else list(family.metadata_args)
-  tokens += list(family.command_args.get(command, ()))
-  selection = row.get("selection", None if standalone else template.selection)
-  tokens += [f"--output-selection={selection}"] if selection else []
+  template, standalone, family = spec.commands[command], row.get("standalone", False), dataset.family
+  template_args, args, where = row_arguments(command, row, spec)
+  metadata_args = [] if standalone or "{metadata}" not in template.args else list(family.metadata_args)
+  family_args = metadata_args + list(family.command_args.get(command, ()))
+  tokens = merge_arguments([template_args, family_args, args], where)
   replacements = {
-    "{dataset}": dataset.path, "{tree}": f"{dataset.path}/{row.get('tree', 'tree.nwk')}",
-    "{metadata}": f"{dataset.path}/{dataset.metadata}", "{attribute}": dataset.attribute or "",
+    "{dataset}": dataset.path, "{metadata}": f"{dataset.path}/{dataset.metadata}",
+    "{attribute}": dataset.attribute or "",
   }
   argv = [substitute(token, replacements) for token in tokens]
   placeholders = {match for token in argv for match in re.findall(r"\{[a-z_]+\}", token)}
@@ -523,6 +527,26 @@ def make_case(command: str, row: dict, dataset: Dataset, spec: CaseSpec,
     expect=expectation[0], reason=expectation[1],
     required_outputs=tuple(row.get("outputs", () if standalone else template.outputs)),
   )
+
+
+def merge_arguments(layers: list[list[str]], where: str) -> list[str]:
+  """Join argument layers. A flag of a later layer replaces every occurrence of the same flag, with its values, in the
+  earlier layers, so a row can change a flag of its template. A flag may repeat within one layer."""
+  merged: list[tuple[str, list[str]]] = []
+  for layer in layers:
+    groups = flag_groups(layer, where)
+    flags = {flag for flag, _ in groups}
+    merged = [group for group in merged if group[0] not in flags] + groups
+  return [token for _, tokens in merged for token in tokens]
+
+
+def flag_groups(tokens: list[str], where: str) -> list[tuple[str, list[str]]]:
+  """Each `--flag` or `--flag=value` token with the value tokens that follow it, keyed by the flag name."""
+  starts = [index for index, token in enumerate(tokens) if token.startswith("--")]
+  if tokens and starts[:1] != [0]:
+    raise SmokeError(f"{where}: arguments must start with a flag, not {tokens[0]!r}")
+  return [(tokens[start].partition("=")[0], tokens[start:end])
+          for start, end in itertools.pairwise([*starts, len(tokens)])]
 
 
 def substitute(text: str, replacements: dict[str, str]) -> str:
