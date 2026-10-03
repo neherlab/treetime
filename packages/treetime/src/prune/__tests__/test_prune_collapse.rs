@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::test_utils::deletion;
+  use crate::test_utils::fitch_edge_obs;
   use crate::test_utils::insertion;
   use crate::test_utils::sparse_edge_obs;
 
@@ -11,7 +13,7 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::SparseEdgeObs;
   use crate::pretty_assert_ulps_eq;
-  use crate::seq::indel::InDel;
+
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::assert_relative_eq;
@@ -162,14 +164,14 @@ mod tests {
 
     partition.obs_edges.insert(
       root_internal_edge_key,
-      SparseEdgeObs::with_fitch_subs(vec![
+      fitch_edge_obs(vec![
         Sub::new(c(b'A'), 0_usize, c(b'T'))?,
         Sub::new(c(b'A'), 1_usize, c(b'C'))?,
       ]),
     );
     partition.obs_edges.insert(
       internal_a_edge_key,
-      SparseEdgeObs::with_fitch_subs(vec![
+      fitch_edge_obs(vec![
         Sub::new(c(b'G'), 2_usize, c(b'T'))?,
         Sub::new(c(b'C'), 3_usize, c(b'A'))?,
       ]),
@@ -241,11 +243,11 @@ mod tests {
 
     partition.obs_edges.insert(
       root_internal_edge_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?]),
+      fitch_edge_obs(vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?]),
     );
     partition.obs_edges.insert(
       internal_a_edge_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'G'), 0_usize, c(b'T'))?]),
+      fitch_edge_obs(vec![Sub::new(c(b'G'), 0_usize, c(b'T'))?]),
     );
     partition
       .obs_edges
@@ -304,11 +306,11 @@ mod tests {
 
     partition.obs_edges.insert(
       root_internal_edge_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?]),
+      fitch_edge_obs(vec![Sub::new(c(b'A'), 0_usize, c(b'G'))?]),
     );
     partition.obs_edges.insert(
       internal_a_edge_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'G'), 0_usize, c(b'A'))?]),
+      fitch_edge_obs(vec![Sub::new(c(b'G'), 0_usize, c(b'A'))?]),
     );
     partition
       .obs_edges
@@ -364,11 +366,11 @@ mod tests {
     };
     partition1.obs_edges.insert(
       root_internal_edge_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]),
+      fitch_edge_obs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]),
     );
     partition1.obs_edges.insert(
       internal_a_edge_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'G'), 1_usize, c(b'C'))?]),
+      fitch_edge_obs(vec![Sub::new(c(b'G'), 1_usize, c(b'C'))?]),
     );
     partition1
       .obs_edges
@@ -384,14 +386,14 @@ mod tests {
     };
     partition2.obs_edges.insert(
       root_internal_edge_key,
-      SparseEdgeObs::with_fitch_subs(vec![
+      fitch_edge_obs(vec![
         Sub::new(c(b'C'), 10_usize, c(b'A'))?,
         Sub::new(c(b'T'), 11_usize, c(b'G'))?,
       ]),
     );
     partition2.obs_edges.insert(
       internal_a_edge_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 12_usize, c(b'T'))?]),
+      fitch_edge_obs(vec![Sub::new(c(b'A'), 12_usize, c(b'T'))?]),
     );
     partition2
       .obs_edges
@@ -665,28 +667,24 @@ mod tests {
     partition.obs_edges.insert(pi_key, SparseEdgeObs::default());
 
     let ia_key = find_edge_key(&graph, &names, "I", "A").unwrap();
-    partition.obs_edges.insert(
-      ia_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]),
-    );
+    partition
+      .obs_edges
+      .insert(ia_key, fitch_edge_obs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]));
 
     let ib_key = find_edge_key(&graph, &names, "I", "B").unwrap();
-    partition.obs_edges.insert(
-      ib_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]),
-    );
+    partition
+      .obs_edges
+      .insert(ib_key, fitch_edge_obs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]));
 
     let pc_key = find_edge_key(&graph, &names, "root", "C").unwrap();
-    partition.obs_edges.insert(
-      pc_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]),
-    );
+    partition
+      .obs_edges
+      .insert(pc_key, fitch_edge_obs(vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?]));
 
     let pd_key = find_edge_key(&graph, &names, "root", "D").unwrap();
-    partition.obs_edges.insert(
-      pd_key,
-      SparseEdgeObs::with_fitch_subs(vec![Sub::new(c(b'A'), 5_usize, c(b'T'))?]),
-    );
+    partition
+      .obs_edges
+      .insert(pd_key, fitch_edge_obs(vec![Sub::new(c(b'A'), 5_usize, c(b'T'))?]));
 
     let mut partitions = vec![partition];
 
@@ -739,7 +737,7 @@ mod tests {
       obs_edges: btreemap! {},
     };
 
-    let parent_indel = InDel::del((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice())?;
+    let parent_indel = deletion((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice())?;
     let child_indel = insertion((20, 23), [c(b'G'), c(b'G'), c(b'C')].as_slice());
 
     partition

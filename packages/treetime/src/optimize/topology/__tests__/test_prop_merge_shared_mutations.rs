@@ -9,10 +9,12 @@ mod tests {
 
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-  use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-  use crate::seq::indel::InDel;
+  use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
+
   use crate::seq::mutation::Sub;
+  use crate::test_utils::deletion;
   use crate::test_utils::find_edge_key;
+  use crate::test_utils::fitch_edge_obs;
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -337,7 +339,7 @@ mod tests {
       ],
     )?;
 
-    let shared_indel = InDel::del((10, 13), Seq::try_from_str("GTA").unwrap()).unwrap();
+    let shared_indel = deletion((10, 13), Seq::try_from_str("GTA").unwrap()).unwrap();
     {
       let p = &mut partition;
       let edge_c = find_edge_key(&graph, &names, "root", "C").expect("edge root->C");
@@ -498,7 +500,7 @@ mod tests {
       for (source, target, subs) in edge_mutations {
         let edge_key =
           find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} not found"));
-        obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
+        obs_edges.insert(edge_key, fitch_edge_obs(subs.clone()));
       }
 
       let partition = PartitionMarginalSparse {

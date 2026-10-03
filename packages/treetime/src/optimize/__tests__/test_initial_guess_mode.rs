@@ -15,7 +15,8 @@ pub(super) mod tests {
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
-  use crate::seq::indel::InDel;
+
+  use crate::test_utils::deletion;
   use crate::test_utils::dense_reconstruction_mut;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -513,7 +514,7 @@ pub(super) mod tests {
         .estimates
         .get_mut(&edge_key)
         .unwrap()
-        .indels = vec![InDel::del((4, 7), Seq::try_from_str("ACG")?)?];
+        .indels = vec![deletion((4, 7), Seq::try_from_str("ACG")?)?];
       Ok(())
     }
 

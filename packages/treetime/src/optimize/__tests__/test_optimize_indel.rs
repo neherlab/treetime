@@ -25,6 +25,7 @@ pub(super) mod tests {
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::pretty_assert_neg_inf;
   use crate::seq::indel::InDel;
+  use crate::test_utils::deletion;
   use crate::test_utils::sparse_reconstruction_mut;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -98,7 +99,7 @@ pub(super) mod tests {
     let aln = simple_alignment()?;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    let indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
 
     let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
@@ -122,7 +123,7 @@ pub(super) mod tests {
     let aln = simple_alignment()?;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    let indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
     let first_edge_key = inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
     branch_lengths.insert(first_edge_key, Some(0.1));
 
@@ -158,7 +159,7 @@ pub(super) mod tests {
     let aln = simple_alignment()?;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    let indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
     branch_lengths.insert(graph.get_edges().collect::<Vec<_>>()[0].key(), Some(0.0));
 
@@ -207,7 +208,7 @@ pub(super) mod tests {
     let mut reconstruction_high =
       setup_identical_reconstruction(&graph_high, &graph_high_names, &mut branch_lengths_high)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    let indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph_low, &mut reconstruction_low, &indels);
     inject_indels_on_first_edge(&graph_high, &mut reconstruction_high, &indels);
 
@@ -261,7 +262,7 @@ pub(super) mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut reconstruction = setup_identical_reconstruction(&graph, &names, &mut branch_lengths)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    let indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
 
     let total_length = reconstruction.sequence_length();
@@ -299,7 +300,7 @@ pub(super) mod tests {
       branch_lengths.insert(edge_ref.key(), Some(0.0));
     }
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    let indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
     inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
 
     let total_length = reconstruction.sequence_length();
@@ -343,8 +344,8 @@ pub(super) mod tests {
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let indels = vec![
-      InDel::del((0, 3), Seq::try_from_str("ACG")?)?,
-      InDel::del((5, 8), Seq::try_from_str("ACG")?)?,
+      deletion((0, 3), Seq::try_from_str("ACG")?)?,
+      deletion((5, 8), Seq::try_from_str("ACG")?)?,
     ];
     inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
 
@@ -377,7 +378,7 @@ pub(super) mod tests {
 
     branch_lengths.insert(graph.get_edges().collect::<Vec<_>>()[0].key(), Some(-0.1));
     if has_indels {
-      let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+      let indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
       inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
     }
 
@@ -417,7 +418,7 @@ pub(super) mod tests {
       .obs_edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
 
     let total_length = reconstruction.sequence_length();
     let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
@@ -650,7 +651,7 @@ pub(super) mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut reconstruction = setup_identical_reconstruction(&graph, &names, &mut branch_lengths)?;
 
-    let indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+    let indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
     let _first_edge_key = inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
 
     let edge_ref = &graph.get_edges().collect::<Vec<_>>()[0];

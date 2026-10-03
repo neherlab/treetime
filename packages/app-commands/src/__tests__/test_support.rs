@@ -3,8 +3,7 @@ pub(crate) mod tests {
   use eyre::Report;
   use std::collections::BTreeMap;
   use std::path::PathBuf;
-  use treetime::seq::indel::InDel;
-  use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
+  use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_primitives::AsciiChar;
@@ -24,7 +23,7 @@ pub(crate) mod tests {
   pub(crate) fn edge_mutation_map(
     graph: &Graph,
     edge_subs: &[(usize, Vec<Sub>)],
-    edge_indels: &[(usize, Vec<InDel>)],
+    edge_deletions: &[(usize, Vec<AlignedMutation>)],
   ) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
     graph
       .get_edges()
@@ -35,12 +34,17 @@ pub(crate) mod tests {
           .filter(|(edge_idx, _)| *edge_idx == idx)
           .flat_map(|(_, subs)| subs.iter().cloned())
           .map(|sub| Ok(Mutation::substitution(MutationTrack::Nucleotide, sub)));
-        let indels = edge_indels
+        let deletions = edge_deletions
           .iter()
           .filter(|(edge_idx, _)| *edge_idx == idx)
-          .flat_map(|(_, indels)| indels.iter())
-          .map(|indel| Mutation::indel(MutationTrack::Nucleotide, indel));
-        Ok((edge.key(), subs.chain(indels).collect::<Result<Vec<_>, Report>>()?))
+          .flat_map(|(_, deletions)| deletions.iter())
+          .map(|deletion| {
+            Ok(Mutation {
+              track: MutationTrack::Nucleotide,
+              event: MutationEvent::Deletion(deletion.clone()),
+            })
+          });
+        Ok((edge.key(), subs.chain(deletions).collect::<Result<Vec<_>, Report>>()?))
       })
       .collect()
   }

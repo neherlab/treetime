@@ -89,8 +89,9 @@ mod tests {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 
-    use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
+    use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
     use crate::test_utils::find_edge_key;
+    use crate::test_utils::fitch_edge_obs;
     use itertools::Itertools;
     use maplit::btreemap;
     use treetime_graph::edge::GraphEdgeKey;
@@ -243,7 +244,7 @@ mod tests {
       for (source, target, subs) in edge_mutations {
         let edge_key =
           find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));
-        obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
+        obs_edges.insert(edge_key, fitch_edge_obs(subs.clone()));
       }
 
       let partition = PartitionMarginalSparse {

@@ -3,6 +3,8 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::deletion;
+  use crate::test_utils::fitch_edge_obs;
   use crate::test_utils::{half_residual_sum_of_squares, sparse_edge_obs};
 
   use crate::branch_lengths::branch_lengths_or_zero;
@@ -17,8 +19,8 @@ mod tests {
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
-  use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-  use crate::seq::indel::InDel;
+  use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
+
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::branch_model::BranchModel;
@@ -190,7 +192,7 @@ mod tests {
       .ok_or_else(|| make_report!("Edge to A not found"))?;
 
     let sub_original = Sub::new(c(b'A'), 5_usize, c(b'G'))?;
-    let indel_original = InDel::del(
+    let indel_original = deletion(
       (10, 12),
       seq![
         AsciiChar::from_byte_unchecked(b'A'),
@@ -275,7 +277,7 @@ mod tests {
         a_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 8], &alphabet),
       },
       obs_edges: btreemap! {
-        edge_to_a_key => SparseEdgeObs::with_fitch_subs(vec![sub]),
+        edge_to_a_key => fitch_edge_obs(vec![sub]),
       },
     };
     let node_states = btreemap! {
@@ -335,7 +337,7 @@ mod tests {
       .ok_or_else(|| make_report!("Edge to A not found"))?;
 
     let root_seq = Seq::try_from_slice(b"ACGTACGT")?;
-    let indel = InDel::del((2, 4), seq![c(b'G'), c(b'T')])?;
+    let indel = deletion((2, 4), seq![c(b'G'), c(b'T')])?;
 
     let partition = PartitionMarginalSparse {
       index: 0,
@@ -412,8 +414,8 @@ mod tests {
         a_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
       },
       obs_edges: btreemap! {
-        edge_root_ab => SparseEdgeObs::with_fitch_subs(vec![sub1]),
-        edge_ab_a => SparseEdgeObs::with_fitch_subs(vec![sub2, sub3]),
+        edge_root_ab => fitch_edge_obs(vec![sub1]),
+        edge_ab_a => fitch_edge_obs(vec![sub2, sub3]),
       },
     };
     let node_states = btreemap! {

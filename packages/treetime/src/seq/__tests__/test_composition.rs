@@ -2,8 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::seq::composition::Composition;
-  use crate::seq::indel::InDel;
+
   use crate::seq::mutation::Sub;
+  use crate::test_utils::deletion;
   use crate::test_utils::insertion;
   use eyre::Report;
   use itertools::Itertools;
@@ -84,7 +85,7 @@ mod tests {
   #[test]
   fn test_composition_add_deletion() -> Result<(), Report> {
     let mut actual = Composition::with_seq(Seq::try_from_str("AAAGCTTACGGGGTCAAGTCC")?, chars("ACGT-"), c(b'-'));
-    let indel = InDel::del((1, 5), Seq::try_from_str("AAGC")?)?;
+    let indel = deletion((1, 5), Seq::try_from_str("AAGC")?)?;
     actual.add_indel(&indel);
     let expected = btreemap! { c(b'-') => 4, c(b'A') => 4, c(b'C') => 4, c(b'G') => 5, c(b'T') => 4};
     assert_eq!(&expected, actual.counts());

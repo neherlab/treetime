@@ -24,8 +24,7 @@ pub(super) mod tests {
   use serde_json::Value;
   use tempfile::TempDir;
   use treetime::ancestral::aa::AaNodeData;
-  use treetime::seq::indel::InDel;
-  use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
+  use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
 
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
@@ -311,18 +310,12 @@ pub(super) mod tests {
         MutationTrack::Nucleotide,
         Sub::new(helpers::c(b'A'), 0_usize, helpers::c(b'T'))?,
       ),
-      Mutation::indel(
-        MutationTrack::Nucleotide,
-        &InDel::del((1, 3), Seq::try_from_str("CG")?)?,
-      )?,
+      helpers::deletion(MutationTrack::Nucleotide, (1, 3), "CG")?,
       Mutation::substitution(
         MutationTrack::AminoAcid("GENE".to_owned()),
         Sub::new(helpers::c(b'K'), 4_usize, helpers::c(b'R'))?,
       ),
-      Mutation::indel(
-        MutationTrack::AminoAcid("GENE".to_owned()),
-        &InDel::del((1, 3), Seq::try_from_str("CG")?)?,
-      )?,
+      helpers::deletion(MutationTrack::AminoAcid("GENE".to_owned()), (1, 3), "CG")?,
     ];
 
     let grouped = group_mutations(mutations)?;
@@ -422,10 +415,7 @@ pub(super) mod tests {
         ));
       }
       if include_indel {
-        a_mutations.push(Mutation::indel(
-          MutationTrack::Nucleotide,
-          &InDel::del((1, 3), Seq::try_from_str("CG")?)?,
-        )?);
+        a_mutations.push(deletion(MutationTrack::Nucleotide, (1, 3), "CG")?);
       }
       let maps = AncestralOutputMaps {
         root_sequence,
@@ -658,6 +648,16 @@ pub(super) mod tests {
 
     pub(crate) fn c(value: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(value)
+    }
+
+    pub(crate) fn deletion(track: MutationTrack, range: (usize, usize), sequence: &str) -> Result<Mutation, Report> {
+      Ok(Mutation {
+        track,
+        event: MutationEvent::Deletion(AlignedMutation {
+          range,
+          sequence: Seq::try_from_str(sequence)?,
+        }),
+      })
     }
 
     fn optimize_nodes(

@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::test_utils::deletion;
+  use crate::test_utils::fitch_edge_obs;
   use crate::test_utils::insertion;
   use crate::test_utils::sparse_edge_obs;
 
@@ -68,12 +70,8 @@ mod tests {
     let mut recon = make_sparse_reconstruction(100)?;
     populate_test_nodes(&mut recon, &graph);
 
-    recon
-      .obs_edges
-      .insert(ri_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    recon
-      .obs_edges
-      .insert(ia_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
+    recon.obs_edges.insert(ri_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
+    recon.obs_edges.insert(ia_key, fitch_edge_obs(vec![sub(b'G', 5, b'C')]));
     recon.obs_edges.insert(ib_key, SparseEdgeObs::default());
 
     let mut sparse = vec![recon];
@@ -256,8 +254,6 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_indel_concatenation() -> Result<(), Report> {
-    use crate::seq::indel::InDel;
-
     let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
@@ -271,7 +267,7 @@ mod tests {
     populate_test_nodes(&mut recon, &graph);
 
     let collapsed_indel = insertion((0, 3), [c(b'A'), c(b'C'), c(b'G')].as_slice());
-    let child_a_indel = InDel::del((10, 12), [c(b'T'), c(b'T')].as_slice()).unwrap();
+    let child_a_indel = deletion((10, 12), [c(b'T'), c(b'T')].as_slice()).unwrap();
 
     recon
       .obs_edges
@@ -319,12 +315,8 @@ mod tests {
     let mut recon = make_sparse_reconstruction(100)?;
     populate_test_nodes(&mut recon, &graph);
 
-    recon
-      .obs_edges
-      .insert(ri_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
-    recon
-      .obs_edges
-      .insert(ia_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+    recon.obs_edges.insert(ri_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
+    recon.obs_edges.insert(ia_key, fitch_edge_obs(vec![sub(b'T', 0, b'A')]));
 
     let mut sparse = vec![recon];
 
@@ -389,7 +381,7 @@ mod tests {
     populate_test_nodes(&mut recon_a, &graph);
     recon_a
       .obs_edges
-      .insert(ri_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+      .insert(ri_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
     recon_a.obs_edges.insert(ia_key, SparseEdgeObs::default());
     recon_a.obs_edges.insert(ib_key, SparseEdgeObs::default());
 
@@ -398,7 +390,7 @@ mod tests {
     populate_test_nodes(&mut recon_b, &graph);
     recon_b
       .obs_edges
-      .insert(ri_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
+      .insert(ri_key, fitch_edge_obs(vec![sub(b'G', 5, b'C')]));
     recon_b.obs_edges.insert(ia_key, SparseEdgeObs::default());
     recon_b.obs_edges.insert(ib_key, SparseEdgeObs::default());
 

@@ -11,7 +11,8 @@ mod tests {
   };
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
-  use crate::seq::indel::InDel;
+
+  use crate::test_utils::deletion;
   use crate::test_utils::sparse_reconstruction_mut;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -65,7 +66,7 @@ mod tests {
       .obs_edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
 
     let (reconstruction, sparse_lh) =
       reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -195,7 +196,7 @@ mod tests {
       .obs_edges
       .get_mut(&first_edge_key)
       .unwrap()
-      .indels = vec![InDel::del((0, 3), Seq::try_from_str("ACG")?)?];
+      .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)?];
 
     let (reconstruction, initial_sparse_lh) =
       reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

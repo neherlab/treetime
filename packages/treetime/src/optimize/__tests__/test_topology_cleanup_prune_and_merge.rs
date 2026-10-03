@@ -8,6 +8,7 @@ mod tests {
 
   use crate::partition::storage::sparse::SparseEdgeObs;
 
+  use crate::test_utils::fitch_edge_obs;
   use crate::test_utils::{find_edge_key, find_node_key_by_name, sparse_reconstruction};
   use eyre::Report;
 
@@ -64,19 +65,19 @@ mod tests {
     partition
       .partition
       .obs_edges
-      .insert(ia_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+      .insert(ia_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
     partition
       .partition
       .obs_edges
-      .insert(ib_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+      .insert(ib_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
     partition
       .partition
       .obs_edges
-      .insert(rc_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+      .insert(rc_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
     partition
       .partition
       .obs_edges
-      .insert(rd_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
+      .insert(rd_key, fitch_edge_obs(vec![sub(b'G', 5, b'C')]));
 
     let reconstruction = MarginalReconstruction::Sparse(partition);
 
@@ -120,18 +121,18 @@ mod tests {
     let vc1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
     let vc2 = find_edge_key(&graph, &names, "V", "C2").unwrap();
     let vc3 = find_edge_key(&graph, &names, "V", "C3").unwrap();
-    partition.partition.obs_edges.insert(
-      uv,
-      SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
-    );
     partition
       .partition
       .obs_edges
-      .insert(vc1, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+      .insert(uv, fitch_edge_obs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]));
     partition
       .partition
       .obs_edges
-      .insert(vc2, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+      .insert(vc1, fitch_edge_obs(vec![sub(b'T', 0, b'A')]));
+    partition
+      .partition
+      .obs_edges
+      .insert(vc2, fitch_edge_obs(vec![sub(b'T', 0, b'A')]));
     partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
 
     let reconstruction = MarginalReconstruction::Sparse(partition);
@@ -189,19 +190,19 @@ mod tests {
     partition
       .partition
       .obs_edges
-      .insert(ia_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+      .insert(ia_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
     partition
       .partition
       .obs_edges
-      .insert(ib_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+      .insert(ib_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
     partition
       .partition
       .obs_edges
-      .insert(rc_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+      .insert(rc_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
     partition
       .partition
       .obs_edges
-      .insert(rd_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
+      .insert(rd_key, fitch_edge_obs(vec![sub(b'G', 5, b'C')]));
 
     let reconstruction = MarginalReconstruction::Sparse(partition);
 
@@ -251,19 +252,19 @@ mod tests {
     partition
       .partition
       .obs_edges
-      .insert(ia_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+      .insert(ia_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
     partition
       .partition
       .obs_edges
-      .insert(ib_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+      .insert(ib_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
     partition
       .partition
       .obs_edges
-      .insert(rc_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T')]));
+      .insert(rc_key, fitch_edge_obs(vec![sub(b'A', 0, b'T')]));
     partition
       .partition
       .obs_edges
-      .insert(rd_key, SparseEdgeObs::with_fitch_subs(vec![sub(b'G', 5, b'C')]));
+      .insert(rd_key, fitch_edge_obs(vec![sub(b'G', 5, b'C')]));
 
     let reconstruction = MarginalReconstruction::Sparse(partition);
 
@@ -309,18 +310,18 @@ mod tests {
     let vc1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
     let vc2 = find_edge_key(&graph, &names, "V", "C2").unwrap();
     let vc3 = find_edge_key(&graph, &names, "V", "C3").unwrap();
-    partition.partition.obs_edges.insert(
-      uv,
-      SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
-    );
     partition
       .partition
       .obs_edges
-      .insert(vc1, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+      .insert(uv, fitch_edge_obs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]));
     partition
       .partition
       .obs_edges
-      .insert(vc2, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+      .insert(vc1, fitch_edge_obs(vec![sub(b'T', 0, b'A')]));
+    partition
+      .partition
+      .obs_edges
+      .insert(vc2, fitch_edge_obs(vec![sub(b'T', 0, b'A')]));
     partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
 
     let reconstruction = MarginalReconstruction::Sparse(partition);
@@ -369,18 +370,18 @@ mod tests {
     let vc1 = find_edge_key(&graph, &names, "V", "C1").unwrap();
     let vc2 = find_edge_key(&graph, &names, "V", "C2").unwrap();
     let vc3 = find_edge_key(&graph, &names, "V", "C3").unwrap();
-    partition.partition.obs_edges.insert(
-      uv,
-      SparseEdgeObs::with_fitch_subs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
-    );
     partition
       .partition
       .obs_edges
-      .insert(vc1, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+      .insert(uv, fitch_edge_obs(vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]));
     partition
       .partition
       .obs_edges
-      .insert(vc2, SparseEdgeObs::with_fitch_subs(vec![sub(b'T', 0, b'A')]));
+      .insert(vc1, fitch_edge_obs(vec![sub(b'T', 0, b'A')]));
+    partition
+      .partition
+      .obs_edges
+      .insert(vc2, fitch_edge_obs(vec![sub(b'T', 0, b'A')]));
     partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
 
     let reconstruction = MarginalReconstruction::Sparse(partition);

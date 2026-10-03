@@ -5,8 +5,9 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-  use crate::seq::indel::InDel;
+
   use crate::seq::mutation::Sub;
+  use crate::test_utils::deletion;
   use crate::test_utils::{find_edge_key, find_node_key_by_name, sparse_edge_obs};
   use eyre::Report;
   use itertools::Itertools;
@@ -44,7 +45,7 @@ mod tests {
       obs_edges: btreemap! {
         stem_edge => sparse_edge_obs(
           vec![Sub::new(c(b'G'), 2_usize, c(b'T'))?],
-          vec![InDel::del((5, 7), Seq::try_from_slice(b"CG")?)?],
+          vec![deletion((5, 7), Seq::try_from_slice(b"CG")?)?],
         ),
         r_a_edge => SparseEdgeObs::default(),
         r_b_edge => SparseEdgeObs::default(),

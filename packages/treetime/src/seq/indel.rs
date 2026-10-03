@@ -1,4 +1,3 @@
-use eyre::Report;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -7,7 +6,6 @@ use treetime_primitives::Seq;
 use treetime_utils::interval::range_difference::range_difference;
 use treetime_utils::interval::range_intersection::{range_intersection, range_intersection_iter};
 use treetime_utils::interval::range_union::range_union_iter;
-use treetime_utils::make_error;
 
 pub(crate) fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) -> Vec<InDel> {
   debug_assert!(
@@ -323,37 +321,6 @@ pub struct InDel {
 }
 
 impl InDel {
-  #[cfg_attr(
-    dylint_lib = "treetime_lints",
-    allow(
-      pub_unused_in_workspace,
-      reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
-    )
-  )]
-  pub fn del(range: (usize, usize), seq: impl Into<Seq>) -> Result<Self, Report> {
-    Self::new(range, seq, InDelKind::Deletion)
-  }
-
-  pub(crate) fn new(range: (usize, usize), seq: impl Into<Seq>, kind: InDelKind) -> Result<Self, Report> {
-    let seq = seq.into();
-    let Some(length) = range.1.checked_sub(range.0).filter(|length| *length > 0) else {
-      return make_error!(
-        "Indel range must be non-empty and ordered, got {}..{}",
-        range.0,
-        range.1
-      );
-    };
-    if seq.len() != length {
-      return make_error!(
-        "Indel range {}..{} has length {length}, but its sequence has length {}",
-        range.0,
-        range.1,
-        seq.len()
-      );
-    }
-    Ok(Self { range, seq, kind })
-  }
-
   pub(crate) fn invert(&mut self) {
     self.kind = match self.kind {
       InDelKind::Insertion => InDelKind::Deletion,

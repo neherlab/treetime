@@ -7,8 +7,7 @@ mod tests {
 
   use pretty_assertions::assert_eq;
 
-  use treetime::seq::indel::InDel;
-  use treetime::seq::mutation::Sub;
+  use treetime::seq::mutation::{AlignedMutation, Sub};
 
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -27,8 +26,14 @@ mod tests {
         Sub::new(c(b'G'), 5_usize, c(b'C'))?,
       ],
     )];
-    let edge_indels = &[(0, vec![InDel::del((1, 3), Seq::try_from_str("CG")?)?])];
-    let edge_mutations = edge_mutation_map(&graph, edge_subs, edge_indels)?;
+    let edge_deletions = &[(
+      0,
+      vec![AlignedMutation {
+        range: (1, 3),
+        sequence: Seq::try_from_str("CG")?,
+      }],
+    )];
+    let edge_mutations = edge_mutation_map(&graph, edge_subs, edge_deletions)?;
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let comments = provider.node_comments(leaf_key(&graph))?;
     assert_eq!(comments.get("mutations").map(String::as_str), Some("A1T,C2-,G3-,G6C"));

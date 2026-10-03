@@ -9,6 +9,7 @@ pub(super) mod tests {
 
   use crate::seq::mutation::Sub;
   use crate::test_utils::find_edge_key;
+  use crate::test_utils::fitch_edge_obs;
 
   use eyre::Report;
   use itertools::Itertools;
@@ -571,7 +572,7 @@ pub(super) mod tests {
             if let Some(num_muts) = num_muts {
               partition.obs_edges.insert(
                 edge_key,
-                SparseEdgeObs::with_fitch_subs(
+                fitch_edge_obs(
                   (0..*num_muts)
                     .map(|i| Sub::new(c(b'A'), i, c(b'T')).unwrap())
                     .collect_vec(),
@@ -625,7 +626,7 @@ pub(super) mod tests {
               Some(n) => {
                 partition.obs_edges.insert(
                   edge_key,
-                  SparseEdgeObs::with_fitch_subs((0..*n).map(|i| Sub::new(c(b'A'), i, c(b'T')).unwrap()).collect_vec()),
+                  fitch_edge_obs((0..*n).map(|i| Sub::new(c(b'A'), i, c(b'T')).unwrap()).collect_vec()),
                 );
               },
               None => {

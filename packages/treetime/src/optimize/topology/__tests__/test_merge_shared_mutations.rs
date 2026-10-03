@@ -13,8 +13,10 @@ mod tests {
   use crate::gtr::jc_distance::jukes_cantor_distance;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-  use crate::seq::indel::InDel;
+
   use crate::seq::mutation::Sub;
+  use crate::test_utils::deletion;
+  use crate::test_utils::fitch_edge_obs;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use approx::assert_relative_eq;
   use eyre::Report;
@@ -65,7 +67,7 @@ mod tests {
     for (source, target, subs) in edge_mutations {
       let edge_key = find_edge_key(graph, names, source, target)
         .unwrap_or_else(|| panic!("edge {source}->{target} not found in graph"));
-      obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
+      obs_edges.insert(edge_key, fitch_edge_obs(subs.clone()));
     }
 
     let partition = PartitionMarginalSparse {
@@ -408,8 +410,8 @@ mod tests {
     let edge_b = find_edge_key(&graph, &names, "root", "B").unwrap();
     let edge_c = find_edge_key(&graph, &names, "root", "C").unwrap();
     let mut p2_obs_edges = btreemap! {};
-    p2_obs_edges.insert(edge_a, SparseEdgeObs::with_fitch_subs(vec![sub(b'C', 50, b'G')]));
-    p2_obs_edges.insert(edge_b, SparseEdgeObs::with_fitch_subs(vec![sub(b'C', 50, b'G')]));
+    p2_obs_edges.insert(edge_a, fitch_edge_obs(vec![sub(b'C', 50, b'G')]));
+    p2_obs_edges.insert(edge_b, fitch_edge_obs(vec![sub(b'C', 50, b'G')]));
     p2_obs_edges.insert(edge_c, SparseEdgeObs::default());
 
     let p2 = PartitionMarginalSparse {
@@ -668,7 +670,7 @@ mod tests {
       let p = &mut partition;
       let edge_a = find_edge_key(&graph, &names, "root", "A").expect("edge root->A");
       p.obs_edges.get_mut(&edge_a).expect("partition edge A").indels =
-        vec![InDel::del((10, 13), Seq::try_from_str("GTA").unwrap()).unwrap()];
+        vec![deletion((10, 13), Seq::try_from_str("GTA").unwrap()).unwrap()];
     }
 
     let mut partitions = vec![partition];
@@ -781,7 +783,7 @@ mod tests {
       ],
     )?;
 
-    let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap()).unwrap();
+    let shared_indel = deletion((5, 8), Seq::try_from_str("GTA").unwrap()).unwrap();
     {
       let p = &mut partition;
       let edge_a = find_edge_key(&graph, &names, "root", "A").expect("edge root->A");
@@ -815,7 +817,7 @@ mod tests {
       ],
     )?;
 
-    let shared_indel = InDel::del((5, 8), Seq::try_from_str("GTA").unwrap()).unwrap();
+    let shared_indel = deletion((5, 8), Seq::try_from_str("GTA").unwrap()).unwrap();
     {
       let p = &mut partition;
       let edge_a = find_edge_key(&graph, &names, "root", "A").expect("edge root->A");
@@ -947,7 +949,7 @@ mod tests {
       for ((source, target), subs) in edge_subs {
         let edge_key = find_edge_key(graph, names, source, target)
           .unwrap_or_else(|| panic!("edge {source}->{target} not found in graph"));
-        obs_edges.insert(edge_key, SparseEdgeObs::with_fitch_subs(subs.clone()));
+        obs_edges.insert(edge_key, fitch_edge_obs(subs.clone()));
       }
 
       let partition = PartitionMarginalSparse {

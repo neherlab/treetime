@@ -6,6 +6,7 @@
 #[cfg(test)]
 pub(super) mod tests {
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
+  use crate::test_utils::deletion;
   use crate::test_utils::sparse_reconstruction_mut;
 
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
@@ -663,7 +664,7 @@ pub(super) mod tests {
 
       let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       let indels: Vec<InDel> = (0..n_indels)
-        .map(|i| InDel::del((i * 3, i * 3 + 3), Seq::try_from_str("ACG").unwrap()).unwrap())
+        .map(|i| deletion((i * 3, i * 3 + 3), Seq::try_from_str("ACG").unwrap()).unwrap())
         .collect();
 
       sparse_reconstruction_mut(&mut reconstruction)
