@@ -41,7 +41,7 @@ v0 does not crash. `datestring_from_numeric()` (`packages/legacy/treetime/treeti
 
 ## Possible solutions
 
-### A -- fix seam
+### A -- where to fix
 
 - **A1 (recommended):** make `year_fraction_to_date` total at the util level. One fix, all current and future callers, mirrors where v0 puts its fallback.
 - A2: guard only at the augur call site. Leaves the util partial.
