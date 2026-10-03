@@ -68,7 +68,7 @@
 - [x] `--model` relevant only on marginal paths (parsimony bypasses GTR)
 - [ ] `--keep-overhangs` (parsed but not wired; gap handling not implemented)
 - [ ] `--zero-based` indexing (parsed but not wired: [kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md](../issues/M-core-mutation-representation-and-format-projection-inconsistent.md))
-- [ ] `--report-ambiguous` (parsed but not wired)
+- [x] `--report-ambiguous` (keep mutations from or to `N`/`X` in written mutation lists; omitted by default, as in v0; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [x] `--seed` for reproducibility
 - [ ] `--gtr-params` custom GTR parameters (parsed but not wired)
 - [x] `--translations` per-CDS AA FASTA input (both `{cds}` and `%GENE` placeholders)

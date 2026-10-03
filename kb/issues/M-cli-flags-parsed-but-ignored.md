@@ -13,7 +13,7 @@ Flags marked *hidden* are accepted but not listed in `--help`.
 
 | Command     | Flags                                                                                                                                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ancestral` | `--model-params`/`--gtr-params`, `--zero-based`, `--report-ambiguous`, `--aa` (hidden), `--marginal` (hidden), `--custom-gtr` (hidden)                                                                                                              |
+| `ancestral` | `--model-params`/`--gtr-params`, `--zero-based`, `--aa` (hidden), `--marginal` (hidden), `--custom-gtr` (hidden)                                                                                                              |
 | `clock`     | `--alignment`/`--aln`, `--model`/`--gtr`, `--model-params`/`--gtr-params`, `--branch-length-mode`, `--method-anc`, `--prune-short`, `--seed`, `--clock-filter-method` (hidden), `--plot-rtt` (hidden), `--prune-outliers` (hidden) |
 | `mugration` | `--seed`                                                                                                                                                                                                           |
 | `timetree`  | `--model-params`/`--gtr-params`, `--tip-labels`, `--no-tip-labels`, `--n-iqd`, `--aa` (hidden), `--custom-gtr` (hidden), `--clock-filter-method` (hidden), `--greedy-resolve` (hidden), `--stochastic-resolve` (hidden)                            |
@@ -30,10 +30,9 @@ Tracked elsewhere, with their own `expect` reasons:
 
 ## Core configuration fields never read
 
-The `timetree` command copies these flags into `TimetreeParams` in `packages/treetime/src/timetree/pipeline.rs`, and the timetree pipeline never reads the fields:
+The `timetree` command copies this flag into `TimetreeParams` in `packages/treetime/src/timetree/params.rs`, and the timetree pipeline never reads the field:
 
 - `--keep-polytomies` (`keep_polytomies`)
-- `--report-ambiguous` (`report_ambiguous`)
 
 ## Impact
 
