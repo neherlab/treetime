@@ -4,9 +4,9 @@
 
 ## v1 behavior
 
-- `fn refine_gtr_model` [packages/treetime/src/gtr/refinement.rs#L18-L47](../../packages/treetime/src/gtr/refinement.rs#L18-L47) destructures the backward and forward messages once, then runs `count_transitions` and `infer_gtr` `N + 1` times (`0..=iterations`) against those same messages, followed by one `marginal_update`
+- `fn refine_gtr_model` [packages/treetime/src/gtr/refinement.rs#L18-L48](../../packages/treetime/src/gtr/refinement.rs#L18-L48) destructures the backward and forward messages once, then runs `count_transitions` and `infer_gtr` `N + 1` times (`0..=iterations`) against those same messages, followed by one `marginal_update`
 - Each fit changes the GTR through the edge transition matrices, so the iterations are not trivial, but the fixed point depends on the starting messages and is not a stationary point of the tree likelihood. There is no convergence or likelihood check
-- The gate is `gtr_iterations > 0 && model == Infer` in [packages/treetime/src/ancestral/plan.rs#L80-L81](../../packages/treetime/src/ancestral/plan.rs#L80-L81)
+- The gate is `gtr_iterations > 0 && model == Infer` in [packages/treetime/src/ancestral/plan.rs#L69-L70](../../packages/treetime/src/ancestral/plan.rs#L69-L70)
 
 ## v0 behavior
 

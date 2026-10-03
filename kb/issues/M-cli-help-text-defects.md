@@ -4,7 +4,7 @@ Systematic audit of `--help` output across all commands reveals defects affectin
 
 ## Defects
 
-### D2: `--tree` description promises fallback on required-tree commands
+### D1: `--tree` description promises fallback on required-tree commands
 
 Commands: `optimize`, `ancestral`.
 
@@ -14,13 +14,13 @@ Fix: use a different description for commands where `--tree` is required. `prune
 
 Related: [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-unimplemented.md) covers the `timetree`/`clock` case where `--tree` is optional but tree inference is not implemented.
 
-### D3: `--prune-short` in `clock` has empty description and type mismatch
+### D2: `--prune-short` in `clock` has empty description and type mismatch
 
 `clock` command: `--prune-short` renders with no description at all (no doc comment on `commands/clock/args.rs:76`). It is a `bool` flag. In `prune`, the same name takes an `Option<f64>` threshold (`--prune-short <THRESHOLD>`). Same flag name, different types, different semantics.
 
 Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) tracks that `--prune-short` in `clock` is parsed but never wired.
 
-### D5: `--model-params` references Python source files
+### D3: `--model-params` references Python source files
 
 Commands: `timetree`, `optimize`, `ancestral`, `clock`, `homoplasy`.
 
@@ -28,19 +28,19 @@ Description: "See the exact definitions of the parameters in the GTR creation me
 
 Fix: reference the v1 Rust module paths or link to documentation.
 
-### D8: `--n-iqd` in `timetree` is unused
+### D4: `--n-iqd` in `timetree` is unused
 
 Defined at `commands/timetree/args.rs:184` but never read or used anywhere. The `--clock-filter` flag already controls interquartile-based outlier detection. The relationship between the two is unexplained.
 
 Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) lists `--n-iqd`.
 
-### D9: `homoplasy` and `arg` show full help for unimplemented commands
+### D5: `homoplasy` and `arg` show full help for unimplemented commands
 
 `homoplasy` displays a complete options page but `run_homoplasy` returns "not yet implemented in v1". `arg` shows global flags only with no indication of being unimplemented.
 
 Related: [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md).
 
-### D10: `--config` has no description
+### D6: `--config` has no description
 
 Commands: all. `--config <CONFIG>` renders with no help text, because `struct ConfigArgs` and its `config` field carry no doc comment [`packages/app-commands/src/commands/shared/config.rs#L11-L14`](../../packages/app-commands/src/commands/shared/config.rs#L11-L14). Users cannot learn from `--help` that the file holds the command's full configuration object, that it is parsed as YAML (so JSON also works), that explicit flags override the file and the file overrides defaults, or that a boolean enabled in the file cannot be turned off from the command line.
 
@@ -214,8 +214,8 @@ No aggregate ticket is ready. Each behavioral item must first select its parse/r
 
 ## Related issues
 
-- [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags in clock and timetree (overlaps D3 and D8)
-- [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-unimplemented.md): tree inference fallback not implemented (overlaps D2)
-- [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md): homoplasy unimplemented (overlaps D9)
+- [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags in clock and timetree (overlaps D2 and D4)
+- [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-unimplemented.md): tree inference fallback not implemented (overlaps D1)
+- [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md): homoplasy unimplemented (overlaps D5)
 - [N-timetree-polytomy-flags-no-conflict.md](N-timetree-polytomy-flags-no-conflict.md): polytomy flag conflict (overlaps U7)
 - [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md): `--method-anc` is unused in timetree
