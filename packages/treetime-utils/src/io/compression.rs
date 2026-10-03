@@ -95,31 +95,78 @@ impl Read for Decompressor<'_> {
   }
 }
 
+trait Encoder: Write + Send {
+  fn finish_encoding(self: Box<Self>) -> io::Result<()>;
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<W: Write + Send> Encoder for BzEncoder<W> {
+  fn finish_encoding(self: Box<Self>) -> io::Result<()> {
+    self.finish()?.flush()
+  }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<W: Write + Send> Encoder for XzEncoder<W> {
+  fn finish_encoding(self: Box<Self>) -> io::Result<()> {
+    self.finish()?.flush()
+  }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<W: Write + Send> Encoder for zstd::Encoder<'_, W> {
+  fn finish_encoding(self: Box<Self>) -> io::Result<()> {
+    self.finish()?.flush()
+  }
+}
+
+impl<W: Write + Send> Encoder for GzEncoder<W> {
+  fn finish_encoding(self: Box<Self>) -> io::Result<()> {
+    self.finish()?.flush()
+  }
+}
+
+struct Uncompressed<W>(W);
+
+impl<W: Write> Write for Uncompressed<W> {
+  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    self.0.write(buf)
+  }
+
+  fn flush(&mut self) -> io::Result<()> {
+    self.0.flush()
+  }
+}
+
+impl<W: Write + Send> Encoder for Uncompressed<W> {
+  fn finish_encoding(mut self: Box<Self>) -> io::Result<()> {
+    self.0.flush()
+  }
+}
+
 pub struct Compressor<'w> {
-  compressor: Box<dyn Write + Send + 'w>,
+  encoder: Option<Box<dyn Encoder + 'w>>,
   compression_type: CompressionType,
   filepath: Option<String>,
 }
 
 impl<'w> Compressor<'w> {
   pub fn new<W: 'w + Write + Send>(writer: W, compression_type: &CompressionType) -> Result<Self, Report> {
-    let compressor: Box<dyn Write + Send + 'w> = match compression_type {
+    let encoder: Box<dyn Encoder + 'w> = match compression_type {
       #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Bzip2 => Box::new(BzEncoder::new(writer, bzip2::Compression::new(get_comp_level("BZ2")?))),
       #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Xz => Box::new(XzEncoder::new(writer, get_comp_level("XZ")?)),
       #[cfg(not(target_arch = "wasm32"))]
-      CompressionType::Zstandard => Box::new(
-        zstd::Encoder::new(writer, get_comp_level("ZST")?)
-          .wrap_err("When creating the Zstandard encoder")?
-          .auto_finish(),
-      ),
+      CompressionType::Zstandard => {
+        Box::new(zstd::Encoder::new(writer, get_comp_level("ZST")?).wrap_err("When creating the Zstandard encoder")?)
+      },
       CompressionType::Gzip => Box::new(GzEncoder::new(writer, flate2::Compression::new(get_comp_level("GZ")?))),
-      CompressionType::None => Box::new(writer),
+      CompressionType::None => Box::new(Uncompressed(writer)),
     };
 
     Ok(Self {
-      compressor,
+      encoder: Some(encoder),
       compression_type: compression_type.clone(),
       filepath: None,
     })
@@ -128,54 +175,61 @@ impl<'w> Compressor<'w> {
   pub fn from_path<W: 'w + Write + Send>(writer: W, filepath: impl AsRef<Path>) -> Result<Self, Report> {
     let filepath = filepath.as_ref();
     let (compression_type, ext) = guess_compression_from_filepath(filepath);
-    Self::new(writer, &compression_type)
+    let mut compressor = Self::new(writer, &compression_type)?;
+    compressor.filepath = Some(filepath.display().to_string());
+    Ok(compressor)
+  }
+
+  pub fn finish(mut self) -> Result<(), Report> {
+    match self.encoder.take() {
+      Some(encoder) => self.with_context(encoder.finish_encoding(), "While finishing compressed file"),
+      None => Ok(()),
+    }
+  }
+
+  fn encoder(&mut self) -> io::Result<&mut Box<dyn Encoder + 'w>> {
+    self
+      .encoder
+      .as_mut()
+      .ok_or_else(|| io::Error::other("Compressed file was already finished"))
+  }
+
+  fn with_context<T>(&self, result: io::Result<T>, message: &'static str) -> Result<T, Report> {
+    result
+      .wrap_err(message)
+      .with_section(|| {
+        self
+          .filepath
+          .clone()
+          .unwrap_or_else(|| "None".to_owned())
+          .header("Filename")
+      })
+      .with_section(|| self.compression_type.clone().header("Compressor"))
   }
 }
 
 impl Write for Compressor<'_> {
   fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    let result = self.encoder().and_then(|encoder| encoder.write(buf));
     self
-      .compressor
-      .write(buf)
-      .wrap_err_with(|| "While compressing file")
-      .with_section(|| {
-        self
-          .filepath
-          .clone()
-          .unwrap_or_else(|| "None".to_owned())
-          .header("Filename")
-      })
-      .with_section(|| self.compression_type.clone().header("Compressor"))
+      .with_context(result, "While compressing file")
       .map_err(|report| io::Error::other(report_to_string(&report)))
   }
 
   fn flush(&mut self) -> io::Result<()> {
+    let result = self.encoder().and_then(|encoder| encoder.flush());
     self
-      .compressor
-      .flush()
-      .wrap_err_with(|| "While flushing compressed file")
-      .with_section(|| {
-        self
-          .filepath
-          .clone()
-          .unwrap_or_else(|| "None".to_owned())
-          .header("Filename")
-      })
-      .with_section(|| self.compression_type.clone().header("Compressor"))
+      .with_context(result, "While flushing compressed file")
       .map_err(|report| io::Error::other(report_to_string(&report)))
   }
 }
 
 impl Drop for Compressor<'_> {
   fn drop(&mut self) {
-    if let Err(e) = self.flush() {
-      error!(
-        "Failed to flush compressor on drop: {e}{}",
-        self
-          .filepath
-          .as_ref()
-          .map_or(String::new(), |p| format!(" (file: {p})"))
-      );
+    if let Some(encoder) = self.encoder.take()
+      && let Err(e) = self.with_context(encoder.finish_encoding(), "While finishing compressed file")
+    {
+      error!("Failed to finish compressed file on drop: {}", report_to_string(&e));
     }
   }
 }

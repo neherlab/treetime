@@ -6,7 +6,7 @@ use serde::de::DeserializeOwned;
 use std::io::{BufRead, Read, Write};
 use std::path::Path;
 use treetime_utils::io::compression::remove_compression_ext;
-use treetime_utils::io::file::{create_file_or_stdout, open_file_or_stdin};
+use treetime_utils::io::file::{FileWriter, create_file_or_stdout, open_file_or_stdin};
 use treetime_utils::io::fs::extension;
 use treetime_utils::make_error;
 use treetime_utils::make_report;
@@ -30,7 +30,7 @@ pub(crate) fn csv_read<T: DeserializeOwned>(reader: impl Read, delimiter: u8) ->
 }
 
 pub struct CsvStructFileWriter {
-  writer: CsvStructWriter<Box<dyn Write + Send>>,
+  writer: CsvStructWriter<FileWriter>,
 }
 
 impl CsvStructFileWriter {

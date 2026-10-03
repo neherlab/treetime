@@ -35,7 +35,32 @@ pub fn open_stdin() -> Result<Box<dyn BufRead>, Report> {
   Ok(Box::new(BufReader::new(stdin())))
 }
 
-pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, Report> {
+pub struct FileWriter {
+  inner: BufWriter<Compressor<'static>>,
+}
+
+impl FileWriter {
+  pub fn finish(self) -> Result<(), Report> {
+    self
+      .inner
+      .into_inner()
+      .map_err(|error| Report::new(error.into_error()))
+      .wrap_err("While flushing the output buffer")?
+      .finish()
+  }
+}
+
+impl Write for FileWriter {
+  fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+    self.inner.write(buf)
+  }
+
+  fn flush(&mut self) -> std::io::Result<()> {
+    self.inner.flush()
+  }
+}
+
+pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<FileWriter, Report> {
   let filepath = filepath.as_ref();
 
   let file: Box<dyn Write + Sync + Send> = if is_path_stdout(filepath) {
@@ -49,7 +74,7 @@ pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<Box<dyn Write
   let buf_file = BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, file);
   let compressor = Compressor::from_path(buf_file, filepath)?;
   let buf_compressor = BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, compressor);
-  Ok(Box::new(buf_compressor))
+  Ok(FileWriter { inner: buf_compressor })
 }
 
 pub fn write_file_or_stdout(filepath: impl AsRef<Path>, content: impl AsRef<[u8]>) -> Result<(), Report> {
@@ -57,7 +82,8 @@ pub fn write_file_or_stdout(filepath: impl AsRef<Path>, content: impl AsRef<[u8]
   let mut writer = create_file_or_stdout(filepath)?;
   writer
     .write_all(content.as_ref())
-    .and_then(|()| writer.flush())
+    .map_err(Report::new)
+    .and_then(|()| writer.finish())
     .wrap_err_with(|| format!("When writing file '{}'", filepath.display()))
 }
 

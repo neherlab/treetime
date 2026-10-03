@@ -12,7 +12,7 @@ pub(crate) fn timetree_trace_sink<'a>(
 ) -> Result<Box<dyn TraceSink + 'a>, Report> {
   let mut sinks: Vec<Box<dyn TraceSink + 'a>> = vec![Box::new(StageTraceSink { stages })];
   if let Some(path) = tracelog {
-    sinks.push(Box::new(TraceCsvSink::new(create_file_or_stdout(path)?)?));
+    sinks.push(Box::new(TraceCsvSink::new(Box::new(create_file_or_stdout(path)?))?));
   }
   Ok(Box::new(TraceSinks { sinks }))
 }

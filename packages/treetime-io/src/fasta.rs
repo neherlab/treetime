@@ -7,7 +7,7 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use treetime_primitives::{AlignmentRecord, AlphabetLike, AsciiChar, Seq};
 use treetime_utils::fmt::string::quote_single;
-use treetime_utils::io::file::open_file_or_stdin;
+use treetime_utils::io::file::{FileWriter, open_file_or_stdin};
 use treetime_utils::make_error;
 
 pub const FASTA_EXTENSIONS: [&str; 4] = ["fasta", "fa", "fas", "aln"];
@@ -223,12 +223,16 @@ impl FastaRecord {
 }
 
 pub struct FastaWriter {
-  writer: Box<dyn Write>,
+  writer: FileWriter,
 }
 
 impl FastaWriter {
-  pub fn new(writer: Box<dyn Write>) -> Self {
+  pub fn new(writer: FileWriter) -> Self {
     Self { writer }
+  }
+
+  pub fn finish(self) -> Result<(), Report> {
+    self.writer.finish().wrap_err("When finishing FASTA output")
   }
 
   pub fn write(&mut self, seq_name: impl AsRef<str>, desc: &Option<String>, seq: &Seq) -> Result<(), Report> {
