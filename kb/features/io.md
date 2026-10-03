@@ -36,7 +36,7 @@
 ## v1-Only Formats
 
 - [/] PhyloXML (format type model, reader, and writer in `util-phyloxml`; no command reads or writes PhyloXML)
-- [/] UShER MAT (output validates global reference nucleotides; input converts missing branch lengths to zero: [kb/issues/M-io-usher-missing-branch-length-becomes-zero.md](../issues/M-io-usher-missing-branch-length-becomes-zero.md))
+- [/] UShER MAT (output validates global reference nucleotides and writes indels as missing data: [kb/decisions/io-usher-mat-gaps-as-missing-data.md](../decisions/io-usher-mat-gaps-as-missing-data.md); output rejects amino-acid mutations: [kb/issues/M-io-usher-mat-rejects-amino-acid-mutations.md](../issues/M-io-usher-mat-rejects-amino-acid-mutations.md); input converts missing branch lengths to zero: [kb/issues/M-io-usher-missing-branch-length-becomes-zero.md](../issues/M-io-usher-missing-branch-length-becomes-zero.md))
 - [x] YAML serialization
 - [x] Compressed FASTA output
 - [x] Streaming readers/writers with automatic decompression

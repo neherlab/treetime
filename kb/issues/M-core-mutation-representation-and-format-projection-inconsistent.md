@@ -6,7 +6,7 @@ Tree output uses a shared zero-based `MutationEvent` representation, canonical s
 
 - `MutationEvent` represents substitutions, aligned insertions, and aligned deletions in one domain type [`packages/treetime/src/seq/mutation.rs#L51`](../../packages/treetime/src/seq/mutation.rs#L51).
 - `fn mutation_event_strings()` performs checked one-based rendering for every event variant [`packages/treetime/src/seq/mutation.rs#L57`](../../packages/treetime/src/seq/mutation.rs#L57).
-- UShER MAT conversion uses checked addition, checked `i32` narrowing, reference bounds checks, and explicit rejection of unsupported tracks and indels [`packages/treetime/src/commands/shared/tree_output.rs#L977`](../../packages/treetime/src/commands/shared/tree_output.rs#L977).
+- UShER MAT conversion uses checked addition, checked `i32` narrowing and reference bounds checks, writes indels as missing data ([kb/decisions/io-usher-mat-gaps-as-missing-data.md](../decisions/io-usher-mat-gaps-as-missing-data.md)), and rejects amino-acid tracks [`packages/app-output/src/tree_output.rs#L509`](../../packages/app-output/src/tree_output.rs#L509).
 
 ## Problems
 
