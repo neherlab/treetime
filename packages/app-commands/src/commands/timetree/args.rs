@@ -49,6 +49,10 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) branch_length_mode: BranchLengthMode,
   pub(crate) time_marginal: TimeMarginalMode,
   pub(crate) confidence: bool,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub(crate) keep_polytomies: bool,
   pub(crate) resolve_polytomies: bool,
   pub(crate) relax: Vec<f64>,
@@ -87,6 +91,10 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) alphabet_args: AlphabetArgs,
   pub(crate) dense: Option<bool>,
   pub(crate) gap_fill_args: GapFillArgs,
+  #[expect(
+    dead_code,
+    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+  )]
   pub(crate) zero_based: bool,
   pub(crate) include_leaves: bool,
   pub(crate) impute_missing_data: bool,

@@ -138,9 +138,7 @@ pub fn run_timetree_estimation(
 fn timetree_params(args: &TreetimeTimetreeArgs, sequence_outputs_requested: bool) -> TimetreeParams {
   TimetreeParams {
     model: args.model_args.model_name(),
-    alphabet_name: args.alphabet_args.alphabet_name().unwrap_or_default(),
     dense: args.dense,
-    gap_fill: args.gap_fill_args.effective_gap_fill(),
     branch_length_mode: args.branch_length_mode,
     no_indels: args.no_indels,
     sequence_length: args.sequence_length,
@@ -154,7 +152,6 @@ fn timetree_params(args: &TreetimeTimetreeArgs, sequence_outputs_requested: bool
     tip_slack: args.tip_slack,
     max_iter: args.max_iter,
     resolve_polytomies: args.resolve_polytomies,
-    keep_polytomies: args.keep_polytomies,
     relax: args.relax.clone(),
     coalescent: args.coalescent,
     coalescent_opt: args.coalescent_opt,
@@ -169,7 +166,6 @@ fn timetree_params(args: &TreetimeTimetreeArgs, sequence_outputs_requested: bool
     include_leaves: args.include_leaves,
     impute_missing_data: args.impute_missing_data,
     sequence_outputs_requested,
-    zero_based: args.zero_based,
     seed: args.seed,
   }
 }

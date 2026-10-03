@@ -1,11 +1,9 @@
-use crate::alphabet::alphabet::AlphabetName;
 use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::RerootSpec;
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::params::BranchLengthMode;
 use crate::progress::{LogEvent, LogLevel, LogSink};
-use crate::seq::gap_fill::GapFill;
 use crate::test_utils::find_node_key_by_name;
 use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
 use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeInference, given_times};
@@ -53,9 +51,7 @@ pub(crate) fn empty_time_inference(graph: &Graph) -> TimeInference {
 pub(crate) fn marginal_timetree_params() -> TimetreeParams {
   TimetreeParams {
     model: GtrModelName::JC69,
-    alphabet_name: AlphabetName::Nuc,
     dense: None,
-    gap_fill: GapFill::default(),
     branch_length_mode: BranchLengthMode::Marginal,
     no_indels: false,
     sequence_length: None,
@@ -69,7 +65,6 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     tip_slack: None,
     max_iter: 1,
     resolve_polytomies: false,
-    keep_polytomies: false,
     relax: vec![],
     coalescent: None,
     coalescent_opt: false,
@@ -84,7 +79,6 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     include_leaves: false,
     impute_missing_data: false,
     sequence_outputs_requested: false,
-    zero_based: false,
     seed: None,
   }
 }
