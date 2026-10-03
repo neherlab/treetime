@@ -13,6 +13,7 @@ mod tests {
   use crate::seq::mutation::MutationEvent;
   use crate::test_utils::RecordingSeqSink;
   use proptest::prelude::*;
+  use proptest::test_runner::TestCaseError;
   use std::collections::BTreeMap;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
@@ -51,20 +52,22 @@ mod tests {
         seed: Some(seed),
         sample_from_profile,
       };
-      let (ancestral_input, sink, output) = helpers::run_recorded(&input, &params).unwrap();
+      let (ancestral_input, sink, output) =
+        helpers::run_recorded(&input, &params).map_err(|error| TestCaseError::fail(format!("{error:?}")))?;
       let graph = &ancestral_input.graph;
       let streamed: BTreeMap<GraphNodeKey, Seq> =
         sink.items.iter().map(|(key, _, seq)| (*key, seq.clone())).collect();
+      let root_key = graph.root_key().map_err(|error| TestCaseError::fail(format!("{error:?}")))?;
 
       prop_assert_eq!(graph.num_nodes(), sink.items.len());
-      prop_assert_eq!(&streamed[&graph.root_key().unwrap()], &output.root_sequence);
+      prop_assert_eq!(&streamed[&root_key], &output.root_sequence);
       for edge in graph.get_edges() {
         let parent = &streamed[&edge.source()];
         let child = &streamed[&edge.target()];
-        let rebuilt = helpers::apply_substitutions(parent, &output, edge.key());
+        let rebuilt = helpers::apply_substitutions(parent, &output, edge.key())?;
         let alphabet = &ancestral_input.alphabet;
         for pos in 0..parent.len() {
-          if alphabet.is_canonical(parent[pos]) && alphabet.is_canonical(child[pos]) {
+          if !alphabet.is_gap(parent[pos]) && !alphabet.is_gap(child[pos]) {
             prop_assert_eq!(child[pos], rebuilt[pos], "edge {:?} position {}", edge.key(), pos);
           }
         }
@@ -111,19 +114,24 @@ mod tests {
       Ok((ancestral_input, sink, output))
     }
 
-    pub(super) fn apply_substitutions(parent: &Seq, output: &AncestralOutput, edge_key: GraphEdgeKey) -> Seq {
+    pub(super) fn apply_substitutions(
+      parent: &Seq,
+      output: &AncestralOutput,
+      edge_key: GraphEdgeKey,
+    ) -> Result<Seq, TestCaseError> {
       let mut rebuilt = parent.clone();
       for mutation in &output.edge_mutations[&edge_key] {
         if let MutationEvent::Substitution(sub) = &mutation.event {
-          assert_eq!(
+          prop_assert_eq!(
             parent[sub.pos()],
             sub.reff(),
-            "substitution must start from the parent state"
+            "substitution {} must start from the parent state",
+            sub
           );
           rebuilt[sub.pos()] = sub.qry();
         }
       }
-      rebuilt
+      Ok(rebuilt)
     }
   }
 }
