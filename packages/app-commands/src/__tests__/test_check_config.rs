@@ -9,6 +9,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use serde_json::{Map, json};
   use treetime_utils::assert_error;
   use treetime_utils::o;
@@ -118,11 +119,15 @@ mod tests {
     assert!(rendered.is_some_and(|rendered| rendered.contains("definitely_not_a_real_field: 1")));
   }
 
-  #[test]
-  fn test_check_config_wrong_enum_value_is_invalid() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::misspelled(   "margnal", "did you mean `marginal`? Valid values: `marginal`, `parsimony`")]
+  #[case::removed_joint("joint",   "valid values: `marginal`, `parsimony`")]
+  #[trace]
+  fn test_check_config_wrong_enum_value_is_invalid(#[case] value: &str, #[case] expected_help: &str) {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
-      text: "tree: t.nwk\nmethod_anc: margnal\n".to_owned(),
+      text: format!("tree: t.nwk\nmethod_anc: {value}\n"),
       inputs: Map::new(),
       input_facts: None,
     });
@@ -131,14 +136,12 @@ mod tests {
     };
     assert_eq!(
       (
-        "invalid configuration: `margnal` is not a valid value",
+        format!("invalid configuration: `{value}` is not a valid value"),
         vec!["config::enum".to_owned()],
-        vec![Some(
-          "did you mean `marginal`? Valid values: `marginal`, `parsimony`".to_owned()
-        )],
+        vec![Some(expected_help.to_owned())],
       ),
       (
-        message.as_str(),
+        message,
         problems.iter().map(|problem| problem.code.clone()).collect::<Vec<_>>(),
         problems.iter().map(|problem| problem.help.clone()).collect::<Vec<_>>(),
       )
