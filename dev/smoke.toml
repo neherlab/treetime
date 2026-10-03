@@ -71,14 +71,12 @@ mugration_attribute = "country"
 # `outputs`: files that must exist and be non-empty after a run.
 #
 # Every case writes every output of its command, so a change in any written file shows up. `ancestral` and
-# `timetree` also write the leaf sequences (`--include-leaves`). The UShER MAT outputs (`mat-pb`, `mat-json`) are left
-# out of the selections of `ancestral`, `optimize`, `prune` and `timetree` because MAT rejects a tree with insertions
-# or deletions, which most datasets have (kb/issues/M-io-usher-mat-rejects-trees-with-indels.md); the `mat` rows cover
-# them. A row sets its own `selection` only when the selection is what it tests.
+# `timetree` also write the leaf sequences (`--include-leaves`). A row sets its own `selection` only when the selection
+# is what it tests, or when one output fails for a reason that its own row declares.
 [commands.ancestral]
 args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
 outputs = ["ancestral.nwk"]
-selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,reconstructed-aa-fasta"
+selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,reconstructed-aa-fasta,mat-pb,mat-json"
 
 [commands.clock]
 args = "--tree={tree} --dates={metadata} --output-all={out}"
@@ -96,17 +94,17 @@ selection = "all"
 [commands.optimize]
 args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out}"
 outputs = ["optimize.nwk"]
-selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr"
+selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,mat-pb,mat-json"
 
 [commands.prune]
 args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out}"
 outputs = ["prune.nwk"]
-selection = "nwk,nexus,auspice,graph-json,dot,gtr"
+selection = "nwk,nexus,auspice,graph-json,dot,gtr,mat-pb,mat-json"
 
 [commands.timetree]
 args = "--tree={tree} --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
 outputs = ["timetree.nwk"]
-selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,clock-model,clock-csv,confidence-tsv,tracelog,coalescent-tsv,coalescent-csv,coalescent-json"
+selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,clock-model,clock-csv,confidence-tsv,tracelog,coalescent-tsv,coalescent-csv,coalescent-json,mat-pb,mat-json"
 
 
 # Rows, one `[[<command>]]` table per variant.
@@ -248,10 +246,13 @@ outputs = ["ancestral.nwk"]
 # because the GFF reader rejects the unstranded (`.`) CDS rows of this annotation.
 # The template is a literal path because smoke checks every `{data}` path as one input file; the dataset directory
 # is hashed as a whole, so the translations still key the case. `%GENE` keeps it clear of the smoke placeholders.
+# The amino-acid rows leave MAT out of their selection, because MAT rejects amino-acid mutations; the
+# `translations-mat` row declares that failure.
 [[ancestral]]
 variant = "translations"
 datasets = ["rsv/a/20"]
 args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --cdses=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
+selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,reconstructed-aa-fasta"
 outputs = [
   "ancestral.nwk",
   "ancestral.reconstructed-aa.NS1.fasta",
@@ -272,12 +273,23 @@ outputs = [
 variant = "translations-parsimony"
 datasets = ["rsv/a/20"]
 args = "--method-anc=parsimony --translations=data/rsv/a/20/translations/%GENE.fasta.xz --cdses=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
+selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,reconstructed-aa-fasta"
+
+# MAT output of the amino-acid path
+[[ancestral]]
+variant = "translations-mat"
+datasets = ["rsv/a/20"]
+args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --cdses=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
+selection = "mat-pb,mat-json"
+outputs = ["ancestral.mat.pb", "ancestral.mat.json"]
+fail = "kb/issues/M-io-usher-mat-rejects-amino-acid-mutations.md"
 
 # The CDSes from the GFF3 annotation instead of `--cdses`
 [[ancestral]]
 variant = "annotation"
 datasets = ["rsv/a/20"]
 args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --annotation={dataset}/annotation.gff3"
+selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,reconstructed-aa-fasta"
 fail = "kb/issues/M-io-gff3-rejects-unstranded-cds.md"
 
 # Input formats of the reference implementation: a Nexus tree and a PHYLIP alignment
@@ -328,25 +340,7 @@ datasets = ["flu/h3n2/20"]
 args = "--method-anc=marginal"
 selection = "all"
 
-# UShER MAT output of every small dataset; the default selection leaves it out because it fails on indels
-[[ancestral]]
-variant = "mat"
-datasets = "small"
-args = "--method-anc=marginal"
-selection = "mat-pb,mat-json"
-outputs = ["ancestral.mat.pb", "ancestral.mat.json"]
-fail.'dengue/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'dengue/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'ebola/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'ebola/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'lassa/L/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'lassa/L/50' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'mpox/clade-ii/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'mpox/clade-ii/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'rsv/a/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'rsv/a/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-
-# MAT output with the transitions of ambiguous states, on datasets without indels
+# MAT output with the transitions of ambiguous states
 [[ancestral]]
 variant = "mat-report-ambiguous"
 datasets = ["flu/h3n2/20", "tb/20", "zika/20"]
@@ -684,24 +678,6 @@ datasets = ["flu/h3n2/20"]
 args = "--dense=false"
 selection = "all"
 
-# UShER MAT output of every small dataset; the default selection leaves it out because it fails on indels
-[[optimize]]
-variant = "mat"
-datasets = "small"
-args = "--dense=false"
-selection = "mat-pb,mat-json"
-outputs = ["optimize.mat.pb", "optimize.mat.json"]
-fail.'dengue/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'dengue/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'ebola/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'ebola/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'lassa/L/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'lassa/L/50' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'mpox/clade-ii/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'mpox/clade-ii/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'rsv/a/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'rsv/a/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-
 
 [[prune]]
 variant = "default"
@@ -737,23 +713,6 @@ variant = "nodes-list-file"
 datasets = ["ebola/20"]
 args = "--prune-nodes-list-file={dataset}/prune-nodes.txt"
 
-# UShER MAT output of every small dataset; the default selection leaves it out because it fails on indels
-[[prune]]
-variant = "mat"
-datasets = "small"
-args = "--prune-short=1e-6 --prune-empty --merge-shared-mutations"
-selection = "mat-pb,mat-json"
-outputs = ["prune.mat.pb", "prune.mat.json"]
-fail.'dengue/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'dengue/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'ebola/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'ebola/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'lassa/L/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'lassa/L/50' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'mpox/clade-ii/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'mpox/clade-ii/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'rsv/a/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'rsv/a/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
 
 
 [[timetree]]
@@ -1053,37 +1012,7 @@ datasets = ["flu/h3n2/20"]
 args = "--time-marginal=always"
 selection = "all"
 
-# UShER MAT output of the small datasets; the default selection leaves it out because it fails on indels. dengue/100
-# and lassa/L/20 are left out because `timetree` fails on them before it writes MAT (see the `basic` row)
-[[timetree]]
-variant = "mat"
-datasets = [
-  "dengue/20",
-  "ebola/20",
-  "ebola/100",
-  "flu/h3n2/20",
-  "lassa/L/50",
-  "mpox/clade-ii/20",
-  "mpox/clade-ii/100",
-  "rsv/a/20",
-  "rsv/a/100",
-  "tb/20",
-  "tb/100",
-  "zika/20",
-  "zika/86",
-]
-selection = "mat-pb,mat-json"
-outputs = ["timetree.mat.pb", "timetree.mat.json"]
-fail.'dengue/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'ebola/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'ebola/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'lassa/L/50' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'mpox/clade-ii/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'mpox/clade-ii/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'rsv/a/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-fail.'rsv/a/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
-
-# MAT output with the transitions of ambiguous states, on datasets without indels
+# MAT output with the transitions of ambiguous states
 [[timetree]]
 variant = "mat-report-ambiguous"
 datasets = ["flu/h3n2/20", "tb/20", "zika/20"]
