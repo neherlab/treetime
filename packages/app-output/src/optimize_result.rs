@@ -13,13 +13,9 @@ pub struct OptimizeOutputMaps {
   pub edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
 }
 
-#[derive(Serialize)]
 pub struct OptimizeResult {
-  #[serde(skip)]
   pub graph: Graph,
-  #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut>,
-  #[serde(skip)]
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
 }
 

@@ -8,15 +8,11 @@ use treetime::mugration::pipeline::MugrationOutput;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct MugrationResult {
-  #[serde(skip)]
   pub nodes: BTreeMap<GraphNodeKey, MugrationNodeOut>,
-  #[serde(skip)]
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
-  #[serde(skip)]
   pub traits: MugrationTraitsOutput,
-  #[serde(skip)]
   pub confidence: MugrationConfidenceOutput,
 }
 

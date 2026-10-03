@@ -12,7 +12,6 @@ use crate::progress::LogSink;
 use crate::prune::prune::prune_nodes;
 use crate::seq::alignment::node_seq_inputs;
 use eyre::eyre;
-use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem::take;
 use treetime_graph::assign_node_names::assign_node_names;
@@ -97,16 +96,11 @@ pub struct PruneInput {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct PruneOutput {
-  #[serde(skip)]
   pub graph: Graph,
-  #[serde(skip)]
   pub gtr: Option<GTR>,
-  #[serde(skip)]
   pub partitions: Vec<PartitionMarginalSparse>,
-  #[serde(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
-  #[serde(skip)]
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
