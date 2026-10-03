@@ -38,7 +38,12 @@ mod tests {
   #[case::sparse(Some(false))]
   #[case::dense(Some(true))]
   fn test_root_sequence_marginal_root_follows_the_short_branch(#[case] dense: Option<bool>) -> Result<(), Report> {
-    let (graph, partition) = helpers::reconstruct(LONG_BRANCH_TREE, LONG_BRANCH_ALIGNMENT, MethodAncestral::Marginal, dense)?;
+    let (graph, partition) = helpers::reconstruct(
+      LONG_BRANCH_TREE,
+      LONG_BRANCH_ALIGNMENT,
+      MethodAncestral::Marginal,
+      dense,
+    )?;
     assert_eq!("CAAAGGGGAT", partition.root_sequence(&graph)?.to_string());
     Ok(())
   }
@@ -77,7 +82,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub fn reconstruct(
+    pub(super) fn reconstruct(
       nwk: &str,
       fasta: &str,
       method: MethodAncestral,
@@ -111,12 +116,23 @@ mod tests {
         seed: Some(0),
         sample_from_profile: SampleMode::Argmax,
       };
-      let result = run(&params, &input, alphabet, mask, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      let result = run(
+        &params,
+        &input,
+        alphabet,
+        mask,
+        &NoopCancel,
+        &NoopProgress,
+        &NoopProgress,
+      )?;
       let partition = result.partition.expect("ancestral reconstruction returns a partition");
       Ok((input.graph, partition))
     }
 
-    pub fn rebuild_from_root(graph: &Graph, partition: &AncestralPartition) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+    pub(super) fn rebuild_from_root(
+      graph: &Graph,
+      partition: &AncestralPartition,
+    ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
       let mut rebuilt: BTreeMap<GraphNodeKey, Seq> = BTreeMap::new();
       graph.iter_depth_first_preorder_forward(|node| {
         let seq = if node.is_root {
