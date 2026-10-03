@@ -1,12 +1,14 @@
 #[cfg(test)]
 mod tests {
   use self::helpers::{
-    child_order_by_parent, edge_values_by_child_name, fixture_chain, fixture_ordering, fixture_tree,
-    own_value_pass_values, run_backward_sum, run_forward_sum, values_by_name,
+    Unclonable, child_order_by_parent, edge_values_by_child_name, fixture_chain, fixture_ordering, fixture_tree,
+    own_value_pass_values, owned_pass_values, run_backward_sum, run_forward_sum, unwrap_values, values_by_name,
   };
   use crate::graph::Graph;
   use crate::node::GraphNodeKey;
-  use crate::pass::{GraphMapOutputs, GraphPass, GraphPassNodeOutput};
+  use crate::pass::{
+    GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput,
+  };
   use eyre::Report;
   use maplit::btreemap;
   use parking_lot::Mutex;
@@ -329,6 +331,130 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_pass_map_backward_owned_moves_inputs_into_the_visitor() -> Result<(), Report> {
+    let (graph, names) = fixture_tree()?;
+    let (nodes, edges) = owned_pass_values(&graph, &names);
+    let pass = GraphPass::new(&graph)?;
+
+    let outputs: GraphMapOutputs<Unclonable, usize> = pass.map_backward_owned(
+      nodes,
+      &edges,
+      |_| Ok(Unclonable(0)),
+      |context: GraphPassBackwardContext<'_, Unclonable, usize, Unclonable, usize>| {
+        let children_sum = context.children.iter().map(|child| child.node.0).sum::<usize>();
+        let node = Unclonable(context.input.0 + children_sum);
+        let parent_message = (!context.is_root).then_some(node.0);
+        Ok(GraphPassNodeOutput { node, parent_message })
+      },
+    )?;
+
+    let actual_nodes = values_by_name(&names, &unwrap_values(outputs.nodes));
+    let expected_nodes = btreemap! {
+      o!("A") => 1,
+      o!("B") => 2,
+      o!("C") => 3,
+      o!("AB") => 13,
+      o!("root") => 116,
+    };
+    assert_eq!(expected_nodes, actual_nodes);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_forward_owned_moves_inputs_into_the_visitor() -> Result<(), Report> {
+    let (graph, names) = fixture_tree()?;
+    let (nodes, edges) = owned_pass_values(&graph, &names);
+    let pass = GraphPass::new(&graph)?;
+
+    let outputs: GraphMapOutputs<Unclonable, usize> = pass.map_forward_owned(
+      nodes,
+      &edges,
+      |_| Ok(Unclonable(0)),
+      |context: GraphPassForwardContext<'_, Unclonable, usize, Unclonable>| {
+        let parent_sum = context.parent.map_or(0, |parent| parent.0);
+        let node = Unclonable(context.input.0 + parent_sum);
+        let parent_message = (!context.is_root).then_some(node.0);
+        Ok(GraphPassNodeOutput { node, parent_message })
+      },
+    )?;
+
+    let actual_nodes = values_by_name(&names, &unwrap_values(outputs.nodes));
+    let expected_nodes = btreemap! {
+      o!("root") => 100,
+      o!("AB") => 110,
+      o!("A") => 111,
+      o!("B") => 112,
+      o!("C") => 103,
+    };
+    assert_eq!(expected_nodes, actual_nodes);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_backward_owned_creates_missing_inputs() -> Result<(), Report> {
+    let (graph, names) = fixture_tree()?;
+    let (mut nodes, edges) = owned_pass_values(&graph, &names);
+    let ab = names
+      .iter()
+      .find_map(|(key, name)| (name == "AB").then_some(*key))
+      .expect("fixture node AB must exist");
+    nodes.remove(&ab);
+    let pass = GraphPass::new(&graph)?;
+
+    let outputs: GraphMapOutputs<Unclonable, usize> = pass.map_backward_owned(
+      nodes,
+      &edges,
+      |_| Ok(Unclonable(50)),
+      |context: GraphPassBackwardContext<'_, Unclonable, usize, Unclonable, usize>| {
+        let children_sum = context.children.iter().map(|child| child.node.0).sum::<usize>();
+        let node = Unclonable(context.input.0 + children_sum);
+        Ok(GraphPassNodeOutput {
+          node,
+          parent_message: None,
+        })
+      },
+    )?;
+
+    let actual_nodes = values_by_name(&names, &unwrap_values(outputs.nodes));
+    let expected_nodes = btreemap! {
+      o!("A") => 1,
+      o!("B") => 2,
+      o!("C") => 3,
+      o!("AB") => 53,
+      o!("root") => 156,
+    };
+    assert_eq!(expected_nodes, actual_nodes);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pass_map_backward_owned_rejects_stale_topology() -> Result<(), Report> {
+    let (graph, names) = fixture_tree()?;
+    let (nodes, mut edges) = owned_pass_values(&graph, &names);
+    let first_edge = *edges.keys().next().expect("fixture must have edges");
+    edges.remove(&first_edge);
+    let pass = GraphPass::new(&graph)?;
+
+    let result: Result<GraphMapOutputs<Unclonable, usize>, Report> = pass.map_backward_owned(
+      nodes,
+      &edges,
+      |_| Ok(Unclonable(0)),
+      |context| {
+        Ok(GraphPassNodeOutput {
+          node: context.input,
+          parent_message: None,
+        })
+      },
+    );
+
+    assert_error!(
+      result,
+      "Partition edge set does not match the graph while indexing a pass. This is an internal error. Please report it to developers."
+    );
+    Ok(())
+  }
+
   fn pass_zeros(
     graph: &Graph,
   ) -> (
@@ -453,6 +579,21 @@ mod tests {
         .collect();
       let edges = graph.get_edges().map(|edge| (edge.key(), 0)).collect();
       (nodes, edges)
+    }
+
+    pub(super) struct Unclonable(pub(super) usize);
+
+    pub(super) fn owned_pass_values(
+      graph: &Graph,
+      names: &Names,
+    ) -> (BTreeMap<GraphNodeKey, Unclonable>, BTreeMap<GraphEdgeKey, usize>) {
+      let (nodes, edges) = own_value_pass_values(graph, names);
+      let nodes = nodes.into_iter().map(|(key, value)| (key, Unclonable(value))).collect();
+      (nodes, edges)
+    }
+
+    pub(super) fn unwrap_values(values: BTreeMap<GraphNodeKey, Unclonable>) -> BTreeMap<GraphNodeKey, usize> {
+      values.into_iter().map(|(key, value)| (key, value.0)).collect()
     }
 
     pub(super) fn run_backward_sum(
