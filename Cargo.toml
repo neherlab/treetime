@@ -69,13 +69,16 @@ lto = "off"
 overflow-checks = true
 
 # The shipped artifact, built in CI and by the cross builds: fat LTO and one
-# codegen unit for speed. Stripping the debug info makes the binaries several
-# times smaller; backtraces keep function names but lose file and line numbers.
+# codegen unit for speed. Integer overflow checks stay in the release profile
+# for development and are off here, where they cost up to a tenth of the run
+# time. Stripping the debug info makes the binaries several times smaller;
+# backtraces keep function names but lose file and line numbers.
 [profile.dist]
 inherits = "release"
 codegen-units = 1
 incremental = false
 lto = "fat"
+overflow-checks = false
 strip = "debuginfo"
 
 # The shipped artifact with full debug info, for profilers.
