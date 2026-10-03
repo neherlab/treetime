@@ -2,7 +2,8 @@
 mod tests {
   use self::helpers::{
     Unclonable, child_order_by_parent, edge_values_by_child_name, fixture_chain, fixture_ordering, fixture_tree,
-    own_value_pass_values, owned_pass_values, run_backward_sum, run_forward_sum, unwrap_values, values_by_name,
+    key_indices, own_value_pass_values, owned_pass_values, pass_zeros, run_backward_sum, run_forward_sum,
+    unwrap_values, values_by_name, zero_edges,
   };
   use crate::graph::Graph;
   use crate::node::GraphNodeKey;
@@ -455,45 +456,6 @@ mod tests {
     Ok(())
   }
 
-  fn pass_zeros(
-    graph: &Graph,
-  ) -> (
-    BTreeMap<GraphNodeKey, usize>,
-    BTreeMap<crate::edge::GraphEdgeKey, usize>,
-  ) {
-    (
-      graph.get_nodes().map(|node| (node.key(), 0)).collect(),
-      zero_edges(graph),
-    )
-  }
-
-  fn zero_edges(graph: &Graph) -> BTreeMap<crate::edge::GraphEdgeKey, usize> {
-    graph.get_edges().map(|edge| (edge.key(), 0)).collect()
-  }
-
-  fn key_indices(
-    graph: &Graph,
-  ) -> (
-    BTreeMap<GraphNodeKey, usize>,
-    BTreeMap<crate::edge::GraphEdgeKey, usize>,
-  ) {
-    let nodes = graph
-      .get_nodes()
-      .map(|node| {
-        let key = node.key();
-        (key, key.as_usize())
-      })
-      .collect();
-    let edges = graph
-      .get_edges()
-      .map(|edge| {
-        let key = edge.key();
-        (key, key.as_usize())
-      })
-      .collect();
-    (nodes, edges)
-  }
-
   mod helpers {
     use crate::edge::GraphEdgeKey;
     use crate::graph::Graph;
@@ -506,6 +468,35 @@ mod tests {
     use treetime_utils::o;
 
     pub(super) type Names = BTreeMap<GraphNodeKey, String>;
+
+    pub(super) fn pass_zeros(graph: &Graph) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
+      (
+        graph.get_nodes().map(|node| (node.key(), 0)).collect(),
+        zero_edges(graph),
+      )
+    }
+
+    pub(super) fn zero_edges(graph: &Graph) -> BTreeMap<GraphEdgeKey, usize> {
+      graph.get_edges().map(|edge| (edge.key(), 0)).collect()
+    }
+
+    pub(super) fn key_indices(graph: &Graph) -> (BTreeMap<GraphNodeKey, usize>, BTreeMap<GraphEdgeKey, usize>) {
+      let nodes = graph
+        .get_nodes()
+        .map(|node| {
+          let key = node.key();
+          (key, key.as_usize())
+        })
+        .collect();
+      let edges = graph
+        .get_edges()
+        .map(|edge| {
+          let key = edge.key();
+          (key, key.as_usize())
+        })
+        .collect();
+      (nodes, edges)
+    }
 
     pub(super) fn fixture_tree() -> Result<(Graph, Names), Report> {
       let mut graph = Graph::new();
