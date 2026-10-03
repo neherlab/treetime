@@ -2,21 +2,18 @@
 
 Several command-line flags are accepted by the parser, validated, and then never read. A user who sets one of them gets no error and no effect. This is the same class of defect as a silently wrong result: the command reports success while ignoring part of its input.
 
-Two mechanisms hide the flags:
-
-- **Resolved argument field never read**: the command's resolved argument struct (`Treetime<Command>Args` in `packages/app-commands/src/commands/<command>/args.rs`) stores the value, and no code reads it. The compiler detects these because the command modules are crate-private; each field carries `#[expect(dead_code, reason = "...")]` that points here, so the expectation fails the build's lint check as soon as a flag is wired
-- **Core configuration field never read**: the command copies the value into a public core configuration struct, and the core never reads that field. The compiler cannot detect these because the core field is public
+The command's resolved argument struct (`Treetime<Command>Args` in `packages/app-commands/src/commands/<command>/args.rs`) stores the value, and no code reads it. The compiler detects these fields because the command modules are crate-private; each field carries `#[expect(dead_code, reason = "...")]` that points here, so the expectation fails the build's lint check as soon as a flag is wired.
 
 ## Resolved argument fields never read
 
-Flags marked *hidden* are accepted but not listed in `--help`.
+Flags marked _hidden_ are accepted but not listed in `--help`.
 
-| Command     | Flags                                                                                                                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ancestral` | `--model-params`/`--gtr-params`, `--zero-based`, `--aa` (hidden), `--marginal` (hidden), `--custom-gtr` (hidden)                                                                                                              |
-| `clock`     | `--alignment`/`--aln`, `--model`/`--gtr`, `--model-params`/`--gtr-params`, `--branch-length-mode`, `--method-anc`, `--prune-short`, `--seed`, `--clock-filter-method` (hidden), `--plot-rtt` (hidden), `--prune-outliers` (hidden) |
-| `mugration` | `--seed`                                                                                                                                                                                                           |
-| `timetree`  | `--model-params`/`--gtr-params`, `--tip-labels`, `--no-tip-labels`, `--n-iqd`, `--aa` (hidden), `--custom-gtr` (hidden), `--clock-filter-method` (hidden), `--greedy-resolve` (hidden), `--stochastic-resolve` (hidden)                            |
+| Command     | Flags                                                                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ancestral` | `--model-params`/`--gtr-params`, `--zero-based`, `--aa` (hidden), `--marginal` (hidden), `--custom-gtr` (hidden)                                                                                                                                             |
+| `clock`     | `--alignment`/`--aln`, `--model`/`--gtr`, `--model-params`/`--gtr-params`, `--branch-length-mode`, `--method-anc`, `--prune-short`, `--seed`, `--clock-filter-method` (hidden), `--plot-rtt` (hidden), `--prune-outliers` (hidden)                           |
+| `mugration` | `--seed`                                                                                                                                                                                                                                                     |
+| `timetree`  | `--model-params`/`--gtr-params`, `--tip-labels`, `--no-tip-labels`, `--n-iqd`, `--keep-polytomies`, `--zero-based`, `--aa` (hidden), `--custom-gtr` (hidden), `--clock-filter-method` (hidden), `--greedy-resolve` (hidden), `--stochastic-resolve` (hidden) |
 
 `optimize` also accepts `--model-params`/`--gtr-params` and never reads it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. `ModelArgs` derives `Serialize`, which reads every field, so no `dead_code` expectation marks the field. For example, `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
 
@@ -27,12 +24,6 @@ Tracked elsewhere, with their own `expect` reasons:
 - `--vcf-reference` in `ancestral`, `clock`, and `timetree`: [M-io-vcf-input-output-unimplemented.md](M-io-vcf-input-output-unimplemented.md)
 - `--method-anc` in `timetree`: [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md)
 - every `homoplasy` flag: [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md)
-
-## Core configuration fields never read
-
-The `timetree` command copies this flag into `TimetreeParams` in `packages/treetime/src/timetree/params.rs`, and the timetree pipeline never reads the field:
-
-- `--keep-polytomies` (`keep_polytomies`)
 
 ## Impact
 

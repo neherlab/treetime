@@ -9,8 +9,8 @@ v0 resolves polytomies unless `--keep-polytomies` is given. v1 resolves them onl
 
 ## v1 behavior
 
-- `--resolve-polytomies` is an opt-in bool ([packages/app-cli/src/commands/timetree/args.rs](../../packages/app-cli/src/commands/timetree/args.rs)) read by `refine_topology` in [packages/treetime/src/timetree/round.rs](../../packages/treetime/src/timetree/round.rs)
-- `keep_polytomies` is copied into `TimetreeParams` and never read
+- `--resolve-polytomies` is an opt-in bool ([packages/app-commands/src/commands/timetree/args.rs](../../packages/app-commands/src/commands/timetree/args.rs)) read by `refine_topology` in [packages/treetime/src/timetree/round.rs](../../packages/treetime/src/timetree/round.rs)
+- `--keep-polytomies` is parsed into the `keep_polytomies` field of `TreetimeTimetreeArgs`, which carries `#[expect(dead_code)]` and is never read ([M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md))
 - The only method is stochastic ([kb/decisions/timetree-stochastic-polytomy-resolution.md](../decisions/timetree-stochastic-polytomy-resolution.md), which approves the method but not the default). The seed is random unless `--seed` is given
 
 ## Impact
