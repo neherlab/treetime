@@ -185,13 +185,10 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_all_auspice_models_match_augur_v2_schema() -> Result<(), Report> {
-    let documents = helpers::all_auspice_documents(false)?;
+    let documents = helpers::all_auspice_documents(helpers::InputBranchSupport::Absent)?;
     let validator = helpers::auspice_validator()?;
 
-    for (command, document) in ["ancestral", "optimize", "prune", "clock", "mugration", "timetree"]
-      .into_iter()
-      .zip(&documents)
-    {
+    for (command, document) in &documents {
       let errors = validator
         .iter_errors(document)
         .map(|error| error.to_string())
@@ -200,7 +197,7 @@ pub(super) mod tests {
       assert!(errors.is_empty(), "{command} Auspice schema errors:\n{errors}");
     }
 
-    let mut malformed = documents[0].clone();
+    let mut malformed = documents["ancestral"].clone();
     malformed["meta"]
       .as_object_mut()
       .expect("Auspice meta must be an object")
@@ -210,15 +207,14 @@ pub(super) mod tests {
     Ok(())
   }
 
-  #[rustfmt::skip]
   #[rstest]
-  #[case::ancestral(0)]
-  #[case::optimize( 1)]
-  #[case::prune(    2)]
-  #[case::mugration(4)]
+  #[case::ancestral("ancestral")]
+  #[case::optimize("optimize")]
+  #[case::prune("prune")]
+  #[case::mugration("mugration")]
   #[trace]
-  fn test_tree_output_auspice_writes_input_branch_support(#[case] command: usize) -> Result<(), Report> {
-    let document = &helpers::all_auspice_documents(true)?[command];
+  fn test_tree_output_auspice_writes_input_branch_support(#[case] command: &str) -> Result<(), Report> {
+    let document = &helpers::all_auspice_documents(helpers::InputBranchSupport::OnLeafA)?[command];
     let support: Vec<&Value> = document["tree"]["children"]
       .as_array()
       .expect("fixture root must have children")
@@ -243,6 +239,24 @@ pub(super) mod tests {
     assert_error!(
       with_branch_support(node, Some(0.9), "mugration"),
       "Node 'A' has a trait named 'confidence', which Auspice JSON also uses for the input branch support. Rename the metadata column of the trait."
+    );
+  }
+
+  #[test]
+  fn test_tree_output_branch_support_rejects_non_finite_value_with_command_name() {
+    let node = auspice_node(
+      o!("A"),
+      Some(0.1),
+      None,
+      None,
+      None,
+      BTreeMap::new(),
+      BTreeMap::new(),
+      None,
+    );
+    assert_error!(
+      with_branch_support(node, Some(f64::NAN), "optimize"),
+      "optimize node 'A' has non-finite input branch support=NaN"
     );
   }
 
@@ -291,14 +305,13 @@ pub(super) mod tests {
     Ok(())
   }
 
-  #[rustfmt::skip]
   #[rstest]
-  #[case::prune(    2)]
-  #[case::clock(    3)]
-  #[case::mugration(4)]
+  #[case::prune("prune")]
+  #[case::clock("clock")]
+  #[case::mugration("mugration")]
   #[trace]
-  fn test_tree_output_auspice_without_sequences_has_tree_panel_only(#[case] command: usize) -> Result<(), Report> {
-    let document = &helpers::all_auspice_documents(false)?[command];
+  fn test_tree_output_auspice_without_sequences_has_tree_panel_only(#[case] command: &str) -> Result<(), Report> {
+    let document = &helpers::all_auspice_documents(helpers::InputBranchSupport::Absent)?[command];
 
     assert_eq!(json!(["tree"]), document["meta"]["panels"]);
     assert_eq!(None, document["meta"].get("genome_annotations"));
@@ -527,15 +540,20 @@ pub(super) mod tests {
         .collect()
     }
 
-    pub(crate) fn branch_support(
+    #[derive(Clone, Copy)]
+    pub(crate) enum InputBranchSupport {
+      Absent,
+      OnLeafA,
+    }
+
+    fn branch_support(
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       graph: &Graph,
-      with_support: bool,
+      support: InputBranchSupport,
     ) -> BTreeMap<GraphNodeKey, Option<f64>> {
-      if with_support {
-        ancestral_confidences(names, graph)
-      } else {
-        BTreeMap::new()
+      match support {
+        InputBranchSupport::Absent => BTreeMap::new(),
+        InputBranchSupport::OnLeafA => ancestral_confidences(names, graph),
       }
     }
 
@@ -554,7 +572,7 @@ pub(super) mod tests {
       Ok((graph, names, branch_lengths))
     }
 
-    pub(crate) fn all_auspice_documents(with_support: bool) -> Result<Vec<Value>, Report> {
+    pub(crate) fn all_auspice_documents(support: InputBranchSupport) -> Result<BTreeMap<&'static str, Value>, Report> {
       let (ancestral_graph, ancestral_names, ancestral_bl, ancestral_maps, ancestral_aa, ancestral_aa_annotations) =
         ancestral_graph(Mutations::NucleotideSubstitution)?;
       let ancestral = ancestral_to_auspice(
@@ -562,7 +580,7 @@ pub(super) mod tests {
         &ancestral_nodes(
           &ancestral_names,
           &ancestral_graph,
-          &branch_support(&ancestral_names, &ancestral_graph, with_support),
+          &branch_support(&ancestral_names, &ancestral_graph, support),
         ),
         &ancestral_bl,
         &ancestral_maps,
@@ -576,7 +594,7 @@ pub(super) mod tests {
         &optimize_nodes(
           &optimize_names,
           &optimize_graph,
-          &branch_support(&optimize_names, &optimize_graph, with_support),
+          &branch_support(&optimize_names, &optimize_graph, support),
         ),
         &optimize_bl,
         &optimize_maps(&optimize_graph)?,
@@ -588,7 +606,7 @@ pub(super) mod tests {
         &prune_nodes(
           &prune_names,
           &prune_graph,
-          &branch_support(&prune_names, &prune_graph, with_support),
+          &branch_support(&prune_names, &prune_graph, support),
         ),
         &prune_bl,
         &prune_maps(&prune_graph),
@@ -602,7 +620,7 @@ pub(super) mod tests {
         &mugration_nodes(
           &mugration_names,
           &mugration_output.graph,
-          &branch_support(&mugration_names, &mugration_output.graph, with_support),
+          &branch_support(&mugration_names, &mugration_output.graph, support),
         ),
         &mugration_bl,
         &mugration_output,
@@ -615,7 +633,7 @@ pub(super) mod tests {
         &timetree_nodes(
           &timetree_names,
           &timetree_graph,
-          &branch_support(&timetree_names, &timetree_graph, with_support),
+          &branch_support(&timetree_names, &timetree_graph, support),
         ),
         &timetree_maps(&timetree_graph),
         None,
@@ -623,10 +641,14 @@ pub(super) mod tests {
         "2026-07-19",
       )?;
 
-      [ancestral, optimize, prune, clock, mugration, timetree]
-        .iter()
-        .map(json_value)
-        .collect()
+      Ok(btreemap! {
+        "ancestral" => json_value(&ancestral)?,
+        "optimize" => json_value(&optimize)?,
+        "prune" => json_value(&prune)?,
+        "clock" => json_value(&clock)?,
+        "mugration" => json_value(&mugration)?,
+        "timetree" => json_value(&timetree)?,
+      })
     }
 
     pub(crate) fn all_mat_documents() -> Result<Vec<UsherTree>, Report> {
