@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
+  use app_output::coalescent::write_coalescent_delimited_to;
   use eyre::Report;
-  use helpers::delimited_str;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime::timetree::coalescent::{
@@ -240,7 +240,7 @@ mod tests {
     assert!(json.contains("\"stiffness\": 2.0"));
     assert!(json.contains("\"log_likelihood\": -12.5"));
 
-    let csv = delimited_str(&output, b',')?;
+    let csv = String::from_utf8(write_coalescent_delimited_to(&output, Vec::new(), b',')?)?;
     assert!(!csv.contains("n_points"));
     assert!(!csv.contains("stiffness"));
     assert!(!csv.contains("log_likelihood"));
@@ -275,7 +275,7 @@ mod tests {
       },
     )?;
 
-    let serialized = delimited_str(&output, delimiter)?;
+    let serialized = String::from_utf8(write_coalescent_delimited_to(&output, Vec::new(), delimiter)?)?;
     let header = serialized.lines().next().unwrap();
     assert_eq!(expected_header, header);
     Ok(())
@@ -301,7 +301,7 @@ mod tests {
         }),
       },
     )?;
-    let csv = delimited_str(&constant, b',')?;
+    let csv = String::from_utf8(write_coalescent_delimited_to(&constant, Vec::new(), b',')?)?;
     assert_eq!("1,0.0,10.0,2.0,1.0,4.0,100.0,50.0,200.0", csv.lines().nth(1).unwrap());
 
     let fixed = CoalescentOutput::new(
@@ -319,7 +319,7 @@ mod tests {
         band: None,
       },
     )?;
-    let csv = delimited_str(&fixed, b',')?;
+    let csv = String::from_utf8(write_coalescent_delimited_to(&fixed, Vec::new(), b',')?)?;
     assert_eq!("1,0.0,10.0,2.0,,,100.0,,", csv.lines().nth(1).unwrap());
     Ok(())
   }
@@ -371,19 +371,5 @@ mod tests {
       result,
       "Coalescent band bounds must have one entry per segment (2), got lower=1, upper=2"
     );
-  }
-
-  mod helpers {
-    use eyre::Report;
-    use treetime::timetree::coalescent::CoalescentOutput;
-    use treetime_io::csv::CsvStructWriter;
-
-    pub(super) fn delimited_str(output: &CoalescentOutput, delimiter: u8) -> Result<String, Report> {
-      let mut writer = CsvStructWriter::new(Vec::<u8>::new(), delimiter)?;
-      for row in output.rows() {
-        writer.write(&row)?;
-      }
-      Ok(String::from_utf8(writer.into_inner()?)?)
-    }
   }
 }
