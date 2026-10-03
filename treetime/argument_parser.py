@@ -474,7 +474,13 @@ def make_parser():
     arg_parser.add_argument('--rng-seed', type=int, help='random number generator seed for treetime')
     arg_parser.add_argument('--trees', nargs=2, required=True, type=str)
     arg_parser.add_argument('--alignments', nargs=2, required=True, type=str)
-    arg_parser.add_argument('--mccs', required=True, type=str)
+    arg_parser.add_argument(
+        '--mccs',
+        required=True,
+        type=str,
+        help='MCCs inferred by TreeKnit: MCCs.json (selecting the pair that matches the tree file names) '
+        'or the text format of MCCs.dat (one MCC per line, leaves separated by commas)',
+    )
     add_timetree_args(arg_parser)
     add_time_arguments(arg_parser)
     add_seq_len_aln_group(arg_parser)

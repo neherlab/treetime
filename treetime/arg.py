@@ -1,5 +1,52 @@
-from matplotlib.pyplot import fill
+import json
+import os
+
 import numpy as np
+
+
+def read_mccs(mcc_file, tree_labels=None):
+    """Read the maximally compatible clades (MCCs) inferred by TreeKnit.
+
+    Two formats are accepted:
+    - JSON (``MCCs.json``, TreeKnit >= 0.5):
+      ``{"MCC_dict": {"1": {"trees": [label_a, label_b], "mccs": [[leaf, ...], ...]}, ...}}``
+      with one entry per pair of trees.
+    - text (``MCCs.dat``): one MCC per line, leaves separated by commas.
+
+    Args:
+        mcc_file (str): file name
+        tree_labels (list, optional): labels of the two trees, used to select the pair from a
+            JSON file with several pairs. TreeKnit labels trees by their file name without
+            extension. Ignored for text files and for JSON files with a single pair.
+
+    Returns:
+        list: MCCs as lists of leaf names
+    """
+    with open(mcc_file) as fh:
+        content = fh.read()
+
+    if not content.lstrip().startswith('{'):
+        return [line.strip().split(',') for line in content.splitlines() if line.strip()]
+
+    pairs = list(json.loads(content)['MCC_dict'].values())
+    if not pairs:
+        raise ValueError(f'no tree pairs in {mcc_file}')
+    if tree_labels is not None:
+        for pair in pairs:
+            if set(pair['trees']) == set(tree_labels):
+                return pair['mccs']
+    if len(pairs) == 1:
+        return pairs[0]['mccs']
+    available = ', '.join('/'.join(p['trees']) for p in pairs)
+    raise ValueError(
+        f'{mcc_file} contains several tree pairs ({available}); none matches the trees '
+        f'{"/".join(tree_labels or [])}. TreeKnit labels trees by file name without extension.'
+    )
+
+
+def tree_label(tree_file):
+    """Label TreeKnit gives a tree read from `tree_file`: the file name without extension."""
+    return os.path.splitext(os.path.basename(tree_file))[0]
 
 
 def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
@@ -11,7 +58,7 @@ def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
         tree2 (str): file name of tree2
         aln1 (str): file name of alignment 1
         aln2 (str): file name of alignment 2
-        MCC_file (str): name of mcc file
+        MCC_file (str): name of the MCC file written by TreeKnit (JSON or text, see `read_mccs`)
         fill_overhangs (bool, optional): fill terminal gaps of alignmens before concatenating. Defaults to True.
 
     Returns:
@@ -27,11 +74,7 @@ def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
     all_leaves = set.intersection(set([x.name for x in t1.get_terminals()]), set([x.name for x in t2.get_terminals()]))
 
     # read MCCs as lists of taxon names
-    MCCs = []
-    with open(MCC_file) as fh:
-        for line in fh:
-            if line.strip():
-                MCCs.append(line.strip().split(','))
+    MCCs = read_mccs(MCC_file, tree_labels=[tree_label(tree1), tree_label(tree2)])
 
     # read alignments and construct edge modified sequence arrays
     a1 = {s.id: s for s in AlignIO.read(aln1, 'fasta')}
