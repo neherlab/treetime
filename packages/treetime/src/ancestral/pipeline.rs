@@ -23,11 +23,7 @@ pub fn run(
   log: &dyn LogSink,
 ) -> Result<AncestralOutput, OperationError> {
   let plan = resolve_plan(params)?;
-  let options = ReconstructionOptions::new(
-    params.include_leaves,
-    params.impute_missing_data,
-    params.sample_from_profile,
-  );
+  let options = ReconstructionOptions::new(params.impute_missing_data, params.sample_from_profile);
   let mut rng = get_random_number_generator(params.seed);
   let branch_lengths = branch_lengths_or_zero(&input.branch_lengths());
   let partition = reconstruct_partition(

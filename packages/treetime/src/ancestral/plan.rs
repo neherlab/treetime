@@ -12,7 +12,6 @@ use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::sample::SampleMode;
-use crate::partition::marginal::sequences::TipStates;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::progress::{LogSink, StageSink};
 use crate::progress_warn;
@@ -37,16 +36,13 @@ pub(crate) enum ReconstructionPlan {
 }
 
 pub(crate) struct ReconstructionOptions {
-  pub(crate) tips: TipStates,
+  pub(crate) impute: bool,
   pub(crate) sample_mode: SampleMode,
 }
 
 impl ReconstructionOptions {
-  pub(crate) const fn new(include_leaves: bool, impute: bool, sample_mode: SampleMode) -> Self {
-    Self {
-      tips: TipStates { include_leaves, impute },
-      sample_mode,
-    }
+  pub(crate) const fn new(impute: bool, sample_mode: SampleMode) -> Self {
+    Self { impute, sample_mode }
   }
 }
 
@@ -103,7 +99,7 @@ pub(crate) fn reconstruct_partition(
 ) -> Result<AncestralPartition, Report> {
   match *plan {
     ReconstructionPlan::Fitch => {
-      reconstruct_fitch(graph, index, alphabet, node_inputs, options.tips, cancel, stages, log)
+      reconstruct_fitch(graph, index, alphabet, node_inputs, options.impute, cancel, stages, log)
     },
     ReconstructionPlan::Marginal {
       representation,
@@ -142,7 +138,7 @@ fn reconstruct_fitch(
   index: usize,
   alphabet: Alphabet,
   node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
-  tips: TipStates,
+  impute: bool,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
@@ -150,7 +146,7 @@ fn reconstruct_fitch(
   checkpoint(cancel, stages, "Fitch parsimony", 0.3)?;
   let mut partitions = vec![create_fitch_partition(graph, index, alphabet, node_inputs)?];
 
-  if tips.impute {
+  if impute {
     progress_warn!(
       log,
       "--impute-missing-data has no effect with --method-anc=parsimony: Fitch parsimony produces no \
@@ -185,7 +181,7 @@ fn reconstruct_marginal(
   Ok(AncestralPartition::Marginal {
     reconstruction,
     sampled,
-    impute: options.tips.impute,
+    impute: options.impute,
   })
 }
 

@@ -170,7 +170,7 @@ mod tests {
         .iter()
         .filter_map(|(&key, input)| input.seq.clone().map(|seq| (key, seq)))
         .collect();
-      let options = ReconstructionOptions::new(include_leaves, impute, SampleMode::Argmax);
+      let options = ReconstructionOptions::new(impute, SampleMode::Argmax);
       let partition = reconstruct_partition(
         &parse.graph,
         &plan,
@@ -294,7 +294,7 @@ mod tests {
         alphabet,
         &node_inputs,
         &branch_lengths_or_zero(&parse.branch_lengths),
-        &ReconstructionOptions::new(include_leaves, impute, SampleMode::Argmax),
+        &ReconstructionOptions::new(impute, SampleMode::Argmax),
         &mut get_random_number_generator(None),
         &NoopCancel,
         &NoopProgress,

@@ -19,7 +19,9 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::composition::Composition;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::{emitted_nodes, emitted_sequences_by_name, find_node_key_by_name, sparse_reconstruction};
+  use crate::test_utils::{
+    emitted_sequences_by_name, find_node_key_by_name, internal_node_keys, sparse_reconstruction,
+  };
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
@@ -175,7 +177,7 @@ mod tests {
 
     let actual = emitted_sequences_by_name(
       &names,
-      &emitted_nodes(&graph, false)?,
+      &internal_node_keys(&graph),
       &recon.sample_sequences(&graph, SampleMode::Argmax, &mut rand::thread_rng())?,
       |key| recon.node_sequence(&graph, false, key),
     )?;

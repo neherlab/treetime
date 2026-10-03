@@ -12,9 +12,8 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::partition::marginal::sample::SampleMode;
-  use crate::partition::marginal::sequences::TipStates;
   use crate::seq::alignment::node_seq_inputs;
-  use crate::test_utils::{emitted_nodes, emitted_sequences_by_name};
+  use crate::test_utils::{emitted_sequences_by_name, node_keys};
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -143,9 +142,9 @@ mod tests {
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     named_strings(
       names,
-      &emitted_nodes(graph, TIPS.include_leaves)?,
+      &node_keys(graph),
       &recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?,
-      |key| recon.node_sequence(graph, TIPS.impute, key),
+      |key| recon.node_sequence(graph, false, key),
     )
   }
 
@@ -165,16 +164,11 @@ mod tests {
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     named_strings(
       names,
-      &emitted_nodes(graph, TIPS.include_leaves)?,
+      &node_keys(graph),
       &recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?,
-      |key| recon.node_sequence(graph, TIPS.impute, key),
+      |key| recon.node_sequence(graph, false, key),
     )
   }
-
-  const TIPS: TipStates = TipStates {
-    include_leaves: true,
-    impute: false,
-  };
 
   fn named_strings(
     names: &BTreeMap<GraphNodeKey, Option<String>>,

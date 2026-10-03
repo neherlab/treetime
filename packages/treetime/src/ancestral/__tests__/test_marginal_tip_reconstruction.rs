@@ -12,9 +12,8 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::partition::marginal::sample::SampleMode;
-  use crate::partition::marginal::sequences::TipStates;
   use crate::seq::alignment::node_seq_inputs;
-  use crate::test_utils::{emitted_nodes, emitted_sequences_by_name};
+  use crate::test_utils::{emitted_sequences_by_name, node_keys};
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -168,12 +167,8 @@ mod tests {
     recon: &MarginalReconstruction,
     impute: bool,
   ) -> Result<BTreeMap<String, Seq>, Report> {
-    let tips = TipStates {
-      include_leaves: true,
-      impute,
-    };
     let sampled = recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?;
-    emitted_sequences_by_name(names, &emitted_nodes(graph, tips.include_leaves)?, &sampled, |key| {
+    emitted_sequences_by_name(names, &node_keys(graph), &sampled, |key| {
       recon.node_sequence(graph, impute, key)
     })
   }

@@ -15,7 +15,7 @@ mod tests {
   use crate::partition::marginal::sample::SampleMode;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::node_seq_inputs;
-  use crate::test_utils::{emitted_nodes, emitted_sequences_by_name};
+  use crate::test_utils::{emitted_sequences_by_name, internal_node_keys};
   use eyre::Report;
   use indoc::indoc;
   use treetime_graph::graph::Graph;
@@ -147,7 +147,7 @@ mod tests {
 
     let actual = emitted_sequences_by_name(
       &names,
-      &emitted_nodes(&graph, false)?,
+      &internal_node_keys(&graph),
       &recon.sample_sequences(&graph, SampleMode::Argmax, &mut rand::thread_rng())?,
       |key| recon.node_sequence(&graph, false, key),
     )?;

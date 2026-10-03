@@ -18,7 +18,7 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{
-    dense_reconstruction, emitted_nodes, emitted_sequences_by_name, find_node_key_by_name, sparse_reconstruction,
+    dense_reconstruction, emitted_sequences_by_name, find_node_key_by_name, internal_node_keys, sparse_reconstruction,
   };
   use eyre::Report;
   use indoc::indoc;
@@ -357,7 +357,7 @@ mod tests {
     recon: &MarginalReconstruction,
   ) -> Result<BTreeMap<String, Seq>, Report> {
     let sampled = recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?;
-    emitted_sequences_by_name(names, &emitted_nodes(graph, false)?, &sampled, |key| {
+    emitted_sequences_by_name(names, &internal_node_keys(graph), &sampled, |key| {
       recon.node_sequence(graph, false, key)
     })
   }

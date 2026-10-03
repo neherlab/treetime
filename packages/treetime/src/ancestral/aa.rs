@@ -33,11 +33,7 @@ pub fn reconstruct_aa(
   log: &dyn LogSink,
 ) -> Result<AaNodeData, Report> {
   let mut rng = get_random_number_generator(params.seed);
-  let options = ReconstructionOptions::new(
-    params.include_leaves,
-    params.impute_missing_data,
-    params.sample_from_profile,
-  );
+  let options = ReconstructionOptions::new(params.impute_missing_data, params.sample_from_profile);
   let representation = Representation::resolve(params.dense);
   let branch_lengths = branch_lengths_or_zero(branch_lengths);
   let mut aa_node_data = AaNodeData::default();

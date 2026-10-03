@@ -65,15 +65,12 @@ impl SeqSink for RecordingSeqSink {
   }
 }
 
-pub(crate) fn emitted_nodes(graph: &Graph, include_leaves: bool) -> Result<Vec<GraphNodeKey>, Report> {
-  let mut emitted = Vec::new();
-  graph.iter_depth_first_preorder_forward(|node| {
-    if include_leaves || !node.is_leaf {
-      emitted.push(node.key);
-    }
-    Ok(())
-  })?;
-  Ok(emitted)
+pub(crate) fn internal_node_keys(graph: &Graph) -> Vec<GraphNodeKey> {
+  graph.get_internal_nodes().map(|node| node.key()).collect()
+}
+
+pub(crate) fn node_keys(graph: &Graph) -> Vec<GraphNodeKey> {
+  graph.get_nodes().map(|node| node.key()).collect()
 }
 
 pub(crate) fn emitted_sequences_by_name(
