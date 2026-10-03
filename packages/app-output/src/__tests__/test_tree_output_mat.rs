@@ -15,6 +15,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
+  use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
   use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
   use treetime_graph::graph::Graph;
 
@@ -50,8 +51,8 @@ mod tests {
       Sub::new(helpers::c(b'T'), 0_usize, helpers::c(b'C'))?,
     );
 
-    let first = mat_mutation(&first, Some("A"), "inner")?;
-    let recurrent = mat_mutation(&recurrent, Some("A"), "leaf")?;
+    let first = mat_mutation(&first, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "inner")?;
+    let recurrent = mat_mutation(&recurrent, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "leaf")?;
     assert_eq!((0, 0, vec![3]), (first.ref_nuc, first.par_nuc, first.mut_nuc));
     assert_eq!(
       (0, 3, vec![1]),
@@ -66,7 +67,8 @@ mod tests {
       MutationTrack::Nucleotide,
       Sub::new(helpers::c(b'A'), 0_usize, helpers::c(b'T'))?,
     );
-    let error = mat_mutation(&mutation, None, "A").expect_err("MAT must require a global reference");
+    let error = mat_mutation(&mutation, None, &Alphabet::new(AlphabetName::Nuc)?, "A")
+      .expect_err("MAT must require a global reference");
     assert!(error.to_string().contains("requires a root nucleotide reference"));
     Ok(())
   }
@@ -77,7 +79,8 @@ mod tests {
       MutationTrack::Nucleotide,
       Sub::new(helpers::c(b'A'), 1_usize, helpers::c(b'T'))?,
     );
-    let error = mat_mutation(&mutation, Some("A"), "A").expect_err("MAT must check the reference length");
+    let error = mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A")
+      .expect_err("MAT must check the reference length");
     assert!(error.to_string().contains("outside the root nucleotide reference"));
     Ok(())
   }
@@ -89,7 +92,8 @@ mod tests {
       MutationTrack::Nucleotide,
       Sub::new(helpers::c(b'A'), position, helpers::c(b'T'))?,
     );
-    let error = mat_mutation(&mutation, Some("A"), "A").expect_err("MAT must check its coordinate range");
+    let error = mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A")
+      .expect_err("MAT must check its coordinate range");
     assert!(error.to_string().contains("exceeds the UShER MAT i32 coordinate range"));
     Ok(())
   }
@@ -98,7 +102,7 @@ mod tests {
   #[rstest]
   #[case::root_reference(("N", b'A', b'T'), "root reference nucleotide 'N'")]
   #[case::parent(        ("A", b'N', b'T'), "parent nucleotide 'N'")]
-  #[case::child(         ("A", b'A', b'N'), "child nucleotide 'N'")]
+  #[case::child_gap(     ("A", b'A', b'.'), "child nucleotide '.'")]
   #[trace]
   fn test_tree_output_mat_rejects_noncanonical_nucleotide(
     #[case] (reference, parent, child): (&str, u8, u8),
@@ -108,8 +112,27 @@ mod tests {
       MutationTrack::Nucleotide,
       Sub::new(helpers::c(parent), 0_usize, helpers::c(child))?,
     );
-    let error = mat_mutation(&mutation, Some(reference), "A").expect_err("MAT must accept only A, C, G, or T");
+    let error = mat_mutation(&mutation, Some(reference), &Alphabet::new(AlphabetName::Nuc)?, "A").expect_err("MAT must accept only A, C, G, or T");
     assert!(error.to_string().contains(expected));
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::canonical(b'T', vec![3])]
+  #[case::ambiguous(b'K', vec![2, 3])]
+  #[case::unknown(  b'N', vec![0, 1, 2, 3])]
+  #[trace]
+  fn test_tree_output_mat_encodes_child_state_as_its_canonical_nucleotides(
+    #[case] child: u8,
+    #[case] expected: Vec<i32>,
+  ) -> Result<(), Report> {
+    let mutation = Mutation::substitution(
+      MutationTrack::Nucleotide,
+      Sub::new(helpers::c(b'C'), 0_usize, helpers::c(child))?,
+    );
+    let actual = mat_mutation(&mutation, Some("C"), &Alphabet::new(AlphabetName::Nuc)?, "A")?;
+    assert_eq!((1, 1, expected), (actual.ref_nuc, actual.par_nuc, actual.mut_nuc));
     Ok(())
   }
 

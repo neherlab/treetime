@@ -4,6 +4,7 @@ use maplit::{btreemap, btreeset};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, VecDeque};
 use std::path::PathBuf;
+use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -320,6 +321,7 @@ where
   graph
     .get_exactly_one_root()
     .wrap_err("When converting graph to UShER MAT")?;
+  let alphabet = Alphabet::new(AlphabetName::Nuc)?;
   let mut node_mutations = vec![];
   let mut condensed_nodes = vec![];
   let mut metadata = vec![];
@@ -333,7 +335,7 @@ where
       .unwrap_or_default();
     let mutations = mutations
       .iter()
-      .map(|mutation| mat_mutation(mutation, reference, &name))
+      .map(|mutation| mat_mutation(mutation, reference, &alphabet, &name))
       .collect::<Result<Vec<_>, _>>()?;
     node_mutations.push(UsherMutationList { mutation: mutations });
     condensed_nodes.push(UsherTreeNode {
@@ -356,6 +358,7 @@ where
 pub(crate) fn mat_mutation(
   mutation: &Mutation,
   reference: Option<&str>,
+  alphabet: &Alphabet,
   node_name: &str,
 ) -> Result<UsherMutation, Report> {
   if mutation.track != MutationTrack::Nucleotide {
@@ -386,9 +389,22 @@ pub(crate) fn mat_mutation(
     position,
     ref_nuc: mat_nucleotide(reference_state, node_name, "root reference")?,
     par_nuc: mat_nucleotide(substitution.reff(), node_name, "parent")?,
-    mut_nuc: vec![mat_nucleotide(substitution.qry(), node_name, "child")?],
+    mut_nuc: mat_nucleotide_states(substitution.qry(), alphabet, node_name)?,
     chromosome: String::new(),
   })
+}
+
+fn mat_nucleotide_states(nucleotide: AsciiChar, alphabet: &Alphabet, node_name: &str) -> Result<Vec<i32>, Report> {
+  let states = alphabet.canonical_states(nucleotide);
+  if states.is_empty() {
+    return make_error!(
+      "Node '{node_name}' has child nucleotide '{nucleotide}', but UShER MAT accepts only A, C, G, T, IUPAC ambiguity codes, or N"
+    );
+  }
+  states
+    .iter()
+    .map(|state| mat_nucleotide(state, node_name, "child"))
+    .collect()
 }
 
 fn mat_nucleotide(nucleotide: AsciiChar, node_name: &str, role: &str) -> Result<i32, Report> {
