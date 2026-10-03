@@ -66,19 +66,11 @@ Commands: all. `--config <CONFIG>` renders with no help text, because `struct Co
 
 `timetree`: default 2, "maximal number" (lowercase). `optimize`: default 10, "Maximum number" (capitalized). Different defaults are intentional but the descriptions diverge without reason.
 
-### ~~I6: `--confidence` has incompatible semantics across commands~~ (resolved)
-
-Resolved by splitting into `--output-confidence-tsv` (timetree) and `--output-confidence-csv` (mugration, alias `--confidence`).
-
-### I7: Capitalization inconsistent across all commands
+### I6: Capitalization inconsistent across all commands
 
 Some descriptions start lowercase ("don't reroot the tree", "ignore tips", "excess variance", "maximal number", "use an autocorrelated", "rescale branch lengths"), others uppercase ("If set to 'input'", "Method used for", "Length of the sequence").
 
-### ~~I8: `--output-selection` shows full superset regardless of command~~ (resolved)
-
-Resolved by per-command selection enums (`AncestralOutputSelection`, `TimetreeOutputSelection`, etc.) that restrict `--output-selection` to only the outputs the command produces.
-
-### I9: `--branch-length-mode` description differs subtly
+### I7: `--branch-length-mode` description differs subtly
 
 `timetree`: "Branch lengths optimized by treetime are only accurate at short evolutionary distances". `clock`: "Note that branch lengths optimized by treetime are only accurate at short evolutionary distances".
 
