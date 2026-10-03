@@ -1,0 +1,5 @@
+tree: "data/zika/20/tree.nwk"
+metadata: "data/zika/20/metadata.tsv"
+keep_root: true
+reroot: "oldest"
+output_all: "out"

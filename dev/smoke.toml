@@ -212,12 +212,12 @@ args = "--method-anc=marginal --reconstruct-tip-states"
 
 [[ancestral]]
 variant = "include-leaves-impute"
-datasets = ["flu/h3n2/20"]
+datasets = ["flu/h3n2/20", "ebola/20"]
 args = "--method-anc=marginal --impute-missing-data"
 
 [[ancestral]]
 variant = "gtr-iterations-3"
-datasets = ["flu/h3n2/20"]
+datasets = ["flu/h3n2/20", "rsv/a/20"]
 args = "--method-anc=marginal --gtr-iterations=3"
 
 [[ancestral]]
@@ -266,6 +266,19 @@ outputs = [
   "ancestral.reconstructed-aa.M2-2.fasta",
   "ancestral.reconstructed-aa.L.fasta",
 ]
+
+# The amino-acid path with Fitch parsimony
+[[ancestral]]
+variant = "translations-parsimony"
+datasets = ["rsv/a/20"]
+args = "--method-anc=parsimony --translations=data/rsv/a/20/translations/%GENE.fasta.xz --cdses=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
+
+# The CDSes from the GFF3 annotation instead of `--cdses`
+[[ancestral]]
+variant = "annotation"
+datasets = ["rsv/a/20"]
+args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --annotation={dataset}/annotation.gff3"
+fail = "kb/issues/M-io-gff3-rejects-unstranded-cds.md"
 
 # Input formats of the reference implementation: a Nexus tree and a PHYLIP alignment
 [[ancestral]]
@@ -332,6 +345,14 @@ fail.'mpox/clade-ii/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md
 fail.'mpox/clade-ii/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
 fail.'rsv/a/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
 fail.'rsv/a/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
+
+# MAT output with the transitions of ambiguous states, on datasets without indels
+[[ancestral]]
+variant = "mat-report-ambiguous"
+datasets = ["flu/h3n2/20", "tb/20", "zika/20"]
+args = "--report-ambiguous"
+selection = "mat-pb,mat-json"
+outputs = ["ancestral.mat.pb", "ancestral.mat.json"]
 
 
 [[clock]]
@@ -427,6 +448,15 @@ args = "--variance-offset=0.1"
 variant = "date-column"
 datasets = ["dengue/20"]
 args = "--date-column=date"
+
+# A tree without branch lengths
+[[clock]]
+variant = "tree-without-branch-lengths"
+datasets = ["zika/20"]
+standalone = true
+args = "--tree={data}/smoke/zika-20-tree-without-branch-lengths.nwk --dates={metadata} --output-all={out}"
+outputs = ["clock.nwk"]
+fail = "kb/issues/M-clock-regression-panics-on-missing-branch-length.md"
 
 
 [[homoplasy]]
@@ -730,6 +760,13 @@ args = "--branch-length-mode=input"
 selection = "nwk,nexus,auspice,augur-node-data,clock-model"
 fail = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
 
+# Input branch lengths with the default outputs
+[[timetree]]
+variant = "branch-input-all-outputs"
+datasets = ["flu/h3n2/20", "ebola/20"]
+args = "--branch-length-mode=input"
+fail = "kb/issues/M-timetree-input-branch-lengths-reject-default-outputs.md"
+
 [[timetree]]
 variant = "input-keeproot"
 datasets = ["ebola/362"]
@@ -777,6 +814,21 @@ args = "--keep-polytomies"
 variant = "resolve-polytomies"
 datasets = ["flu/h3n2/20", "ebola/20"]
 args = "--resolve-polytomies --max-iter=3"
+
+# Polytomy resolution on a tree with a single-child node
+[[timetree]]
+variant = "resolve-polytomies-single-child"
+datasets = ["flu/h3n2/20"]
+standalone = true
+args = "--tree={data}/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --resolve-polytomies"
+outputs = ["timetree.nwk"]
+
+# A fixed clock rate far below the substitution rate places the root before 1 CE
+[[timetree]]
+variant = "clock-rate-1e-6"
+datasets = ["zika/20"]
+args = "--clock-rate=1e-6"
+fail = "kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md"
 
 [[timetree]]
 variant = "coalescent"
@@ -1013,6 +1065,14 @@ fail.'mpox/clade-ii/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.m
 fail.'rsv/a/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
 fail.'rsv/a/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
 
+# MAT output with the transitions of ambiguous states, on datasets without indels
+[[timetree]]
+variant = "mat-report-ambiguous"
+datasets = ["flu/h3n2/20", "tb/20", "zika/20"]
+args = "--report-ambiguous"
+selection = "mat-pb,mat-json"
+outputs = ["timetree.mat.pb", "timetree.mat.json"]
+
 
 # `treetime --help` and `treetime <subcommand> --help`; the printed text is compared with the baseline
 [help]
@@ -1070,3 +1130,10 @@ args = "pipeline --config={data}/zika/20/pipeline.yaml --check"
 variant = "pipeline-steps-timetree"
 args = "pipeline --config={data}/zika/20/pipeline.yaml --steps=timetree"
 sandbox = true
+
+# A config file with settings that conflict on the command line
+[[cli]]
+variant = "config-keep-root-and-reroot"
+args = "clock --config={data}/smoke/clock-keep-root-and-reroot.yaml"
+sandbox = true
+fail = "kb/issues/M-config-file-values-skip-cli-conflict-rules.md"
