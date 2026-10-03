@@ -124,6 +124,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     type EdgeSubs = BTreeMap<GraphEdgeKey, Vec<Sub>>;
 
@@ -256,7 +257,7 @@ mod tests {
           }
           let derived_qry = actual[&edge.key()].iter().find(|sub| sub.pos() == pos).map(Sub::qry);
           let expected_derived = (parent[pos] != state).then_some(state);
-          pretty_assertions::assert_eq!(expected_derived, derived_qry, "edge {:?} position {pos}", edge.key());
+          assert_eq!(expected_derived, derived_qry, "edge {:?} position {pos}", edge.key());
           if alphabet.is_canonical(parent[pos]) {
             let engine_state = expected[&edge.key()]
               .iter()
@@ -312,7 +313,7 @@ mod tests {
         for sub in &subs {
           applied[sub.pos()] = sub.qry();
         }
-        pretty_assertions::assert_eq!(
+        assert_eq!(
           node_sequences[&edge.target()].as_str(),
           applied.as_str(),
           "parent sequence plus the mutations of the edge must give the child sequence of {}",

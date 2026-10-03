@@ -5,6 +5,7 @@ mod tests {
   use crate::ancestral::mask::create_mask;
   use crate::ancestral::params::AncestralParams;
   use crate::ancestral::params::MethodAncestral;
+  use crate::ancestral::pipeline;
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::marginal::sample::SampleMode;
@@ -76,7 +77,7 @@ mod tests {
       mask,
     };
 
-    let result = crate::ancestral::pipeline::run(
+    let result = pipeline::run(
       &params,
       &input,
       &mut RecordingSeqSink::default(),
@@ -143,7 +144,7 @@ mod tests {
       };
 
       let mut sink = RecordingSeqSink::default();
-      crate::ancestral::pipeline::run(&params, &input, &mut sink, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      pipeline::run(&params, &input, &mut sink, &NoopCancel, &NoopProgress, &NoopProgress)?;
       let captured = sink
         .items
         .into_iter()

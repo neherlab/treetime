@@ -485,7 +485,6 @@ mod tests {
     Ok(())
   }
 
-  #[rustfmt::skip]
   #[test]
   fn test_marginal_sparse_parallel_pipeline_is_thread_count_deterministic() -> Result<(), Report> {
     let expected = helpers::run_thread_determinism_case(1)?;
