@@ -1,3 +1,4 @@
+use crate::rtt_chart::{PointsResult, gather_points};
 use eyre::Report;
 use plotters::coord::Shift;
 use plotters::coord::types::RangedCoordf32;
@@ -5,8 +6,6 @@ use plotters::prelude::*;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime_utils::fmt::float::float_to_significant_digits;
-
-use crate::rtt_chart::{PointsResult, gather_points};
 
 const NORM_POINT_COLOR: RGBColor = RGBColor(8, 232, 140);
 const OUTLIER_POINT_COLOR: RGBColor = RGBColor(255, 105, 97);

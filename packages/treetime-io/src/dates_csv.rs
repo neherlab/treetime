@@ -3,14 +3,13 @@ use csv::{ReaderBuilder, Trim};
 use eyre::{Report, WrapErr};
 use std::io::BufRead;
 use std::path::Path;
+pub use treetime_primitives::date::{DateConstraint, DateExact, DateRange, DateValue, DatesMap};
 use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::datetime::parse_date::{parse_date, parse_date_range};
 use treetime_utils::datetime::parse_uncertain_date::parse_date_uncertain;
 use treetime_utils::datetime::year_fraction::{date_range_to_year_fraction_range, date_to_year_fraction};
 use treetime_utils::io::file::open_file_or_stdin;
 use treetime_utils::{make_internal_report, make_report, vec_of_owned};
-
-pub use treetime_primitives::date::{DateConstraint, DateExact, DateRange, DateValue, DatesMap};
 
 #[derive(Debug)]
 pub struct MetadataTable {

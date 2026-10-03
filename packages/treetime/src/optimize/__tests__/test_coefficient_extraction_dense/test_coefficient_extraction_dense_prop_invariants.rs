@@ -5,6 +5,7 @@
 
 #[cfg(test)]
 mod tests {
+  use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
   use crate::optimize::dense_eval::evaluate_dense_contribution;
@@ -12,8 +13,6 @@ mod tests {
   use crate::partition::optimize;
   use crate::partition::optimize::dense::get_coefficients;
   use ndarray::{Array1, Axis, array, concatenate};
-
-  use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
 
   fn test_gtr() -> GTR {
     jc69(JC69Params::default()).expect("JC69 creation failed")

@@ -5,12 +5,11 @@ mod tests {
   use crate::optimize::pipeline::{OptimizeInput, run};
   use crate::progress::NoopProgress;
   use eyre::Report;
-  use pretty_assertions::assert_eq;
-  use rstest::rstest;
-
   use helpers::{
     assert_branch_lengths_valid, leaf_names, load, load_with_unary_root, params_with, root_child_keys, root_key,
   };
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
   #[test]
   fn test_optimize_pipeline_reroot_min_dev_changes_root() -> Result<(), Report> {

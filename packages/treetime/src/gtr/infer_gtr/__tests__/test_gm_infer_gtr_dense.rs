@@ -1,8 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
-
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -11,16 +8,17 @@ mod tests {
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::pretty_assert_ulps_eq;
+  use crate::progress::NoopProgress;
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
-  use std::sync::LazyLock;
-  use treetime_graph::graph::Graph;
-
   use rstest::rstest;
   use serde::Deserialize;
   use std::collections::BTreeMap;
   use std::fs;
   use std::path::{Path, PathBuf};
+  use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::{read_many_fasta_path, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
   use treetime_primitives::AlignmentRecord;

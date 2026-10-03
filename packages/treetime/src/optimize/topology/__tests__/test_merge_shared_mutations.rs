@@ -7,17 +7,12 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-
-  use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
-
   use crate::gtr::jc_distance::jukes_cantor_distance;
+  use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-
   use crate::seq::mutation::Sub;
-  use crate::test_utils::deletion;
-  use crate::test_utils::fitch_edge_obs;
-  use crate::test_utils::{find_edge_key, find_node_key_by_name};
+  use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs};
   use approx::assert_relative_eq;
   use eyre::Report;
   use maplit::btreemap;

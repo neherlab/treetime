@@ -2,16 +2,14 @@
 pub(super) mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::fitch::ancestral_reconstruction_fitch;
-  use crate::partition::fitch::passes::{attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward};
-  use crate::test_utils::{internal_node_keys, node_keys};
-
   use crate::o;
   use crate::partition::fitch::partition::PartitionFitch;
-
+  use crate::partition::fitch::passes::{attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward};
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
-
+  use crate::test_utils::{internal_node_keys, node_keys};
   use eyre::Report;
+  use helpers::*;
   use indoc::indoc;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -20,8 +18,6 @@ pub(super) mod tests {
   use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-
-  use helpers::*;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;

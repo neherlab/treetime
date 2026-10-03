@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::gaussian::*;
-  use std::f64::consts::PI;
-
   use approx::assert_ulps_eq;
   use ndarray::array;
+  use std::f64::consts::PI;
 
   #[test]
   fn test_gaussian_product_params_single() {

@@ -11,15 +11,12 @@ mod tests {
   };
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
-
-  use crate::test_utils::deletion;
-  use crate::test_utils::sparse_reconstruction_mut;
+  use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use helpers::manual_total_indel_log_lh;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
-
-  use helpers::manual_total_indel_log_lh;
 
   #[test]
   fn test_run_optimize_loop_records_lh_history() -> Result<(), Report> {

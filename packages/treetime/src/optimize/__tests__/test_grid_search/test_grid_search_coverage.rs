@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};
   use crate::optimize::zero_boundary::grid_search_branch_lengths;
   use approx::assert_abs_diff_eq;
   use ndarray::Array2;
   use rstest::rstest;
-
-  use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};
 
   #[test]
   fn test_grid_search_branch_lengths_zero_branch_covers_full_range() {

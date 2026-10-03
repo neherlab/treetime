@@ -5,12 +5,11 @@ mod tests {
   use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
+  use helpers::row;
   use maplit::{btreemap, btreeset};
   use std::collections::BTreeMap;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::pretty_assert_eq;
-
-  use helpers::row;
 
   #[test]
   fn test_gather_clock_regression_results_reports_every_node_against_the_clock_line() -> Result<(), Report> {

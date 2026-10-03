@@ -1,5 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_dense_sparse_equivalence_support::tests::{
+    TREE_NEWICK, gap_free_alignment, setup_dense_only, setup_sparse_only,
+  };
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
@@ -7,10 +10,6 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
-
-  use super::super::test_dense_sparse_equivalence_support::tests::{
-    TREE_NEWICK, gap_free_alignment, setup_dense_only, setup_sparse_only,
-  };
 
   #[rustfmt::skip]
   #[rstest]

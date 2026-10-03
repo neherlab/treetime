@@ -27,12 +27,11 @@ mod tests {
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use eyre::Report;
   use helpers::build_timetree_setup;
-  use treetime_graph::graph::Graph;
-
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;

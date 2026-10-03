@@ -18,9 +18,7 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::run_loop::{apply_initial_guess_mode, run_optimize_loop};
   use crate::progress::NoopProgress;
-
-  use crate::test_utils::deletion;
-  use crate::test_utils::sparse_reconstruction_mut;
+  use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;

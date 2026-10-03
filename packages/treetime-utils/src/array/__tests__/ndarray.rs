@@ -10,8 +10,6 @@ mod tests {
     reason = "expected values keep all digits of the oracle"
   )]
 
-  use std::sync::LazyLock;
-
   use crate::array::ndarray::*;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
@@ -19,6 +17,7 @@ mod tests {
   use rand::SeedableRng;
   use rand_isaac::Isaac64Rng;
   use rstest::rstest;
+  use std::sync::LazyLock;
 
   static INPUT: LazyLock<Array2<f64>> = LazyLock::new(|| {
     array![

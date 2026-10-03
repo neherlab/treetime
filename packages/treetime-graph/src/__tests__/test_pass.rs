@@ -1,5 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::{
+    child_order_by_parent, edge_values_by_child_name, fixture_chain, fixture_ordering, fixture_tree,
+    own_value_pass_values, run_backward_sum, run_forward_sum, values_by_name,
+  };
   use crate::graph::Graph;
   use crate::node::GraphNodeKey;
   use crate::pass::{GraphMapOutputs, GraphPass, GraphPassNodeOutput};
@@ -9,11 +13,6 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_utils::{assert_error, make_report, o};
-
-  use self::helpers::{
-    child_order_by_parent, edge_values_by_child_name, fixture_chain, fixture_ordering, fixture_tree,
-    own_value_pass_values, run_backward_sum, run_forward_sum, values_by_name,
-  };
 
   #[test]
   fn test_pass_map_backward_collects_returned_subtree_sums() -> Result<(), Report> {

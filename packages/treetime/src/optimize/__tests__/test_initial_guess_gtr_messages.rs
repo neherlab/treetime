@@ -11,15 +11,14 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
+  use ndarray::array;
   use std::collections::BTreeMap;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_primitives::AlignmentRecord;
-
-  use ndarray::array;
-  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 

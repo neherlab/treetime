@@ -1,7 +1,6 @@
-use std::sync::LazyLock;
-
 use num_traits::Float;
 use pretty_dtoa::{FmtFloatConfig, dtoa};
+use std::sync::LazyLock;
 
 static FLOAT_CONFIG: LazyLock<FmtFloatConfig> =
   LazyLock::new(|| FmtFloatConfig::default().add_point_zero(true).radix_point('.').round());

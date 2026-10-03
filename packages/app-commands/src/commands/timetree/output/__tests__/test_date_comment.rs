@@ -5,10 +5,8 @@ mod tests {
   use app_output::EdgeMutationCommentProvider;
   use eyre::Report;
   use indoc::indoc;
-
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-
   use treetime::seq::mutation::Sub;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;

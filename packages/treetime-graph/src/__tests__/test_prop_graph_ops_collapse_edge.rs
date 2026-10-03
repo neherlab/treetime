@@ -1,9 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use proptest::prelude::*;
-
   use self::generators::gen_tree_with_edge;
   use self::helpers::{adjacency_from_edges, adjacency_from_nodes, build_tree, children_by_node};
+  use proptest::prelude::*;
 
   proptest! {
     #[test]

@@ -7,14 +7,13 @@ mod tests {
   use crate::seq::mutation::{Mutation, MutationTrack, Sub};
   use crate::test_utils::find_edge_key;
   use eyre::Report;
+  use helpers::*;
   use itertools::Itertools;
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AlignmentRecord, AsciiChar, Seq};
-
-  use helpers::*;
 
   #[test]
   fn test_prune_pipeline_edge_mutations_are_hand_derived_fitch_substitutions() -> Result<(), Report> {

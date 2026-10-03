@@ -1,22 +1,15 @@
 #[cfg(test)]
 mod tests {
 
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
-
+  use crate::optimize::__tests__::test_topology_cleanup::tests::helpers::*;
   use crate::optimize::params::TopologyOps;
   use crate::optimize::run_loop::prune_and_merge_in_loop;
-
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::storage::sparse::SparseEdgeObs;
-
-  use crate::test_utils::fitch_edge_obs;
-  use crate::test_utils::{find_edge_key, find_node_key_by_name, sparse_reconstruction};
+  use crate::test_utils::{find_edge_key, find_node_key_by_name, fitch_edge_obs, sparse_reconstruction};
   use eyre::Report;
-
   use pretty_assertions::assert_eq;
-
   use treetime_io::nwk::nwk_read_str;
-
-  use crate::optimize::__tests__::test_topology_cleanup::tests::helpers::*;
 
   #[test]
   fn test_optimize_prune_and_merge_empty_list() -> Result<(), Report> {

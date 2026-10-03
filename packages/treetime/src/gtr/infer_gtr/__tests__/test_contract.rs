@@ -14,22 +14,20 @@ mod tests {
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::seq::alignment::node_seq_inputs;
-  use pretty_assertions::assert_eq;
-
   use eyre::Report;
   use indoc::indoc;
-  use std::sync::LazyLock;
-  use treetime_graph::graph::Graph;
-  use treetime_utils::{
-    pretty_assert_array_diag_abs, pretty_assert_array_nonneg, pretty_assert_array_positive, pretty_assert_ulps_eq,
-  };
-
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
+  use treetime_utils::{
+    pretty_assert_array_diag_abs, pretty_assert_array_nonneg, pretty_assert_array_positive, pretty_assert_ulps_eq,
+  };
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 

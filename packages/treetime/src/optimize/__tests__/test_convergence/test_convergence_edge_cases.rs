@@ -1,13 +1,12 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_convergence_support::tests::{compute_total_lh, setup_reconstruction, simple_alignment};
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
   use crate::optimize::params::BranchOptMethod;
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
-
-  use super::super::test_convergence_support::tests::{compute_total_lh, setup_reconstruction, simple_alignment};
 
   #[rustfmt::skip]
   #[rstest]

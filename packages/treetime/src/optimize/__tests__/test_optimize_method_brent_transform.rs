@@ -9,22 +9,16 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_reconstruction, simple_alignment,
   };
+  use crate::optimize::__tests__::test_optimize_method::tests::helpers::*;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
-
   use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
   use crate::optimize::method_brent::{brent_bracket, brent_log_inner, brent_sqrt_inner};
-
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::zero_boundary::min_branch_length_for_indels;
-
   use eyre::Report;
-
   use rstest::rstest;
-
   use treetime_io::nwk::nwk_read_str;
-
-  use crate::optimize::__tests__::test_optimize_method::tests::helpers::*;
 
   #[test]
   fn test_optimize_method_brent_sqrt_transform_round_trip() -> Result<(), Report> {

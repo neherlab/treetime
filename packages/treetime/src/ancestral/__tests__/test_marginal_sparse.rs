@@ -6,8 +6,6 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::seq::alignment::node_seq_inputs;
-
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
@@ -17,6 +15,7 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::pretty_assert_ulps_eq;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::composition::Composition;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{
@@ -24,13 +23,12 @@ mod tests {
   };
   use eyre::Report;
   use indoc::indoc;
-  use treetime_graph::graph::Graph;
-
   use ndarray::prelude::*;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;

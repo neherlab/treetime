@@ -5,6 +5,7 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, PruneOutputSelection};
   use eyre::Report;
+  use helpers::*;
   use pretty_assertions::assert_eq;
   use std::collections::{BTreeMap, BTreeSet};
   use std::path::Path;
@@ -14,8 +15,6 @@ mod tests {
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
   use treetime_io::usher_mat::UsherTree;
   use treetime_utils::io::json::json_read_file;
-
-  use helpers::*;
 
   #[test]
   fn test_prune_auspice_and_mat_carry_the_same_per_edge_mutations() -> Result<(), Report> {

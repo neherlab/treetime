@@ -7,17 +7,12 @@
 mod tests {
 
   use crate::gtr::get_gtr::{JC69Params, jc69};
-
   use crate::optimize::indel::poisson_indel_log_lh;
   use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
-
   use crate::optimize::method_newton::{chain_rule_log, chain_rule_sqrt};
-
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
-
   use approx::assert_abs_diff_eq;
-
   use ndarray::array;
   use rstest::rstest;
 

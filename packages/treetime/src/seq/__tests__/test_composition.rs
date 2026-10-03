@@ -2,10 +2,8 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::seq::composition::Composition;
-
   use crate::seq::mutation::Sub;
-  use crate::test_utils::deletion;
-  use crate::test_utils::insertion;
+  use crate::test_utils::{deletion, insertion};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;

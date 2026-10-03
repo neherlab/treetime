@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_newton_convergence_support::tests::make_dense_contribution;
   use crate::optimize::likelihood::evaluate_with_indels;
   use crate::optimize::method_newton::newton_tolerance_t;
   use ndarray::array;
   use num::clamp;
-
-  use super::super::test_newton_convergence_support::tests::make_dense_contribution;
 
   #[test]
   fn test_newton_iteration_converges_within_bounds() {

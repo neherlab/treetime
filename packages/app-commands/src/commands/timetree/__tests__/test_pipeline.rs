@@ -9,7 +9,6 @@ mod tests {
   use eyre::{Report, WrapErr};
   use helpers::count_leaves;
   use std::fs::read_to_string;
-
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
   use treetime::timetree::coalescent::{CoalescentOutput, CoalescentOutputMode};

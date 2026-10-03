@@ -19,21 +19,19 @@ pub(super) mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use serde_json::Value;
   use serde_json::json;
   use std::collections::BTreeMap;
-  use treetime_utils::{assert_error, o};
-
-  use serde_json::Value;
   use tempfile::TempDir;
   use treetime::ancestral::aa::AaNodeData;
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
-
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
   use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
   use treetime_primitives::{AsciiChar, Seq};
   use treetime_utils::io::json::{JsonPretty, json_read_file, json_read_str, json_write_str};
+  use treetime_utils::{assert_error, o};
 
   #[test]
   fn test_tree_output_ancestral_models_preserve_semantics() -> Result<(), Report> {

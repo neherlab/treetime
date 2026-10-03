@@ -5,14 +5,13 @@ mod tests {
   use crate::o;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
+  use helpers::setup_reroot_test_graph;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
-
-  use helpers::setup_reroot_test_graph;
 
   #[test]
   fn test_remove_node_if_trivial_simple() -> Result<(), Report> {

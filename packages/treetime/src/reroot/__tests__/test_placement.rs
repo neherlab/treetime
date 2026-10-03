@@ -3,12 +3,11 @@ mod tests {
   use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves, root_moves};
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
+  use helpers::{Expected, edge_fixture};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::assert_error;
-
-  use helpers::{Expected, edge_fixture};
 
   #[rustfmt::skip]
   #[rstest]

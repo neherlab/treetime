@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::ancestral::__tests__::test_fitch::tests::helpers::*;
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::fitch::passes::compress_sequences;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
-
-  use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
@@ -15,17 +15,13 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-
   use treetime_graph::graph::Graph;
-
   use treetime_graph::reroot::{
     RerootResult, apply_reroot_topology, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AlignmentRecord, AsciiChar};
-
-  use crate::ancestral::__tests__::test_fitch::tests::helpers::*;
   use treetime_utils::vec_of_owned;
 
   #[test]

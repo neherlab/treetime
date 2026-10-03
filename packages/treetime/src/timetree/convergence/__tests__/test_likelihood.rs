@@ -10,8 +10,9 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::progress::NoopProgress;
-  use crate::test_utils::{constraint_coalescent_node_times, empty_time_inference};
-  use crate::test_utils::{dense_partition_with_constant_leaves, find_node_key_by_name};
+  use crate::test_utils::{
+    constraint_coalescent_node_times, dense_partition_with_constant_leaves, empty_time_inference, find_node_key_by_name,
+  };
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::convergence::likelihood::{
     compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,

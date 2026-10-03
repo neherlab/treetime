@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::optimize::dense::get_coefficients;
   use ndarray::array;
   use treetime_utils::pretty_assert_ulps_eq;
-
-  use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
 
   #[test]
   fn test_get_coefficients_multiple_positions() {

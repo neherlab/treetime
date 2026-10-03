@@ -6,22 +6,16 @@
 #[cfg(test)]
 mod tests {
 
+  use crate::__tests__::test_tree_output::tests::helpers;
   use crate::ancestral_tree_output::ancestral_to_mat;
-
   use crate::tree_output::mat_mutation;
-
   use eyre::Report;
-
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-
   use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
   use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
   use treetime_graph::graph::Graph;
-
   use treetime_io::nwk::nwk_read_str;
-
-  use crate::__tests__::test_tree_output::tests::helpers;
 
   #[test]
   fn test_tree_output_mat_rejects_unsupported_events() -> Result<(), Report> {

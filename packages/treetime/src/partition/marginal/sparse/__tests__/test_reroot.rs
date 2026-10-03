@@ -5,19 +5,16 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
-
   use crate::seq::mutation::Sub;
-  use crate::test_utils::deletion;
-  use crate::test_utils::{find_edge_key, find_node_key_by_name, sparse_edge_obs};
+  use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, sparse_edge_obs};
   use eyre::Report;
+  use helpers::c;
   use itertools::Itertools;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::reroot::{RerootResult, remove_stem_root};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
-
-  use helpers::c;
 
   #[test]
   fn test_sparse_reroot_stem_removal_gives_the_root_the_stem_child_sequence() -> Result<(), Report> {

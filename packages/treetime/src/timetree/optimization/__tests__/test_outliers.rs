@@ -4,11 +4,10 @@ mod tests {
   use crate::test_utils::{RecordingLog, find_node_key_by_name};
   use crate::timetree::optimization::outliers::report_outliers;
   use eyre::Report;
+  use helpers::{header, row};
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use treetime_io::nwk::nwk_read_str;
-
-  use helpers::{header, row};
 
   #[test]
   fn test_report_outliers_lists_dated_outliers_by_descending_residual() -> Result<(), Report> {

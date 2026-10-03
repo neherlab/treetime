@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::{DistributionVariant, distribution};
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::__tests__::aliases::DistributionPlain;
   use crate::distribution_core::function::DistributionFunction;
@@ -10,8 +11,6 @@ mod tests {
   use rstest::rstest;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
-
-  use self::helpers::{DistributionVariant, distribution};
 
   const TINY_NUMBER: f64 = 1e-10;
 

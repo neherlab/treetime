@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::graph_chain;
   use crate::reachability::exists_forward_path_between;
   use proptest::prelude::*;
   use proptest::proptest;
-
-  use self::helpers::graph_chain;
 
   proptest! {
     #[test]

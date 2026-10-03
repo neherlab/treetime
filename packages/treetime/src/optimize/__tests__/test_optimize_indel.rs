@@ -25,17 +25,15 @@ pub(super) mod tests {
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::pretty_assert_neg_inf;
   use crate::seq::indel::InDel;
-  use crate::test_utils::deletion;
-  use crate::test_utils::sparse_reconstruction_mut;
+  use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use ndarray::array;
+  use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-
-  use ndarray::array;
-  use rstest::rstest;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;

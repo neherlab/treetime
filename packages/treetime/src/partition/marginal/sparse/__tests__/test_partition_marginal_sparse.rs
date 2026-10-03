@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
+  use crate::seq::mutation::{Sub, compose_substitutions};
   use eyre::Result;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_primitives::AsciiChar;
-
-  use crate::seq::mutation::{Sub, compose_substitutions};
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)

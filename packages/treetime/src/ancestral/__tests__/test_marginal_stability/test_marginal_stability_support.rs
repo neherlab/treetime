@@ -11,13 +11,12 @@ pub(super) mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
-  use treetime_graph::graph::Graph;
-  use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
-
   use std::sync::LazyLock;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
+  use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 

@@ -10,13 +10,12 @@ mod tests {
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
+  use crate::test_utils::dense_reconstruction_mut;
   use eyre::Report;
   use indoc::indoc;
-  use treetime_graph::graph::Graph;
-
-  use crate::test_utils::dense_reconstruction_mut;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;

@@ -4,15 +4,13 @@ mod tests {
   use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::find_node_key_by_name;
-  use crate::test_utils::fitch_edge_obs;
+  use crate::test_utils::{find_node_key_by_name, fitch_edge_obs};
   use eyre::Report;
+  use helpers::{reversion_present, sub, total_subs};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-
-  use helpers::{reversion_present, sub, total_subs};
   use treetime_io::nwk::nwk_read_str;
 
   const NWK: &str = "(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;";
@@ -271,7 +269,6 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-
     use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
     use crate::test_utils::find_edge_key;
     use maplit::btreemap;

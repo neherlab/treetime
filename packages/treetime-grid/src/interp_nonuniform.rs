@@ -1,8 +1,7 @@
-use std::cmp::min;
-
 use eyre::Report;
 use ndarray::Array1;
 use num::Float;
+use std::cmp::min;
 use treetime_utils::make_error;
 
 pub(crate) fn interp_nonuniform<T, F>(

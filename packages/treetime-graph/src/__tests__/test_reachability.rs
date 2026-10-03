@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::graph_with_edges;
   use crate::reachability::exists_forward_path_between;
   use eyre::Report;
   use pretty_assertions::assert_eq;
-
-  use self::helpers::graph_with_edges;
 
   #[test]
   fn test_reachability_follows_directed_chain() -> Result<(), Report> {

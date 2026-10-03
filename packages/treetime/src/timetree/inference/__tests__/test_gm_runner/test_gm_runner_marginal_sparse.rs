@@ -3,9 +3,6 @@ mod tests {
   use super::super::test_gm_runner_support::support::{
     ALPHABET, OUTPUTS, extract_node_times, load_alignment_for_dataset, load_dates_for_dataset,
   };
-  use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
-
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockInputs;
@@ -14,22 +11,20 @@ mod tests {
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::fitch::passes::create_fitch_partition;
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
+  use crate::progress::NoopProgress;
+  use crate::seq::alignment::node_seq_inputs;
+  use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::result::given_times;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
-
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
-  use crate::timetree::branch_model::BranchModel;
   use eyre::Report;
-  use std::collections::{BTreeMap, BTreeSet};
-
   use rstest::rstest;
-
+  use std::collections::{BTreeMap, BTreeSet};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
-
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   #[rustfmt::skip]

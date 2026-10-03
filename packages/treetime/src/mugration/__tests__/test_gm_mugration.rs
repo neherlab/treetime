@@ -2,14 +2,13 @@
 mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use ndarray::Array1;
-  use pretty_assertions::assert_eq;
-  use rstest::rstest;
-
   use helpers::{
     confidence_by_name, load_gm_mugration_inputs, load_gm_mugration_outputs, run_gm_mugration_case, states_vec,
     trait_assignments_by_name,
   };
+  use ndarray::Array1;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
 
   #[rustfmt::skip]
   #[rstest]

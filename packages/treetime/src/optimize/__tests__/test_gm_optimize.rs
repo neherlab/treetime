@@ -1,15 +1,13 @@
 #[cfg(test)]
 mod tests {
 
+  use crate::optimize::params::BranchOptMethod;
   use approx::assert_relative_eq;
   use eyre::Report;
+  use helpers::{load_gm_inputs, load_gm_outputs, setup_and_run};
   use rstest::rstest;
   use std::collections::BTreeMap;
-
-  use crate::optimize::params::BranchOptMethod;
   use std::path::Path;
-
-  use helpers::{load_gm_inputs, load_gm_outputs, setup_and_run};
 
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
@@ -140,16 +138,14 @@ mod tests {
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
     use crate::seq::alignment::node_seq_inputs;
-
     use eyre::Report;
     use itertools::Itertools;
-    use treetime_graph::graph::Graph;
-
     use serde::Deserialize;
     use std::collections::BTreeMap;
     use std::fs::read_to_string;
     use std::path::Path;
     use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::fasta::read_many_fasta_path;
     use treetime_io::nwk::nwk_read_file;

@@ -6,17 +6,16 @@ mod tests {
   use crate::o;
   use crate::progress::NoopProgress;
   use eyre::Report;
+  use helpers::{
+    IQD_TREE, OUTLIER_TREE, divergences_by_name, iqd_dates, outlier_dates, outlier_names, setup_graph,
+    setup_low_cardinality_graph,
+  };
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_utils::assert_error;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_map_abs_diff_eq};
-
-  use helpers::{
-    IQD_TREE, OUTLIER_TREE, divergences_by_name, iqd_dates, outlier_dates, outlier_names, setup_graph,
-    setup_low_cardinality_graph,
-  };
 
   #[test]
   fn test_clock_filter_positive_rate_identifies_outliers() -> Result<(), Report> {

@@ -5,10 +5,6 @@
 
 #[cfg(test)]
 pub(super) mod tests {
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
-  use crate::test_utils::deletion;
-  use crate::test_utils::sparse_reconstruction_mut;
-
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_reconstruction, simple_alignment,
   };
@@ -16,16 +12,15 @@ pub(super) mod tests {
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
   use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh};
   use crate::optimize::likelihood::{OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only};
-
   use crate::optimize::method_newton::newton_tolerance_t;
   use crate::optimize::method_newton::{chain_rule_log, chain_rule_sqrt};
   use crate::optimize::params::BranchOptMethod;
-
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::seq::indel::InDel;
-
+  use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use eyre::Report;
   use helpers::*;
-
+  use proptest::prelude::*;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
@@ -33,8 +28,6 @@ pub(super) mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::Seq;
-
-  use proptest::prelude::*;
 
   #[rustfmt::skip]
   #[rstest]

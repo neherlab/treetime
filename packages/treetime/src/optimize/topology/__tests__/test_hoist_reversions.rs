@@ -5,20 +5,16 @@ mod tests {
   use crate::seq::indel::InDel;
   use crate::seq::indel::InDelKind;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::deletion;
-  use crate::test_utils::fitch_edge_obs;
-  use crate::test_utils::insertion;
-  use crate::test_utils::{find_edge_key, find_node_key_by_name};
+  use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, sub};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read_str;
-
-  use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, sub};
 
   const NWK: &str = "(((A:0.1,B:0.1,Z:0.1)V:0.2)U:0.1)root:0.0;";
 
@@ -411,7 +407,6 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-
     use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
     use maplit::btreemap;
     use treetime_primitives::{AsciiChar, Seq};

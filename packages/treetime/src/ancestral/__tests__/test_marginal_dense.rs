@@ -18,13 +18,12 @@ mod tests {
   use crate::test_utils::{emitted_sequences_by_name, internal_node_keys};
   use eyre::Report;
   use indoc::indoc;
-  use treetime_graph::graph::Graph;
-
   use ndarray::prelude::*;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;

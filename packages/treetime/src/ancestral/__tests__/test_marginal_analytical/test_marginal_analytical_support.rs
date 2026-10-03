@@ -7,9 +7,8 @@ pub(super) mod tests {
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
-  use treetime_graph::graph::Graph;
-
   use std::sync::LazyLock;
+  use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;

@@ -117,7 +117,6 @@ mod tests {
     use crate::commands::timetree::run::run_timetree_estimation;
     use eyre::{Report, WrapErr};
     use std::collections::BTreeMap;
-
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::cancel::NoopCancel;
     use treetime::progress::NoopProgress;

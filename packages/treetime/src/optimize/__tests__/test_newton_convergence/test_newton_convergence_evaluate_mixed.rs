@@ -1,9 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_newton_convergence_support::tests::make_dense_contribution;
   use crate::optimize::likelihood::evaluate_mixed;
   use ndarray::array;
-
-  use super::super::test_newton_convergence_support::tests::make_dense_contribution;
 
   #[test]
   fn test_evaluate_mixed_returns_finite_values() {

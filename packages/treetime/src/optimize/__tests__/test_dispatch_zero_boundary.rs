@@ -15,22 +15,20 @@ mod tests {
   use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
-
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use std::collections::BTreeMap;
-  use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
-  use treetime_primitives::AlignmentRecord;
-
   use ndarray::array;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   const IDENTICAL_TREE_NEWICK: &str = "((A:0.1,B:0.1)AB:0.1,(C:0.1,D:0.1)CD:0.1)root:0.1;";
 

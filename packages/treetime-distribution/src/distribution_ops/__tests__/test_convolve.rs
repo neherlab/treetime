@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::{DistributionVariant, distribution};
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::__tests__::aliases::DistributionPlain;
   use crate::distribution_core::function::DistributionFunction;
@@ -11,8 +12,6 @@ mod tests {
   use rstest::rstest;
   use treetime_grid::grid::Grid;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
-
-  use self::helpers::{DistributionVariant, distribution};
 
   #[test]
   fn test_convolve_neglog_gaussian_variances_add() -> Result<(), Report> {

@@ -275,9 +275,8 @@ mod tests {
   }
 
   mod helpers {
-    use std::sync::Arc;
-
     use super::*;
+    use std::sync::Arc;
 
     pub(super) fn eval(distribution: &Distribution<NegLog>, t: f64) -> f64 {
       distribution.eval(t).unwrap_or(0.0)

@@ -6,9 +6,8 @@ mod tests {
   };
   use crate::gtr::gtr::GTR;
   use eyre::Report;
-  use rstest::rstest;
-
   use helpers::{compare_gtr, load_gm_gtr_inputs, load_gm_gtr_outputs};
+  use rstest::rstest;
 
   #[rstest]
   #[case::default("default")]

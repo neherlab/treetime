@@ -1,12 +1,11 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::{Traversal, fixture_balanced, traverse};
   use super::super::test_graph_support::tests::NamedGraph;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::{assert_error, make_error};
-
-  use self::helpers::{Traversal, fixture_balanced, traverse};
 
   #[rustfmt::skip]
   #[rstest]

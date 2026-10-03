@@ -1,21 +1,15 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::test_utils::deletion;
-  use crate::test_utils::fitch_edge_obs;
-  use crate::test_utils::insertion;
-  use crate::test_utils::sparse_edge_obs;
-
   use crate::optimize::topology::collapse::collapse_edge;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs};
   use crate::seq::mutation::Sub;
-  use crate::test_utils::{find_edge_key, find_node_key_by_name};
+  use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion, sparse_edge_obs};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AsciiChar;

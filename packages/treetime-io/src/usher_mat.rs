@@ -4,7 +4,6 @@ use std::io::Write;
 use std::path::Path;
 use treetime_utils::io::file::write_file_with;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
-
 pub use util_usher_mat::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};
 
 pub fn usher_mat_pb_write_file(filepath: impl AsRef<Path>, tree: &UsherTree) -> Result<(), Report> {

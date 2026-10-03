@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use crate::InterpElem;
 use crate::boundary_behavior::BoundaryBehavior;
 use crate::grid::Grid;
@@ -12,6 +10,7 @@ use ndarray::{Array1, s};
 use ndarray_stats::QuantileExt;
 use num::Float;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use treetime_utils::array::ndarray::has_uniform_spacing;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 use treetime_utils::make_error;

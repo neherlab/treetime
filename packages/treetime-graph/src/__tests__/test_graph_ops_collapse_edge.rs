@@ -1,13 +1,12 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::{EdgeNames, edge_keys};
   use super::super::test_graph_support::tests::NamedGraph;
   use crate::edge::GraphEdgeKey;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::assert_error;
-
-  use self::helpers::{EdgeNames, edge_keys};
 
   #[rustfmt::skip]
   #[rstest]

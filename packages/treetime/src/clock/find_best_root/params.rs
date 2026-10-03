@@ -1,8 +1,7 @@
+use crate::clock::clock_set::ClockSet;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-
-use crate::clock::clock_set::ClockSet;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]

@@ -9,9 +9,7 @@ pub(super) mod tests {
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
-
   use treetime_graph::graph::Graph;
-
   use treetime_io::nwk::nwk_read_str;
 
   pub(crate) fn run_dense_marginal(input: &MarginalTestInput) -> Result<(f64, DenseReconstruction), Report> {

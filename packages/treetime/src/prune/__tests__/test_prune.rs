@@ -1,17 +1,13 @@
 #[cfg(test)]
 pub(super) mod tests {
   use crate::alphabet::alphabet::Alphabet;
-
-  use crate::prune::prune::prune_nodes;
-
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs};
-
+  use crate::prune::prune::prune_nodes;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::find_edge_key;
-  use crate::test_utils::fitch_edge_obs;
-
+  use crate::test_utils::{find_edge_key, fitch_edge_obs};
   use eyre::Report;
+  use helpers::*;
   use itertools::Itertools;
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
@@ -23,8 +19,6 @@ pub(super) mod tests {
   use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
-
-  use helpers::*;
 
   #[test]
   fn test_prune_nodes_basic() -> Result<(), Report> {

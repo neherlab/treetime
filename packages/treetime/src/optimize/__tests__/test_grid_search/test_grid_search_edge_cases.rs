@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};
   use crate::optimize::zero_boundary::grid_search_branch_lengths;
   use ndarray::array;
   use rstest::rstest;
-
-  use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};
 
   #[test]
   fn test_grid_search_one_mutation_dominates_range() {

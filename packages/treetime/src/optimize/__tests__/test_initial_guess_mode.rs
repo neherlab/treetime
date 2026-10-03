@@ -15,19 +15,16 @@ pub(super) mod tests {
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
-
-  use crate::test_utils::deletion;
-  use crate::test_utils::dense_reconstruction_mut;
+  use crate::test_utils::{deletion, dense_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
-  use std::collections::BTreeMap;
-  use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
-
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;

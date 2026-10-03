@@ -1,9 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::seq::alignment::node_seq_inputs;
-  use treetime_primitives::AlignmentRecord;
-
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
@@ -13,12 +10,12 @@ mod tests {
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
-
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
-
   use std::path::Path;
   use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::nwk_read_file;
+  use treetime_primitives::AlignmentRecord;
 
   #[test]
   fn test_convergence_sc2_sparse_converges_on_sc2_2844() -> Result<(), Report> {

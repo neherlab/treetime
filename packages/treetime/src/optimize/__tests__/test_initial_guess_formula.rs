@@ -20,15 +20,14 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
-  use treetime_graph::graph::Graph;
-  use treetime_primitives::AlignmentRecord;
-
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 

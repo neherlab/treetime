@@ -1,12 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
-  use crate::test_utils::deletion;
-  use crate::test_utils::fitch_edge_obs;
-  use crate::test_utils::{half_residual_sum_of_squares, sparse_edge_obs};
-
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
   use crate::clock::date_constraints::DateConstraints;
@@ -20,9 +14,12 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
   use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
-
+  use crate::progress::NoopProgress;
+  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::find_node_key_by_name;
+  use crate::test_utils::{
+    deletion, find_node_key_by_name, fitch_edge_obs, half_residual_sum_of_squares, sparse_edge_obs,
+  };
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::optimization::reroot::{RerootedTree, reroot_tree};
   use eyre::Report;

@@ -1,5 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_dense_sparse_equivalence_support::tests::{
+    NUC_ALPHABET, TREE_NEWICK, setup_dense_only, setup_sparse_only,
+  };
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
@@ -7,10 +10,6 @@ mod tests {
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
-
-  use super::super::test_dense_sparse_equivalence_support::tests::{
-    NUC_ALPHABET, TREE_NEWICK, setup_dense_only, setup_sparse_only,
-  };
 
   #[test]
   fn test_dense_sparse_initial_log_lh_equivalence() -> Result<(), Report> {

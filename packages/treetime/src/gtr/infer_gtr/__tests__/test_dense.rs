@@ -19,20 +19,19 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
+  use ndarray::{Array1, Array2, array};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
+  use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
   use treetime_utils::{
     pretty_assert_abs_diff_eq, pretty_assert_array_nonneg, pretty_assert_array_offdiag_upper_bounded,
     pretty_assert_array_positive,
   };
-
-  use ndarray::{Array1, Array2, array};
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
-  use treetime_primitives::AlignmentRecord;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 

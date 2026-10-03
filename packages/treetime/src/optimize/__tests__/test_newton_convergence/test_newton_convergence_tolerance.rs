@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_newton_convergence_support::tests::make_dense_contribution;
   use crate::optimize::likelihood::evaluate_mixed;
   use crate::optimize::method_newton::NEWTON_REL_TOL;
   use crate::optimize::method_newton::{newton_tolerance_log, newton_tolerance_sqrt, newton_tolerance_t};
@@ -7,8 +8,6 @@ mod tests {
   use ndarray::array;
   use num::clamp;
   use rstest::rstest;
-
-  use super::super::test_newton_convergence_support::tests::make_dense_contribution;
 
   #[test]
   fn test_newton_tolerance_t_positive_branch_uses_relative() {

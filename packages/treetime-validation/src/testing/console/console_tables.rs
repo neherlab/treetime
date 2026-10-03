@@ -3,6 +3,7 @@
   expect(debug_remnants, reason = "the validation report is printed to stdout")
 )]
 
+use crate::testing::console::console::ValidationConsole;
 use crate::testing::framework::results::TestRunOutcome;
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
@@ -10,8 +11,6 @@ use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use treetime_utils::fmt::float::float_to_significant_digits;
-
-use crate::testing::console::console::ValidationConsole;
 
 #[expect(clippy::multiple_inherent_impl, reason = "methods are split across files by concern")]
 impl ValidationConsole {

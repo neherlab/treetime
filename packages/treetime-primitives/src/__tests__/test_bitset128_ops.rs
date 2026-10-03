@@ -7,7 +7,6 @@
 #[cfg(test)]
 mod tests {
   use crate::{BitSet128, bitset128};
-
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 

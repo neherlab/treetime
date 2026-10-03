@@ -23,6 +23,7 @@ pub(super) mod tests {
   use crate::seq::mutation::Sub;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use eyre::Report;
+  use helpers::{empty_sparse_recon, populate_test_nodes};
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -34,8 +35,6 @@ pub(super) mod tests {
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
-
-  use helpers::{empty_sparse_recon, populate_test_nodes};
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_empty_graph() -> Result<(), Report> {

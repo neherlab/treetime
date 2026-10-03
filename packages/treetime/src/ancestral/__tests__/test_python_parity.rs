@@ -15,22 +15,19 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
   use crate::seq::alignment::node_seq_inputs;
-
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
-  use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
-
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use std::sync::LazyLock;
+  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::{read_many_fasta_path, read_many_fasta_str};
   use treetime_io::nwk::{nwk_read_file, nwk_read_str};
   use treetime_primitives::AlignmentRecord;
-
   use treetime_utils::make_report;
 
   fn build_dense_recon(

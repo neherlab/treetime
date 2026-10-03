@@ -1,23 +1,19 @@
 #[cfg(test)]
 pub(super) mod tests {
-  use crate::seq::alignment::node_seq_inputs;
-
-  use std::collections::BTreeMap;
-
-  use treetime_graph::node::GraphNodeKey;
-
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
+  use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use treetime_graph::graph::Graph;
-
+  use std::collections::BTreeMap;
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_primitives::AlignmentRecord;
 

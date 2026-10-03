@@ -88,10 +88,8 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-
     use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
-    use crate::test_utils::find_edge_key;
-    use crate::test_utils::fitch_edge_obs;
+    use crate::test_utils::{find_edge_key, fitch_edge_obs};
     use itertools::Itertools;
     use maplit::btreemap;
     use treetime_graph::edge::GraphEdgeKey;

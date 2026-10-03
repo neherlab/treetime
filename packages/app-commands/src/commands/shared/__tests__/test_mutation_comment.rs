@@ -4,11 +4,8 @@ mod tests {
   use app_output::EdgeMutationCommentProvider;
   use eyre::Report;
   use helpers::leaf_key;
-
   use pretty_assertions::assert_eq;
-
   use treetime::seq::mutation::{AlignedMutation, Sub};
-
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NodeCommentProvider, nwk_read_str};

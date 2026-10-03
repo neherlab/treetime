@@ -4,9 +4,8 @@ mod tests {
   use crate::o;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use pretty_assertions::assert_eq;
-
   use helpers::{get_outlier_names, prefilter_outlier_names, run_clock};
+  use pretty_assertions::assert_eq;
 
   #[test]
   fn test_dengue100_clock_pipeline_structural_properties() -> Result<(), Report> {

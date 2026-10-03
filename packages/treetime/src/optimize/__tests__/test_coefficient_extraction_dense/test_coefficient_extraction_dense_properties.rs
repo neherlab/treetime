@@ -1,12 +1,11 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dense_eval::evaluate_dense_contribution;
   use crate::partition::optimize::dense::get_coefficients;
   use ndarray::array;
   use rstest::rstest;
-
-  use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
 
   #[test]
   fn test_coefficients_produce_valid_likelihood_at_zero() {

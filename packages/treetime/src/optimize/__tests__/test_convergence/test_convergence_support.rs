@@ -13,11 +13,10 @@ pub(crate) mod tests {
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
+  use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-
-  use std::sync::LazyLock;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_primitives::AlignmentRecord;
 

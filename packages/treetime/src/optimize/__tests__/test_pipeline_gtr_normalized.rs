@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
-
-  use crate::cancel::NoopCancel;
   use crate::progress::NoopProgress;
   use approx::assert_ulps_eq;
   use eyre::Report;

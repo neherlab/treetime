@@ -21,9 +21,8 @@ mod tests {
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use eyre::Report;
-  use std::collections::{BTreeMap, BTreeSet};
-
   use rstest::rstest;
+  use std::collections::{BTreeMap, BTreeSet};
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::pretty_assert_map_abs_diff_eq;

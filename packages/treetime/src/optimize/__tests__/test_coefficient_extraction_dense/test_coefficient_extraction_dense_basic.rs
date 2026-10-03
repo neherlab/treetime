@@ -1,12 +1,11 @@
 #[cfg(test)]
 mod tests {
+  use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dense_eval::evaluate_dense_contribution;
   use crate::partition::optimize::dense::get_coefficients;
   use crate::pretty_assert_ulps_eq;
   use ndarray::{Axis, array};
-
-  use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
 
   #[test]
   fn test_get_coefficients_identity_messages() {

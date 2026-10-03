@@ -289,11 +289,10 @@ macro_rules! assert_error {
 
 #[cfg(test)]
 mod tests {
+  use crate::testing::assert::is_neg_inf;
   use parking_lot::Mutex;
   use std::panic::{AssertUnwindSafe, catch_unwind, set_hook, take_hook};
   use std::sync::LazyLock;
-
-  use crate::testing::assert::is_neg_inf;
 
   static PANIC_HOOK_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 

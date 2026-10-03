@@ -1,3 +1,4 @@
+use crate::testing::console::console::ValidationConsole;
 use crate::testing::framework::results::TestResult;
 use crate::testing::framework::summary::TestSummary;
 use crate::testing::framework::test_case::TestCase;
@@ -7,8 +8,6 @@ use std::collections::BTreeMap;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::iterator::mean_by_key::MeanByKey;
 use treetime_utils::make_internal_report;
-
-use crate::testing::console::console::ValidationConsole;
 
 #[expect(clippy::multiple_inherent_impl, reason = "methods are split across files by concern")]
 impl ValidationConsole {

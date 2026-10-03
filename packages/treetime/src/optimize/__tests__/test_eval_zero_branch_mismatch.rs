@@ -9,13 +9,11 @@ mod tests {
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
   use crate::seq::alignment::node_seq_inputs;
-  use treetime_primitives::AlignmentRecord;
-
   use eyre::Report;
   use indoc::indoc;
-
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_primitives::AlignmentRecord;
 
   #[test]
   fn test_eval_zero_branch_mismatch_no_nan() -> Result<(), Report> {

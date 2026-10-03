@@ -5,6 +5,9 @@ mod tests {
   use crate::timetree::inference::result::BranchLikelihood;
   use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
   use eyre::Report;
+  use helpers::{
+    GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance, scaled_time_branches, time_branch,
+  };
   use rstest::rstest;
   use serde::Deserialize;
   use std::collections::BTreeMap;
@@ -13,10 +16,6 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::pretty_assert_map_ulps_eq;
-
-  use helpers::{
-    GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance, scaled_time_branches, time_branch,
-  };
 
   #[rustfmt::skip]
   #[rstest]

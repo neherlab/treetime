@@ -6,15 +6,11 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
-
   use crate::seq::mutation::Sub;
-  use crate::test_utils::deletion;
-  use crate::test_utils::find_edge_key;
-  use crate::test_utils::fitch_edge_obs;
+  use crate::test_utils::{deletion, find_edge_key, fitch_edge_obs};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;

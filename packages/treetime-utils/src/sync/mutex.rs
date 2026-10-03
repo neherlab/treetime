@@ -1,8 +1,7 @@
+use crate::make_internal_report;
 use eyre::Report;
 use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
-
-use crate::make_internal_report;
 
 pub fn unwrap_arc_rwlock<T>(arc_rwlock: Arc<RwLock<T>>) -> Result<T, Report> {
   let inner = Arc::try_unwrap(arc_rwlock)
