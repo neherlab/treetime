@@ -125,6 +125,14 @@ args = "--method-anc=marginal --dense=false"
 variant = "marginal-dense"
 args = "--method-anc=marginal --dense=true --model=jc69"
 
+# Auspice root sequence with the default sparse backend
+[[ancestral]]
+variant = "marginal-sparse-tree-outputs"
+datasets = "small"
+args = "--method-anc=marginal --dense=false"
+selection = "auspice,augur-node-data"
+outputs = ["ancestral.auspice.json", "ancestral.augur-node-data.json"]
+
 [[ancestral]]
 variant = "model-jc69"
 datasets = ["flu/h3n2/20"]
