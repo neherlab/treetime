@@ -1,5 +1,6 @@
 use crate::timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use crate::tree_output::{
+  MatOutput,
   COLORING_BAD_BRANCH, COLORING_NUM_DATE, NUC_TRACK, auspice_data, auspice_from_graph, auspice_node, coloring,
   ensure_finite, finite_number, format_number, generation_date, group_mutations, mat_from_graph, node_name_value,
   write_tree_outputs,
@@ -12,12 +13,12 @@ use treetime::clock::divergence::root_to_node_divergences;
 use treetime::seq::mutation::Mutation;
 use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime::progress::LogSink;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::AuspiceTree;
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::usher_mat::UsherTree;
 
 pub fn write_timetree_tree_outputs(
   graph: &Graph,
@@ -28,6 +29,7 @@ pub fn write_timetree_tree_outputs(
   mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   let updated = generation_date();
   let names: BTreeMap<GraphNodeKey, Option<String>> =
@@ -48,6 +50,7 @@ pub fn write_timetree_tree_outputs(
     "timetree",
     || timetree_to_auspice(graph, nodes, maps, confidence_intervals, mutation_counts, &updated),
     || timetree_to_mat(graph, &names, &nwk_weights, maps),
+    log,
   )
 }
 
@@ -101,7 +104,7 @@ pub(crate) fn timetree_to_mat(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &TimetreeOutputMaps,
-) -> Result<UsherTree, Report> {
+) -> Result<MatOutput, Report> {
   let reference = timetree_root_sequences(maps).remove(NUC_TRACK);
   mat_from_graph(
     graph,

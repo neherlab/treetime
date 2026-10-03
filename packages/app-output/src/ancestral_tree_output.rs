@@ -1,5 +1,6 @@
 use crate::ancestral_result::{AncestralNodeOut, AncestralOutputMaps};
 use crate::tree_output::{
+  MatOutput,
   NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date, mat_from_graph,
   node_name_value, sequence_auspice_node, write_tree_outputs,
 };
@@ -10,12 +11,12 @@ use std::path::PathBuf;
 use treetime::ancestral::aa::AaNodeData;
 use treetime::seq::mutation::{Mutation, MutationTrack};
 use treetime_graph::edge::GraphEdgeKey;
+use treetime::progress::LogSink;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{AuspiceGenomeAnnotationCds, AuspiceTree, Segments, StartEnd};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::usher_mat::UsherTree;
 use treetime_utils::{make_error, make_report};
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
@@ -28,6 +29,7 @@ pub fn write_ancestral_tree_outputs(
   aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   let updated = generation_date();
   let names: BTreeMap<GraphNodeKey, Option<String>> =
@@ -52,6 +54,7 @@ pub fn write_ancestral_tree_outputs(
       )
     },
     || ancestral_to_mat(graph, &names, branch_lengths, maps, aa_node_data),
+    log,
   )
 }
 
@@ -90,7 +93,7 @@ pub(crate) fn ancestral_to_mat(
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
   aa_node_data: Option<&AaNodeData>,
-) -> Result<UsherTree, Report> {
+) -> Result<MatOutput, Report> {
   let reference = ancestral_root_sequences(maps, aa_node_data).remove(NUC_TRACK);
   mat_from_graph(graph, names, nwk_weights, reference.as_deref(), |node_key, edge_key| {
     Ok(ancestral_node_mutations(

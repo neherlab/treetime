@@ -111,6 +111,7 @@ pub fn run_clock(
       &branch_lengths,
       &resolved.tree_outputs,
       &CommentProviders::new(),
+      log,
     )?;
   }
 

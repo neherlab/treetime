@@ -149,6 +149,7 @@ pub fn run_prune(
       &maps,
       &resolved.tree_outputs,
       &CommentProviders::new(),
+      log,
     )?;
   }
 

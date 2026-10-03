@@ -1,5 +1,6 @@
 use crate::clock_result::ClockNodeOut;
 use crate::tree_output::{
+  MatOutput,
   COLORING_BAD_BRANCH, COLORING_NUM_DATE, auspice_data, auspice_from_graph, auspice_node, coloring, finite_number,
   generation_date, mutation_free_mat, node_name_value, write_tree_outputs,
 };
@@ -7,12 +8,12 @@ use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime::progress::LogSink;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::AuspiceTree;
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::usher_mat::UsherTree;
 
 pub fn write_clock_tree_outputs(
   graph: &Graph,
@@ -20,6 +21,7 @@ pub fn write_clock_tree_outputs(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   let updated = generation_date();
   let names: BTreeMap<GraphNodeKey, Option<String>> =
@@ -34,6 +36,7 @@ pub fn write_clock_tree_outputs(
     "clock",
     || clock_to_auspice(graph, nodes, &updated),
     || clock_to_mat(graph, &names, branch_lengths),
+    log,
   )
 }
 
@@ -75,6 +78,6 @@ pub(crate) fn clock_to_mat(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<UsherTree, Report> {
+) -> Result<MatOutput, Report> {
   mutation_free_mat(graph, names, nwk_weights)
 }

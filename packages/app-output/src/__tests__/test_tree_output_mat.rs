@@ -6,43 +6,94 @@
 #[cfg(test)]
 mod tests {
 
-  use crate::__tests__::test_tree_output::tests::helpers;
+  use crate::__tests__::test_tree_output::tests::helpers::{
+    Mutations, all_mat_documents, ancestral_graph, branch_length, c,
+  };
   use crate::ancestral_tree_output::ancestral_to_mat;
-  use crate::tree_output::mat_mutation;
+  use crate::tree_output::{MatGapCounts, mat_mutation};
   use eyre::Report;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
   use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
+  use treetime_io::usher_mat::UsherMutation;
 
   #[test]
-  fn test_tree_output_mat_rejects_unsupported_events() -> Result<(), Report> {
+  fn test_tree_output_mat_rejects_amino_acid_mutations() -> Result<(), Report> {
     let (graph, names, branch_lengths, maps, aa_node_data, _aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::Indel)?;
-    let error = ancestral_to_mat(&graph, &names, &branch_lengths, &maps, aa_node_data.as_ref())
-      .expect_err("MAT must reject indels");
-    assert!(error.to_string().contains("insertion or deletion"));
-
-    let (graph, names, branch_lengths, maps, aa_node_data, _aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
+      ancestral_graph(Mutations::AminoAcid)?;
     let error = ancestral_to_mat(&graph, &names, &branch_lengths, &maps, aa_node_data.as_ref())
       .expect_err("MAT must reject amino-acid mutations");
     assert!(error.to_string().contains("amino-acid mutation"));
-
     Ok(())
   }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::deletion_is_missing_data(
+    "ACGT", btreemap! { "B" => vec![helpers::del((1, 3), "CG")] },
+    (btreemap! {}, MatGapCounts { deletions: 1, insertions: 0, substitutions: 0 }),
+  )]
+  #[case::reinsertion_restores_state_before_deletion(
+    "ACGT", btreemap! { "B" => vec![helpers::del((1, 2), "C")], "C" => vec![helpers::ins((1, 2), "T")], "D" => vec![helpers::ins((1, 2), "C")] },
+    (btreemap! { "C" => vec![helpers::usher(2, b'C', b'C', b'T')] }, MatGapCounts { deletions: 1, insertions: 0, substitutions: 0 }),
+  )]
+  #[case::reinsertion_sorted_with_substitutions(
+    "ACGT", btreemap! { "B" => vec![helpers::del((1, 2), "C")], "C" => vec![helpers::sub(b'G', 2, b'A'), helpers::ins((1, 2), "T")] },
+    (btreemap! { "C" => vec![helpers::usher(2, b'C', b'C', b'T'), helpers::usher(3, b'G', b'G', b'A')] }, MatGapCounts { deletions: 1, insertions: 0, substitutions: 0 }),
+  )]
+  #[case::insertion_in_root_gap_is_left_out(
+    "A-GT", btreemap! { "B" => vec![helpers::ins((1, 2), "C")], "C" => vec![helpers::sub(b'C', 1, b'T')] },
+    (btreemap! {}, MatGapCounts { deletions: 0, insertions: 1, substitutions: 1 }),
+  )]
+  #[case::reinsertion_in_root_gap_is_left_out(
+    "A-GT", btreemap! { "B" => vec![helpers::ins((1, 2), "C")], "C" => vec![helpers::del((1, 2), "C")] },
+    (btreemap! {}, MatGapCounts { deletions: 1, insertions: 1, substitutions: 0 }),
+  )]
+  #[case::deleted_unknown_base_hides_no_state(
+    "ANGT", btreemap! { "B" => vec![helpers::del((1, 2), "N")], "C" => vec![helpers::ins((1, 2), "T")] },
+    (btreemap! {}, MatGapCounts { deletions: 1, insertions: 0, substitutions: 0 }),
+  )]
+  #[trace]
+  fn test_tree_output_mat_writes_gaps_as_missing_data(
+    #[case] reference: &str,
+    #[case] edge_mutations: BTreeMap<&str, Vec<Mutation>>,
+    #[case] expected: (BTreeMap<&str, Vec<UsherMutation>>, MatGapCounts),
+  ) -> Result<(), Report> {
+    let actual = helpers::mat_mutations("((C:1,D:1)B:1,E:1)root;", reference, &edge_mutations)?;
+    let expected = (
+      expected.0.into_iter().map(|(name, mutations)| (name.to_owned(), mutations)).collect(),
+      expected.1,
+    );
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::nothing_dropped(  MatGapCounts { deletions: 0, insertions: 0, substitutions: 0 }, None)]
+  #[case::deletions(        MatGapCounts { deletions: 2, insertions: 0, substitutions: 0 }, Some("UShER MAT has no gap state: wrote 2 deletion(s) as missing data (N)"))]
+  #[case::root_gap_columns( MatGapCounts { deletions: 0, insertions: 0, substitutions: 3 }, Some("UShER MAT has no gap state: left out 0 insertion(s) and 3 substitution(s) in alignment columns where the root sequence, which is the MAT reference, has a gap"))]
+  #[case::all(              MatGapCounts { deletions: 1, insertions: 2, substitutions: 3 }, Some("UShER MAT has no gap state: wrote 1 deletion(s) as missing data (N); left out 2 insertion(s) and 3 substitution(s) in alignment columns where the root sequence, which is the MAT reference, has a gap"))]
+  #[trace]
+  fn test_tree_output_mat_gap_warning(#[case] gaps: MatGapCounts, #[case] expected: Option<&str>) {
+    assert_eq!(expected.map(str::to_owned), gaps.warning());
+  }
+
 
   #[test]
   fn test_tree_output_mat_uses_one_global_reference_for_recurrent_mutations() -> Result<(), Report> {
     let first = Mutation::substitution(
       MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'A'), 0_usize, helpers::c(b'T'))?,
+      Sub::new(c(b'A'), 0_usize, c(b'T'))?,
     );
     let recurrent = Mutation::substitution(
       MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'T'), 0_usize, helpers::c(b'C'))?,
+      Sub::new(c(b'T'), 0_usize, c(b'C'))?,
     );
 
     let first = mat_mutation(&first, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "inner")?;
@@ -59,7 +110,7 @@ mod tests {
   fn test_tree_output_mat_rejects_missing_reference() -> Result<(), Report> {
     let mutation = Mutation::substitution(
       MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'A'), 0_usize, helpers::c(b'T'))?,
+      Sub::new(c(b'A'), 0_usize, c(b'T'))?,
     );
     let error = mat_mutation(&mutation, None, &Alphabet::new(AlphabetName::Nuc)?, "A")
       .expect_err("MAT must require a global reference");
@@ -71,7 +122,7 @@ mod tests {
   fn test_tree_output_mat_rejects_reference_lookup_out_of_range() -> Result<(), Report> {
     let mutation = Mutation::substitution(
       MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'A'), 1_usize, helpers::c(b'T'))?,
+      Sub::new(c(b'A'), 1_usize, c(b'T'))?,
     );
     let error = mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A")
       .expect_err("MAT must check the reference length");
@@ -84,7 +135,7 @@ mod tests {
     let position = usize::try_from(i32::MAX)?;
     let mutation = Mutation::substitution(
       MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'A'), position, helpers::c(b'T'))?,
+      Sub::new(c(b'A'), position, c(b'T'))?,
     );
     let error = mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A")
       .expect_err("MAT must check its coordinate range");
@@ -104,7 +155,7 @@ mod tests {
   ) -> Result<(), Report> {
     let mutation = Mutation::substitution(
       MutationTrack::Nucleotide,
-      Sub::new(helpers::c(parent), 0_usize, helpers::c(child))?,
+      Sub::new(c(parent), 0_usize, c(child))?,
     );
     let error = mat_mutation(&mutation, Some(reference), &Alphabet::new(AlphabetName::Nuc)?, "A").expect_err("MAT must reject a reference, parent, or child nucleotide it cannot encode");
     assert!(error.to_string().contains(expected));
@@ -123,7 +174,7 @@ mod tests {
   ) -> Result<(), Report> {
     let mutation = Mutation::substitution(
       MutationTrack::Nucleotide,
-      Sub::new(helpers::c(b'C'), 0_usize, helpers::c(child))?,
+      Sub::new(c(b'C'), 0_usize, c(child))?,
     );
     let actual = mat_mutation(&mutation, Some("C"), &Alphabet::new(AlphabetName::Nuc)?, "A")?;
     assert_eq!((1, 1, expected), (actual.ref_nuc, actual.par_nuc, actual.mut_nuc));
@@ -132,7 +183,7 @@ mod tests {
 
   #[test]
   fn test_tree_output_all_mat_models_preserve_embedded_newick_lengths() -> Result<(), Report> {
-    let documents = helpers::all_mat_documents()?;
+    let documents = all_mat_documents()?;
     assert_eq!(6, documents.len());
     assert!(documents.iter().all(|document| {
       document.node_mutations.len() == 4
@@ -153,24 +204,105 @@ mod tests {
       let graph: Graph = graph;
       assert_eq!(
         None,
-        helpers::branch_length(&graph, &names, &branch_lengths, "A")?,
+        branch_length(&graph, &names, &branch_lengths, "A")?,
         "{command}: {}",
         document.newick
       );
       assert_eq!(
         Some(0.0),
-        helpers::branch_length(&graph, &names, &branch_lengths, "B")?,
+        branch_length(&graph, &names, &branch_lengths, "B")?,
         "{command}: {}",
         document.newick
       );
       assert_eq!(
         Some(0.5),
-        helpers::branch_length(&graph, &names, &branch_lengths, "C")?,
+        branch_length(&graph, &names, &branch_lengths, "C")?,
         "{command}: {}",
         document.newick
       );
     }
 
     Ok(())
+  }
+
+  mod helpers {
+    use crate::tree_output::{MatGapCounts, MatOutput, mat_from_graph};
+    use eyre::Report;
+    use std::collections::BTreeMap;
+    use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
+    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::usher_mat::UsherMutation;
+    use treetime_primitives::{AsciiChar, Seq};
+
+    pub(super) fn mat_mutations(
+      nwk: &str,
+      reference: &str,
+      edge_mutations: &BTreeMap<&str, Vec<Mutation>>,
+    ) -> Result<(BTreeMap<String, Vec<UsherMutation>>, MatGapCounts), Report> {
+      let parsed = nwk_read_str(nwk)?;
+      let names = parsed.names();
+      let MatOutput { tree, gaps } = mat_from_graph(
+        &parsed.graph,
+        &names,
+        &parsed.branch_lengths,
+        Some(reference),
+        |node_key, _edge_key| {
+          Ok(
+            names[&node_key]
+              .as_deref()
+              .and_then(|name| edge_mutations.get(name))
+              .cloned()
+              .unwrap_or_default(),
+          )
+        },
+      )?;
+      let mutations = tree
+        .condensed_nodes
+        .into_iter()
+        .zip(tree.node_mutations)
+        .filter(|(_, mutations)| !mutations.mutation.is_empty())
+        .map(|(node, mutations)| (node.node_name, mutations.mutation))
+        .collect();
+      Ok((mutations, gaps))
+    }
+
+    pub(super) fn sub(reff: u8, pos: usize, qry: u8) -> Mutation {
+      Mutation::substitution(
+        MutationTrack::Nucleotide,
+        Sub::new(AsciiChar::from_byte_unchecked(reff), pos, AsciiChar::from_byte_unchecked(qry)).unwrap(),
+      )
+    }
+
+    pub(super) fn del(range: (usize, usize), sequence: &str) -> Mutation {
+      aligned(MutationEvent::Deletion, range, sequence)
+    }
+
+    pub(super) fn ins(range: (usize, usize), sequence: &str) -> Mutation {
+      aligned(MutationEvent::Insertion, range, sequence)
+    }
+
+    fn aligned(event: fn(AlignedMutation) -> MutationEvent, range: (usize, usize), sequence: &str) -> Mutation {
+      Mutation {
+        track: MutationTrack::Nucleotide,
+        event: event(AlignedMutation {
+          range,
+          sequence: Seq::try_from_str(sequence).unwrap(),
+        }),
+      }
+    }
+
+    pub(super) fn usher(position: i32, reff: u8, par: u8, qry: u8) -> UsherMutation {
+      UsherMutation {
+        position,
+        ref_nuc: nuc(reff),
+        par_nuc: nuc(par),
+        mut_nuc: vec![nuc(qry)],
+        chromosome: String::new(),
+      }
+    }
+
+    fn nuc(state: u8) -> i32 {
+      b"ACGT".iter().position(|&nuc| nuc == state).unwrap() as i32
+    }
   }
 }

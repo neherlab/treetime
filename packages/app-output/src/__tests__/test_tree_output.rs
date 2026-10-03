@@ -24,6 +24,7 @@ pub(super) mod tests {
   use std::collections::BTreeMap;
   use tempfile::TempDir;
   use treetime::ancestral::aa::AaNodeData;
+  use treetime::progress::NoopProgress;
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
@@ -64,7 +65,7 @@ pub(super) mod tests {
     assert_eq!(Some(0.5), child.node_attrs.div);
     assert_eq!(vec!["A1T".to_owned()], child.branch_attrs.mutations["nuc"]);
 
-    let mat = ancestral_to_mat(&graph, &names, &branch_lengths, &maps, aa_node_data.as_ref())?;
+    let mat = ancestral_to_mat(&graph, &names, &branch_lengths, &maps, aa_node_data.as_ref())?.tree;
     let mutation = mat
       .node_mutations
       .iter()
@@ -123,7 +124,7 @@ pub(super) mod tests {
   #[test]
   fn test_tree_output_conversion_failure_does_not_create_target_and_keeps_prior_file() -> Result<(), Report> {
     let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::Indel)?;
+      helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
     let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
     let nwk_path = dir.path().join("tree.nwk");
     let mat_path = dir.path().join("tree.mat.json");
@@ -141,9 +142,10 @@ pub(super) mod tests {
       &aa_annotations,
       &outputs,
       &CommentProviders::new(),
+      &NoopProgress,
     )
     .expect_err("MAT conversion must fail");
-    assert!(error.to_string().contains("insertion or deletion"));
+    assert!(error.to_string().contains("amino-acid mutation"));
     assert!(nwk_path.is_file());
     assert!(!mat_path.exists());
 
@@ -167,6 +169,7 @@ pub(super) mod tests {
       &aa_annotations,
       &outputs,
       &CommentProviders::new(),
+      &NoopProgress,
     )?;
     let actual: Value = json_read_file(&path)?;
     let nodes = actual["nodes"]
@@ -674,12 +677,12 @@ pub(super) mod tests {
             edge_mutations: BTreeMap::new(),
           },
           None,
-        )?,
-        optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize)?)?,
-        prune_to_mat(&prune, &prune_names, &prune_bl, &prune_maps(&prune))?,
-        clock_to_mat(&clock, &clock_names, &clock_bl)?,
-        mugration_to_mat(mugration, &mugration_names, &mugration_bl)?,
-        timetree_to_mat(&timetree, &timetree_names, &timetree_weights, &timetree_maps(&timetree))?,
+        )?.tree,
+        optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize)?)?.tree,
+        prune_to_mat(&prune, &prune_names, &prune_bl, &prune_maps(&prune))?.tree,
+        clock_to_mat(&clock, &clock_names, &clock_bl)?.tree,
+        mugration_to_mat(mugration, &mugration_names, &mugration_bl)?.tree,
+        timetree_to_mat(&timetree, &timetree_names, &timetree_weights, &timetree_maps(&timetree))?.tree,
       ])
     }
 

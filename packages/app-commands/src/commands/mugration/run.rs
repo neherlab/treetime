@@ -98,6 +98,7 @@ pub fn run_mugration(
       mugration_args.attribute(),
       &resolved.tree_outputs,
       &providers,
+      log,
     )?;
   }
 

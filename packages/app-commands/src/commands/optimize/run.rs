@@ -116,6 +116,7 @@ pub fn run_optimize(
       &maps,
       &resolved.tree_outputs,
       &providers,
+      log,
     )?;
   }
 

@@ -307,6 +307,7 @@ fn write_tree_outputs(
       mutation_counts.as_ref(),
       &resolved.tree_outputs,
       &providers,
+      log,
     )?;
   }
 

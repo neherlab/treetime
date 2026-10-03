@@ -132,6 +132,7 @@ pub fn run_ancestral_reconstruction(
     aa_annotations,
     &resolved,
     output.method,
+    log,
   )?;
 
   stages.report("Done", 1.0, "");
@@ -345,6 +346,7 @@ fn write_ancestral_trees(
   aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   resolved: &ResolvedOutputs,
   method: MethodAncestral,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   if resolved.tree_outputs.is_empty() {
     return Ok(());
@@ -363,6 +365,7 @@ fn write_ancestral_trees(
     aa_annotations,
     &resolved.tree_outputs,
     &providers,
+    log,
   )
 }
 

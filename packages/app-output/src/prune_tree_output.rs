@@ -1,5 +1,6 @@
 use crate::prune_result::{PruneNodeOut, PruneOutputMaps};
 use crate::tree_output::{
+  MatOutput,
   NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date, mat_from_graph,
   node_name_value, sequence_auspice_node, write_tree_outputs,
 };
@@ -9,12 +10,12 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime::progress::LogSink;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::AuspiceTree;
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::usher_mat::UsherTree;
 
 pub fn write_prune_tree_outputs(
   graph: &Graph,
@@ -23,6 +24,7 @@ pub fn write_prune_tree_outputs(
   maps: &PruneOutputMaps,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   let updated = generation_date();
   let names: BTreeMap<GraphNodeKey, Option<String>> =
@@ -37,6 +39,7 @@ pub fn write_prune_tree_outputs(
     "prune",
     || prune_to_auspice(graph, nodes, branch_lengths, maps, &updated),
     || prune_to_mat(graph, &names, branch_lengths, maps),
+    log,
   )
 }
 
@@ -77,7 +80,7 @@ pub(crate) fn prune_to_mat(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &PruneOutputMaps,
-) -> Result<UsherTree, Report> {
+) -> Result<MatOutput, Report> {
   let reference = prune_root_sequences(maps).remove(NUC_TRACK);
   mat_from_graph(
     graph,

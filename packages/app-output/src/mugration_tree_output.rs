@@ -1,5 +1,6 @@
 use crate::mugration_result::MugrationNodeOut;
 use crate::tree_output::{
+  MatOutput,
   TraitValue, auspice_data, auspice_from_graph, auspice_node, coloring, cumulative_branch_length_from, ensure_finite,
   finite_number, generation_date, mutation_free_mat, node_name_value, with_branch_support, write_tree_outputs,
 };
@@ -11,12 +12,12 @@ use std::path::PathBuf;
 use treetime::mugration::pipeline::MugrationOutput;
 use treetime::partition::storage::discrete::DiscreteStates;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime::progress::LogSink;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeBranchAttrsLabels};
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
-use treetime_io::usher_mat::UsherTree;
 
 pub fn write_mugration_tree_outputs(
   output: &MugrationOutput,
@@ -25,6 +26,7 @@ pub fn write_mugration_tree_outputs(
   attribute: &str,
   outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   providers: &CommentProviders,
+  log: &dyn LogSink,
 ) -> Result<(), Report> {
   let graph = &output.graph;
   let updated = generation_date();
@@ -40,6 +42,7 @@ pub fn write_mugration_tree_outputs(
     "mugration",
     || mugration_to_auspice(graph, nodes, branch_lengths, output, attribute, &updated),
     || mugration_to_mat(graph, &names, branch_lengths),
+    log,
   )
 }
 
@@ -91,7 +94,7 @@ pub(crate) fn mugration_to_mat(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<UsherTree, Report> {
+) -> Result<MatOutput, Report> {
   mutation_free_mat(graph, names, nwk_weights)
 }
 

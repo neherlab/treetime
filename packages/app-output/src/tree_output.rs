@@ -3,10 +3,12 @@ use chrono::Utc;
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
 use serde_json::{Value, json};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
-use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
+use treetime::progress::LogSink;
+use treetime::progress_warn;
+use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub, mutation_event_strings};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -45,11 +47,13 @@ pub(crate) fn write_tree_outputs<A, M>(
   command: &str,
   to_auspice: A,
   to_mat: M,
+  log: &dyn LogSink,
 ) -> Result<(), Report>
 where
   A: Fn() -> Result<AuspiceTree, Report>,
-  M: Fn() -> Result<UsherTree, Report>,
+  M: Fn() -> Result<MatOutput, Report>,
 {
+  let mut mat = None;
   for (kind, path) in outputs {
     match kind {
       TreeWriteKind::Nwk(spec) => {
@@ -85,9 +89,9 @@ where
         )?;
       },
       TreeWriteKind::Auspice => auspice_write_file(path, &to_auspice()?)?,
-      TreeWriteKind::MatPb => usher_mat_pb_write_file(path, &to_mat()?)?,
+      TreeWriteKind::MatPb => usher_mat_pb_write_file(path, converted_mat(&mut mat, &to_mat, log)?)?,
       TreeWriteKind::MatJson => {
-        usher_mat_json_write_file(path, &to_mat()?, &UsherMatJsonOptions::default())?;
+        usher_mat_json_write_file(path, converted_mat(&mut mat, &to_mat, log)?, &UsherMatJsonOptions::default())?;
       },
       TreeWriteKind::GraphJson => {
         json_write_file(path, graph, JsonPretty(true))?;
@@ -96,6 +100,22 @@ where
     }
   }
   Ok(())
+}
+
+fn converted_mat<'a, M>(mat: &'a mut Option<UsherTree>, to_mat: &M, log: &dyn LogSink) -> Result<&'a UsherTree, Report>
+where
+  M: Fn() -> Result<MatOutput, Report>,
+{
+  let tree = if let Some(tree) = mat.take() {
+    tree
+  } else {
+    let MatOutput { tree, gaps } = to_mat()?;
+    if let Some(warning) = gaps.warning() {
+      progress_warn!(log, "{warning}");
+    }
+    tree
+  };
+  Ok(mat.insert(tree))
 }
 
 pub(crate) fn auspice_data(
@@ -314,11 +334,66 @@ fn attach_auspice_children(
   Ok(())
 }
 
+#[derive(Debug)]
+#[allow(
+  clippy::field_scoped_visibility_modifiers,
+  reason = "crate-internal fields are the record interface"
+)]
+pub(crate) struct MatOutput {
+  pub(crate) tree: UsherTree,
+  pub(crate) gaps: MatGapCounts,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[allow(
+  clippy::field_scoped_visibility_modifiers,
+  reason = "crate-internal fields are the record interface"
+)]
+pub(crate) struct MatGapCounts {
+  pub(crate) deletions: usize,
+  pub(crate) insertions: usize,
+  pub(crate) substitutions: usize,
+}
+
+impl MatGapCounts {
+  fn count(&mut self, mutations: &[Mutation], reference_gaps: &BTreeSet<usize>) {
+    for mutation in mutations.iter().filter(|mutation| mutation.track == MutationTrack::Nucleotide) {
+      match &mutation.event {
+        MutationEvent::Deletion(_) => self.deletions += 1,
+        MutationEvent::Insertion(segment) => {
+          if reference_gaps.range(segment.range.0..segment.range.1).next().is_some() {
+            self.insertions += 1;
+          }
+        },
+        MutationEvent::Substitution(substitution) => {
+          if reference_gaps.contains(&substitution.pos()) {
+            self.substitutions += 1;
+          }
+        },
+      }
+    }
+  }
+
+  pub(crate) fn warning(self) -> Option<String> {
+    let mut clauses = vec![];
+    if self.deletions > 0 {
+      clauses.push(format!("wrote {} deletion(s) as missing data (N)", self.deletions));
+    }
+    if self.insertions > 0 || self.substitutions > 0 {
+      clauses.push(format!(
+        "left out {} insertion(s) and {} substitution(s) in alignment columns where the root sequence, which is the MAT reference, has a gap",
+        self.insertions, self.substitutions
+      ));
+    }
+    (!clauses.is_empty()).then(|| format!("UShER MAT has no gap state: {}", clauses.join("; ")))
+  }
+}
+
 pub(crate) fn mutation_free_mat(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<UsherTree, Report> {
+) -> Result<MatOutput, Report> {
   mat_from_graph(graph, names, nwk_weights, None, |_node_key, _edge_key| Ok(vec![]))
 }
 
@@ -328,7 +403,7 @@ pub(crate) fn mat_from_graph<F>(
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   reference: Option<&str>,
   mut edge_mutations: F,
-) -> Result<UsherTree, Report>
+) -> Result<MatOutput, Report>
 where
   F: FnMut(GraphNodeKey, GraphEdgeKey) -> Result<Vec<Mutation>, Report>,
 {
@@ -336,7 +411,18 @@ where
     .get_exactly_one_root()
     .wrap_err("When converting graph to UShER MAT")?;
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+  let reference_gaps: BTreeSet<usize> = reference
+    .map(|reference| {
+      reference
+        .bytes()
+        .enumerate()
+        .filter(|&(_, state)| state == u8::from(alphabet.gap()))
+        .map(|(pos, _)| pos)
+        .collect()
+    })
+    .unwrap_or_default();
   let mut missing_data = UnknownBridge::new(alphabet.unknown());
+  let mut gaps = MatGapCounts::default();
   let mut node_mutations = vec![];
   let mut condensed_nodes = vec![];
   let mut metadata = vec![];
@@ -345,14 +431,18 @@ where
     let mutations = match node.parent_keys.as_slice() {
       [(parent_key, edge_key)] => {
         let mutations = edge_mutations(node.key, *edge_key)?;
+        gaps.count(&mutations, &reference_gaps);
+        let mutations = gaps_as_missing_data(mutations, alphabet.unknown())?;
         missing_data.bridge_edge(*parent_key, node.key, node.child_edge_keys.len(), mutations)?
       },
       _ => vec![],
     };
-    let mutations = mutations
+    let mut mutations = mutations
       .iter()
+      .filter(|mutation| !is_in_reference_gap(mutation, &reference_gaps))
       .map(|mutation| mat_mutation(mutation, reference, &alphabet, &name))
       .collect::<Result<Vec<_>, _>>()?;
+    mutations.sort_by_key(|mutation| mutation.position);
     node_mutations.push(UsherMutationList { mutation: mutations });
     condensed_nodes.push(UsherTreeNode {
       node_name: name,
@@ -363,12 +453,50 @@ where
     });
     Ok(())
   })?;
-  Ok(UsherTree {
-    newick: nwk_write_str(graph, names, nwk_weights, &NwkWriteOptions::default())?,
-    node_mutations,
-    condensed_nodes,
-    metadata,
+  Ok(MatOutput {
+    tree: UsherTree {
+      newick: nwk_write_str(graph, names, nwk_weights, &NwkWriteOptions::default())?,
+      node_mutations,
+      condensed_nodes,
+      metadata,
+    },
+    gaps,
   })
+}
+
+fn gaps_as_missing_data(mutations: Vec<Mutation>, unknown: AsciiChar) -> Result<Vec<Mutation>, Report> {
+  let mut converted = Vec::with_capacity(mutations.len());
+  for mutation in mutations {
+    let (segment, is_deletion) = match (&mutation.track, &mutation.event) {
+      (MutationTrack::Nucleotide, MutationEvent::Deletion(segment)) => (segment, true),
+      (MutationTrack::Nucleotide, MutationEvent::Insertion(segment)) => (segment, false),
+      _ => {
+        converted.push(mutation);
+        continue;
+      },
+    };
+    for (pos, &state) in (segment.range.0..segment.range.1).zip(segment.sequence.iter()) {
+      if state == unknown {
+        continue;
+      }
+      let substitution = if is_deletion {
+        Sub::new(state, pos, unknown)?
+      } else {
+        Sub::new(unknown, pos, state)?
+      };
+      converted.push(Mutation::substitution(MutationTrack::Nucleotide, substitution));
+    }
+  }
+  Ok(converted)
+}
+
+fn is_in_reference_gap(mutation: &Mutation, reference_gaps: &BTreeSet<usize>) -> bool {
+  match (&mutation.track, &mutation.event) {
+    (MutationTrack::Nucleotide, MutationEvent::Substitution(substitution)) => {
+      reference_gaps.contains(&substitution.pos())
+    },
+    _ => false,
+  }
 }
 
 pub(crate) fn mat_mutation(
@@ -381,7 +509,7 @@ pub(crate) fn mat_mutation(
     return make_error!("Node '{node_name}' has an amino-acid mutation that UShER MAT cannot represent");
   }
   let MutationEvent::Substitution(substitution) = &mutation.event else {
-    return make_error!("Node '{node_name}' has an insertion or deletion that UShER MAT cannot represent");
+    return make_internal_error!("Node '{node_name}' has an insertion or deletion that was not converted to missing data");
   };
   let reference = reference.ok_or_else(|| {
     eyre::eyre!("Node '{node_name}' has nucleotide mutations, but UShER MAT requires a root nucleotide reference")
