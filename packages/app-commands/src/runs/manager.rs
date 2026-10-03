@@ -1,3 +1,4 @@
+use crate::atomic_write::write_atomically;
 use crate::command::{CommandOutcome, OutputFile};
 use crate::job::{CancelToken, JobEvent, JobId, JobProgress, JobStarted, TerminalEvent, run_job};
 use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
@@ -25,7 +26,6 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
-use tempfile::NamedTempFile;
 use treetime::cancel::Cancel;
 use treetime_utils::fmt::float::float_to_significant_digits;
 
@@ -233,28 +233,24 @@ impl RunManager {
       .sum::<Result<usize, Report>>()?;
     let allowed = max_total_size.saturating_sub(others);
 
-    let mut file =
-      NamedTempFile::new_in(&dir).wrap_err_with(|| format!("When creating a file in '{}'", dir.display()))?;
-    let mut buffer = vec![0_u8; UPLOAD_BUFFER_SIZE];
-    let mut size: usize = 0;
-    loop {
-      let read = body.read(&mut buffer).wrap_err("When receiving the upload")?;
-      if read == 0 {
-        break;
+    write_atomically(&target, |file| {
+      let mut buffer = vec![0_u8; UPLOAD_BUFFER_SIZE];
+      let mut size: usize = 0;
+      loop {
+        let read = body.read(&mut buffer).wrap_err("When receiving the upload")?;
+        if read == 0 {
+          return Ok(());
+        }
+        size += read;
+        if size > allowed {
+          return Err(Report::new(UploadTooLarge {
+            limit: format_size(max_total_size),
+            name: name.to_owned(),
+          }));
+        }
+        file.write_all(&buffer[..read]).wrap_err("When storing the upload")?;
       }
-      size += read;
-      if size > allowed {
-        return Err(Report::new(UploadTooLarge {
-          limit: format_size(max_total_size),
-          name: name.to_owned(),
-        }));
-      }
-      file.write_all(&buffer[..read]).wrap_err("When storing the upload")?;
-    }
-    file
-      .persist(&target)
-      .map_err(|err| Report::new(err.error))
-      .wrap_err_with(|| format!("When storing the upload as '{}'", target.display()))?;
+    })?;
     let (size, sha256) = file_sha256(&target)?;
     Ok(UploadedInput {
       name: name.to_owned(),

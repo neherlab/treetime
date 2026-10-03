@@ -1,3 +1,4 @@
+use crate::atomic_write::write_atomically;
 use crate::command::AppCommand;
 use crate::job::{JobEvent, JobId, TerminalEvent};
 use crate::runs::errors::{invalid, not_found};
@@ -13,7 +14,6 @@ use std::fmt::Display;
 use std::fs;
 use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use tempfile::NamedTempFile;
 use treetime_schema::version_info;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
@@ -102,16 +102,10 @@ impl RunStore {
   }
 
   pub fn write(&self, record: &RunRecord) -> Result<(), Report> {
-    let dir = self.run_dir(&record.id);
-    let path = dir.join(RUN_FILE);
-    let mut file =
-      NamedTempFile::new_in(&dir).wrap_err_with(|| format!("When creating a temporary file in '{}'", dir.display()))?;
-    file.write_all(format!("{}\n", json_write_str(record, JsonPretty(true))?).as_bytes())?;
-    file
-      .persist(&path)
-      .map_err(|err| Report::new(err.error))
-      .wrap_err_with(|| format!("When writing the run record '{}'", path.display()))?;
-    Ok(())
+    let path = self.run_dir(&record.id).join(RUN_FILE);
+    let text = format!("{}\n", json_write_str(record, JsonPretty(true))?);
+    write_atomically(&path, |file| Ok(file.write_all(text.as_bytes())?))
+      .wrap_err_with(|| format!("When writing the run record '{}'", path.display()))
   }
 
   pub fn list(&self) -> Result<Vec<RunRecord>, Report> {

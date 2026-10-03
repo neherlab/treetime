@@ -1,4 +1,5 @@
 use crate::port::{PortHeader, PortReply, PortRequest};
+use app_commands::atomic_write::write_atomically;
 use app_commands::bridge::error::ErrorResponse;
 use app_commands::bridge::service::{AppService, Unconfined};
 use app_commands::job::JobId;
@@ -13,7 +14,6 @@ use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tempfile::NamedTempFile;
 use tokio::runtime::{Builder, Runtime};
 use tokio::task::AbortHandle;
 use tokio_stream::StreamExt as _;
@@ -135,17 +135,4 @@ async fn exchange(router: Router, request: PortRequest, send: Arc<impl Fn(PortRe
     }
   }
   send(PortReply::End { seq });
-}
-
-fn write_atomically(destination: &Path, write: impl FnOnce(&mut File) -> Result<(), Report>) -> Result<(), Report> {
-  let dir = destination
-    .parent()
-    .filter(|dir| !dir.as_os_str().is_empty())
-    .unwrap_or_else(|| Path::new("."));
-  let mut file = NamedTempFile::new_in(dir).wrap_err_with(|| format!("When creating a file in '{}'", dir.display()))?;
-  write(file.as_file_mut())?;
-  file
-    .persist(destination)
-    .wrap_err_with(|| format!("When saving '{}'", destination.display()))?;
-  Ok(())
 }

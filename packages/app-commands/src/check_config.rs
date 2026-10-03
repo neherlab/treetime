@@ -1,10 +1,11 @@
 use crate::check_inputs::InputFacts;
 use crate::command::AppCommand;
 use crate::config::catalog::{SettingRole, command_settings};
-use crate::config::code::{ConfigCode, config_code, yaml_text};
+use crate::config::code::{ConfigCode, config_code};
 use crate::config::settings::has_path;
 use crate::config::source::{ConfigProblem, ConfigSource, InvalidConfig, parse_config_document};
 use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, rejection_messages, run_checks};
+use crate::yaml::yaml_text;
 use app_datasets::text_schema_command;
 use eyre::Report;
 use schemars::JsonSchema;

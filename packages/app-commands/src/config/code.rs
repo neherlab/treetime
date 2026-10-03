@@ -2,23 +2,20 @@ use crate::command::AppCommand;
 use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_settings};
 use crate::config::settings::{has_path, setting_ref};
 use crate::run_config::RUN_CONFIG_OUTPUT_DIR;
+use crate::yaml::yaml_text;
 use app_datasets::schema_directive;
 use clap::{Arg, Command};
 use eyre::Report;
 use itertools::Itertools;
-use saphyr::{Mapping, Scalar, ScalarStyle, Yaml, YamlEmitter};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::borrow::Cow;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::{make_error, make_report};
 
 const OUTPUT_ALL_KEY: &str = "output_all";
 
 const OUTPUT_ALL_FLAG: &str = "--output-all";
-
-const DOCUMENT_START: &str = "---\n";
 
 const CONFIG_FILE: &str = "run.yaml";
 
@@ -59,19 +56,6 @@ pub fn setting_tokens(arg: &Arg, flag: &str, value: &Value) -> Option<Vec<String
     Value::Array(items) => list_tokens(arg, flag, items),
     _ => Some(vec![flag.to_owned(), cli_value(arg, value)]),
   }
-}
-
-pub fn yaml_text(key: &str, value: &Value) -> Result<String, Report> {
-  let mut entry = Mapping::new();
-  entry.insert(
-    Yaml::Value(Scalar::String(Cow::Owned(key.to_owned()))),
-    yaml_node(value)?,
-  );
-  let mut text = String::new();
-  YamlEmitter::new(&mut text)
-    .dump(&Yaml::Mapping(entry))
-    .map_err(|err| make_report!("could not write `{key}` as YAML: {err}"))?;
-  Ok(text.strip_prefix(DOCUMENT_START).unwrap_or(&text).to_owned())
 }
 
 /// A command line and a YAML config that reproduce a configuration.
@@ -309,28 +293,4 @@ fn quote_tokens(tokens: &[String]) -> Result<String, Report> {
     })
     .collect::<Result<Vec<_>, Report>>()
     .map(|tokens| tokens.join(" "))
-}
-
-fn yaml_node(value: &Value) -> Result<Yaml<'static>, Report> {
-  let plain = |text: String| Yaml::Representation(Cow::Owned(text), ScalarStyle::Plain, None);
-  Ok(match value {
-    Value::Null => plain("null".to_owned()),
-    Value::Bool(_) | Value::Number(_) => plain(value.to_string()),
-    Value::String(_) => {
-      let quoted = json_write_str(value, JsonPretty(false))?;
-      let escaped = quoted
-        .strip_prefix('"')
-        .and_then(|text| text.strip_suffix('"'))
-        .ok_or_else(|| make_report!("a JSON string must be quoted: {quoted}"))?;
-      Yaml::Representation(Cow::Owned(escaped.to_owned()), ScalarStyle::DoubleQuoted, None)
-    },
-    Value::Array(items) => Yaml::Sequence(items.iter().map(yaml_node).try_collect()?),
-    Value::Object(entries) => {
-      let mut mapping = Mapping::new();
-      for (key, item) in entries {
-        mapping.insert(Yaml::Value(Scalar::String(Cow::Owned(key.clone()))), yaml_node(item)?);
-      }
-      Yaml::Mapping(mapping)
-    },
-  })
 }

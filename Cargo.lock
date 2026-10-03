@@ -219,6 +219,7 @@ dependencies = [
  "parking_lot",
  "plotters",
  "pretty_assertions",
+ "proptest",
  "rand",
  "rayon",
  "rstest",

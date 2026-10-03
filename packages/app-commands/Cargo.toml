@@ -66,6 +66,7 @@ approx = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
 pretty_assertions = { workspace = true }
+proptest = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
 

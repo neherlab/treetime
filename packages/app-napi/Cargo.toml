@@ -26,7 +26,6 @@ eyre = { workspace = true }
 napi = { workspace = true }
 napi-derive = { workspace = true }
 serde_json = { workspace = true }
-tempfile = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
@@ -40,6 +39,7 @@ app-output = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
+tempfile = { workspace = true }
 zip = { workspace = true }
 
 [lints]

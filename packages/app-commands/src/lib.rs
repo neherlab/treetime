@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 
+pub mod atomic_write;
 pub mod bridge;
 #[cfg(feature = "clap")]
 pub mod check_config;
@@ -18,6 +19,7 @@ pub mod run_checks;
 #[cfg(feature = "clap")]
 pub mod run_config;
 pub mod runs;
+pub mod yaml;
 
 #[cfg(test)]
 mod tests {
