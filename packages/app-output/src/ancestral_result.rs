@@ -1,4 +1,3 @@
-use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
@@ -18,7 +17,7 @@ pub struct AugurOutputMaps {
   pub ambiguous_char: AsciiChar,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct AncestralNodeOut {
   pub name: Option<String>,
   pub branch_support: Option<f64>,
