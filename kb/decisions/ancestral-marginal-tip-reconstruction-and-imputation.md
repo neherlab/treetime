@@ -34,6 +34,12 @@ With imputation enabled, every ambiguous or unknown tip position resolves to the
 
 The dense backend takes the argmax of the stored per-site leaf profile at imputed positions; the sparse backend evolves the stored parent-to-child message across the branch and takes the argmax under the observed ambiguity mask. The two backends produce identical tip sequences.
 
+### Leaf-branch mutations follow the emitted tip
+
+Edge mutations are derived from the emitted node sequences, so a leaf-branch mutation compares the parent state with the tip as emitted. Without imputation the tip keeps its observed letter, and the mutation reports it, including IUPAC ambiguity codes and `N`: a parent `C` and an observed `K` at position 4220 give `C4220K`. This matches v0, whose `fn mutations` in `packages/legacy/treetime/treetime/treeanc.py` compares the parent with the raw alignment row when tip states are not reconstructed. Gaps stay indels. With imputation the tip letter is the argmax, and so is the mutation. The rule applies to Fitch, dense and sparse marginal reconstruction, and amino-acid CDS tracks. Unknown placeholders of internal nodes (positions where every descendant tip is unknown) are not reported as mutations.
+
+Outputs that count mutations as divergence (`--divergence-units=mutations`) count a substitution only when the parent and child states share no nucleotide, as `augur refine` does, so `C4220K` counts and `C4220N` or `G4220K` do not. UShER MAT encodes an ambiguous child state as the list of its nucleotides, as UShER itself does.
+
 ### Flag surface
 
 Two orthogonal flags control tip output on both `ancestral` and `timetree`:
@@ -49,4 +55,4 @@ The node-data JSON serializer reads each partition's stored sequence. Reconstruc
 
 ## Numerical impact
 
-Emitted tip sequences change: previously corrupted canonical tip states are restored to their observed values, and, under imputation, ambiguous and unknown tip positions resolve to the marginal argmax (matching v0). Internal-node and root sequences, per-internal-edge mutations, and the marginal log-likelihood are unchanged. Tip-edge mutations change only where the previous corruption dropped a real substitution; they now satisfy `parent + mutations == child` and match the dense backend.
+Emitted tip sequences change: previously corrupted canonical tip states are restored to their observed values, and, under imputation, ambiguous and unknown tip positions resolve to the marginal argmax (matching v0). Internal-node and root sequences, per-internal-edge mutations, and the marginal log-likelihood are unchanged. Tip-edge mutations change only where the previous corruption dropped a real substitution; they now satisfy `parent + mutations == child` and match the dense backend. Without imputation, tip-edge mutations at ambiguous or unknown tip positions report the observed letter instead of the tip's most-likely state.
