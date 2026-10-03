@@ -112,6 +112,10 @@ Outputs are compared byte for byte, after removing `meta.updated` from `*.auspic
 `generated_by.version` from `*.augur-node-data.json`. Numeric differences are summarized in the report,
 never tolerated.
 
+The stderr of a case that passes in both snapshots is compared after removing color codes, log
+timestamps and the snapshot directory. A difference, such as a new, repeated or reworded warning, is
+listed in the report as information and never fails the case.
+
 Exit codes:
 
     0   every selected case passed
@@ -210,6 +214,7 @@ MAX_DIFF_ITEMS = 20
 NUMBER_RE = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?")
 ERROR_LINE_RE = re.compile(r"error|panic|memory allocation", re.IGNORECASE)
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+LOG_TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)? ", re.MULTILINE)
 CLEAR_LINE = "\r\033[K"
 log = logging.getLogger("smoke")
 
@@ -1077,6 +1082,7 @@ def build_reports(cases: list[Case], current: Snapshot, current_results: dict[st
       report.category = categorize(status, report.baseline_status)
       if report.category is Category.IDENTICAL:
         report.diffs = diff_run_dirs(case, baseline.case_dir(case.id), current.case_dir(case.id))
+        report.stderr_diff = stderr_diff(baseline, current, case.id)
         if report.diffs:
           report.category = Category.CHANGED
           report.detail = f"{len(report.diffs)} files differ, first: {report.diffs[0].path} ({report.diffs[0].summary})"
@@ -1127,6 +1133,22 @@ def compared_files(case: Case, run_dir: Path) -> dict[str, Path]:
   if case.compare_stdout:
     files["<stdout>"] = run_dir / "stdout.txt"
   return files
+
+
+def stderr_diff(baseline: Snapshot, current: Snapshot, case_id: str) -> FileDiff | None:
+  """Difference of the stderr of a case that passed in both snapshots; reported as information, never a failure."""
+  old = normalized_stderr(baseline, case_id)
+  new = normalized_stderr(current, case_id)
+  return None if old == new else text_diff("<stderr>", old, new)
+
+
+def normalized_stderr(snapshot: Snapshot, case_id: str) -> str:
+  """stderr without color codes, log timestamps and the snapshot directory, which differ between runs."""
+  path = snapshot.case_dir(case_id) / "stderr.txt"
+  if not path.is_file():
+    return ""
+  text = ANSI_ESCAPE_RE.sub("", path.read_text(errors="replace"))
+  return LOG_TIMESTAMP_RE.sub("", text.replace(str(snapshot.dir), "<snapshot>"))
 
 
 def normalized_bytes(path: Path) -> bytes:
@@ -1257,11 +1279,12 @@ def first_error_line(run_dir: Path) -> str | None:
 
 def write_reports(reports: list[CaseReport], current: Snapshot, baseline: Snapshot | None, report_dir: Path) -> None:
   report_dir.mkdir(parents=True, exist_ok=True)
-  rows = ["id\tcategory\tcommand\tdataset\twall_s\tbaseline_wall_s\tdetail"]
+  rows = ["id\tcategory\tcommand\tdataset\twall_s\tbaseline_wall_s\tdetail\tstderr"]
   for r in reports:
     base_wall = "" if r.baseline_wall_s is None else f"{r.baseline_wall_s:.2f}"
     detail = r.detail.replace("\t", " ").replace("\n", " ")
-    fields = [r.case.id, r.label, r.case.command, r.case.dataset or "", f"{r.wall_s:.2f}", base_wall, detail]
+    stderr = "changed" if r.stderr_diff else ""
+    fields = [r.case.id, r.label, r.case.command, r.case.dataset or "", f"{r.wall_s:.2f}", base_wall, detail, stderr]
     rows.append("\t".join(fields))
   write_text_atomic(report_dir / "report.tsv", "\n".join(rows) + "\n")
 
@@ -1286,12 +1309,24 @@ def write_reports(reports: list[CaseReport], current: Snapshot, baseline: Snapsh
     md += [f"### `{r.case.id}`: {r.label}", "", f"- Detail: {r.detail}", f"- Command: `{case_dir}/cmd.sh`"]
     if r.stderr_line:
       md.append(f"- stderr: `{r.stderr_line}`")
-    for diff in r.diffs:
-      md.append(f"- `{diff.path}`: {diff.summary}")
-      if diff.lines:
-        md += ["", "  ```", *[f"  {line}" for line in diff.lines], "  ```", ""]
+    md += format_file_diffs(r.diffs)
     md.append("")
+  stderr_changes = [r for r in reports if r.stderr_diff]
+  if stderr_changes:
+    md += ["## stderr changes (information only)", "",
+           "Cases that pass in both snapshots and print a different stderr. These differences never fail a case.", ""]
+  for r in stderr_changes:
+    md += [f"### `{r.case.id}`", "", *format_file_diffs([r.stderr_diff]), ""]
   write_text_atomic(report_dir / "report.md", "\n".join(md))
+
+
+def format_file_diffs(diffs: list[FileDiff]) -> list[str]:
+  lines = []
+  for diff in diffs:
+    lines.append(f"- `{diff.path}`: {diff.summary}")
+    if diff.lines:
+      lines += ["", "  ```", *[f"  {line}" for line in diff.lines], "  ```", ""]
+  return lines
 
 
 def print_summary(reports: list[CaseReport], current: Snapshot, baseline: Snapshot | None, report_dir: Path,
@@ -1303,6 +1338,8 @@ def print_summary(reports: list[CaseReport], current: Snapshot, baseline: Snapsh
   for label in labels:
     if counts[label]:
       print(f"  {label:<18} {counts[label]}")
+  if stderr_changes := sum(1 for report in reports if report.stderr_diff):
+    print(f"  stderr changed     {stderr_changes} (information only, see the report)")
   by_command: dict[str, list[CaseReport]] = defaultdict(list)
   for report in reports:
     by_command[report.case.command].append(report)
@@ -1620,6 +1657,7 @@ class CaseReport:
   detail: str
   diffs: list[FileDiff] = field(default_factory=list)
   stderr_line: str | None = None
+  stderr_diff: FileDiff | None = None
 
   @property
   def passed(self) -> bool:
