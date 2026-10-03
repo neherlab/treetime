@@ -3,9 +3,12 @@ mod tests {
   use crate::mutation_filter::UnknownMutationFilter;
   use eyre::Report;
   use helpers::{reported, substitutions};
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_primitives::AsciiChar;
+  use treetime::seq::mutation::{AlignedMutation, MutationEvent};
+  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_primitives::{AsciiChar, Seq};
 
   #[rustfmt::skip]
   #[rstest]
@@ -30,16 +33,48 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_mutation_filter_edge_mutations_keep_indels_and_empty_edges() -> Result<(), Report> {
+    let filter = UnknownMutationFilter::hiding_unknown(AsciiChar::try_new(b'N')?);
+    let deletion = MutationEvent::Deletion(AlignedMutation {
+      range: (4, 6),
+      sequence: Seq::try_from_str("AC")?,
+    });
+    let edge_mutations = btreemap! {
+      GraphEdgeKey(0) => helpers::nucleotide(substitutions(&["C1N"])?.into_iter().chain([deletion.clone()]).collect()),
+      GraphEdgeKey(1) => vec![],
+    };
+
+    let actual = filter.reported_edge_mutations(edge_mutations);
+
+    let expected = btreemap! {
+      GraphEdgeKey(0) => helpers::nucleotide(vec![deletion]),
+      GraphEdgeKey(1) => vec![],
+    };
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
   mod helpers {
     use crate::mutation_filter::UnknownMutationFilter;
     use eyre::Report;
     use std::str::FromStr;
-    use treetime::seq::mutation::{MutationEvent, Sub, mutation_event_strings};
+    use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub, mutation_event_strings};
 
     pub(super) fn substitutions(strings: &[&str]) -> Result<Vec<MutationEvent>, Report> {
       strings
         .iter()
         .map(|string| Ok(MutationEvent::Substitution(Sub::from_str(string)?)))
+        .collect()
+    }
+
+    pub(super) fn nucleotide(events: Vec<MutationEvent>) -> Vec<Mutation> {
+      events
+        .into_iter()
+        .map(|event| Mutation {
+          track: MutationTrack::Nucleotide,
+          event,
+        })
         .collect()
     }
 

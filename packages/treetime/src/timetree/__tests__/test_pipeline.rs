@@ -22,7 +22,7 @@ mod tests {
   use treetime_io::fasta::read_many_fasta_path;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
-  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
+  use treetime_utils::{assert_error, o, pretty_assert_abs_diff_eq};
 
   const STAR_TREE: &str = "(A:0.5,B:1.0,C:1.5,D:2.0)root;";
 
@@ -173,6 +173,38 @@ mod tests {
         epsilon = 1e-9
       );
     }
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_date_branch_lengths_need_both_end_dates() -> Result<(), Report> {
+    let parsed = nwk_read_str("((A:1,B:1)X:1,C:1)root;")?;
+    let names = parsed.names();
+    let graph = parsed.graph;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node must exist");
+    let node_dates = btreemap! {
+      key("root") => Some(2000.0),
+      key("X") => Some(2001.5),
+      key("A") => Some(2004.0),
+      key("B") => None,
+      key("C") => Some(2003.25),
+    };
+
+    let actual: BTreeMap<String, Option<f64>> = pipeline::date_branch_lengths(&graph, &node_dates)
+      .into_iter()
+      .map(|(edge_key, length)| {
+        let child = graph.get_edge(edge_key).expect("edge must exist").target();
+        (names[&child].clone().expect("every node is named"), length)
+      })
+      .collect();
+
+    let expected = btreemap! {
+      o!("X") => Some(1.5),
+      o!("A") => Some(2.5),
+      o!("B") => None,
+      o!("C") => Some(3.25),
+    };
+    assert_eq!(expected, actual);
     Ok(())
   }
 
