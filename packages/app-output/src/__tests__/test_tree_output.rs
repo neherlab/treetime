@@ -13,13 +13,15 @@ pub(super) mod tests {
   use crate::prune_tree_output::{prune_to_auspice, prune_to_mat};
   use crate::timetree_result::TimetreeOutputMaps;
   use crate::timetree_tree_output::{timetree_to_auspice, timetree_to_mat};
-  use crate::tree_output::{format_number, group_mutations};
+  use crate::tree_output::{TraitValue, auspice_node, format_number, group_mutations, with_branch_support};
   use approx::assert_ulps_eq;
   use eyre::{Report, WrapErr};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
+  use std::collections::BTreeMap;
+  use treetime_utils::{assert_error, o};
 
   use serde_json::Value;
   use tempfile::TempDir;
@@ -226,6 +228,22 @@ pub(super) mod tests {
       .collect();
     assert_eq!(vec![&json!({ "value": 0.9 })], support);
     Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_branch_support_rejects_a_trait_named_confidence() {
+    let traits = btreemap! {
+      o!("confidence") => TraitValue {
+        value: o!("high"),
+        confidence: BTreeMap::new(),
+        entropy: None,
+      },
+    };
+    let node = auspice_node(o!("A"), Some(0.1), None, None, None, traits, BTreeMap::new(), None);
+    assert_error!(
+      with_branch_support(node, Some(0.9)),
+      "Node 'A' has a trait named 'confidence', which Auspice JSON also uses for the input branch support. Rename the metadata column of the trait."
+    );
   }
 
   #[test]

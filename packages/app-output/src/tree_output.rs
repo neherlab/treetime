@@ -192,6 +192,13 @@ pub(crate) fn with_branch_support(
   };
   ensure_finite(confidence, "tree output", &node.name, "input branch support")?;
   if let Value::Object(target) = &mut node.node_attrs.other {
+    if target.contains_key("confidence") {
+      return make_error!(
+        "Node '{}' has a trait named 'confidence', which Auspice JSON also uses for the input branch support. \
+         Rename the metadata column of the trait.",
+        node.name
+      );
+    }
     target.insert("confidence".to_owned(), json!({ "value": confidence }));
   }
   Ok(node)
