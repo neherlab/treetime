@@ -11,7 +11,7 @@ use crate::progress::{LogSink, NoopProgress};
 use crate::seq::alignment::{get_common_length, node_seq_inputs};
 use crate::seq::mutation::{MutationEvent, MutationTrack, SequenceMutations, Sub};
 use crate::seq::sink::SeqSink;
-use crate::{make_error, make_report};
+use crate::{make_error, make_internal_report};
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -174,7 +174,9 @@ pub(crate) fn collect_aa_cds_node_data(
         .collect(),
       Some((_parent_key, edge_key)) => edge_mutations
         .remove(&edge_key)
-        .ok_or_else(|| make_report!("No mutations were derived for the edge above node {node_key} in CDS '{cds}'"))?
+        .ok_or_else(|| {
+          make_internal_report!("No mutations were derived for the edge above node {node_key} in CDS '{cds}'")
+        })?
         .into_iter()
         .map(|mutation| mutation.event)
         .collect(),
