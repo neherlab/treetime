@@ -64,7 +64,6 @@ parking_lot = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rstest = { workspace = true }
-tempfile = { workspace = true }
 treetime-io = { workspace = true }
 
 [lints]

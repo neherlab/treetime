@@ -4557,7 +4557,6 @@ dependencies = [
  "smart-default",
  "statrs",
  "strum_macros",
- "tempfile",
  "treetime-distribution",
  "treetime-graph",
  "treetime-grid",
