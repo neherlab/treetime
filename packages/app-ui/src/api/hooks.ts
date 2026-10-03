@@ -15,6 +15,8 @@ import {
 import { useApiContext } from "./context";
 import { requestKey, type ApiCallContext } from "./keys";
 
+const API_QUERY_ROOT = ["api"];
+
 export type ApiCall<TResult> = (context: ApiCallContext) => Promise<{ data: TResult }>;
 
 export type ApiMutationCall<TVariables, TResult> = (
@@ -88,4 +90,8 @@ export function apiMutationOptions<TVariables, TResult>(
       }
     },
   };
+}
+
+export async function resetApiQueries(queryClient: QueryClient): Promise<void> {
+  await queryClient.resetQueries({ queryKey: API_QUERY_ROOT });
 }

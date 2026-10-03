@@ -15,7 +15,7 @@ import {
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, expectTypeOf, test } from "vitest";
 
-import { apiKey, apiQueryOptions } from "../api/hooks";
+import { apiKey, apiQueryOptions, resetApiQueries } from "../api/hooks";
 import { requestKey, requestUrl, staleCoversKey, type ApiRequest } from "../api/keys";
 import { FakeServer, json, RECORD } from "./api_server";
 
@@ -212,5 +212,21 @@ describe("api keys", () => {
     );
 
     expect(url).toBe("http://treetime.test/api/runs/r%201/file?path=out%2Fa%20b.nwk");
+  });
+});
+
+describe("api reset", () => {
+  test("resetting the API queries keeps the queries of other sources", async () => {
+    const queryClient = new QueryClient();
+    const runs = key((context) => runsList(context));
+
+    queryClient.setQueryData(runs, { runs: [], active_runs: 0 });
+    queryClient.setQueryData(["preferences"], true);
+    await resetApiQueries(queryClient);
+
+    expect([queryClient.getQueryData(runs), queryClient.getQueryData(["preferences"])]).toStrictEqual([
+      undefined,
+      true,
+    ]);
   });
 });

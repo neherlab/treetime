@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import FolderOpen from "~icons/lucide/folder-open";
 
 import { useApiContext } from "../api/context";
-import { useApi } from "../api/hooks";
+import { resetApiQueries, useApi } from "../api/hooks";
 import { useWorkspaceShell } from "../platform";
 import { useShellStore } from "../store/shell";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -147,7 +147,7 @@ function useWorkspaceChange(shell: WorkspaceShell, onChanged: () => void) {
       try {
         await workspaceUpdate({ client, body: { path }, throwOnError: true });
         await shell.restartBackend();
-        await queryClient.resetQueries();
+        await resetApiQueries(queryClient);
         onChanged();
         toasts.add({ title: "The runs folder changed", description: path ?? "TreeTime uses its default folder." });
       } catch (error: unknown) {
