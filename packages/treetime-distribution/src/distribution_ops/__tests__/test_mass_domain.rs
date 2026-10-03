@@ -5,7 +5,7 @@
 
 #[cfg(test)]
 mod tests {
-  use crate::distribution_ops::mass_domain::{mass_bounded_domain, rewindow_to_mass, total_mass};
+  use crate::distribution_ops::mass_domain::{mass_bounded_domain, mass_profile, rewindow_to_mass};
   use crate::policy::NegLog;
   use crate::{Distribution, DistributionFunction};
   use approx::assert_abs_diff_eq;
@@ -19,14 +19,14 @@ mod tests {
   fn test_mass_domain_total_mass_exponential_matches_analytic() {
     let lambda = 1.0;
     let f = helpers::exponential_neglog(lambda, 5.0, 8001);
-    assert_abs_diff_eq!(total_mass(&f).unwrap(), 1.0 / lambda, epsilon = 1e-6);
+    assert_abs_diff_eq!(mass_profile(&f).unwrap().z, 1.0 / lambda, epsilon = 1e-6);
   }
 
   #[test]
   fn test_mass_domain_edge_extends_into_tail_to_analytic_quantile() {
     let lambda = 1.0;
     let f = helpers::exponential_neglog(lambda, 5.0, 8001);
-    let (lo, hi) = mass_bounded_domain(&f, EPS).unwrap();
+    let (lo, hi) = mass_bounded_domain(&mass_profile(&f).unwrap(), EPS).unwrap();
     assert_abs_diff_eq!(lo, 0.0, epsilon = 1e-12);
     assert_abs_diff_eq!(hi, -EPS.ln() / lambda, epsilon = 1e-6);
   }
@@ -35,7 +35,7 @@ mod tests {
   fn test_mass_domain_edge_trims_inward_to_analytic_quantile() {
     let lambda = 1.0;
     let f = helpers::exponential_neglog(lambda, 10.0, 16001);
-    let (lo, hi) = mass_bounded_domain(&f, EPS).unwrap();
+    let (lo, hi) = mass_bounded_domain(&mass_profile(&f).unwrap(), EPS).unwrap();
     assert_abs_diff_eq!(lo, 0.0, epsilon = 1e-12);
     assert_abs_diff_eq!(hi, -EPS.ln() / lambda, epsilon = 1e-6);
   }
@@ -44,7 +44,7 @@ mod tests {
   fn test_mass_domain_symmetric_edges_hold_equal_tail_mass() {
     let slope = 1.0;
     let f = helpers::laplace_neglog(slope, 12.0, 24001);
-    let (lo, hi) = mass_bounded_domain(&f, EPS).unwrap();
+    let (lo, hi) = mass_bounded_domain(&mass_profile(&f).unwrap(), EPS).unwrap();
     let expected = -(2.0 * EPS).ln() / slope;
     assert_abs_diff_eq!(hi, expected, epsilon = 1e-6);
     assert_abs_diff_eq!(lo, -expected, epsilon = 1e-6);
@@ -55,7 +55,7 @@ mod tests {
     let f = helpers::exponential_neglog(1.0, 5.0, 4001);
     let once = helpers::as_function(rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS).unwrap());
 
-    let mass_once = total_mass(&once).unwrap();
+    let mass_once = mass_profile(&once).unwrap().z;
     let mode_once = once.likely_time().unwrap().unwrap();
     let dx = once.dx();
 
@@ -64,7 +64,7 @@ mod tests {
       current = helpers::as_function(rewindow_to_mass(&Distribution::Function(current), EPS, GRID_POINTS).unwrap());
     }
 
-    let mass_100 = total_mass(&current).unwrap();
+    let mass_100 = mass_profile(&current).unwrap().z;
     let mode_100 = current.likely_time().unwrap().unwrap();
     assert_abs_diff_eq!(mass_100, mass_once, epsilon = 1e-6 * mass_once);
     assert!(

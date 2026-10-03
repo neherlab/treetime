@@ -1,8 +1,6 @@
 use crate::Distribution;
 use crate::distribution_ops::convolve::distribution_convolution_fine;
-use crate::distribution_ops::mass_domain::{
-  mass_bounded_domain, peak_normalized_if_mass_sizable, resample_to_mass_window,
-};
+use crate::distribution_ops::mass_domain::{peak_normalized_if_mass_sizable, resample_to_mass_window};
 use crate::policy::NegLog;
 use eyre::Report;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side};
@@ -22,9 +20,10 @@ pub fn convolve_across_edge(
   let Distribution::Function(conv) = conv else {
     return conv.normalize();
   };
-  let Some(normalized) = peak_normalized_if_mass_sizable(&conv) else {
+  let Some(sized) = peak_normalized_if_mass_sizable(&conv) else {
     return Distribution::Function(conv).normalize();
   };
+  let normalized = &sized.normalized;
 
   let (lo, hi) = match convolution_output_window(a, b, eps)? {
     Some((mut lo, mut hi)) => {
@@ -32,16 +31,12 @@ pub fn convolve_across_edge(
         Side::Left => hi = hi.min(normalized.x_max()),
         Side::Right => lo = lo.max(normalized.x_min()),
       }
-      if hi > lo {
-        (lo, hi)
-      } else {
-        mass_bounded_domain(&normalized, eps)?
-      }
+      if hi > lo { (lo, hi) } else { sized.bounded_domain(eps)? }
     },
-    None => mass_bounded_domain(&normalized, eps)?,
+    None => sized.bounded_domain(eps)?,
   };
 
-  resample_to_mass_window(&normalized, lo, hi, grid_points)
+  resample_to_mass_window(normalized, lo, hi, grid_points)
 }
 
 fn convolution_output_window(
@@ -60,7 +55,7 @@ fn operand_mass_domain(dist: &Distribution<NegLog>, eps: f64) -> Result<Option<(
     Distribution::Point(p) => Ok(Some((p.t(), p.t()))),
     Distribution::Range(r) => Ok(Some((r.start(), r.end()))),
     Distribution::Function(f) => peak_normalized_if_mass_sizable(f)
-      .map(|normalized| mass_bounded_domain(&normalized, eps))
+      .map(|sized| sized.bounded_domain(eps))
       .transpose(),
     Distribution::Empty | Distribution::Formula(_) => Ok(None),
   }

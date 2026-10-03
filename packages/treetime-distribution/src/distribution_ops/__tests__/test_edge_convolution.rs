@@ -49,7 +49,7 @@ mod tests {
   #[test]
   fn test_edge_convolution_operand_without_mass_uses_result_window() -> Result<(), Report> {
     let untailed = Distribution::Function(gaussian_grid(1.0)?);
-    assert_eq!(None, peak_normalized_if_mass_sizable(&gaussian_grid(1.0)?));
+    assert!(peak_normalized_if_mass_sizable(&gaussian_grid(1.0)?).is_none());
 
     let result = convolve_across_edge(&untailed, &gaussian(1.0)?, Side::Right, 1e-6, 400)?;
 
