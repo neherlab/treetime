@@ -36,7 +36,7 @@ The dense backend takes the argmax of the stored per-site leaf profile at impute
 
 ### Leaf-branch mutations follow the emitted tip
 
-Edge mutations are derived from the emitted node sequences, so a leaf-branch mutation compares the parent state with the tip as emitted. The rule applies to Fitch, dense and sparse marginal reconstruction, and amino-acid CDS tracks.
+Edge mutations are derived from the emitted node sequences, so a leaf-branch mutation compares the parent state with the tip as emitted. The rule applies to the `ancestral` and `timetree` commands, with Fitch, dense and sparse marginal reconstruction and amino-acid CDS tracks. `optimize` still writes the most-likely-state substitutions of the reconstruction engine: [kb/issues/M-optimize-mutations-not-derived-from-emitted-sequences.md](../issues/M-optimize-mutations-not-derived-from-emitted-sequences.md).
 
 - **Observed tip letters**: without imputation the tip keeps its observed letter, and the mutation reports it, including IUPAC ambiguity codes and `N`. A parent `C` and an observed `K` at position 4220 give `C4220K`. This matches v0, whose `fn mutations` in `packages/legacy/treetime/treetime/treeanc.py` compares the parent with the raw alignment row when tip states are not reconstructed
 - **Imputed tip letters**: with imputation the tip letter is the argmax, and so is the mutation
@@ -46,9 +46,9 @@ Edge mutations are derived from the emitted node sequences, so a leaf-branch mut
 
 The core keeps the complete mutation list. The written outputs omit mutations whose parent or child state is the alphabet's fully ambiguous letter (`N` for nucleotides, `X` for amino acids), as v0 does in `fn export_sequences_and_tree` of `packages/legacy/treetime/treetime/CLI_io.py`. Other ambiguity codes such as `K` stay, so `C4220K` is written and `C4220N` is not.
 
-- **One filter**: `struct UnknownMutationFilter` in `packages/app-output/src/mutation_filter.rs` applies when each command builds its output maps, so Newick and Nexus comments, Auspice JSON, and augur node data (nucleotide and amino-acid mutations) agree
+- **One filter**: `struct UnknownMutationFilter` in `packages/app-output/src/mutation_filter.rs` applies when each command builds its output maps, so Newick and Nexus comments, Auspice JSON, and augur node data (nucleotide and amino-acid mutations) agree. Hiding keeps the written mutations consistent: when a hidden `A5N` sits above an unknown node and `N5G` below it, the filter writes `A5G` on the lower edge, so the root plus the written mutations rebuilds every node, with `N` read as missing data
 - **`--report-ambiguous`**: on `ancestral` and `timetree`, the flag keeps the omitted mutations. `optimize` and `prune` have no such flag and always apply the default filter
-- **UShER MAT**: the MAT outputs always omit transitions from and to `N`, independent of `--report-ambiguous`. UShER MAT requires a determined parent nucleotide (`get_nt(m.par_nuc)` is asserted in `src/mutation_annotated_tree.cpp` of UShER) and treats `N` as missing data, so an `N` node keeps its parent's state in MAT. MAT encodes an ambiguous child state such as `K` as the list of its nucleotides, as UShER itself does
+- **UShER MAT**: the MAT outputs always hide transitions from and to `N` in the same way, independent of `--report-ambiguous`. UShER MAT requires a determined parent nucleotide (`get_nt(m.par_nuc)` is asserted in `src/mutation_annotated_tree.cpp` of UShER at revision `ac9c982d`) and treats `N` as missing data, so an `N` node keeps its parent's state in MAT. MAT encodes an ambiguous child state such as `K` as the list of its nucleotides, as UShER itself does
 - **Divergence**: mutation divergence units count from the complete list and are unaffected by the filter, because a change to or from `N` never counts as a state change
 
 ### Flag surface

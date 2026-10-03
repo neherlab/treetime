@@ -11,8 +11,6 @@ Multiple locations suppress errors by substituting default values for semantical
 - `clock/clock_filter.rs:41:` branch length defaults to 0.0
 - `clock/reroot.rs:178:` branch length defaults to 0.0
 - `clock/rtt.rs:36:` branch length defaults to 0.0
-- `seq/div.rs:26:` parent divergence defaults to 0.0
-- `seq/div.rs:28:` branch length defaults to 0.0
 - `partition/marginal_discrete.rs:60:` node name defaults to empty string
 - `optimize/topology/merge_shared_mutations.rs:211-212:` indels default to empty
 - `timetree/optimization/relaxed_clock.rs:87:` coefficients default to zero
