@@ -13,8 +13,11 @@ Location: packages/treetime-distribution/src/distribution_ops/divide.rs:33
 
 ```bash
 treetime timetree --tree=data/flu/h3n2/20/tree.nwk --dates=data/flu/h3n2/20/metadata.tsv \
-  --aln=data/flu/h3n2/20/aln.fasta.xz --branch-length-mode=input --output-all=<dir>
+  --aln=data/flu/h3n2/20/aln.fasta.xz --branch-length-mode=input --output-all=<dir> \
+  --output-selection=nwk,nexus,auspice,augur-node-data,clock-model
 ```
+
+The selection leaves out the reconstructed FASTA, which input mode rejects before inference ([M-timetree-input-branch-lengths-reject-default-outputs.md](M-timetree-input-branch-lengths-reject-default-outputs.md)).
 
 The same abort occurs on `data/ebola/20` and on `data/ebola/362` with `--keep-root` added. These are the three `--branch-length-mode=input` cases of `dev/smoke` (`timetree/flu/h3n2/20/branch-input`, `timetree/ebola/20/branch-input`, `timetree/ebola/362/input-keeproot`), and all three fail.
 

@@ -6,33 +6,34 @@ Negative numdates arise legitimately when the molecular clock regression extrapo
 
 ## Reproduction
 
+A fixed clock rate far below the substitution rate of the data places the root thousands of years before the samples:
+
 ```bash
-./dev/docker/run just run treetime timetree \
-  --tree=data/lassa/L/20/tree.nwk \
-  --dates=data/lassa/L/20/metadata.tsv \
-  --output-all=tmp/smoke-tests/timetree/lassa/L/20/basic \
-  --output-selection=nwk,nexus,auspice,augur-node-data,clock-model,gtr \
-  data/lassa/L/20/aln.fasta.xz
+treetime timetree --tree=data/zika/20/tree.nwk --dates=data/zika/20/metadata.tsv \
+  --aln=data/zika/20/aln.fasta.xz --clock-rate=1e-6 --output-all=<dir>
 ```
+
+The `timetree/zika/20/clock-rate-1e-6` row of `dev/smoke.toml` runs this command. On `data/lassa/L/20` without a fixed rate, the run now stops earlier, at the NaN time distribution of [H-timetree-backward-pass-nan-time-distribution.md](H-timetree-backward-pass-nan-time-distribution.md).
 
 Panics with: `cannot convert float seconds to Duration: value is negative`
 
-The offending value: `numdate = -1908.59` (a root extrapolated ~3900 years before the ~2000 CE sampling dates).
+The offending value is the negative `numdate` of the root.
 
 ## Causal chain
 
-1. Clock regression on 20 Lassa L-segment sequences produces a deep-negative root numdate (`-1908.59`)
-2. Augur-node-data output writer calls `year_fraction_to_datestring(numdate)` for every node (`augur_node_data.rs:110`)
-3. `year_fraction_to_datestring` delegates to `year_fraction_to_date` (`year_fraction.rs:28-35`)
+1. The clock model places the root before 1 CE, so its `numdate` is negative
+2. Augur-node-data output writer calls `year_fraction_to_datestring(numdate)` for every node ([packages/app-output/src/augur_node_data.rs#L97](../../packages/app-output/src/augur_node_data.rs#L97))
+3. `year_fraction_to_datestring` delegates to `year_fraction_to_date` ([packages/treetime-utils/src/datetime/year_fraction.rs#L27-L29](../../packages/treetime-utils/src/datetime/year_fraction.rs#L27-L29))
 4. `year_fraction.fract()` returns `-0.59` (sign-preserving for negative inputs)
 5. `seconds_in_year as f64 * fraction` produces a negative number of seconds
 6. `StdDuration::from_secs_f64(negative)` panics -- `std::time::Duration` is unsigned
 
 ## Affected locations
 
-- `packages/treetime-utils/src/datetime/year_fraction.rs:28-35` -- the partial function
-- `packages/treetime/src/commands/timetree/output/augur_node_data.rs:110` -- sole crash-triggering call site
-- `packages/treetime-utils/src/datetime/parse_date.rs:20` -- other caller, only receives positive input dates (not currently affected)
+- [packages/treetime-utils/src/datetime/year_fraction.rs#L45-L52](../../packages/treetime-utils/src/datetime/year_fraction.rs#L45-L52): `fn year_fraction_to_date`, the partial function. Its lint suppression assumes a within-year second span, but a negative input gives a negative span
+- [packages/app-output/src/augur_node_data.rs#L97](../../packages/app-output/src/augur_node_data.rs#L97): the node-data writer, which converts every node date
+- [packages/app-commands/src/results/year_date.rs#L18](../../packages/app-commands/src/results/year_date.rs#L18): the run results of the app, which convert dates the same way
+- [packages/treetime-utils/src/datetime/parse_date.rs#L28](../../packages/treetime-utils/src/datetime/parse_date.rs#L28): converts input dates, which are positive
 
 ## v0 reference behavior
 
