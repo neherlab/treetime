@@ -1,6 +1,6 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import { useLocalStorage, useMediaQuery } from "@mantine/hooks";
+import { useMediaQuery } from "@mantine/hooks";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import * as React from "react";
 import PanelLeftIcon from "~icons/lucide/panel-left";
@@ -10,7 +10,6 @@ import { cn } from "./cn";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./sheet";
 import {
   clampSidebarWidth,
-  parseSidebarWidth,
   SIDEBAR_WIDTH_DEFAULT,
   SIDEBAR_WIDTH_MAX,
   SIDEBAR_WIDTH_MIN,
@@ -21,8 +20,6 @@ const MOBILE_QUERY = "(max-width: 767px)";
 
 const SIDEBAR_HOTKEY = "Mod+B";
 
-const SIDEBAR_WIDTH_STORAGE_KEY = "treetime-sidebar-width";
-
 declare module "react" {
   interface CSSProperties {
     "--sidebar-width"?: string;
@@ -31,18 +28,18 @@ declare module "react" {
 
 const SidebarContext = React.createContext<SidebarContextProps | undefined>(undefined);
 
-function SidebarProvider({ className, style, children, ...props }: React.ComponentProps<"div">) {
+function SidebarProvider({
+  width,
+  onWidthChange: setWidth,
+  className,
+  style,
+  children,
+  ...props
+}: React.ComponentProps<"div"> & { width: number; onWidthChange: (width: number) => void }) {
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const [open, setOpen] = React.useState(true);
   const [openMobile, setOpenMobile] = React.useState(false);
   const [resizing, setResizing] = React.useState(false);
-
-  const [width, setWidth] = useLocalStorage({
-    key: SIDEBAR_WIDTH_STORAGE_KEY,
-    defaultValue: SIDEBAR_WIDTH_DEFAULT,
-    getInitialValueInEffect: false,
-    deserialize: parseSidebarWidth,
-  });
 
   const toggleSidebar = React.useCallback(() => {
     if (isMobile) {

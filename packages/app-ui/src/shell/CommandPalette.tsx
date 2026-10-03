@@ -1,12 +1,13 @@
 import { errorMessage, type ExampleConfig } from "@neherlab/app-contracts";
 import { datasets, runsList } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
-import { useTheme } from "next-themes";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { settingFieldId } from "../analysis/fieldIds";
 import { useConfigLoader } from "../analysis/useConfigLoader";
 import { useApi } from "../api/hooks";
+import { useWorkspaceShell } from "../platform";
+import { useThemeChoice } from "../preferences/useThemeChoice";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
@@ -132,7 +133,9 @@ function usePaletteItems(): PaletteItem[] {
   const { data: catalog } = useApi((context) => datasets(context), { staleTime: Infinity });
   const command = useDraftStore((state) => state.command);
   const compareIds = useShellStore((state) => state.compareIds);
-  const { theme, setTheme } = useTheme();
+  const setWorkspaceOpen = useShellStore((state) => state.setWorkspaceOpen);
+  const workspaceShell = useWorkspaceShell();
+  const { theme, chooseTheme } = useThemeChoice();
   const loadConfig = useConfigLoader();
   const toasts = useToastManager();
 
@@ -154,8 +157,18 @@ function usePaletteItems(): PaletteItem[] {
   return useMemo(() => {
     const items: PaletteItem[] = [
       paletteItem("Action", "action-new", "New analysis", "", () => navigate({ to: "/new" })),
-      paletteItem("Action", "action-theme", "Change theme", "System, light or dark", () => setTheme(nextTheme(theme))),
+      paletteItem("Action", "action-theme", "Change theme", "System, light or dark", () =>
+        chooseTheme(nextTheme(theme)),
+      ),
     ];
+
+    if (workspaceShell !== null) {
+      items.push(
+        paletteItem("Action", "action-runs-folder", "Change runs folder", "Where TreeTime keeps the runs", () =>
+          setWorkspaceOpen(true),
+        ),
+      );
+    }
 
     const [first, second] = compareIds;
 
@@ -188,7 +201,7 @@ function usePaletteItems(): PaletteItem[] {
             `${spec.label}  ${spec.flag}`,
             spec.help,
             () => {
-              useDraftStore.getState().update({ view: "all", search: spec.key, changedOnly: false });
+              useDraftStore.getState().update({ view: "all", search: spec.key, changed_only: false });
 
               return navigate({ to: "/new" });
             },
@@ -205,5 +218,16 @@ function usePaletteItems(): PaletteItem[] {
     }
 
     return items;
-  }, [catalog, command, compareIds, loadExample, navigate, runList, setTheme, theme]);
+  }, [
+    catalog,
+    chooseTheme,
+    command,
+    compareIds,
+    loadExample,
+    navigate,
+    runList,
+    setWorkspaceOpen,
+    theme,
+    workspaceShell,
+  ]);
 }

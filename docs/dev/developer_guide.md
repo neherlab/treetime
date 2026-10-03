@@ -149,15 +149,15 @@ Each checkout resolves its own ports, so worktrees run side by side; `TREETIME_A
 
 #### Storage
 
-The web app has no database. The server keeps each run in its own folder `<runs-dir>/<run-id>/`: the run record `run.json`, the event log `events.jsonl`, the uploaded files in `inputs/`, and the results in `out/`. The browser keeps only the unfinished form, in `localStorage`. The server reads example datasets from `--data-dir`.
+The web app has no database. The server keeps each run in its own folder `<runs-dir>/<run-id>/`: the run record `run.json`, the event log `events.jsonl`, the uploaded files in `inputs/`, and the results in `out/`. The browser keeps the preferences of the user interface (theme, sidebar width, and the unfinished form) in `localStorage`, under the key `treetime-preferences`. The server reads example datasets from `--data-dir`.
 
 Each app mode keeps its runs in its own directory:
 
 - `tmp/app/web-dev/runs`: development servers (`just up`)
 - `tmp/app/web-prod/runs`: production server (`just serve`)
-- `tmp/app/desktop-dev/runs`: desktop app in development mode (`just desktop`), with its diagnostics in `tmp/app/desktop-dev/diagnostics`
-- `tmp/app/desktop-prod/runs`: production build of the desktop app started from the checkout (`just desktop-prod`), with its diagnostics in `tmp/app/desktop-prod/diagnostics`
-- `<userData>/runs`: installed desktop app, in the Electron user data directory of the platform
+- `tmp/app/treetime-dev/runs`: desktop app in development mode (`just desktop`); see [Desktop app](#desktop-app) for its other folders
+- `tmp/app/treetime-prod/runs`: production build of the desktop app started from the checkout (`just desktop-prod`)
+- `~/.local/share/treetime/runs` on Linux, `~/Library/Application Support/treetime/runs` on macOS, `%LOCALAPPDATA%\treetime\runs` on Windows: installed desktop app, unless the user chose another runs folder
 
 A deployment passes `--data-dir` and `--runs-dir` to `treetime-server` itself.
 
@@ -185,6 +185,20 @@ The API server speaks HTTP/1.1 without TLS, and browsers use HTTP/2 only over TL
 `just desktop` starts the Electron app in development mode. `just desktop-prod` builds the desktop app for production (the Node addon in the `dist` profile and the bundled renderer) and starts that build from the checkout. In the container both need the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
 
 The Node addon (`packages/app-napi`, a Rust `cdylib`) is built by cargo, like the CLI, and copied to `packages/app-napi/app-napi.node`, the `main` file of the package: `just build-napi` builds the `dev` profile for `just desktop`, and `just build-napi dist` the `dist` profile for `just build-desktop` and `just desktop-prod`. `just gen napi-types` generates its TypeScript types (`index.d.ts`).
+
+#### Folders and settings
+
+The Rust core resolves the folders of the desktop app (`AppPaths` in `packages/app-commands/src/app_paths.rs`), so a later local web mode can use the same ones. Each folder is named `treetime`:
+
+| Content                                         | Linux                          | macOS                                         | Windows                         |
+| ----------------------------------------------- | ------------------------------ | --------------------------------------------- | ------------------------------- |
+| Chromium profile and `settings.yaml`            | `~/.config/treetime`           | `~/Library/Application Support/treetime`      | `%LOCALAPPDATA%\treetime`       |
+| Runs, unless the settings name another folder   | `~/.local/share/treetime/runs` | `~/Library/Application Support/treetime/runs` | `%LOCALAPPDATA%\treetime\runs`  |
+| Logs and crash diagnostics                      | `~/.local/state/treetime/logs` | `~/Library/Logs/treetime`                     | `%LOCALAPPDATA%\treetime\logs`  |
+
+On Linux, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, and `XDG_STATE_HOME` move these folders. `TREETIME_APP_DIR` replaces all of them with one folder that holds `profile/`, `settings.yaml`, `runs/`, and `logs/`. `just desktop` and `just desktop-prod` set it to `tmp/app/treetime-dev` and `tmp/app/treetime-prod` of the checkout, so development never touches the profile of an installed app; `TREETIME_DESKTOP_DEV_DIR` and `TREETIME_DESKTOP_PROD_DIR` in `.env` choose other folders (see `.env.example`).
+
+`settings.yaml` holds the runs folder (`workspace`) and the preferences of the user interface (`ui`: theme, sidebar width, and the unfinished form). Every key is optional, and an unknown key is an error that names the file. When `settings.json` exists instead, the app reads and writes JSON; both files at once is an error. The user changes the runs folder in the app, with the folder button in the header or "Change runs folder" in the command palette; the back end then restarts to open it, which interrupts runs that are computing. Only the desktop app serves the settings routes (`/api/app-settings`, `/api/workspace`): `treetime-server` leaves them out, so a shared server never mixes the preferences of its visitors.
 
 #### Packages
 

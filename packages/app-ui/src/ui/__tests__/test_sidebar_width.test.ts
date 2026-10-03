@@ -1,9 +1,9 @@
-import { assert, double, integer, property, string } from "fast-check";
+import { assert, double, integer, property } from "fast-check";
 import { describe, expect, test } from "vitest";
 
 import {
   clampSidebarWidth,
-  parseSidebarWidth,
+  sidebarWidthOrDefault,
   SIDEBAR_WIDTH_DEFAULT,
   SIDEBAR_WIDTH_MAX,
   SIDEBAR_WIDTH_MIN,
@@ -42,26 +42,22 @@ describe("sidebar width clamp", () => {
 });
 
 describe("stored sidebar width", () => {
-  test("a missing value gives the default width", () => {
-    expect(parseSidebarWidth(undefined)).toBe(SIDEBAR_WIDTH_DEFAULT);
+  test("an unset width gives the default width", () => {
+    expect(sidebarWidthOrDefault(undefined)).toBe(SIDEBAR_WIDTH_DEFAULT);
   });
 
-  test("a stored number is restored", () => {
-    expect(parseSidebarWidth("420")).toBe(420);
-  });
-
-  test("a non-numeric value gives the default width", () => {
-    expect(parseSidebarWidth("wide")).toBe(SIDEBAR_WIDTH_DEFAULT);
+  test("a stored width is restored", () => {
+    expect(sidebarWidthOrDefault(420)).toBe(420);
   });
 
   test("a stored width outside the bounds is clamped", () => {
-    expect(parseSidebarWidth("9000")).toBe(SIDEBAR_WIDTH_MAX);
+    expect(sidebarWidthOrDefault(9000)).toBe(SIDEBAR_WIDTH_MAX);
   });
 
-  test("any stored string restores a width inside the bounds", () => {
+  test("any stored width restores a width inside the bounds", () => {
     assert(
-      property(string(), (stored) => {
-        const width = parseSidebarWidth(stored);
+      property(integer({ min: 0, max: 4_294_967_295 }), (stored) => {
+        const width = sidebarWidthOrDefault(stored);
 
         expect(width).toBeGreaterThanOrEqual(SIDEBAR_WIDTH_MIN);
         expect(width).toBeLessThanOrEqual(SIDEBAR_WIDTH_MAX);

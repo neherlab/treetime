@@ -143,7 +143,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
 }
 
 function PageHeader() {
-  const fromRunId = useDraftStore((state) => state.fromRunId);
+  const fromRunId = useDraftStore((state) => state.from_run_id);
   const command = useDraftStore((state) => state.command);
   const reset = useDraftStore((state) => state.reset);
   const { data: runList } = useApi((context) => runsList(context));

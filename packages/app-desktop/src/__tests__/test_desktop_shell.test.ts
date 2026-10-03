@@ -5,6 +5,7 @@ import {
   SaveError,
   createDesktopSaveActions,
   createLocalFiles,
+  createWorkspaceShell,
   windowFetchConnection,
   type DesktopShell,
   type WindowLike,
@@ -61,6 +62,34 @@ describe("desktop_shell files", () => {
     await expect(files.pickFiles({ title: "Tree", extensions: [], multiple: false })).rejects.toThrow(
       "expected string",
     );
+  });
+});
+
+describe("desktop_shell workspace", () => {
+  test("pickFolder returns the folder the user chose", async () => {
+    const workspace = createWorkspaceShell(fakeShell({ folder: "/data/runs" }));
+
+    await expect(workspace.pickFolder({ title: "Runs folder" })).resolves.toBe("/data/runs");
+  });
+
+  test("pickFolder returns null when the user cancels the dialog", async () => {
+    const workspace = createWorkspaceShell(fakeShell({ folder: null }));
+
+    await expect(workspace.pickFolder({ title: "Runs folder" })).resolves.toBeNull();
+  });
+
+  test("a malformed folder result rejects", async () => {
+    const workspace = createWorkspaceShell(fakeShell({ folder: ["/data/runs"] }));
+
+    await expect(workspace.pickFolder({ title: "Runs folder" })).rejects.toThrow("expected string");
+  });
+
+  test("restartBackend asks the shell to restart the back end once", async () => {
+    const shell = fakeShell({});
+
+    await createWorkspaceShell(shell).restartBackend();
+
+    expect(shell.restarts).toBe(1);
   });
 });
 
@@ -130,15 +159,25 @@ describe("desktop_shell window connection", () => {
 
 interface FakeShell extends DesktopShell {
   connections: number;
+  restarts: number;
   saves: unknown[];
   stop(reason: string, restarts: boolean): void;
 }
 
-function fakeShell({ picked = [], saved = { saved: false } }: { picked?: unknown; saved?: SaveReply }): FakeShell {
+function fakeShell({
+  picked = [],
+  folder = null,
+  saved = { saved: false },
+}: {
+  picked?: unknown;
+  folder?: unknown;
+  saved?: SaveReply;
+}): FakeShell {
   const stopListeners: Array<(reason: string, restarts: boolean) => void> = [];
 
   const shell: FakeShell = {
     connections: 0,
+    restarts: 0,
     saves: [],
     connectBackend() {
       shell.connections += 1;
@@ -152,6 +191,12 @@ function fakeShell({ picked = [], saved = { saved: false } }: { picked?: unknown
       });
     },
     pickFiles: () => Promise.resolve(picked),
+    pickFolder: () => Promise.resolve(folder),
+    restartBackend: () => {
+      shell.restarts += 1;
+
+      return Promise.resolve();
+    },
     pathForFile: () => "",
     saveRunFile: (request) => {
       shell.saves.push(request);

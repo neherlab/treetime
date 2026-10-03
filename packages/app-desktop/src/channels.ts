@@ -11,3 +11,7 @@ export const BACKEND_PORT_REQUEST_CHANNEL = "treetime:backend-port-request";
 export const BACKEND_PORT_CHANNEL = "treetime:backend-port";
 
 export const BACKEND_STOPPED_CHANNEL = "treetime:backend-stopped";
+
+export const PICK_FOLDER_CHANNEL = "treetime:pick-folder";
+
+export const RESTART_BACKEND_CHANNEL = "treetime:restart-backend";

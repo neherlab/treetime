@@ -1,5 +1,5 @@
 import { errorMessage } from "@neherlab/app-contracts";
-import type { AppCommand, CodeLine, ConfigCode } from "@neherlab/app-contracts";
+import type { AppCommand, CodeLine, ConfigCode, UiCodeFormat } from "@neherlab/app-contracts";
 import { useCallback, useMemo, useState } from "react";
 import FileUp from "~icons/lucide/file-up";
 
@@ -8,7 +8,6 @@ import { OptionToggle } from "../components/OptionToggle";
 import { Panel } from "../components/Panel";
 import { commandSwitchNote } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
-import type { CodeFormat } from "../store/draftSchema";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
@@ -17,13 +16,13 @@ import { Textarea } from "../ui/textarea";
 import { useToastManager } from "../ui/toast";
 import { useConfigLoader } from "./useConfigLoader";
 
-const CODE_FORMATS: ReadonlyArray<{ value: CodeFormat; label: string }> = [
+const CODE_FORMATS: ReadonlyArray<{ value: UiCodeFormat; label: string }> = [
   { value: "cli", label: "CLI" },
   { value: "yaml", label: "YAML" },
 ];
 
 export function CodePanel({ command, code }: { command: AppCommand; code: ConfigCode | null }) {
-  const format = useDraftStore((state) => state.codeFormat);
+  const format = useDraftStore((state) => state.code_format);
   const update = useDraftStore((state) => state.update);
   const [importing, setImporting] = useState(false);
 
@@ -31,7 +30,7 @@ export function CodePanel({ command, code }: { command: AppCommand; code: Config
   const text = code === null ? "" : format === "cli" ? code.command_line_text : code.yaml_text;
   const keyed = useMemo(() => keyedLines(lines), [lines]);
 
-  const onFormat = useCallback((next: CodeFormat) => update({ codeFormat: next }), [update]);
+  const onFormat = useCallback((next: UiCodeFormat) => update({ code_format: next }), [update]);
   const closeImport = useCallback(() => setImporting(false), []);
 
   return (

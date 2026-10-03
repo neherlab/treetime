@@ -179,6 +179,7 @@ passthrough_env() {
     case "${name}" in
     CI | GITHUB_ACTIONS | COLORTERM | NO_COLOR | FORCE_COLOR | \
       TREETIME_BUILD_MODE | TREETIME_VERSION_SUFFIX | TREETIME_API_PORT | TREETIME_WEB_PORT | TREETIME_SERVE_PORT | TREETIME_PORTLESS | \
+      TREETIME_APP_DIR | TREETIME_DESKTOP_DEV_DIR | TREETIME_DESKTOP_PROD_DIR | \
       CARGO_PROFILE_* | CARGO_TERM_* | CARGO_BUILD_JOBS | CARGO_INCREMENTAL | NEXTEST_* | PROPTEST_* | \
       RUST_LOG | RUST_LOG_STYLE | RUST_BACKTRACE | RUST_LIB_BACKTRACE | RUST_SPANTRACE | RAYON_NUM_THREADS | \
       OPENBLAS_NUM_THREADS | OPENBLAS_CORETYPE | OPENBLAS_VERBOSE | KACHE_DISABLED | KACHE_LOG | KACHE_MAX_SIZE | *_COMPRESSION | \
@@ -220,6 +221,14 @@ jupyter)
     mkdir -p "${SMOKE_STORE}"
     run_flags+=(--env="SMOKE_STORE=${SMOKE_STORE}" --volume="${SMOKE_STORE}:${SMOKE_STORE}")
   fi
+  # Desktop app folders given as absolute paths lie outside the checkout and need
+  # their own mount; relative paths resolve inside the mounted checkout.
+  for app_dir in "${TREETIME_APP_DIR:-}" "${TREETIME_DESKTOP_DEV_DIR:-}" "${TREETIME_DESKTOP_PROD_DIR:-}"; do
+    if [[ "${app_dir}" == /* ]]; then
+      mkdir -p "${app_dir}"
+      run_flags+=(--volume="${app_dir}:${app_dir}")
+    fi
+  done
   portless_dir="${PORTLESS_STATE_DIR:-${HOME}/.portless}"
   if [[ -d "${portless_dir}" ]]; then
     run_flags+=(--env="PORTLESS_STATE_DIR=${portless_dir}" --volume="${portless_dir}:${portless_dir}")

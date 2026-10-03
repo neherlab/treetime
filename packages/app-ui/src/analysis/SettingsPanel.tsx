@@ -1,4 +1,4 @@
-import type { AppCommand, InputFacts, RunCheck } from "@neherlab/app-contracts";
+import type { AppCommand, InputFacts, RunCheck, UiSettingsView } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import ChevronRight from "~icons/lucide/chevron-right";
 import Search from "~icons/lucide/search";
@@ -9,7 +9,6 @@ import { isChanged } from "../settings/config";
 import type { JsonObject } from "../settings/json";
 import { matchingSpecs } from "../settings/search";
 import { useDraftStore } from "../store/draft";
-import type { SettingsView } from "../store/draftSchema";
 import { Badge } from "../ui/badge";
 import { Card } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
@@ -33,7 +32,7 @@ export function SettingsPanel({
 }) {
   const view = useDraftStore((state) => state.view);
   const search = useDraftStore((state) => state.search);
-  const changedOnly = useDraftStore((state) => state.changedOnly);
+  const changedOnly = useDraftStore((state) => state.changed_only);
   const update = useDraftStore((state) => state.update);
   const total = COMMAND_SETTINGS[command].specs.filter((spec) => spec.role !== "output").length;
 
@@ -45,14 +44,14 @@ export function SettingsPanel({
     [total],
   );
 
-  const onView = useCallback((next: SettingsView) => update({ view: next }), [update]);
+  const onView = useCallback((next: UiSettingsView) => update({ view: next }), [update]);
 
   const onSearch = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => update({ search: event.target.value }),
     [update],
   );
 
-  const onChangedOnly = useCallback((checked: boolean) => update({ changedOnly: checked }), [update]);
+  const onChangedOnly = useCallback((checked: boolean) => update({ changed_only: checked }), [update]);
 
   return (
     <Card size="sm" className="gap-0 py-0">

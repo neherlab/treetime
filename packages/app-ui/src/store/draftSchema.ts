@@ -1,64 +1,41 @@
-import { zAppCommand, type AppCommand } from "@neherlab/app-contracts";
-import * as z from "zod";
+import { zUiDraft, type AppCommand, type JobId, type UiDraft } from "@neherlab/app-contracts";
+import type * as z from "zod";
 
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { defaultConfig } from "../settings/config";
-import { zJsonObject } from "../settings/json";
+import { zJsonObject, type JsonObject } from "../settings/json";
 
-const zInputOrigin = z.enum(["dataset", "upload", "local", "run", "config"]);
-
-const zInputSource = z.object({
-  label: z.string(),
-  origin: zInputOrigin,
-  size: z.number().nullable(),
-});
-
-const zSettingsView = z.enum(["main", "all"]);
-
-const zCodeFormat = z.enum(["cli", "yaml"]);
-
-export const zDraft = z.object({
-  command: zAppCommand,
-  config: zJsonObject,
-  sources: z.record(z.string(), zInputSource),
-  fromRunId: z.string().nullable(),
-  uploadRunId: z.string().nullable(),
-  view: zSettingsView,
-  search: z.string(),
-  changedOnly: z.boolean(),
-  codeFormat: zCodeFormat,
-});
-
-export const zStoredValues = z.record(z.string(), z.unknown());
-
-export type InputOrigin = z.infer<typeof zInputOrigin>;
-
-export type InputSource = z.infer<typeof zInputSource>;
-
-export type SettingsView = z.infer<typeof zSettingsView>;
-
-export type CodeFormat = z.infer<typeof zCodeFormat>;
-
-export type Draft = z.infer<typeof zDraft>;
-
-type StoredValues = z.infer<typeof zStoredValues>;
-
-export function restoredDraft(stored: StoredValues, current: Draft): Draft {
-  const parsed = zDraft.safeParse({ ...current, ...stored });
-
-  return parsed.success ? parsed.data : current;
-}
+export type Draft = Omit<UiDraft, "config" | "from_run_id" | "upload_run_id"> & {
+  config: JsonObject;
+  from_run_id: JobId | null;
+  upload_run_id: JobId | null;
+};
 
 export function freshDraft(command: AppCommand): Draft {
   return {
     command,
     config: defaultConfig(COMMAND_SETTINGS[command].specs),
     sources: {},
-    fromRunId: null,
-    uploadRunId: null,
+    from_run_id: null,
+    upload_run_id: null,
     view: "main",
     search: "",
-    changedOnly: false,
-    codeFormat: "cli",
+    changed_only: false,
+    code_format: "cli",
+  };
+}
+
+export function storedDraft(draft: z.output<typeof zUiDraft>): Draft {
+  return {
+    ...draft,
+    config: zJsonObject.parse(draft.config),
+    sources: Object.fromEntries(
+      Object.entries(draft.sources).map(([key, { label, origin, size }]) => [
+        key,
+        { label, origin, size: size ?? null },
+      ]),
+    ),
+    from_run_id: draft.from_run_id ?? null,
+    upload_run_id: draft.upload_run_id ?? null,
   };
 }

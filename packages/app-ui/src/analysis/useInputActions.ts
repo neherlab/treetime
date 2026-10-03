@@ -1,4 +1,4 @@
-import type { AppCommand } from "@neherlab/app-contracts";
+import type { AppCommand, UiDraftOrigin } from "@neherlab/app-contracts";
 import { runsCreate, runsUploadInput } from "@neherlab/app-contracts/client";
 import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
@@ -8,14 +8,13 @@ import { useLocalFiles } from "../platform";
 import { baseName, type InputAssignment } from "../settings/inputs";
 import type { JsonValue } from "../settings/json";
 import { useDraftStore } from "../store/draft";
-import type { InputOrigin } from "../store/draftSchema";
 import { toFormValue, type FormConfig } from "./formValues";
 import { pendingUploadRun } from "./pendingUpload";
 
 interface InputActions {
   canPick: boolean;
-  assign: (key: string, value: JsonValue, label: string, origin: InputOrigin, size: number | null) => void;
-  assignAll: (assignments: readonly InputAssignment[], origin: InputOrigin) => void;
+  assign: (key: string, value: JsonValue, label: string, origin: UiDraftOrigin, size: number | null) => void;
+  assignAll: (assignments: readonly InputAssignment[], origin: UiDraftOrigin) => void;
   clear: (key: string, emptyValue: JsonValue) => void;
   addFile: (key: string, file: File, list: boolean) => Promise<void>;
   pick: (key: string, title: string, extensions: string[], list: boolean) => Promise<void>;
@@ -28,7 +27,7 @@ export function useInputActions(command: AppCommand): InputActions {
   const setSource = useDraftStore((state) => state.setSource);
 
   const assign = useCallback(
-    (key: string, value: JsonValue, label: string, origin: InputOrigin, size: number | null) => {
+    (key: string, value: JsonValue, label: string, origin: UiDraftOrigin, size: number | null) => {
       setValue(key, toFormValue(value), { shouldDirty: true, shouldValidate: true });
       setSource(key, { label, origin, size });
     },
@@ -36,7 +35,7 @@ export function useInputActions(command: AppCommand): InputActions {
   );
 
   const assignAll = useCallback(
-    (assignments: readonly InputAssignment[], origin: InputOrigin) => {
+    (assignments: readonly InputAssignment[], origin: UiDraftOrigin) => {
       for (const assignment of assignments) {
         assign(assignment.key, assignment.value, assignment.label, origin, null);
       }
@@ -53,7 +52,7 @@ export function useInputActions(command: AppCommand): InputActions {
   );
 
   const uploadRun = useCallback(async (): Promise<string> => {
-    const existing = await pendingUploadRun(client, useDraftStore.getState().uploadRunId);
+    const existing = await pendingUploadRun(client, useDraftStore.getState().upload_run_id);
 
     if (existing !== undefined) {
       return existing.id;
@@ -65,7 +64,7 @@ export function useInputActions(command: AppCommand): InputActions {
       throwOnError: true,
     });
 
-    useDraftStore.getState().update({ uploadRunId: record.id });
+    useDraftStore.getState().update({ upload_run_id: record.id });
 
     return record.id;
   }, [client, command]);

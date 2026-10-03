@@ -14,3 +14,16 @@ export interface LocalFiles {
   pickFiles(request: PickFilesRequest): Promise<string[]>;
   pathForFile(file: File): string;
 }
+
+export const zPickFolderRequest = z.strictObject({
+  title: z.string(),
+});
+
+export type PickFolderRequest = z.infer<typeof zPickFolderRequest>;
+
+export const zPickedFolder = z.string().nullable();
+
+export interface WorkspaceShell {
+  pickFolder(request: PickFolderRequest): Promise<string | null>;
+  restartBackend(): Promise<void>;
+}

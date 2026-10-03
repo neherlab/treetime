@@ -6,7 +6,10 @@ import { CommandPalette } from "./shell/CommandPalette";
 import { SiteHeader } from "./shell/SiteHeader";
 import { useGlobalShortcuts } from "./shell/useGlobalShortcuts";
 import { useYamlDrop } from "./shell/useYamlDrop";
+import { WorkspaceDialog } from "./shell/WorkspaceDialog";
+import { usePreferencesStore } from "./store/preferences";
 import { SidebarInset, SidebarProvider } from "./ui/sidebar";
+import { sidebarWidthOrDefault } from "./ui/sidebar-width";
 import { TooltipProvider } from "./ui/tooltip";
 
 export const MAIN_SCROLL_ID = "main-scroll";
@@ -15,10 +18,14 @@ export function RootLayout() {
   useElectronThemeSync();
   useGlobalShortcuts();
   const { getRootProps, getInputProps } = useYamlDrop();
+  const sidebarWidth = usePreferencesStore((state) => sidebarWidthOrDefault(state.sidebarWidth));
+  const setSidebarWidth = usePreferencesStore((state) => state.setSidebarWidth);
 
   return (
     <TooltipProvider delay={300}>
       <SidebarProvider
+        width={sidebarWidth}
+        onWidthChange={setSidebarWidth}
         {...getRootProps({ className: "h-svh flex-col overflow-hidden [--header-height:calc(--spacing(12))]" })}
       >
         <input {...getInputProps()} />
@@ -35,6 +42,7 @@ export function RootLayout() {
         </div>
       </SidebarProvider>
       <CommandPalette />
+      <WorkspaceDialog />
     </TooltipProvider>
   );
 }

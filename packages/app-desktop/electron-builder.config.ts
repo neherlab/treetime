@@ -4,7 +4,6 @@ import desktop from "./package.json" with { type: "json" };
 
 export default {
   appId: "org.neherlab.treetime",
-  productName: "TreeTime",
   electronVersion: desktop.devDependencies.electron,
   artifactName: "treetime-desktop-${env.TREETIME_DESKTOP_TARGET}.${ext}",
   directories: {

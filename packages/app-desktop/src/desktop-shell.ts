@@ -1,9 +1,12 @@
 import {
   zErrorResponse,
   zPickedFiles,
+  zPickedFolder,
   type ErrorResponse,
   type LocalFiles,
   type PickFilesRequest,
+  type PickFolderRequest,
+  type WorkspaceShell,
 } from "@neherlab/app-contracts";
 
 import { BACKEND_PORT_CHANNEL } from "./channels";
@@ -24,6 +27,8 @@ export interface DesktopShell {
   connectBackend(): void;
   onBackendStopped(listener: (reason: string, restarts: boolean) => void): void;
   pickFiles(request: PickFilesRequest): Promise<unknown>;
+  pickFolder(request: PickFolderRequest): Promise<unknown>;
+  restartBackend(): Promise<unknown>;
   pathForFile(file: File): string;
   saveRunFile(request: SaveRunFileDialog): Promise<SaveReply>;
   saveRunArchive(request: SaveRunArchiveDialog): Promise<SaveReply>;
@@ -52,6 +57,17 @@ export function createLocalFiles(shell: DesktopShell): LocalFiles {
       return zPickedFiles.parse(await shell.pickFiles(request));
     },
     pathForFile: (file) => shell.pathForFile(file),
+  };
+}
+
+export function createWorkspaceShell(shell: DesktopShell): WorkspaceShell {
+  return {
+    async pickFolder(request) {
+      return zPickedFolder.parse(await shell.pickFolder(request));
+    },
+    async restartBackend() {
+      await shell.restartBackend();
+    },
   };
 }
 

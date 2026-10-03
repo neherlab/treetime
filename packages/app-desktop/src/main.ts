@@ -1,7 +1,9 @@
+import { mkdirSync } from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { zPickFilesRequest } from "@neherlab/app-contracts";
+import { zPickFilesRequest, zPickFolderRequest } from "@neherlab/app-contracts";
+import { appPaths } from "@neherlab/app-napi";
 import {
   app,
   BrowserWindow,
@@ -21,14 +23,17 @@ import {
   type WebContents,
 } from "electron";
 
+import { APP_DIR_ENV, checkoutAppDir } from "./app-dir";
 import { APP_SCHEME, APP_SCHEME_PRIVILEGES, APP_URL, resolveAppAsset } from "./app-scheme";
-import { shouldRestart } from "./backend-process";
+import { shouldRestart, stopReason } from "./backend-process";
 import type { ControlReply, SaveRequest } from "./backend-protocol";
 import {
   BACKEND_PORT_CHANNEL,
   BACKEND_PORT_REQUEST_CHANNEL,
   BACKEND_STOPPED_CHANNEL,
   PICK_FILES_CHANNEL,
+  PICK_FOLDER_CHANNEL,
+  RESTART_BACKEND_CHANNEL,
   SAVE_RUN_ARCHIVE_CHANNEL,
   SAVE_RUN_FILE_CHANNEL,
   THEME_CHANNEL,
@@ -47,13 +52,19 @@ const devServerUrl = process.env["VITE_DEV_SERVER_URL"];
 
 const devServer = devServerUrl !== undefined && devServerUrl !== "";
 
-const checkoutDataDir = path.resolve(process.cwd(), devServer ? "tmp/app/desktop-dev" : "tmp/app/desktop-prod");
+if (!app.isPackaged) {
+  process.env[APP_DIR_ENV] = checkoutAppDir(process.env, devServer ? "dev" : "prod", process.cwd());
+}
 
-const diagnosticDir =
-  process.env[DIAGNOSTIC_DIR_ENV] ??
-  (app.isPackaged ? path.join(app.getPath("logs"), "diagnostics") : path.join(checkoutDataDir, "diagnostics"));
+const paths = appPaths();
 
-const runsDir = app.isPackaged ? path.join(app.getPath("userData"), "runs") : path.join(checkoutDataDir, "runs");
+mkdirSync(paths.profileDir, { recursive: true });
+
+app.setPath("userData", paths.profileDir);
+
+app.setAppLogsPath(paths.logsDir);
+
+const diagnosticDir = process.env[DIAGNOSTIC_DIR_ENV] ?? path.join(paths.logsDir, "diagnostics");
 
 initDiagnostics("treetime-desktop", diagnosticDir);
 
@@ -70,21 +81,20 @@ protocol.registerSchemesAsPrivileged([{ scheme: APP_SCHEME, privileges: APP_SCHE
 async function main(): Promise<void> {
   await app.whenReady();
   protocol.handle(APP_SCHEME, serveAppAsset);
-  const backend = new BackendProcess(runsDir);
+  const backend = new BackendProcess();
   registerIpcHandlers(backend);
   await createWindow();
 }
 
 class BackendProcess {
-  private readonly runsDir: string;
   private child: UtilityProcess;
   private readonly exitTimes: number[] = [];
   private readonly saves = new Map<number, (reply: ControlReply) => void>();
+  private readonly restarted: Array<() => void> = [];
   private nextSave = 0;
   private failure: string | undefined;
 
-  constructor(runsDir: string) {
-    this.runsDir = runsDir;
+  constructor() {
     this.child = this.spawn();
   }
 
@@ -114,8 +124,27 @@ class BackendProcess {
     });
   }
 
+  restart(): Promise<void> {
+    const { promise, resolve } = Promise.withResolvers<void>();
+    this.restarted.push(resolve);
+
+    if (this.restarted.length > 1) {
+      return promise;
+    }
+
+    if (this.failure === undefined) {
+      this.child.kill();
+    } else {
+      this.failure = undefined;
+      this.exitTimes.length = 0;
+      this.respawn();
+    }
+
+    return promise;
+  }
+
   private spawn(): UtilityProcess {
-    const child = utilityProcess.fork(path.join(__dirname, "backend.js"), [this.runsDir], {
+    const child = utilityProcess.fork(path.join(__dirname, "backend.js"), [], {
       serviceName: "TreeTime back end",
       cwd: process.cwd(),
       stdio: "inherit",
@@ -134,13 +163,15 @@ class BackendProcess {
   }
 
   private exited(code: number): void {
+    const requested = this.restarted.length > 0;
     const now = performance.now();
-    this.exitTimes.push(now);
-    const restart = shouldRestart(this.exitTimes, now);
 
-    const reason = restart
-      ? `the back end stopped with exit code ${code} and restarts; the request was not answered`
-      : `the back end stopped with exit code ${code} too often and does not restart; restart TreeTime`;
+    if (!requested) {
+      this.exitTimes.push(now);
+    }
+
+    const restart = requested || shouldRestart(this.exitTimes, now);
+    const reason = stopReason(code, requested, restart);
 
     console.error(`[TreeTime] ${reason}`);
 
@@ -156,22 +187,32 @@ class BackendProcess {
 
     if (!restart) {
       this.failure = reason;
+
+      return;
     }
 
-    if (restart) {
-      setImmediate(() => {
-        this.child = this.spawn();
+    this.respawn();
+  }
 
-        for (const contents of appContents()) {
-          this.connect(contents);
-        }
-      });
-    }
+  private respawn(): void {
+    setImmediate(() => {
+      this.child = this.spawn();
+
+      for (const contents of appContents()) {
+        this.connect(contents);
+      }
+
+      for (const resolve of this.restarted.splice(0)) {
+        resolve();
+      }
+    });
   }
 }
 
 function registerIpcHandlers(backend: BackendProcess): void {
   handle(PICK_FILES_CHANNEL, (event, request) => pickFiles(event, request));
+  handle(PICK_FOLDER_CHANNEL, (event, request) => pickFolder(event, request));
+  handle(RESTART_BACKEND_CHANNEL, async () => backend.restart());
   handle(SAVE_RUN_FILE_CHANNEL, async (event, { id, path, name }: SaveRunFileDialog) =>
     saveTo(event, name, (destination) =>
       backend.save((seq) => ({ kind: "save-file", seq, request: { id, path, destination } })),
@@ -249,6 +290,16 @@ async function pickFiles(event: IpcMainInvokeEvent, data: unknown): Promise<stri
   const result = window === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(window, options);
 
   return result.canceled ? [] : result.filePaths;
+}
+
+async function pickFolder(event: IpcMainInvokeEvent, data: unknown): Promise<string | null> {
+  const request = zPickFolderRequest.parse(data);
+  const options: OpenDialogOptions = { title: request.title, properties: ["openDirectory", "createDirectory"] };
+
+  const window = BrowserWindow.fromWebContents(event.sender);
+  const result = window === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(window, options);
+
+  return result.canceled ? null : (result.filePaths[0] ?? null);
 }
 
 async function saveTo(

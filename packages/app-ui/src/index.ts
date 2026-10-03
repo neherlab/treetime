@@ -13,3 +13,7 @@ export { ErrorBoundary } from "./ErrorBoundary";
 export { QueryProvider } from "./QueryProvider";
 
 export { ThemeProvider } from "./ThemeProvider";
+
+export { PreferencesProvider } from "./preferences/PreferencesProvider";
+
+export { apiPreferencesStorage, browserPreferencesStorage } from "./preferences/storage";

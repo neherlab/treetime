@@ -8,11 +8,13 @@ interface ShellState {
   commandFilter: AppCommand | null;
   compareIds: string[];
   paletteOpen: boolean;
+  workspaceOpen: boolean;
   setRunFilter: (runFilter: string) => void;
   setCommandFilter: (commandFilter: AppCommand | null) => void;
   toggleCompare: (id: string) => void;
   clearCompare: () => void;
   setPaletteOpen: (paletteOpen: boolean) => void;
+  setWorkspaceOpen: (workspaceOpen: boolean) => void;
 }
 
 export const useShellStore = create<ShellState>()((set) => ({
@@ -20,6 +22,7 @@ export const useShellStore = create<ShellState>()((set) => ({
   commandFilter: null,
   compareIds: [],
   paletteOpen: false,
+  workspaceOpen: false,
   setRunFilter: (runFilter) => set({ runFilter }),
   setCommandFilter: (commandFilter) => set({ commandFilter }),
   toggleCompare: (id) =>
@@ -30,4 +33,5 @@ export const useShellStore = create<ShellState>()((set) => ({
     })),
   clearCompare: () => set({ compareIds: [] }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+  setWorkspaceOpen: (workspaceOpen) => set({ workspaceOpen }),
 }));

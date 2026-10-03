@@ -1,6 +1,5 @@
 import { version as getVersion } from "@neherlab/app-contracts/client";
 import { formatForDisplay } from "@tanstack/react-hotkeys";
-import { useTheme } from "next-themes";
 import { useCallback, type ComponentType, type SVGProps } from "react";
 import Monitor from "~icons/lucide/monitor";
 import Moon from "~icons/lucide/moon";
@@ -9,12 +8,14 @@ import Sun from "~icons/lucide/sun";
 
 import { useApi } from "../api/hooks";
 import { PALETTE_HOTKEY } from "../hotkeys";
+import { useThemeChoice } from "../preferences/useThemeChoice";
 import { useShellStore } from "../store/shell";
 import { Button } from "../ui/button";
 import { Kbd } from "../ui/kbd";
 import { Separator } from "../ui/separator";
 import { SidebarTrigger } from "../ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { WorkspaceButton } from "./WorkspaceDialog";
 
 const THEME_CYCLE = ["system", "light", "dark"] as const;
 
@@ -51,16 +52,17 @@ export function SiteHeader() {
         <span className="hidden flex-1 text-left sm:inline">Search runs, settings, examples</span>
         <Kbd className="hidden sm:inline-flex">{formatForDisplay(PALETTE_HOTKEY)}</Kbd>
       </Button>
+      <WorkspaceButton />
       <ThemeButton />
     </header>
   );
 }
 
 function ThemeButton() {
-  const { theme, setTheme } = useTheme();
+  const { theme, chooseTheme } = useThemeChoice();
   const choice = THEME_CYCLE.find((candidate) => candidate === theme) ?? "system";
   const { label, icon: Icon } = THEME_META[choice];
-  const cycleTheme = useCallback(() => setTheme(nextTheme(theme)), [setTheme, theme]);
+  const cycleTheme = useCallback(() => chooseTheme(nextTheme(theme)), [chooseTheme, theme]);
 
   return (
     <Tooltip>

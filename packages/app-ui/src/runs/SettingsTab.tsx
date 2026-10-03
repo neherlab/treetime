@@ -1,4 +1,4 @@
-import type { RunRecord } from "@neherlab/app-contracts";
+import type { RunRecord, UiCodeFormat } from "@neherlab/app-contracts";
 import { configCheck } from "@neherlab/app-contracts/client";
 import { keepPreviousData } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
@@ -13,7 +13,6 @@ import { Panel } from "../components/Panel";
 import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
 import { settingValue } from "../settings/config";
 import { zJsonObject } from "../settings/json";
-import type { CodeFormat } from "../store/draftSchema";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Label } from "../ui/label";
@@ -21,7 +20,7 @@ import { Switch } from "../ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { useRerun } from "./useRerun";
 
-const CODE_FORMATS: ReadonlyArray<{ value: CodeFormat; label: string }> = [
+const CODE_FORMATS: ReadonlyArray<{ value: UiCodeFormat; label: string }> = [
   { value: "cli", label: "CLI" },
   { value: "yaml", label: "YAML" },
 ];
@@ -31,7 +30,7 @@ export function SettingsTab({ record }: { record: RunRecord }) {
   const specs = settings.specs;
   const config = useMemo(() => zJsonObject.parse(record.config), [record.config]);
   const [changedOnly, setChangedOnly] = useState(true);
-  const [format, setFormat] = useState<CodeFormat>("cli");
+  const [format, setFormat] = useState<UiCodeFormat>("cli");
   const rerun = useRerun(record);
   const changedKeys = useMemo(() => new Set(record.changed_settings), [record.changed_settings]);
 

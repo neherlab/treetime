@@ -1,4 +1,13 @@
-import { ApiProvider, App, ErrorBoundary, QueryProvider, reloadOnChunkError, ThemeProvider } from "@neherlab/app-ui";
+import {
+  ApiProvider,
+  App,
+  browserPreferencesStorage,
+  ErrorBoundary,
+  PreferencesProvider,
+  QueryProvider,
+  reloadOnChunkError,
+  ThemeProvider,
+} from "@neherlab/app-ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -13,6 +22,8 @@ const client = createWebApiClient();
 
 const save = createWebSaveActions(client);
 
+const preferences = browserPreferencesStorage(globalThis.localStorage);
+
 const root = document.getElementById("root");
 
 if (root) {
@@ -22,7 +33,9 @@ if (root) {
         <ErrorBoundary>
           <QueryProvider>
             <ApiProvider client={client} save={save}>
-              <App />
+              <PreferencesProvider storage={preferences}>
+                <App />
+              </PreferencesProvider>
             </ApiProvider>
           </QueryProvider>
         </ErrorBoundary>

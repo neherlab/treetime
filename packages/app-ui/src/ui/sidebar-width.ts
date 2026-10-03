@@ -17,10 +17,8 @@ export function clampSidebarWidth(width: number): number {
   return Math.round(Math.min(Math.max(width, SIDEBAR_WIDTH_MIN), SIDEBAR_WIDTH_MAX));
 }
 
-export function parseSidebarWidth(stored: string | undefined): number {
-  const width = Number(stored);
-
-  return Number.isFinite(width) ? clampSidebarWidth(width) : SIDEBAR_WIDTH_DEFAULT;
+export function sidebarWidthOrDefault(width: number | undefined): number {
+  return width === undefined ? SIDEBAR_WIDTH_DEFAULT : clampSidebarWidth(width);
 }
 
 export function sidebarWidthForKey(width: number, key: string): number | undefined {

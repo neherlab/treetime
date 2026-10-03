@@ -20,14 +20,14 @@ export function useStartRun(command: AppCommand) {
       const draft = useDraftStore.getState();
 
       try {
-        const upload = await pendingUploadRun(client, draft.uploadRunId);
+        const upload = await pendingUploadRun(client, draft.upload_run_id);
 
         const { data: record } =
           upload === undefined
             ? await runsCreate({ client, body: { command, config, defer_start: false }, throwOnError: true })
             : await runsStart({ client, path: { id: upload.id }, body: { command, config }, throwOnError: true });
 
-        draft.update({ fromRunId: null, uploadRunId: null });
+        draft.update({ from_run_id: null, upload_run_id: null });
         await navigate({ to: "/runs/$id/results", params: { id: record.id } });
       } catch (error: unknown) {
         toasts.add({

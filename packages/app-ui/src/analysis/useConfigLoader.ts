@@ -1,4 +1,4 @@
-import type { AppCommand } from "@neherlab/app-contracts";
+import type { AppCommand, UiDraftSource } from "@neherlab/app-contracts";
 import { configCheck } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
@@ -9,7 +9,6 @@ import { normalizeConfig, settingValue } from "../settings/config";
 import { baseName, pathList } from "../settings/inputs";
 import { getAt, sameJson, zJsonObject, type JsonObject } from "../settings/json";
 import { useDraftStore } from "../store/draft";
-import type { InputSource } from "../store/draftSchema";
 
 type ConfigLoadResult = { loaded: true; command: AppCommand } | { loaded: false; messages: string[] };
 
@@ -35,7 +34,7 @@ export function useConfigLoader() {
       const command = result.command;
       const specs = COMMAND_SETTINGS[command].specs;
       const config = normalizeConfig(specs, zJsonObject.parse(result.config));
-      const sources: Record<string, InputSource> = {};
+      const sources: Record<string, UiDraftSource> = {};
 
       for (const spec of specs.filter((candidate) => candidate.role === "input")) {
         const value = settingValue(config, spec);
@@ -54,7 +53,7 @@ export function useConfigLoader() {
         command,
         config,
         sources,
-        fromRunId: null,
+        from_run_id: null,
       });
       await navigate({ to: "/new" });
 

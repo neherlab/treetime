@@ -5,6 +5,8 @@ import {
   BACKEND_PORT_REQUEST_CHANNEL,
   BACKEND_STOPPED_CHANNEL,
   PICK_FILES_CHANNEL,
+  PICK_FOLDER_CHANNEL,
+  RESTART_BACKEND_CHANNEL,
   SAVE_RUN_ARCHIVE_CHANNEL,
   SAVE_RUN_FILE_CHANNEL,
   THEME_CHANNEL,
@@ -31,6 +33,8 @@ const shell: DesktopShell = {
     });
   },
   pickFiles: (request) => ipcRenderer.invoke(PICK_FILES_CHANNEL, request),
+  pickFolder: (request) => ipcRenderer.invoke(PICK_FOLDER_CHANNEL, request),
+  restartBackend: () => ipcRenderer.invoke(RESTART_BACKEND_CHANNEL),
   saveRunFile: (request) => ipcRenderer.invoke(SAVE_RUN_FILE_CHANNEL, request),
   saveRunArchive: (request) => ipcRenderer.invoke(SAVE_RUN_ARCHIVE_CHANNEL, request),
   pathForFile: (file) => webUtils.getPathForFile(file),

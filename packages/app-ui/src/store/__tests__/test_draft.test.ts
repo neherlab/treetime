@@ -1,23 +1,17 @@
 import { describe, expect, test } from "vitest";
 
-import { freshDraft, restoredDraft } from "../draftSchema";
+import { freshDraft, storedDraft } from "../draftSchema";
 
 describe("draft", () => {
-  test("a stored draft replaces the fields it holds", () => {
-    const current = freshDraft("timetree");
+  test("a stored draft keeps its fields", () => {
+    const draft = { ...freshDraft("clock"), search: "rate", config: { tree: "tree.nwk", clock_rate: 0.003 } };
 
-    expect(
-      restoredDraft({ command: "clock", search: "stored", title: "Run name of an older draft" }, current),
-    ).toStrictEqual({
-      ...current,
-      command: "clock",
-      search: "stored",
-    });
+    expect(storedDraft(draft)).toStrictEqual(draft);
   });
 
-  test("a stored draft with an invalid field is ignored", () => {
-    const current = freshDraft("timetree");
+  test("a stored draft whose configuration is not JSON is refused", () => {
+    const draft = { ...freshDraft("clock"), config: { tree: undefined } };
 
-    expect(restoredDraft({ search: "stored", view: "sideways" }, current)).toStrictEqual(current);
+    expect(() => storedDraft(draft)).toThrow("Invalid input");
   });
 });

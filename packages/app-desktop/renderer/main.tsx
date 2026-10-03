@@ -1,11 +1,20 @@
 import { createApiClient } from "@neherlab/app-contracts/client";
-import { ApiProvider, App, ErrorBoundary, QueryProvider, ThemeProvider } from "@neherlab/app-ui";
+import {
+  ApiProvider,
+  apiPreferencesStorage,
+  App,
+  ErrorBoundary,
+  PreferencesProvider,
+  QueryProvider,
+  ThemeProvider,
+} from "@neherlab/app-ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import {
   createDesktopSaveActions,
   createLocalFiles,
+  createWorkspaceShell,
   windowFetchConnection,
   type DesktopShell,
 } from "../src/desktop-shell";
@@ -27,6 +36,10 @@ const save = createDesktopSaveActions(window.treetimeShell);
 
 const localFiles = createLocalFiles(window.treetimeShell);
 
+const workspaceShell = createWorkspaceShell(window.treetimeShell);
+
+const preferences = apiPreferencesStorage(client);
+
 const root = document.getElementById("root");
 
 if (root) {
@@ -36,7 +49,9 @@ if (root) {
         <ErrorBoundary>
           <QueryProvider>
             <ApiProvider client={client} save={save}>
-              <App localFiles={localFiles} />
+              <PreferencesProvider storage={preferences}>
+                <App localFiles={localFiles} workspaceShell={workspaceShell} />
+              </PreferencesProvider>
             </ApiProvider>
           </QueryProvider>
         </ErrorBoundary>

@@ -11,13 +11,7 @@ if (diagnosticDir !== undefined) {
   initDiagnostics("treetime-backend", diagnosticDir);
 }
 
-const runsDir = process.argv.at(-1);
-
-if (runsDir === undefined) {
-  throw new Error("the back end needs the runs directory as its last argument");
-}
-
-const backend = new Backend(runsDir);
+const backend = new Backend();
 
 process.parentPort.on("message", (message: { data: ControlRequest; ports: MessagePortMain[] }) => {
   const control = message.data;

@@ -5,11 +5,13 @@
 # Stage the desktop app of a target for electron-builder in
 # .build/desktop/<target>/app, and print that directory. The staged app holds
 # the Vite bundles of packages/app-desktop (dist/, dist-electron/), a minimal
-# package.json, and the Node addon .out/app-napi-<target>.node as the package
-# node_modules/@neherlab/app-napi. The addon package is the only production
-# dependency: electron-builder copies from node_modules only the packages of the
-# production dependency tree, and the Bun workspace (symlinks, isolated linker)
-# would give it the whole development tree.
+# package.json with the product and desktop entry names of
+# packages/app-desktop/package.json, and the Node addon
+# .out/app-napi-<target>.node as the package node_modules/@neherlab/app-napi.
+# The addon package is the only production dependency: electron-builder copies
+# from node_modules only the packages of the production dependency tree, and the
+# Bun workspace (symlinks, isolated linker) would give it the whole development
+# tree.
 #
 # Build the bundles first (`bun run build:desktop`) and the addon with
 # `dev/cross/build --lib app-napi <target>` or `just build-napi dist`.
@@ -56,18 +58,19 @@ jq -n \
   >"${stage}/node_modules/@neherlab/app-napi/package.json"
 
 yq -p toml -o json '.workspace.package' Cargo.toml | jq \
+  --slurpfile desktop "${desktop}/package.json" \
   --arg version "${version}" \
   --arg napi_version "${napi_version}" \
   '{
     name: "treetime",
-    productName: "TreeTime",
+    productName: $desktop[0].productName,
     version: $version,
     description: .description,
     homepage: .homepage,
     license: .license,
     author: (.authors[0] | capture("^(?<name>[^<]+) <(?<url>[^>]+)>$")),
     main: "dist-electron/main.js",
-    desktopName: "treetime.desktop",
+    desktopName: $desktop[0].desktopName,
     dependencies: {"@neherlab/app-napi": $napi_version}
   }' >"${stage}/package.json"
 
