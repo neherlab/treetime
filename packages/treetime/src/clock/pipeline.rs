@@ -11,7 +11,7 @@ use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::error::OperationError;
 use crate::progress::{LogSink, StageSink};
-use crate::{progress_info, progress_warn};
+use crate::progress_warn;
 use eyre::{Report, WrapErr};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -62,9 +62,6 @@ pub fn run(
   )
   .map_err(OperationError::classify)?;
 
-  if let Some(outliers) = &filter_outliers {
-    progress_info!(log, "Clock filter flagged {} leaf nodes as outliers", outliers.len());
-  }
   let outliers = filter_outliers.unwrap_or_default();
 
   let names = restrict_node_names(names, &graph);
