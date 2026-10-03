@@ -21,7 +21,7 @@ pub struct OptimizeResult {
 #[derive(Debug, Clone)]
 pub struct OptimizeNodeOut {
   pub name: Option<String>,
-  pub confidence: Option<f64>,
+  pub branch_support: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -65,10 +65,9 @@ pub(crate) fn prune_to_auspice(
     sequence_auspice_node(
       &name,
       div,
-      out.confidence,
+      out.branch_support,
       prune_mutations(maps, context.edge_key),
-      None,
-      None,
+      "prune",
     )
   })
 }

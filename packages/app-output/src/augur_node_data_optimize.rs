@@ -64,13 +64,11 @@ pub fn build_augur_node_data_json(
       None => 0.0,
     };
 
-    let confidence = out.confidence;
-
     nodes.insert(
       node_name,
       AugurNodeDataJsonRefineNode {
         branch_length,
-        confidence,
+        confidence: out.branch_support,
         numdate: None,
         clock_length: None,
         mutation_length: None,

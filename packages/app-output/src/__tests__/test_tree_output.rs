@@ -241,7 +241,7 @@ pub(super) mod tests {
     };
     let node = auspice_node(o!("A"), Some(0.1), None, None, None, traits, BTreeMap::new(), None);
     assert_error!(
-      with_branch_support(node, Some(0.9)),
+      with_branch_support(node, Some(0.9), "mugration"),
       "Node 'A' has a trait named 'confidence', which Auspice JSON also uses for the input branch support. Rename the metadata column of the trait."
     );
   }
@@ -509,7 +509,7 @@ pub(super) mod tests {
             key,
             AncestralNodeOut {
               name: names.get(&node.key()).cloned().flatten(),
-              confidence: confidences.get(&key).copied().flatten(),
+              branch_support: confidences.get(&key).copied().flatten(),
             },
           )
         })
@@ -742,7 +742,7 @@ pub(super) mod tests {
             key,
             OptimizeNodeOut {
               name: names.get(&node.key()).cloned().flatten(),
-              confidence: confidences.get(&key).copied().flatten(),
+              branch_support: confidences.get(&key).copied().flatten(),
             },
           )
         })
@@ -777,7 +777,7 @@ pub(super) mod tests {
             key,
             PruneNodeOut {
               name: names.get(&node.key()).cloned().flatten(),
-              confidence: confidences.get(&key).copied().flatten(),
+              branch_support: confidences.get(&key).copied().flatten(),
             },
           )
         })
@@ -850,7 +850,7 @@ pub(super) mod tests {
             key,
             MugrationNodeOut {
               name: names.get(&node.key()).cloned().flatten(),
-              confidence: confidences.get(&key).copied().flatten(),
+              branch_support: confidences.get(&key).copied().flatten(),
             },
           )
         })
@@ -924,7 +924,7 @@ pub(super) mod tests {
             key,
             TimetreeNodeOut {
               name: names.get(&node.key()).cloned().flatten(),
-              confidence: confidences.get(&key).copied().flatten(),
+              branch_support: confidences.get(&key).copied().flatten(),
               time: Some(2020.0 + index as f64),
               div: index as f64 / 2.0,
               is_outlier: false,

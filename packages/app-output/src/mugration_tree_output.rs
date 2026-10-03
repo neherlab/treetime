@@ -81,7 +81,8 @@ pub(crate) fn mugration_to_auspice(
         BTreeMap::new(),
         mugration_transition_label(graph, output, context.node_key, attribute)?,
       ),
-      nodes[&context.node_key].confidence,
+      nodes[&context.node_key].branch_support,
+      "mugration",
     )
   })
 }

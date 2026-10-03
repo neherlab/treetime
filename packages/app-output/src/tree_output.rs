@@ -165,32 +165,32 @@ fn genome_annotations(
 pub(crate) fn sequence_auspice_node(
   name: &str,
   div: Option<f64>,
-  confidence: Option<f64>,
+  branch_support: Option<f64>,
   mutations: Vec<Mutation>,
-  date: Option<f64>,
-  bad_branch: Option<bool>,
+  command: &str,
 ) -> Result<AuspiceTreeNode, Report> {
   let node = auspice_node(
     name.to_owned(),
-    finite_number(div, 6, "tree output", name, "div")?,
-    finite_number(date, 3, "tree output", name, "date")?,
+    finite_number(div, 6, command, name, "div")?,
     None,
-    bad_branch,
+    None,
+    None,
     BTreeMap::new(),
     group_mutations(mutations)?,
     None,
   );
-  with_branch_support(node, confidence)
+  with_branch_support(node, branch_support, command)
 }
 
 pub(crate) fn with_branch_support(
   mut node: AuspiceTreeNode,
-  confidence: Option<f64>,
+  branch_support: Option<f64>,
+  command: &str,
 ) -> Result<AuspiceTreeNode, Report> {
-  let Some(confidence) = confidence else {
+  let Some(branch_support) = branch_support else {
     return Ok(node);
   };
-  ensure_finite(confidence, "tree output", &node.name, "input branch support")?;
+  ensure_finite(branch_support, command, &node.name, "input branch support")?;
   if let Value::Object(target) = &mut node.node_attrs.other {
     if target.contains_key("confidence") {
       return make_error!(
@@ -199,7 +199,7 @@ pub(crate) fn with_branch_support(
         node.name
       );
     }
-    target.insert("confidence".to_owned(), json!({ "value": confidence }));
+    target.insert("confidence".to_owned(), json!({ "value": branch_support }));
   }
   Ok(node)
 }

@@ -65,10 +65,9 @@ pub(crate) fn optimize_to_auspice(
     sequence_auspice_node(
       &name,
       div,
-      out.confidence,
+      out.branch_support,
       optimize_mutations(maps, context.edge_key),
-      None,
-      None,
+      "optimize",
     )
   })
 }

@@ -108,12 +108,12 @@ pub fn run_prune(
     .get_nodes()
     .map(|node| {
       let key = node.key();
-      let confidence = confidences.get(&key).copied().flatten();
+      let branch_support = confidences.get(&key).copied().flatten();
       (
         key,
         PruneNodeOut {
           name: names[&key].clone(),
-          confidence,
+          branch_support,
         },
       )
     })

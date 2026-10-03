@@ -13,7 +13,7 @@ pub struct TimetreeOutputMaps {
 #[derive(Debug, Clone, Serialize)]
 pub struct TimetreeNodeOut {
   pub name: Option<String>,
-  pub confidence: Option<f64>,
+  pub branch_support: Option<f64>,
   pub time: Option<f64>,
   pub div: f64,
   pub is_outlier: bool,

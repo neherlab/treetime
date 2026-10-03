@@ -192,7 +192,7 @@ fn ancestral_node_outputs(
     .map(|(key, node)| {
       let out = AncestralNodeOut {
         name: node.name.clone(),
-        confidence: confidences.get(key).copied().flatten(),
+        branch_support: confidences.get(key).copied().flatten(),
       };
       (*key, out)
     })

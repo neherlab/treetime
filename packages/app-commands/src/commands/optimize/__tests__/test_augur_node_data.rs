@@ -202,7 +202,7 @@ mod tests {
             key,
             OptimizeNodeOut {
               name: names.get(&node.key()).cloned().flatten(),
-              confidence: confidences.get(&key).copied().flatten(),
+              branch_support: confidences.get(&key).copied().flatten(),
             },
           )
         })
@@ -270,7 +270,7 @@ mod tests {
             key,
             OptimizeNodeOut {
               name: output.names[&key].clone(),
-              confidence: confidences.get(&key).copied().flatten(),
+              branch_support: confidences.get(&key).copied().flatten(),
             },
           )
         })

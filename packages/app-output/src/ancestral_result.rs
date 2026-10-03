@@ -21,5 +21,5 @@ pub struct AugurOutputMaps {
 #[derive(Debug, Clone, Serialize)]
 pub struct AncestralNodeOut {
   pub name: Option<String>,
-  pub confidence: Option<f64>,
+  pub branch_support: Option<f64>,
 }

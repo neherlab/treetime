@@ -29,7 +29,7 @@ impl MugrationResult {
           key,
           MugrationNodeOut {
             name: names.get(&key).cloned().flatten(),
-            confidence: input_confidences.get(&key).copied().flatten(),
+            branch_support: input_confidences.get(&key).copied().flatten(),
           },
         )
       })
@@ -125,7 +125,7 @@ impl MugrationTraitsOutput {
 #[derive(Debug, Clone)]
 pub struct MugrationNodeOut {
   pub(crate) name: Option<String>,
-  pub(crate) confidence: Option<f64>,
+  pub(crate) branch_support: Option<f64>,
 }
 
 fn extract_trait_assignments(

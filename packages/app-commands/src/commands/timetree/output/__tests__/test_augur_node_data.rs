@@ -283,7 +283,7 @@ mod tests {
             key,
             TimetreeNodeOut {
               name: names.get(&key).cloned().flatten(),
-              confidence: None,
+              branch_support: None,
               time: times.get(&key).copied().flatten(),
               div: 0.0,
               is_outlier: false,

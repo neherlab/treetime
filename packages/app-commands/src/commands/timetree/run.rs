@@ -400,7 +400,7 @@ fn timetree_node_outputs(
       let key = node.key();
       let out = TimetreeNodeOut {
         name: names[&key].clone(),
-        confidence: confidences.get(&key).copied().flatten(),
+        branch_support: confidences.get(&key).copied().flatten(),
         time: node_dates[&key],
         div: divergences[&key],
         is_outlier: outliers.contains(&key),

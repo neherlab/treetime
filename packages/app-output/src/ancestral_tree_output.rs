@@ -80,7 +80,7 @@ pub(crate) fn ancestral_to_auspice(
     let name = node_name_value(context.node_key, out.name.as_deref());
     let div = cumulative_branch_length_from(graph, branch_lengths, context.node_key)?;
     let mutations = ancestral_node_mutations(graph, maps, context.node_key, context.edge_key, aa_node_data);
-    sequence_auspice_node(&name, div, out.confidence, mutations, None, None)
+    sequence_auspice_node(&name, div, out.branch_support, mutations, "ancestral")
   })
 }
 
