@@ -49,7 +49,7 @@ pub(crate) fn run_refinement_loop(
         coalescent.mode,
         &state.graph,
         &coalescent.skyline_params,
-        &state.time_inference.coalescent_node_times()?,
+        &state.time_inference.coalescent_node_times(),
         &state.names,
         log,
       )?;

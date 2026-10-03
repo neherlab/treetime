@@ -439,7 +439,7 @@ fn setup_coalescent(
     ..SkylineParams::default()
   };
   let mode = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
-  let coalescent_node_times = time_inference.coalescent_node_times()?;
+  let coalescent_node_times = time_inference.coalescent_node_times();
   let lineage_counts =
     compute_lineage_counts(graph, &coalescent_node_times).wrap_err("Failed to compute coalescent lineage counts")?;
   let timescale = coalescent_timescale(mode, graph, &skyline_params, &coalescent_node_times, names, log)?;

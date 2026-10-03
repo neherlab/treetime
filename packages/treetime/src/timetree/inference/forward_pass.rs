@@ -2,7 +2,9 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::node_label::node_label;
 use crate::progress::LogSink;
 use crate::progress_warn;
-use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeBackward, TimeDistribution};
+use crate::timetree::inference::result::{
+  BranchLikelihood, NodePosterior, TimeBackward, TimeDistribution, likely_time_of_node,
+};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use eyre::{Report, WrapErr};
 use log::{Level, debug, log_enabled};
@@ -79,19 +81,21 @@ fn propagate_distributions_forward_node(
     ForwardRefinement::ContradictedGivenDate => (subtree.clone(), true),
   };
 
+  let likely_time = likely_time_of_node(context.key, distribution.as_deref())?;
   let time = commit_node_time(
     names,
     context.key,
     date_constraint.as_ref(),
     context.parent,
     context.is_leaf,
-    distribution.as_deref(),
+    likely_time,
     log,
-  )?;
+  );
 
   Ok(GraphPassNodeOutput {
     node: NodePosterior {
       distribution,
+      likely_time,
       time,
       contradicted,
     },
@@ -167,16 +171,16 @@ fn commit_node_time(
   date_constraint: Option<&Arc<Distribution<NegLog>>>,
   parent: Option<&NodePosterior>,
   is_leaf: bool,
-  distribution: Option<&Distribution<NegLog>>,
+  likely_time: Option<f64>,
   log: &dyn LogSink,
-) -> Result<Option<f64>, Report> {
+) -> Option<f64> {
   let parent_time = if has_exact_date(date_constraint) {
     None
   } else {
     parent.and_then(|parent| parent.time)
   };
 
-  let time = committed_time(distribution, parent_time)?;
+  let time = likely_time.map(|likely_time| committed_time(likely_time, parent_time));
   let is_dateable = !is_leaf || date_constraint.is_some();
   if time.is_none() && is_dateable {
     let name = node_label(names, key);
@@ -187,24 +191,15 @@ fn commit_node_time(
        and the times the rest of the tree implies have disjoint support."
     );
   }
-  Ok(time)
+  time
 }
 
 fn has_exact_date(date_constraint: Option<&Arc<Distribution<NegLog>>>) -> bool {
   date_constraint.is_some_and(|dist| dist.is_point())
 }
 
-pub(super) fn committed_time(
-  distribution: Option<&Distribution<NegLog>>,
-  parent_time: Option<f64>,
-) -> Result<Option<f64>, Report> {
-  let Some(distribution) = distribution else {
-    return Ok(None);
-  };
-  let Some(time) = distribution.likely_time()? else {
-    return Ok(None);
-  };
-  Ok(Some(parent_time.map_or(time, |parent_time| time.max(parent_time))))
+pub(super) fn committed_time(likely_time: f64, parent_time: Option<f64>) -> f64 {
+  parent_time.map_or(likely_time, |parent_time| likely_time.max(parent_time))
 }
 
 fn log_refinement(

@@ -27,17 +27,17 @@ impl TimeInference {
       .collect()
   }
 
-  pub(crate) fn coalescent_node_times(&self) -> Result<CoalescentNodeTimes, Report> {
+  pub(crate) fn coalescent_node_times(&self) -> CoalescentNodeTimes {
     self
       .posterior
       .iter()
       .map(|(key, posterior)| {
         let entry = CoalescentNodeTime {
           time: posterior.time,
-          time_dist_likely: likely_time_of_node(*key, posterior.distribution.as_deref())?,
+          time_dist_likely: posterior.likely_time,
           bad_branch: self.bad_branches[key],
         };
-        Ok((*key, entry))
+        (*key, entry)
       })
       .collect()
   }
@@ -60,6 +60,7 @@ pub struct TimeBackward {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct NodePosterior {
   pub distribution: TimeDistribution,
+  pub likely_time: Option<f64>,
   pub time: Option<f64>,
   pub contradicted: bool,
 }
@@ -84,16 +85,19 @@ pub(crate) fn likely_times(
     .get_nodes()
     .map(|node| {
       let key = node.key();
-      let distribution = constraints
-        .date_constraint(key)
-        .or_else(|| inference.posterior[&key].distribution.clone());
-      let time = likely_time_of_node(key, distribution.as_deref())?;
+      let time = match constraints.date_constraint(key) {
+        Some(constraint) => likely_time_of_node(key, Some(&constraint))?,
+        None => inference.posterior[&key].likely_time,
+      };
       Ok((key, time))
     })
     .collect()
 }
 
-fn likely_time_of_node(key: GraphNodeKey, distribution: Option<&Distribution<NegLog>>) -> Result<Option<f64>, Report> {
+pub(crate) fn likely_time_of_node(
+  key: GraphNodeKey,
+  distribution: Option<&Distribution<NegLog>>,
+) -> Result<Option<f64>, Report> {
   distribution.map_or(Ok(None), |distribution| {
     distribution
       .likely_time()

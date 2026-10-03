@@ -27,19 +27,22 @@ mod tests {
   const POLYTOMY_SEED: u64 = 11;
 
   #[test]
-  fn test_time_inference_likely_times_names_node_with_nan_distribution() -> Result<(), Report> {
+  fn test_time_inference_likely_times_names_node_with_nan_date_constraint() -> Result<(), Report> {
     let nwk_parsed = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
-    let inference = helpers::inference_with_posterior(&graph, key, helpers::nan_distribution()?);
+    let inference = empty_time_inference(&graph);
+    let mut constraints = DateConstraints::default();
+    constraints
+      .by_node
+      .insert(key, Some(Arc::new(helpers::nan_distribution()?)));
 
     let expected = format!(
       "When finding the most likely time of node {key}: \
        Cannot find the most likely time of a distribution function: its values contain NaN"
     );
-    assert_error!(likely_times(&graph, &DateConstraints::default(), &inference), expected);
-    assert_error!(inference.coalescent_node_times(), expected);
+    assert_error!(likely_times(&graph, &constraints, &inference), expected);
     Ok(())
   }
 
@@ -82,6 +85,7 @@ mod tests {
         key(name),
         NodePosterior {
           distribution: Some(Arc::new(Distribution::point(1900.0, 0.0))),
+          likely_time: Some(1900.0),
           time,
           contradicted: false,
         },
@@ -110,6 +114,7 @@ mod tests {
       key("I"),
       NodePosterior {
         distribution: Some(Arc::new(Distribution::range((2004.0, 2006.0), 0.0))),
+        likely_time: Some(2005.0),
         time: Some(2006.5),
         contradicted: false,
       },
@@ -118,6 +123,7 @@ mod tests {
       key("A"),
       NodePosterior {
         distribution: None,
+        likely_time: None,
         time: Some(2010.0),
         contradicted: false,
       },
@@ -125,7 +131,7 @@ mod tests {
     inference.bad_branches.insert(key("B"), true);
 
     let actual = inference
-      .coalescent_node_times()?
+      .coalescent_node_times()
       .into_iter()
       .map(|(key, entry)| (key, (entry.time, entry.time_dist_likely, entry.bad_branch)))
       .collect::<BTreeMap<_, _>>();
@@ -156,6 +162,7 @@ mod tests {
         key(name),
         NodePosterior {
           distribution: Some(Arc::new(Distribution::point(peak, 0.0))),
+          likely_time: Some(peak),
           ..NodePosterior::default()
         },
       );
@@ -207,6 +214,7 @@ mod tests {
       merger,
       NodePosterior {
         distribution: Some(Arc::new(Distribution::point(2001.0, 0.0))),
+        likely_time: Some(2001.0),
         ..NodePosterior::default()
       },
     );
@@ -241,6 +249,9 @@ mod tests {
       inference.posterior.insert(
         key,
         NodePosterior {
+          likely_time: distribution
+            .likely_time()
+            .expect("fixture distribution has a likely time"),
           distribution: Some(Arc::new(distribution)),
           ..NodePosterior::default()
         },

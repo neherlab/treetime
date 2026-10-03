@@ -62,7 +62,8 @@ impl<'a> TimetreeOptimizer<'a> {
   ) -> Result<(), Report> {
     let log_lh_seq = compute_sequence_log_lh(graph, branch_model);
     let log_lh_pos = compute_positional_log_lh(graph, inference);
-    let log_lh_coal = compute_coalescent_log_lh(graph, coalescent_tc, &inference.coalescent_node_times()?, names, log);
+    let log_lh_coal =
+      coalescent_tc.and_then(|tc| compute_coalescent_log_lh(graph, tc, &inference.coalescent_node_times(), names, log));
     let log_lh_total = [log_lh_seq, log_lh_pos, log_lh_coal]
       .into_iter()
       .flatten()

@@ -64,12 +64,11 @@ pub(crate) fn compute_positional_log_lh(graph: &Graph, inference: &TimeInference
 
 pub(crate) fn compute_coalescent_log_lh(
   graph: &Graph,
-  coalescent_tc: Option<&Distribution>,
+  tc: &Distribution,
   node_times: &CoalescentNodeTimes,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Option<LogLh> {
-  let tc = coalescent_tc?;
   match compute_coalescent_total_lh(graph, tc, node_times, names, log) {
     Ok(lh) => Some(lh),
     Err(e) => {

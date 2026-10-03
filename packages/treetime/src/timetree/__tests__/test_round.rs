@@ -83,12 +83,12 @@ mod tests {
     let edge_lh = compute_coalescent_total_lh(
       &state.graph,
       &tc,
-      &inference.coalescent_node_times()?,
+      &inference.coalescent_node_times(),
       &BTreeMap::new(),
       &NoopProgress,
     )?;
     let model = CoalescentModel::new(
-      &compute_lineage_counts(&state.graph, &inference.coalescent_node_times()?)?,
+      &compute_lineage_counts(&state.graph, &inference.coalescent_node_times())?,
       &tc,
     )?;
     let node_lh = -state
@@ -445,7 +445,7 @@ mod tests {
     ) -> Result<(RoundState, RoundOutcome), Report> {
       let pinned_tc = Distribution::constant(ROUND_TEST_TC);
       let coalescent = CoalescentModel::new(
-        &compute_lineage_counts(&state.graph, &state.time_inference.coalescent_node_times()?)?,
+        &compute_lineage_counts(&state.graph, &state.time_inference.coalescent_node_times())?,
         coalescent_tc.unwrap_or(&pinned_tc),
       )?;
       let merger_rate =

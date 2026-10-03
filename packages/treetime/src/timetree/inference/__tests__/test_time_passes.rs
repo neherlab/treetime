@@ -39,6 +39,7 @@ mod tests {
     assert_eq!(None, backward.subtree[&fixture.key("N")]);
     let expected = NodePosterior {
       distribution: Some(Arc::new(Distribution::point(2008.0 + BRANCH_MEAN, 0.0))),
+      likely_time: Some(2008.0 + BRANCH_MEAN),
       time: Some(2008.0 + BRANCH_MEAN),
       contradicted: false,
     };
@@ -63,6 +64,7 @@ mod tests {
     );
     let expected = NodePosterior {
       distribution: Some(Arc::new(Distribution::point(2008.0, 0.0).normalize()?)),
+      likely_time: Some(2008.0),
       time: Some(2008.0),
       contradicted: false,
     };

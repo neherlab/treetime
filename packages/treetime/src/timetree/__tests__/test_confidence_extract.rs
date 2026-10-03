@@ -219,8 +219,14 @@ mod tests {
         .map(|node| (node.key(), NodePosterior::default()))
         .collect();
       for (key, time, distribution) in entries {
+        let likely_time = distribution.as_deref().and_then(|distribution| {
+          distribution
+            .likely_time()
+            .expect("fixture distribution has a likely time")
+        });
         let node = NodePosterior {
           distribution: distribution.clone(),
+          likely_time,
           time: *time,
           contradicted: false,
         };

@@ -91,22 +91,11 @@ mod tests {
     let node_times = helpers::coalescent_node_times(&graph, &constraints);
     let expected = compute_coalescent_total_lh(&graph, &tc, &node_times, &BTreeMap::new(), &NoopProgress)?.value();
 
-    let actual = compute_coalescent_log_lh(&graph, Some(&tc), &node_times, &BTreeMap::new(), &NoopProgress)
+    let actual = compute_coalescent_log_lh(&graph, &tc, &node_times, &BTreeMap::new(), &NoopProgress)
       .expect("coalescent log-likelihood must be available")
       .value();
 
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 10);
-    Ok(())
-  }
-
-  #[test]
-  fn test_likelihood_coalescent_log_lh_absent_without_model() -> Result<(), Report> {
-    let (graph, constraints) = helpers::coalescent_graph()?;
-    let node_times = helpers::coalescent_node_times(&graph, &constraints);
-
-    let actual = compute_coalescent_log_lh(&graph, None, &node_times, &BTreeMap::new(), &NoopProgress);
-
-    assert_eq!(None, actual);
     Ok(())
   }
 

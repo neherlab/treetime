@@ -21,29 +21,17 @@ mod tests {
 
   const CAVITY_GRID_POINTS: usize = 1001;
 
-  #[test]
-  fn test_forward_pass_committed_time_empty_distribution_returns_none() {
-    assert_eq!(None, committed_time(Some(&Distribution::empty()), None).unwrap());
-  }
-
-  #[test]
-  fn test_forward_pass_committed_time_missing_distribution_returns_none() {
-    assert_eq!(None, committed_time(None, None).unwrap());
-  }
-
   #[rustfmt::skip]
   #[rstest]
   #[case::no_parent(      None,      5.0)]
   #[case::parent_earlier( Some(3.0), 5.0)]
   #[case::parent_clamps(  Some(8.0), 8.0)]
   #[trace]
-  fn test_forward_pass_committed_time_uses_distribution_peak(
+  fn test_forward_pass_committed_time_clamps_the_likely_time_to_the_parent(
     #[case] parent_time: Option<f64>,
     #[case] expected: f64,
   ) {
-    let committed = committed_time(Some(&Distribution::point(5.0, 1.0)), parent_time)
-      .unwrap()
-      .expect("a time should be assigned");
+    let committed = committed_time(5.0, parent_time);
     pretty_assert_ulps_eq!(committed, expected, max_ulps = 4);
   }
 
@@ -166,6 +154,7 @@ mod tests {
 
     let expected = NodePosterior {
       distribution: Some(Arc::new(given)),
+      likely_time: Some(2006.0),
       time: Some(2009.0),
       contradicted: true,
     };
