@@ -1,5 +1,5 @@
 use crate::clock::clock_set::ClockSet;
-use crate::make_error;
+use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::progress_warn;
 use eyre::Report;
@@ -43,7 +43,7 @@ impl ClockModel {
 
   pub fn from_regression(regression: &ClockRegression) -> Result<Self, Report> {
     if regression.clock_rate <= 0.0 {
-      return make_error!(
+      return Err(input_error(format!(
         "Estimated clock rate is non-positive ({:.6e}).\n\n\
          This means the root-to-tip regression found no positive correlation between \
          sampling dates and genetic divergence, which prevents time-scaled analysis.\n\n\
@@ -52,7 +52,7 @@ impl ClockModel {
          - Verify that sampling dates are correct and span a sufficient time range\n\
          - Check that the alignment has enough informative sites",
         regression.clock_rate
-      );
+      )));
     }
 
     Ok(Self::from_regression_unchecked(regression))
@@ -87,13 +87,13 @@ impl ClockModel {
 
   pub(crate) fn with_fixed_rate(clock_set: &ClockSet, clock_rate: f64) -> Result<Self, Report> {
     if clock_rate <= 0.0 {
-      return make_error!(
+      return Err(input_error(format!(
         "Specified clock rate must be positive, got {clock_rate:.6e}.\n\n\
          The clock rate is the expected number of substitutions per site per year.\n\n\
          Suggestions:\n\
          - Provide a positive value, e.g. --clock-rate=0.001\n\
          - Omit --clock-rate to let the rate be estimated from the data"
-      );
+      )));
     }
     Ok(Self {
       clock_rate,
@@ -217,7 +217,9 @@ impl TryFrom<&ClockSet> for ClockRegression {
     if det <= 0.0 {
       debug!("ClockSet: {}", json_write_str(clock_set, JsonPretty(true))?);
       debug!("ClockSet determinant: {det}");
-      return make_error!("No variation in sampling dates! Please specify your clock rate explicitly.");
+      return Err(input_error(
+        "No variation in sampling dates! Please specify your clock rate explicitly.",
+      ));
     }
 
     let clock_rate = clock_set.clock_rate(det);

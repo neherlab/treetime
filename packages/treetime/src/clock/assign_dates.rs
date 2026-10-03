@@ -1,4 +1,5 @@
 use crate::clock::clock_state::ClockInputs;
+use crate::error::input_error;
 use crate::make_error;
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -16,7 +17,10 @@ pub(crate) fn assign_dates(
 ) -> Result<(), Report> {
   let n_dates = dates.iter().filter(|(_, d)| d.is_some()).count();
   if n_dates == 0 {
-    return make_error!("No valid date information found in {dates:#?}");
+    return Err(input_error(format!(
+      "No valid date information found: none of the {} entries of the dates input has a usable date",
+      dates.len()
+    )));
   }
 
   let mut n_bad_leaves = 0;

@@ -2,7 +2,7 @@ use crate::clock::clock_regression::ClockVarianceParams;
 use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
-use crate::make_error;
+use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
@@ -150,10 +150,10 @@ pub(crate) fn find_best_root(
   }
 
   if force_positive && !objective.has_positive_rate(&best_res.clock_set) {
-    return make_error!(
+    return Err(input_error(
       "Clock rate is negative for all root positions. \
-       The data may lack temporal signal. Please specify --clock-rate explicitly."
-    );
+       The data may lack temporal signal. Please specify --clock-rate explicitly.",
+    ));
   }
 
   progress_info!(

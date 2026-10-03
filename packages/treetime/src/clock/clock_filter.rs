@@ -2,7 +2,7 @@ use crate::branch_lengths::branch_length_or_zero;
 use crate::clock::clock_model::ClockLine;
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::divergence::root_to_node_divergences;
-use crate::make_error;
+use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
@@ -55,7 +55,7 @@ pub(crate) fn clock_filter(
 
   let n = leaf_clock_deviations.len();
   if n == 0 {
-    return make_error!("Clock filtering requires at least one dated leaf");
+    return Err(input_error("Clock filtering requires at least one dated leaf"));
   }
   let iq75 = (3 * n) / 4;
   let iq25 = n / 4;

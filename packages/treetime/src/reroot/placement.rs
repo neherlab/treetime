@@ -1,3 +1,4 @@
+use crate::error::input_error;
 use crate::node_label::node_label;
 use approx::ulps_eq;
 use eyre::Report;
@@ -5,7 +6,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::make_error;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum RootTarget {
@@ -58,10 +58,10 @@ pub(crate) fn require_dated_new_leaves(
     .find(|key| !leaves_before.contains(key) && !is_dated(*key));
   match undated {
     None => Ok(()),
-    Some(key) => make_error!(
+    Some(key) => Err(input_error(format!(
       "Rerooting turned the internal node '{}' into a leaf, but it has no date and no observed data. \
        Remove the node from the input tree or pass --keep-root.",
       node_label(names, key)
-    ),
+    ))),
   }
 }
