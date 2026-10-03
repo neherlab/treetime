@@ -1,16 +1,21 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::error::OperationError;
 use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
 use crate::partition::marginal::sample::SampleMode;
 use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
+use crate::partition::marginal::sparse::mutations::sparse_edge_mutations;
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
 use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::seq::indel::InDel;
-use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
+use crate::seq::mutation::{
+  Mutation, MutationTrack, SequenceMutations, Sub, combine_edge_mutations, emit_sequences, stream_sequence_mutations,
+};
+use crate::seq::sink::SeqSink;
 use eyre::Report;
 use rand::RngCore;
 use serde::Serialize;
@@ -121,6 +126,46 @@ impl MarginalReconstruction {
         node_key,
       ),
     }
+  }
+
+  pub(crate) fn stream_sequences(
+    &self,
+    graph: &Graph,
+    impute: bool,
+    track: &MutationTrack,
+    include_leaves: bool,
+    sink: Option<&mut (dyn SeqSink + '_)>,
+  ) -> Result<SequenceMutations, OperationError> {
+    let node_sequence = |node_key| self.node_sequence(graph, impute, node_key);
+    let Self::Sparse(reconstruction) = self else {
+      return stream_sequence_mutations(
+        graph,
+        self.alphabet(),
+        track,
+        include_leaves,
+        node_sequence,
+        |edge_key| self.edge_indels(edge_key),
+        sink,
+      );
+    };
+    if let Some(sink) = sink {
+      emit_sequences(graph, track, include_leaves, node_sequence, sink)?;
+    }
+    let root_key = graph.root_key().map_err(OperationError::classify)?;
+    let root_sequence = node_sequence(root_key).map_err(OperationError::classify)?;
+    let edge_mutations = sparse_edge_mutations(
+      &reconstruction.partition,
+      graph,
+      &reconstruction.node_states,
+      &reconstruction.edges.forward,
+      impute,
+      track,
+    )
+    .map_err(OperationError::classify)?;
+    Ok(SequenceMutations {
+      root_sequence,
+      edge_mutations,
+    })
   }
 
   pub(crate) fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {

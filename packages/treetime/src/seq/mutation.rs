@@ -49,11 +49,7 @@ pub(crate) fn stream_sequence_mutations(
           seq: &seq,
           emitted: include_leaves || !node.is_leaf,
         };
-        if let Err(error) = sink.emit(item) {
-          let report = make_internal_report!("Sequence sink failed at node {}", node.key);
-          sink_error = Some(error);
-          return Err(report);
-        }
+        emit_item(sink, item, &mut sink_error)?;
       }
       match node.parent_keys.as_slice() {
         [] => root_sequence = Some(seq.clone()),
@@ -85,6 +81,41 @@ pub(crate) fn stream_sequence_mutations(
   Ok(SequenceMutations {
     root_sequence,
     edge_mutations,
+  })
+}
+
+pub(crate) fn emit_sequences(
+  graph: &Graph,
+  track: &MutationTrack,
+  include_leaves: bool,
+  mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
+  sink: &mut (dyn SeqSink + '_),
+) -> Result<(), OperationError> {
+  let seq_track = track.seq_track();
+  let mut sink_error = None;
+  graph
+    .iter_depth_first_preorder_forward(|node| {
+      let seq = node_sequence(node.key)?;
+      let item = SeqItem {
+        key: node.key,
+        track: seq_track,
+        seq: &seq,
+        emitted: include_leaves || !node.is_leaf,
+      };
+      emit_item(sink, item, &mut sink_error)
+    })
+    .map_err(|report| {
+      sink_error
+        .take()
+        .map_or_else(|| OperationError::classify(report), OperationError::SinkFailed)
+    })
+}
+
+fn emit_item(sink: &mut (dyn SeqSink + '_), item: SeqItem<'_>, sink_error: &mut Option<Report>) -> Result<(), Report> {
+  let key = item.key;
+  sink.emit(item).map_err(|error| {
+    *sink_error = Some(error);
+    make_internal_report!("Sequence sink failed at node {key}")
   })
 }
 

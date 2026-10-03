@@ -79,22 +79,29 @@ pub(crate) fn reconstruct_leaf_sequence(
   let unknown_positions = node_obs.unknown.iter().flat_map(|&(start, end)| start..end);
   let ambiguous_positions = node_obs.fitch.variable.keys().copied();
   for pos in unknown_positions.chain(ambiguous_positions) {
-    let observed = seq[pos];
-    let posterior = down
-      .variable
-      .get(&pos)
-      .map(|var| &var.dis)
-      .or_else(|| down.fixed.get(&map_state(parent, pos, alphabet)));
-    let (Some(posterior), Ok(mask)) = (posterior, alphabet.get_profile(observed)) else {
-      continue;
-    };
-    let combined = posterior * mask;
-    if let Some(idx) = argmax_first(&combined.view()) {
-      seq[pos] = alphabet.char(idx);
-    }
+    seq[pos] = impute_state(seq[pos], pos, down, parent, alphabet);
   }
 
   seq
+}
+
+pub(crate) fn impute_state(
+  observed: AsciiChar,
+  pos: usize,
+  down: &SparseSeqDistribution,
+  parent: &SparseNodeState,
+  alphabet: &Alphabet,
+) -> AsciiChar {
+  let posterior = down
+    .variable
+    .get(&pos)
+    .map(|var| &var.dis)
+    .or_else(|| down.fixed.get(&map_state(parent, pos, alphabet)));
+  let (Some(posterior), Ok(mask)) = (posterior, alphabet.get_profile(observed)) else {
+    return observed;
+  };
+  let combined = posterior * mask;
+  argmax_first(&combined.view()).map_or(observed, |idx| alphabet.char(idx))
 }
 
 pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {

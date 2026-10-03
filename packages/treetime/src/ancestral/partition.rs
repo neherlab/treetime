@@ -48,6 +48,15 @@ impl AncestralPartition {
     include_leaves: bool,
     sink: Option<&mut (dyn SeqSink + '_)>,
   ) -> Result<SequenceMutations, OperationError> {
+    if let Self::Marginal {
+      reconstruction,
+      sampled,
+      impute,
+    } = self
+      && sampled.is_empty()
+    {
+      return reconstruction.stream_sequences(graph, *impute, track, include_leaves, sink);
+    }
     stream_sequence_mutations(
       graph,
       self.alphabet(),

@@ -18,9 +18,7 @@ use crate::optimize::params::BranchLengthMode;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::node_seq_inputs;
-use crate::seq::mutation::{
-  Mutation, MutationTrack, SequenceMutations, edge_state_change_counts, stream_sequence_mutations,
-};
+use crate::seq::mutation::{Mutation, MutationTrack, SequenceMutations, edge_state_change_counts};
 use crate::seq::sink::SeqSink;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent::CoalescentOutput;
@@ -548,13 +546,11 @@ fn reconstruct_final_sequences(
   let SequenceMutations {
     root_sequence,
     edge_mutations,
-  } = stream_sequence_mutations(
+  } = reconstruction.stream_sequences(
     graph,
-    reconstruction.alphabet(),
+    params.impute_missing_data,
     &MutationTrack::Nucleotide,
     params.include_leaves,
-    |node_key| reconstruction.node_sequence(graph, params.impute_missing_data, node_key),
-    |edge_key| reconstruction.edge_indels(edge_key),
     seq_sink,
   )?;
   let edge_mutation_counts =

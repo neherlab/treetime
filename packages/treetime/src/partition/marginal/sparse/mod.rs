@@ -5,6 +5,7 @@ pub(crate) mod backward;
 pub(crate) mod count;
 pub(crate) mod forward;
 pub(crate) mod message;
+pub(crate) mod mutations;
 pub mod partition;
 pub(crate) mod reconstruct;
 pub(crate) mod reroot;
