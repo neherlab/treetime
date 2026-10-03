@@ -1,16 +1,27 @@
-# Timetree skyline coalescent timing may diverge from v0
+# Timetree skyline coalescent timing diverges from v0
 
-v1 runs skyline coalescent optimization after the iteration loop exits, then re-runs timetree with the fitted skyline prior. v0 activates skyline on the last iteration within the loop, so the timetree inference runs once with the skyline prior during the loop itself.
+v0 and v1 apply the skyline coalescent prior at different points of the refinement loop, and only v0 disables the early convergence exit in skyline mode. No decision records either difference.
 
-The v1 code at `packages/treetime/src/timetree/pipeline.rs` (skyline block after the optimizer loop) has a comment claiming "matching v0 behavior where skyline optimization happens only on the final iteration after times have converged." The v0 code (`packages/legacy/treetime/treetime/treetime.py` line 312) uses `if Tc == 'skyline' and niter < max_iter - 1: tmpTc = 'const'`, which means the last iteration (when `niter == max_iter - 1`) runs with `Tc = 'skyline'` inside the loop, not after it. The comment may be inaccurate.
+## v0 behavior
 
-Both approaches produce self-consistent results. The difference is whether the final node times are conditioned on the skyline prior during the optimization iteration or via a separate post-loop pass. For datasets where the skyline shape deviates from constant Tc, final node time estimates may differ.
+- Inside the loop, every iteration except the last uses a constant $T_c$ prior; only the last iteration (`niter == max_iter - 1`) fits and applies the skyline: `if Tc == 'skyline' and niter < max_iter - 1: tmpTc = 'const'` ([packages/legacy/treetime/treetime/treetime.py#L312-L315](../../packages/legacy/treetime/treetime/treetime.py#L312-L315))
+- The loop never stops early in skyline mode: the convergence check requires `Tc != 'skyline'` ([packages/legacy/treetime/treetime/treetime.py#L374](../../packages/legacy/treetime/treetime/treetime.py#L374)), so a skyline run always performs `max_iter` iterations
+
+## v1 behavior
+
+- The initial round fits the skyline from the first node times (`fn setup_coalescent` in [packages/treetime/src/timetree/round.rs](../../packages/treetime/src/timetree/round.rs)), and every loop round re-fits it from the current node times before the round runs ([packages/treetime/src/timetree/refinement_loop.rs#L54-L63](../../packages/treetime/src/timetree/refinement_loop.rs#L54-L63)), so every round uses a skyline prior
+- No skyline step runs after the loop
+- The early convergence exit applies in skyline mode as in every other mode (`fn TimetreeOptimizer::next_iter` in [packages/treetime/src/timetree/convergence/optimizer.rs](../../packages/treetime/src/timetree/convergence/optimizer.rs)), so a skyline run can stop before `max_iter` with a skyline fitted to times that v0 would have refined further
+
+## Impact
+
+For datasets where the skyline shape deviates from a constant $T_c$, the intermediate node times differ from v0 because each v1 round already conditions on the skyline. A skyline run that converges early performs fewer iterations than v0, so final node times and the fitted skyline may differ.
 
 ## Investigation needed
 
 - Run v0 and v1 on a dataset with population size variation (e.g. `flu/h3n2/200` with `--coalescent-skyline`)
-- Compare node times to determine whether the difference is measurable
-- If measurable, decide whether v1's approach is an intentional improvement or should match v0
+- Compare node times, the fitted skyline, and the iteration count to determine whether the differences are measurable
+- If measurable, decide whether v1's schedule is an intentional change or should match v0
 
 ## Related
 

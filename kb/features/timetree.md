@@ -5,7 +5,7 @@
 - [x] Load tree from `--tree`
 - [x] Optional date table from `--dates`
 - [x] Optional alignment when `--branch-length-mode=marginal`
-- [x] Alphabet always maps gap to unknown profile (matching v0 `nuc_nogap` behavior)
+- [ ] Gap handling matches v0: v0 timetree uses the 5-state `nuc` alphabet, where the gap is a state ([packages/legacy/treetime/treetime/wrappers.py#L56](../../packages/legacy/treetime/treetime/wrappers.py#L56)); the v1 nucleotide alphabet puts the gap in the undetermined set together with the unknown character, so a gap carries no state information ([packages/treetime/src/alphabet/alphabet.rs#L131](../../packages/treetime/src/alphabet/alphabet.rs#L131)). No decision records this difference
 - [x] Initial node divergences always initialized
 - [x] Date assignment fails when no valid dates or fewer than three leaves have valid dates
 - [x] ML branch-length optimization pre-step (v0: `optimize_tree(max_iter=1)` before and after rerooting)
@@ -36,8 +36,8 @@
 
 ## Time Marginal Modes
 
-- [x] `never` (joint most-likely times)
-- [ ] `always` (marginal every round - parsed but not wired)
+- [/] `never`: runs the same marginal time inference in every round as the other modes and skips confidence-interval extraction; v0 uses joint most-likely times, which v1 lacks ([kb/issues/H-timetree-joint-time-inference-missing.md](../issues/H-timetree-joint-time-inference-missing.md))
+- [x] `always` (marginal every round): every round already uses marginal time inference, so the mode runs no extra pass and enables confidence-interval extraction in `fn gather_results` ([packages/treetime/src/timetree/pipeline.rs#L480-L491](../../packages/treetime/src/timetree/pipeline.rs#L480-L491))
 - [x] `only-final` (marginal last round for confidence)
   - [x] Final timetree pass after loop
   - [x] Final marginal update when partitions exist
@@ -49,11 +49,11 @@
 
 - [x] Constant Tc (fixed from CLI `--coalescent`)
 - [x] Optimized Tc (`--coalescent-opt`, analytic one-segment skyline solve)
-  - [x] Re-optimizes constant Tc inside loop for iterations i >= 2
+  - [x] Re-estimates constant $T_c$ at the start of every loop round ([packages/treetime/src/timetree/refinement_loop.rs#L54-L63](../../packages/treetime/src/timetree/refinement_loop.rs#L54-L63))
   - [x] Pre-loop constant Tc optimization
 - [/] Skyline (`--coalescent-skyline`, convex Newton solve over piecewise-constant $T_c(t)$; extrapolation, quadrature, and internal boundary-validation contracts remain open: [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md), [kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md](../issues/N-coalescent-skyline-quadrature-contract-undecided.md), [kb/issues/N-coalescent-skyline-grid-validation-incomplete.md](../issues/N-coalescent-skyline-grid-validation-incomplete.md))
-  - [x] Final skyline re-optimization after refinement loop
-  - [x] Extra final timetree pass unless `--time-marginal=only-final`
+  - [ ] Skyline fitted in the last round only: v0 uses a constant $T_c$ until the last round; v1 re-estimates the skyline at the start of every loop round ([packages/treetime/src/timetree/refinement_loop.rs#L54-L63](../../packages/treetime/src/timetree/refinement_loop.rs#L54-L63)) and runs no skyline step after the loop ([kb/issues/M-timetree-skyline-timing-v0-divergence.md](../issues/M-timetree-skyline-timing-v0-divergence.md))
+  - [ ] Extra final timetree pass unless `--time-marginal=only-final`: v1 runs no such pass; its only final pass, `fn final_marginal_round` ([packages/treetime/src/timetree/round.rs#L148-L159](../../packages/treetime/src/timetree/round.rs#L148-L159)), runs when the mode is `only-final` (`fn refine_final_times`, [packages/treetime/src/timetree/pipeline.rs#L435-L441](../../packages/treetime/src/timetree/pipeline.rs#L435-L441))
 - [x] Coalescent leaf, internal-node, and root contributions
 - [x] Child-first contribution ordering matching v0
 - [x] Merger rate lambda(t) = k(k-1)/(2\*Tc)
@@ -94,7 +94,7 @@
 - [x] Convergence check uses max node-time change below `NODE_TIME_TOLERANCE_YEARS` and `n_resolved == 0`, falling back to `n_diff` when no times are comparable ([kb/decisions/timetree-convergence-on-node-times.md](../decisions/timetree-convergence-on-node-times.md))
 - [x] Clock-constrained branch lengths committed after each pass and propagated by the next marginal reconstruction, damped by 0.5 ([kb/decisions/timetree-clock-constrained-profile-propagation.md](../decisions/timetree-clock-constrained-profile-propagation.md))
 - [x] Coalescent lineage counts frozen before the loop for the prior; $T_c$ and the reported likelihood estimated against the live tree
-- [x] Skyline mode suppresses early convergence exit
+- [ ] Skyline mode suppresses early convergence exit: v0 never stops early in skyline mode ([packages/legacy/treetime/treetime/treetime.py#L374](../../packages/legacy/treetime/treetime/treetime.py#L374)); v1 keeps the early exit ([kb/issues/M-timetree-skyline-timing-v0-divergence.md](../issues/M-timetree-skyline-timing-v0-divergence.md))
 - [x] Relaxed clock application
 - [x] Polytomy resolution
 - [x] Dirty-tree-aware reconstruction ordering
