@@ -59,10 +59,6 @@ pub(crate) struct RecordingSeqSink {
 }
 
 impl SeqSink for RecordingSeqSink {
-  fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
-    Ok(())
-  }
-
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     self.items.push((item.key, item.emitted, item.seq.clone()));
     Ok(())

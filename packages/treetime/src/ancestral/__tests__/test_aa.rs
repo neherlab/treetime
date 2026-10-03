@@ -198,10 +198,6 @@ mod tests {
     }
 
     impl SeqSink for CancellingRecordingSink {
-      fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
-        Ok(())
-      }
-
       fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
         let SeqTrack::Aa(name) = item.track else {
           panic!("reconstruct_aa must emit only amino acid tracks");

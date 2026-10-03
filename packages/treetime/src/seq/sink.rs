@@ -4,7 +4,10 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
 pub trait SeqSink {
-  fn on_topology(&mut self, graph: &Graph) -> Result<(), Report>;
+  fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
+    Ok(())
+  }
+
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report>;
 }
 

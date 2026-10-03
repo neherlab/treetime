@@ -20,7 +20,6 @@ use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::NoopProgress;
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
 use treetime::seq::sink::{SeqItem, SeqSink};
-use treetime_graph::graph::Graph;
 use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::AlignmentRecord;
@@ -77,10 +76,6 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
 struct DiscardSequences;
 
 impl SeqSink for DiscardSequences {
-  fn on_topology(&mut self, _graph: &Graph) -> Result<(), Report> {
-    Ok(())
-  }
-
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     black_box(item.seq);
     Ok(())
