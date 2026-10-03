@@ -17,7 +17,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AsciiChar;
 use treetime_primitives::Seq;
-use treetime_utils::error::to_eyre_error;
+use treetime_utils::error::{report_to_string, to_eyre_error};
 
 #[derive(Clone, Debug)]
 pub(crate) struct SequenceMutations {
@@ -329,12 +329,15 @@ impl Sub {
   }
 
   pub(crate) fn changes_state(&self, alphabet: &Alphabet) -> Result<bool, Report> {
-    Ok(
-      alphabet
-        .canonical_states(self.reff)?
-        .intersection(&alphabet.canonical_states(self.qry)?)
-        .is_empty(),
-    )
+    let states = |c| {
+      alphabet.canonical_states(c).map_err(|report| {
+        make_internal_report!(
+          "Substitution '{self}' holds a character outside the alphabet: {}",
+          report_to_string(&report)
+        )
+      })
+    };
+    Ok(states(self.reff)?.intersection(&states(self.qry)?).is_empty())
   }
 
   pub(crate) fn invert(&mut self) {

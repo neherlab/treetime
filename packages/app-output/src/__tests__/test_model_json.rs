@@ -8,7 +8,7 @@ mod tests {
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
   #[test]
-  fn test_gtr_output_json_round_trips_through_the_run_result_reader() -> Result<(), Report> {
+  fn test_model_json_gtr_output_round_trips() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
     let output = GtrOutput::builder().gtr(&gtr).model_name(GtrModelName::JC69).build();
 
@@ -18,14 +18,16 @@ mod tests {
     assert_eq!(written, json_write_str(&read, JsonPretty(true))?);
     let fields: Vec<String> = json_read_str::<Value>(&written)?
       .as_object()
-      .map(|object| object.keys().cloned().collect())
-      .unwrap_or_default();
+      .expect("GTR JSON is an object")
+      .keys()
+      .cloned()
+      .collect();
     assert_eq!(vec!["model_type", "model_name", "mu", "pi", "W", "n_states"], fields);
     Ok(())
   }
 
   #[test]
-  fn test_clock_model_json_round_trips_through_the_run_result_reader() -> Result<(), Report> {
+  fn test_model_json_clock_model_round_trips() -> Result<(), Report> {
     let expected = json!({
       "clock_rate": 0.001,
       "intercept": -2.0,

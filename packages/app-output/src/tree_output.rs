@@ -26,7 +26,7 @@ use treetime_io::usher_mat::{
 };
 use treetime_primitives::AsciiChar;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
-use treetime_utils::{make_error, make_internal_report};
+use treetime_utils::{make_error, make_internal_error, make_internal_report};
 
 pub(crate) const COLORING_BAD_BRANCH: &str = "bad_branch";
 const COLORING_GENOTYPE: &str = "gt";
@@ -405,7 +405,9 @@ fn mat_nucleotide_states(nucleotide: AsciiChar, alphabet: &Alphabet, node_name: 
   };
   let states = alphabet.canonical_states(nucleotide).wrap_err_with(rejected)?;
   if states.is_empty() {
-    return make_error!("{}", rejected());
+    return make_internal_error!(
+      "Node '{node_name}' has child nucleotide '{nucleotide}', which stands for no nucleotide"
+    );
   }
   states
     .iter()

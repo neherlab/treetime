@@ -180,7 +180,7 @@ mod tests {
   fn test_mutation_sub_changes_state_rejects_a_character_outside_the_alphabet() {
     assert_error!(
       helpers::sub(b'A', 0, b'J').changes_state(&Alphabet::default()),
-      "Character 'J' is not in the alphabet"
+      "Substitution 'A1J' holds a character outside the alphabet: Character 'J' is not in the alphabet. This is an internal error. Please report it to developers."
     );
   }
 
