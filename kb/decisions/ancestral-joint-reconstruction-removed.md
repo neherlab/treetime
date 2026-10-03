@@ -1,8 +1,8 @@
 # Joint ML ancestral reconstruction removed
 
-v1 removes support for joint maximum likelihood ancestral reconstruction. The enum variant `MethodAncestral::Joint` (`#MethodAncestral`) in `packages/treetime/src/commands/ancestral/args.rs:8-16:` is preserved as `#[default]` for CLI compatibility with v0, but selecting it triggers `unimplemented!()` at `packages/treetime/src/commands/ancestral/run.rs:201-203:`. The v0 implementation lives in `_ml_anc_joint()` (`#_ml_anc_joint`) at `packages/legacy/treetime/treetime/treeanc.py:934-1080:`.
+v1 removes support for joint maximum likelihood ancestral reconstruction. `enum MethodAncestral` in `packages/treetime/src/ancestral/params.rs` and its command-line counterpart `enum MethodAncestralCli` in `packages/app-commands/src/commands/shared/method_anc.rs` have the variants `marginal` (the default) and `parsimony`, so `--method-anc` accepts only these two values and the parser rejects `joint` like any unknown value. The v0 implementation lives in `_ml_anc_joint()` (`#_ml_anc_joint`) at `packages/legacy/treetime/treetime/treeanc.py:934-1080:`.
 
-Currently only the `ancestral` command panics on joint. The `timetree` and `clock` commands have `method_anc` fields in their argument structs but do not dispatch on them yet.
+Only the `ancestral` command dispatches on `--method-anc`. The `timetree` and `clock` commands parse the flag and never read it; see [kb/issues/M-timetree-method-anc-ignored.md](../issues/M-timetree-method-anc-ignored.md) and [kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md).
 
 ## Background: marginal vs joint reconstruction
 
@@ -67,9 +67,9 @@ Neither option aligns with v1's design. The marginal approach provides strictly 
 
 ## Practical impact
 
-Running `treetime ancestral` without `--method-anc` panics because `Joint` is the default. Users must specify `--method-anc marginal` or `--method-anc parsimony`.
+`treetime ancestral` without `--method-anc` runs marginal reconstruction. `--method-anc=joint` fails at argument parsing, before any input is read, with the list of valid values. A v0 command line or configuration file that selects `joint` must switch to `marginal` or `parsimony`.
 
-The `timetree` and `clock` commands accept `--method-anc` but ignore it - they always use marginal reconstruction internally. This may change in future versions.
+The `timetree` and `clock` commands accept `--method-anc` but ignore it: timetree always uses marginal reconstruction, and clock reconstructs no sequences.
 
 No golden master tests exist for joint reconstruction in v1. Marginal reconstruction is the recommended method for all use cases.
 

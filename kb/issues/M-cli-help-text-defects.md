@@ -4,14 +4,6 @@ Systematic audit of `--help` output across all commands reveals defects affectin
 
 ## Defects
 
-### D1: `--method-anc=joint` accepted by parser, errors at runtime
-
-Commands: `timetree`, `ancestral`, `clock`, `homoplasy`.
-
-`[possible values: marginal, parsimony, joint]` lists `joint`, but the pipeline rejects it: "Joint ancestral reconstruction has been removed. Available methods: marginal, parsimony" (`ancestral/pipeline.rs:231`). Users and automation discover this only at runtime, after setup completes.
-
-Fix: remove `joint` from the enum or hide it with a clap `hide` attribute and add a deprecation note.
-
 ### D2: `--tree` description promises fallback on required-tree commands
 
 Commands: `optimize`, `ancestral`.
@@ -214,7 +206,7 @@ Root help lists tooling commands at the same level as analysis commands with no 
 
 ## Recommendation
 
-Use O1. Parser behavior such as `joint`, dense/sparse mode, required outputs, and per-command format availability needs focused issues and tickets. Pure spelling, capitalization, grammar, and layout corrections may share one documentation ticket after behavior-dependent items are removed. This inventory has no executable omnibus ticket.
+Use O1. Parser behavior such as dense/sparse mode, required outputs, and per-command format availability needs focused issues and tickets. Pure spelling, capitalization, grammar, and layout corrections may share one documentation ticket after behavior-dependent items are removed. This inventory has no executable omnibus ticket.
 
 ## Ticket readiness
 
@@ -226,4 +218,4 @@ No aggregate ticket is ready. Each behavioral item must first select its parse/r
 - [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-unimplemented.md): tree inference fallback not implemented (overlaps D2)
 - [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md): homoplasy unimplemented (overlaps D9)
 - [N-timetree-polytomy-flags-no-conflict.md](N-timetree-polytomy-flags-no-conflict.md): polytomy flag conflict (overlaps U7)
-- [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md): `--method-anc` is unused in timetree (related to D1)
+- [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md): `--method-anc` is unused in timetree
