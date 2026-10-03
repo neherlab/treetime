@@ -60,13 +60,3 @@ impl std::error::Error for OperationError {
     error.source()
   }
 }
-
-impl From<Report> for OperationError {
-  fn from(report: Report) -> Self {
-    if report.downcast_ref::<CancelledError>().is_some() {
-      Self::Cancelled
-    } else {
-      Self::InferenceFailed(report)
-    }
-  }
-}

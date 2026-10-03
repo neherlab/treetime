@@ -28,7 +28,7 @@ pub fn run(
   cancel: &dyn Cancel,
   log: &dyn LogSink,
 ) -> Result<PruneOutput, OperationError> {
-  cancel.check()?;
+  cancel.check().map_err(OperationError::from_inference)?;
 
   let mut names = names.clone();
   let mut branch_lengths = take(&mut input.branch_lengths);
@@ -49,7 +49,8 @@ pub fn run(
       &node_inputs,
       &branch_lengths_or_zero(&branch_lengths),
       log,
-    )?;
+    )
+    .map_err(OperationError::InvalidInput)?;
     (vec![partition], Some(gtr))
   } else {
     (vec![], None)
@@ -63,12 +64,14 @@ pub fn run(
     &params.node_names,
     &names,
     &mut branch_lengths,
-  )?;
+  )
+  .map_err(OperationError::from_inference)?;
 
   if params.merge_shared_mutations {
-    merge_shared_mutation_branches(&mut input.graph, &mut partitions, &mut branch_lengths)?;
-    input.graph.build()?;
-    names = assign_node_names(names, &input.graph)?;
+    merge_shared_mutation_branches(&mut input.graph, &mut partitions, &mut branch_lengths)
+      .map_err(OperationError::from_inference)?;
+    input.graph.build().map_err(OperationError::from_inference)?;
+    names = assign_node_names(names, &input.graph).map_err(OperationError::from_inference)?;
   }
 
   Ok(PruneOutput {

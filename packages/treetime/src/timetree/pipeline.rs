@@ -73,8 +73,8 @@ pub fn run(
 
   cancel.check().map_err(OperationError::from_inference)?;
   stages.report("Clock regression", 0.1, "");
-  let (graph, branch_lengths, clock_fit) =
-    estimate_initial_clock(params, &context, graph, branch_lengths, &names, log)?;
+  let (graph, branch_lengths, clock_fit) = estimate_initial_clock(params, &context, graph, branch_lengths, &names, log)
+    .map_err(OperationError::InvalidInput)?;
   let init = initialize_branch_model(
     params,
     &graph,
@@ -300,7 +300,7 @@ fn initialize_branch_model(
   aln: Option<&[AlignmentRecord]>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
-) -> Result<BranchModelInit, Report> {
+) -> Result<BranchModelInit, OperationError> {
   match params.branch_length_mode {
     BranchLengthMode::Input => {
       progress_info!(log, "Branch length mode: Input - using tree branch lengths");
@@ -315,7 +315,8 @@ fn initialize_branch_model(
         log,
         "Branch length mode: Marginal - initializing partitions from alignment"
       );
-      let aln_data = aln.ok_or_else(|| make_report!("Alignment required for marginal reconstruction"))?;
+      let aln_data = aln
+        .ok_or_else(|| OperationError::InvalidInput(make_report!("Alignment required for marginal reconstruction")))?;
       let node_inputs = node_seq_inputs(graph, names, aln_data.to_vec());
       let reconstruction = build_marginal_partition(
         Representation::resolve(params.dense),
@@ -326,7 +327,8 @@ fn initialize_branch_model(
         &node_inputs,
         &branch_lengths_or_zero(branch_lengths),
         log,
-      )?;
+      )
+      .map_err(OperationError::InvalidInput)?;
       Ok(BranchModelInit {
         gtr: Some(reconstruction.gtr().clone()),
         branch_model: BranchModel::Marginal(reconstruction),

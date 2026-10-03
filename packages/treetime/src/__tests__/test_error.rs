@@ -35,15 +35,23 @@ mod tests {
   }
 
   #[test]
-  fn test_error_from_report_classifies_cancellation() {
-    let classified = OperationError::from(Report::new(CancelledError));
+  fn test_error_from_inference_classifies_cancellation() {
+    let classified = OperationError::from_inference(Report::new(CancelledError));
     assert!(matches!(classified, OperationError::Cancelled));
   }
 
   #[test]
-  fn test_error_from_report_defaults_to_inference_failed() {
-    let classified = OperationError::from(eyre!("some numerical failure"));
+  fn test_error_from_inference_defaults_to_inference_failed() {
+    let classified = OperationError::from_inference(eyre!("some numerical failure"));
     assert!(matches!(classified, OperationError::InferenceFailed(_)));
+  }
+
+  #[test]
+  fn test_error_source_continues_the_cause_chain() {
+    let error = OperationError::InvalidInput(eyre!("unequal sequence lengths").wrap_err("Failed to load alignment"));
+    assert_eq!("Failed to load alignment", error.to_string());
+    let source = std::error::Error::source(&error).map(ToString::to_string);
+    assert_eq!(Some("unequal sequence lengths".to_owned()), source);
   }
 
   #[test]

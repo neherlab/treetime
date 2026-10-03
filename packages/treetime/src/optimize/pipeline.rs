@@ -61,7 +61,8 @@ pub fn run(
     &node_inputs,
     &branch_lengths_or_zero(&branch_lengths),
     log,
-  )?;
+  )
+  .map_err(OperationError::InvalidInput)?;
 
   if matches!(reconstruction, MarginalReconstruction::Dense(_)) {
     if !params.topology_ops.merge_siblings {
@@ -78,8 +79,9 @@ pub fn run(
     }
   }
 
-  let (mut reconstruction, _) =
-    reconstruction.marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))?;
+  let (mut reconstruction, _) = reconstruction
+    .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))
+    .map_err(OperationError::from_inference)?;
 
   if params.model == GtrModelName::Infer {
     let length = reconstruction.sequence_length();
@@ -89,8 +91,9 @@ pub fn run(
   {
     let total_length = reconstruction.sequence_length();
     let indel_counts = gather_edge_indel_counts(&input.graph, &reconstruction);
-    let sub_counts = gather_edge_sub_counts(&input.graph, &reconstruction)?;
-    let effective_lengths = gather_edge_effective_lengths(&input.graph, &reconstruction)?;
+    let sub_counts = gather_edge_sub_counts(&input.graph, &reconstruction).map_err(OperationError::from_inference)?;
+    let effective_lengths =
+      gather_edge_effective_lengths(&input.graph, &reconstruction).map_err(OperationError::from_inference)?;
     apply_initial_guess_mode(
       &input.graph,
       total_length,
@@ -102,7 +105,8 @@ pub fn run(
       &mut branch_lengths,
       names,
       log,
-    )?;
+    )
+    .map_err(OperationError::from_inference)?;
   }
 
   if let Some(spec) = &params.reroot_spec {
@@ -114,13 +118,15 @@ pub fn run(
       params.opt_method,
       params.no_indels,
       &mut branch_lengths,
-    )?;
-    reconstruction = reroot_optimize(&mut input.graph, spec, reconstruction, &mut branch_lengths, names)?;
+    )
+    .map_err(OperationError::from_inference)?;
+    reconstruction = reroot_optimize(&mut input.graph, spec, reconstruction, &mut branch_lengths, names)
+      .map_err(OperationError::InvalidInput)?;
   }
 
   let loop_names = restrict_node_names(names, &input.graph);
 
-  cancel.check()?;
+  cancel.check().map_err(OperationError::from_inference)?;
   stages.report("Optimizing branch lengths", 0.3, "");
   let loop_result = run_optimize_loop(
     &mut input.graph,
@@ -133,13 +139,15 @@ pub fn run(
     params.topology_ops,
     branch_lengths,
     &loop_names,
-  )?;
+  )
+  .map_err(OperationError::from_inference)?;
   let branch_lengths = loop_result.branch_lengths;
 
   progress_info!(log, "Re-running marginal to populate subs_ml after optimization loop");
   let (reconstruction, _) = loop_result
     .reconstruction
-    .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))?;
+    .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))
+    .map_err(OperationError::from_inference)?;
 
   Ok(OptimizeOutput {
     graph: input.graph,
