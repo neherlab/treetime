@@ -802,7 +802,7 @@ class TreeTime(ClockTree):
                 else:
                     new_node.mask = n1.mask * n2.mask
                     new_node.mcc = n1.mcc if n1.mcc == n2.mcc else None
-                    self.logger('TreeTime._poly.merge_nodes: assigning mcc to new node ' + new_node.mcc, 4)
+                    self.logger(f'TreeTime._poly.merge_nodes: assigning mcc to new node {new_node.mcc}', 4)
 
                 n1.branch_length = new_node.time_before_present - n1.time_before_present
                 n2.branch_length = new_node.time_before_present - n2.time_before_present
@@ -983,7 +983,7 @@ class TreeTime(ClockTree):
                     else:
                         new_node.mask = n1.mask * n2.mask
                         new_node.mcc = n1.mcc if n1.mcc == n2.mcc else None
-                        self.logger('TreeTime._poly.merge_nodes: assigning mcc to new node ' + new_node.mcc, 4)
+                        self.logger(f'TreeTime._poly.merge_nodes: assigning mcc to new node {new_node.mcc}', 4)
                     new_node.up = parent
                     new_node.tt = self
                     if hasattr(parent, '_cseq'):
