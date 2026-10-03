@@ -395,11 +395,14 @@ pub(crate) fn mat_mutation(
 }
 
 fn mat_nucleotide_states(nucleotide: AsciiChar, alphabet: &Alphabet, node_name: &str) -> Result<Vec<i32>, Report> {
-  let states = alphabet.canonical_states(nucleotide);
-  if states.is_empty() {
-    return make_error!(
+  let rejected = || {
+    format!(
       "Node '{node_name}' has child nucleotide '{nucleotide}', but UShER MAT accepts only A, C, G, T, IUPAC ambiguity codes, or N"
-    );
+    )
+  };
+  let states = alphabet.canonical_states(nucleotide).wrap_err_with(rejected)?;
+  if states.is_empty() {
+    return make_error!("{}", rejected());
   }
   states
     .iter()

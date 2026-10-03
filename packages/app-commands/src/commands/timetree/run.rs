@@ -11,7 +11,7 @@ use app_output::clock_model::write_clock_model;
 use app_output::coalescent::{write_coalescent_delimited, write_coalescent_json};
 use app_output::confidence::write_confidence_intervals_file;
 use app_output::gtr::write_gtr_json;
-use app_output::mutation_filter::AmbiguousMutationFilter;
+use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::OutputSelection;
 use app_output::rtt::write_clock_regression_result_csv;
 use app_output::timetree_tree_output::write_timetree_tree_outputs;
@@ -118,7 +118,7 @@ pub fn run_timetree_estimation(
   };
 
   let aln_descs = sequence_descriptions(input_data.aln.iter().flatten());
-  let ambiguous = input_data.alphabet.unknown();
+  let unknown = input_data.alphabet.unknown();
 
   let input = TimetreeInput {
     graph: input_data.graph,
@@ -184,7 +184,7 @@ pub fn run_timetree_estimation(
   };
   let maps = TimetreeOutputMaps {
     root_sequence,
-    edge_mutations: AmbiguousMutationFilter::new(ambiguous, args.report_ambiguous)
+    edge_mutations: UnknownMutationFilter::new(unknown, args.report_ambiguous)
       .reported_edge_mutations(edge_mutations),
   };
 

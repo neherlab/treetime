@@ -4,7 +4,7 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data_optimize::write_augur_node_data_json;
 use app_output::gtr::write_gtr_json;
-use app_output::mutation_filter::AmbiguousMutationFilter;
+use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::optimize_result::{EdgeOut, OptimizeNodeOut, OptimizeOutputMaps, OptimizeResult};
 use app_output::optimize_tree_output::write_optimize_tree_outputs;
 use app_output::output_plan::OutputSelection;
@@ -18,9 +18,8 @@ use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
 use treetime::partition::marginal::reconstruction::MarginalReconstruction;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
-use treetime::seq::div::compute_edge_mutation_counts;
 use treetime::seq::gap_fill::apply_gap_fill;
-use treetime::seq::mutation::MutationTrack;
+use treetime::seq::mutation::{MutationTrack, edge_state_change_counts};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -65,7 +64,7 @@ pub fn run_optimize(
     topology_ops: args.topology_ops,
   };
 
-  let ambiguous = alphabet.unknown();
+  let unknown = alphabet.unknown();
   let input = OptimizeInput {
     graph,
     alphabet,
@@ -83,7 +82,7 @@ pub fn run_optimize(
     names,
   } = output;
 
-  let maps = gather_optimize_output_maps(&graph, &reconstruction, AmbiguousMutationFilter::new(ambiguous, false))?;
+  let maps = gather_optimize_output_maps(&graph, &reconstruction, UnknownMutationFilter::hiding_unknown(unknown))?;
 
   let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
@@ -127,7 +126,7 @@ pub fn run_optimize(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     let mutation_counts = match args.divergence_units {
-      DivergenceUnits::Mutations => Some(compute_edge_mutation_counts(&graph, &maps.edge_subs)),
+      DivergenceUnits::Mutations => Some(&maps.edge_mutation_counts),
       DivergenceUnits::MutationsPerSite => None,
     };
 
@@ -138,7 +137,7 @@ pub fn run_optimize(
       &branch_lengths,
       alignment,
       Some(args.tree()),
-      mutation_counts.as_ref(),
+      mutation_counts,
       path,
     )?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
@@ -152,7 +151,7 @@ pub fn run_optimize(
 fn gather_optimize_output_maps(
   graph: &Graph,
   reconstruction: &MarginalReconstruction,
-  filter: AmbiguousMutationFilter,
+  filter: UnknownMutationFilter,
 ) -> Result<OptimizeOutputMaps, Report> {
   let edge_mutations = graph
     .get_edges()
@@ -164,16 +163,10 @@ fn gather_optimize_output_maps(
       ))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
-  let edge_subs = graph
-    .get_edges()
-    .map(|edge| {
-      let key = edge.key();
-      Ok((key, reconstruction.edge_subs(graph, key)?))
-    })
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+  let edge_mutation_counts = edge_state_change_counts(&edge_mutations, reconstruction.alphabet())?;
   Ok(OptimizeOutputMaps {
     root_sequence: reconstruction.root_sequence(graph)?,
     edge_mutations: filter.reported_edge_mutations(edge_mutations),
-    edge_subs,
+    edge_mutation_counts,
   })
 }

@@ -378,7 +378,7 @@ pub(super) mod tests {
       Ok(OptimizeOutputMaps {
         root_sequence: Seq::try_from_str("ACGT")?,
         edge_mutations: BTreeMap::new(),
-        edge_subs: BTreeMap::new(),
+        edge_mutation_counts: BTreeMap::new(),
       })
     }
 

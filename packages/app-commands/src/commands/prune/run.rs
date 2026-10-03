@@ -2,7 +2,7 @@ use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::gtr::write_gtr_json;
-use app_output::mutation_filter::AmbiguousMutationFilter;
+use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::OutputSelection;
 use app_output::prune_result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
 use app_output::prune_tree_output::write_prune_tree_outputs;
@@ -73,7 +73,7 @@ pub fn run_prune(
     node_names,
   };
 
-  let ambiguous = alphabet.unknown();
+  let unknown = alphabet.unknown();
   let input = PruneInput {
     graph,
     alphabet,
@@ -93,7 +93,7 @@ pub fn run_prune(
   } = output;
 
   let maps = if resolved.tree_outputs.keys().any(prune_output_consumes_maps) {
-    gather_prune_output_maps(&graph, &partitions, AmbiguousMutationFilter::new(ambiguous, false))?
+    gather_prune_output_maps(&graph, &partitions, UnknownMutationFilter::hiding_unknown(unknown))?
   } else {
     PruneOutputMaps::default()
   };
@@ -176,7 +176,7 @@ fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
 fn gather_prune_output_maps(
   graph: &Graph,
   partitions: &[PartitionMarginalSparse],
-  filter: AmbiguousMutationFilter,
+  filter: UnknownMutationFilter,
 ) -> Result<PruneOutputMaps, Report> {
   let Some(partition) = partitions.first() else {
     return Ok(PruneOutputMaps::default());

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::mutation_filter::AmbiguousMutationFilter;
+  use crate::mutation_filter::UnknownMutationFilter;
   use eyre::Report;
   use helpers::{reported, substitutions};
   use pretty_assertions::assert_eq;
@@ -16,7 +16,7 @@ mod tests {
     #[case] report_ambiguous: bool,
     #[case] expected: Vec<&str>,
   ) -> Result<(), Report> {
-    let filter = AmbiguousMutationFilter::new(AsciiChar::try_new(b'N')?, report_ambiguous);
+    let filter = UnknownMutationFilter::new(AsciiChar::try_new(b'N')?, report_ambiguous);
     let actual = reported(filter, substitutions(&["C1N", "N2A", "C3K", "A4T"])?)?;
     assert_eq!(expected, actual);
     Ok(())
@@ -24,14 +24,14 @@ mod tests {
 
   #[test]
   fn test_mutation_filter_amino_acid_unknown() -> Result<(), Report> {
-    let filter = AmbiguousMutationFilter::new(AsciiChar::try_new(b'X')?, false);
+    let filter = UnknownMutationFilter::new(AsciiChar::try_new(b'X')?, false);
     let actual = reported(filter, substitutions(&["A1X", "X2N", "K3B"])?)?;
     assert_eq!(vec!["K3B"], actual);
     Ok(())
   }
 
   mod helpers {
-    use crate::mutation_filter::AmbiguousMutationFilter;
+    use crate::mutation_filter::UnknownMutationFilter;
     use eyre::Report;
     use std::str::FromStr;
     use treetime::seq::mutation::{MutationEvent, Sub, mutation_event_strings};
@@ -43,7 +43,7 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn reported(filter: AmbiguousMutationFilter, events: Vec<MutationEvent>) -> Result<Vec<String>, Report> {
+    pub(super) fn reported(filter: UnknownMutationFilter, events: Vec<MutationEvent>) -> Result<Vec<String>, Report> {
       Ok(
         filter
           .reported_events(events)

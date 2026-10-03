@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::collections::BTreeMap;
-use treetime::seq::mutation::{Mutation, Sub};
+use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -10,7 +10,7 @@ use treetime_primitives::Seq;
 pub struct OptimizeOutputMaps {
   pub root_sequence: Seq,
   pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  pub edge_subs: BTreeMap<GraphEdgeKey, Vec<Sub>>,
+  pub edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
 }
 
 #[derive(Serialize)]

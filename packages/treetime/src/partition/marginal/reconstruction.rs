@@ -50,7 +50,7 @@ impl MarginalReconstruction {
     }
   }
 
-  pub(crate) fn alphabet(&self) -> &Alphabet {
+  pub fn alphabet(&self) -> &Alphabet {
     match self {
       Self::Dense(reconstruction) => &reconstruction.partition.alphabet,
       Self::Sparse(reconstruction) => &reconstruction.partition.alphabet,
@@ -145,7 +145,7 @@ impl MarginalReconstruction {
     }
   }
 
-  pub fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  pub(crate) fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     match self {
       Self::Dense(reconstruction) => reconstruction
         .partition

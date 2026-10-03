@@ -205,7 +205,7 @@ mod tests {
       let streamed: BTreeMap<GraphNodeKey, Seq> = sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
       let alphabet = partition.alphabet();
       if !impute {
-        assert_observed_leaf_states(graph, alphabet, &observed, &streamed, &expected, &actual);
+        assert_observed_leaf_states(graph, alphabet, &observed, &streamed, &expected, &actual)?;
       }
       let columns = ambiguous_columns(&observed, alphabet);
       let outside = |subs: &EdgeSubs| -> EdgeSubs {
@@ -244,7 +244,7 @@ mod tests {
       streamed: &BTreeMap<GraphNodeKey, Seq>,
       expected: &EdgeSubs,
       actual: &EdgeSubs,
-    ) {
+    ) -> Result<(), Report> {
       for edge in graph.get_edges() {
         let Some(leaf) = observed.get(&edge.target()) else {
           continue;
@@ -263,13 +263,14 @@ mod tests {
               .find(|sub| sub.pos() == pos)
               .map_or(parent[pos], Sub::qry);
             assert!(
-              alphabet.canonical_states(state).contains(engine_state),
+              alphabet.canonical_states(state)?.contains(engine_state),
               "edge {:?} position {pos}: engine state {engine_state} is not a resolution of observed {state}",
               edge.key()
             );
           }
         }
       }
+      Ok(())
     }
 
     pub(super) fn ambiguous_leaf_mutations(

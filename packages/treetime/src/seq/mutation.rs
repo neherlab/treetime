@@ -6,6 +6,7 @@ use crate::{make_error, make_internal_error, make_internal_report};
 use derive_more::Display;
 use eyre::{Report, WrapErr};
 use getset::CopyGetters;
+use itertools::Itertools;
 use regex::regex;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -104,21 +105,21 @@ pub(crate) fn sequence_subs(parent: &Seq, child: &Seq, alphabet: &Alphabet) -> R
     .collect()
 }
 
-pub(crate) fn edge_state_change_counts(
+pub fn edge_state_change_counts(
   edge_mutations: &BTreeMap<GraphEdgeKey, Vec<Mutation>>,
   alphabet: &Alphabet,
-) -> BTreeMap<GraphEdgeKey, usize> {
+) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
   edge_mutations
     .iter()
     .map(|(&edge_key, mutations)| {
-      let count = mutations
+      let changes = mutations
         .iter()
-        .filter(|mutation| match &mutation.event {
+        .map(|mutation| match &mutation.event {
           MutationEvent::Substitution(substitution) => substitution.changes_state(alphabet),
-          MutationEvent::Insertion(_) | MutationEvent::Deletion(_) => false,
+          MutationEvent::Insertion(_) | MutationEvent::Deletion(_) => Ok(false),
         })
-        .count();
-      (edge_key, count)
+        .process_results(|changes| changes.filter(|&changed| changed).count())?;
+      Ok((edge_key, changes))
     })
     .collect()
 }
@@ -327,11 +328,13 @@ impl Sub {
     }
   }
 
-  pub(crate) fn changes_state(&self, alphabet: &Alphabet) -> bool {
-    alphabet
-      .canonical_states(self.reff)
-      .intersection(&alphabet.canonical_states(self.qry))
-      .is_empty()
+  pub(crate) fn changes_state(&self, alphabet: &Alphabet) -> Result<bool, Report> {
+    Ok(
+      alphabet
+        .canonical_states(self.reff)?
+        .intersection(&alphabet.canonical_states(self.qry)?)
+        .is_empty(),
+    )
   }
 
   pub(crate) fn invert(&mut self) {

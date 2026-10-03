@@ -5,30 +5,34 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_primitives::AsciiChar;
 
 #[derive(Clone, Copy, Debug)]
-pub struct AmbiguousMutationFilter {
-  ambiguous: AsciiChar,
-  report_ambiguous: bool,
+pub struct UnknownMutationFilter {
+  unknown: AsciiChar,
+  report_unknown: bool,
 }
 
-impl AmbiguousMutationFilter {
-  pub fn new(ambiguous: AsciiChar, report_ambiguous: bool) -> Self {
+impl UnknownMutationFilter {
+  pub fn new(unknown: AsciiChar, report_unknown: bool) -> Self {
     Self {
-      ambiguous,
-      report_ambiguous,
+      unknown,
+      report_unknown,
     }
   }
 
-  pub fn is_reported(&self, event: &MutationEvent) -> bool {
-    self.report_ambiguous
+  pub fn hiding_unknown(unknown: AsciiChar) -> Self {
+    Self::new(unknown, false)
+  }
+
+  fn is_reported(self, event: &MutationEvent) -> bool {
+    self.report_unknown
       || match event {
         MutationEvent::Substitution(substitution) => {
-          substitution.reff() != self.ambiguous && substitution.qry() != self.ambiguous
+          substitution.reff() != self.unknown && substitution.qry() != self.unknown
         },
         MutationEvent::Insertion(_) | MutationEvent::Deletion(_) => true,
       }
   }
 
-  pub fn reported_events(&self, events: Vec<MutationEvent>) -> Vec<MutationEvent> {
+  pub(crate) fn reported_events(self, events: Vec<MutationEvent>) -> Vec<MutationEvent> {
     events.into_iter().filter(|event| self.is_reported(event)).collect()
   }
 

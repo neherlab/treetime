@@ -10,7 +10,7 @@ use app_output::ancestral_result::{AncestralNodeOut, AncestralOutputMaps, AugurO
 use app_output::ancestral_tree_output::write_ancestral_tree_outputs;
 use app_output::augur_node_data_ancestral::write_augur_node_data_json_with_aa;
 use app_output::gtr::write_gtr_json;
-use app_output::mutation_filter::AmbiguousMutationFilter;
+use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -123,7 +123,7 @@ pub fn run_ancestral_reconstruction(
   } = output;
   let maps = AncestralOutputMaps {
     root_sequence,
-    edge_mutations: AmbiguousMutationFilter::new(ambiguous_char, args.report_ambiguous)
+    edge_mutations: UnknownMutationFilter::new(ambiguous_char, args.report_ambiguous)
       .reported_edge_mutations(edge_mutations),
   };
   let augur_maps = seq_sink.node_sequences.map(|node_sequences| AugurOutputMaps {
@@ -419,7 +419,7 @@ fn run_aa_reconstructions(
   if let Some(sink) = seq_sink {
     sink.finish()?;
   }
-  let node_data = AmbiguousMutationFilter::new(recon_alphabet.unknown(), ancestral_args.report_ambiguous)
+  let node_data = UnknownMutationFilter::new(recon_alphabet.unknown(), ancestral_args.report_ambiguous)
     .reported_aa_node_data(node_data);
   Ok((node_data, cds_annotations))
 }

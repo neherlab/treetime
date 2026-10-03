@@ -1,13 +1,19 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::seq::mutation::{AlignedMutation, MutationEvent, Sub, compose_substitutions, mutation_event_strings};
+  use crate::seq::mutation::{
+    AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub, compose_substitutions, edge_state_change_counts,
+    mutation_event_strings,
+  };
   use eyre::Report;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
   use rstest::rstest;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
+  use treetime_utils::assert_error;
 
   #[test]
   fn test_mutation_sub_display_uses_one_based_position() -> Result<(), Report> {
@@ -165,8 +171,49 @@ mod tests {
     #[case] reff: u8,
     #[case] qry: u8,
     #[case] expected: bool,
-  ) {
-    assert_eq!(expected, helpers::sub(reff, 0, qry).changes_state(&Alphabet::default()));
+  ) -> Result<(), Report> {
+    assert_eq!(expected, helpers::sub(reff, 0, qry).changes_state(&Alphabet::default())?);
+    Ok(())
+  }
+
+  #[test]
+  fn test_mutation_sub_changes_state_rejects_a_character_outside_the_alphabet() {
+    assert_error!(
+      helpers::sub(b'A', 0, b'J').changes_state(&Alphabet::default()),
+      "Character 'J' is not in the alphabet"
+    );
+  }
+
+  #[test]
+  fn test_mutation_edge_state_change_counts_count_only_disjoint_substitutions() -> Result<(), Report> {
+    let mutation = |event| Mutation {
+      track: MutationTrack::Nucleotide,
+      event,
+    };
+    let substitution = |reff, pos, qry| mutation(MutationEvent::Substitution(helpers::sub(reff, pos, qry)));
+    let deletion = mutation(MutationEvent::Deletion(AlignedMutation::new(
+      (4, 5),
+      seq![helpers::c(b'A')],
+    )?));
+    let edge_mutations = btreemap! {
+      GraphEdgeKey(0) => vec![
+        substitution(b'C', 0, b'T'),
+        substitution(b'G', 1, b'K'),
+        substitution(b'C', 2, b'N'),
+        substitution(b'N', 3, b'A'),
+        deletion,
+      ],
+      GraphEdgeKey(1) => vec![substitution(b'C', 0, b'K'), substitution(b'A', 1, b'T')],
+      GraphEdgeKey(2) => vec![],
+    };
+
+    let actual = edge_state_change_counts(&edge_mutations, &Alphabet::default())?;
+
+    assert_eq!(
+      btreemap! { GraphEdgeKey(0) => 1, GraphEdgeKey(1) => 2, GraphEdgeKey(2) => 0 },
+      actual
+    );
+    Ok(())
   }
 
   proptest! {

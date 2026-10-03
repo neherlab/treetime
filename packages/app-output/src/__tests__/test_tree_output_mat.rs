@@ -112,7 +112,7 @@ mod tests {
       MutationTrack::Nucleotide,
       Sub::new(helpers::c(parent), 0_usize, helpers::c(child))?,
     );
-    let error = mat_mutation(&mutation, Some(reference), &Alphabet::new(AlphabetName::Nuc)?, "A").expect_err("MAT must accept only A, C, G, or T");
+    let error = mat_mutation(&mutation, Some(reference), &Alphabet::new(AlphabetName::Nuc)?, "A").expect_err("MAT must reject a reference, parent, or child nucleotide it cannot encode");
     assert!(error.to_string().contains(expected));
     Ok(())
   }

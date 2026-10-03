@@ -533,7 +533,8 @@ fn reconstruct_final_sequences(
     |edge_key| reconstruction.edge_indels(edge_key),
     seq_sink.as_deref_mut().map(|sink| -> &mut dyn SeqSink { sink }),
   )?;
-  let counts = edge_state_change_counts(&sequences.edge_mutations, reconstruction.alphabet());
+  let counts = edge_state_change_counts(&sequences.edge_mutations, reconstruction.alphabet())
+    .map_err(OperationError::InferenceFailed)?;
   Ok(Some((sequences, counts)))
 }
 
