@@ -72,8 +72,8 @@ mugration_attribute = "country"
 #
 # Every case writes every output of its command, so a change in any written file shows up. `ancestral` and
 # `timetree` also write the leaf sequences (`--include-leaves`). The UShER MAT outputs (`mat-pb`, `mat-json`) are left
-# out of the selections of `ancestral`, `optimize` and `timetree` because MAT rejects a tree with insertions or
-# deletions, which most datasets have (kb/issues/M-io-usher-mat-rejects-trees-with-indels.md); the `mat` rows cover
+# out of the selections of `ancestral`, `optimize`, `prune` and `timetree` because MAT rejects a tree with insertions
+# or deletions, which most datasets have (kb/issues/M-io-usher-mat-rejects-trees-with-indels.md); the `mat` rows cover
 # them. A row sets its own `selection` only when the selection is what it tests.
 [commands.ancestral]
 args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
@@ -101,7 +101,7 @@ selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr"
 [commands.prune]
 args = "--tree={tree} --aln={dataset}/aln.fasta.xz --output-all={out}"
 outputs = ["prune.nwk"]
-selection = "all"
+selection = "nwk,nexus,auspice,graph-json,dot,gtr"
 
 [commands.timetree]
 args = "--tree={tree} --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
@@ -115,7 +115,7 @@ selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-
 #   args        arguments after the command template
 #   selection   `--output-selection` value; replaces the command default
 #   tree        tree file in the dataset directory, default `tree.nwk`
-#   standalone  true: `args` replaces the command template instead of following it
+#   standalone  true: `args` replaces the command template, its `selection` included, instead of following it
 #   outputs     replaces the command's required outputs
 #   tier        "quick" or "full"; replaces the tier of the size class
 #   timeout     seconds; replaces the timeout of the size class
@@ -736,6 +736,24 @@ args = "--prune-nodes-list=EM_079497;G3770 --prune-nodes-list-delimiter=;"
 variant = "nodes-list-file"
 datasets = ["ebola/20"]
 args = "--prune-nodes-list-file={dataset}/prune-nodes.txt"
+
+# UShER MAT output of every small dataset; the default selection leaves it out because it fails on indels
+[[prune]]
+variant = "mat"
+datasets = "small"
+args = "--prune-short=1e-6 --prune-empty --merge-shared-mutations"
+selection = "mat-pb,mat-json"
+outputs = ["prune.mat.pb", "prune.mat.json"]
+fail.'dengue/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
+fail.'dengue/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
+fail.'ebola/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
+fail.'ebola/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
+fail.'lassa/L/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
+fail.'lassa/L/50' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
+fail.'mpox/clade-ii/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
+fail.'mpox/clade-ii/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
+fail.'rsv/a/20' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
+fail.'rsv/a/100' = "kb/issues/M-io-usher-mat-rejects-trees-with-indels.md"
 
 
 [[timetree]]
