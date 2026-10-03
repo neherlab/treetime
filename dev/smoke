@@ -535,8 +535,9 @@ def config_cases(root: Path, spec: CaseSpec, datasets: dict[str, Dataset]) -> li
   if spec.config_pattern is None:
     return []
   cases = []
-  for config in sorted((root / DATA_DIR).glob(f"**/{spec.config_pattern}")):
-    dataset = datasets[config.parent.relative_to(root / DATA_DIR).as_posix()]
+  configs = ((dataset, config) for dataset in datasets.values()
+             for config in sorted((root / DATA_DIR / dataset.name).glob(spec.config_pattern)))
+  for dataset, config in configs:
     command = "pipeline" if config.stem == "pipeline" else config.stem.split("-")[0]
     size = spec.sizes[dataset.size]
     cases.append(Case(

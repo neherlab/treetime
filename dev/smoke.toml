@@ -1004,8 +1004,9 @@ subcommands = [
 ]
 
 
-# Every `data/**/<pattern>` file runs as `treetime <command> --config=<file>` in a sandbox directory, so that the
-# relative output paths of the file resolve inside the case. The command is `pipeline` for `pipeline.yaml`,
+# Every `<pattern>` file in a dataset directory is an example config and runs as `treetime <command> --config=<file>`
+# in a sandbox directory, so that the relative output paths of the file resolve inside the case. Files elsewhere, such
+# as the fixtures in `data/smoke/`, are not examples. The command is `pipeline` for `pipeline.yaml`,
 # otherwise the file name up to the first `-` (`ancestral-parsimony.yaml` runs `ancestral`).
 [config]
 pattern = "*.yaml"
