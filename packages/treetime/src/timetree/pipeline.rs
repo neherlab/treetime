@@ -77,20 +77,13 @@ pub fn run(
   stages.report("Clock regression", 0.1, "");
   let (graph, branch_lengths, clock_fit) =
     estimate_initial_clock(params, &context, graph, branch_lengths, &names, log).map_err(OperationError::classify)?;
-  let init = initialize_branch_model(
-    params,
-    &graph,
-    &branch_lengths,
-    alphabet,
-    sequences.as_deref(),
-    &names,
-    log,
-  )?;
+  let has_alignment = sequences.is_some();
+  let init = initialize_branch_model(params, &graph, &branch_lengths, alphabet, sequences, &names, log)?;
   let pre_loop_inputs = PreLoopInputs {
     params,
     context: &context,
     names: &names,
-    has_alignment: sequences.is_some(),
+    has_alignment,
   };
   let pre_loop_state = PreLoopState::new(graph, branch_lengths, init.branch_model, clock_fit);
   let pre_loop =
@@ -333,7 +326,7 @@ fn initialize_branch_model(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   alphabet: Alphabet,
-  aln: Option<&[AlignmentRecord]>,
+  aln: Option<Vec<AlignmentRecord>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<BranchModelInit, OperationError> {
@@ -353,7 +346,7 @@ fn initialize_branch_model(
       );
       let aln_data = aln
         .ok_or_else(|| OperationError::InvalidInput(make_report!("Alignment required for marginal reconstruction")))?;
-      let node_inputs = node_seq_inputs(graph, names, aln_data.to_vec());
+      let node_inputs = node_seq_inputs(graph, names, aln_data);
       let reconstruction = build_marginal_partition(
         Representation::resolve(params.dense),
         params.model,
