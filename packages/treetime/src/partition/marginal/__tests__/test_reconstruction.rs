@@ -63,13 +63,19 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
   #[rstest]
-  #[case::dense(Representation::Dense)]
-  #[case::sparse(Representation::Sparse)]
+  #[case::internal_only(false, &[
+    ("root", true), ("X", true), ("A", false), ("B", false), ("Y", true), ("C", false), ("D", false),
+  ])]
+  #[case::with_leaves(true, &[
+    ("root", true), ("X", true), ("A", true), ("B", true), ("Y", true), ("C", true), ("D", true),
+  ])]
   #[trace]
   fn test_stream_sequences_visits_all_nodes_in_preorder_and_flags_emitted_ones(
-    #[case] representation: Representation,
-    #[values(false, true)] include_leaves: bool,
+    #[values(Representation::Dense, Representation::Sparse)] representation: Representation,
+    #[case] include_leaves: bool,
+    #[case] expected: &[(&str, bool)],
   ) -> Result<(), Report> {
     let (graph, names, reconstruction) = helpers::updated_four_leaves(representation)?;
     let mut sink = RecordingSeqSink::default();
@@ -84,14 +90,9 @@ mod tests {
       Some(&mut sink),
     )?;
 
-    let expected = ["root", "X", "A", "B", "Y", "C", "D"]
-      .into_iter()
-      .map(|name| {
-        (
-          name.to_owned(),
-          include_leaves || !matches!(name, "A" | "B" | "C" | "D"),
-        )
-      })
+    let expected = expected
+      .iter()
+      .map(|&(name, emitted)| (name.to_owned(), emitted))
       .collect::<Vec<_>>();
     let actual = sink
       .items
@@ -123,6 +124,13 @@ mod tests {
     assert_eq!(expected_keys, actual.keys().copied().collect::<Vec<_>>());
     for seq in actual.values() {
       assert_eq!(4, seq.len());
+      assert!(
+        seq.iter().all(|state| b"ACGT".contains(&u8::from(*state))),
+        "a sampled state must lie in the support of the posterior profile, found {seq}"
+      );
+      if matches!(representation, Representation::Sparse) {
+        assert!(seq.as_str().starts_with("ACG"), "sparse sampling keeps invariant columns, found {seq}");
+      }
     }
     Ok(())
   }
