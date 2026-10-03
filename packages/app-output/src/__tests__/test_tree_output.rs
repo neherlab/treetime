@@ -677,7 +677,8 @@ pub(super) mod tests {
             edge_mutations: BTreeMap::new(),
           },
           None,
-        )?.tree,
+        )?
+        .tree,
         optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize)?)?.tree,
         prune_to_mat(&prune, &prune_names, &prune_bl, &prune_maps(&prune))?.tree,
         clock_to_mat(&clock, &clock_names, &clock_bl)?.tree,

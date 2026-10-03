@@ -1,19 +1,18 @@
 use crate::timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use crate::tree_output::{
-  MatOutput,
-  COLORING_BAD_BRANCH, COLORING_NUM_DATE, NUC_TRACK, auspice_data, auspice_from_graph, auspice_node, coloring,
-  ensure_finite, finite_number, format_number, generation_date, group_mutations, mat_from_graph, node_name_value,
-  write_tree_outputs,
+  COLORING_BAD_BRANCH, COLORING_NUM_DATE, MatOutput, NUC_TRACK, auspice_data, auspice_from_graph, auspice_node,
+  coloring, ensure_finite, finite_number, format_number, generation_date, group_mutations, mat_from_graph,
+  node_name_value, write_tree_outputs,
 };
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime::clock::divergence::root_to_node_divergences;
+use treetime::progress::LogSink;
 use treetime::seq::mutation::Mutation;
 use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime::progress::LogSink;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::AuspiceTree;

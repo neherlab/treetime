@@ -1,16 +1,15 @@
 use crate::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
 use crate::tree_output::{
-  MatOutput,
-  NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date, mat_from_graph,
-  node_name_value, sequence_auspice_node, write_tree_outputs,
+  MatOutput, NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date,
+  mat_from_graph, node_name_value, sequence_auspice_node, write_tree_outputs,
 };
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use treetime::progress::LogSink;
 use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime::progress::LogSink;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::AuspiceTree;

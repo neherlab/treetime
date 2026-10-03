@@ -91,7 +91,11 @@ where
       TreeWriteKind::Auspice => auspice_write_file(path, &to_auspice()?)?,
       TreeWriteKind::MatPb => usher_mat_pb_write_file(path, converted_mat(&mut mat, &to_mat, log)?)?,
       TreeWriteKind::MatJson => {
-        usher_mat_json_write_file(path, converted_mat(&mut mat, &to_mat, log)?, &UsherMatJsonOptions::default())?;
+        usher_mat_json_write_file(
+          path,
+          converted_mat(&mut mat, &to_mat, log)?,
+          &UsherMatJsonOptions::default(),
+        )?;
       },
       TreeWriteKind::GraphJson => {
         json_write_file(path, graph, JsonPretty(true))?;
@@ -357,7 +361,10 @@ pub(crate) struct MatGapCounts {
 
 impl MatGapCounts {
   fn count(&mut self, mutations: &[Mutation], reference_gaps: &BTreeSet<usize>) {
-    for mutation in mutations.iter().filter(|mutation| mutation.track == MutationTrack::Nucleotide) {
+    for mutation in mutations
+      .iter()
+      .filter(|mutation| mutation.track == MutationTrack::Nucleotide)
+    {
       match &mutation.event {
         MutationEvent::Deletion(_) => self.deletions += 1,
         MutationEvent::Insertion(segment) => {
@@ -509,7 +516,9 @@ pub(crate) fn mat_mutation(
     return make_error!("Node '{node_name}' has an amino-acid mutation that UShER MAT cannot represent");
   }
   let MutationEvent::Substitution(substitution) = &mutation.event else {
-    return make_internal_error!("Node '{node_name}' has an insertion or deletion that was not converted to missing data");
+    return make_internal_error!(
+      "Node '{node_name}' has an insertion or deletion that was not converted to missing data"
+    );
   };
   let reference = reference.ok_or_else(|| {
     eyre::eyre!("Node '{node_name}' has nucleotide mutations, but UShER MAT requires a root nucleotide reference")

@@ -24,8 +24,7 @@ mod tests {
 
   #[test]
   fn test_tree_output_mat_rejects_amino_acid_mutations() -> Result<(), Report> {
-    let (graph, names, branch_lengths, maps, aa_node_data, _aa_annotations) =
-      ancestral_graph(Mutations::AminoAcid)?;
+    let (graph, names, branch_lengths, maps, aa_node_data, _aa_annotations) = ancestral_graph(Mutations::AminoAcid)?;
     let error = ancestral_to_mat(&graph, &names, &branch_lengths, &maps, aa_node_data.as_ref())
       .expect_err("MAT must reject amino-acid mutations");
     assert!(error.to_string().contains("amino-acid mutation"));
@@ -84,17 +83,10 @@ mod tests {
     assert_eq!(expected.map(str::to_owned), gaps.warning());
   }
 
-
   #[test]
   fn test_tree_output_mat_uses_one_global_reference_for_recurrent_mutations() -> Result<(), Report> {
-    let first = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(c(b'A'), 0_usize, c(b'T'))?,
-    );
-    let recurrent = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(c(b'T'), 0_usize, c(b'C'))?,
-    );
+    let first = Mutation::substitution(MutationTrack::Nucleotide, Sub::new(c(b'A'), 0_usize, c(b'T'))?);
+    let recurrent = Mutation::substitution(MutationTrack::Nucleotide, Sub::new(c(b'T'), 0_usize, c(b'C'))?);
 
     let first = mat_mutation(&first, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "inner")?;
     let recurrent = mat_mutation(&recurrent, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "leaf")?;
@@ -108,10 +100,7 @@ mod tests {
 
   #[test]
   fn test_tree_output_mat_rejects_missing_reference() -> Result<(), Report> {
-    let mutation = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(c(b'A'), 0_usize, c(b'T'))?,
-    );
+    let mutation = Mutation::substitution(MutationTrack::Nucleotide, Sub::new(c(b'A'), 0_usize, c(b'T'))?);
     let error = mat_mutation(&mutation, None, &Alphabet::new(AlphabetName::Nuc)?, "A")
       .expect_err("MAT must require a global reference");
     assert!(error.to_string().contains("requires a root nucleotide reference"));
@@ -120,10 +109,7 @@ mod tests {
 
   #[test]
   fn test_tree_output_mat_rejects_reference_lookup_out_of_range() -> Result<(), Report> {
-    let mutation = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(c(b'A'), 1_usize, c(b'T'))?,
-    );
+    let mutation = Mutation::substitution(MutationTrack::Nucleotide, Sub::new(c(b'A'), 1_usize, c(b'T'))?);
     let error = mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A")
       .expect_err("MAT must check the reference length");
     assert!(error.to_string().contains("outside the root nucleotide reference"));
@@ -133,10 +119,7 @@ mod tests {
   #[test]
   fn test_tree_output_mat_rejects_coordinate_above_i32() -> Result<(), Report> {
     let position = usize::try_from(i32::MAX)?;
-    let mutation = Mutation::substitution(
-      MutationTrack::Nucleotide,
-      Sub::new(c(b'A'), position, c(b'T'))?,
-    );
+    let mutation = Mutation::substitution(MutationTrack::Nucleotide, Sub::new(c(b'A'), position, c(b'T'))?);
     let error = mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A")
       .expect_err("MAT must check its coordinate range");
     assert!(error.to_string().contains("exceeds the UShER MAT i32 coordinate range"));
@@ -269,7 +252,12 @@ mod tests {
     pub(super) fn sub(reff: u8, pos: usize, qry: u8) -> Mutation {
       Mutation::substitution(
         MutationTrack::Nucleotide,
-        Sub::new(AsciiChar::from_byte_unchecked(reff), pos, AsciiChar::from_byte_unchecked(qry)).unwrap(),
+        Sub::new(
+          AsciiChar::from_byte_unchecked(reff),
+          pos,
+          AsciiChar::from_byte_unchecked(qry),
+        )
+        .unwrap(),
       )
     }
 
