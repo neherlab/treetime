@@ -3,6 +3,7 @@ use crate::api::download::{serve_run_file, stream_run_archive};
 use crate::api::extract::{ApiJson, ApiPath, ApiQuery, OctetStream};
 use crate::api::generate::with_project_schemas;
 use crate::api::response::{FileContent, TypedSse, ZipAttachment};
+use crate::app_settings_routes::app_settings_routes;
 use crate::error::{AppError, panic_response, plain_error};
 use crate::events::{app_events_sse, run_events_sse};
 use crate::openapi::{add_components, add_discriminators, add_setting_catalog};
@@ -61,7 +62,7 @@ pub(crate) const NO_STORE: &str = "no-store";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 
 pub fn api_router(service: Arc<AppService>, config: ServerConfig) -> Result<(Router, OpenApi), Report> {
-  let (router, api) = build_api()?;
+  let (router, api) = build_api(config.settings.is_some())?;
   let state = Arc::new(AppState {
     config,
     runs: Arc::clone(service.runs()),
@@ -84,11 +85,11 @@ pub fn api_router(service: Arc<AppService>, config: ServerConfig) -> Result<(Rou
 }
 
 pub fn api_doc() -> Result<Value, Report> {
-  let (_, api) = build_api()?;
+  let (_, api) = build_api(true)?;
   Ok(serde_json::to_value(api)?)
 }
 
-fn build_api() -> Result<(Router<Arc<AppState>>, OpenApi), Report> {
+fn build_api(local_settings: bool) -> Result<(Router<Arc<AppState>>, OpenApi), Report> {
   let mut api = OpenApi {
     info: Info {
       title: "TreeTime API".to_owned(),
@@ -107,8 +108,14 @@ fn build_api() -> Result<(Router<Arc<AppState>>, OpenApi), Report> {
     },
     ..OpenApi::default()
   };
-  let router =
-    with_project_schemas(|| api_routes().finish_api_with(&mut api, |api| api.default_response::<AppError>()))?;
+  let router = with_project_schemas(|| {
+    let routes = if local_settings {
+      api_routes().merge(app_settings_routes())
+    } else {
+      api_routes()
+    };
+    routes.finish_api_with(&mut api, |api| api.default_response::<AppError>())
+  })?;
   add_components(&mut api)?;
   add_discriminators(&mut api)?;
   add_setting_catalog(&mut api)?;

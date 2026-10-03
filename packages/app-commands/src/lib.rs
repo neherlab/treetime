@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod __tests__;
 
+pub mod app_paths;
+pub mod app_settings;
 pub mod atomic_write;
 pub mod bridge;
 #[cfg(feature = "clap")]

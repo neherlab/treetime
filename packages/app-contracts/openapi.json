@@ -977,6 +977,138 @@
           }
         }
       }
+    },
+    "/api/app-settings": {
+      "get": {
+        "description": "Settings of a local installation: the runs folder and the preferences of the user interface. Only local apps serve this path.",
+        "operationId": "appSettings",
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppSettings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app-settings/ui": {
+      "put": {
+        "description": "Replace the preferences of the user interface. Only local apps serve this path.",
+        "operationId": "appSettingsUi",
+        "requestBody": {
+          "description": "Preferences of the user interface. Unset preferences take the defaults of the user interface.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UiSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Preferences of the user interface. Unset preferences take the defaults of the user interface.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UiSettings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace": {
+      "get": {
+        "description": "The runs folder in use and the default runs folder. Only local apps serve this path.",
+        "operationId": "workspace",
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The runs folder of the running back end, and the folder used when the settings name none.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workspace"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "Set the runs folder; the folder is created when missing. The back end uses it after it starts again. Only local apps serve this path.",
+        "operationId": "workspaceUpdate",
+        "requestBody": {
+          "description": "A new runs folder. It takes effect when the back end starts again.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppSettings"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4153,6 +4285,265 @@
           "size",
           "sha256"
         ]
+      },
+      "AppSettings": {
+        "description": "Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.",
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "description": "Folder that holds the runs. Unset: the default folder of the platform.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ui": {
+            "description": "Preferences of the user interface.",
+            "$ref": "#/components/schemas/UiSettings"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UiSettings": {
+        "description": "Preferences of the user interface. Unset preferences take the defaults of the user interface.",
+        "type": "object",
+        "properties": {
+          "theme": {
+            "description": "Color theme.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UiTheme"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sidebar_width": {
+            "description": "Width of the sidebar in pixels.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0
+          },
+          "draft": {
+            "description": "The unfinished analysis form.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UiDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UiTheme": {
+        "description": "Color theme of the user interface.",
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "light",
+              "dark"
+            ]
+          },
+          {
+            "description": "Follow the theme of the operating system.",
+            "type": "string",
+            "const": "system"
+          }
+        ]
+      },
+      "UiDraft": {
+        "description": "The unfinished analysis form: the command, its settings, and how the form is shown.",
+        "type": "object",
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/AppCommand"
+          },
+          "config": {
+            "description": "Settings of the command, as in a configuration file.",
+            "type": "object",
+            "additionalProperties": true
+          },
+          "sources": {
+            "description": "Where each input file came from, by setting key.",
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/UiDraftSource"
+            }
+          },
+          "from_run_id": {
+            "description": "The run whose settings the form was loaded from.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobId"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "upload_run_id": {
+            "description": "The run that holds the uploaded input files of the form.",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobId"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "view": {
+            "$ref": "#/components/schemas/UiSettingsView"
+          },
+          "search": {
+            "description": "Text of the settings search field.",
+            "type": "string"
+          },
+          "changed_only": {
+            "description": "Whether the form shows only the settings that differ from their defaults.",
+            "type": "boolean"
+          },
+          "code_format": {
+            "$ref": "#/components/schemas/UiCodeFormat"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "command",
+          "config",
+          "sources",
+          "view",
+          "search",
+          "changed_only",
+          "code_format"
+        ]
+      },
+      "UiDraftSource": {
+        "description": "Origin of an input file of the form.",
+        "type": "object",
+        "properties": {
+          "label": {
+            "description": "Name of the file shown in the form.",
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/UiDraftOrigin"
+          },
+          "size": {
+            "description": "Size of the file in bytes, when known.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "origin"
+        ]
+      },
+      "UiDraftOrigin": {
+        "description": "Where an input file of the form came from.",
+        "oneOf": [
+          {
+            "description": "An example dataset.",
+            "type": "string",
+            "const": "dataset"
+          },
+          {
+            "description": "A file uploaded to the server.",
+            "type": "string",
+            "const": "upload"
+          },
+          {
+            "description": "A file on the computer that runs TreeTime.",
+            "type": "string",
+            "const": "local"
+          },
+          {
+            "description": "An input of an earlier run.",
+            "type": "string",
+            "const": "run"
+          },
+          {
+            "description": "A path from a loaded configuration file.",
+            "type": "string",
+            "const": "config"
+          }
+        ]
+      },
+      "UiSettingsView": {
+        "description": "Which settings the form shows.",
+        "oneOf": [
+          {
+            "description": "The main settings of the command.",
+            "type": "string",
+            "const": "main"
+          },
+          {
+            "description": "Every setting of the command.",
+            "type": "string",
+            "const": "all"
+          }
+        ]
+      },
+      "UiCodeFormat": {
+        "description": "Format of the code that reproduces the form.",
+        "oneOf": [
+          {
+            "description": "A command line.",
+            "type": "string",
+            "const": "cli"
+          },
+          {
+            "description": "A YAML configuration file.",
+            "type": "string",
+            "const": "yaml"
+          }
+        ]
+      },
+      "Workspace": {
+        "description": "The runs folder of the running back end, and the folder used when the settings name none.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "The runs folder in use.",
+            "type": "string"
+          },
+          "default_path": {
+            "description": "The runs folder used when the settings name none.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "default_path"
+        ]
+      },
+      "WorkspaceUpdate": {
+        "description": "A new runs folder. It takes effect when the back end starts again.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Absolute path of the folder. Unset: the default folder of the platform.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "BranchLengthMode": {
         "type": "string",

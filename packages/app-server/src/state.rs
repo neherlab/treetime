@@ -1,4 +1,5 @@
 use crate::confine::PathPolicy;
+use app_commands::app_settings::store::AppSettingsStore;
 use app_commands::bridge::service::{AppService, InputPolicy};
 use app_commands::command::AppCommand;
 use app_commands::runs::manager::RunManager;
@@ -16,6 +17,13 @@ pub struct ServerConfig {
   pub runs_dir: PathBuf,
   pub max_upload_size: usize,
   pub shutdown: CancellationToken,
+  pub settings: Option<LocalSettings>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalSettings {
+  pub store: Arc<AppSettingsStore>,
+  pub default_workspace: PathBuf,
 }
 
 pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> {

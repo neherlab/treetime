@@ -843,6 +843,98 @@ export const zUploadedInput = z.object({
   sha256: z.string()
 });
 
+/**
+ * Color theme of the user interface.
+ */
+export const zUiTheme = z.union([
+  z.literal('light'),
+  z.literal('dark'),
+  z.literal('system')
+]);
+
+/**
+ * Where an input file of the form came from.
+ */
+export const zUiDraftOrigin = z.union([
+  z.literal('dataset'),
+  z.literal('upload'),
+  z.literal('local'),
+  z.literal('run'),
+  z.literal('config')
+]);
+
+/**
+ * Origin of an input file of the form.
+ */
+export const zUiDraftSource = z.strictObject({
+  label: z.string(),
+  origin: zUiDraftOrigin,
+  size: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).nullish()
+});
+
+/**
+ * Which settings the form shows.
+ */
+export const zUiSettingsView = z.union([
+  z.literal('main'),
+  z.literal('all')
+]);
+
+/**
+ * Format of the code that reproduces the form.
+ */
+export const zUiCodeFormat = z.union([
+  z.literal('cli'),
+  z.literal('yaml')
+]);
+
+/**
+ * The unfinished analysis form: the command, its settings, and how the form is shown.
+ */
+export const zUiDraft = z.strictObject({
+  command: zAppCommand,
+  config: z.record(z.string(), z.unknown()),
+  sources: z.record(z.string(), zUiDraftSource),
+  from_run_id: zJobId.nullish(),
+  upload_run_id: zJobId.nullish(),
+  view: zUiSettingsView,
+  search: z.string(),
+  changed_only: z.boolean(),
+  code_format: zUiCodeFormat
+});
+
+/**
+ * Preferences of the user interface. Unset preferences take the defaults of the user interface.
+ */
+export const zUiSettings = z.strictObject({
+  theme: zUiTheme.nullish(),
+  sidebar_width: z.int().gte(0).max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' }).nullish(),
+  draft: zUiDraft.nullish()
+});
+
+/**
+ * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+ */
+export const zAppSettings = z.strictObject({
+  workspace: z.string().nullish(),
+  ui: zUiSettings.optional()
+});
+
+/**
+ * The runs folder of the running back end, and the folder used when the settings name none.
+ */
+export const zWorkspace = z.object({
+  path: z.string(),
+  default_path: z.string()
+});
+
+/**
+ * A new runs folder. It takes effect when the back end starts again.
+ */
+export const zWorkspaceUpdate = z.strictObject({
+  path: z.string().nullish()
+});
+
 export const zBranchLengthMode = z.enum(['input', 'marginal']);
 
 export const zTimeMarginalMode = z.enum([
@@ -2224,3 +2316,33 @@ export const zRunsUploadInputPath = z.object({
  * A file uploaded into a run's `inputs/` folder.
  */
 export const zRunsUploadInputResponse = zUploadedInput;
+
+/**
+ * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+ */
+export const zAppSettingsResponse = zAppSettings;
+
+/**
+ * Preferences of the user interface. Unset preferences take the defaults of the user interface.
+ */
+export const zAppSettingsUiBody = zUiSettings;
+
+/**
+ * Preferences of the user interface. Unset preferences take the defaults of the user interface.
+ */
+export const zAppSettingsUiResponse = zUiSettings;
+
+/**
+ * The runs folder of the running back end, and the folder used when the settings name none.
+ */
+export const zWorkspaceResponse = zWorkspace;
+
+/**
+ * A new runs folder. It takes effect when the back end starts again.
+ */
+export const zWorkspaceUpdateBody = zWorkspaceUpdate;
+
+/**
+ * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+ */
+export const zWorkspaceUpdateResponse = zAppSettings;

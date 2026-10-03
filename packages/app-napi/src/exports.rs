@@ -1,6 +1,7 @@
 use crate::backend::DesktopService;
 use crate::guard::{guarded, to_napi};
 use crate::port::{PortReply, PortRequest};
+use app_commands::app_paths::AppPaths;
 use app_commands::job::JobId;
 use eyre::Report;
 use napi::bindgen_prelude::{AsyncTask, ToNapiValue, TypeName};
@@ -24,8 +25,8 @@ pub struct Backend {
 )]
 impl Backend {
   #[napi(constructor)]
-  pub fn new(runs_dir: String) -> napi::Result<Self> {
-    let service = guarded(|| DesktopService::open(Path::new(&runs_dir))).map_err(|err| to_napi(&err))?;
+  pub fn new() -> napi::Result<Self> {
+    let service = guarded(|| DesktopService::open(&AppPaths::from_env()?)).map_err(|err| to_napi(&err))?;
     Ok(Self {
       service: Arc::new(service),
     })
@@ -60,6 +61,24 @@ impl Backend {
       service.save_run_archive(&JobId::parse(&id)?, Path::new(&destination))
     })
   }
+}
+
+#[napi]
+pub fn app_paths() -> napi::Result<DesktopPaths> {
+  guarded(|| {
+    let paths = AppPaths::from_env()?;
+    Ok(DesktopPaths {
+      profile_dir: path_string(&paths.profile_dir)?,
+      logs_dir: path_string(&paths.logs_dir)?,
+    })
+  })
+  .map_err(|err| to_napi(&err))
+}
+
+#[napi(object)]
+pub struct DesktopPaths {
+  pub profile_dir: String,
+  pub logs_dir: String,
 }
 
 #[napi(object)]
@@ -115,4 +134,11 @@ impl<T: ToNapiValue + TypeName + Send + 'static> Task for BlockingTask<T> {
   fn resolve(&mut self, _env: Env, output: T) -> napi::Result<T> {
     Ok(output)
   }
+}
+
+fn path_string(path: &Path) -> Result<String, Report> {
+  path
+    .to_str()
+    .map(str::to_owned)
+    .ok_or_else(|| make_report!("the path '{}' is not valid UTF-8", path.display()))
 }

@@ -1,3 +1,4 @@
+mod test_app_paths;
 mod test_check_config;
 mod test_check_inputs;
 mod test_cli_rules;
@@ -14,5 +15,5 @@ mod test_run_config;
 mod test_schema_annotations;
 mod test_setting_catalog;
 mod test_setting_labels;
-mod test_yaml;
 pub(crate) mod test_support;
+mod test_yaml;

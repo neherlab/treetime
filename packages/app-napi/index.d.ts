@@ -1,5 +1,5 @@
 export declare class Backend {
-  constructor(runsDir: string)
+  constructor()
   fetch(request: PortRequest, onReply: ((arg: PortReply) => void)): PortExchange
   saveRunFile(request: SaveRunFileRequest): Promise<void>
   saveRunArchive(request: SaveRunArchiveRequest): Promise<void>
@@ -7,6 +7,13 @@ export declare class Backend {
 
 export declare class PortExchange {
   abort(): void
+}
+
+export declare function appPaths(): DesktopPaths
+
+export interface DesktopPaths {
+  profileDir: string
+  logsDir: string
 }
 
 export interface PortError {

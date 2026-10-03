@@ -75,6 +75,7 @@ async fn main() -> eyre::Result<()> {
     runs_dir: args.runs_dir,
     max_upload_size: args.max_upload_size,
     shutdown: shutdown.clone(),
+    settings: None,
   };
 
   let options = WebOptions {

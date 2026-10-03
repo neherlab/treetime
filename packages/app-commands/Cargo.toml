@@ -30,6 +30,7 @@ chrono = { workspace = true }
 clap = { workspace = true, optional = true }
 color-eyre = { workspace = true }
 derive_more = { workspace = true }
+dirs = { workspace = true }
 eyre = { workspace = true }
 image = { workspace = true, optional = true }
 itertools = { workspace = true }

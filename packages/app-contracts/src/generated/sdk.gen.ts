@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, ServerSentEventsResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, DatasetsData, DatasetsErrors, DatasetsResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, HealthData, HealthErrors, HealthResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, OpenapiData, OpenapiErrors, OpenapiResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses } from './types.gen';
-import { zCladeInRunsBody, zCladeInRunsResponse, zConfigCheckBody, zConfigCheckResponse, zDatasetsResponse, zEventsQuery, zEventsResponse, zHealthResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsResultsPath, zRunsResultsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputResponse, zVersionResponse } from './zod.gen';
+import type { AppSettingsData, AppSettingsErrors, AppSettingsResponses, AppSettingsUiData, AppSettingsUiErrors, AppSettingsUiResponses, CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, DatasetsData, DatasetsErrors, DatasetsResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, HealthData, HealthErrors, HealthResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, OpenapiData, OpenapiErrors, OpenapiResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses, WorkspaceData, WorkspaceErrors, WorkspaceResponses, WorkspaceUpdateData, WorkspaceUpdateErrors, WorkspaceUpdateResponses } from './types.gen';
+import { zAppSettingsResponse, zAppSettingsUiBody, zAppSettingsUiResponse, zCladeInRunsBody, zCladeInRunsResponse, zConfigCheckBody, zConfigCheckResponse, zDatasetsResponse, zEventsQuery, zEventsResponse, zHealthResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsResultsPath, zRunsResultsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputResponse, zVersionResponse, zWorkspaceResponse, zWorkspaceUpdateBody, zWorkspaceUpdateResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -371,6 +371,70 @@ export const runsUploadInput = <ThrowOnError extends boolean = false>(options: O
   ...options,
   headers: {
     'Content-Type': 'application/octet-stream',
+    ...options.headers
+  }
+});
+
+/**
+ * Settings of a local installation: the runs folder and the preferences of the user interface. Only local apps serve this path.
+ */
+export const appSettings = <ThrowOnError extends boolean = false>(options?: Options<AppSettingsData, ThrowOnError>): RequestResult<AppSettingsResponses, AppSettingsErrors, ThrowOnError> => (options?.client ?? client).get<AppSettingsResponses, AppSettingsErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: z.never().optional(),
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zAppSettingsResponse.parseAsync(data),
+  url: '/api/app-settings',
+  ...options
+});
+
+/**
+ * Replace the preferences of the user interface. Only local apps serve this path.
+ */
+export const appSettingsUi = <ThrowOnError extends boolean = false>(options: Options<AppSettingsUiData, ThrowOnError>): RequestResult<AppSettingsUiResponses, AppSettingsUiErrors, ThrowOnError> => (options.client ?? client).put<AppSettingsUiResponses, AppSettingsUiErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zAppSettingsUiBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zAppSettingsUiResponse.parseAsync(data),
+  url: '/api/app-settings/ui',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
+ * The runs folder in use and the default runs folder. Only local apps serve this path.
+ */
+export const workspace = <ThrowOnError extends boolean = false>(options?: Options<WorkspaceData, ThrowOnError>): RequestResult<WorkspaceResponses, WorkspaceErrors, ThrowOnError> => (options?.client ?? client).get<WorkspaceResponses, WorkspaceErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: z.never().optional(),
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zWorkspaceResponse.parseAsync(data),
+  url: '/api/workspace',
+  ...options
+});
+
+/**
+ * Set the runs folder; the folder is created when missing. The back end uses it after it starts again. Only local apps serve this path.
+ */
+export const workspaceUpdate = <ThrowOnError extends boolean = false>(options: Options<WorkspaceUpdateData, ThrowOnError>): RequestResult<WorkspaceUpdateResponses, WorkspaceUpdateErrors, ThrowOnError> => (options.client ?? client).put<WorkspaceUpdateResponses, WorkspaceUpdateErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zWorkspaceUpdateBody,
+    path: z.never().optional(),
+    query: z.never().optional()
+  }).parseAsync(data),
+  responseValidator: async (data) => await zWorkspaceUpdateResponse.parseAsync(data),
+  url: '/api/workspace',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
     ...options.headers
   }
 });

@@ -139,6 +139,7 @@ crossterm = "=0.29.0"
 csv = "=1.4.0"
 ctor = "=1.0.13"
 derive_more = { version = "=2.1.1", features = ["full"] }
+dirs = "=6.0.0"
 env_logger = "=0.11.11"
 eyre = "=0.6.14"
 gcollections = "=1.6.0"

@@ -2,11 +2,13 @@
 mod tests {
   use crate::backend::DesktopService;
   use crate::port::PortReply;
+  use app_commands::app_paths::AppPaths;
   use app_output::output_plan::OutputSelection;
   use helpers::{
     Ended, ancestral_request, archive_contents, event_ids, fetch, fetch_bytes, fetch_json, header, open_fetch,
     wait_for_terminal,
   };
+  use indoc::indoc;
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
   use std::fs;
@@ -19,7 +21,7 @@ mod tests {
   #[test]
   fn test_backend_created_run_starts_at_once_and_writes_its_outputs() {
     let root = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(false)));
     let id = record["id"].as_str().unwrap().to_owned();
     let terminal = wait_for_terminal(&service, &id);
@@ -46,7 +48,7 @@ mod tests {
   #[test]
   fn test_backend_deferred_run_waits_for_start() {
     let root = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(true)));
     let id = record["id"].as_str().unwrap().to_owned();
     let (_, started) = fetch_json(&service, "POST", &format!("/api/runs/{id}/start"), Some(&json!({})));
@@ -64,7 +66,7 @@ mod tests {
   #[test]
   fn test_backend_run_cannot_start_twice() {
     let root = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(false)));
     let id = record["id"].as_str().unwrap().to_owned();
     let (status, error) = fetch_json(&service, "POST", &format!("/api/runs/{id}/start"), Some(&json!({})));
@@ -82,7 +84,7 @@ mod tests {
   fn test_backend_saves_a_run_file_and_the_archive_to_chosen_paths() {
     let root = tempdir().unwrap();
     let target = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(false)));
     let id = record["id"].as_str().unwrap().to_owned();
     wait_for_terminal(&service, &id);
@@ -106,7 +108,7 @@ mod tests {
   fn test_backend_refuses_to_save_a_file_outside_the_run_folder() {
     let root = tempdir().unwrap();
     let target = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(true)));
     let job = serde_json::from_value(record["id"].clone()).unwrap();
     assert_error!(
@@ -119,7 +121,7 @@ mod tests {
   #[test]
   fn test_backend_fetch_answers_a_json_response_through_the_router() {
     let root = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let exchange = fetch(&service, "GET", "/api/version", vec![], None);
     let body: Value = serde_json::from_slice(&exchange.body).unwrap();
     assert_eq!(
@@ -141,7 +143,7 @@ mod tests {
   #[test]
   fn test_backend_fetch_streams_run_events_and_resumes_after_the_last_event_id() {
     let root = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let (status, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(false)));
     assert_eq!(200, status);
     let id = record["id"].as_str().unwrap().to_owned();
@@ -176,7 +178,7 @@ mod tests {
   #[test]
   fn test_backend_fetch_abort_ends_an_open_event_stream_without_an_end_reply() {
     let root = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(true)));
     let id = record["id"].as_str().unwrap().to_owned();
 
@@ -200,7 +202,7 @@ mod tests {
   #[test]
   fn test_backend_fetch_streams_app_events_of_run_changes() {
     let root = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let (abort, replies) = open_fetch(&service, "GET", "/api/events", vec![], None);
     let head = replies.recv_timeout(Duration::from_secs(60)).unwrap();
     let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(true)));
@@ -233,7 +235,7 @@ mod tests {
   #[test]
   fn test_backend_fetch_answers_a_missing_run_with_a_typed_error_body() {
     let root = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let (status, body) = fetch_json(&service, "GET", "/api/runs/missing", None);
     assert_eq!((404, json!("not_found")), (status, body["code"].clone()));
   }
@@ -241,7 +243,7 @@ mod tests {
   #[test]
   fn test_backend_fetch_reports_a_malformed_request_as_an_invalid_request_error() {
     let root = tempdir().unwrap();
-    let service = DesktopService::open(root.path()).unwrap();
+    let service = DesktopService::open(&AppPaths::in_dir(root.path())).unwrap();
     let exchange = fetch(&service, "NOT A METHOD", "/api/version", vec![], None);
     let Ended::Error(error) = exchange.ended else {
       panic!("the exchange did not end with an error reply");
@@ -253,6 +255,57 @@ mod tests {
         o!("the request `NOT A METHOD /api/version` is malformed: invalid HTTP method")
       ),
       (exchange.status, error.code, error.message)
+    );
+  }
+
+  #[test]
+  fn test_backend_opens_the_runs_folder_named_in_the_settings() {
+    let root = tempdir().unwrap();
+    let paths = AppPaths::in_dir(root.path());
+    let elsewhere = root.path().join("elsewhere");
+    let first = DesktopService::open(&paths).unwrap();
+    let (status, _) = fetch_json(&first, "PUT", "/api/workspace", Some(&json!({ "path": elsewhere })));
+    drop(first);
+    let second = DesktopService::open(&paths).unwrap();
+    let (_, record) = fetch_json(&second, "POST", "/api/runs", Some(&ancestral_request(true)));
+    let id = record["id"].as_str().unwrap().to_owned();
+    let (_, workspace) = fetch_json(&second, "GET", "/api/workspace", None);
+    assert_eq!(
+      (
+        200,
+        json!({ "path": elsewhere, "default_path": root.path().join("runs") }),
+        true
+      ),
+      (status, workspace, elsewhere.join(&id).join("run.json").is_file())
+    );
+  }
+
+  #[test]
+  fn test_backend_keeps_the_ui_preferences_in_the_settings_file() {
+    let root = tempdir().unwrap();
+    let paths = AppPaths::in_dir(root.path());
+    let service = DesktopService::open(&paths).unwrap();
+    let ui = json!({ "theme": "light", "sidebar_width": 300 });
+    fetch_json(&service, "PUT", "/api/app-settings/ui", Some(&ui));
+    let reopened = DesktopService::open(&paths).unwrap();
+    let (status, settings) = fetch_json(&reopened, "GET", "/api/app-settings", None);
+    assert_eq!((200, json!({ "ui": ui })), (status, settings));
+  }
+
+  #[test]
+  fn test_backend_names_the_settings_file_that_it_cannot_read() {
+    let root = tempdir().unwrap();
+    let file = root.path().join("settings.yaml");
+    fs::write(&file, "workspace: [1]\n").unwrap();
+    let expected = indoc! {"
+      error: line 1 column 12: expected string scalar
+       --> <input>:1:12
+        |
+      1 | workspace: [1]
+        |            ^ expected string scalar"};
+    assert_error!(
+      DesktopService::open(&AppPaths::in_dir(root.path())),
+      format!("When reading the settings file '{}': {expected}", file.display())
     );
   }
 

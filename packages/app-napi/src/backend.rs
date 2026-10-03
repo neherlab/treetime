@@ -1,4 +1,7 @@
 use crate::port::{PortHeader, PortReply, PortRequest};
+use app_commands::app_paths::AppPaths;
+use app_commands::app_settings::store::AppSettingsStore;
+use app_commands::app_settings::workspace::active_workspace;
 use app_commands::atomic_write::write_atomically;
 use app_commands::bridge::error::ErrorResponse;
 use app_commands::bridge::service::{AppService, Unconfined};
@@ -6,7 +9,7 @@ use app_commands::job::JobId;
 use app_commands::runs::files::write_run_zip;
 use app_commands::runs::manager::RunManager;
 use app_server::routes::api_router;
-use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
+use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
 use axum::Router;
 use eyre::{Report, WrapErr};
 use napi::bindgen_prelude::Uint8Array;
@@ -34,20 +37,31 @@ pub struct DesktopService {
 }
 
 impl DesktopService {
-  pub fn open(runs_dir: &Path) -> Result<Self, Report> {
+  pub fn open(paths: &AppPaths) -> Result<Self, Report> {
     let data_dir = PathBuf::from(env_var_optional(DATA_DIR_ENV)?.unwrap_or_else(|| DEFAULT_DATA_DIR.to_owned()));
-    let app = Arc::new(AppService::new(
-      RunManager::open(runs_dir)?,
-      data_dir.clone(),
-      Arc::new(Unconfined),
-    ));
+    let store = Arc::new(AppSettingsStore::open(&paths.settings_dir)?);
+    let settings = store.read()?;
+    let workspace = active_workspace(&settings, paths);
+    let runs = RunManager::open(&workspace.path).wrap_err_with(|| match settings.workspace {
+      Some(_) => format!(
+        "When opening the runs folder '{}' named in '{}'",
+        workspace.path.display(),
+        store.path().display()
+      ),
+      None => format!("When opening the runs folder '{}'", workspace.path.display()),
+    })?;
+    let app = Arc::new(AppService::new(runs, data_dir.clone(), Arc::new(Unconfined)));
     let (router, _) = api_router(
       Arc::clone(&app),
       ServerConfig {
         data_dir,
-        runs_dir: runs_dir.to_path_buf(),
+        runs_dir: workspace.path,
         max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
         shutdown: CancellationToken::new(),
+        settings: Some(LocalSettings {
+          store,
+          default_workspace: workspace.default_path,
+        }),
       },
     )?;
     let runtime = Builder::new_multi_thread()

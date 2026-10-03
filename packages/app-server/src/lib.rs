@@ -2,6 +2,7 @@
 mod __tests__;
 
 mod api;
+mod app_settings_routes;
 mod confine;
 mod error;
 mod events;

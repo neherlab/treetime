@@ -938,6 +938,7 @@ pub(crate) mod tests {
           runs_dir: runs_dir.path().to_path_buf(),
           max_upload_size,
           shutdown: shutdown.clone(),
+          settings: None,
         },
         options,
       )

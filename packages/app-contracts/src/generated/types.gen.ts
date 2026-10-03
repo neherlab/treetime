@@ -1832,6 +1832,134 @@ export type UploadedInput = {
   sha256: string;
 };
 
+/**
+ * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+ */
+export type AppSettings = {
+  /**
+   * Folder that holds the runs. Unset: the default folder of the platform.
+   */
+  workspace?: string | null;
+  /**
+   * Preferences of the user interface.
+   */
+  ui?: UiSettings;
+};
+
+/**
+ * Preferences of the user interface. Unset preferences take the defaults of the user interface.
+ */
+export type UiSettings = {
+  /**
+   * Color theme.
+   */
+  theme?: UiTheme | null;
+  /**
+   * Width of the sidebar in pixels.
+   */
+  sidebar_width?: number | null;
+  /**
+   * The unfinished analysis form.
+   */
+  draft?: UiDraft | null;
+};
+
+/**
+ * Color theme of the user interface.
+ */
+export type UiTheme = 'light' | 'dark' | 'system';
+
+/**
+ * The unfinished analysis form: the command, its settings, and how the form is shown.
+ */
+export type UiDraft = {
+  command: AppCommand;
+  /**
+   * Settings of the command, as in a configuration file.
+   */
+  config: {
+    [key: string]: unknown;
+  };
+  /**
+   * Where each input file came from, by setting key.
+   */
+  sources: {
+    [key: string]: UiDraftSource;
+  };
+  /**
+   * The run whose settings the form was loaded from.
+   */
+  from_run_id?: JobId | null;
+  /**
+   * The run that holds the uploaded input files of the form.
+   */
+  upload_run_id?: JobId | null;
+  view: UiSettingsView;
+  /**
+   * Text of the settings search field.
+   */
+  search: string;
+  /**
+   * Whether the form shows only the settings that differ from their defaults.
+   */
+  changed_only: boolean;
+  code_format: UiCodeFormat;
+};
+
+/**
+ * Origin of an input file of the form.
+ */
+export type UiDraftSource = {
+  /**
+   * Name of the file shown in the form.
+   */
+  label: string;
+  origin: UiDraftOrigin;
+  /**
+   * Size of the file in bytes, when known.
+   */
+  size?: number | null;
+};
+
+/**
+ * Where an input file of the form came from.
+ */
+export type UiDraftOrigin = 'dataset' | 'upload' | 'local' | 'run' | 'config';
+
+/**
+ * Which settings the form shows.
+ */
+export type UiSettingsView = 'main' | 'all';
+
+/**
+ * Format of the code that reproduces the form.
+ */
+export type UiCodeFormat = 'cli' | 'yaml';
+
+/**
+ * The runs folder of the running back end, and the folder used when the settings name none.
+ */
+export type Workspace = {
+  /**
+   * The runs folder in use.
+   */
+  path: string;
+  /**
+   * The runs folder used when the settings name none.
+   */
+  default_path: string;
+};
+
+/**
+ * A new runs folder. It takes effect when the back end starts again.
+ */
+export type WorkspaceUpdate = {
+  /**
+   * Absolute path of the folder. Unset: the default folder of the platform.
+   */
+  path?: string | null;
+};
+
 export type BranchLengthMode = 'input' | 'marginal';
 
 export type TimeMarginalMode = 'never' | 'always' | 'only-final';
@@ -5164,3 +5292,109 @@ export type RunsUploadInputResponses = {
 };
 
 export type RunsUploadInputResponse = RunsUploadInputResponses[keyof RunsUploadInputResponses];
+
+export type AppSettingsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/app-settings';
+};
+
+export type AppSettingsErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type AppSettingsError = AppSettingsErrors[keyof AppSettingsErrors];
+
+export type AppSettingsResponses = {
+  /**
+   * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+   */
+  200: AppSettings;
+};
+
+export type AppSettingsResponse = AppSettingsResponses[keyof AppSettingsResponses];
+
+export type AppSettingsUiData = {
+  /**
+   * Preferences of the user interface. Unset preferences take the defaults of the user interface.
+   */
+  body: UiSettings;
+  path?: never;
+  query?: never;
+  url: '/api/app-settings/ui';
+};
+
+export type AppSettingsUiErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type AppSettingsUiError = AppSettingsUiErrors[keyof AppSettingsUiErrors];
+
+export type AppSettingsUiResponses = {
+  /**
+   * Preferences of the user interface. Unset preferences take the defaults of the user interface.
+   */
+  200: UiSettings;
+};
+
+export type AppSettingsUiResponse = AppSettingsUiResponses[keyof AppSettingsUiResponses];
+
+export type WorkspaceData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/workspace';
+};
+
+export type WorkspaceErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type WorkspaceError = WorkspaceErrors[keyof WorkspaceErrors];
+
+export type WorkspaceResponses = {
+  /**
+   * The runs folder of the running back end, and the folder used when the settings name none.
+   */
+  200: Workspace;
+};
+
+export type WorkspaceResponse = WorkspaceResponses[keyof WorkspaceResponses];
+
+export type WorkspaceUpdateData = {
+  /**
+   * A new runs folder. It takes effect when the back end starts again.
+   */
+  body: WorkspaceUpdate;
+  path?: never;
+  query?: never;
+  url: '/api/workspace';
+};
+
+export type WorkspaceUpdateErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type WorkspaceUpdateError = WorkspaceUpdateErrors[keyof WorkspaceUpdateErrors];
+
+export type WorkspaceUpdateResponses = {
+  /**
+   * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+   */
+  200: AppSettings;
+};
+
+export type WorkspaceUpdateResponse = WorkspaceUpdateResponses[keyof WorkspaceUpdateResponses];

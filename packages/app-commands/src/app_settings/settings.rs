@@ -1,0 +1,146 @@
+use crate::command::AppCommand;
+use crate::job::JobId;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+/// Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AppSettings {
+  /// Folder that holds the runs. Unset: the default folder of the platform.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub workspace: Option<PathBuf>,
+
+  /// Preferences of the user interface.
+  #[serde(default, skip_serializing_if = "UiSettings::is_unset")]
+  pub ui: UiSettings,
+}
+
+/// Preferences of the user interface. Unset preferences take the defaults of the user interface.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct UiSettings {
+  /// Color theme.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub theme: Option<UiTheme>,
+
+  /// Width of the sidebar in pixels.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub sidebar_width: Option<u32>,
+
+  /// The unfinished analysis form.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub draft: Option<UiDraft>,
+}
+
+impl UiSettings {
+  pub fn is_unset(&self) -> bool {
+    *self == Self::default()
+  }
+}
+
+/// Color theme of the user interface.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum UiTheme {
+  /// Follow the theme of the operating system.
+  System,
+  Light,
+  Dark,
+}
+
+/// The unfinished analysis form: the command, its settings, and how the form is shown.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct UiDraft {
+  pub command: AppCommand,
+
+  /// Settings of the command, as in a configuration file.
+  pub config: Map<String, Value>,
+
+  /// Where each input file came from, by setting key.
+  pub sources: BTreeMap<String, UiDraftSource>,
+
+  /// The run whose settings the form was loaded from.
+  pub from_run_id: Option<JobId>,
+
+  /// The run that holds the uploaded input files of the form.
+  pub upload_run_id: Option<JobId>,
+
+  pub view: UiSettingsView,
+
+  /// Text of the settings search field.
+  pub search: String,
+
+  /// Whether the form shows only the settings that differ from their defaults.
+  pub changed_only: bool,
+
+  pub code_format: UiCodeFormat,
+}
+
+/// Origin of an input file of the form.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct UiDraftSource {
+  /// Name of the file shown in the form.
+  pub label: String,
+  pub origin: UiDraftOrigin,
+  /// Size of the file in bytes, when known.
+  pub size: Option<u64>,
+}
+
+/// Where an input file of the form came from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum UiDraftOrigin {
+  /// An example dataset.
+  Dataset,
+  /// A file uploaded to the server.
+  Upload,
+  /// A file on the computer that runs TreeTime.
+  Local,
+  /// An input of an earlier run.
+  Run,
+  /// A path from a loaded configuration file.
+  Config,
+}
+
+/// Which settings the form shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum UiSettingsView {
+  /// The main settings of the command.
+  Main,
+  /// Every setting of the command.
+  All,
+}
+
+/// Format of the code that reproduces the form.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum UiCodeFormat {
+  /// A command line.
+  Cli,
+  /// A YAML configuration file.
+  Yaml,
+}
+
+/// The runs folder of the running back end, and the folder used when the settings name none.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct Workspace {
+  /// The runs folder in use.
+  pub path: PathBuf,
+  /// The runs folder used when the settings name none.
+  pub default_path: PathBuf,
+}
+
+/// A new runs folder. It takes effect when the back end starts again.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct WorkspaceUpdate {
+  /// Absolute path of the folder. Unset: the default folder of the platform.
+  pub path: Option<PathBuf>,
+}
