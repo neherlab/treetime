@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use app_output::coalescent::{coalescent_delimited_str, coalescent_json_str};
   use eyre::Report;
+  use helpers::delimited_str;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime::timetree::coalescent::{
@@ -9,7 +9,7 @@ mod tests {
     Estimate, SegmentInterval,
   };
   use treetime_utils::assert_error;
-  use treetime_utils::io::json::json_read_str;
+  use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
   const GEN_PER_YEAR: f64 = 50.0;
 
@@ -172,7 +172,7 @@ mod tests {
       },
     )?;
 
-    let json = coalescent_json_str(&output)?;
+    let json = json_write_str(&output, JsonPretty(true))?;
     assert!(json.contains("\"inputs\""));
     assert!(json.contains("\"outputs\""));
     assert!(json.contains("\"segments\""));
@@ -204,7 +204,7 @@ mod tests {
       },
     )?;
 
-    let json = coalescent_json_str(&output)?;
+    let json = json_write_str(&output, JsonPretty(true))?;
     assert!(!json.contains("\"lower\""));
     assert!(!json.contains("\"upper\""));
     assert!(!json.contains("\"confidence_n_std\""));
@@ -235,12 +235,12 @@ mod tests {
       },
     )?;
 
-    let json = coalescent_json_str(&output)?;
+    let json = json_write_str(&output, JsonPretty(true))?;
     assert!(json.contains("\"n_points\": 3"));
     assert!(json.contains("\"stiffness\": 2.0"));
     assert!(json.contains("\"log_likelihood\": -12.5"));
 
-    let csv = coalescent_delimited_str(&output, b',')?;
+    let csv = delimited_str(&output, b',')?;
     assert!(!csv.contains("n_points"));
     assert!(!csv.contains("stiffness"));
     assert!(!csv.contains("log_likelihood"));
@@ -275,7 +275,7 @@ mod tests {
       },
     )?;
 
-    let serialized = coalescent_delimited_str(&output, delimiter)?;
+    let serialized = delimited_str(&output, delimiter)?;
     let header = serialized.lines().next().unwrap();
     assert_eq!(expected_header, header);
     Ok(())
@@ -301,7 +301,7 @@ mod tests {
         }),
       },
     )?;
-    let csv = coalescent_delimited_str(&constant, b',')?;
+    let csv = delimited_str(&constant, b',')?;
     assert_eq!("1,0.0,10.0,2.0,1.0,4.0,100.0,50.0,200.0", csv.lines().nth(1).unwrap());
 
     let fixed = CoalescentOutput::new(
@@ -319,7 +319,7 @@ mod tests {
         band: None,
       },
     )?;
-    let csv = coalescent_delimited_str(&fixed, b',')?;
+    let csv = delimited_str(&fixed, b',')?;
     assert_eq!("1,0.0,10.0,2.0,,,100.0,,", csv.lines().nth(1).unwrap());
     Ok(())
   }
@@ -371,5 +371,19 @@ mod tests {
       result,
       "Coalescent band bounds must have one entry per segment (2), got lower=1, upper=2"
     );
+  }
+
+  mod helpers {
+    use eyre::Report;
+    use treetime::timetree::coalescent::CoalescentOutput;
+    use treetime_io::csv::CsvStructWriter;
+
+    pub(super) fn delimited_str(output: &CoalescentOutput, delimiter: u8) -> Result<String, Report> {
+      let mut writer = CsvStructWriter::new(Vec::<u8>::new(), delimiter)?;
+      for row in output.rows() {
+        writer.write(&row)?;
+      }
+      Ok(String::from_utf8(writer.into_inner()?)?)
+    }
   }
 }
