@@ -418,16 +418,14 @@ where
     .get_exactly_one_root()
     .wrap_err("When converting graph to UShER MAT")?;
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-  let reference_gaps: BTreeSet<usize> = reference
-    .map(|reference| {
-      reference
-        .bytes()
-        .enumerate()
-        .filter(|&(_, state)| state == u8::from(alphabet.gap()))
-        .map(|(pos, _)| pos)
-        .collect()
-    })
-    .unwrap_or_default();
+  let reference_gaps: BTreeSet<usize> = reference.map_or_else(BTreeSet::new, |reference| {
+    reference
+      .bytes()
+      .enumerate()
+      .filter(|&(_, state)| state == u8::from(alphabet.gap()))
+      .map(|(pos, _)| pos)
+      .collect()
+  });
   let mut missing_data = UnknownBridge::new(alphabet.unknown());
   let mut gaps = MatGapCounts::default();
   let mut node_mutations = vec![];
@@ -498,12 +496,10 @@ fn gaps_as_missing_data(mutations: Vec<Mutation>, unknown: AsciiChar) -> Result<
 }
 
 fn is_in_reference_gap(mutation: &Mutation, reference_gaps: &BTreeSet<usize>) -> bool {
-  match (&mutation.track, &mutation.event) {
-    (MutationTrack::Nucleotide, MutationEvent::Substitution(substitution)) => {
-      reference_gaps.contains(&substitution.pos())
-    },
-    _ => false,
-  }
+  matches!(
+    (&mutation.track, &mutation.event),
+    (MutationTrack::Nucleotide, MutationEvent::Substitution(substitution)) if reference_gaps.contains(&substitution.pos())
+  )
 }
 
 pub(crate) fn mat_mutation(
