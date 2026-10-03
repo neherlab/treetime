@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 
+import { LoadingState } from "../components/PageShell";
 import { toast } from "../ui/toast";
 import type { PreferencesStorage } from "./storage";
 import { applyPreferences, PreferencesSaver } from "./sync";
@@ -39,7 +40,7 @@ export function PreferencesProvider({ storage, children }: { storage: Preference
     throw error;
   }
 
-  return loaded === true ? children : null;
+  return loaded === true ? children : <LoadingState text="Starting TreeTime" />;
 }
 
 function reportSaveFailure(message: string): void {
