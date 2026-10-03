@@ -158,7 +158,7 @@ fn reconstruct_fitch(
     );
   }
 
-  ancestral_reconstruction_fitch(graph, tips.include_leaves, &mut partitions)?;
+  ancestral_reconstruction_fitch(graph, &mut partitions)?;
   let partition = partitions
     .pop()
     .ok_or_else(|| make_internal_report!("Fitch reconstruction lost its partition"))?;

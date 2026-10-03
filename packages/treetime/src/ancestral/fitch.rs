@@ -4,27 +4,15 @@ use treetime_graph::graph::Graph;
 use treetime_graph::graph_traverse::GraphNodeForward;
 use treetime_utils::collections::container::get_exactly_one;
 
-pub(crate) fn ancestral_reconstruction_fitch(
-  graph: &Graph,
-  include_leaves: bool,
-  partitions: &mut [PartitionFitch],
-) -> Result<(), Report> {
-  graph.iter_depth_first_preorder_forward(|node| run_fitch_reconstruction(include_leaves, partitions, &node))
+pub(crate) fn ancestral_reconstruction_fitch(graph: &Graph, partitions: &mut [PartitionFitch]) -> Result<(), Report> {
+  graph.iter_depth_first_preorder_forward(|node| run_fitch_reconstruction(partitions, &node))
 }
 
 #[allow(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
-fn run_fitch_reconstruction(
-  include_leaves: bool,
-  partitions: &mut [PartitionFitch],
-  node: &GraphNodeForward,
-) -> Result<(), Report> {
-  if !include_leaves && node.is_leaf {
-    return Ok(());
-  }
-
+fn run_fitch_reconstruction(partitions: &mut [PartitionFitch], node: &GraphNodeForward) -> Result<(), Report> {
   for partition in partitions.iter_mut() {
     let alphabet = partition.alphabet.clone();
 

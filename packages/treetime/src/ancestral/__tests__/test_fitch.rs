@@ -81,7 +81,7 @@ pub(super) mod tests {
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_fitch(&graph, false, &mut partitions_parsimony)?;
+    ancestral_reconstruction_fitch(&graph, &mut partitions_parsimony)?;
     for key in emitted_nodes(&graph, false)? {
       actual.insert(
         names[&key].clone(),
@@ -158,7 +158,7 @@ pub(super) mod tests {
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
-    ancestral_reconstruction_fitch(&graph, true, &mut partitions_parsimony)?;
+    ancestral_reconstruction_fitch(&graph, &mut partitions_parsimony)?;
     for key in emitted_nodes(&graph, true)? {
       actual.insert(
         names[&key].clone(),
