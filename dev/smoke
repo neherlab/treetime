@@ -504,7 +504,7 @@ def make_case(command: str, row: dict, dataset: Dataset, spec: CaseSpec,
   tokens = shlex.split(args)
   tokens += [] if standalone or "{metadata}" not in template.args else list(family.metadata_args)
   tokens += list(family.command_args.get(command, ()))
-  selection = row.get("selection", template.selection)
+  selection = row.get("selection", None if standalone else template.selection)
   tokens += [f"--output-selection={selection}"] if selection else []
   replacements = {
     "{dataset}": dataset.path, "{tree}": f"{dataset.path}/{row.get('tree', 'tree.nwk')}",
