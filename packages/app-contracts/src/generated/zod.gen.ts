@@ -844,6 +844,17 @@ export const zUploadedInput = z.object({
 });
 
 /**
+ * Folders of the app. A relative path is relative to the app folder. The environment variables
+ * `TREETIME_PROFILE_DIR`, `TREETIME_RUNS_DIR`, `TREETIME_LOGS_DIR`, and `TREETIME_EXAMPLES_DIR` take precedence.
+ */
+export const zAppPathSettings = z.strictObject({
+  profile: z.string().nullish(),
+  runs: z.string().nullish(),
+  logs: z.string().nullish(),
+  examples: z.string().nullish()
+});
+
+/**
  * Color theme of the user interface.
  */
 export const zUiTheme = z.union([
@@ -913,10 +924,11 @@ export const zUiSettings = z.strictObject({
 });
 
 /**
- * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+ * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
+ * setting is optional.
  */
 export const zAppSettings = z.strictObject({
-  workspace: z.string().nullish(),
+  paths: zAppPathSettings.optional(),
   ui: zUiSettings.optional()
 });
 
@@ -925,7 +937,8 @@ export const zAppSettings = z.strictObject({
  */
 export const zWorkspace = z.object({
   path: z.string(),
-  default_path: z.string()
+  default_path: z.string(),
+  fixed_by: z.string().nullish()
 });
 
 /**
@@ -2314,7 +2327,8 @@ export const zRunsUploadInputPath = z.object({
 export const zRunsUploadInputResponse = zUploadedInput;
 
 /**
- * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+ * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
+ * setting is optional.
  */
 export const zAppSettingsResponse = zAppSettings;
 
@@ -2339,6 +2353,7 @@ export const zWorkspaceResponse = zWorkspace;
 export const zWorkspaceUpdateBody = zWorkspaceUpdate;
 
 /**
- * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+ * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
+ * setting is optional.
  */
 export const zWorkspaceUpdateResponse = zAppSettings;

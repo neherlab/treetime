@@ -1,12 +1,14 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_routes::tests::helpers::{app, request};
-  use helpers::local_app;
+  use app_commands::app_paths::AppFolderEnv;
+  use helpers::{local_app, local_app_with};
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
   use std::fs;
+  use tempfile::tempdir;
 
   #[tokio::test]
   async fn test_app_settings_routes_read_defaults_without_a_settings_file() {
@@ -53,7 +55,7 @@ mod tests {
     let local = local_app();
     let runs = local.app.runs_dir.path().to_path_buf();
     let actual = request(&local.app, "GET", "/api/workspace", None).await;
-    let expected = json!({ "path": runs, "default_path": local.dir.path().join("runs") });
+    let expected = json!({ "path": runs, "default_path": local.dir.path().join("runs"), "fixed_by": null });
     assert_eq!((200, expected), actual);
   }
 
@@ -63,7 +65,7 @@ mod tests {
     let folder = local.dir.path().join("elsewhere").join("runs");
     let (status, settings) = request(&local.app, "PUT", "/api/workspace", Some(json!({ "path": folder }))).await;
     assert_eq!(
-      (200, json!({ "workspace": folder }), true),
+      (200, json!({ "paths": { "runs": folder } }), true),
       (status, settings, folder.is_dir())
     );
   }
@@ -94,6 +96,31 @@ mod tests {
     );
   }
 
+  #[tokio::test]
+  async fn test_app_settings_routes_refuse_a_workspace_fixed_by_the_environment() {
+    let scratch = tempdir().unwrap();
+    let local = local_app_with(&AppFolderEnv {
+      runs: Some(scratch.path().to_path_buf()),
+      ..AppFolderEnv::default()
+    });
+    let (status, error) = request(
+      &local.app,
+      "PUT",
+      "/api/workspace",
+      Some(json!({ "path": "/data/runs" })),
+    )
+    .await;
+    assert_eq!(
+      (
+        400,
+        json!(
+          "the environment variable TREETIME_RUNS_DIR sets the runs folder; unset it to choose the folder in the app"
+        )
+      ),
+      (status, error["message"].clone())
+    );
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::settings(          "GET", "/api/app-settings")]
@@ -116,6 +143,8 @@ mod tests {
     use crate::create_router;
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
     use crate::web::WebOptions;
+    use app_commands::app_paths::{AppFolderEnv, AppPaths};
+    use app_commands::app_settings::settings::AppPathSettings;
     use app_commands::app_settings::store::AppSettingsStore;
     use std::sync::Arc;
     use tempfile::{TempDir, tempdir};
@@ -127,17 +156,29 @@ mod tests {
     }
 
     pub(super) fn local_app() -> LocalApp {
+      local_app_with(&AppFolderEnv::default())
+    }
+
+    pub(super) fn local_app_with(env: &AppFolderEnv) -> LocalApp {
       let dir = tempdir().unwrap();
       let runs_dir = tempdir().unwrap();
+      let paths = AppPaths::resolve(
+        dir.path(),
+        env,
+        &AppPathSettings {
+          runs: Some(runs_dir.path().to_path_buf()),
+          ..AppPathSettings::default()
+        },
+      );
       let router = create_router(
         ServerConfig {
           data_dir: TestApp::data_dir(),
-          runs_dir: runs_dir.path().to_path_buf(),
+          runs_dir: paths.runs.path.clone(),
           max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
           shutdown: CancellationToken::new(),
           settings: Some(LocalSettings {
             store: Arc::new(AppSettingsStore::open(dir.path()).unwrap()),
-            default_workspace: dir.path().join("runs"),
+            paths,
           }),
         },
         &WebOptions::default(),

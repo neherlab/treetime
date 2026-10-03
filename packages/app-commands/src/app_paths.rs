@@ -1,8 +1,5 @@
-#[cfg(target_os = "macos")]
-use dirs::home_dir;
-#[cfg(not(any(target_os = "macos", windows)))]
-use dirs::state_dir;
-use dirs::{config_local_dir, data_local_dir};
+use crate::app_settings::settings::AppPathSettings;
+use dirs::config_local_dir;
 use eyre::Report;
 use std::path::{Path, PathBuf};
 use treetime_utils::env::env_var_optional;
@@ -13,83 +10,108 @@ pub const APP_DIR_ENV: &str = "TREETIME_APP_DIR";
 
 const APP_NAME: &str = "treetime";
 
-const PROFILE_DIR: &str = "profile";
-
-const RUNS_DIR: &str = "runs";
-
-const LOGS_DIR: &str = "logs";
+pub fn app_root() -> Result<PathBuf, Report> {
+  match env_path(APP_DIR_ENV)? {
+    Some(root) => Ok(root),
+    None => Ok(
+      config_local_dir()
+        .ok_or_else(|| make_report!("the configuration directory of the user could not be determined"))?
+        .join(APP_NAME),
+    ),
+  }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AppPaths {
-  pub profile_dir: PathBuf,
-  pub settings_dir: PathBuf,
-  pub default_workspace: PathBuf,
-  pub logs_dir: PathBuf,
+  pub root: PathBuf,
+  pub profile: AppFolderPath,
+  pub runs: AppFolderPath,
+  pub logs: AppFolderPath,
+  pub examples: AppFolderPath,
 }
 
 impl AppPaths {
-  pub fn from_env() -> Result<Self, Report> {
-    match env_var_optional(APP_DIR_ENV)? {
-      Some(dir) if !dir.is_empty() => Ok(Self::in_dir(&absolute_path(dir)?)),
-      _ => Self::platform(),
-    }
-  }
-
-  pub fn in_dir(root: &Path) -> Self {
+  pub fn resolve(root: &Path, env: &AppFolderEnv, settings: &AppPathSettings) -> Self {
+    let folder = |folder: AppFolder, from_env: Option<&PathBuf>, from_settings: Option<&PathBuf>| match from_env {
+      Some(path) => AppFolderPath {
+        path: path.clone(),
+        fixed_by: Some(folder.env_var()),
+      },
+      None => AppFolderPath {
+        path: from_settings.map_or_else(|| root.join(folder.dir_name()), |path| root.join(path)),
+        fixed_by: None,
+      },
+    };
     Self {
-      profile_dir: root.join(PROFILE_DIR),
-      settings_dir: root.to_path_buf(),
-      default_workspace: root.join(RUNS_DIR),
-      logs_dir: root.join(LOGS_DIR),
+      root: root.to_path_buf(),
+      profile: folder(AppFolder::Profile, env.profile.as_ref(), settings.profile.as_ref()),
+      runs: folder(AppFolder::Runs, env.runs.as_ref(), settings.runs.as_ref()),
+      logs: folder(AppFolder::Logs, env.logs.as_ref(), settings.logs.as_ref()),
+      examples: folder(AppFolder::Examples, env.examples.as_ref(), settings.examples.as_ref()),
     }
   }
 
-  pub fn platform() -> Result<Self, Report> {
-    Ok(Self::from_platform_dirs(&PlatformDirs {
-      config: user_dir(config_local_dir(), "configuration")?,
-      data: user_dir(data_local_dir(), "data")?,
-      logs: platform_logs_dir()?,
-    }))
-  }
-
-  pub fn from_platform_dirs(platform: &PlatformDirs) -> Self {
-    let config = platform.config.join(APP_NAME);
-    Self {
-      profile_dir: config.clone(),
-      settings_dir: config,
-      default_workspace: platform.data.join(APP_NAME).join(RUNS_DIR),
-      logs_dir: platform.logs.clone(),
-    }
+  pub fn default_runs(&self) -> PathBuf {
+    self.root.join(AppFolder::Runs.dir_name())
   }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PlatformDirs {
-  pub config: PathBuf,
-  pub data: PathBuf,
-  pub logs: PathBuf,
+pub struct AppFolderPath {
+  pub path: PathBuf,
+  pub fixed_by: Option<&'static str>,
 }
 
-fn user_dir(dir: Option<PathBuf>, kind: &str) -> Result<PathBuf, Report> {
-  dir.ok_or_else(|| make_report!("the {kind} directory of the user could not be determined"))
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AppFolderEnv {
+  pub profile: Option<PathBuf>,
+  pub runs: Option<PathBuf>,
+  pub logs: Option<PathBuf>,
+  pub examples: Option<PathBuf>,
 }
 
-#[cfg(target_os = "macos")]
-fn platform_logs_dir() -> Result<PathBuf, Report> {
-  Ok(
-    user_dir(home_dir(), "home")?
-      .join("Library")
-      .join("Logs")
-      .join(APP_NAME),
-  )
+impl AppFolderEnv {
+  pub fn from_env() -> Result<Self, Report> {
+    Ok(Self {
+      profile: env_path(AppFolder::Profile.env_var())?,
+      runs: env_path(AppFolder::Runs.env_var())?,
+      logs: env_path(AppFolder::Logs.env_var())?,
+      examples: env_path(AppFolder::Examples.env_var())?,
+    })
+  }
 }
 
-#[cfg(windows)]
-fn platform_logs_dir() -> Result<PathBuf, Report> {
-  Ok(user_dir(data_local_dir(), "data")?.join(APP_NAME).join(LOGS_DIR))
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AppFolder {
+  Profile,
+  Runs,
+  Logs,
+  Examples,
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
-fn platform_logs_dir() -> Result<PathBuf, Report> {
-  Ok(user_dir(state_dir(), "state")?.join(APP_NAME).join(LOGS_DIR))
+impl AppFolder {
+  pub const fn dir_name(self) -> &'static str {
+    match self {
+      Self::Profile => "profile",
+      Self::Runs => "runs",
+      Self::Logs => "logs",
+      Self::Examples => "examples",
+    }
+  }
+
+  pub const fn env_var(self) -> &'static str {
+    match self {
+      Self::Profile => "TREETIME_PROFILE_DIR",
+      Self::Runs => "TREETIME_RUNS_DIR",
+      Self::Logs => "TREETIME_LOGS_DIR",
+      Self::Examples => "TREETIME_EXAMPLES_DIR",
+    }
+  }
+}
+
+fn env_path(name: &str) -> Result<Option<PathBuf>, Report> {
+  env_var_optional(name)?
+    .filter(|value| !value.is_empty())
+    .map(absolute_path)
+    .transpose()
 }

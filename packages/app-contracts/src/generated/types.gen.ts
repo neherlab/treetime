@@ -1833,17 +1833,41 @@ export type UploadedInput = {
 };
 
 /**
- * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+ * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
+ * setting is optional.
  */
 export type AppSettings = {
   /**
-   * Folder that holds the runs. Unset: the default folder of the platform.
+   * Folders of the app. Each defaults to a folder of the same name in the app folder.
    */
-  workspace?: string | null;
+  paths?: AppPathSettings;
   /**
    * Preferences of the user interface.
    */
   ui?: UiSettings;
+};
+
+/**
+ * Folders of the app. A relative path is relative to the app folder. The environment variables
+ * `TREETIME_PROFILE_DIR`, `TREETIME_RUNS_DIR`, `TREETIME_LOGS_DIR`, and `TREETIME_EXAMPLES_DIR` take precedence.
+ */
+export type AppPathSettings = {
+  /**
+   * Browser profile of the desktop app: cache, local storage, and crash reports. Default: `profile`.
+   */
+  profile?: string | null;
+  /**
+   * Runs, each in its own folder. Default: `runs`.
+   */
+  runs?: string | null;
+  /**
+   * Logs and crash diagnostics. Default: `logs`.
+   */
+  logs?: string | null;
+  /**
+   * Example datasets and configurations that the app lists. Default: `examples`.
+   */
+  examples?: string | null;
 };
 
 /**
@@ -1945,9 +1969,13 @@ export type Workspace = {
    */
   path: string;
   /**
-   * The runs folder used when the settings name none.
+   * The runs folder used when the settings name none: `runs` in the app folder.
    */
   default_path: string;
+  /**
+   * The environment variable that sets the runs folder; the app cannot change the folder then.
+   */
+  fixed_by?: string | null;
 };
 
 /**
@@ -1955,7 +1983,7 @@ export type Workspace = {
  */
 export type WorkspaceUpdate = {
   /**
-   * Absolute path of the folder. Unset: the default folder of the platform.
+   * Absolute path of the folder. Unset: `runs` in the app folder.
    */
   path?: string | null;
 };
@@ -5323,7 +5351,8 @@ export type AppSettingsError = AppSettingsErrors[keyof AppSettingsErrors];
 
 export type AppSettingsResponses = {
   /**
-   * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+   * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
+   * setting is optional.
    */
   200: AppSettings;
 };
@@ -5404,7 +5433,8 @@ export type WorkspaceUpdateError = WorkspaceUpdateErrors[keyof WorkspaceUpdateEr
 
 export type WorkspaceUpdateResponses = {
   /**
-   * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+   * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
+   * setting is optional.
    */
   200: AppSettings;
 };

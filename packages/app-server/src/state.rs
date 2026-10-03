@@ -1,4 +1,5 @@
 use crate::confine::PathPolicy;
+use app_commands::app_paths::AppPaths;
 use app_commands::app_settings::store::AppSettingsStore;
 use app_commands::bridge::service::{AppService, InputPolicy};
 use app_commands::command::AppCommand;
@@ -23,7 +24,7 @@ pub struct ServerConfig {
 #[derive(Clone, Debug)]
 pub struct LocalSettings {
   pub store: Arc<AppSettingsStore>,
-  pub default_workspace: PathBuf,
+  pub paths: AppPaths,
 }
 
 pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> {

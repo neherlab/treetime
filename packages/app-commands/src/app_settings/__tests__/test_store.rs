@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::app_settings::settings::{AppSettings, UiSettings, UiTheme};
+  use crate::app_settings::settings::{AppPathSettings, AppSettings, UiSettings, UiTheme};
   use crate::app_settings::store::{AppSettingsStore, SETTINGS_JSON, SETTINGS_YAML};
-  use helpers::{draft, read_text};
+  use helpers::{draft, read_text, runs_at};
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::fs;
@@ -26,13 +26,14 @@ mod tests {
     let store = AppSettingsStore::open(dir.path()).unwrap();
     store
       .update(|settings| {
-        settings.workspace = Some(PathBuf::from("/data/runs"));
+        settings.paths.runs = Some(PathBuf::from("/data/runs"));
         settings.ui.theme = Some(UiTheme::Dark);
         settings.ui.sidebar_width = Some(400);
       })
       .unwrap();
     let expected = indoc! {r#"
-      workspace: "/data/runs"
+      paths:
+        runs: "/data/runs"
       ui:
         theme: "dark"
         sidebar_width: 400
@@ -65,7 +66,7 @@ mod tests {
     let dir = tempdir().unwrap();
     let store = AppSettingsStore::open(dir.path()).unwrap();
     let expected = AppSettings {
-      workspace: None,
+      paths: AppPathSettings::default(),
       ui: UiSettings {
         theme: Some(UiTheme::System),
         sidebar_width: None,
@@ -82,7 +83,7 @@ mod tests {
     fs::write(dir.path().join(SETTINGS_JSON), "").unwrap();
     let store = AppSettingsStore::open(dir.path()).unwrap();
     let expected = AppSettings {
-      workspace: Some(PathBuf::from("/data/runs")),
+      paths: runs_at("/data/runs"),
       ui: UiSettings {
         theme: Some(UiTheme::Dark),
         sidebar_width: Some(300),
@@ -98,14 +99,14 @@ mod tests {
     let dir = tempdir().unwrap();
     let store = AppSettingsStore::open(dir.path()).unwrap();
     store
-      .update(|settings| settings.workspace = Some(PathBuf::from("/data/runs")))
+      .update(|settings| settings.paths.runs = Some(PathBuf::from("/data/runs")))
       .unwrap();
     let updated = store
       .update(|settings| settings.ui.theme = Some(UiTheme::Dark))
       .unwrap();
     assert_eq!(
       AppSettings {
-        workspace: Some(PathBuf::from("/data/runs")),
+        paths: runs_at("/data/runs"),
         ui: UiSettings {
           theme: Some(UiTheme::Dark),
           ..UiSettings::default()
@@ -146,11 +147,11 @@ mod tests {
     let path = dir.path().join(SETTINGS_YAML);
     fs::write(&path, "theme: dark\n").unwrap();
     let expected = indoc! {"
-      error: line 1 column 1: unknown field `theme`, expected one of workspace, ui
+      error: line 1 column 1: unknown field `theme`, expected one of paths, ui
        --> <input>:1:1
         |
       1 | theme: dark
-        | ^ unknown field `theme`, expected one of workspace, ui"};
+        | ^ unknown field `theme`, expected one of paths, ui"};
     assert_error!(
       AppSettingsStore::open(dir.path()).unwrap().read(),
       format!("When reading the settings file '{}': {expected}", path.display())
@@ -194,13 +195,15 @@ mod tests {
   }
 
   mod helpers {
-    use crate::app_settings::settings::{UiCodeFormat, UiDraft, UiDraftOrigin, UiDraftSource, UiSettingsView};
+    use crate::app_settings::settings::{
+      AppPathSettings, UiCodeFormat, UiDraft, UiDraftOrigin, UiDraftSource, UiSettingsView,
+    };
     use crate::command::AppCommand;
     use crate::job::JobId;
     use maplit::btreemap;
     use serde_json::json;
     use std::fs;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use treetime_utils::o;
 
     pub(super) fn draft() -> UiDraft {
@@ -225,6 +228,13 @@ mod tests {
 
     pub(super) fn read_text(path: &Path) -> String {
       fs::read_to_string(path).unwrap()
+    }
+
+    pub(super) fn runs_at(path: &str) -> AppPathSettings {
+      AppPathSettings {
+        runs: Some(PathBuf::from(path)),
+        ..AppPathSettings::default()
+      }
     }
   }
 }

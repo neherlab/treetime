@@ -1,7 +1,6 @@
 use crate::port::{PortHeader, PortReply, PortRequest};
-use app_commands::app_paths::AppPaths;
+use app_commands::app_paths::{AppFolderEnv, AppFolderPath, AppPaths};
 use app_commands::app_settings::store::AppSettingsStore;
-use app_commands::app_settings::workspace::active_workspace;
 use app_commands::atomic_write::write_atomically;
 use app_commands::bridge::error::ErrorResponse;
 use app_commands::bridge::service::{AppService, Unconfined};
@@ -13,20 +12,15 @@ use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
 use axum::Router;
 use eyre::{Report, WrapErr};
 use napi::bindgen_prelude::Uint8Array;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use tokio::runtime::{Builder, Runtime};
 use tokio::task::AbortHandle;
 use tokio_stream::StreamExt as _;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceExt as _;
-use treetime_utils::env::env_var_optional;
-
-const DATA_DIR_ENV: &str = "DATA_DIR";
-
-const DEFAULT_DATA_DIR: &str = "data";
 
 const RUNTIME_THREAD_NAME: &str = "treetime-desktop";
 
@@ -37,31 +31,34 @@ pub struct DesktopService {
 }
 
 impl DesktopService {
-  pub fn open(paths: &AppPaths) -> Result<Self, Report> {
-    let data_dir = PathBuf::from(env_var_optional(DATA_DIR_ENV)?.unwrap_or_else(|| DEFAULT_DATA_DIR.to_owned()));
-    let store = Arc::new(AppSettingsStore::open(&paths.settings_dir)?);
+  pub fn open(root: &Path, env: &AppFolderEnv) -> Result<Self, Report> {
+    let store = Arc::new(AppSettingsStore::open(root)?);
     let settings = store.read()?;
-    let workspace = active_workspace(&settings, paths);
-    let runs = RunManager::open(&workspace.path).wrap_err_with(|| match settings.workspace {
-      Some(_) => format!(
-        "When opening the runs folder '{}' named in '{}'",
-        workspace.path.display(),
-        store.path().display()
-      ),
-      None => format!("When opening the runs folder '{}'", workspace.path.display()),
+    let paths = AppPaths::resolve(root, env, &settings.paths);
+    let runs = RunManager::open(&paths.runs.path).wrap_err_with(|| {
+      format!(
+        "When opening the runs folder '{}'{}",
+        paths.runs.path.display(),
+        folder_source(&paths.runs, settings.paths.runs.is_some(), store.path())
+      )
     })?;
-    let app = Arc::new(AppService::new(runs, data_dir.clone(), Arc::new(Unconfined)));
+    fs::create_dir_all(&paths.examples.path).wrap_err_with(|| {
+      format!(
+        "When creating the examples folder '{}'{}",
+        paths.examples.path.display(),
+        folder_source(&paths.examples, settings.paths.examples.is_some(), store.path())
+      )
+    })?;
+    let examples = paths.examples.path.clone();
+    let app = Arc::new(AppService::new(runs, examples.clone(), Arc::new(Unconfined)));
     let (router, _) = api_router(
       Arc::clone(&app),
       ServerConfig {
-        data_dir,
-        runs_dir: workspace.path,
+        data_dir: examples,
+        runs_dir: paths.runs.path.clone(),
         max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
         shutdown: CancellationToken::new(),
-        settings: Some(LocalSettings {
-          store,
-          default_workspace: workspace.default_path,
-        }),
+        settings: Some(LocalSettings { store, paths }),
       },
     )?;
     let runtime = Builder::new_multi_thread()
@@ -149,4 +146,12 @@ async fn exchange(router: Router, request: PortRequest, send: Arc<impl Fn(PortRe
     }
   }
   send(PortReply::End { seq });
+}
+
+fn folder_source(folder: &AppFolderPath, in_settings: bool, settings_file: &Path) -> String {
+  match folder.fixed_by {
+    Some(variable) => format!(", set by {variable}"),
+    None if in_settings => format!(", named in '{}'", settings_file.display()),
+    None => String::new(),
+  }
 }

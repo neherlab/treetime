@@ -1,7 +1,8 @@
 use crate::backend::DesktopService;
 use crate::guard::{guarded, to_napi};
 use crate::port::{PortReply, PortRequest};
-use app_commands::app_paths::AppPaths;
+use app_commands::app_paths::{AppFolderEnv, AppPaths, app_root};
+use app_commands::app_settings::store::AppSettingsStore;
 use app_commands::job::JobId;
 use eyre::Report;
 use napi::bindgen_prelude::{AsyncTask, ToNapiValue, TypeName};
@@ -26,7 +27,8 @@ pub struct Backend {
 impl Backend {
   #[napi(constructor)]
   pub fn new() -> napi::Result<Self> {
-    let service = guarded(|| DesktopService::open(&AppPaths::from_env()?)).map_err(|err| to_napi(&err))?;
+    let service =
+      guarded(|| DesktopService::open(&app_root()?, &AppFolderEnv::from_env()?)).map_err(|err| to_napi(&err))?;
     Ok(Self {
       service: Arc::new(service),
     })
@@ -66,10 +68,12 @@ impl Backend {
 #[napi]
 pub fn app_paths() -> napi::Result<DesktopPaths> {
   guarded(|| {
-    let paths = AppPaths::from_env()?;
+    let root = app_root()?;
+    let settings = AppSettingsStore::open(&root)?.read()?;
+    let paths = AppPaths::resolve(&root, &AppFolderEnv::from_env()?, &settings.paths);
     Ok(DesktopPaths {
-      profile_dir: path_string(&paths.profile_dir)?,
-      logs_dir: path_string(&paths.logs_dir)?,
+      profile_dir: path_string(&paths.profile.path)?,
+      logs_dir: path_string(&paths.logs.path)?,
     })
   })
   .map_err(|err| to_napi(&err))

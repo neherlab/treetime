@@ -38,7 +38,7 @@ mod tests {
   mod helpers {
     use crate::cli::treetime_cli::treetime_parse_cli_args;
     use crate::run::run_command;
-    use app_commands::app_paths::AppPaths;
+    use app_commands::app_paths::AppFolderEnv;
     use app_commands::command::AppCommand;
     use app_napi::backend::DesktopService;
     use app_napi::port::{PortHeader, PortReply, PortRequest};
@@ -162,8 +162,7 @@ mod tests {
     }
 
     pub(super) fn run_napi(command: AppCommand, config: &Value, runs_dir: &Path) -> PathBuf {
-      let paths = AppPaths::in_dir(runs_dir);
-      let service = DesktopService::open(&paths).unwrap();
+      let service = DesktopService::open(runs_dir, &AppFolderEnv::default()).unwrap();
       let (status, record) = napi_fetch(
         &service,
         "POST",
@@ -177,7 +176,7 @@ mod tests {
         .to_owned();
       let (_, events) = napi_fetch(&service, "GET", &format!("/api/runs/{id}/events"), None);
       assert!(events.contains("\"status\":\"ok\""), "N-API run failed: {events}");
-      paths.default_workspace.join(&id).join("out")
+      runs_dir.join("runs").join(&id).join("out")
     }
 
     fn napi_fetch(service: &DesktopService, method: &str, url: &str, body: Option<String>) -> (u16, String) {

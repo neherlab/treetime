@@ -1,66 +1,90 @@
 #[cfg(test)]
 mod tests {
-  use crate::app_paths::{AppPaths, PlatformDirs};
+  use crate::app_paths::{AppFolderEnv, AppFolderPath, AppPaths};
+  use crate::app_settings::settings::AppPathSettings;
+  use helpers::unfixed;
   use pretty_assertions::assert_eq;
-  use std::path::PathBuf;
+  use std::path::{Path, PathBuf};
 
   #[test]
-  fn test_app_paths_in_dir_keeps_every_folder_below_the_root() {
-    let actual = AppPaths::in_dir(&PathBuf::from("/checkout/tmp/app/treetime-dev"));
+  fn test_app_paths_default_to_folders_in_the_root() {
+    let actual = AppPaths::resolve(
+      Path::new("/home/alice/.config/treetime"),
+      &AppFolderEnv::default(),
+      &AppPathSettings::default(),
+    );
     let expected = AppPaths {
-      profile_dir: PathBuf::from("/checkout/tmp/app/treetime-dev/profile"),
-      settings_dir: PathBuf::from("/checkout/tmp/app/treetime-dev"),
-      default_workspace: PathBuf::from("/checkout/tmp/app/treetime-dev/runs"),
-      logs_dir: PathBuf::from("/checkout/tmp/app/treetime-dev/logs"),
+      root: PathBuf::from("/home/alice/.config/treetime"),
+      profile: unfixed("/home/alice/.config/treetime/profile"),
+      runs: unfixed("/home/alice/.config/treetime/runs"),
+      logs: unfixed("/home/alice/.config/treetime/logs"),
+      examples: unfixed("/home/alice/.config/treetime/examples"),
     };
     assert_eq!(expected, actual);
   }
 
   #[test]
-  fn test_app_paths_platform_names_every_folder_treetime() {
-    let actual = AppPaths::from_platform_dirs(&PlatformDirs {
-      config: PathBuf::from("/home/alice/.config"),
-      data: PathBuf::from("/home/alice/.local/share"),
-      logs: PathBuf::from("/home/alice/.local/state/treetime/logs"),
-    });
-    let expected = AppPaths {
-      profile_dir: PathBuf::from("/home/alice/.config/treetime"),
-      settings_dir: PathBuf::from("/home/alice/.config/treetime"),
-      default_workspace: PathBuf::from("/home/alice/.local/share/treetime/runs"),
-      logs_dir: PathBuf::from("/home/alice/.local/state/treetime/logs"),
+  fn test_app_paths_take_settings_relative_to_the_root_or_absolute() {
+    let settings = AppPathSettings {
+      runs: Some(PathBuf::from("/data/runs")),
+      logs: Some(PathBuf::from("state/logs")),
+      ..AppPathSettings::default()
     };
-    assert_eq!(expected, actual);
+    let actual = AppPaths::resolve(Path::new("/app"), &AppFolderEnv::default(), &settings);
+    assert_eq!(
+      (
+        unfixed("/data/runs"),
+        unfixed("/app/state/logs"),
+        unfixed("/app/profile")
+      ),
+      (actual.runs, actual.logs, actual.profile)
+    );
   }
 
   #[test]
-  fn test_app_paths_platform_shares_one_folder_when_config_and_data_coincide() {
-    let actual = AppPaths::from_platform_dirs(&PlatformDirs {
-      config: PathBuf::from("/Users/Alice/Library/Application Support"),
-      data: PathBuf::from("/Users/Alice/Library/Application Support"),
-      logs: PathBuf::from("/Users/Alice/Library/Logs/treetime"),
-    });
-    let expected = AppPaths {
-      profile_dir: PathBuf::from("/Users/Alice/Library/Application Support/treetime"),
-      settings_dir: PathBuf::from("/Users/Alice/Library/Application Support/treetime"),
-      default_workspace: PathBuf::from("/Users/Alice/Library/Application Support/treetime/runs"),
-      logs_dir: PathBuf::from("/Users/Alice/Library/Logs/treetime"),
+  fn test_app_paths_environment_wins_over_settings() {
+    let env = AppFolderEnv {
+      runs: Some(PathBuf::from("/scratch/runs")),
+      examples: Some(PathBuf::from("/checkout/data")),
+      ..AppFolderEnv::default()
     };
-    assert_eq!(expected, actual);
+    let settings = AppPathSettings {
+      runs: Some(PathBuf::from("/data/runs")),
+      ..AppPathSettings::default()
+    };
+    let actual = AppPaths::resolve(Path::new("/app"), &env, &settings);
+    let expected = (
+      AppFolderPath {
+        path: PathBuf::from("/scratch/runs"),
+        fixed_by: Some("TREETIME_RUNS_DIR"),
+      },
+      AppFolderPath {
+        path: PathBuf::from("/checkout/data"),
+        fixed_by: Some("TREETIME_EXAMPLES_DIR"),
+      },
+    );
+    assert_eq!(expected, (actual.runs, actual.examples));
   }
 
-  #[cfg(all(unix, not(target_os = "macos")))]
   #[test]
-  fn test_app_paths_platform_resolves_the_xdg_folders_of_the_user() {
-    let actual = AppPaths::platform().unwrap();
-    let config = dirs::config_local_dir().unwrap();
-    let data = dirs::data_local_dir().unwrap();
-    let state = dirs::state_dir().unwrap();
-    let expected = AppPaths {
-      profile_dir: config.join("treetime"),
-      settings_dir: config.join("treetime"),
-      default_workspace: data.join("treetime").join("runs"),
-      logs_dir: state.join("treetime").join("logs"),
+  fn test_app_paths_default_runs_ignores_settings_and_environment() {
+    let env = AppFolderEnv {
+      runs: Some(PathBuf::from("/scratch/runs")),
+      ..AppFolderEnv::default()
     };
-    assert_eq!(expected, actual);
+    let actual = AppPaths::resolve(Path::new("/app"), &env, &AppPathSettings::default());
+    assert_eq!(PathBuf::from("/app/runs"), actual.default_runs());
+  }
+
+  mod helpers {
+    use crate::app_paths::AppFolderPath;
+    use std::path::PathBuf;
+
+    pub(super) fn unfixed(path: &str) -> AppFolderPath {
+      AppFolderPath {
+        path: PathBuf::from(path),
+        fixed_by: None,
+      }
+    }
   }
 }

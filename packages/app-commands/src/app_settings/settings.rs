@@ -6,17 +6,46 @@ use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-/// Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.
+/// Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
+/// setting is optional.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AppSettings {
-  /// Folder that holds the runs. Unset: the default folder of the platform.
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub workspace: Option<PathBuf>,
+  /// Folders of the app. Each defaults to a folder of the same name in the app folder.
+  #[serde(default, skip_serializing_if = "AppPathSettings::is_unset")]
+  pub paths: AppPathSettings,
 
   /// Preferences of the user interface.
   #[serde(default, skip_serializing_if = "UiSettings::is_unset")]
   pub ui: UiSettings,
+}
+
+/// Folders of the app. A relative path is relative to the app folder. The environment variables
+/// `TREETIME_PROFILE_DIR`, `TREETIME_RUNS_DIR`, `TREETIME_LOGS_DIR`, and `TREETIME_EXAMPLES_DIR` take precedence.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AppPathSettings {
+  /// Browser profile of the desktop app: cache, local storage, and crash reports. Default: `profile`.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub profile: Option<PathBuf>,
+
+  /// Runs, each in its own folder. Default: `runs`.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub runs: Option<PathBuf>,
+
+  /// Logs and crash diagnostics. Default: `logs`.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub logs: Option<PathBuf>,
+
+  /// Example datasets and configurations that the app lists. Default: `examples`.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub examples: Option<PathBuf>,
+}
+
+impl AppPathSettings {
+  pub fn is_unset(&self) -> bool {
+    *self == Self::default()
+  }
 }
 
 /// Preferences of the user interface. Unset preferences take the defaults of the user interface.
@@ -133,14 +162,16 @@ pub enum UiCodeFormat {
 pub struct Workspace {
   /// The runs folder in use.
   pub path: PathBuf,
-  /// The runs folder used when the settings name none.
+  /// The runs folder used when the settings name none: `runs` in the app folder.
   pub default_path: PathBuf,
+  /// The environment variable that sets the runs folder; the app cannot change the folder then.
+  pub fixed_by: Option<String>,
 }
 
 /// A new runs folder. It takes effect when the back end starts again.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct WorkspaceUpdate {
-  /// Absolute path of the folder. Unset: the default folder of the platform.
+  /// Absolute path of the folder. Unset: `runs` in the app folder.
   pub path: Option<PathBuf>,
 }

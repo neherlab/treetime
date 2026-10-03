@@ -994,7 +994,7 @@
             }
           },
           "200": {
-            "description": "Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.",
+            "description": "Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every\nsetting is optional.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1098,7 +1098,7 @@
             }
           },
           "200": {
-            "description": "Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.",
+            "description": "Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every\nsetting is optional.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4287,19 +4287,51 @@
         ]
       },
       "AppSettings": {
-        "description": "Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json`. Every setting is optional.",
+        "description": "Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every\nsetting is optional.",
         "type": "object",
         "properties": {
-          "workspace": {
-            "description": "Folder that holds the runs. Unset: the default folder of the platform.",
+          "paths": {
+            "description": "Folders of the app. Each defaults to a folder of the same name in the app folder.",
+            "$ref": "#/components/schemas/AppPathSettings"
+          },
+          "ui": {
+            "description": "Preferences of the user interface.",
+            "$ref": "#/components/schemas/UiSettings"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AppPathSettings": {
+        "description": "Folders of the app. A relative path is relative to the app folder. The environment variables\n`TREETIME_PROFILE_DIR`, `TREETIME_RUNS_DIR`, `TREETIME_LOGS_DIR`, and `TREETIME_EXAMPLES_DIR` take precedence.",
+        "type": "object",
+        "properties": {
+          "profile": {
+            "description": "Browser profile of the desktop app: cache, local storage, and crash reports. Default: `profile`.",
             "type": [
               "string",
               "null"
             ]
           },
-          "ui": {
-            "description": "Preferences of the user interface.",
-            "$ref": "#/components/schemas/UiSettings"
+          "runs": {
+            "description": "Runs, each in its own folder. Default: `runs`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logs": {
+            "description": "Logs and crash diagnostics. Default: `logs`.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "examples": {
+            "description": "Example datasets and configurations that the app lists. Default: `examples`.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -4522,8 +4554,15 @@
             "type": "string"
           },
           "default_path": {
-            "description": "The runs folder used when the settings name none.",
+            "description": "The runs folder used when the settings name none: `runs` in the app folder.",
             "type": "string"
+          },
+          "fixed_by": {
+            "description": "The environment variable that sets the runs folder; the app cannot change the folder then.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -4536,7 +4575,7 @@
         "type": "object",
         "properties": {
           "path": {
-            "description": "Absolute path of the folder. Unset: the default folder of the platform.",
+            "description": "Absolute path of the folder. Unset: `runs` in the app folder.",
             "type": [
               "string",
               "null"

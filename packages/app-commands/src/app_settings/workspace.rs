@@ -1,21 +1,24 @@
 use crate::app_paths::AppPaths;
-use crate::app_settings::settings::{AppSettings, Workspace};
+use crate::app_settings::settings::Workspace;
 use crate::runs::errors::invalid;
 use eyre::Report;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub fn active_workspace(settings: &AppSettings, paths: &AppPaths) -> Workspace {
+pub fn active_workspace(paths: &AppPaths) -> Workspace {
   Workspace {
-    path: settings
-      .workspace
-      .clone()
-      .unwrap_or_else(|| paths.default_workspace.clone()),
-    default_path: paths.default_workspace.clone(),
+    path: paths.runs.path.clone(),
+    default_path: paths.default_runs(),
+    fixed_by: paths.runs.fixed_by.map(str::to_owned),
   }
 }
 
-pub fn prepare_workspace(path: &Path) -> Result<PathBuf, Report> {
+pub fn prepare_workspace(paths: &AppPaths, path: &Path) -> Result<PathBuf, Report> {
+  if let Some(variable) = paths.runs.fixed_by {
+    return Err(invalid(format!(
+      "the environment variable {variable} sets the runs folder; unset it to choose the folder in the app"
+    )));
+  }
   if !path.is_absolute() {
     return Err(invalid(format!(
       "the runs folder must be an absolute path, got '{}'",

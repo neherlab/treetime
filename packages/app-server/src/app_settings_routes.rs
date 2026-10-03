@@ -4,7 +4,7 @@ use crate::state::{AppState, LocalSettings};
 use aide::axum::ApiRouter;
 use aide::axum::routing::{get_with, put_with};
 use app_commands::app_settings::settings::{AppSettings, UiSettings, Workspace, WorkspaceUpdate};
-use app_commands::app_settings::workspace::prepare_workspace;
+use app_commands::app_settings::workspace::{active_workspace, prepare_workspace};
 use axum::Json;
 use axum::extract::State;
 use eyre::Report;
@@ -60,11 +60,7 @@ async fn app_settings_ui(
 }
 
 async fn workspace(State(state): State<Arc<AppState>>) -> Result<Json<Workspace>, AppError> {
-  let local = local_settings(&state)?;
-  Ok(Json(Workspace {
-    path: state.config.runs_dir.clone(),
-    default_path: local.default_workspace,
-  }))
+  Ok(Json(active_workspace(&local_settings(&state)?.paths)))
 }
 
 async fn workspace_update(
@@ -72,8 +68,11 @@ async fn workspace_update(
   ApiJson(WorkspaceUpdate { path }): ApiJson<WorkspaceUpdate>,
 ) -> Result<Json<AppSettings>, AppError> {
   blocking(&state, move |local| {
-    let workspace = path.as_deref().map(prepare_workspace).transpose()?;
-    local.store.update(|settings| settings.workspace = workspace)
+    let runs = path
+      .as_deref()
+      .map(|path| prepare_workspace(&local.paths, path))
+      .transpose()?;
+    local.store.update(|settings| settings.paths.runs = runs)
   })
   .await
   .map(Json)
