@@ -170,12 +170,7 @@ pub(crate) fn sequence_auspice_node(
   date: Option<f64>,
   bad_branch: Option<bool>,
 ) -> Result<AuspiceTreeNode, Report> {
-  let mut other = serde_json::Map::new();
-  if let Some(confidence) = confidence {
-    ensure_finite(confidence, "tree output", name, "input branch support")?;
-    other.insert("confidence".to_owned(), json!({ "value": confidence }));
-  }
-  let mut node = auspice_node(
+  let node = auspice_node(
     name.to_owned(),
     finite_number(div, 6, "tree output", name, "div")?,
     finite_number(date, 3, "tree output", name, "date")?,
@@ -185,8 +180,19 @@ pub(crate) fn sequence_auspice_node(
     group_mutations(mutations)?,
     None,
   );
+  with_branch_support(node, confidence)
+}
+
+pub(crate) fn with_branch_support(
+  mut node: AuspiceTreeNode,
+  confidence: Option<f64>,
+) -> Result<AuspiceTreeNode, Report> {
+  let Some(confidence) = confidence else {
+    return Ok(node);
+  };
+  ensure_finite(confidence, "tree output", &node.name, "input branch support")?;
   if let Value::Object(target) = &mut node.node_attrs.other {
-    target.extend(other);
+    target.insert("confidence".to_owned(), json!({ "value": confidence }));
   }
   Ok(node)
 }

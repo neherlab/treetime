@@ -86,13 +86,7 @@ pub fn run_mugration(
   topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 
-  let result = MugrationResult::new(
-    &output,
-    &confidences,
-    &names,
-    &branch_lengths,
-    mugration_args.attribute(),
-  );
+  let result = MugrationResult::new(&output, &confidences, &names, mugration_args.attribute());
 
   if !resolved.tree_outputs.is_empty() {
     let provider = DiscreteTraitCommentProvider::new(&output.reconstructed_traits, mugration_args.attribute());

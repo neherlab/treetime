@@ -183,7 +183,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_all_auspice_models_match_augur_v2_schema() -> Result<(), Report> {
-    let documents = helpers::all_auspice_documents()?;
+    let documents = helpers::all_auspice_documents(false)?;
     let validator = helpers::auspice_validator()?;
 
     for (command, document) in ["ancestral", "optimize", "prune", "clock", "mugration", "timetree"]
@@ -205,6 +205,26 @@ pub(super) mod tests {
       .remove("updated");
     assert!(!validator.is_valid(&malformed));
 
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::ancestral(0)]
+  #[case::optimize( 1)]
+  #[case::prune(    2)]
+  #[case::mugration(4)]
+  #[trace]
+  fn test_tree_output_auspice_writes_input_branch_support(#[case] command: usize) -> Result<(), Report> {
+    let document = &helpers::all_auspice_documents(true)?[command];
+    let support: Vec<&Value> = document["tree"]["children"]
+      .as_array()
+      .expect("fixture root must have children")
+      .iter()
+      .filter(|child| child["name"] == "A")
+      .map(|child| &child["node_attrs"]["confidence"])
+      .collect();
+    assert_eq!(vec![&json!({ "value": 0.9 })], support);
     Ok(())
   }
 
@@ -258,10 +278,9 @@ pub(super) mod tests {
   #[case::prune(    2)]
   #[case::clock(    3)]
   #[case::mugration(4)]
-  #[case::timetree( 5)]
   #[trace]
   fn test_tree_output_auspice_without_sequences_has_tree_panel_only(#[case] command: usize) -> Result<(), Report> {
-    let document = &helpers::all_auspice_documents()?[command];
+    let document = &helpers::all_auspice_documents(false)?[command];
 
     assert_eq!(json!(["tree"]), document["meta"]["panels"]);
     assert_eq!(None, document["meta"].get("genome_annotations"));
@@ -490,6 +509,18 @@ pub(super) mod tests {
         .collect()
     }
 
+    pub(crate) fn branch_support(
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      graph: &Graph,
+      with_support: bool,
+    ) -> BTreeMap<GraphNodeKey, Option<f64>> {
+      if with_support {
+        ancestral_confidences(names, graph)
+      } else {
+        BTreeMap::new()
+      }
+    }
+
     pub(crate) fn ancestral_topology() -> Result<
       (
         Graph,
@@ -505,12 +536,16 @@ pub(super) mod tests {
       Ok((graph, names, branch_lengths))
     }
 
-    pub(crate) fn all_auspice_documents() -> Result<Vec<Value>, Report> {
+    pub(crate) fn all_auspice_documents(with_support: bool) -> Result<Vec<Value>, Report> {
       let (ancestral_graph, ancestral_names, ancestral_bl, ancestral_maps, ancestral_aa, ancestral_aa_annotations) =
         ancestral_graph(Mutations::NucleotideSubstitution)?;
       let ancestral = ancestral_to_auspice(
         &ancestral_graph,
-        &ancestral_nodes(&ancestral_names, &ancestral_graph, &btreemap! {}),
+        &ancestral_nodes(
+          &ancestral_names,
+          &ancestral_graph,
+          &branch_support(&ancestral_names, &ancestral_graph, with_support),
+        ),
         &ancestral_bl,
         &ancestral_maps,
         ancestral_aa.as_ref(),
@@ -520,7 +555,11 @@ pub(super) mod tests {
       let (optimize_graph, optimize_names, optimize_bl) = optimize_graph()?;
       let optimize = optimize_to_auspice(
         &optimize_graph,
-        &optimize_nodes(&optimize_names, &optimize_graph, &btreemap! {}),
+        &optimize_nodes(
+          &optimize_names,
+          &optimize_graph,
+          &branch_support(&optimize_names, &optimize_graph, with_support),
+        ),
         &optimize_bl,
         &optimize_maps(&optimize_graph)?,
         "2026-07-19",
@@ -528,7 +567,11 @@ pub(super) mod tests {
       let (prune_graph, prune_names, prune_bl) = prune_graph()?;
       let prune = prune_to_auspice(
         &prune_graph,
-        &prune_nodes(&prune_names, &prune_graph, &btreemap! {}),
+        &prune_nodes(
+          &prune_names,
+          &prune_graph,
+          &branch_support(&prune_names, &prune_graph, with_support),
+        ),
         &prune_bl,
         &prune_maps(&prune_graph),
         "2026-07-19",
@@ -538,7 +581,11 @@ pub(super) mod tests {
       let (mugration_output, mugration_names, mugration_bl) = mugration_graph()?;
       let mugration = mugration_to_auspice(
         &mugration_output.graph,
-        &mugration_nodes(&mugration_names, &mugration_output.graph, &btreemap! {}),
+        &mugration_nodes(
+          &mugration_names,
+          &mugration_output.graph,
+          &branch_support(&mugration_names, &mugration_output.graph, with_support),
+        ),
         &mugration_bl,
         &mugration_output,
         "country",
@@ -547,7 +594,11 @@ pub(super) mod tests {
       let (timetree_graph, timetree_names, _timetree_bl) = timetree_graph()?;
       let timetree = timetree_to_auspice(
         &timetree_graph,
-        &timetree_nodes(&timetree_names, &timetree_graph, &btreemap! {}),
+        &timetree_nodes(
+          &timetree_names,
+          &timetree_graph,
+          &branch_support(&timetree_names, &timetree_graph, with_support),
+        ),
         &timetree_maps(&timetree_graph),
         None,
         None,

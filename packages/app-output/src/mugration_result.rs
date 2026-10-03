@@ -1,17 +1,14 @@
 use indexmap::IndexMap;
 use itertools::Itertools;
 use ndarray::Array1;
-use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use treetime::mugration::pipeline::MugrationOutput;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 
 #[derive(Debug)]
 pub struct MugrationResult {
   pub nodes: BTreeMap<GraphNodeKey, MugrationNodeOut>,
-  pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
   pub traits: MugrationTraitsOutput,
   pub confidence: MugrationConfidenceOutput,
 }
@@ -21,7 +18,6 @@ impl MugrationResult {
     output: &MugrationOutput,
     input_confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     attribute: &str,
   ) -> Self {
     let nodes: BTreeMap<GraphNodeKey, MugrationNodeOut> = output
@@ -42,26 +38,15 @@ impl MugrationResult {
     let traits = MugrationTraitsOutput::new(attribute, assignments);
     let confidence = MugrationConfidenceOutput::new(output, names);
 
-    let edges: BTreeMap<GraphEdgeKey, EdgeOut> = output
-      .graph
-      .get_edges()
-      .map(|edge| {
-        let key = edge.key();
-        let branch_length = branch_lengths.get(&key).copied().flatten();
-        (key, EdgeOut { branch_length })
-      })
-      .collect();
-
     Self {
       nodes,
-      edges,
       traits,
       confidence,
     }
   }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct MugrationConfidenceOutput {
   states: Vec<String>,
   rows: Vec<ConfidenceRow>,
@@ -103,14 +88,13 @@ impl MugrationConfidenceOutput {
   }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct ConfidenceRow {
   node: String,
-  #[serde(serialize_with = "treetime_utils::array::serde::array1_as_vec")]
   profile: Array1<f64>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct MugrationTraitsOutput {
   pub(crate) attribute: String,
   pub(crate) assignments: IndexMap<String, String>,
@@ -138,15 +122,10 @@ impl MugrationTraitsOutput {
   }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct MugrationNodeOut {
   pub(crate) name: Option<String>,
   pub(crate) confidence: Option<f64>,
-}
-
-#[derive(Debug, Clone, Copy, Serialize)]
-pub struct EdgeOut {
-  branch_length: Option<f64>,
 }
 
 fn extract_trait_assignments(

@@ -127,10 +127,10 @@ mod tests {
         graph,
         traits: traits.clone(),
         weights: None,
-        branch_lengths: branch_lengths.clone(),
+        branch_lengths,
       };
       let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).unwrap();
-      let result = MugrationResult::new(&output, &confidences, &names, &branch_lengths, "country");
+      let result = MugrationResult::new(&output, &confidences, &names, "country");
       let data = build_augur_node_data_json(&result, &output).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }

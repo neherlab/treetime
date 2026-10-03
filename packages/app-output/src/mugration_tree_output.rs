@@ -1,7 +1,7 @@
 use crate::mugration_result::MugrationNodeOut;
 use crate::tree_output::{
   TraitValue, auspice_data, auspice_from_graph, auspice_node, coloring, cumulative_branch_length_from, ensure_finite,
-  finite_number, generation_date, mutation_free_mat, node_name_value, write_tree_outputs,
+  finite_number, generation_date, mutation_free_mat, node_name_value, with_branch_support, write_tree_outputs,
 };
 use eyre::Report;
 use maplit::btreemap;
@@ -64,22 +64,25 @@ pub(crate) fn mugration_to_auspice(
   auspice_from_graph(graph, data, |context| {
     let name = node_name_value(context.node_key, nodes[&context.node_key].name.as_deref());
     let traits = mugration_traits(graph, output, context.node_key, &name, attribute)?;
-    Ok(auspice_node(
-      name.clone(),
-      finite_number(
-        cumulative_branch_length_from(graph, branch_lengths, context.node_key)?,
-        6,
-        "mugration",
-        &name,
-        "div",
-      )?,
-      None,
-      None,
-      None,
-      traits,
-      BTreeMap::new(),
-      mugration_transition_label(graph, output, context.node_key, attribute)?,
-    ))
+    with_branch_support(
+      auspice_node(
+        name.clone(),
+        finite_number(
+          cumulative_branch_length_from(graph, branch_lengths, context.node_key)?,
+          6,
+          "mugration",
+          &name,
+          "div",
+        )?,
+        None,
+        None,
+        None,
+        traits,
+        BTreeMap::new(),
+        mugration_transition_label(graph, output, context.node_key, attribute)?,
+      ),
+      nodes[&context.node_key].confidence,
+    )
   })
 }
 

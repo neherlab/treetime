@@ -1,4 +1,3 @@
-use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
@@ -18,13 +17,13 @@ pub struct PruneResult {
   pub edges: BTreeMap<GraphEdgeKey, EdgeOut>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct PruneNodeOut {
   pub name: Option<String>,
   pub confidence: Option<f64>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy)]
 pub struct EdgeOut {
   pub branch_length: Option<f64>,
 }
