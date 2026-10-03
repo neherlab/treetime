@@ -412,7 +412,7 @@
       "x-cli-flag": "--reconstruct-tip-states"
     },
     "report_ambiguous": {
-      "description": "Include branch mutations from or to the fully ambiguous nucleotide state `N`.\n\nBy default these mutations are omitted from the branch mutations of the Newick and Nexus\nannotations, the Auspice JSON, and the MAT outputs. Other ambiguity codes, such as `K` or `R`,\nare always reported.",
+      "description": "Include branch mutations from or to the fully ambiguous nucleotide state `N`.\n\nBy default these mutations are omitted from the branch mutations of the Newick and Nexus\nannotations and the Auspice JSON. Other ambiguity codes, such as `K` or `R`, are always\nreported. The MAT outputs store `N` as missing data and never contain these mutations.",
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--report-ambiguous"

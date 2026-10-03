@@ -14,6 +14,7 @@ mod tests {
   use tempfile::tempdir;
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
+  use treetime_io::usher_mat::UsherTree;
   use treetime_utils::io::fs::read_file_to_string;
   use treetime_utils::io::json::json_read_file;
   use treetime_utils::{o, vec_of_owned};
@@ -80,12 +81,30 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::leaf_unknown(        STAR_TREE,          STAR_ALIGNMENT,          false, btreemap! { o!("C") => vec![4] })]
+  #[case::internal_unknown(    UNKNOWN_CLADE_TREE, UNKNOWN_CLADE_ALIGNMENT, false, btreemap! {})]
+  #[case::imputed_below_unknown(UNKNOWN_CLADE_TREE, UNKNOWN_CLADE_ALIGNMENT, true,  btreemap! {})]
+  #[trace]
+  fn test_report_ambiguous_mat_stores_unknown_state_as_missing_data(
+    #[case] tree: &str,
+    #[case] alignment: &str,
+    #[case] impute: bool,
+    #[case] expected: BTreeMap<String, Vec<i32>>,
+  ) -> Result<(), Report> {
+    let written = written_mutations(tree, alignment, true, impute, Some(true))?;
+    assert_eq!(expected, written.mat_positions);
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
 
     pub(super) struct WrittenMutations {
       pub(super) augur_muts: BTreeMap<String, Vec<String>>,
       pub(super) nwk: String,
+      pub(super) mat_positions: BTreeMap<String, Vec<i32>>,
     }
 
     pub(super) fn written_mutations(
@@ -100,6 +119,7 @@ mod tests {
       let fasta_path = dir.path().join("aln.fasta");
       let augur_path = dir.path().join("node_data.json");
       let nwk_path = dir.path().join("out.nwk");
+      let mat_path = dir.path().join("out.mat.json");
       std::fs::write(&tree_path, tree).wrap_err("When writing the tree fixture")?;
       std::fs::write(&fasta_path, alignment).wrap_err("When writing the alignment fixture")?;
 
@@ -119,6 +139,7 @@ mod tests {
         output: OutputCoreArgs {
           output_nwk_style: vec![NwkStyleArg::Beast],
           output_tree_nwk: Some(nwk_path.clone()),
+          output_tree_mat_json: Some(mat_path.clone()),
           ..OutputCoreArgs::default()
         },
         ..TreetimeAncestralArgsRaw::default()
@@ -132,9 +153,21 @@ mod tests {
         .into_iter()
         .map(|(name, node)| (name, node.muts))
         .collect();
+      let mat: UsherTree = json_read_file(&mat_path)?;
+      let mat_positions = mat
+        .condensed_nodes
+        .into_iter()
+        .zip(mat.node_mutations)
+        .filter(|(_, mutations)| !mutations.mutation.is_empty())
+        .map(|(node, mutations)| {
+          let positions = mutations.mutation.iter().map(|mutation| mutation.position).collect();
+          (node.node_name, positions)
+        })
+        .collect();
       Ok(WrittenMutations {
         augur_muts,
         nwk: read_file_to_string(&nwk_path)?,
+        mat_positions,
       })
     }
   }

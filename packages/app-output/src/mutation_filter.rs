@@ -22,7 +22,7 @@ impl UnknownMutationFilter {
     Self::new(unknown, false)
   }
 
-  fn is_reported(self, event: &MutationEvent) -> bool {
+  pub(crate) fn is_reported(self, event: &MutationEvent) -> bool {
     self.report_unknown
       || match event {
         MutationEvent::Substitution(substitution) => {

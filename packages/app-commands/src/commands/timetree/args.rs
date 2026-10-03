@@ -484,8 +484,8 @@ pub struct TreetimeTimetreeArgsRaw {
   /// Include branch mutations from or to the fully ambiguous nucleotide state `N`.
   ///
   /// By default these mutations are omitted from the branch mutations of the Newick and Nexus
-  /// annotations, the Auspice JSON, and the MAT outputs. Other ambiguity codes, such as `K` or `R`,
-  /// are always reported.
+  /// annotations and the Auspice JSON. Other ambiguity codes, such as `K` or `R`, are always
+  /// reported. The MAT outputs store `N` as missing data and never contain these mutations.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub report_ambiguous: bool,
 

@@ -1,3 +1,4 @@
+use crate::mutation_filter::UnknownMutationFilter;
 use chrono::Utc;
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
@@ -322,6 +323,7 @@ where
     .get_exactly_one_root()
     .wrap_err("When converting graph to UShER MAT")?;
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+  let missing_data = UnknownMutationFilter::hiding_unknown(alphabet.unknown());
   let mut node_mutations = vec![];
   let mut condensed_nodes = vec![];
   let mut metadata = vec![];
@@ -335,6 +337,7 @@ where
       .unwrap_or_default();
     let mutations = mutations
       .iter()
+      .filter(|mutation| missing_data.is_reported(&mutation.event))
       .map(|mutation| mat_mutation(mutation, reference, &alphabet, &name))
       .collect::<Result<Vec<_>, _>>()?;
     node_mutations.push(UsherMutationList { mutation: mutations });
