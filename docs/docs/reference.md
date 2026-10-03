@@ -243,9 +243,9 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--include-leaves` — Emit reconstructed leaf (tip) sequences in addition to internal nodes
 * `--impute-missing-data` — Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state. Gaps are left as deletions
 * `--reconstruct-tip-states` — v0-compatible alias for `--include-leaves --impute-missing-data`
-* `--report-ambiguous` — Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids) in the written mutation lists.
+* `--report-ambiguous` — Include branch mutations from or to the fully ambiguous nucleotide state `N`.
 
-   By default these mutations are omitted from tree annotations, Auspice JSON, augur node data, and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.
+   By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice JSON, and the MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.
 * `--no-indels` — Disable indel (insertion/deletion) contributions to branch-length optimization and branch-length distributions.
 
    When set, branch-length optimization uses substitution-only likelihood and timetree branch distributions exclude the Poisson indel term. Matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and enables v0 parity testing. Default: indels enabled.
@@ -813,9 +813,9 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 * `--reconstruct-tip-states` — v0-compatible alias for `--include-leaves --impute-missing-data`.
 
    Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
-* `--report-ambiguous` — Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids) in the written mutation lists.
+* `--report-ambiguous` — Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).
 
-   By default these mutations are omitted from tree annotations, Auspice JSON, augur node data, and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.
+   By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice JSON, the MAT outputs, and the `muts` and `aa_muts` lists of augur node data. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the root `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence` reference and the inferred root and always omit `X` and gaps.
 * `--ignore-missing-alns` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
 
    Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
@@ -1231,9 +1231,9 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 * `--reconstruct-tip-states` — v0-compatible alias for `--include-leaves --impute-missing-data`.
 
    Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
-* `--report-ambiguous` — Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids) in the written mutation lists.
+* `--report-ambiguous` — Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).
 
-   By default these mutations are omitted from tree annotations, Auspice JSON, augur node data, and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.
+   By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice JSON, the MAT outputs, and the `muts` and `aa_muts` lists of augur node data. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the root `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence` reference and the inferred root and always omit `X` and gaps.
 * `--ignore-missing-alns` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
 
    Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.

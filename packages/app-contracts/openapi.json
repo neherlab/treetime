@@ -5104,7 +5104,7 @@
             "x-cli-flag": "--reconstruct-tip-states"
           },
           "report_ambiguous": {
-            "description": "Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids)\nin the written mutation lists.\n\nBy default these mutations are omitted from tree annotations, Auspice JSON, augur node data,\nand MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.",
+            "description": "Include branch mutations from or to the fully ambiguous nucleotide state `N`.\n\nBy default these mutations are omitted from the branch mutations of the Newick and Nexus\nannotations, the Auspice JSON, and the MAT outputs. Other ambiguity codes, such as `K` or `R`,\nare always reported.",
             "type": "boolean",
             "default": false,
             "x-cli-flag": "--report-ambiguous"
@@ -6290,7 +6290,7 @@
             "x-cli-flag": "--reconstruct-tip-states"
           },
           "report_ambiguous": {
-            "description": "Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids)\nin the written mutation lists.\n\nBy default these mutations are omitted from tree annotations, Auspice JSON, augur node data,\nand MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.",
+            "description": "Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for\namino acids).\n\nBy default these mutations are omitted from the branch mutations of the Newick and Nexus\nannotations, the Auspice JSON, the MAT outputs, and the `muts` and `aa_muts` lists of augur node\ndata. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect\nthe root `aa_muts` of augur node data, which list the differences between the\n`--aa-root-sequence` reference and the inferred root and always omit `X` and gaps.",
             "type": "boolean",
             "default": false,
             "x-cli-flag": "--report-ambiguous"
@@ -10181,8 +10181,8 @@
               "REPORT_AMBIGUOUS"
             ],
             "conflicts": [],
-            "help": "Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids) in the written mutation lists.",
-            "more": "By default these mutations are omitted from tree annotations, Auspice JSON, augur node data, and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported."
+            "help": "Include branch mutations from or to the fully ambiguous nucleotide state `N`.",
+            "more": "By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice JSON, and the MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported."
           },
           {
             "key": "divergence_units",
@@ -13675,8 +13675,8 @@
               "REPORT_AMBIGUOUS"
             ],
             "conflicts": [],
-            "help": "Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids) in the written mutation lists.",
-            "more": "By default these mutations are omitted from tree annotations, Auspice JSON, augur node data, and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported."
+            "help": "Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).",
+            "more": "By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice JSON, the MAT outputs, and the `muts` and `aa_muts` lists of augur node data. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the root `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence` reference and the inferred root and always omit `X` and gaps."
           },
           {
             "key": "aa_root_sequence",

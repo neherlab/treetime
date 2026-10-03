@@ -2259,11 +2259,11 @@ export type TimetreeConfig = {
    */
   reconstruct_tip_states?: boolean;
   /**
-   * Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids)
-   * in the written mutation lists.
+   * Include branch mutations from or to the fully ambiguous nucleotide state `N`.
    *
-   * By default these mutations are omitted from tree annotations, Auspice JSON, augur node data,
-   * and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.
+   * By default these mutations are omitted from the branch mutations of the Newick and Nexus
+   * annotations, the Auspice JSON, and the MAT outputs. Other ambiguity codes, such as `K` or `R`,
+   * are always reported.
    */
   report_ambiguous?: boolean;
   /**
@@ -3170,11 +3170,14 @@ export type AncestralConfig = {
    */
   reconstruct_tip_states?: boolean;
   /**
-   * Include mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids)
-   * in the written mutation lists.
+   * Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for
+   * amino acids).
    *
-   * By default these mutations are omitted from tree annotations, Auspice JSON, augur node data,
-   * and MAT outputs. Other ambiguity codes, such as `K` or `R`, are always reported.
+   * By default these mutations are omitted from the branch mutations of the Newick and Nexus
+   * annotations, the Auspice JSON, the MAT outputs, and the `muts` and `aa_muts` lists of augur node
+   * data. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect
+   * the root `aa_muts` of augur node data, which list the differences between the
+   * `--aa-root-sequence` reference and the inferred root and always omit `X` and gaps.
    */
   report_ambiguous?: boolean;
   /**
