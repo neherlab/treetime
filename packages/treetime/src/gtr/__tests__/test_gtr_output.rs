@@ -1,51 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::gtr::get_gtr::{GtrModelName, GtrOutput, JC69Params, jc69, write_gtr_json};
+  use crate::gtr::get_gtr::{GtrModelName, GtrOutput, JC69Params, jc69};
   use eyre::Report;
   use pretty_assertions::assert_eq;
-  use rstest::rstest;
-  use tempfile::TempDir;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::vec_of_owned;
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::no_qualifier(   "gtr.json")]
-  #[case::sparse(         "gtr_sparse.json")]
-  #[case::dense(          "gtr_dense.json")]
-  #[trace]
-  fn test_write_gtr_json_filename(#[case] filename: &str) {
-    let dir = TempDir::new().unwrap();
-    let gtr = jc69(JC69Params::default()).unwrap();
-    let output = GtrOutput::builder().gtr(&gtr).model_name(GtrModelName::JC69).build();
-    write_gtr_json(&output, dir.path().join(filename)).unwrap();
-
-    let expected_path = dir.path().join(filename);
-    assert!(expected_path.exists(), "Expected file {filename} not found");
-  }
-
-  #[test]
-  fn test_write_gtr_json_both_partitions_no_overwrite() {
-    let dir = TempDir::new().unwrap();
-    let gtr = jc69(JC69Params::default()).unwrap();
-    let output = GtrOutput::builder().gtr(&gtr).model_name(GtrModelName::JC69).build();
-
-    write_gtr_json(&output, dir.path().join("gtr_sparse.json")).unwrap();
-    write_gtr_json(&output, dir.path().join("gtr_dense.json")).unwrap();
-
-    assert!(
-      dir.path().join("gtr_sparse.json").exists(),
-      "gtr_sparse.json should exist"
-    );
-    assert!(
-      dir.path().join("gtr_dense.json").exists(),
-      "gtr_dense.json should exist"
-    );
-    assert!(
-      !dir.path().join("gtr.json").exists(),
-      "gtr.json should not exist when qualifiers are used"
-    );
-  }
 
   #[test]
   fn test_gtr_output_without_discrete_states_omits_fields() -> Result<(), Report> {

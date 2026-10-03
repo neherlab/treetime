@@ -2,6 +2,7 @@ use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, Treet
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::rtt_chart::{write_clock_regression_chart_png, write_clock_regression_chart_svg};
+use app_output::clock_model::write_clock_model;
 use app_output::clock_result::ClockNodeOut;
 use app_output::clock_tree_output::write_clock_tree_outputs;
 use app_output::output_plan::OutputSelection;
@@ -10,7 +11,6 @@ use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime::cancel::Cancel;
 use treetime::clock::clock_model::ClockModel;
-use treetime::clock::clock_output::write_clock_model;
 use treetime::clock::clock_regression::ClockVarianceParams;
 use treetime::clock::clock_state::ClockInputs;
 use treetime::clock::find_best_root::params::BranchPointOptimizationParams;

@@ -9,10 +9,9 @@ use ndarray::{Array1, Array2, array};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use std::path::Path;
 use strum_macros::Display;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
-use treetime_utils::io::json::{JsonPretty, json_write_file, json_write_str};
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[allow(
   clippy::expect_used,
@@ -22,10 +21,6 @@ pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName, log: &dyn LogSink) {
   let output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
   let json = json_write_str(&output, JsonPretty(true)).expect("GTR JSON serialization failed");
   progress_info!(log, "GTR model initialized:\n{json}");
-}
-
-pub fn write_gtr_json(output: &GtrOutput, path: impl AsRef<Path>) -> Result<(), Report> {
-  json_write_file(path, output, JsonPretty(true))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

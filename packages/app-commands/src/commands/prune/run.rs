@@ -1,6 +1,7 @@
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use app_output::gtr::write_gtr_json;
 use app_output::output_plan::OutputSelection;
 use app_output::prune_result::{EdgeOut, PruneNodeOut, PruneOutputMaps, PruneResult};
 use app_output::prune_tree_output::write_prune_tree_outputs;
@@ -11,7 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
-use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, write_gtr_json};
+use treetime::gtr::get_gtr::{GtrModelName, GtrOutput};
 use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_warn;
