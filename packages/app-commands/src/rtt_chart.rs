@@ -13,7 +13,7 @@ use treetime_utils::make_error;
 #[cfg(feature = "png")]
 use image::{ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb, codecs::png::PngEncoder};
 #[cfg(feature = "png")]
-use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::file::write_file_with;
 
 const CHART_SIZE: (u32, u32) = (1200, 800);
 
@@ -36,10 +36,10 @@ pub fn write_clock_regression_chart_png(
   _log: &dyn LogSink,
 ) -> Result<(), Report> {
   let img = write_clock_regression_chart_bitmap(results, clock_model)?;
-  let mut f = &mut create_file_or_stdout(filepath)?;
-  let encoder = PngEncoder::new(&mut f);
-  encoder.write_image(img.as_bytes(), img.width(), img.height(), ColorType::Rgb8.into())?;
-  Ok(())
+  write_file_with(filepath, |f| {
+    PngEncoder::new(f).write_image(img.as_bytes(), img.width(), img.height(), ColorType::Rgb8.into())?;
+    Ok(())
+  })
 }
 
 #[cfg(not(feature = "png"))]

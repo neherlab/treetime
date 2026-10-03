@@ -45,6 +45,10 @@ impl CsvStructFileWriter {
     self.writer.write(record)?;
     Ok(())
   }
+
+  pub fn finish(self) -> Result<(), Report> {
+    self.writer.into_inner()?.finish()
+  }
 }
 
 pub struct CsvStructWriter<W: Write + Send> {
@@ -60,6 +64,14 @@ impl<W: Write + Send> CsvStructWriter<W> {
   pub fn write<T: Serialize>(&mut self, record: &T) -> Result<(), Report> {
     self.writer.serialize(record)?;
     Ok(())
+  }
+
+  pub fn into_inner(self) -> Result<W, Report> {
+    self
+      .writer
+      .into_inner()
+      .map_err(|error| Report::new(error.into_error()))
+      .wrap_err("While flushing CSV output")
   }
 }
 

@@ -1,4 +1,4 @@
-use crate::io::file::{create_file_or_stdout, open_file_or_stdin};
+use crate::io::file::{open_file_or_stdin, write_file_with};
 use eyre::{Report, WrapErr};
 use serde::{Deserialize, Serialize};
 use serde_json::{Deserializer, de::Read};
@@ -30,9 +30,7 @@ fn deserialize_without_recursion_limit<'de, R: Read<'de>, T: Deserialize<'de>>(
 }
 
 pub fn json_write_file<T: Serialize>(filepath: impl AsRef<Path>, obj: &T, pretty: JsonPretty) -> Result<(), Report> {
-  let filepath = filepath.as_ref();
-  json_write(create_file_or_stdout(filepath)?, &obj, pretty)
-    .wrap_err_with(|| format!("When writing JSON file: '{}'", filepath.display()))
+  write_file_with(filepath, |writer| json_write(writer, obj, pretty))
 }
 
 pub fn json_write_str<T: Serialize>(obj: &T, pretty: JsonPretty) -> Result<String, Report> {

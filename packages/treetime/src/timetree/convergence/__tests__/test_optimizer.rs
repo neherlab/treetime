@@ -254,8 +254,8 @@ mod tests {
     let graph = helpers::empty_graph();
     let inference = empty_time_inference(&graph);
     let records = Arc::new(Mutex::new(vec![]));
-    let mut optimizer =
-      TimetreeOptimizer::new(3, false).with_trace_sink(Box::new(helpers::RecordingSink(Arc::clone(&records))));
+    let mut sink = helpers::RecordingSink(Arc::clone(&records));
+    let mut optimizer = TimetreeOptimizer::new(3, false).with_trace_sink(&mut sink);
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(

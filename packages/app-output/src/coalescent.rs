@@ -48,5 +48,5 @@ pub fn write_coalescent_delimited(
   for row in output.rows() {
     writer.write(&row)?;
   }
-  Ok(())
+  writer.finish()
 }

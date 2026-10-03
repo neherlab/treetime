@@ -66,13 +66,13 @@ impl<'r> Decompressor<'r> {
   pub fn from_str_and_path(content: &'r str, filepath: impl AsRef<Path>) -> Result<Self, Report> {
     let filepath = filepath.as_ref();
     let reader = content.as_bytes();
-    let (compression_type, ext) = guess_compression_from_filepath(filepath);
+    let (compression_type, _) = guess_compression_from_filepath(filepath);
     Self::new(reader, &compression_type)
   }
 
   pub fn from_path<R: 'r + Read>(reader: R, filepath: impl AsRef<Path>) -> Result<Self, Report> {
     let filepath = filepath.as_ref();
-    let (compression_type, ext) = guess_compression_from_filepath(filepath);
+    let (compression_type, _) = guess_compression_from_filepath(filepath);
     Self::new(reader, &compression_type)
   }
 }
@@ -174,7 +174,7 @@ impl<'w> Compressor<'w> {
 
   pub fn from_path<W: 'w + Write + Send>(writer: W, filepath: impl AsRef<Path>) -> Result<Self, Report> {
     let filepath = filepath.as_ref();
-    let (compression_type, ext) = guess_compression_from_filepath(filepath);
+    let (compression_type, _) = guess_compression_from_filepath(filepath);
     let mut compressor = Self::new(writer, &compression_type)?;
     compressor.filepath = Some(filepath.display().to_string());
     Ok(compressor)

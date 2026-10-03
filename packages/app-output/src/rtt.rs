@@ -9,5 +9,6 @@ pub fn write_clock_regression_result_csv(
   delimiter: u8,
 ) -> Result<(), Report> {
   let mut rtt_writer = CsvStructFileWriter::new(filepath, delimiter)?;
-  results.iter().try_for_each(|result| rtt_writer.write(result))
+  results.iter().try_for_each(|result| rtt_writer.write(result))?;
+  rtt_writer.finish()
 }

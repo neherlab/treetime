@@ -55,7 +55,7 @@ use treetime_utils::make_report;
 pub fn run(
   params: &TimetreeParams,
   input: TimetreeInput,
-  trace_sink: Option<Box<dyn TraceSink + '_>>,
+  trace_sink: Option<&mut dyn TraceSink>,
   seq_sink: Option<&mut dyn SeqSink>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,

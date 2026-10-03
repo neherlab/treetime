@@ -8,7 +8,7 @@ use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::file::write_file_with;
 use util_newick::NwkStyle;
 
 pub fn nex_write_file_with(
@@ -20,10 +20,11 @@ pub fn nex_write_file_with(
   providers: &CommentProviders,
 ) -> Result<(), Report> {
   let filepath = filepath.as_ref();
-  let context = || format!("When writing Nexus file '{}'", filepath.display());
-  let mut f = create_file_or_stdout(filepath)?;
-  nex_write_with(&mut f, graph, names, weights, options, providers).wrap_err_with(context)?;
-  writeln!(f).wrap_err_with(context)
+  write_file_with(filepath, |f| {
+    nex_write_with(&mut *f, graph, names, weights, options, providers)?;
+    writeln!(f).map_err(Report::new)
+  })
+  .wrap_err_with(|| format!("When writing Nexus file '{}'", filepath.display()))
 }
 
 #[cfg_attr(

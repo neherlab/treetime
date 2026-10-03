@@ -14,7 +14,7 @@ pub(crate) fn run_refinement_loop(
   coalescent: &CoalescentSetup,
   mut timescale: CoalescentTimescale,
   mut state: RoundState,
-  trace_sink: Option<Box<dyn TraceSink + '_>>,
+  trace_sink: Option<&mut dyn TraceSink>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,

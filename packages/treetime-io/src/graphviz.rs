@@ -8,7 +8,7 @@ use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
-use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::file::write_file_with;
 use treetime_utils::make_internal_report;
 
 const FAKE_EDGE_BASE_WEIGHT: usize = 1000;
@@ -22,8 +22,8 @@ pub fn graphviz_write_file(
 ) -> Result<(), Report> {
   let filepath = filepath.as_ref();
   let text = graphviz_write_str(graph, names, weights)?;
-  let mut f = create_file_or_stdout(filepath)?;
-  writeln!(f, "{text}").wrap_err_with(|| format!("When writing Graphviz file '{}'", filepath.display()))
+  write_file_with(filepath, |f| writeln!(f, "{text}").map_err(Report::new))
+    .wrap_err_with(|| format!("When writing Graphviz file '{}'", filepath.display()))
 }
 
 fn graphviz_write_str(

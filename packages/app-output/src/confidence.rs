@@ -3,11 +3,10 @@ use std::io::Write;
 use std::path::Path;
 use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime_io::csv::CsvStructWriter;
-use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::file::write_file_with;
 
 pub fn write_confidence_intervals_file(intervals: &[NodeConfidenceInterval], filepath: &Path) -> Result<(), Report> {
-  let file = create_file_or_stdout(filepath)?;
-  write_confidence_intervals(intervals, file)
+  write_file_with(filepath, |file| write_confidence_intervals(intervals, file))
 }
 
 pub(crate) fn write_confidence_intervals(
@@ -15,7 +14,9 @@ pub(crate) fn write_confidence_intervals(
   writer: impl Write + Send,
 ) -> Result<(), Report> {
   let mut csv = CsvStructWriter::new(writer, b'\t')?;
-  intervals.iter().try_for_each(|ci| csv.write(ci))
+  intervals.iter().try_for_each(|ci| csv.write(ci))?;
+  csv.into_inner()?;
+  Ok(())
 }
 
 #[cfg(test)]

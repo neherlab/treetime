@@ -1,18 +1,22 @@
 use eyre::Report;
-use std::io::Write;
+use std::path::Path;
 use treetime::timetree::convergence::metrics::IterationRecord;
 use treetime::timetree::convergence::optimizer::TraceSink;
-use treetime_io::csv::CsvStructWriter;
+use treetime_io::csv::CsvStructFileWriter;
 
 pub struct TraceCsvSink {
-  writer: CsvStructWriter<Box<dyn Write + Send>>,
+  writer: CsvStructFileWriter,
 }
 
 impl TraceCsvSink {
-  pub fn new(writer: Box<dyn Write + Send>) -> Result<Self, Report> {
+  pub fn new(filepath: impl AsRef<Path>) -> Result<Self, Report> {
     Ok(Self {
-      writer: CsvStructWriter::new(writer, b',')?,
+      writer: CsvStructFileWriter::new(filepath, b',')?,
     })
+  }
+
+  pub fn finish(self) -> Result<(), Report> {
+    self.writer.finish()
   }
 }
 

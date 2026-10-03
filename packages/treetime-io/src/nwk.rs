@@ -11,8 +11,8 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::fmt::float::float_to_digits;
-use treetime_utils::io::file::create_file_or_stdout;
 use treetime_utils::io::file::open_file_or_stdin;
+use treetime_utils::io::file::write_file_with;
 use treetime_utils::make_error;
 use treetime_utils::make_internal_report;
 use treetime_utils::make_report;
@@ -143,8 +143,8 @@ pub fn nwk_write_file_with(
 ) -> Result<(), Report> {
   let filepath = filepath.as_ref();
   let text = nwk_write_str_with(graph, names, weights, options, providers)?;
-  let mut f = create_file_or_stdout(filepath)?;
-  writeln!(f, "{text}").wrap_err_with(|| format!("When writing Newick file '{}'", filepath.display()))
+  write_file_with(filepath, |f| writeln!(f, "{text}").map_err(Report::new))
+    .wrap_err_with(|| format!("When writing Newick file '{}'", filepath.display()))
 }
 
 pub fn nwk_write_str(

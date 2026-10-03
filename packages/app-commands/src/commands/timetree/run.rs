@@ -3,7 +3,7 @@ use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
-use crate::commands::timetree::trace::timetree_trace_sink;
+use crate::commands::timetree::trace::TimetreeTraceSink;
 use app_output::DateCommentProvider;
 use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data::write_augur_node_data_json;
@@ -78,7 +78,7 @@ pub fn run_timetree_estimation(
       .tree_outputs
       .keys()
       .any(|kind| !matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot));
-  let trace_sink = timetree_trace_sink(
+  let mut trace_sink = TimetreeTraceSink::new(
     resolved
       .non_tree_outputs
       .get(&OutputSelection::Tracelog)
@@ -151,13 +151,14 @@ pub fn run_timetree_estimation(
   let output = pipeline::run(
     &params,
     input,
-    Some(trace_sink),
+    Some(&mut trace_sink),
     recon_sink.as_mut().map(|sink| -> &mut dyn SeqSink { sink }),
     cancel,
     stages,
     log,
   )
   .map_err(|err| err.into_report())?;
+  trace_sink.finish()?;
   if let (Some(sink), Some(path)) = (recon_sink, &reconstructed_nuc_fasta) {
     sink.writer.finish()?;
     progress_info!(

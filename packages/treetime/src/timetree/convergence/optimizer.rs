@@ -15,7 +15,7 @@ use treetime_graph::node::GraphNodeKey;
 
 pub(crate) struct TimetreeOptimizer<'a> {
   pub(crate) trace: Vec<ConvergenceMetrics>,
-  trace_sink: Option<Box<dyn TraceSink + 'a>>,
+  trace_sink: Option<&'a mut dyn TraceSink>,
   max_iterations: usize,
   suppress_convergence: bool,
   pub(crate) i: usize,
@@ -33,7 +33,7 @@ impl<'a> TimetreeOptimizer<'a> {
   }
 
   #[must_use]
-  pub(crate) fn with_trace_sink(mut self, sink: Box<dyn TraceSink + 'a>) -> Self {
+  pub(crate) fn with_trace_sink(mut self, sink: &'a mut dyn TraceSink) -> Self {
     self.trace_sink = Some(sink);
     self
   }
