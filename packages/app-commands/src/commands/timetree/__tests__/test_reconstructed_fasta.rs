@@ -93,9 +93,9 @@ mod tests {
         let imp = AsciiChar::from_byte_unchecked(*imp);
         if alphabet.is_gap(obs) {
           assert!(alphabet.is_gap(imp), "gaps are inferred structure and stay gaps");
-        } else if alphabet.is_ambiguous(obs) || alphabet.is_unknown(obs) {
+        } else if alphabet.is_ambiguous(obs) || obs == alphabet.unknown() {
           assert!(
-            !alphabet.is_ambiguous(imp) && !alphabet.is_unknown(imp),
+            !alphabet.is_ambiguous(imp) && imp != alphabet.unknown(),
             "imputed tip position must resolve to a canonical state, got {}",
             char::from(imp.inner())
           );
