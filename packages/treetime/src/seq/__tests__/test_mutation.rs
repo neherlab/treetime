@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod tests {
+  use crate::alphabet::alphabet::Alphabet;
   use crate::seq::mutation::{AlignedMutation, MutationEvent, Sub, compose_substitutions, mutation_event_strings};
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
+  use rstest::rstest;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
 
@@ -149,6 +151,22 @@ mod tests {
     let expected = vec!["C2-".to_owned(), "G3-".to_owned()];
     assert_eq!(expected, actual);
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::canonical_change(   b'C', b'T', true)]
+  #[case::incompatible_code(  b'C', b'K', true)]
+  #[case::compatible_code(    b'G', b'K', false)]
+  #[case::unknown(            b'C', b'N', false)]
+  #[case::overlapping_codes(  b'R', b'K', false)]
+  #[trace]
+  fn test_mutation_sub_changes_state_only_when_state_sets_are_disjoint(
+    #[case] reff: u8,
+    #[case] qry: u8,
+    #[case] expected: bool,
+  ) {
+    assert_eq!(expected, helpers::sub(reff, 0, qry).changes_state(&Alphabet::default()));
   }
 
   proptest! {

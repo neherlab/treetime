@@ -113,6 +113,25 @@ pub(crate) fn sequence_subs(
     .collect()
 }
 
+pub(crate) fn edge_state_change_counts(
+  edge_mutations: &BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  alphabet: &Alphabet,
+) -> BTreeMap<GraphEdgeKey, usize> {
+  edge_mutations
+    .iter()
+    .map(|(&edge_key, mutations)| {
+      let count = mutations
+        .iter()
+        .filter(|mutation| match &mutation.event {
+          MutationEvent::Substitution(substitution) => substitution.changes_state(alphabet),
+          MutationEvent::Insertion(_) | MutationEvent::Deletion(_) => false,
+        })
+        .count();
+      (edge_key, count)
+    })
+    .collect()
+}
+
 pub(crate) fn combine_edge_mutations(
   subs: Vec<Sub>,
   indels: &[InDel],
@@ -315,6 +334,13 @@ impl Sub {
     } else {
       Ok(())
     }
+  }
+
+  pub(crate) fn changes_state(&self, alphabet: &Alphabet) -> bool {
+    alphabet
+      .canonical_states(self.reff)
+      .intersection(&alphabet.canonical_states(self.qry))
+      .is_empty()
   }
 
   pub(crate) fn invert(&mut self) {

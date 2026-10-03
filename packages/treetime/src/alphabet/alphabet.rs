@@ -247,6 +247,16 @@ impl Alphabet {
     self.canonical.len()
   }
 
+  pub fn canonical_states(&self, c: AsciiChar) -> StateSet {
+    if self.is_unknown(c) {
+      return self.canonical;
+    }
+    self
+      .char_to_set
+      .get(&c)
+      .map_or_else(StateSet::default, |set| set.intersection(&self.canonical))
+  }
+
   pub fn is_ambiguous(&self, c: AsciiChar) -> bool {
     self.ambiguous_keys.contains(c)
   }

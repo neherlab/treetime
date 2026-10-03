@@ -24,7 +24,6 @@ use treetime::gtr::get_gtr::GtrOutput;
 use treetime::make_error;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::{LogSink, StageSink};
-use treetime::seq::mutation::{Mutation, MutationEvent};
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::params::TimetreeParams;
@@ -168,6 +167,7 @@ pub fn run_timetree_estimation(
     dates,
     root_sequence,
     edge_mutations,
+    edge_mutation_counts,
   } = output;
 
   let mutation_counts = if mutation_units {
@@ -177,7 +177,7 @@ pub fn run_timetree_estimation(
          incompatible with --branch-length-mode=input"
       );
     }
-    Some(substitution_counts(&edge_mutations))
+    Some(edge_mutation_counts)
   } else {
     None
   };
@@ -419,19 +419,6 @@ fn timetree_edge_outputs(
         date_branch_length,
       };
       (key, out)
-    })
-    .collect()
-}
-
-fn substitution_counts(edge_mutations: &BTreeMap<GraphEdgeKey, Vec<Mutation>>) -> BTreeMap<GraphEdgeKey, usize> {
-  edge_mutations
-    .iter()
-    .map(|(&key, mutations)| {
-      let count = mutations
-        .iter()
-        .filter(|mutation| matches!(mutation.event, MutationEvent::Substitution(_)))
-        .count();
-      (key, count)
     })
     .collect()
 }
