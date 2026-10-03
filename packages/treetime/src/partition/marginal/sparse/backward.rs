@@ -9,6 +9,7 @@ use crate::partition::storage::sparse::{
 use eyre::Report;
 use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -45,12 +46,11 @@ fn process_node_backward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: &GraphPassBackwardContext<'_, SparseNodeState, SparseEdgeObs, SparseNodeState, SparseEdgeBackward>,
+  context: &GraphPassBackwardContext<'_, &SparseNodeState, SparseEdgeObs, SparseNodeState, SparseEdgeBackward>,
 ) -> Result<GraphPassNodeOutput<SparseNodeState, SparseEdgeBackward>, Report> {
   let alphabet = &partition.alphabet;
   let length = partition.length;
   let obs = &partition.obs_nodes[&context.key];
-  let node = context.input.clone();
 
   let msg_to_parent = if context.is_leaf {
     let fixed = alphabet
@@ -131,10 +131,9 @@ fn process_node_backward_indexed(
     )?
   };
 
-  let mut node = node;
-  let parent_message = if context.is_root {
-    node.profile = msg_to_parent;
-    None
+  let sequence = Arc::clone(&context.input.sequence);
+  let (profile, parent_message) = if context.is_root {
+    (msg_to_parent, None)
   } else {
     let (edge_key, edge_obs) = context.parent_edge.expect("Non-root node must own its parent edge");
     let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
@@ -153,11 +152,17 @@ fn process_node_backward_indexed(
         edge_obs.transmission.as_deref(),
       )
     };
-    Some(SparseEdgeBackward {
-      msg_to_parent,
-      msg_from_child,
-    })
+    (
+      SparseSeqDistribution::default(),
+      Some(SparseEdgeBackward {
+        msg_to_parent,
+        msg_from_child,
+      }),
+    )
   };
 
-  Ok(GraphPassNodeOutput { node, parent_message })
+  Ok(GraphPassNodeOutput {
+    node: SparseNodeState { sequence, profile },
+    parent_message,
+  })
 }

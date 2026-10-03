@@ -186,7 +186,7 @@ mod tests {
       let node_key = find_node_key_by_name(&graph, &names, name).expect("expected internal node must exist");
       let sequence = &recon.node_states[&node_key].sequence;
       let stored_composition = Composition::with_seq(
-        sequence,
+        &**sequence,
         recon.partition.alphabet.chars(),
         recon.partition.alphabet.gap(),
       );

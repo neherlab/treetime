@@ -334,7 +334,7 @@ fn clock_regression_backward_node(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   inputs: &ClockInputs,
   outliers: &BTreeSet<GraphNodeKey>,
-  context: &GraphPassBackwardContext<'_, ClockSet, ClockEdgeState, ClockSet, ClockEdgeState>,
+  context: &GraphPassBackwardContext<'_, &ClockSet, ClockEdgeState, ClockSet, ClockEdgeState>,
 ) -> Result<GraphPassNodeOutput<ClockSet, ClockEdgeState>, Report> {
   let mut node = context.input.clone();
   let is_leaf = context.is_leaf;

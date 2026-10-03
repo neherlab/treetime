@@ -3,6 +3,7 @@ use crate::edge::GraphEdgeKey;
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
 use eyre::Report;
+use parking_lot::Mutex;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
 use treetime_utils::make_internal_report;
@@ -70,17 +71,13 @@ impl GraphPass {
     })
   }
 
-  #[allow(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   pub fn map_backward<N, E, NodeOut, EdgeOut>(
     &self,
     nodes: &BTreeMap<GraphNodeKey, N>,
     edges: &BTreeMap<GraphEdgeKey, E>,
     missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
     visit: impl Fn(
-      GraphPassBackwardContext<'_, N, E, NodeOut, EdgeOut>,
+      GraphPassBackwardContext<'_, &N, E, NodeOut, EdgeOut>,
     ) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
     + Sync
     + Send,
@@ -92,7 +89,87 @@ impl GraphPass {
     EdgeOut: Send + Sync,
   {
     let created = self.validate_and_create_missing(nodes, edges, missing_node)?;
+    self.run_backward(edges, |index| self.resolve_node(nodes, &created, index), visit)
+  }
 
+  pub fn map_backward_owned<N, E, NodeOut, EdgeOut>(
+    &self,
+    nodes: BTreeMap<GraphNodeKey, N>,
+    edges: &BTreeMap<GraphEdgeKey, E>,
+    missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
+    visit: impl Fn(
+      GraphPassBackwardContext<'_, N, E, NodeOut, EdgeOut>,
+    ) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
+    + Sync
+    + Send,
+  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
+  where
+    N: Send,
+    E: Sync,
+    NodeOut: Send + Sync,
+    EdgeOut: Send + Sync,
+  {
+    let slots = self.input_slots(nodes, edges, missing_node)?;
+    self.run_backward(edges, |index| take_input_slot(&slots, index), visit)
+  }
+
+  pub fn map_forward<N, E, NodeOut, EdgeOut>(
+    &self,
+    nodes: &BTreeMap<GraphNodeKey, N>,
+    edges: &BTreeMap<GraphEdgeKey, E>,
+    missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
+    visit: impl Fn(GraphPassForwardContext<'_, &N, E, NodeOut>) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
+    + Sync
+    + Send,
+  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
+  where
+    N: Sync,
+    E: Sync,
+    NodeOut: Send + Sync,
+    EdgeOut: Send + Sync,
+  {
+    let created = self.validate_and_create_missing(nodes, edges, missing_node)?;
+    self.run_forward(edges, |index| self.resolve_node(nodes, &created, index), visit)
+  }
+
+  pub fn map_forward_owned<N, E, NodeOut, EdgeOut>(
+    &self,
+    nodes: BTreeMap<GraphNodeKey, N>,
+    edges: &BTreeMap<GraphEdgeKey, E>,
+    missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
+    visit: impl Fn(GraphPassForwardContext<'_, N, E, NodeOut>) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
+    + Sync
+    + Send,
+  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
+  where
+    N: Send,
+    E: Sync,
+    NodeOut: Send + Sync,
+    EdgeOut: Send + Sync,
+  {
+    let slots = self.input_slots(nodes, edges, missing_node)?;
+    self.run_forward(edges, |index| take_input_slot(&slots, index), visit)
+  }
+
+  #[allow(
+    clippy::expect_used,
+    reason = "expect on a value an upstream invariant guarantees is present"
+  )]
+  fn run_backward<I, E, NodeOut, EdgeOut>(
+    &self,
+    edges: &BTreeMap<GraphEdgeKey, E>,
+    input_at: impl Fn(usize) -> I + Sync,
+    visit: impl Fn(
+      GraphPassBackwardContext<'_, I, E, NodeOut, EdgeOut>,
+    ) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
+    + Sync
+    + Send,
+  ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
+  where
+    E: Sync,
+    NodeOut: Send + Sync,
+    EdgeOut: Send + Sync,
+  {
     let prerequisites = self.children.iter().map(Vec::len).collect::<Vec<_>>();
     let successors = self
       .parents
@@ -106,7 +183,6 @@ impl GraphPass {
 
     run_dependency_queue(&prerequisites, &successors, |index| {
       let node = &self.nodes[index];
-      let input = self.resolve_node(nodes, &created, index);
       let parent_edge = node.parent_edge.map(|(_, edge_key)| (edge_key, &edges[&edge_key]));
 
       let children = self.children[index]
@@ -130,7 +206,7 @@ impl GraphPass {
         key: node.key,
         is_leaf: self.children[index].is_empty(),
         is_root: self.parents[index].is_none(),
-        input,
+        input: input_at(index),
         parent_edge,
         children: &children,
       };
@@ -149,23 +225,19 @@ impl GraphPass {
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
-  pub fn map_forward<N, E, NodeOut, EdgeOut>(
+  fn run_forward<I, E, NodeOut, EdgeOut>(
     &self,
-    nodes: &BTreeMap<GraphNodeKey, N>,
     edges: &BTreeMap<GraphEdgeKey, E>,
-    missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
-    visit: impl Fn(GraphPassForwardContext<'_, N, E, NodeOut>) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
+    input_at: impl Fn(usize) -> I + Sync,
+    visit: impl Fn(GraphPassForwardContext<'_, I, E, NodeOut>) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
     + Sync
     + Send,
   ) -> Result<GraphMapOutputs<NodeOut, EdgeOut>, Report>
   where
-    N: Sync,
     E: Sync,
     NodeOut: Send + Sync,
     EdgeOut: Send + Sync,
   {
-    let created = self.validate_and_create_missing(nodes, edges, missing_node)?;
-
     let prerequisites = self
       .parents
       .iter()
@@ -179,7 +251,6 @@ impl GraphPass {
 
     run_dependency_queue(&prerequisites, &successors, |index| {
       let node = &self.nodes[index];
-      let input = self.resolve_node(nodes, &created, index);
       let parent_edge = node.parent_edge.map(|(_, edge_key)| (edge_key, &edges[&edge_key]));
 
       let parent = self.parents[index].map(|parent_index| {
@@ -194,7 +265,7 @@ impl GraphPass {
         key: node.key,
         is_leaf: self.children[index].is_empty(),
         is_root: self.parents[index].is_none(),
-        input,
+        input: input_at(index),
         parent_key,
         parent_edge,
         parent,
@@ -210,12 +281,11 @@ impl GraphPass {
     self.collect_map_outputs(completed)
   }
 
-  fn validate_and_create_missing<N, E>(
+  fn validate_topology<N, E>(
     &self,
     nodes: &BTreeMap<GraphNodeKey, N>,
     edges: &BTreeMap<GraphEdgeKey, E>,
-    mut missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
-  ) -> Result<BTreeMap<GraphNodeKey, N>, Report> {
+  ) -> Result<(), Report> {
     if nodes.keys().any(|key| !self.node_index.contains_key(key))
       || edges.keys().any(|key| !self.edge_keys.contains(key))
     {
@@ -228,6 +298,16 @@ impl GraphPass {
         "Partition edge set does not match the graph while indexing a pass"
       ));
     }
+    Ok(())
+  }
+
+  fn validate_and_create_missing<N, E>(
+    &self,
+    nodes: &BTreeMap<GraphNodeKey, N>,
+    edges: &BTreeMap<GraphEdgeKey, E>,
+    mut missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
+  ) -> Result<BTreeMap<GraphNodeKey, N>, Report> {
+    self.validate_topology(nodes, edges)?;
     let mut created = BTreeMap::new();
     for node in &self.nodes {
       if !nodes.contains_key(&node.key) {
@@ -235,6 +315,26 @@ impl GraphPass {
       }
     }
     Ok(created)
+  }
+
+  fn input_slots<N, E>(
+    &self,
+    mut nodes: BTreeMap<GraphNodeKey, N>,
+    edges: &BTreeMap<GraphEdgeKey, E>,
+    mut missing_node: impl FnMut(GraphNodeKey) -> Result<N, Report>,
+  ) -> Result<Vec<Mutex<Option<N>>>, Report> {
+    self.validate_topology(&nodes, edges)?;
+    self
+      .nodes
+      .iter()
+      .map(|node| {
+        let input = match nodes.remove(&node.key) {
+          Some(input) => input,
+          None => missing_node(node.key)?,
+        };
+        Ok(Mutex::new(Some(input)))
+      })
+      .collect()
   }
 
   #[allow(
@@ -289,11 +389,22 @@ impl GraphPass {
   }
 }
 
-pub struct GraphPassBackwardContext<'a, N, E, NodeOut, EdgeOut> {
+#[allow(
+  clippy::expect_used,
+  reason = "expect on a value an upstream invariant guarantees is present"
+)]
+fn take_input_slot<N>(slots: &[Mutex<Option<N>>], index: usize) -> N {
+  slots[index]
+    .lock()
+    .take()
+    .expect("Dependency queue must visit each indexed slot once")
+}
+
+pub struct GraphPassBackwardContext<'a, I, E, NodeOut, EdgeOut> {
   pub key: GraphNodeKey,
   pub is_leaf: bool,
   pub is_root: bool,
-  pub input: &'a N,
+  pub input: I,
   pub parent_edge: Option<(GraphEdgeKey, &'a E)>,
   pub children: &'a [GraphPassChildBackward<'a, NodeOut, EdgeOut>],
 }
@@ -305,11 +416,11 @@ pub struct GraphPassChildBackward<'a, NodeOut, EdgeOut> {
   pub edge: Option<&'a EdgeOut>,
 }
 
-pub struct GraphPassForwardContext<'a, N, E, NodeOut> {
+pub struct GraphPassForwardContext<'a, I, E, NodeOut> {
   pub key: GraphNodeKey,
   pub is_leaf: bool,
   pub is_root: bool,
-  pub input: &'a N,
+  pub input: I,
   pub parent_key: Option<GraphNodeKey>,
   pub parent_edge: Option<(GraphEdgeKey, &'a E)>,
   pub parent: Option<&'a NodeOut>,

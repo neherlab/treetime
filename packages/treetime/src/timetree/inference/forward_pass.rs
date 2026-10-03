@@ -55,7 +55,7 @@ fn propagate_distributions_forward_node(
   constraints: &DateConstraints,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   messages: &BTreeMap<GraphEdgeKey, TimeDistribution>,
-  context: &GraphPassForwardContext<'_, TimeDistribution, BranchLikelihood, NodePosterior>,
+  context: &GraphPassForwardContext<'_, &TimeDistribution, BranchLikelihood, NodePosterior>,
   log: &dyn LogSink,
 ) -> Result<GraphPassNodeOutput<NodePosterior, ()>, Report> {
   let date_constraint = constraints.date_constraint(context.key);

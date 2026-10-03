@@ -6,6 +6,7 @@ use eyre::Report;
 use itertools::izip;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -95,7 +96,7 @@ pub(crate) fn slide_bifurcating_root_for_child(
         partition.root_sequence[pos] = sibling_sub.qry();
         if let Some(root_node) = node_states.get_mut(&root_key) {
           if pos < root_node.sequence.len() {
-            root_node.sequence[pos] = sibling_sub.qry();
+            Arc::make_mut(&mut root_node.sequence)[pos] = sibling_sub.qry();
           }
         }
         let mut inverted = sibling_sub.clone();

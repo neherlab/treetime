@@ -145,7 +145,7 @@ impl ClockState {
   pub(crate) fn map_backward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
   where
     F: Fn(
-        GraphPassBackwardContext<'_, ClockSet, ClockEdgeState, ClockSet, ClockEdgeState>,
+        GraphPassBackwardContext<'_, &ClockSet, ClockEdgeState, ClockSet, ClockEdgeState>,
       ) -> Result<GraphPassNodeOutput<ClockSet, ClockEdgeState>, Report>
       + Sync
       + Send,
@@ -161,7 +161,7 @@ impl ClockState {
   pub(crate) fn map_forward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
   where
     F: Fn(
-        GraphPassForwardContext<'_, ClockSet, ClockEdgeState, ClockSet>,
+        GraphPassForwardContext<'_, &ClockSet, ClockEdgeState, ClockSet>,
       ) -> Result<GraphPassNodeOutput<ClockSet, ClockEdgeState>, Report>
       + Sync
       + Send,

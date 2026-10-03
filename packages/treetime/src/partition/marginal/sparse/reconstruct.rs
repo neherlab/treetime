@@ -36,7 +36,7 @@ pub(crate) fn map_seq(node: &SparseNodeState, alphabet: &Alphabet) -> Seq {
 }
 
 pub(crate) fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resolve: &mut Resolve) -> Seq {
-  let mut seq = node.sequence.clone();
+  let mut seq = (*node.sequence).clone();
 
   for (&pos, var) in &node.profile.variable {
     if seq[pos] != alphabet.gap() {
@@ -66,7 +66,7 @@ pub(crate) fn reconstruct_leaf_sequence(
   impute: bool,
   alphabet: &Alphabet,
 ) -> Seq {
-  let mut seq = node.sequence.clone();
+  let mut seq = (*node.sequence).clone();
 
   for (&pos, states) in &node_obs.fitch.variable {
     seq[pos] = alphabet.set_to_char(*states);

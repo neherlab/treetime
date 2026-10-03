@@ -8,6 +8,7 @@ use crate::seq::alignment::NodeSeqInput;
 use eyre::Report;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -38,7 +39,7 @@ impl PartitionFitch {
       node_states.insert(
         key,
         SparseNodeState {
-          sequence,
+          sequence: Arc::new(sequence),
           profile: SparseSeqDistribution::default(),
         },
       );

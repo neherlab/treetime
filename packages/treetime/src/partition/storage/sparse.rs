@@ -9,6 +9,7 @@ use maplit::btreemap;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 use treetime_primitives::AlphabetLike;
 use treetime_primitives::{AsciiChar, LogLh, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
@@ -67,21 +68,21 @@ impl SparseNodeObs {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseNodeState {
-  pub(crate) sequence: Seq,
+  pub(crate) sequence: Arc<Seq>,
   pub(crate) profile: SparseSeqDistribution,
 }
 
 impl SparseNodeState {
   pub(crate) fn empty() -> Self {
     Self {
-      sequence: seq![],
+      sequence: Arc::new(seq![]),
       profile: SparseSeqDistribution::default(),
     }
   }
 
   pub fn leaf(seq: &Seq) -> Self {
     Self {
-      sequence: seq.to_owned(),
+      sequence: Arc::new(seq.to_owned()),
       profile: SparseSeqDistribution::default(),
     }
   }

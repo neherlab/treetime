@@ -51,7 +51,7 @@ mod tests {
 
       let compositions_match = recon.node_states.iter().all(|(key, node)| {
         let expected = Composition::with_seq(
-          &node.sequence,
+          &**node.sequence,
           recon.partition.alphabet.chars(),
           recon.partition.alphabet.gap(),
         );

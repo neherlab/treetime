@@ -15,6 +15,7 @@ use itertools::Itertools;
 use maplit::btreemap;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::BTreeMap;
+use std::mem;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
@@ -91,11 +92,11 @@ pub(crate) fn fitch_backward(graph: &Graph, partition: &mut PartitionFitch) -> R
   let alphabet = partition.alphabet.clone();
   let length = partition.length;
   let pass = GraphPass::new(graph)?;
-  let outputs = pass.map_backward(
-    &partition.nodes,
+  let outputs = pass.map_backward_owned(
+    mem::take(&mut partition.nodes),
     &partition.edges,
     |_| Ok(FitchNodeData::empty(&alphabet)),
-    |context| run_fitch_backward_indexed(&alphabet, length, &context),
+    |context| run_fitch_backward_indexed(&alphabet, length, context),
   )?;
   partition.nodes = outputs.nodes;
   partition.edges = outputs.edges;
@@ -109,10 +110,10 @@ pub(crate) fn fitch_backward(graph: &Graph, partition: &mut PartitionFitch) -> R
 fn run_fitch_backward_indexed(
   alphabet: &Alphabet,
   length: usize,
-  context: &GraphPassBackwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData, SparseEdgeObs>,
+  context: GraphPassBackwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData, SparseEdgeObs>,
 ) -> Result<GraphPassNodeOutput<FitchNodeData, SparseEdgeObs>, Report> {
   if context.is_leaf {
-    let node = context.input.clone();
+    let node = context.input;
     let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
     return Ok(GraphPassNodeOutput { node, parent_message });
   }
@@ -171,15 +172,15 @@ fn run_fitch_backward_indexed(
 pub(crate) fn fitch_forward(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Report> {
   let alphabet = partition.alphabet.clone();
   let pass = GraphPass::new(graph)?;
-  let outputs = pass.map_forward(
-    &partition.nodes,
+  let outputs = pass.map_forward_owned(
+    mem::take(&mut partition.nodes),
     &partition.edges,
     |key| {
       Err(make_report!(
         "Partition node {key} is missing before the Fitch forward pass"
       ))
     },
-    |context| run_fitch_forward_indexed(&alphabet, &context),
+    |context| run_fitch_forward_indexed(&alphabet, context),
   )?;
   partition.nodes = outputs.nodes;
   partition.edges = outputs.edges;
@@ -193,9 +194,9 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: &mut PartitionFitch) -> Re
 )]
 fn run_fitch_forward_indexed(
   alphabet: &Alphabet,
-  context: &GraphPassForwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData>,
+  context: GraphPassForwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData>,
 ) -> Result<GraphPassNodeOutput<FitchNodeData, SparseEdgeObs>, Report> {
-  let mut node = context.input.clone();
+  let mut node = context.input;
 
   let parent_message = if let Some((_, edge)) = context.parent_edge {
     let mut edge = edge.clone();

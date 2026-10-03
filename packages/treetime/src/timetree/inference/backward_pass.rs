@@ -43,7 +43,7 @@ pub(crate) fn propagate_distributions_backward(
 fn propagate_distributions_backward_node(
   constraints: &DateConstraints,
   coalescent_model: Option<&CoalescentModel>,
-  context: &GraphPassBackwardContext<'_, bool, BranchLikelihood, TimeDistribution, TimeDistribution>,
+  context: &GraphPassBackwardContext<'_, &bool, BranchLikelihood, TimeDistribution, TimeDistribution>,
 ) -> Result<GraphPassNodeOutput<TimeDistribution, TimeDistribution>, Report> {
   let date_constraint = constraints.date_constraint(context.key);
   let messages = gather_child_messages(context.children);

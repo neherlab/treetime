@@ -83,7 +83,7 @@ pub(crate) fn indexed_backward(
 fn indexed_node_backward(
   gtr: &GTR,
   min_branch_length: f64,
-  context: &GraphPassBackwardContext<'_, (), f64, DenseNodeState, DenseEdgeBackward>,
+  context: &GraphPassBackwardContext<'_, &(), f64, DenseNodeState, DenseEdgeBackward>,
   leaf_backward: impl Fn(GraphNodeKey) -> Result<(DenseNodeState, DenseSeqDistribution), Report>,
   internal_seq: impl Fn(&[&DenseNodeState]) -> DenseSeqInfo,
 ) -> Result<GraphPassNodeOutput<DenseNodeState, DenseEdgeBackward>, Report> {
@@ -227,7 +227,7 @@ fn indexed_node_forward(
   min_branch_length: f64,
   kind: IndexedKind<'_>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: &GraphPassForwardContext<'_, DenseNodeState, DenseEdgeBackward, DenseNodeState>,
+  context: &GraphPassForwardContext<'_, &DenseNodeState, DenseEdgeBackward, DenseNodeState>,
 ) -> Result<GraphPassNodeOutput<DenseNodeState, DenseEdgeForwardOut>, Report> {
   let mut node = context.input.clone();
 

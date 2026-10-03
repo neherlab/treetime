@@ -16,6 +16,7 @@ use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -66,7 +67,7 @@ fn process_node_forward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: &GraphPassForwardContext<'_, SparseNodeState, SparseEdgeBackward, SparseNodeState>,
+  context: &GraphPassForwardContext<'_, &SparseNodeState, SparseEdgeBackward, SparseNodeState>,
 ) -> Result<GraphPassNodeOutput<SparseNodeState, SparseEdgeForwardOut>, Report> {
   let alphabet = &partition.alphabet;
   let length = partition.length;
@@ -133,7 +134,7 @@ fn process_node_forward_indexed(
     node.profile = profile;
 
     if !context.is_leaf && !parent.sequence.is_empty() {
-      node.sequence = parsimony_seq(&parent.sequence, edge_obs, obs, alphabet);
+      node.sequence = Arc::new(parsimony_seq(&parent.sequence, edge_obs, obs, alphabet));
     }
     let subs_ml = compute_ml_subs_for_nodes(alphabet, parent, parent_obs, &node, obs, edge_obs)?;
 
@@ -144,7 +145,7 @@ fn process_node_forward_indexed(
     })
   } else {
     if node.sequence.is_empty() {
-      node.sequence = partition.root_sequence.clone();
+      node.sequence = Arc::new(partition.root_sequence.clone());
     }
     None
   };
