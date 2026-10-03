@@ -44,3 +44,7 @@ def test_read_mccs_json_selects_pair(tmp_path):
 
 def test_tree_label():
     assert tree_label('results/tree_ha.nwk') == 'tree_ha'
+    # output trees of TreeKnit carry the label of their input tree
+    assert tree_label('results/tree_ha_resolved.nwk') == 'tree_ha'
+    assert tree_label('results/ARG/tree_na_liberal_resolved.nwk') == 'tree_na'
+    assert tree_label('results/tree_pb2_imputed.nwk') == 'tree_pb2'

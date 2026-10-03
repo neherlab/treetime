@@ -45,8 +45,14 @@ def read_mccs(mcc_file, tree_labels=None):
 
 
 def tree_label(tree_file):
-    """Label TreeKnit gives a tree read from `tree_file`: the file name without extension."""
-    return os.path.splitext(os.path.basename(tree_file))[0]
+    """Label TreeKnit gives the tree in `tree_file`: the file name without extension, and without
+    the suffixes of TreeKnit's output trees (`_resolved`, `_liberal_resolved`, `_imputed`), so that
+    trees written by TreeKnit match the labels in its MCC file."""
+    label = os.path.splitext(os.path.basename(tree_file))[0]
+    for suffix in ('_liberal_resolved', '_resolved', '_imputed'):
+        if label.endswith(suffix):
+            return label[: -len(suffix)]
+    return label
 
 
 def parse_arg(tree1, tree2, aln1, aln2, MCC_file, fill_overhangs=True):
