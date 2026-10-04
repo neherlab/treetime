@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::shared::update::MarginalNodeState;
+use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::{Sub, compose_substitutions};
@@ -146,7 +147,7 @@ pub struct SparseEdgeForward {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseSeqDistribution {
-  pub(crate) variable: BTreeMap<usize, VarPos>,
+  pub(crate) variable: VarPosMap,
 
   pub(crate) variable_indel: BTreeSet<(usize, usize)>,
 
@@ -160,7 +161,7 @@ pub struct SparseSeqDistribution {
 impl Default for SparseSeqDistribution {
   fn default() -> Self {
     Self {
-      variable: btreemap! {},
+      variable: VarPosMap::default(),
       variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),

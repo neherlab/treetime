@@ -355,12 +355,12 @@ mod tests {
     let root_key = graph.get_exactly_one_root()?.key();
     let root_profile = &recon.node_states[&root_key].profile;
     let pos_zero_root = array![0.28212327, 0.21643546, 0.13800802, 0.36343326];
-    pretty_assert_ulps_eq!(&root_profile.variable[&0].dis, &pos_zero_root, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(&root_profile.variable[0].dis, &pos_zero_root, epsilon = 1e-6);
 
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB node should exist");
     let ab_profile = &recon.node_states[&ab_key].profile;
     let pos_zero_ab = array![0.51275208, 0.09128506, 0.24647255, 0.14949031];
-    pretty_assert_ulps_eq!(&ab_profile.variable[&0].dis, &pos_zero_ab, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(&ab_profile.variable[0].dis, &pos_zero_ab, epsilon = 1e-6);
 
     let dis_ab_pos3 = array![
       0.0013914677323952813,
@@ -368,7 +368,7 @@ mod tests {
       0.042827146239885545,
       0.9536941844291262
     ];
-    pretty_assert_ulps_eq!(&ab_profile.variable[&3].dis, &dis_ab_pos3, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(&ab_profile.variable[3].dis, &dis_ab_pos3, epsilon = 1e-6);
 
     Ok(())
   }

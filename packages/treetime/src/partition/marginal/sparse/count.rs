@@ -78,7 +78,7 @@ fn accumulate_sparse_transitions(
   for (pos, pp_var) in &msg_to_parent.variable {
     let pc = msg_to_child
       .variable
-      .get(pos)
+      .get(*pos)
       .map_or_else(|| fixed_profile_for_var(msg_to_child, pp_var), |v| &v.dis);
     accumulate_site_transition_weighted(&pp_var.dis, pc, exp_qt, branch_length, n_states, nij, Ti, 1);
   }

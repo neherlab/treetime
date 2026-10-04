@@ -13,6 +13,7 @@ use crate::partition::marginal::sparse::reconstruct::{map_state, parsimony_seq};
 use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseNodeObs, SparseNodeState, SparseSeqDistribution, VarPos,
 };
+use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
@@ -177,7 +178,7 @@ fn compute_msg_to_child(
   backward: &SparseEdgeBackward,
 ) -> Result<SparseSeqDistribution, Report> {
   let mut seq_dis = SparseSeqDistribution {
-    variable: btreemap! {},
+    variable: VarPosMap::default(),
     variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: parent_obs.composition.clone(),
@@ -207,12 +208,12 @@ fn compute_msg_to_child(
   for (pos, parent_state) in parent_states {
     let divisor = child_dis
       .variable
-      .get(&pos)
+      .get(pos)
       .map_or(&child_dis.fixed[&child_states[&pos]], |distribution| &distribution.dis);
     let numerator = parent
       .profile
       .variable
-      .get(&pos)
+      .get(pos)
       .map_or(&parent.profile.fixed[&parent_state], |distribution| &distribution.dis);
     let mut dis = divide_out(numerator, divisor);
     let normalization = normalize_1d_inplace(&mut dis, 1.0);

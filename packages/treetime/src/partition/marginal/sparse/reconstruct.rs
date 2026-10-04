@@ -51,7 +51,7 @@ pub(crate) fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resol
 
   if matches!(resolve, Resolve::Sample(_)) {
     for pos in 0..seq.len() {
-      if node.profile.variable.contains_key(&pos) {
+      if node.profile.variable.contains_key(pos) {
         continue;
       }
       if let Some(fixed) = node.profile.fixed.get(&seq[pos]) {
@@ -112,7 +112,7 @@ pub(crate) fn impute_state(
 ) -> AsciiChar {
   let posterior = down
     .variable
-    .get(&pos)
+    .get(pos)
     .map(|var| &var.dis)
     .or_else(|| down.fixed.get(&map_state(parent, pos, alphabet)));
   let (Some(posterior), Ok(mask)) = (posterior, alphabet.get_profile(observed)) else {
@@ -123,7 +123,7 @@ pub(crate) fn impute_state(
 }
 
 pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
-  match node.profile.variable.get(&pos) {
+  match node.profile.variable.get(pos) {
     Some(var) => alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0)),
     None => node.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),
   }

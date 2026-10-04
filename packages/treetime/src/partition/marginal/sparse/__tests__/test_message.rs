@@ -29,7 +29,7 @@ mod tests {
     };
 
     let seq_dis = SparseSeqDistribution {
-      variable,
+      variable: variable.into(),
       variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
@@ -57,9 +57,9 @@ mod tests {
       0.10443316996772378
     ];
 
-    assert_abs_diff_eq!(result.variable[&0].dis, expected_0, epsilon = 1e-14);
-    assert_abs_diff_eq!(result.variable[&5].dis, expected_5, epsilon = 1e-14);
-    assert_abs_diff_eq!(result.variable[&10].dis, expected_10, epsilon = 1e-14);
+    assert_abs_diff_eq!(result.variable[0].dis, expected_0, epsilon = 1e-14);
+    assert_abs_diff_eq!(result.variable[5].dis, expected_5, epsilon = 1e-14);
+    assert_abs_diff_eq!(result.variable[10].dis, expected_10, epsilon = 1e-14);
   }
 
   #[test]
@@ -81,7 +81,7 @@ mod tests {
     };
 
     let seq_dis = SparseSeqDistribution {
-      variable,
+      variable: variable.into(),
       variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
@@ -109,8 +109,8 @@ mod tests {
       0.10443316996772378
     ];
 
-    assert_abs_diff_eq!(result.variable[&0].dis, expected_0, epsilon = 1e-14);
-    assert_abs_diff_eq!(result.variable[&5].dis, expected_5, epsilon = 1e-14);
-    assert_abs_diff_eq!(result.variable[&10].dis, expected_10, epsilon = 1e-14);
+    assert_abs_diff_eq!(result.variable[0].dis, expected_0, epsilon = 1e-14);
+    assert_abs_diff_eq!(result.variable[5].dis, expected_5, epsilon = 1e-14);
+    assert_abs_diff_eq!(result.variable[10].dis, expected_10, epsilon = 1e-14);
   }
 }

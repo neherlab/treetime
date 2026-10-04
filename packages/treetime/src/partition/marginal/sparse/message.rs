@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::partition::storage::sparse::{SparseSeqDistribution, VarPos};
+use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
 use eyre::Report;
 use maplit::btreemap;
@@ -27,7 +28,7 @@ pub(crate) fn combine_messages(
   gtr_weight: Option<&Array1<f64>>,
 ) -> Result<SparseSeqDistribution, Report> {
   let mut seq_dis = SparseSeqDistribution {
-    variable: btreemap! {},
+    variable: VarPosMap::default(),
     variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: composition.clone(),
@@ -48,7 +49,7 @@ pub(crate) fn combine_messages(
     let mut log_vec = initial_log.clone();
 
     for (msg, states) in zip(messages, reference_states) {
-      if let Some(var) = msg.variable.get(&pos) {
+      if let Some(var) = msg.variable.get(pos) {
         log_vec.zip_mut_with(&var.dis, |lv, &p| *lv += p.ln());
         if var.state != state {
           all_states_equal = false;
@@ -97,7 +98,7 @@ pub(crate) fn propagate_raw(
   transmission: Option<&[(usize, usize)]>,
 ) -> SparseSeqDistribution {
   let mut message = SparseSeqDistribution {
-    variable: btreemap! {},
+    variable: VarPosMap::default(),
     variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: seq_dis.fixed_counts.clone(),
@@ -150,7 +151,7 @@ pub(crate) fn propagate_raw_per_site(
   };
 
   let mut message = SparseSeqDistribution {
-    variable: btreemap! {},
+    variable: VarPosMap::default(),
     variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: seq_dis.fixed_counts.clone(),

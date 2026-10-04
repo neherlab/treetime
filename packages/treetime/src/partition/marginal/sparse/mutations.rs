@@ -117,7 +117,7 @@ fn internal_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> As
   if state == alphabet.gap() {
     return state;
   }
-  node.profile.variable.get(&pos).map_or(state, |var| {
+  node.profile.variable.get(pos).map_or(state, |var| {
     alphabet.char(resolve_profile(var.dis.view(), &mut Resolve::Argmax))
   })
 }

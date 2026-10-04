@@ -42,14 +42,14 @@ pub(crate) fn get_coefficients(
       } else {
         let parent = msg_to_child
           .variable
-          .get(pos)
-          .or_else(|| msg_to_parent.variable.get(pos))
+          .get(*pos)
+          .or_else(|| msg_to_parent.variable.get(*pos))
           .ok_or_eyre("Unable to find msg_to_parent")?
           .state;
         let child = msg_to_parent
           .variable
-          .get(pos)
-          .or_else(|| msg_to_child.variable.get(pos))
+          .get(*pos)
+          .or_else(|| msg_to_child.variable.get(*pos))
           .ok_or_eyre("Unable to find msg_to_child")?
           .state;
         Ok((parent, child))
@@ -59,13 +59,13 @@ pub(crate) fn get_coefficients(
 
   let mut site_contributions = Vec::with_capacity(variable_positions.len() + msg_to_child.fixed.len());
   for (&pos, (parent_state, child_state)) in zip(&variable_positions, variable_states) {
-    let parent = if let Some(parent) = msg_to_child.variable.get(&pos) {
+    let parent = if let Some(parent) = msg_to_child.variable.get(pos) {
       &parent.dis
     } else {
       &msg_to_child.fixed[&parent_state]
     };
 
-    let child = if let Some(child) = msg_to_parent.variable.get(&pos) {
+    let child = if let Some(child) = msg_to_parent.variable.get(pos) {
       &child.dis
     } else {
       &msg_to_parent.fixed[&child_state]
