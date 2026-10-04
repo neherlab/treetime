@@ -4,10 +4,10 @@ use crate::partition::storage::sparse::{SparseSeqDistribution, VarPos};
 use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
 use eyre::Report;
+use itertools::izip;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
 use std::collections::{BTreeMap, BTreeSet};
-use std::iter::zip;
 use treetime_primitives::{AsciiChar, LogLh};
 use treetime_utils::array::ndarray::is_max_above;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm_owned;
@@ -43,12 +43,22 @@ pub(crate) fn combine_messages(
 
   let n_states = alphabet.n_canonical();
   let initial_log = gtr_weight.map_or_else(|| Array1::zeros(n_states), |w| w.mapv(f64::ln));
+  let log_fixed: Vec<BTreeMap<AsciiChar, Array1<f64>>> = messages
+    .iter()
+    .map(|msg| {
+      msg
+        .fixed
+        .iter()
+        .map(|(&state, profile)| (state, profile.mapv(f64::ln)))
+        .collect()
+    })
+    .collect();
 
   for (&pos, &state) in variable_pos {
     let mut all_states_equal = true;
     let mut log_vec = initial_log.clone();
 
-    for (msg, states) in zip(messages, reference_states) {
+    for (msg, states, log_fixed) in izip!(messages, reference_states, &log_fixed) {
       if let Some(var) = msg.variable.get(pos) {
         log_vec.zip_mut_with(&var.dis, |lv, &p| *lv += p.ln());
         if var.state != state {
@@ -56,13 +66,13 @@ pub(crate) fn combine_messages(
         }
       } else if let Some(ref_state) = states.get(&pos) {
         if alphabet.is_canonical(*ref_state) {
-          log_vec.zip_mut_with(&msg.fixed[ref_state], |lv, &p| *lv += p.ln());
+          log_vec.zip_mut_with(&log_fixed[ref_state], |lv, &lp| *lv += lp);
         }
         if ref_state != &state {
           all_states_equal = false;
         }
       } else {
-        log_vec.zip_mut_with(&msg.fixed[&state], |lv, &p| *lv += p.ln());
+        log_vec.zip_mut_with(&log_fixed[&state], |lv, &lp| *lv += lp);
       }
     }
 
@@ -81,8 +91,8 @@ pub(crate) fn combine_messages(
   for state in alphabet.canonical() {
     let mut log_vec = initial_log.clone();
 
-    for msg in messages {
-      log_vec.zip_mut_with(&msg.fixed[&state], |lv, &p| *lv += p.ln());
+    for log_fixed in &log_fixed {
+      log_vec.zip_mut_with(&log_fixed[&state], |lv, &lp| *lv += lp);
     }
 
     let (dis, log_norm) = softmax_with_log_norm_owned(log_vec);
