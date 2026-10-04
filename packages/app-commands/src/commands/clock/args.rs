@@ -25,7 +25,7 @@ use treetime::optimize::params::BranchLengthMode;
 pub struct TreetimeClockArgs {
   #[expect(
     dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
+    reason = "the alignment is not used yet, see kb/issues/M-clock-alignment-ignored.md"
   )]
   pub(crate) alignment: AlignmentArgs,
   pub(crate) tree: PathBuf,
