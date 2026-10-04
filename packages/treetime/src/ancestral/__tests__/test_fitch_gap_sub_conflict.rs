@@ -33,7 +33,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, &node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, node_seq_inputs(&graph, &names, aln))?;
 
     let name = |key| -> String { names.get(&key).cloned().flatten().unwrap_or_default() };
 

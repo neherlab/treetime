@@ -40,7 +40,7 @@ pub fn run(
     &plan,
     0,
     alphabet,
-    &nodes,
+    nodes,
     &branch_lengths,
     &options,
     &mut rng,
@@ -49,7 +49,6 @@ pub fn run(
     log,
   )
   .map_err(OperationError::classify)?;
-  drop(nodes);
   seq_sink.on_topology(&graph).map_err(OperationError::SinkFailed)?;
   let SequenceMutations {
     root_sequence,

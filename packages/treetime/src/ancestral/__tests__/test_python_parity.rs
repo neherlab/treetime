@@ -343,7 +343,7 @@ mod tests {
     let (dense_recon, dense_log_lh) = dense_recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let dense_log_lh = dense_log_lh.value();
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (sparse_recon, sparse_log_lh) =

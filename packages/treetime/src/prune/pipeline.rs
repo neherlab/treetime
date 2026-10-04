@@ -45,7 +45,7 @@ pub fn run(
       &input.graph,
       0,
       input.alphabet,
-      &node_inputs,
+      node_inputs,
       &branch_lengths_or_zero(&branch_lengths),
       log,
     )

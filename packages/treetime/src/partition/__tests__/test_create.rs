@@ -34,7 +34,7 @@ mod tests {
       &input.graph,
       0,
       Alphabet::default(),
-      &input.node_inputs,
+      input.node_inputs.clone(),
       &input.branch_lengths,
       &NoopProgress,
     )?;
@@ -60,7 +60,7 @@ mod tests {
       &input.graph,
       0,
       Alphabet::default(),
-      &input.node_inputs,
+      input.node_inputs.clone(),
       &input.branch_lengths,
       &NoopProgress,
     );
@@ -117,7 +117,7 @@ mod tests {
     }
 
     pub(super) fn fitch_inferred_gtr(input: &Input) -> Result<GTR, Report> {
-      let fitch = create_fitch_partition(&input.graph, 0, Alphabet::default(), &input.node_inputs)?;
+      let fitch = create_fitch_partition(&input.graph, 0, Alphabet::default(), input.node_inputs.clone())?;
       infer_gtr_fitch(&fitch, &input.graph, &input.branch_lengths, &NoopProgress)
     }
 

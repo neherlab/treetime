@@ -45,7 +45,7 @@ pub(super) mod tests {
       &graph,
       0,
       alphabet,
-      &node_seq_inputs(&graph, &names, input.alignment.clone()),
+      node_seq_inputs(&graph, &names, input.alignment.clone()),
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, input.gtr.clone(), node_states);

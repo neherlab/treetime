@@ -44,7 +44,7 @@ mod tests {
       &graph,
       0,
       Alphabet::new(AlphabetName::Nuc)?,
-      &node_seq_inputs(&graph, &names, aln),
+      node_seq_inputs(&graph, &names, aln),
     )?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(&graph)?;
     let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(

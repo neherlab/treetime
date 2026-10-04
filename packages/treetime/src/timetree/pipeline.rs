@@ -351,7 +351,7 @@ fn initialize_branch_model(
         graph,
         0,
         alphabet,
-        &node_inputs,
+        node_inputs,
         &branch_lengths_or_zero(branch_lengths),
         log,
       )

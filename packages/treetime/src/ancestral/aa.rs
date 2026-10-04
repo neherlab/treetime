@@ -63,7 +63,7 @@ pub fn reconstruct_aa(
       &plan,
       index,
       alphabet,
-      &node_inputs,
+      node_inputs,
       &branch_lengths,
       &options,
       &mut rng,

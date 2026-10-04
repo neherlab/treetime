@@ -148,7 +148,7 @@ mod tests {
       let graph: Graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
-      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
+      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), node_seq_inputs(&graph, &names, aln))?;
       let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
       let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
         partition,

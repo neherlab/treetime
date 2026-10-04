@@ -48,7 +48,7 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 

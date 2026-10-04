@@ -208,7 +208,7 @@ mod tests {
           &graph,
           0,
           alphabet,
-          &node_seq_inputs(&graph, &names, aln),
+          node_seq_inputs(&graph, &names, aln),
           &branch_lengths_or_zero(&branch_lengths),
           &NoopProgress,
         )?

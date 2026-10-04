@@ -14,7 +14,7 @@ mod tests {
     fn test_prop_sparse_obs_matches_separate_scans(seq in generators::seq()) {
       let alphabet = Alphabet::default();
       let obs = SparseNodeObs::new(&seq, &alphabet);
-      let fitch = FitchNodeData::new(&seq, &alphabet).unwrap().seq;
+      let fitch = FitchNodeData::new(seq.clone(), &alphabet).seq;
 
       let expected = helpers::separate_scans(&seq, &alphabet);
       let actual_obs = (obs.unknown, obs.gaps, obs.non_char, obs.composition, obs.fitch.variable);

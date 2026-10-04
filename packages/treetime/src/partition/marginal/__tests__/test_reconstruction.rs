@@ -166,7 +166,7 @@ mod tests {
       let nwk_parsed = nwk_read_str(TREE)?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
-      let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
+      let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
       let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
       let gtr = jc69(JC69Params::default())?;
       Ok((graph, SparseReconstruction::seeded(partition, gtr, node_states)))
@@ -205,7 +205,7 @@ mod tests {
         &graph,
         0,
         Alphabet::new(AlphabetName::Nuc)?,
-        &node_seq_inputs(&graph, &names, aln),
+        node_seq_inputs(&graph, &names, aln),
         &branch_lengths,
         &NoopProgress,
       )?;

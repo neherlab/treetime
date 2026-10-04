@@ -63,7 +63,7 @@ pub fn run(
     &input.graph,
     0,
     input.alphabet,
-    &node_seq_inputs(&input.graph, names, sequences),
+    node_seq_inputs(&input.graph, names, sequences),
     &branch_lengths_or_zero(&branch_lengths),
     log,
   )

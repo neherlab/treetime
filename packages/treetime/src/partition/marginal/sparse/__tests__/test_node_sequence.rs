@@ -27,7 +27,7 @@ mod tests {
         })
       })
       .collect::<Result<Vec<_>, Report>>()?;
-    let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let MarginalUpdate { node_states, edges, .. } =
       partition.marginal_update(&jc69(JC69Params::default())?, &graph, &branch_lengths, &node_states)?;

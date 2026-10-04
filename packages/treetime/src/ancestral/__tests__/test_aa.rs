@@ -300,7 +300,7 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-      let partition = create_fitch_partition(graph, 0, alphabet, &node_seq_inputs(graph, names, sequences)).unwrap();
+      let partition = create_fitch_partition(graph, 0, alphabet, node_seq_inputs(graph, names, sequences)).unwrap();
       AncestralPartition::Fitch(partition)
     }
 

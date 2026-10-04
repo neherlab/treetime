@@ -55,7 +55,7 @@ pub(crate) mod tests {
       graph,
       0,
       Alphabet::new(AlphabetName::Nuc)?,
-      &node_seq_inputs(graph, names, aln.to_vec()),
+      node_seq_inputs(graph, names, aln.to_vec()),
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(

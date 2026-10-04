@@ -103,7 +103,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
@@ -454,7 +454,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 

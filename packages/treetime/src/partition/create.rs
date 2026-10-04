@@ -37,7 +37,7 @@ pub(crate) fn build_marginal_partition(
   graph: &Graph,
   index: usize,
   alphabet: Alphabet,
-  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
 ) -> Result<MarginalReconstruction, Report> {
@@ -52,13 +52,13 @@ pub(crate) fn build_marginal_partition(
       log,
     )?),
     Representation::Dense if model == GtrModelName::Infer => {
-      let fitch = create_fitch_partition(graph, index, alphabet, node_inputs)?;
+      let fitch = create_fitch_partition(graph, index, alphabet, node_inputs.clone())?;
       let gtr = fitch_gtr(model, &fitch, graph, branch_lengths, log)?;
-      let partition = fitch.into_marginal_dense(graph, node_inputs)?;
+      let partition = fitch.into_marginal_dense(graph, &node_inputs)?;
       MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
     },
     Representation::Dense => {
-      let partition = PartitionMarginalDense::new(index, alphabet, graph, node_inputs)?;
+      let partition = PartitionMarginalDense::new(index, alphabet, graph, &node_inputs)?;
       let gtr = named_gtr(model, log)?;
       MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
     },
@@ -70,7 +70,7 @@ pub(crate) fn build_sparse_reconstruction(
   graph: &Graph,
   index: usize,
   alphabet: Alphabet,
-  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
 ) -> Result<SparseReconstruction, Report> {

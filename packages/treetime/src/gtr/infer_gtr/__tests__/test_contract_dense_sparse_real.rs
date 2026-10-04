@@ -132,7 +132,7 @@ mod tests {
         &graph,
         0,
         SPARSE_NUC_ALPHABET.clone(),
-        &node_seq_inputs(&graph, &names, aln),
+        node_seq_inputs(&graph, &names, aln),
       )?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
     };

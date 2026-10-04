@@ -57,7 +57,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut fitch, node_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -250,7 +250,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut fitch, node_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -378,7 +378,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, &node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut fitch, node_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

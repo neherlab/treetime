@@ -45,7 +45,7 @@ pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: 
     .collect();
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-  let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
+  let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
   let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
 
   let MarginalUpdate { log_lh, .. } =

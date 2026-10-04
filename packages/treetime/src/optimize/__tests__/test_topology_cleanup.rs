@@ -133,7 +133,7 @@ pub(super) mod tests {
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states));
     let (mut reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -219,7 +219,7 @@ pub(super) mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states));
     let (mut reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -287,7 +287,7 @@ pub(super) mod tests {
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse = SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states);
     let (sparse, _) = sparse.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -481,7 +481,7 @@ pub(super) mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states));
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -545,7 +545,7 @@ pub(super) mod tests {
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let fitch = create_fitch_partition(&graph, 0, nuc, &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, nuc, node_seq_inputs(&graph, &names, aln))?;
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       sp_partition,

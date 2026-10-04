@@ -61,7 +61,7 @@ mod tests {
     let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, &node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       partition,
@@ -180,7 +180,7 @@ mod tests {
       graph,
       0,
       Alphabet::default(),
-      &node_seq_inputs(graph, names, aln.to_vec()),
+      node_seq_inputs(graph, names, aln.to_vec()),
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(

@@ -188,24 +188,24 @@ impl FitchNodeData {
     }
   }
 
-  pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
+  pub fn new(seq: Seq, alphabet: &Alphabet) -> Self {
     let SeqObservation {
       unknown,
       gaps,
       non_char,
       composition,
       fitch,
-    } = observe_seq(seq, alphabet);
-    Ok(Self {
+    } = observe_seq(&seq, alphabet);
+    Self {
       seq: FitchSeqInfo {
         unknown,
         gaps,
         non_char,
         composition,
-        sequence: seq.to_owned(),
+        sequence: seq,
         fitch,
       },
-    })
+    }
   }
 }
 

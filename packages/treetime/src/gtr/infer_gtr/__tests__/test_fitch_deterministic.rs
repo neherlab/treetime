@@ -49,7 +49,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln.clone()))?;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), node_seq_inputs(&graph, &names, aln.clone()))?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
     };
 
@@ -59,7 +59,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), &node_seq_inputs(&graph, &names, aln))?;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), node_seq_inputs(&graph, &names, aln))?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
     };
 

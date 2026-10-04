@@ -127,7 +127,7 @@ mod tests {
       graph,
       0,
       Alphabet::default(),
-      &node_seq_inputs(graph, names, aln.to_vec()),
+      node_seq_inputs(graph, names, aln.to_vec()),
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(

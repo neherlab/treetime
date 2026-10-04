@@ -1,5 +1,4 @@
 use crate::alphabet::alphabet::{Alphabet, FILL_CHAR, NON_CHAR};
-use crate::make_report;
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::fitch::sub::{
   discover_fixed_disagreements_backward, finalize_sequence_forward, resolve_nonroot_substitutions_forward,
@@ -10,10 +9,11 @@ use crate::seq::alignment::NodeSeqInput;
 use crate::seq::alignment::get_common_length_of_node_inputs;
 use crate::seq::composition::Composition;
 use crate::seq::indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
+use crate::{make_internal_report, make_report};
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
 use std::mem;
 use treetime_graph::graph::Graph;
@@ -26,9 +26,9 @@ pub fn create_fitch_partition(
   graph: &Graph,
   index: usize,
   alphabet: Alphabet,
-  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
 ) -> Result<PartitionFitch, Report> {
-  let length = get_common_length_of_node_inputs(node_inputs)?;
+  let length = get_common_length_of_node_inputs(&node_inputs)?;
   let mut partition = PartitionFitch {
     index,
     alphabet,
@@ -43,7 +43,7 @@ pub fn create_fitch_partition(
 pub(crate) fn compress_sequences(
   graph: &Graph,
   partition: &mut PartitionFitch,
-  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
 ) -> Result<(), Report> {
   attach_seqs_to_graph(graph, partition, node_inputs)?;
   fitch_backward(graph, partition)?;
@@ -54,16 +54,16 @@ pub(crate) fn compress_sequences(
 pub(crate) fn attach_seqs_to_graph(
   graph: &Graph,
   partition: &mut PartitionFitch,
-  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+  mut node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
 ) -> Result<(), Report> {
   let leaf_records = graph
     .get_leaves()
-    .collect::<Vec<_>>()
-    .into_par_iter()
     .map(|leaf| -> Result<_, Report> {
       let leaf_key = leaf.key();
-      let node = &node_inputs[&leaf_key];
-      let seq = node.seq.as_ref().ok_or_else(|| {
+      let node = node_inputs
+        .get_mut(&leaf_key)
+        .ok_or_else(|| make_internal_report!("Leaf {leaf_key} has no sequence input"))?;
+      let seq = node.seq.take().ok_or_else(|| {
         make_report!(
           "Leaf sequence not found after alignment completion: '{}'",
           node.name.as_deref().unwrap_or("")
@@ -75,9 +75,9 @@ pub(crate) fn attach_seqs_to_graph(
 
   let alphabet = partition.alphabet.clone();
   let nodes = leaf_records
-    .par_iter()
-    .map(|(leaf_key, seq)| FitchNodeData::new(seq, &alphabet).map(|node| (*leaf_key, node)))
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+    .into_par_iter()
+    .map(|(leaf_key, seq)| (leaf_key, FitchNodeData::new(seq, &alphabet)))
+    .collect::<BTreeMap<_, _>>();
   partition.nodes.extend(nodes);
 
   for edge in graph.get_edges() {
