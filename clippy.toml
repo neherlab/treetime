@@ -22,14 +22,17 @@ disallowed-types = [
     { path = "std::sync::RwLock", reason = "use parking_lot::RwLock (poison-free, faster, supports read_arc/write_arc)" },
     { path = "std::collections::HashMap", reason = "use BTreeMap for deterministic order, or IndexMap for insertion order; #[allow] with a reason in a profiled hot path" },
     { path = "std::collections::HashSet", reason = "use BTreeSet for deterministic order, or IndexSet for insertion order; #[allow] with a reason in a profiled hot path" },
+    { path = "rand::rngs::StdRng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible" },
+    { path = "rand::rngs::SmallRng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible", allow-invalid = true },
 ]
 
 # clippy::disallowed_methods -- forbid non-deterministic, panicking, or
 # unbounded constructors in favor of their safe counterparts. Unresolved paths
 # (e.g. for crates not yet depended on) are ignored until the crate is present.
 disallowed-methods = [
-    { path = "rand::thread_rng", reason = "use a seeded StdRng/SmallRng so runs are reproducible" },
-    { path = "rand::rng", reason = "use a seeded StdRng/SmallRng so runs are reproducible", allow-invalid = true },
+    { path = "rand::thread_rng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible" },
+    { path = "rand::rng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible", allow-invalid = true },
+    { path = "rand::SeedableRng::from_entropy", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible" },
     { path = "std::time::Duration::from_secs_f32", reason = "panics on a negative, NaN, or overflowing value; use Duration::try_from_secs_f32" },
     { path = "std::time::Duration::from_secs_f64", reason = "panics on a negative, NaN, or overflowing value; use Duration::try_from_secs_f64" },
     { path = "reqwest::Client::new", reason = "build the client through ClientBuilder with an explicit .timeout(...)" },
