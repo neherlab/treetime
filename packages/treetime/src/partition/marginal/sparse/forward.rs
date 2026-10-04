@@ -134,7 +134,10 @@ fn process_node_forward_indexed(
     };
 
     if !context.is_leaf && !parent.sequence.is_empty() {
-      node.sequence = Arc::new(parsimony_seq(&parent.sequence, edge_obs, obs, alphabet));
+      let sequence = parsimony_seq(&parent.sequence, edge_obs, obs, alphabet);
+      if *node.sequence != sequence {
+        node.sequence = Arc::new(sequence);
+      }
     }
     let subs_ml = compute_ml_subs_for_nodes(alphabet, parent, parent_obs, &node, obs, edge_obs)?;
 
