@@ -2,7 +2,7 @@ use crate::optimize::branch_length::validate_branch_length_value;
 use crate::optimize::likelihood::OptimizationMetrics;
 use eyre::Report;
 use itertools::izip;
-use ndarray::{Array1, ArrayView1};
+use ndarray::{Array1, ArrayView1, Zip};
 use treetime_primitives::LogLh;
 
 #[allow(
@@ -23,16 +23,20 @@ pub(crate) fn evaluate_site_contributions<'a>(
 
   let exp_ev = (eigvals * branch_length).mapv(f64::exp);
 
+  let mut k_exp = Array1::zeros(exp_ev.raw_dim());
+
   if compute_derivatives {
     let ev_exp_ev = eigvals * &exp_ev;
+    let mut k_ev_exp = Array1::zeros(exp_ev.raw_dim());
 
     for (multiplicity, coefficients) in sites {
-      let k_exp = &coefficients * &exp_ev;
+      multiply_into(&mut k_exp, &coefficients, &exp_ev);
       let site_lh = k_exp.sum();
       debug_assert!(site_lh.is_finite(), "Non-finite site likelihood: {site_lh}");
       log_lh += multiplicity * site_lh.ln();
 
-      let mean_ev = (&coefficients * &ev_exp_ev).sum() / site_lh;
+      multiply_into(&mut k_ev_exp, &coefficients, &ev_exp_ev);
+      let mean_ev = k_ev_exp.sum() / site_lh;
       derivative += multiplicity * mean_ev;
 
       let variance = izip!(k_exp.iter(), eigvals.iter())
@@ -46,7 +50,8 @@ pub(crate) fn evaluate_site_contributions<'a>(
     }
   } else {
     for (multiplicity, coefficients) in sites {
-      let site_lh = (&coefficients * &exp_ev).sum();
+      multiply_into(&mut k_exp, &coefficients, &exp_ev);
+      let site_lh = k_exp.sum();
       debug_assert!(site_lh.is_finite(), "Non-finite site likelihood: {site_lh}");
       log_lh += multiplicity * site_lh.ln();
     }
@@ -57,4 +62,8 @@ pub(crate) fn evaluate_site_contributions<'a>(
     derivative,
     second_derivative,
   ))
+}
+
+fn multiply_into(out: &mut Array1<f64>, lhs: &ArrayView1<'_, f64>, rhs: &Array1<f64>) {
+  Zip::from(out).and(lhs).and(rhs).for_each(|out, &lhs, &rhs| *out = lhs * rhs);
 }
