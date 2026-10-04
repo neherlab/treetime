@@ -77,12 +77,6 @@ pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<FileWriter, R
   Ok(FileWriter { inner: buf_compressor })
 }
 
-pub fn write_file_or_stdout(filepath: impl AsRef<Path>, content: impl AsRef<[u8]>) -> Result<(), Report> {
-  write_file_with(filepath, |writer| {
-    writer.write_all(content.as_ref()).map_err(Report::new)
-  })
-}
-
 pub fn write_file_with(
   filepath: impl AsRef<Path>,
   write: impl FnOnce(&mut FileWriter) -> Result<(), Report>,

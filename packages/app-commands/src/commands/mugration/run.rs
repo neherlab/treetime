@@ -17,7 +17,6 @@ use treetime_graph::graph::Graph;
 use treetime_io::discrete_states_csv::read_discrete_attrs;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
-use treetime_utils::io::file::write_file_or_stdout;
 
 pub fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
@@ -113,11 +112,11 @@ pub fn run_mugration(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::TraitsCsv) {
-    write_file_or_stdout(path, result.traits.render_csv())?;
+    result.traits.write_csv_file(path)?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceCsv) {
-    write_file_or_stdout(path, result.confidence.render_csv())?;
+    result.confidence.write_csv_file(path)?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {

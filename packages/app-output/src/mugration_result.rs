@@ -1,10 +1,14 @@
+use eyre::Report;
 use indexmap::IndexMap;
-use itertools::Itertools;
 use ndarray::Array1;
 use std::collections::BTreeMap;
-use std::fmt::Write;
+use std::io::Write;
+use std::iter::once;
+use std::path::Path;
 use treetime::mugration::pipeline::MugrationOutput;
 use treetime_graph::node::GraphNodeKey;
+use treetime_io::csv::CsvStructWriter;
+use treetime_utils::io::file::write_file_with;
 
 #[derive(Debug)]
 pub struct MugrationResult {
@@ -73,18 +77,19 @@ impl MugrationConfidenceOutput {
     Self { states, rows }
   }
 
-  #[allow(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
-  pub fn render_csv(&self) -> String {
-    let mut out = String::new();
-    writeln!(out, "node,{}", self.states.join(",")).unwrap();
-    for row in &self.rows {
-      let probs = row.profile.iter().map(|p| format!("{p:.6}")).join(",");
-      writeln!(out, "{},{probs}", row.node).unwrap();
-    }
-    out
+  pub fn write_csv_file(&self, filepath: &Path) -> Result<(), Report> {
+    write_file_with(filepath, |file| self.write_csv(file))
+  }
+
+  fn write_csv(&self, writer: impl Write + Send) -> Result<(), Report> {
+    let mut csv = CsvStructWriter::new(writer, b',')?;
+    csv.write_record(once("node").chain(self.states.iter().map(String::as_str)))?;
+    self.rows.iter().try_for_each(|row| {
+      let probs = row.profile.iter().map(|p| format!("{p:.6}"));
+      csv.write_record(once(row.node.clone()).chain(probs))
+    })?;
+    csv.into_inner()?;
+    Ok(())
   }
 }
 
@@ -108,17 +113,20 @@ impl MugrationTraitsOutput {
     }
   }
 
-  #[allow(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
-  pub fn render_csv(&self) -> String {
-    let mut out = String::new();
-    writeln!(out, "node,{}", self.attribute).unwrap();
-    for (node, trait_value) in &self.assignments {
-      writeln!(out, "{node},{trait_value}").unwrap();
-    }
-    out
+  pub fn write_csv_file(&self, filepath: &Path) -> Result<(), Report> {
+    write_file_with(filepath, |file| self.write_csv(file))
+  }
+
+  fn write_csv(&self, writer: impl Write + Send) -> Result<(), Report> {
+    let mut csv = CsvStructWriter::new(writer, b',')?;
+    csv.write_record(["node", self.attribute.as_str()])?;
+    self
+      .assignments
+      .iter()
+      .map(<[&String; 2]>::from)
+      .try_for_each(|record| csv.write_record(record))?;
+    csv.into_inner()?;
+    Ok(())
   }
 }
 
@@ -150,4 +158,62 @@ fn node_name_or_fallback(names: &BTreeMap<GraphNodeKey, Option<String>>, node_ke
   names[&node_key]
     .clone()
     .unwrap_or_else(|| format!("node_{}", node_key.0))
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{ConfidenceRow, MugrationConfidenceOutput, MugrationTraitsOutput};
+  use indexmap::indexmap;
+  use ndarray::array;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use treetime_utils::o;
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::plain(            ("country",       "A",     "usa"),              "node,country\nA,usa\n")]
+  #[case::comma_in_value(   ("country",       "A",     "Congo, DR"),        "node,country\nA,\"Congo, DR\"\n")]
+  #[case::quote_in_value(   ("country",       "A",     "Cote \"d'Ivoire\""), "node,country\nA,\"Cote \"\"d'Ivoire\"\"\"\n")]
+  #[case::newline_in_value( ("country",       "A",     "a\nb"),             "node,country\nA,\"a\nb\"\n")]
+  #[case::comma_in_node(    ("country",       "A/1,2", "usa"),              "node,country\n\"A/1,2\",usa\n")]
+  #[case::comma_in_header(  ("region, state", "A",     "usa"),              "node,\"region, state\"\nA,usa\n")]
+  #[trace]
+  fn test_mugration_result_traits_csv_quotes_fields_per_rfc4180(
+    #[case] (attribute, node, value): (&str, &str, &str),
+    #[case] expected: &str,
+  ) {
+    let traits = MugrationTraitsOutput::new(attribute, indexmap! { o!(node) => o!(value) });
+
+    let mut buf = Vec::new();
+    traits.write_csv(&mut buf).unwrap();
+
+    assert_eq!(expected, String::from_utf8(buf).unwrap());
+  }
+
+  #[test]
+  fn test_mugration_result_confidence_csv_quotes_fields_per_rfc4180() {
+    let confidence = MugrationConfidenceOutput {
+      states: vec![o!("Congo, DR"), o!("usa")],
+      rows: vec![
+        ConfidenceRow {
+          node: o!("A,1"),
+          profile: array![0.25, 0.75],
+        },
+        ConfidenceRow {
+          node: o!("B"),
+          profile: array![1.0, 0.0],
+        },
+      ],
+    };
+
+    let mut buf = Vec::new();
+    confidence.write_csv(&mut buf).unwrap();
+
+    let expected = "\
+      node,\"Congo, DR\",usa\n\
+      \"A,1\",0.250000,0.750000\n\
+      B,1.000000,0.000000\n\
+    ";
+    assert_eq!(expected, String::from_utf8(buf).unwrap());
+  }
 }
