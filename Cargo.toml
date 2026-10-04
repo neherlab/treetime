@@ -87,6 +87,12 @@ inherits = "dist"
 debug = true
 strip = "none"
 
+# The profiling build with jemalloc heap profiling compiled in, in its own
+# output folder. The heap profiler changes the allocator code, so CPU profiles
+# and timings stay on the `profiling` and `dist` builds.
+[profile.profiling-heap]
+inherits = "profiling"
+
 # Benchmarks measure the shipped artifact, with debug info kept for profilers.
 [profile.bench]
 inherits = "dist"

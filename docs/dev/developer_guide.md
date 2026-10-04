@@ -190,13 +190,13 @@ The Node addon (`packages/app-napi`, a Rust `cdylib`) is built by cargo, like th
 
 The desktop app keeps all its data in one app folder: `~/.config/treetime` on Linux (`$XDG_CONFIG_HOME/treetime` when set), `~/Library/Application Support/treetime` on macOS, and `%LOCALAPPDATA%\treetime` on Windows. `TREETIME_APP_DIR` names another app folder. The Rust core resolves the folders (`AppPaths` in `packages/app-commands/src/app_paths.rs`), so a later local web mode can use the same ones.
 
-| Content                                               | Default                    | Environment variable    | `settings.yaml` key |
-| ----------------------------------------------------- | -------------------------- | ----------------------- | ------------------- |
-| Settings                                              | `<app folder>/settings.yaml` | moves with the app folder | none              |
-| Browser profile: cache, local storage, crash reports  | `<app folder>/profile`     | `TREETIME_PROFILE_DIR`  | `paths.profile`     |
-| Runs                                                  | `<app folder>/runs`        | `TREETIME_RUNS_DIR`     | `paths.runs`        |
-| Logs and crash diagnostics                            | `<app folder>/logs`        | `TREETIME_LOGS_DIR`     | `paths.logs`        |
-| Example datasets and configurations                   | `<app folder>/examples`    | `TREETIME_EXAMPLES_DIR` | `paths.examples`    |
+| Content                                              | Default                      | Environment variable      | `settings.yaml` key |
+| ---------------------------------------------------- | ---------------------------- | ------------------------- | ------------------- |
+| Settings                                             | `<app folder>/settings.yaml` | moves with the app folder | none                |
+| Browser profile: cache, local storage, crash reports | `<app folder>/profile`       | `TREETIME_PROFILE_DIR`    | `paths.profile`     |
+| Runs                                                 | `<app folder>/runs`          | `TREETIME_RUNS_DIR`       | `paths.runs`        |
+| Logs and crash diagnostics                           | `<app folder>/logs`          | `TREETIME_LOGS_DIR`       | `paths.logs`        |
+| Example datasets and configurations                  | `<app folder>/examples`      | `TREETIME_EXAMPLES_DIR`   | `paths.examples`    |
 
 An environment variable takes precedence over the settings key, and the key over the default. A relative path in `settings.yaml` is relative to the app folder; a relative path in a variable is relative to the working directory. `just desktop` and `just desktop-prod` use `tmp/app/treetime-dev` and `tmp/app/treetime-prod` of the checkout as app folder, so development never touches an installed app, and `data/` of the checkout as examples folder; `TREETIME_DESKTOP_DEV_DIR`, `TREETIME_DESKTOP_PROD_DIR`, and the variables above in `.env` choose other folders (see `.env.example`).
 
@@ -321,6 +321,7 @@ After changing `pixi.toml`, run `pixi lock` and commit both files. Package relea
 - `release` (`just build-release`, `just run-release`, `just example`, `just smoke`): optimized and fast to rebuild, without LTO
 - `dist` (`just build-dist`, `just cross`, `just build-napi dist`, `just cross-napi`, nightly releases): the shipped binary and Node addon, with fat LTO and one codegen unit
 - `profiling` (`just build-profiling`, `just profile`): `dist` with full debug info
+- `profiling-heap` (`just build-profiling-heap`): `profiling` with jemalloc heap profiling compiled in, for heap profiles only
 - `bench` (`just bench`): the `dist` settings
 
 ## Performance
@@ -328,6 +329,24 @@ After changing `pixi.toml`, run `pixi lock` and commit both files. Package relea
 - `just bench` runs the benchmarks
 - `just build-dist treetime` builds the shipped binary into `.out/treetime`; use it with `hyperfine`, which the container provides
 - `just profile treetime -- <args>` (host) samples a profile with samply or perf; read `dev/profile --help` first
+
+### Heap profiles
+
+The CLI allocates through jemalloc, whose symbols carry the `_rjem_` prefix, so heap profilers that intercept `malloc` (heaptrack, Valgrind) do not see its allocations. jemalloc's own heap profiler sees them. It is compiled into the `profiling-heap` build only, because it changes the allocator code: take CPU profiles and timings from the `profiling` and `dist` builds.
+
+```bash
+./dev/docker/run just build-profiling-heap
+mkdir -p tmp/heap
+_RJEM_MALLOC_CONF=prof:true,prof_gdump:true,prof_final:true,lg_prof_sample:17,prof_prefix:tmp/heap/treetime \
+  .build/container/cargo/profiling-heap/treetime <command> <args>
+jeprof --text .build/container/cargo/profiling-heap/treetime tmp/heap/<dump>.heap
+```
+
+- `_RJEM_MALLOC_CONF` configures the prefixed jemalloc; plain `MALLOC_CONF` has no effect
+- `prof_gdump` writes a dump each time the heap grows past its previous maximum, so the last of these dumps is the closest to the peak. `prof_final` writes one more at exit
+- `lg_prof_sample:17` samples once per 128 KiB allocated on average (the default is 512 KiB)
+- `jeprof --base=<earlier>.heap` subtracts an earlier dump, `--collapsed` writes flame graph input, and `--alloc_space` reports total allocation volume when the run had `prof_accum:true`
+- `jeprof` comes with the `libjemalloc-dev` package on Debian and Ubuntu
 
 ## Dependencies
 

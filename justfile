@@ -157,6 +157,11 @@ build-dist bin="treetime" *args:
 build-profiling bin="treetime" *args:
     cargo build --locked --profile=profiling --bin {{ quote(bin) }} "${@:2}"
 
+# Build the CLI with jemalloc heap profiling (profiling-heap profile); see "Heap profiles" in docs/dev/developer_guide.md
+[group("build")]
+build-profiling-heap *args:
+    cargo build --locked --profile=profiling-heap --package=app-cli --features=heap-profiling --bin=treetime "$@"
+
 # Build the Node addon of the desktop app and copy it to packages/app-napi/app-napi.node: just build-napi [dev|dist]
 [group("build")]
 build-napi profile="dev":
