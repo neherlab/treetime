@@ -52,7 +52,7 @@ impl CsvStructFileWriter {
 }
 
 pub struct CsvStructWriter<W: Write + Send> {
-  pub writer: Writer<W>,
+  writer: Writer<W>,
 }
 
 impl<W: Write + Send> CsvStructWriter<W> {
@@ -63,6 +63,15 @@ impl<W: Write + Send> CsvStructWriter<W> {
 
   pub fn write<T: Serialize>(&mut self, record: &T) -> Result<(), Report> {
     self.writer.serialize(record)?;
+    Ok(())
+  }
+
+  pub fn write_record<I, T>(&mut self, record: I) -> Result<(), Report>
+  where
+    I: IntoIterator<Item = T>,
+    T: AsRef<[u8]>,
+  {
+    self.writer.write_record(record)?;
     Ok(())
   }
 
