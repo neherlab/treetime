@@ -1,7 +1,15 @@
 use crate::traits::ConvolveAlgo;
 use eyre::Report;
 use ndarray::Array1;
-use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, PaddingMode};
+use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, FftProcessor, PaddingMode};
+use std::cell::RefCell;
+use std::cmp::Ordering;
+
+const FFT_PROCESSORS_PER_THREAD: usize = 64;
+
+thread_local! {
+  static FFT_PROCESSORS_BY_FFT_LEN: RefCell<Vec<(usize, FftProcessor<f64>)>> = const { RefCell::new(Vec::new()) };
+}
 
 pub struct RiemannConvolve;
 
@@ -58,9 +66,44 @@ impl ConvolveAlgo for FftConvolve {
 }
 
 pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  let discrete_conv = f_values.conv_fft(g_values, ConvMode::Full, PaddingMode::Zeros)?;
+  let output_len = (f_values.len() + g_values.len()).saturating_sub(1);
+  let discrete_conv = FFT_PROCESSORS_BY_FFT_LEN.with_borrow_mut(|processors| {
+    let processor = processor_for_fft_len(processors, fft_len(output_len));
+    f_values.conv_fft_with_processor(g_values, ConvMode::Full, PaddingMode::Zeros, processor)
+  })?;
   let continuous_conv = &discrete_conv * dx;
   Ok(continuous_conv)
+}
+
+#[expect(
+  clippy::integer_division,
+  reason = "the transform length of ndarray-conv steps down from a power of two by integer ratios"
+)]
+fn fft_len(output_len: usize) -> usize {
+  let mut len = output_len.next_power_of_two();
+  for (numerator, denominator) in [(3, 4), (5, 6)] {
+    loop {
+      let smaller = len / denominator * numerator;
+      match smaller.cmp(&output_len) {
+        Ordering::Less => break,
+        Ordering::Equal => return output_len,
+        Ordering::Greater => len = smaller,
+      }
+    }
+  }
+  len
+}
+
+fn processor_for_fft_len(processors: &mut Vec<(usize, FftProcessor<f64>)>, fft_len: usize) -> &mut FftProcessor<f64> {
+  if let Some(index) = processors.iter().position(|(len, _)| *len == fft_len) {
+    return &mut processors[index].1;
+  }
+  if processors.len() >= FFT_PROCESSORS_PER_THREAD {
+    processors.remove(0);
+  }
+  processors.push((fft_len, FftProcessor::default()));
+  let index = processors.len() - 1;
+  &mut processors[index].1
 }
 
 #[cfg(test)]
