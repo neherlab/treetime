@@ -253,7 +253,7 @@ impl MarginalPasses for PartitionMarginalDense {
     gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
   ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
     indexed_forward(

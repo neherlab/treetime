@@ -29,15 +29,15 @@ pub(crate) fn process_forward_indexed(
   gtr: &GTR,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+  node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
 ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
   let pass = GraphPass::new(graph)?;
-  let outputs = pass.map_forward(
+  let outputs = pass.map_forward_owned(
     node_states,
     backward,
     |key| treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass"),
-    |context| process_node_forward_indexed(partition, gtr, branch_lengths, &context),
+    |context| process_node_forward_indexed(partition, gtr, branch_lengths, context),
   )?;
 
   let mut forward = BTreeMap::new();
@@ -67,12 +67,12 @@ fn process_node_forward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: &GraphPassForwardContext<'_, &SparseNodeState, SparseEdgeBackward, SparseNodeState>,
+  context: GraphPassForwardContext<'_, SparseNodeState, SparseEdgeBackward, SparseNodeState>,
 ) -> Result<GraphPassNodeOutput<SparseNodeState, SparseEdgeForwardOut>, Report> {
   let alphabet = &partition.alphabet;
   let length = partition.length;
   let obs = &partition.obs_nodes[&context.key];
-  let mut node = context.input.clone();
+  let mut node = context.input;
 
   let parent_message = if let Some((edge_key, backward)) = context.parent_edge {
     let edge_obs = &partition.obs_edges[&edge_key];

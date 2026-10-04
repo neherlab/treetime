@@ -98,7 +98,7 @@ mod tests {
 
     let MarginalForward {
       node_states, forward, ..
-    } = partition.marginal_forward(&gtr, &graph, &branch_lengths, &node_states, &backward)?;
+    } = partition.marginal_forward(&gtr, &graph, &branch_lengths, node_states, &backward)?;
 
     let root_profile = helpers::get_node_profile(&graph, &names, &node_states, "root");
     helpers::assert_profile_normalized(&root_profile);

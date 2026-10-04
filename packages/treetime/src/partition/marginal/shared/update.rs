@@ -32,7 +32,7 @@ pub trait MarginalPasses {
     gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: &BTreeMap<GraphNodeKey, Self::Node>,
+    node_states: BTreeMap<GraphNodeKey, Self::Node>,
     backward: &BTreeMap<GraphEdgeKey, Self::Backward>,
   ) -> Result<MarginalForward<Self::Node, Self::Forward, Self::Estimate>, Report>;
 
@@ -59,7 +59,7 @@ pub trait MarginalPasses {
       node_states,
       forward,
       estimates,
-    } = self.marginal_forward(gtr, graph, branch_lengths, &node_states, &backward)?;
+    } = self.marginal_forward(gtr, graph, branch_lengths, node_states, &backward)?;
     Ok(MarginalUpdate {
       node_states,
       edges: MarginalEdges {

@@ -207,7 +207,7 @@ impl MarginalPasses for PartitionMarginalSparse {
     gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+    node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
   ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
     forward::process_forward_indexed(self, gtr, graph, branch_lengths, node_states, backward)

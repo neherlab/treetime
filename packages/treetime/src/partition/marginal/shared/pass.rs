@@ -188,16 +188,16 @@ pub(crate) fn indexed_forward(
   kind: IndexedKind<'_>,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+  node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
 ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
   let min_branch_length = inputs.min_branch_length;
   let pass = GraphPass::new(graph)?;
-  let outputs = pass.map_forward(
+  let outputs = pass.map_forward_owned(
     node_states,
     backward,
     |key| make_internal_error!("Partition node {key} is missing before the marginal forward pass"),
-    |context| indexed_node_forward(gtr, min_branch_length, kind, branch_lengths, &context),
+    |context| indexed_node_forward(gtr, min_branch_length, kind, branch_lengths, context),
   )?;
 
   let mut forward = BTreeMap::new();
@@ -227,9 +227,9 @@ fn indexed_node_forward(
   min_branch_length: f64,
   kind: IndexedKind<'_>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: &GraphPassForwardContext<'_, &DenseNodeState, DenseEdgeBackward, DenseNodeState>,
+  context: GraphPassForwardContext<'_, DenseNodeState, DenseEdgeBackward, DenseNodeState>,
 ) -> Result<GraphPassNodeOutput<DenseNodeState, DenseEdgeForwardOut>, Report> {
-  let mut node = context.input.clone();
+  let mut node = context.input;
 
   let mut edge_out = context.parent_edge.map(|(edge_key, backward)| {
     (
