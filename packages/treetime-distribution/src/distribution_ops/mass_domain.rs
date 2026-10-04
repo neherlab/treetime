@@ -32,6 +32,13 @@ pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64, NegL
   (profile.z.is_finite() && profile.z > 0.0).then_some(MassSized { normalized, profile })
 }
 
+pub(crate) fn mass_sizable_profile(f: &DistributionFunction<f64, NegLog>) -> Option<MassProfile> {
+  let Ok(profile) = mass_profile(f) else {
+    return None;
+  };
+  (profile.z.is_finite() && profile.z > 0.0).then_some(profile)
+}
+
 pub(crate) struct MassSized {
   pub(crate) normalized: DistributionFunction<f64, NegLog>,
   profile: MassProfile,

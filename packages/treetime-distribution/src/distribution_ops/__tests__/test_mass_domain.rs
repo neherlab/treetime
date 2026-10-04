@@ -5,7 +5,9 @@
 
 #[cfg(test)]
 mod tests {
-  use crate::distribution_ops::mass_domain::{mass_bounded_domain, mass_profile, rewindow_to_mass};
+  use crate::distribution_ops::mass_domain::{
+    mass_bounded_domain, mass_profile, mass_sizable_profile, peak_normalized_if_mass_sizable, rewindow_to_mass,
+  };
   use crate::policy::NegLog;
   use crate::{Distribution, DistributionFunction};
   use approx::assert_abs_diff_eq;
@@ -109,6 +111,23 @@ mod tests {
     let point: Distribution<NegLog> = Distribution::point(3.0, 7.5);
     let rewindowed = rewindow_to_mass(&point, EPS, GRID_POINTS).unwrap();
     assert_eq!(rewindowed, point.normalize().unwrap());
+  }
+
+  #[test]
+  fn test_mass_domain_profile_of_unshifted_function_bounds_like_peak_normalized_copy() {
+    let functions = [
+      helpers::exponential_neglog(1.0, 5.0, 4001).shift_y(3.7),
+      helpers::laplace_neglog(1.3, 12.0, 2401).shift_y(-2.25),
+    ];
+    let expected: Vec<(f64, f64)> = functions
+      .iter()
+      .map(|f| peak_normalized_if_mass_sizable(f).unwrap().bounded_domain(EPS).unwrap())
+      .collect();
+    let actual: Vec<(f64, f64)> = functions
+      .iter()
+      .map(|f| mass_bounded_domain(&mass_sizable_profile(f).unwrap(), EPS).unwrap())
+      .collect();
+    assert_eq!(expected, actual);
   }
 
   mod helpers {

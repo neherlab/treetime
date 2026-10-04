@@ -1,6 +1,8 @@
 use crate::Distribution;
 use crate::distribution_ops::convolve::distribution_convolution_fine;
-use crate::distribution_ops::mass_domain::{peak_normalized_if_mass_sizable, resample_to_mass_window};
+use crate::distribution_ops::mass_domain::{
+  mass_bounded_domain, mass_sizable_profile, peak_normalized_if_mass_sizable, resample_to_mass_window,
+};
 use crate::policy::NegLog;
 use eyre::Report;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side};
@@ -54,8 +56,8 @@ fn operand_mass_domain(dist: &Distribution<NegLog>, eps: f64) -> Result<Option<(
   match dist {
     Distribution::Point(p) => Ok(Some((p.t(), p.t()))),
     Distribution::Range(r) => Ok(Some((r.start(), r.end()))),
-    Distribution::Function(f) => peak_normalized_if_mass_sizable(f)
-      .map(|sized| sized.bounded_domain(eps))
+    Distribution::Function(f) => mass_sizable_profile(f)
+      .map(|profile| mass_bounded_domain(&profile, eps))
       .transpose(),
     Distribution::Empty | Distribution::Formula(_) => Ok(None),
   }
