@@ -4,3 +4,4 @@ mod test_gap_fill;
 mod test_indel;
 mod test_mutation;
 mod test_mutation_stream;
+mod test_overlay;

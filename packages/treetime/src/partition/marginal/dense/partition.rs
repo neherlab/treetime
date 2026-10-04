@@ -14,6 +14,7 @@ use crate::partition::storage::dense::{
 use crate::seq::alignment::{NodeSeqInput, get_common_length_of_node_inputs};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
+use crate::seq::overlay::SeqOverlay;
 use crate::{make_internal_report, make_report};
 use eyre::Report;
 use itertools::izip;
@@ -162,12 +163,12 @@ impl PartitionMarginalDense {
     &self,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
     node_key: GraphNodeKey,
-  ) -> Seq {
-    if let Some(seq_info) = node_states.get(&node_key) {
-      assign_sequence(seq_info, &self.alphabet)
-    } else {
-      seq! {}
-    }
+  ) -> SeqOverlay {
+    SeqOverlay::from(
+      node_states
+        .get(&node_key)
+        .map_or_else(|| seq! {}, |seq_info| assign_sequence(seq_info, &self.alphabet)),
+    )
   }
 
   pub(crate) fn node_sequence(

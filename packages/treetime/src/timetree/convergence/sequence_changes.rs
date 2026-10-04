@@ -1,9 +1,9 @@
+use crate::seq::overlay::SeqOverlay;
 use crate::timetree::branch_model::BranchModel;
 use log::debug;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::Seq;
 
 pub(crate) fn count_sequence_changes(previous: &AncestralStateSnapshot, current: &AncestralStateSnapshot) -> usize {
   let prev_only = previous.keys().filter(|k| !current.contains_key(k)).count();
@@ -14,11 +14,7 @@ pub(crate) fn count_sequence_changes(previous: &AncestralStateSnapshot, current:
 
   previous
     .iter()
-    .filter_map(|(key, prev_seq)| {
-      current
-        .get(key)
-        .map(|curr_seq| count_differing_positions(prev_seq, curr_seq))
-    })
+    .filter_map(|(key, prev_seq)| current.get(key).map(|curr_seq| prev_seq.count_differences(curr_seq)))
     .sum()
 }
 
@@ -33,10 +29,4 @@ pub(crate) fn capture_ancestral_states(graph: &Graph, branch_model: &BranchModel
   }
 }
 
-pub(crate) type AncestralStateSnapshot = BTreeMap<GraphNodeKey, Seq>;
-
-fn count_differing_positions(a: &Seq, b: &Seq) -> usize {
-  let shared = a.iter().zip(b.iter()).filter(|(ca, cb)| ca != cb).count();
-  let length_diff = a.len().abs_diff(b.len());
-  shared + length_diff
-}
+pub(crate) type AncestralStateSnapshot = BTreeMap<GraphNodeKey, SeqOverlay>;

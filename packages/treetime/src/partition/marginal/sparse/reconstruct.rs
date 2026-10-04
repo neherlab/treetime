@@ -1,6 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::sample::{Resolve, resolve_profile};
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
+use crate::seq::overlay::SeqOverlay;
+use std::sync::Arc;
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::array::ndarray::argmax_first;
 
@@ -35,13 +37,16 @@ pub(crate) fn map_seq(node: &SparseNodeState, alphabet: &Alphabet) -> Seq {
   map_seq_sampled(node, alphabet, &mut Resolve::Argmax)
 }
 
+pub(crate) fn map_seq_overlay(node: &SparseNodeState, alphabet: &Alphabet) -> SeqOverlay {
+  let overrides = variable_states(node, alphabet, &mut Resolve::Argmax).collect();
+  SeqOverlay::new(Arc::clone(&node.sequence), overrides)
+}
+
 pub(crate) fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resolve: &mut Resolve) -> Seq {
   let mut seq = (*node.sequence).clone();
 
-  for (&pos, var) in &node.profile.variable {
-    if seq[pos] != alphabet.gap() {
-      seq[pos] = alphabet.char(resolve_profile(var.dis.view(), resolve));
-    }
+  for (pos, state) in variable_states(node, alphabet, resolve) {
+    seq[pos] = state;
   }
 
   if matches!(resolve, Resolve::Sample(_)) {
@@ -56,6 +61,19 @@ pub(crate) fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resol
   }
 
   seq
+}
+
+fn variable_states<'a>(
+  node: &'a SparseNodeState,
+  alphabet: &'a Alphabet,
+  resolve: &'a mut Resolve<'_>,
+) -> impl Iterator<Item = (usize, AsciiChar)> + 'a {
+  node
+    .profile
+    .variable
+    .iter()
+    .filter(|&(&pos, _)| node.sequence[pos] != alphabet.gap())
+    .map(move |(&pos, var)| (pos, alphabet.char(resolve_profile(var.dis.view(), resolve))))
 }
 
 pub(crate) fn reconstruct_leaf_sequence(

@@ -15,6 +15,7 @@ use crate::seq::indel::InDel;
 use crate::seq::mutation::{
   Mutation, MutationTrack, SequenceMutations, Sub, combine_edge_mutations, emit_sequences, stream_sequence_mutations,
 };
+use crate::seq::overlay::SeqOverlay;
 use crate::seq::sink::SeqSink;
 use eyre::Report;
 use rand::RngCore;
@@ -171,7 +172,7 @@ impl MarginalReconstruction {
     })
   }
 
-  pub(crate) fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> Seq {
+  pub(crate) fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> SeqOverlay {
     match self {
       Self::Dense(reconstruction) => reconstruction
         .partition

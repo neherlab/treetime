@@ -5,13 +5,16 @@ use crate::partition::marginal::sample::{Resolve, SampleMode};
 use crate::partition::marginal::sequences::sample_internal_sequences;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalPasses};
 use crate::partition::marginal::sparse::count::count_transitions_sparse;
-use crate::partition::marginal::sparse::reconstruct::{map_seq, map_seq_sampled, reconstruct_leaf_sequence};
+use crate::partition::marginal::sparse::reconstruct::{
+  map_seq, map_seq_overlay, map_seq_sampled, reconstruct_leaf_sequence,
+};
 use crate::partition::marginal::sparse::{backward, forward};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
 };
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
+use crate::seq::overlay::SeqOverlay;
 use crate::{make_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use serde::Serialize;
@@ -101,10 +104,11 @@ impl PartitionMarginalSparse {
     &self,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     node_key: GraphNodeKey,
-  ) -> Seq {
-    node_states
-      .get(&node_key)
-      .map_or_else(|| seq![], |node| map_seq(node, &self.alphabet))
+  ) -> SeqOverlay {
+    node_states.get(&node_key).map_or_else(
+      || SeqOverlay::from(seq![]),
+      |node| map_seq_overlay(node, &self.alphabet),
+    )
   }
 
   pub(crate) fn reconcile_topology(&mut self, graph: &Graph) {

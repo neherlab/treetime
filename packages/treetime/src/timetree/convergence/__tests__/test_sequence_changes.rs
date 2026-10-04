@@ -6,6 +6,7 @@ mod tests {
   use crate::partition::create::{Representation, build_marginal_partition};
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
+  use crate::seq::overlay::SeqOverlay;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::convergence::sequence_changes::{
     AncestralStateSnapshot, capture_ancestral_states, count_sequence_changes,
@@ -26,14 +27,14 @@ mod tests {
   #[test]
   fn test_count_sequence_changes_counts_differing_and_extra_positions_of_shared_nodes() -> Result<(), Report> {
     let previous: AncestralStateSnapshot = btreemap! {
-      GraphNodeKey(0) => Seq::try_from_str("ACGT")?,
-      GraphNodeKey(1) => Seq::try_from_str("AAAA")?,
-      GraphNodeKey(2) => Seq::try_from_str("CC")?,
+      GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("ACGT")?),
+      GraphNodeKey(1) => SeqOverlay::from(Seq::try_from_str("AAAA")?),
+      GraphNodeKey(2) => SeqOverlay::from(Seq::try_from_str("CC")?),
     };
     let current: AncestralStateSnapshot = btreemap! {
-      GraphNodeKey(0) => Seq::try_from_str("TCGA")?,
-      GraphNodeKey(1) => Seq::try_from_str("AAAAAA")?,
-      GraphNodeKey(3) => Seq::try_from_str("GG")?,
+      GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("TCGA")?),
+      GraphNodeKey(1) => SeqOverlay::from(Seq::try_from_str("AAAAAA")?),
+      GraphNodeKey(3) => SeqOverlay::from(Seq::try_from_str("GG")?),
     };
 
     assert_eq!(4, count_sequence_changes(&previous, &current));
@@ -43,7 +44,7 @@ mod tests {
   #[test]
   fn test_count_sequence_changes_of_equal_snapshots_is_zero() -> Result<(), Report> {
     let snapshot: AncestralStateSnapshot = btreemap! {
-      GraphNodeKey(0) => Seq::try_from_str("ACGT")?,
+      GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("ACGT")?),
     };
 
     assert_eq!(0, count_sequence_changes(&snapshot, &snapshot.clone()));
@@ -55,8 +56,8 @@ mod tests {
     let graph = nwk_read_str(TREE)?.graph;
 
     assert_eq!(
-      AncestralStateSnapshot::new(),
-      capture_ancestral_states(&graph, &BranchModel::Input)
+      BTreeMap::<GraphNodeKey, Seq>::new(),
+      helpers::materialize(&capture_ancestral_states(&graph, &BranchModel::Input))
     );
     Ok(())
   }
@@ -82,7 +83,7 @@ mod tests {
       .map(|node| node.key())
       .collect();
     assert_eq!(internal, actual.keys().copied().collect::<BTreeSet<_>>());
-    let lengths: BTreeMap<GraphNodeKey, usize> = actual.iter().map(|(key, seq)| (*key, seq.len())).collect();
+    let lengths: BTreeMap<GraphNodeKey, usize> = actual.iter().map(|(key, seq)| (*key, seq.to_seq().len())).collect();
     let expected_lengths: BTreeMap<GraphNodeKey, usize> = internal.iter().map(|key| (*key, 10)).collect();
     assert_eq!(expected_lengths, lengths);
     Ok(())
@@ -104,17 +105,21 @@ mod tests {
     let actual = capture_ancestral_states(&graph, &branch_model);
 
     let shared = Seq::try_from_str("ACGTACGTAC")?;
-    let expected: AncestralStateSnapshot = graph
+    let expected: BTreeMap<GraphNodeKey, Seq> = graph
       .get_nodes()
       .filter(|node| !node.is_leaf())
       .map(|node| (node.key(), shared.clone()))
       .collect();
-    assert_eq!(expected, actual);
+    assert_eq!(expected, helpers::materialize(&actual));
     Ok(())
   }
 
   mod helpers {
     use super::*;
+
+    pub(super) fn materialize(snapshot: &AncestralStateSnapshot) -> BTreeMap<GraphNodeKey, Seq> {
+      snapshot.iter().map(|(key, seq)| (*key, seq.to_seq())).collect()
+    }
 
     pub(super) fn sparse_model(fasta: &str) -> Result<(Graph, BranchModel), Report> {
       let nwk_parsed = nwk_read_str(TREE)?;
