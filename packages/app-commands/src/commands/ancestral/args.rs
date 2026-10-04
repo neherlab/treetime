@@ -7,6 +7,7 @@ use crate::commands::shared::method_anc::MethodAncestralCli;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{AncestralOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
+use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -19,7 +20,7 @@ use treetime::ancestral::params::AncestralParams;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::partition::marginal::sample::SampleMode;
 
-pub fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams {
+pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralParams {
   AncestralParams {
     method: args.method_anc,
     model: args.model_args.model_name(),
@@ -28,7 +29,7 @@ pub fn ancestral_params(args: &TreetimeAncestralArgs) -> AncestralParams {
     impute_missing_data: args.impute_missing_data,
     gtr_iterations: args.gtr_iterations,
     site_specific_gtr: args.site_specific_gtr,
-    seed: args.seed,
+    seed,
     sample_from_profile: args.sample_from_profile,
   }
 }
@@ -70,7 +71,7 @@ pub struct TreetimeAncestralArgs {
   pub(crate) topology_order: TopologyOrderArgs,
   pub(crate) gtr_iterations: usize,
   pub(crate) site_specific_gtr: bool,
-  pub(crate) seed: Option<u64>,
+  pub(crate) seed_args: SeedArgs,
   #[expect(
     dead_code,
     reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
@@ -130,7 +131,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       topology_order: raw.topology_order,
       gtr_iterations: raw.gtr_iterations,
       site_specific_gtr: raw.site_specific_gtr,
-      seed: raw.seed,
+      seed_args: raw.seed_args,
       aa: raw.aa,
       marginal: raw.marginal,
       custom_gtr: raw.custom_gtr,
@@ -346,12 +347,9 @@ pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Substitution model"))]
   pub site_specific_gtr: bool,
 
-  /// Random seed
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, visible_alias = "rng-seed", help_heading = "Reproducibility")
-  )]
-  pub seed: Option<u64>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
+  pub seed_args: SeedArgs,
 
   /// Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
   #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Input data"))]

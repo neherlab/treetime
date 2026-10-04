@@ -19,6 +19,6 @@ pub struct AncestralParams {
   pub impute_missing_data: bool,
   pub gtr_iterations: usize,
   pub site_specific_gtr: bool,
-  pub seed: Option<u64>,
+  pub seed: u64,
   pub sample_from_profile: SampleMode,
 }

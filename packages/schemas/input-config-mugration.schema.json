@@ -164,17 +164,6 @@
       "x-path": "output",
       "x-cli-flag": "--output-traits-csv"
     },
-    "seed": {
-      "description": "Random seed",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0,
-      "default": null,
-      "x-cli-flag": "--seed"
-    },
     "output_all": {
       "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
       "type": [

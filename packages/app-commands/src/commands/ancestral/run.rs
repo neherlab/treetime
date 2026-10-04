@@ -24,6 +24,7 @@ use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput};
 use treetime::gtr::gtr::GTR;
 use treetime::make_error;
+use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
@@ -65,7 +66,9 @@ pub fn run_ancestral_reconstruction(
   let resolved = args.resolve_outputs()?;
   let mut seq_sink = AncestralSeqSink::new(&resolved, names.clone(), descs)?;
 
-  let params = ancestral_params(args);
+  let random_step = (args.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile");
+  let seed = args.seed_args.resolve(random_step, log);
+  let params = ancestral_params(args, seed);
 
   let output = pipeline::run(&params, &input, &mut seq_sink, cancel, stages, log).map_err(|err| err.into_report())?;
   let AncestralSeqSink {
@@ -79,6 +82,7 @@ pub fn run_ancestral_reconstruction(
     graph: &input.graph,
     names: &names,
     branch_lengths: &branch_lengths,
+    seed,
   };
   let aa_result = optional_aa_reconstructions(args, &resolved, &aa_inputs, cancel, stages, log)?;
 
@@ -143,6 +147,7 @@ struct AaRunInputs<'a> {
   graph: &'a Graph,
   names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  seed: u64,
 }
 
 fn optional_aa_reconstructions(
@@ -173,9 +178,7 @@ fn optional_aa_reconstructions(
     args,
     translations,
     aa_fasta_template.as_deref(),
-    inputs.graph,
-    inputs.names,
-    inputs.branch_lengths,
+    inputs,
     cancel,
     stages,
     log,
@@ -373,9 +376,7 @@ fn run_aa_reconstructions(
   ancestral_args: &TreetimeAncestralArgs,
   translations: &str,
   aa_fasta_template: Option<&str>,
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  inputs: &AaRunInputs<'_>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
@@ -408,7 +409,7 @@ fn run_aa_reconstructions(
     include_leaves: ancestral_args.include_leaves,
     impute_missing_data: ancestral_args.impute_missing_data,
     sample_from_profile: ancestral_args.sample_from_profile,
-    seed: ancestral_args.seed,
+    seed: inputs.seed,
     ignore_missing_alns: ancestral_args.ignore_missing_alns,
   };
 
@@ -426,7 +427,7 @@ fn run_aa_reconstructions(
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  let mut seq_sink = aa_fasta_template.map(|template| AaFastaSink::new(template.to_owned(), names.clone()));
+  let mut seq_sink = aa_fasta_template.map(|template| AaFastaSink::new(template.to_owned(), inputs.names.clone()));
 
   let cds_annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry> = cdses
     .iter()
@@ -434,9 +435,9 @@ fn run_aa_reconstructions(
     .collect();
 
   let node_data = reconstruct_aa(
-    graph,
-    names,
-    branch_lengths,
+    inputs.graph,
+    inputs.names,
+    inputs.branch_lengths,
     &params,
     cds_inputs,
     seq_sink.as_mut().map(|sink| -> &mut dyn SeqSink { sink }),
@@ -447,7 +448,7 @@ fn run_aa_reconstructions(
     sink.finish()?;
   }
   let node_data = UnknownMutationFilter::new(recon_alphabet.unknown(), ancestral_args.report_ambiguous)
-    .reported_aa_node_data(graph, node_data)?;
+    .reported_aa_node_data(inputs.graph, node_data)?;
   Ok((node_data, cds_annotations))
 }
 

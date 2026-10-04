@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
+  use crate::commands::shared::seed::SeedArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
   use approx::{assert_relative_eq, assert_ulps_eq};
@@ -149,7 +150,7 @@ mod tests {
           ..OutputCoreArgs::default()
         },
         output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::ClockCsv],
-        seed: Some(7),
+        seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()
       };
       configure(&mut raw);

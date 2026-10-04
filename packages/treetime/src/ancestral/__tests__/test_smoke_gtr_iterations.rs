@@ -85,7 +85,7 @@ mod tests {
         impute_missing_data: false,
         gtr_iterations,
         site_specific_gtr: false,
-        seed: None,
+        seed: 0,
         sample_from_profile: SampleMode::Argmax,
       };
       let names = parse.names();

@@ -432,7 +432,7 @@ mod tests {
         clock_rate: Some(CLOCK_RATE),
         resolve_polytomies,
         relax,
-        seed: Some(ROUND_TEST_SEED),
+        seed: ROUND_TEST_SEED,
         ..marginal_timetree_params()
       }
     }
@@ -464,7 +464,7 @@ mod tests {
         &merger_rate,
         coalescent_tc.is_some().then_some(&coalescent),
         state,
-        &mut get_random_number_generator(Some(ROUND_TEST_SEED)),
+        &mut get_random_number_generator(ROUND_TEST_SEED),
         &NoopProgress,
       )
     }

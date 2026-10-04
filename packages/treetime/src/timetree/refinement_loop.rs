@@ -29,14 +29,7 @@ pub(crate) fn run_refinement_loop(
   }
   let max_iter = params.max_iter;
 
-  let seed = params.seed.unwrap_or_else(rand::random);
-  if params.resolve_polytomies {
-    progress_info!(
-      log,
-      "Polytomy resolution is stochastic; seed {seed} (pass --seed to reproduce this run)"
-    );
-  }
-  let mut rng = get_random_number_generator(Some(seed));
+  let mut rng = get_random_number_generator(params.seed);
 
   while let Some(IterationContext { i }) = optimizer.next_iter(log) {
     cancel.check()?;

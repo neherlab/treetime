@@ -29,11 +29,6 @@ pub struct TreetimeMugrationArgs {
   pub(crate) output_augur_node_data: Option<PathBuf>,
   pub(crate) output_gtr: Option<PathBuf>,
   pub(crate) output_traits_csv: Option<PathBuf>,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) seed: Option<u64>,
   pub(crate) output: OutputCoreArgs,
   pub(crate) output_selection: Vec<MugrationOutputSelection>,
   pub(crate) topology_order: TopologyOrderArgs,
@@ -71,7 +66,6 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
         output_augur_node_data: raw.output_augur_node_data,
         output_gtr: raw.output_gtr,
         output_traits_csv: raw.output_traits_csv,
-        seed: raw.seed,
         output: raw.output,
         output_selection: raw.output_selection,
         topology_order: raw.topology_order,
@@ -214,13 +208,6 @@ pub struct TreetimeMugrationArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_traits_csv: Option<PathBuf>,
-
-  /// Random seed
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, visible_alias = "rng-seed", help_heading = "Reproducibility")
-  )]
-  pub seed: Option<u64>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]

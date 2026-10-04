@@ -959,7 +959,7 @@
           "default": "mean"
         },
         "seed": {
-          "description": "Random seed",
+          "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
           "type": [
             "integer",
             "null"
@@ -2599,7 +2599,7 @@
           ]
         },
         "seed": {
-          "description": "Random seed",
+          "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
           "type": [
             "integer",
             "null"
@@ -3133,16 +3133,6 @@
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
         },
-        "seed": {
-          "description": "Random seed",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint64",
-          "minimum": 0,
-          "default": null
-        },
         "clock_filter_method": {
           "description": "Method for clock filter outlier detection (not yet implemented)",
           "type": [
@@ -3600,16 +3590,6 @@
           ],
           "default": null,
           "x-path": "output"
-        },
-        "seed": {
-          "description": "Random seed",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint64",
-          "minimum": 0,
-          "default": null
         },
         "output_all": {
           "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",

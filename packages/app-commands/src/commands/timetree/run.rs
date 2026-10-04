@@ -74,7 +74,10 @@ pub fn run_timetree_estimation(
       .map(PathBuf::as_path),
     stages,
   )?;
-  let params = timetree_params(args, sequence_outputs_requested);
+  let seed = args
+    .seed_args
+    .resolve(args.resolve_polytomies.then_some("Polytomy resolution"), log);
+  let params = timetree_params(args, sequence_outputs_requested, seed);
 
   let aln_descs = sequence_descriptions(input_data.aln.iter().flatten());
   let unknown = input_data.alphabet.unknown();
@@ -135,7 +138,7 @@ pub fn run_timetree_estimation(
   Ok(())
 }
 
-fn timetree_params(args: &TreetimeTimetreeArgs, sequence_outputs_requested: bool) -> TimetreeParams {
+fn timetree_params(args: &TreetimeTimetreeArgs, sequence_outputs_requested: bool, seed: u64) -> TimetreeParams {
   TimetreeParams {
     model: args.model_args.model_name(),
     dense: args.dense,
@@ -166,7 +169,7 @@ fn timetree_params(args: &TreetimeTimetreeArgs, sequence_outputs_requested: bool
     include_leaves: args.include_leaves,
     impute_missing_data: args.impute_missing_data,
     sequence_outputs_requested,
-    seed: args.seed,
+    seed,
   }
 }
 

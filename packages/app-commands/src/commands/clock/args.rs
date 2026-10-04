@@ -73,11 +73,6 @@ pub struct TreetimeClockArgs {
     dead_code,
     reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
   )]
-  pub(crate) seed: Option<u64>,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
   pub(crate) clock_filter_method: Option<String>,
   #[expect(
     dead_code,
@@ -136,7 +131,6 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
       output_clock_csv: raw.output_clock_csv,
       output_selection: raw.output_selection,
       topology_order: raw.topology_order,
-      seed: raw.seed,
       clock_filter_method: raw.clock_filter_method,
       plot_rtt: raw.plot_rtt,
       prune_outliers: raw.prune_outliers,
@@ -269,13 +263,6 @@ pub struct TreetimeClockArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
   pub topology_order: TopologyOrderArgs,
-
-  /// Random seed
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, visible_alias = "rng-seed", help_heading = "Reproducibility")
-  )]
-  pub seed: Option<u64>,
 
   /// Method for clock filter outlier detection (not yet implemented)
   #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Molecular clock"))]

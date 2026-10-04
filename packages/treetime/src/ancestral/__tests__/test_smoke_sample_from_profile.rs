@@ -57,7 +57,7 @@ mod tests {
       impute_missing_data: false,
       gtr_iterations: 0,
       site_specific_gtr: false,
-      seed: None,
+      seed: 0,
       sample_from_profile: SampleMode::Root,
     };
     let names = parse.names();
@@ -124,7 +124,7 @@ mod tests {
         impute_missing_data: false,
         gtr_iterations: 0,
         site_specific_gtr: false,
-        seed: Some(seed),
+        seed,
         sample_from_profile: mode,
       };
       let names = parse.names();

@@ -79,7 +79,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     include_leaves: false,
     impute_missing_data: false,
     sequence_outputs_requested: false,
-    seed: None,
+    seed: 0,
   }
 }
 

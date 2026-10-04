@@ -683,7 +683,7 @@
       "x-cli-flag": "--topology-order-target-aggregate"
     },
     "seed": {
-      "description": "Random seed",
+      "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
       "type": [
         "integer",
         "null"

@@ -100,7 +100,7 @@ pub struct AaParams {
   pub include_leaves: bool,
   pub impute_missing_data: bool,
   pub sample_from_profile: SampleMode,
-  pub seed: Option<u64>,
+  pub seed: u64,
   pub ignore_missing_alns: bool,
 }
 

@@ -123,7 +123,7 @@ pub struct TimetreeParams {
   pub include_leaves: bool,
   pub impute_missing_data: bool,
   pub sequence_outputs_requested: bool,
-  pub seed: Option<u64>,
+  pub seed: u64,
 }
 
 pub(crate) struct TimetreeContext {

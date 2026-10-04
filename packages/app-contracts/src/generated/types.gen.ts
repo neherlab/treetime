@@ -2515,6 +2515,8 @@ export type TimetreeConfig = {
   topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
   /**
    * Random seed
+   *
+   * Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
    */
   seed?: number | null;
   /**
@@ -3420,6 +3422,8 @@ export type AncestralConfig = {
   site_specific_gtr?: boolean;
   /**
    * Random seed
+   *
+   * Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
    */
   seed?: number | null;
   /**
@@ -3748,10 +3752,6 @@ export type ClockConfig = {
    */
   topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
   /**
-   * Random seed
-   */
-  seed?: number | null;
-  /**
    * Method for clock filter outlier detection (not yet implemented)
    */
   clock_filter_method?: string | null;
@@ -3884,10 +3884,6 @@ export type MugrationConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    */
   output_traits_csv?: string | null;
-  /**
-   * Random seed
-   */
-  seed?: number | null;
   /**
    * Write all default output files into this directory.
    *

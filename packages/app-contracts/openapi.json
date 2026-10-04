@@ -5413,7 +5413,7 @@
             "x-cli-flag": "--topology-order-target-aggregate"
           },
           "seed": {
-            "description": "Random seed",
+            "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
             "type": [
               "integer",
               "null"
@@ -6592,7 +6592,7 @@
             "x-cli-flag": "--site-specific-gtr"
           },
           "seed": {
-            "description": "Random seed",
+            "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
             "type": [
               "integer",
               "null"
@@ -7111,17 +7111,6 @@
             "default": "mean",
             "x-cli-flag": "--topology-order-target-aggregate"
           },
-          "seed": {
-            "description": "Random seed",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint64",
-            "minimum": 0,
-            "default": null,
-            "x-cli-flag": "--seed"
-          },
           "clock_filter_method": {
             "description": "Method for clock filter outlier detection (not yet implemented)",
             "type": [
@@ -7355,17 +7344,6 @@
             "default": null,
             "x-path": "output",
             "x-cli-flag": "--output-traits-csv"
-          },
-          "seed": {
-            "description": "Random seed",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint64",
-            "minimum": 0,
-            "default": null,
-            "x-cli-flag": "--seed"
           },
           "output_all": {
             "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.",
@@ -11025,7 +11003,7 @@
             ],
             "conflicts": [],
             "help": "Random seed",
-            "more": ""
+            "more": "Without a seed, a run with a random step draws one and logs it, so the run can be reproduced."
           }
         ]
       },
@@ -14403,7 +14381,7 @@
             ],
             "conflicts": [],
             "help": "Random seed",
-            "more": ""
+            "more": "Without a seed, a run with a random step draws one and logs it, so the run can be reproduced."
           }
         ]
       },
@@ -14471,7 +14449,6 @@
           "Rooting",
           "Output",
           "Tree ordering",
-          "Reproducibility",
           "Plots",
           "Branch split optimization",
           "Clock regression"
@@ -15630,29 +15607,6 @@
             "more": ""
           },
           {
-            "key": "seed",
-            "path": [
-              "seed"
-            ],
-            "label": "Seed",
-            "flag": "--seed",
-            "group": "Reproducibility",
-            "role": "setting",
-            "kind": "integer",
-            "nullable": true,
-            "options": [],
-            "item_kind": "string",
-            "default_value": null,
-            "minimum": 0.0,
-            "examples": [],
-            "value_names": [
-              "SEED"
-            ],
-            "conflicts": [],
-            "help": "Random seed",
-            "more": ""
-          },
-          {
             "key": "plot_rtt",
             "path": [
               "plot_rtt"
@@ -15948,7 +15902,6 @@
           "Input data",
           "Output",
           "Substitution model",
-          "Reproducibility",
           "Tree ordering"
         ],
         "settings": [
@@ -16642,29 +16595,6 @@
             "conflicts": [],
             "help": "Exclude near-uniform root positions from the equilibrium-frequency prior.",
             "more": "Off by default (TreeTime v0 always folds the root's most-likely state into the prior). Enabling this drops root positions whose posterior carries no phylogenetic signal, removing a state-order-dependent bias at ambiguous roots."
-          },
-          {
-            "key": "seed",
-            "path": [
-              "seed"
-            ],
-            "label": "Seed",
-            "flag": "--seed",
-            "group": "Reproducibility",
-            "role": "setting",
-            "kind": "integer",
-            "nullable": true,
-            "options": [],
-            "item_kind": "string",
-            "default_value": null,
-            "minimum": 0.0,
-            "examples": [],
-            "value_names": [
-              "SEED"
-            ],
-            "conflicts": [],
-            "help": "Random seed",
-            "more": ""
           },
           {
             "key": "ladderize",

@@ -112,7 +112,7 @@ mod tests {
         impute_missing_data: false,
         gtr_iterations: 0,
         site_specific_gtr: false,
-        seed: Some(0),
+        seed: 0,
         sample_from_profile: SampleMode::Argmax,
       };
       let mut sink = RecordingSeqSink::default();

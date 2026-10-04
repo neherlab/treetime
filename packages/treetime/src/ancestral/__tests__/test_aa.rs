@@ -246,7 +246,7 @@ mod tests {
         include_leaves: false,
         impute_missing_data: false,
         sample_from_profile: SampleMode::default(),
-        seed: None,
+        seed: 0,
         ignore_missing_alns: false,
       }
     }

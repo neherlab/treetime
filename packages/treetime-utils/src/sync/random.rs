@@ -6,11 +6,8 @@ use ndarray_rand::rand::{Rng, seq::IteratorRandom, seq::SliceRandom};
 use rand_isaac::Isaac64Rng;
 use std::collections::BTreeSet;
 
-pub fn get_random_number_generator(seed: Option<u64>) -> impl Rng + Send + Sync + Clone {
-  match seed {
-    None => Isaac64Rng::from_entropy(),
-    Some(seed) => Isaac64Rng::seed_from_u64(seed),
-  }
+pub fn get_random_number_generator(seed: u64) -> impl Rng + Send + Sync + Clone {
+  Isaac64Rng::seed_from_u64(seed)
 }
 
 #[allow(

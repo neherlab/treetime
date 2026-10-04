@@ -9,6 +9,7 @@ use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::RerootArgs;
+use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -114,7 +115,7 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) output: OutputCoreArgs,
   pub(crate) output_selection: Vec<TimetreeOutputSelection>,
   pub(crate) topology_order: TopologyOrderArgs,
-  pub(crate) seed: Option<u64>,
+  pub(crate) seed_args: SeedArgs,
   #[expect(
     dead_code,
     reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
@@ -213,7 +214,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       output: raw.output,
       output_selection: raw.output_selection,
       topology_order: raw.topology_order,
-      seed: raw.seed,
+      seed_args: raw.seed_args,
       aa: raw.aa,
       custom_gtr: raw.custom_gtr,
       clock_filter_method: raw.clock_filter_method,
@@ -620,12 +621,9 @@ pub struct TreetimeTimetreeArgsRaw {
   #[serde(flatten)]
   pub topology_order: TopologyOrderArgs,
 
-  /// Random seed
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, visible_alias = "rng-seed", help_heading = "Reproducibility")
-  )]
-  pub seed: Option<u64>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[serde(flatten)]
+  pub seed_args: SeedArgs,
 
   /// Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
   #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Input data"))]

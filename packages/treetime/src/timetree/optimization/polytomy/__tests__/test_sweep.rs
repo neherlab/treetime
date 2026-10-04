@@ -41,7 +41,7 @@ mod tests {
 
   #[test]
   fn test_sweep_two_children_is_noop() -> Result<(), Report> {
-    let mut rng = get_random_number_generator(Some(1));
+    let mut rng = get_random_number_generator(1);
     let children = [lineage(10.0, 0), lineage(9.0, 0)];
 
     let plan = simulate_subtree(&children, 0.0, 1.0, &const_merger_rate(1.0), &mut rng)?;
@@ -53,7 +53,7 @@ mod tests {
 
   #[test]
   fn test_sweep_without_time_window_is_noop() -> Result<(), Report> {
-    let mut rng = get_random_number_generator(Some(1));
+    let mut rng = get_random_number_generator(1);
     let children = [lineage(5.0, 0), lineage(4.0, 0), lineage(3.0, 0)];
 
     let plan = simulate_subtree(&children, 5.0, 1.0, &const_merger_rate(1e6), &mut rng)?;
@@ -76,7 +76,7 @@ mod tests {
     #[case] children: Vec<Lineage>,
     #[case] expected: &str,
   ) {
-    let mut rng = get_random_number_generator(Some(1));
+    let mut rng = get_random_number_generator(1);
 
     assert_error!(
       simulate_subtree(&children, t_stop, mutation_rate, &const_merger_rate(1.0), &mut rng),
@@ -92,7 +92,7 @@ mod tests {
   #[trace]
   fn test_sweep_rejects_invalid_merger_rates(#[case] rate: f64, #[case] expected: &str) {
     let children = vec![lineage(3.0, 0), lineage(2.0, 0), lineage(1.0, 0)];
-    let mut rng = get_random_number_generator(Some(1));
+    let mut rng = get_random_number_generator(1);
 
     assert_error!(
       simulate_subtree(&children, 0.0, 1.0, &const_merger_rate(rate), &mut rng),
@@ -103,7 +103,7 @@ mod tests {
   #[test]
   fn test_sweep_rejects_overflowing_component_rate() {
     let children = vec![lineage(3.0, u32::MAX), lineage(3.0, 0), lineage(3.0, 0)];
-    let mut rng = get_random_number_generator(Some(1));
+    let mut rng = get_random_number_generator(1);
 
     assert_error!(
       simulate_subtree(&children, 0.0, f64::MAX, &const_merger_rate(1.0), &mut rng,),
@@ -115,7 +115,7 @@ mod tests {
   fn test_sweep_rejects_overflowing_total_rate() {
     let children = vec![lineage(3.0, 1), lineage(3.0, 0), lineage(3.0, 0)];
     let component_rate = f64::MAX * 0.75;
-    let mut rng = get_random_number_generator(Some(1));
+    let mut rng = get_random_number_generator(1);
 
     assert_error!(
       simulate_subtree(
@@ -134,7 +134,7 @@ mod tests {
     let children: Vec<Lineage> = (0..8_u32).map(|i| lineage(10.0 - f64::from(i), i % 3)).collect();
 
     let run = |seed: u64| -> Result<SubtreePlan, Report> {
-      let mut rng = get_random_number_generator(Some(seed));
+      let mut rng = get_random_number_generator(seed);
       simulate_subtree(&children, -20.0, 0.5, &const_merger_rate(0.4), &mut rng)
     };
 
@@ -165,9 +165,9 @@ mod tests {
       .collect();
     let shifted_merger_rate = PiecewiseConstantFn::new(array![3.0 + offset, 8.0 + offset], array![0.2, 0.5, 0.1]);
 
-    let mut base_rng = get_random_number_generator(Some(17));
+    let mut base_rng = get_random_number_generator(17);
     let base = simulate_subtree(&children, -5.0, 0.7, &merger_rate, &mut base_rng)?;
-    let mut shifted_rng = get_random_number_generator(Some(17));
+    let mut shifted_rng = get_random_number_generator(17);
     let shifted = simulate_subtree(
       &shifted_children,
       -5.0 + offset,
@@ -208,7 +208,7 @@ mod tests {
         lineage(2.0, 0),
       ];
       let t_stop = -5.0;
-      let mut rng = get_random_number_generator(Some(seed));
+      let mut rng = get_random_number_generator(seed);
       let plan = simulate_subtree(&children, t_stop, 0.7, &const_merger_rate(0.3), &mut rng).unwrap();
 
       assert_every_child_placed_once(&plan, children.len());
@@ -242,7 +242,7 @@ mod tests {
         lineage(7.0, 0),
         lineage(6.0, 1),
       ];
-      let mut rng = get_random_number_generator(Some(seed));
+      let mut rng = get_random_number_generator(seed);
       let plan = simulate_subtree(&children, -50.0, 0.0, &const_merger_rate(2.0), &mut rng).unwrap();
 
       let mutated_children_survive = [2_usize, 4].into_iter().all(|child| plan.roots.contains(&child));
@@ -255,7 +255,7 @@ mod tests {
     fn test_prop_sweep_resolves_fully_with_generous_window(seed in any::<u64>()) {
       let n_children = 8;
       let children: Vec<Lineage> = (0..n_children).map(|i| lineage(10.0 - i as f64, 0)).collect();
-      let mut rng = get_random_number_generator(Some(seed));
+      let mut rng = get_random_number_generator(seed);
       let plan = simulate_subtree(&children, -1.0e6, 0.0, &const_merger_rate(1.0), &mut rng).unwrap();
 
       prop_assert_eq!(plan.mergers.len(), n_children - 2);
@@ -266,7 +266,7 @@ mod tests {
   #[test]
   fn test_sweep_integrates_from_lineage_arrival_boundary() -> Result<(), Report> {
     let children = [lineage(10.0, 0), lineage(5.0, 0), lineage(0.0, 0)];
-    let mut rng = get_random_number_generator(Some(3));
+    let mut rng = get_random_number_generator(3);
 
     let plan = simulate_subtree(&children, -100.0, 0.0, &const_merger_rate(1e6), &mut rng)?;
 
@@ -283,7 +283,7 @@ mod tests {
   fn test_sweep_integrates_across_merger_rate_boundary() -> Result<(), Report> {
     let children = [lineage(10.0, 0), lineage(10.0, 0), lineage(10.0, 0)];
     let merger_rate = PiecewiseConstantFn::new(array![5.0], array![1e6, 0.0]);
-    let mut rng = get_random_number_generator(Some(3));
+    let mut rng = get_random_number_generator(3);
 
     let plan = simulate_subtree(&children, 0.0, 0.0, &merger_rate, &mut rng)?;
 
@@ -302,7 +302,7 @@ mod tests {
   #[test]
   fn test_sweep_terminates_when_no_event_is_possible() -> Result<(), Report> {
     let children = [lineage(3.0, 0), lineage(2.0, 1), lineage(1.0, 0)];
-    let mut rng = get_random_number_generator(Some(1));
+    let mut rng = get_random_number_generator(1);
 
     let plan = simulate_subtree(&children, 0.0, 0.0, &const_merger_rate(0.0), &mut rng)?;
 
@@ -326,7 +326,7 @@ mod tests {
 
     let mut total = 0.0;
     for seed in 0..replicates {
-      let mut rng = get_random_number_generator(Some(seed));
+      let mut rng = get_random_number_generator(seed);
       let plan = simulate_subtree(&children, -1.0e9, 0.0, &const_merger_rate(kappa), &mut rng)?;
       let first = plan.mergers.first().expect("the window is effectively unbounded");
       total += -first.time;

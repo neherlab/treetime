@@ -198,7 +198,7 @@ mod tests {
       POLYTOMY_MUTATION_RATE,
       0,
       &PiecewiseConstantFn::new(array![], array![POLYTOMY_MERGER_RATE]),
-      &mut get_random_number_generator(Some(POLYTOMY_SEED)),
+      &mut get_random_number_generator(POLYTOMY_SEED),
       &times,
     )?;
     let merger = *merger_times.keys().exactly_one().expect("the seed resolves one merger");

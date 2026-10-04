@@ -360,17 +360,6 @@
       "default": "mean",
       "x-cli-flag": "--topology-order-target-aggregate"
     },
-    "seed": {
-      "description": "Random seed",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0,
-      "default": null,
-      "x-cli-flag": "--seed"
-    },
     "clock_filter_method": {
       "description": "Method for clock filter outlier detection (not yet implemented)",
       "type": [

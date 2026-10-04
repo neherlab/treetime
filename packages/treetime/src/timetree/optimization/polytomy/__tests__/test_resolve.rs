@@ -32,7 +32,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomies_leaves_a_binary_tree_alone() -> Result<(), Report> {
     let (graph, names, mut node_times, branch_lengths) = binary_tree()?;
-    let mut rng = get_random_number_generator(Some(1));
+    let mut rng = get_random_number_generator(1);
 
     let (graph, created) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
 
@@ -44,7 +44,7 @@ mod tests {
   fn test_resolve_polytomies_resolves_a_three_way_polytomy() -> Result<(), Report> {
     let (graph, names, mut node_times, branch_lengths) = polytomy_tree()?;
     let abc_key = find_node_key_by_name(&graph, &names, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
-    let mut rng = get_random_number_generator(Some(11));
+    let mut rng = get_random_number_generator(11);
 
     let (graph, created) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
 
@@ -60,7 +60,7 @@ mod tests {
       let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree().unwrap();
       let parent_key = find_node_key_by_name(&graph, &names, "P").expect("P must exist");
       let before = leaf_names_under(&graph, &names, parent_key);
-      let mut rng = get_random_number_generator(Some(seed));
+      let mut rng = get_random_number_generator(seed);
 
       let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng).unwrap();
 
@@ -71,7 +71,7 @@ mod tests {
     #[test]
     fn test_prop_resolve_polytomies_leaves_no_single_child_nodes(seed in any::<u64>()) {
       let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree().unwrap();
-      let mut rng = get_random_number_generator(Some(seed));
+      let mut rng = get_random_number_generator(seed);
       let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng).unwrap();
 
       let has_single_child_node = graph.get_nodes().into_iter().any(|node| {
@@ -85,7 +85,7 @@ mod tests {
   fn test_resolve_polytomies_is_reproducible_under_the_same_seed() -> Result<(), Report> {
     let clusters = |seed: u64| -> Result<BTreeSet<Vec<String>>, Report> {
       let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
-      let mut rng = get_random_number_generator(Some(seed));
+      let mut rng = get_random_number_generator(seed);
       let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
       Ok(
         graph
@@ -110,7 +110,7 @@ mod tests {
   fn test_resolve_polytomies_different_seeds_can_differ() -> Result<(), Report> {
     let clusters = |seed: u64| -> Result<BTreeSet<Vec<String>>, Report> {
       let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
-      let mut rng = get_random_number_generator(Some(seed));
+      let mut rng = get_random_number_generator(seed);
       let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
       Ok(
         graph
@@ -147,7 +147,7 @@ mod tests {
     ] {
       set_time(&graph, &names, &mut node_times, name, time)?;
     }
-    let mut rng = get_random_number_generator(Some(1));
+    let mut rng = get_random_number_generator(1);
 
     let (graph, created) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
 
@@ -163,7 +163,7 @@ mod tests {
     let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
     let parent_key = find_node_key_by_name(&graph, &names, "P").ok_or_else(|| make_report!("P not found"))?;
     let parent_time = 1980.0;
-    let mut rng = get_random_number_generator(Some(9));
+    let mut rng = get_random_number_generator(9);
 
     let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
 
@@ -197,7 +197,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomies_names_new_nodes() -> Result<(), Report> {
     let (graph, names, mut node_times, branch_lengths) = polytomy_tree()?;
-    let mut rng = get_random_number_generator(Some(11));
+    let mut rng = get_random_number_generator(11);
 
     let (graph, created) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
     assert_eq!(created, 1);
@@ -247,7 +247,7 @@ mod tests {
       let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
       let constraints = point_date_constraints(&graph, &names, &[("D", 2017.0), ("E", 2016.0), ("F", 2015.0)]);
       let leaf_bad_branches = bad_leaves(&graph, &constraints, &BTreeSet::new());
-      let mut rng = get_random_number_generator(Some(seed));
+      let mut rng = get_random_number_generator(seed);
       let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
 
       let bad_branches = derive_bad_branches(&graph, &constraints, &leaf_bad_branches)?;

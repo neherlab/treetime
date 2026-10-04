@@ -377,6 +377,8 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
   Possible values: `mean`, `median`
 
 * `--seed <SEED>` [alias: `rng-seed`] — Random seed
+
+   Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
 * `--gen-per-year <GEN_PER_YEAR>` — Generations per year for converting the coalescent time scale Tc into an effective population size.
 
    The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is already in calendar years, so this factor rescales it into generation units, the standard axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.
@@ -946,6 +948,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
   Default value: `0`
 * `--seed <SEED>` [alias: `rng-seed`] — Random seed
+
+   Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
 * `--sample-from-profile <SAMPLE_FROM_PROFILE>` — How to pick ancestral states from the marginal posterior profile.
 
    'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere (matches augur's `sample_from_profile='root'`). Use `--seed` for reproducible draws. 'all': sample from the posterior at every node.
@@ -1125,7 +1129,6 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
   Possible values: `mean`, `median`
 
-* `--seed <SEED>` [alias: `rng-seed`] — Random seed
 * `--branch-split-method <METHOD>` — Optimization method to use for finding the best root position
 
   Default value: `grid`
@@ -1364,6 +1367,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
   Default value: `0`
 * `--seed <SEED>` [alias: `rng-seed`] — Random seed
+
+   Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
 * `--sample-from-profile <SAMPLE_FROM_PROFILE>` — How to pick ancestral states from the marginal posterior profile.
 
    'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere (matches augur's `sample_from_profile='root'`). Use `--seed` for reproducible draws. 'all': sample from the posterior at every node.
@@ -1438,7 +1443,6 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 * `--output-traits-csv <OUTPUT_TRAITS_CSV>` — Path to output traits CSV.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
-* `--seed <SEED>` [alias: `rng-seed`] — Random seed
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.
 
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.

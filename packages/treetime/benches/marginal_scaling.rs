@@ -1,7 +1,7 @@
 #![allow(
   clippy::expect_used,
   clippy::unwrap_used,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
+  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
 )]
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
@@ -46,7 +46,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
     impute_missing_data: false,
     gtr_iterations: 0,
     site_specific_gtr: false,
-    seed: Some(0),
+    seed: 0,
     sample_from_profile: SampleMode::Argmax,
   };
 
