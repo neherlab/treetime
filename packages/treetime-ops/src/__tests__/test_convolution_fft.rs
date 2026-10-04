@@ -20,6 +20,21 @@ mod tests {
   }
 
   #[test]
+  fn test_convolution_fft_equals_fresh_plans_for_equal_output_lengths_of_different_padding() {
+    let lengths = [(100, 900), (950, 50), (300, 700), (700, 300), (100, 900), (950, 50)];
+    let operands: Vec<_> = lengths
+      .iter()
+      .enumerate()
+      .map(|(seed, &(f_len, g_len))| helpers::operands(f_len, g_len, seed))
+      .collect();
+
+    let expected: Vec<Array1<f64>> = operands.iter().map(|(f, g)| helpers::fresh(0.1, f, g)).collect();
+    let actual: Vec<Array1<f64>> = operands.iter().map(|(f, g)| convolve_fft(0.1, f, g).unwrap()).collect();
+
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
   fn test_convolution_fft_equals_fresh_plans_after_eviction() {
     let (f, g) = helpers::operands(1500, 700, 0);
     let expected = helpers::fresh(0.25, &f, &g);

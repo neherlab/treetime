@@ -67,7 +67,8 @@ impl ConvolveAlgo for FftConvolve {
 }
 
 pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  let fft_len = fft_len((f_values.len() + g_values.len()).saturating_sub(1));
+  let padded_len = f_values.len() + 2 * g_values.len().saturating_sub(1);
+  let fft_len = fft_len(padded_len.max(g_values.len()));
   let discrete_conv = if fft_len > MAX_CACHED_FFT_LEN {
     f_values.conv_fft(g_values, ConvMode::Full, PaddingMode::Zeros)?
   } else {
@@ -84,14 +85,14 @@ pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> 
   clippy::integer_division,
   reason = "the transform length of ndarray-conv steps down from a power of two by integer ratios"
 )]
-fn fft_len(output_len: usize) -> usize {
-  let mut len = output_len.next_power_of_two();
+fn fft_len(padded_len: usize) -> usize {
+  let mut len = padded_len.next_power_of_two();
   for (numerator, denominator) in [(3, 4), (5, 6)] {
     loop {
       let smaller = len / denominator * numerator;
-      match smaller.cmp(&output_len) {
+      match smaller.cmp(&padded_len) {
         Ordering::Less => break,
-        Ordering::Equal => return output_len,
+        Ordering::Equal => return padded_len,
         Ordering::Greater => len = smaller,
       }
     }
@@ -100,13 +101,15 @@ fn fft_len(output_len: usize) -> usize {
 }
 
 fn processor_for_fft_len(processors: &mut Vec<(usize, FftProcessor<f64>)>, fft_len: usize) -> &mut FftProcessor<f64> {
-  if let Some(index) = processors.iter().position(|(len, _)| *len == fft_len) {
-    return &mut processors[index].1;
-  }
-  if processors.len() >= FFT_PROCESSORS_PER_THREAD {
-    processors.remove(0);
-  }
-  processors.push((fft_len, FftProcessor::default()));
+  let entry = if let Some(index) = processors.iter().position(|(len, _)| *len == fft_len) {
+    processors.remove(index)
+  } else {
+    if processors.len() >= FFT_PROCESSORS_PER_THREAD {
+      processors.remove(0);
+    }
+    (fft_len, FftProcessor::default())
+  };
+  processors.push(entry);
   let index = processors.len() - 1;
   &mut processors[index].1
 }
