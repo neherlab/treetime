@@ -382,7 +382,10 @@ def load_case_spec(path: Path) -> CaseSpec:
     raw = tomllib.loads(path.read_text())
   except (OSError, tomllib.TOMLDecodeError) as error:
     raise SmokeError(f"Cannot read the case file {path.relative_to(PROJECT_ROOT)}: {error}") from error
-  commands = {name: parse_command(name, table) for name, table in raw.pop("commands", {}).items()}
+  seed = raw.pop("seed", None)
+  if seed is not None and (not isinstance(seed, int) or isinstance(seed, bool) or seed < 0):
+    raise SmokeError(f"`seed` must be a non-negative integer, not {seed!r}")
+  commands = {name: parse_command(name, table, seed) for name, table in raw.pop("commands", {}).items()}
   sizes = {Size(name): parse_size(name, table) for name, table in check_keys(raw.pop("sizes", {}), SIZE_NAMES,
                                                                              "[sizes]").items()}
   if missing := [size.value for size in Size if size not in sizes]:
@@ -407,9 +410,14 @@ def check_keys(table: dict, allowed: set[str] | frozenset[str], where: str) -> d
   return table
 
 
-def parse_command(name: str, table: dict) -> CommandTemplate:
-  check_keys(table, {"args", "outputs", "selection"}, f"[commands.{name}]")
-  return CommandTemplate(table.get("args", ""), tuple(table.get("outputs", ())), table.get("selection"))
+def parse_command(name: str, table: dict, seed: int | None) -> CommandTemplate:
+  """A command template; a seeded template passes the case file's `seed` after its own arguments."""
+  check_keys(table, {"args", "outputs", "selection", "seeded"}, f"[commands.{name}]")
+  seeded = table.get("seeded", False)
+  if seeded and seed is None:
+    raise SmokeError(f"[commands.{name}] is seeded, but the case file sets no top-level `seed`")
+  args = f"{table.get('args', '')} --seed={seed}" if seeded else table.get("args", "")
+  return CommandTemplate(args, tuple(table.get("outputs", ())), table.get("selection"))
 
 
 def parse_size(name: str, table: dict) -> SizeClass:

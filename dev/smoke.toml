@@ -17,6 +17,12 @@
 # `datasets` names such a dataset explicitly is an error when the dataset lacks them.
 
 
+# Random seed of every case whose command template is `seeded`. Profile sampling and polytomy resolution draw
+# random numbers, and smoke compares the outputs byte for byte, so these commands need a fixed seed. A row passes
+# its own `--seed=...` to use another one.
+seed = 42
+
+
 # Size classes by sequence count. A dataset belongs to the first class whose `max_sequences` it does not exceed.
 # `tier`: quick cases run in `just smoke`, full cases only in `just smoke-all`. `timeout` is in seconds.
 [sizes]
@@ -70,14 +76,14 @@ mugration_attribute = "country"
 # later layer replaces every occurrence of the same flag in the earlier layers, so a row changes a template flag by
 # passing it again, for example `--tree=...` or `--seed=...`. A flag may repeat within one layer.
 # `outputs`: files that must exist and be non-empty after a run.
+# `seeded`: true adds `--seed=<seed>` after the template's `args`, for commands with a random step.
 #
 # Every case writes every output of its command, so a change in any written file shows up. `ancestral` and
-# `timetree` also write the leaf sequences (`--include-leaves`) and pass a fixed `--seed`: profile sampling and
-# polytomy resolution draw random numbers, and smoke compares the outputs byte for byte. A row sets its own
-# `selection` only when the selection is what it tests, or when one output fails for a reason that its own row
-# declares.
+# `timetree` also write the leaf sequences (`--include-leaves`). A row sets its own `selection` only when the
+# selection is what it tests, or when one output fails for a reason that its own row declares.
 [commands.ancestral]
-args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --seed=42"
+args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
+seeded = true
 outputs = ["ancestral.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,reconstructed-aa-fasta,mat-pb,mat-json"
 
@@ -105,7 +111,8 @@ outputs = ["prune.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,gtr,mat-pb,mat-json"
 
 [commands.timetree]
-args = "--tree={dataset}/tree.nwk --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves --seed=42"
+args = "--tree={dataset}/tree.nwk --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
+seeded = true
 outputs = ["timetree.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,clock-model,clock-csv,confidence-tsv,tracelog,coalescent-tsv,coalescent-csv,coalescent-json,mat-pb,mat-json"
 
