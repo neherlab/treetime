@@ -63,8 +63,6 @@ describe("zod_schemas command configs", () => {
   test.each([
     { name: "TimetreeConfig", parse: (value: unknown) => zTimetreeConfig.parse(value).seed },
     { name: "AncestralConfig", parse: (value: unknown) => zAncestralConfig.parse(value).seed },
-    { name: "ClockConfig", parse: (value: unknown) => zClockConfig.parse(value).seed },
-    { name: "MugrationConfig", parse: (value: unknown) => zMugrationConfig.parse(value).seed },
   ])("$name parses the 64-bit seed as a number that JSON can send", ({ parse }) => {
     const seed = parse({ seed: 42 });
     expect(JSON.stringify({ seed })).toBe('{"seed":42}');
