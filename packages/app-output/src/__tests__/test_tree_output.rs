@@ -134,19 +134,20 @@ pub(super) mod tests {
       TreeWriteKind::MatJson => mat_path.clone(),
     };
 
-    let error = write_ancestral_tree_outputs(
-      &graph,
-      &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
-      &branch_lengths,
-      &maps,
-      aa_node_data.as_ref(),
-      &aa_annotations,
-      &outputs,
-      &CommentProviders::new(),
-      &NoopProgress,
-    )
-    .expect_err("MAT conversion must fail");
-    assert!(format!("{error:?}").contains("root reference nucleotide 'N'"));
+    assert_error!(
+      write_ancestral_tree_outputs(
+        &graph,
+        &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
+        &branch_lengths,
+        &maps,
+        aa_node_data.as_ref(),
+        &aa_annotations,
+        &outputs,
+        &CommentProviders::new(),
+        &NoopProgress,
+      ),
+      "Node 'A' has root reference nucleotide 'N', but UShER MAT accepts only A, C, G, or T"
+    );
     assert!(nwk_path.is_file());
     assert!(!mat_path.exists());
 

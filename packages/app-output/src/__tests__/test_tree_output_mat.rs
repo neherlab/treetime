@@ -18,7 +18,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_io::usher_mat::UsherMutation;
-  use treetime_utils::o;
+  use treetime_utils::{assert_error, o};
 
   #[test]
   fn test_tree_output_mat_leaves_out_amino_acid_mutations() -> Result<(), Report> {
@@ -38,9 +38,10 @@ mod tests {
   #[test]
   fn test_tree_output_mat_rejects_amino_acid_mutation_as_internal_error() -> Result<(), Report> {
     let mutation = Mutation::substitution(MutationTrack::AminoAcid(o!("S")), Sub::new(c(b'A'), 0_usize, c(b'T'))?);
-    let error = mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A")
-      .expect_err("MAT conversion must receive nucleotide mutations only");
-    assert!(error.to_string().contains("UShER MAT stores nucleotide mutations only"));
+    assert_error!(
+      mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A"),
+      "Node 'A' has an amino-acid mutation, but UShER MAT stores nucleotide mutations only. This is an internal error. Please report it to developers."
+    );
     Ok(())
   }
 
