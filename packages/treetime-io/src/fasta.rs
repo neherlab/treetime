@@ -53,6 +53,7 @@ pub fn read_many_fasta<A: AlphabetLike>(mut reader: FastaReader<'_, '_, A>) -> R
 pub struct FastaReader<'a, 'b, A: AlphabetLike> {
   reader: Box<dyn BufRead + 'a>,
   alphabet: &'b A,
+  accepted: [bool; 128],
   line: String,
   n_lines: usize,
   n_chars: usize,
@@ -64,6 +65,7 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
     Self {
       reader,
       alphabet,
+      accepted: accepted_bytes(alphabet),
       line: String::new(),
       n_lines: 0,
       n_chars: 0,
@@ -155,7 +157,7 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
       let states = trimmed
         .bytes()
         .map(|byte| AsciiChar::from_byte_unchecked(byte.to_ascii_uppercase()));
-      if trimmed.is_ascii() && states.clone().all(|state| self.alphabet.contains(state)) {
+      if trimmed.is_ascii() && trimmed.bytes().all(|byte| self.accepted[usize::from(byte)]) {
         record.seq.extend(states);
         self.line.clear();
         continue;
@@ -179,6 +181,14 @@ impl<'a, 'b, A: AlphabetLike> FastaReader<'a, 'b, A> {
 
     Ok(())
   }
+}
+
+#[allow(
+  clippy::as_conversions,
+  reason = "table indices below 128 convert exactly to ASCII bytes"
+)]
+fn accepted_bytes<A: AlphabetLike>(alphabet: &A) -> [bool; 128] {
+  std::array::from_fn(|byte| alphabet.contains(AsciiChar::from_byte_unchecked((byte as u8).to_ascii_uppercase())))
 }
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq)]
