@@ -53,9 +53,10 @@ mod tests {
         seed,
         sample_from_profile,
       };
-      let (ancestral_input, sink, output) =
+      let (sink, output) =
         helpers::run_recorded(&input, &params).map_err(|error| TestCaseError::fail(format!("{error:?}")))?;
-      let graph = &ancestral_input.graph;
+      let graph = &output.graph;
+      let alphabet = Alphabet::default();
       let streamed: BTreeMap<GraphNodeKey, Seq> =
         sink.items.iter().map(|(key, _, seq)| (*key, seq.clone())).collect();
       let root_key = graph.root_key().map_err(|error| TestCaseError::fail(format!("{error:?}")))?;
@@ -66,7 +67,6 @@ mod tests {
         let parent = &streamed[&edge.source()];
         let child = &streamed[&edge.target()];
         let rebuilt = helpers::apply_substitutions(parent, &output, edge.key())?;
-        let alphabet = &ancestral_input.alphabet;
         for pos in 0..parent.len() {
           if !alphabet.is_gap(parent[pos]) && !alphabet.is_gap(child[pos]) {
             prop_assert_eq!(child[pos], rebuilt[pos], "edge {:?} position {}", edge.key(), pos);
@@ -85,7 +85,7 @@ mod tests {
     pub(super) fn run_recorded(
       input: &MarginalTestInput,
       params: &AncestralParams,
-    ) -> Result<(AncestralInput, RecordingSeqSink, AncestralOutput), Report> {
+    ) -> Result<(RecordingSeqSink, AncestralOutput), Report> {
       let nwk_parsed = nwk_read_str(&input.newick)?;
       let names = nwk_parsed.names();
       let alphabet = Alphabet::default();
@@ -105,14 +105,14 @@ mod tests {
       let mut sink = RecordingSeqSink::default();
       let output = run(
         params,
-        &ancestral_input,
+        ancestral_input,
         &mut sink,
         &NoopCancel,
         &NoopProgress,
         &NoopProgress,
       )
       .map_err(|error| error.into_report())?;
-      Ok((ancestral_input, sink, output))
+      Ok((sink, output))
     }
 
     pub(super) fn apply_substitutions(

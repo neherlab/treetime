@@ -16,7 +16,6 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
@@ -39,7 +38,7 @@ mod tests {
   #[case::sparse(Some(false))]
   #[case::dense(Some(true))]
   fn test_root_sequence_marginal_root_follows_the_short_branch(#[case] dense: Option<bool>) -> Result<(), Report> {
-    let (_, output, _) = helpers::reconstruct(
+    let (output, _) = helpers::reconstruct(
       LONG_BRANCH_TREE,
       LONG_BRANCH_ALIGNMENT,
       MethodAncestral::Marginal,
@@ -57,8 +56,8 @@ mod tests {
     #[case] method: MethodAncestral,
     #[case] dense: Option<bool>,
   ) -> Result<(), Report> {
-    let (graph, output, emitted) = helpers::reconstruct(LONG_BRANCH_TREE, LONG_BRANCH_ALIGNMENT, method, dense)?;
-    assert_eq!(emitted[&graph.root_key()?], output.root_sequence);
+    let (output, emitted) = helpers::reconstruct(LONG_BRANCH_TREE, LONG_BRANCH_ALIGNMENT, method, dense)?;
+    assert_eq!(emitted[&output.graph.root_key()?], output.root_sequence);
     Ok(())
   }
 
@@ -70,8 +69,8 @@ mod tests {
     #[case] method: MethodAncestral,
     #[case] dense: Option<bool>,
   ) -> Result<(), Report> {
-    let (graph, output, emitted) = helpers::reconstruct(LONG_BRANCH_TREE, LONG_BRANCH_ALIGNMENT, method, dense)?;
-    let rebuilt = helpers::rebuild_from_root(&graph, &output)?;
+    let (output, emitted) = helpers::reconstruct(LONG_BRANCH_TREE, LONG_BRANCH_ALIGNMENT, method, dense)?;
+    let rebuilt = helpers::rebuild_from_root(&output)?;
     assert_eq!(emitted, rebuilt);
     Ok(())
   }
@@ -84,7 +83,7 @@ mod tests {
       fasta: &str,
       method: MethodAncestral,
       dense: Option<bool>,
-    ) -> Result<(Graph, AncestralOutput, BTreeMap<GraphNodeKey, Seq>), Report> {
+    ) -> Result<(AncestralOutput, BTreeMap<GraphNodeKey, Seq>), Report> {
       let alphabet = Alphabet::default();
       let parse = nwk_read_str(nwk)?;
       let names = parse.names();
@@ -117,17 +116,14 @@ mod tests {
         sample_from_profile: SampleMode::Argmax,
       };
       let mut sink = RecordingSeqSink::default();
-      let output = run(&params, &input, &mut sink, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      let output = run(&params, input, &mut sink, &NoopCancel, &NoopProgress, &NoopProgress)?;
       let emitted = sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
-      Ok((input.graph, output, emitted))
+      Ok((output, emitted))
     }
 
-    pub(super) fn rebuild_from_root(
-      graph: &Graph,
-      output: &AncestralOutput,
-    ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+    pub(super) fn rebuild_from_root(output: &AncestralOutput) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
       let mut rebuilt: BTreeMap<GraphNodeKey, Seq> = BTreeMap::new();
-      graph.iter_depth_first_preorder_forward(|node| {
+      output.graph.iter_depth_first_preorder_forward(|node| {
         let seq = if node.is_root {
           output.root_sequence.clone()
         } else {

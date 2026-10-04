@@ -4,7 +4,7 @@
   reason = "test and benchmark code: index and expected-value casts, and scratch collections"
 )]
 
-use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use ctor::ctor;
 use eyre::Report;
 use rayon::ThreadPoolBuilder;
@@ -37,7 +37,6 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
   group.sample_size(10);
   group.throughput(Throughput::Elements(DATASET_SEQUENCES));
 
-  let input = setup();
   let params = AncestralParams {
     method: MethodAncestral::Marginal,
     model: GtrModelName::JC69,
@@ -54,21 +53,25 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
   for threads in [1, 2, 4, 8] {
     let pool = ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
     group.bench_with_input(BenchmarkId::new("sparse", threads), &threads, |bencher, _| {
-      bencher.iter(|| {
-        let output = pool
-          .install(|| {
-            run(
-              &params,
-              black_box(&input),
-              &mut DiscardSequences,
-              &NoopCancel,
-              &NoopProgress,
-              &NoopProgress,
-            )
-          })
-          .unwrap();
-        black_box(output);
-      });
+      bencher.iter_batched(
+        setup,
+        |input| {
+          let output = pool
+            .install(|| {
+              run(
+                &params,
+                black_box(input),
+                &mut DiscardSequences,
+                &NoopCancel,
+                &NoopProgress,
+                &NoopProgress,
+              )
+            })
+            .unwrap();
+          black_box(output);
+        },
+        BatchSize::LargeInput,
+      );
     });
   }
   group.finish();

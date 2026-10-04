@@ -107,7 +107,7 @@ mod tests {
 
       let result = crate::ancestral::pipeline::run(
         &params,
-        &input,
+        input,
         &mut RecordingSeqSink::default(),
         &NoopCancel,
         &NoopProgress,

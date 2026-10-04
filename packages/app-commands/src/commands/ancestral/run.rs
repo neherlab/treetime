@@ -54,7 +54,7 @@ pub fn run_ancestral_reconstruction(
   )?;
 
   let AncestralReadInputs {
-    mut input,
+    input,
     descs,
     confidences,
   } = read_nwk_fasta(args, cancel, stages, log)?;
@@ -70,7 +70,8 @@ pub fn run_ancestral_reconstruction(
   let seed = args.seed_args.resolve(random_step, log);
   let params = ancestral_params(args, seed);
 
-  let output = pipeline::run(&params, &input, &mut seq_sink, cancel, stages, log).map_err(|err| err.into_report())?;
+  let output = pipeline::run(&params, input, &mut seq_sink, cancel, stages, log).map_err(|err| err.into_report())?;
+  let mut graph = output.graph;
   let AncestralSeqSink {
     fasta, node_sequences, ..
   } = seq_sink;
@@ -79,7 +80,7 @@ pub fn run_ancestral_reconstruction(
   }
 
   let aa_inputs = AaRunInputs {
-    graph: &input.graph,
+    graph: &graph,
     names: &names,
     branch_lengths: &branch_lengths,
     seed,
@@ -89,7 +90,7 @@ pub fn run_ancestral_reconstruction(
   let maps = AncestralOutputMaps {
     root_sequence: output.root_sequence,
     edge_mutations: UnknownMutationFilter::new(output.ambiguous_char, args.report_ambiguous)
-      .reported_edge_mutations(&input.graph, output.edge_mutations)?,
+      .reported_edge_mutations(&graph, output.edge_mutations)?,
   };
   let augur_maps = node_sequences.map(|node_sequences| AugurOutputMaps {
     node_sequences,
@@ -97,10 +98,10 @@ pub fn run_ancestral_reconstruction(
     ambiguous_char: output.ambiguous_char,
   });
 
-  topology_order.apply(&mut input.graph, &names, &branch_lengths)?;
+  topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  let nodes = ancestral_node_outputs(&input, &confidences);
+  let nodes = ancestral_node_outputs(&names, &confidences);
 
   let aa_node_data = aa_result.as_ref().map(|(node_data, _)| node_data);
   let empty_aa_annotations = BTreeMap::new();
@@ -113,7 +114,7 @@ pub fn run_ancestral_reconstruction(
     augur_maps,
   ) {
     write_augur_node_data_json_with_aa(
-      &input.graph,
+      &graph,
       &maps,
       augur_maps,
       &output.mask,
@@ -128,7 +129,7 @@ pub fn run_ancestral_reconstruction(
   write_ancestral_gtr(args, &resolved, output.gtr.as_ref(), output.model_name, log)?;
 
   write_ancestral_trees(
-    &input.graph,
+    &graph,
     &nodes,
     &branch_lengths,
     &maps,
@@ -187,15 +188,14 @@ fn optional_aa_reconstructions(
 }
 
 fn ancestral_node_outputs(
-  input: &AncestralInput,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
 ) -> BTreeMap<GraphNodeKey, AncestralNodeOut> {
-  input
-    .nodes
+  names
     .iter()
-    .map(|(key, node)| {
+    .map(|(key, name)| {
       let out = AncestralNodeOut {
-        name: node.name.clone(),
+        name: name.clone(),
         branch_support: confidences.get(key).copied().flatten(),
       };
       (*key, out)

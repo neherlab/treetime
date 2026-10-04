@@ -80,7 +80,7 @@ mod tests {
 
     let result = pipeline::run(
       &params,
-      &input,
+      input,
       &mut RecordingSeqSink::default(),
       &NoopCancel,
       &NoopProgress,
@@ -146,12 +146,12 @@ mod tests {
       };
 
       let mut sink = RecordingSeqSink::default();
-      pipeline::run(&params, &input, &mut sink, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      pipeline::run(&params, input, &mut sink, &NoopCancel, &NoopProgress, &NoopProgress)?;
       let captured = sink
         .items
         .into_iter()
         .filter(|(_, emitted, _)| *emitted)
-        .map(|(key, _, seq)| (input.nodes[&key].name.clone().unwrap_or_default(), seq.to_string()))
+        .map(|(key, _, seq)| (names[&key].clone().unwrap_or_default(), seq.to_string()))
         .collect::<BTreeMap<String, String>>();
 
       Ok(captured)
