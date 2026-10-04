@@ -110,7 +110,7 @@ pub fn run_ancestral_reconstruction(
 
   if let (Some(path), Some(augur_maps)) = (
     resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData),
-    &augur_maps,
+    augur_maps,
   ) {
     write_augur_node_data_json_with_aa(
       &input.graph,

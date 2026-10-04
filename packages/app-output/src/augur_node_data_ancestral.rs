@@ -9,6 +9,7 @@ use treetime::ancestral::mask::mask_to_string;
 use treetime::seq::mutation::{MutationEvent, mutation_event_strings};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_utils::error::make_internal_error;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use util_augur_node_data_json::{
   AugurNodeDataJsonAncestral, AugurNodeDataJsonAncestralMeta, AugurNodeDataJsonAncestralNode,
@@ -18,7 +19,7 @@ use util_augur_node_data_json::{
 pub fn write_augur_node_data_json_with_aa(
   graph: &Graph,
   mutations: &AncestralOutputMaps,
-  sequences: &AugurOutputMaps,
+  sequences: AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   aa_node_data: Option<&AaNodeData>,
@@ -33,15 +34,19 @@ pub fn write_augur_node_data_json_with_aa(
 pub fn build_augur_node_data_json(
   graph: &Graph,
   mutations: &AncestralOutputMaps,
-  sequences: &AugurOutputMaps,
+  sequences: AugurOutputMaps,
   mask: &[bool],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   aa_node_data: Option<&AaNodeData>,
   aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
 ) -> Result<AugurNodeDataJsonAncestral, Report> {
-  let alignment_length = sequences.sequence_length;
+  let AugurOutputMaps {
+    mut node_sequences,
+    sequence_length: alignment_length,
+    ambiguous_char: ambiguous,
+  } = sequences;
   let reference_seq = &mutations.root_sequence;
-  let ambiguous = sequences.ambiguous_char;
+  let masked_positions = mask.iter().positions(|&masked| masked).collect_vec();
 
   let mut annotations = AugurNodeDataJsonAnnotations {
     nuc: Some(AugurNodeDataJsonAnnotationEntry {
@@ -79,11 +84,12 @@ pub fn build_augur_node_data_json(
       None => Vec::new(),
     };
 
-    let mut sequence = sequences.node_sequences[&node_key].clone();
-    for (pos, &masked) in mask.iter().enumerate() {
-      if masked && pos < sequence.len() {
-        sequence[pos] = ambiguous;
-      }
+    let Some(mut sequence) = node_sequences.remove(&node_key) else {
+      return make_internal_error!("Augur node data: no sequence for node {}", node_key.0);
+    };
+    let length = sequence.len();
+    for &pos in masked_positions.iter().take_while(|&&pos| pos < length) {
+      sequence[pos] = ambiguous;
     }
 
     let aa_muts = aa_node_data
@@ -94,7 +100,7 @@ pub fn build_augur_node_data_json(
       node_name,
       AugurNodeDataJsonAncestralNode {
         muts,
-        sequence: Some(sequence.as_str().to_owned()),
+        sequence: Some(sequence.into_string()),
         aa_muts,
         aa_sequences: if node_key == root_key {
           aa_node_data

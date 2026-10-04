@@ -9,7 +9,7 @@ mod tests {
   #[test]
   fn test_augur_node_data_ancestral_full_output() {
     let (graph, names, maps) = helpers::mutation_case();
-    let actual = helpers::write_json(&graph, &names, &maps, &[false, false, false, false]);
+    let actual = helpers::write_json(&graph, &names, maps, &[false, false, false, false]);
 
     let expected = format!(
       r#"{{
@@ -55,7 +55,7 @@ mod tests {
   #[test]
   fn test_augur_node_data_ancestral_roundtrip() {
     let (graph, names, maps) = helpers::mutation_case();
-    let json_str = helpers::write_json(&graph, &names, &maps, &[false, false, false, false]);
+    let json_str = helpers::write_json(&graph, &names, maps, &[false, false, false, false]);
 
     let original: serde_json::Value = serde_json::from_str(&json_str).unwrap();
     let typed: AugurNodeDataJsonAncestral = json_read_str(&json_str).unwrap();
@@ -67,7 +67,7 @@ mod tests {
   #[test]
   fn test_augur_node_data_ancestral_mask_filters_mutations() {
     let (graph, names, maps) = helpers::mutation_case();
-    let actual = helpers::write_json(&graph, &names, &maps, &[false, false, false, true]);
+    let actual = helpers::write_json(&graph, &names, maps, &[false, false, false, true]);
 
     let expected = format!(
       r#"{{
@@ -111,7 +111,7 @@ mod tests {
   #[test]
   fn test_augur_node_data_ancestral_root_has_empty_muts() {
     let (graph, names, maps) = helpers::mutation_case();
-    let json_str = helpers::write_json(&graph, &names, &maps, &[false, false, false, false]);
+    let json_str = helpers::write_json(&graph, &names, maps, &[false, false, false, false]);
     let data: AugurNodeDataJsonAncestral = json_read_str(&json_str).unwrap();
 
     assert_eq!(Vec::<String>::new(), data.nodes["root"].muts);
@@ -271,11 +271,11 @@ mod tests {
     pub(super) fn write_json(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      maps: &OutputMaps,
+      maps: OutputMaps,
       mask: &[bool],
     ) -> String {
       let (output, augur) = maps;
-      let data = build_augur_node_data_json(graph, output, augur, mask, names, None, &BTreeMap::new()).unwrap();
+      let data = build_augur_node_data_json(graph, &output, augur, mask, names, None, &BTreeMap::new()).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
@@ -383,7 +383,7 @@ mod tests {
       build_augur_node_data_json(
         &graph,
         &output,
-        &augur,
+        augur,
         &[false, false, false, false],
         &names,
         Some(&aa_node_data),

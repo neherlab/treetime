@@ -1,5 +1,6 @@
 use crate::seq_char::AsciiChar;
 use eyre::Report;
+use std::mem::ManuallyDrop;
 use treetime_utils::error::make_error;
 
 impl<'a> IntoIterator for &'a Seq {
@@ -120,6 +121,17 @@ impl Seq {
     let byte_slice = unsafe { std::slice::from_raw_parts(self.data.as_ptr().cast::<u8>(), self.data.len()) };
 
     unsafe { std::str::from_utf8_unchecked(byte_slice) }
+  }
+
+  #[allow(
+    unsafe_code,
+    clippy::undocumented_unsafe_blocks,
+    reason = "AsciiChar is transparent over a validated ASCII byte"
+  )]
+  pub fn into_string(self) -> String {
+    let mut data = ManuallyDrop::new(self.data);
+    let bytes = unsafe { Vec::from_raw_parts(data.as_mut_ptr().cast::<u8>(), data.len(), data.capacity()) };
+    unsafe { String::from_utf8_unchecked(bytes) }
   }
 
   pub fn as_slice(&self) -> &[AsciiChar] {
