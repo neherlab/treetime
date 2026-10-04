@@ -6,9 +6,7 @@
 #[cfg(test)]
 mod tests {
 
-  use crate::__tests__::test_tree_output::tests::helpers::{
-    Mutations, all_mat_documents, branch_length, c,
-  };
+  use crate::__tests__::test_tree_output::tests::helpers::{Mutations, all_mat_documents, branch_length, c};
   use crate::tree_output::{MatGapCounts, mat_mutation};
   use eyre::Report;
   use maplit::btreemap;
