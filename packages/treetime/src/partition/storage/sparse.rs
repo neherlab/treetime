@@ -13,6 +13,10 @@ use treetime_primitives::AlphabetLike;
 use treetime_primitives::{AsciiChar, LogLh, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
 
+const AMBIGUOUS: u8 = 1;
+const UNKNOWN: u8 = 2;
+const GAP: u8 = 4;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseNodeObs {
   pub(crate) unknown: Vec<(usize, usize)>,
@@ -245,36 +249,57 @@ struct SeqObservation {
 }
 
 fn observe_seq(seq: &Seq, alphabet: &Alphabet) -> SeqObservation {
-  let unknown_char = alphabet.unknown();
-  let gap_char = alphabet.gap();
+  let flags = char_flags(alphabet);
   let mut variable = Vec::new();
-  let mut histogram = [0_usize; 128];
   let mut unknown = RangeRuns::default();
   let mut gaps = RangeRuns::default();
+  let mut previous = 0_u8;
   for (pos, &c) in seq.iter().enumerate() {
-    histogram[usize::from(c)] += 1;
-    if alphabet.is_ambiguous(c) {
+    let current = flags[usize::from(c)];
+    if current & AMBIGUOUS != 0 {
       variable.push((pos, alphabet.char_to_set(c)));
     }
-    unknown.step(pos, c == unknown_char);
-    gaps.step(pos, c == gap_char);
+    if current != previous {
+      unknown.step(pos, current & UNKNOWN != 0);
+      gaps.step(pos, current & GAP != 0);
+      previous = current;
+    }
   }
   let unknown = unknown.finish(seq.len());
   let gaps = gaps.finish(seq.len());
   let non_char = range_union(&[unknown.clone(), gaps.clone()]);
-  let mut composition = Composition::new(alphabet.chars(), gap_char);
-  composition.add_histogram(&histogram);
   SeqObservation {
     unknown,
     gaps,
     non_char,
-    composition,
+    composition: Composition::with_seq(seq, alphabet.chars(), alphabet.gap()),
     fitch: FitchSeqDistribution {
       variable: variable.into_iter().collect(),
       variable_indel: BTreeSet::new(),
       chosen_state: btreemap! {},
     },
   }
+}
+
+#[allow(
+  clippy::as_conversions,
+  reason = "table indices below 128 convert exactly to ASCII bytes"
+)]
+fn char_flags(alphabet: &Alphabet) -> [u8; 128] {
+  std::array::from_fn(|index| {
+    let c = AsciiChar::from_byte_unchecked(index as u8);
+    let mut flags = 0;
+    if alphabet.is_ambiguous(c) {
+      flags |= AMBIGUOUS;
+    }
+    if c == alphabet.unknown() {
+      flags |= UNKNOWN;
+    }
+    if c == alphabet.gap() {
+      flags |= GAP;
+    }
+    flags
+  })
 }
 
 #[derive(Debug, Default)]

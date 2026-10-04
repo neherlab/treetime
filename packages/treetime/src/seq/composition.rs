@@ -38,18 +38,14 @@ impl Composition {
   }
 
   pub(crate) fn add_seq(&mut self, sequence: impl AsRef<[AsciiChar]>) {
-    let mut additions = [0; 128];
-    for &c in sequence.as_ref() {
-      additions[usize::from(c)] += 1;
-    }
-    self.add_histogram(&additions);
+    self.add_histogram(&char_histogram(sequence.as_ref()));
   }
 
   #[allow(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  pub(crate) fn add_histogram(&mut self, additions: &[usize; 128]) {
+  fn add_histogram(&mut self, additions: &[usize; 128]) {
     for (index, &count) in additions.iter().enumerate().filter(|(_, count)| **count > 0) {
       let c = AsciiChar::from_byte_unchecked(index as u8);
       *self.counts.entry(c).or_default() += count;
@@ -73,4 +69,18 @@ impl Composition {
     let count = self.counts.entry(nuc).or_default();
     *count = count.saturating_add_signed(change);
   }
+}
+
+fn char_histogram(sequence: &[AsciiChar]) -> [usize; 128] {
+  let mut lanes = [[0_usize; 128]; 4];
+  let (chunks, remainder) = sequence.as_chunks::<4>();
+  for chunk in chunks {
+    for (lane, &c) in lanes.iter_mut().zip(chunk) {
+      lane[usize::from(c)] += 1;
+    }
+  }
+  for &c in remainder {
+    lanes[0][usize::from(c)] += 1;
+  }
+  std::array::from_fn(|index| lanes.iter().map(|lane| lane[index]).sum())
 }
