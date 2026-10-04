@@ -65,5 +65,8 @@ pub(crate) fn evaluate_site_contributions<'a>(
 }
 
 fn multiply_into(out: &mut Array1<f64>, lhs: &ArrayView1<'_, f64>, rhs: &Array1<f64>) {
-  Zip::from(out).and(lhs).and(rhs).for_each(|out, &lhs, &rhs| *out = lhs * rhs);
+  Zip::from(out)
+    .and(lhs)
+    .and(rhs)
+    .for_each(|out, &lhs, &rhs| *out = lhs * rhs);
 }
