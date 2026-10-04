@@ -3,7 +3,7 @@ use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::initial_guess_mixed;
 use crate::optimize::dispatch::run_optimize_mixed_inner;
-use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
+use crate::optimize::gather::gather_edge_indel_counts;
 use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::ExistingBranchLengths;
@@ -116,12 +116,11 @@ pub(crate) fn run_optimize_loop(
     let old_branch_lengths = branch_lengths.clone();
     {
       let total_length = reconstruction.sequence_length();
-      let contributions = gather_edge_contributions(graph, &reconstruction)?;
       let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
       run_optimize_mixed_inner(
         graph,
         total_length,
-        &contributions,
+        &reconstruction,
         &indel_counts,
         opt_method,
         indel_rate,

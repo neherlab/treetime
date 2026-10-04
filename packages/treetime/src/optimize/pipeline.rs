@@ -7,7 +7,7 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
 use crate::optimize::gather::{
-  gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
+  gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
 };
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
@@ -213,13 +213,12 @@ fn pre_reroot_optimize(
 
   {
     let total_length = reconstruction.sequence_length();
-    let contributions = gather_edge_contributions(graph, &reconstruction)?;
     let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
     if no_indels {
       run_optimize_mixed_inner(
         graph,
         total_length,
-        &contributions,
+        &reconstruction,
         &indel_counts,
         opt_method,
         0.0,
@@ -230,7 +229,7 @@ fn pre_reroot_optimize(
       run_optimize_mixed(
         graph,
         total_length,
-        &contributions,
+        &reconstruction,
         &indel_counts,
         opt_method,
         branch_lengths,

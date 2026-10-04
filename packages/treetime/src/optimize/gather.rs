@@ -6,6 +6,36 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
+pub(crate) trait EdgeContributions: Sync {
+  fn with_edge<R>(
+    &self,
+    edge_key: GraphEdgeKey,
+    f: impl FnOnce(&[OptimizationContribution]) -> Result<R, Report>,
+  ) -> Result<R, Report>;
+}
+
+impl EdgeContributions for MarginalReconstruction {
+  fn with_edge<R>(
+    &self,
+    edge_key: GraphEdgeKey,
+    f: impl FnOnce(&[OptimizationContribution]) -> Result<R, Report>,
+  ) -> Result<R, Report> {
+    f(&[self.create_edge_contribution(edge_key)?])
+  }
+}
+
+#[cfg(test)]
+impl EdgeContributions for BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>> {
+  fn with_edge<R>(
+    &self,
+    edge_key: GraphEdgeKey,
+    f: impl FnOnce(&[OptimizationContribution]) -> Result<R, Report>,
+  ) -> Result<R, Report> {
+    f(&self[&edge_key])
+  }
+}
+
+#[cfg(test)]
 pub(crate) fn gather_edge_contributions(
   graph: &Graph,
   reconstruction: &MarginalReconstruction,

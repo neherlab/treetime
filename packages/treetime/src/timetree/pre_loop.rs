@@ -5,7 +5,7 @@ use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::reroot::RerootParams;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
-use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
+use crate::optimize::gather::gather_edge_indel_counts;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::BranchOptMethod;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
@@ -269,13 +269,12 @@ fn optimize_branch_lengths(
   let mut branch_lengths = old_branch_lengths.clone();
 
   let total_length = partition.sequence_length();
-  let contributions = gather_edge_contributions(graph, &partition)?;
   let indel_counts = gather_edge_indel_counts(graph, &partition);
   if no_indels {
     run_optimize_mixed_inner(
       graph,
       total_length,
-      &contributions,
+      &partition,
       &indel_counts,
       BranchOptMethod::BrentSqrt,
       0.0,
@@ -286,7 +285,7 @@ fn optimize_branch_lengths(
     run_optimize_mixed(
       graph,
       total_length,
-      &contributions,
+      &partition,
       &indel_counts,
       BranchOptMethod::BrentSqrt,
       &mut branch_lengths,

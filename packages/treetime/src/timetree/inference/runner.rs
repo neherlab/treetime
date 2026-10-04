@@ -2,7 +2,7 @@ use crate::branch_lengths::one_mutation;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
+use crate::optimize::gather::gather_edge_indel_counts;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::LogSink;
@@ -166,7 +166,6 @@ fn compute_branch_distributions_marginal_mode(
   } else {
     estimate_indel_rate(graph, &indel_counts, branch_lengths)
   };
-  let contributions = gather_edge_contributions(graph, partition)?;
 
   progress_info!(
     log,
@@ -186,10 +185,10 @@ fn compute_branch_distributions_marginal_mode(
 
       debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
-      let contributions = &contributions[&edge_key];
+      let contributions = [partition.create_edge_contribution(edge_key)?];
       let indel_count: usize = if no_indels { 0 } else { indel_counts[&edge_key] };
       let distribution = compute_branch_length_distribution(
-        contributions,
+        &contributions,
         indel_count,
         indel_rate,
         branch_length,

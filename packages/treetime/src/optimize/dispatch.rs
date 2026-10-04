@@ -1,5 +1,6 @@
 use crate::branch_lengths::one_mutation;
 use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
+use crate::optimize::gather::EdgeContributions;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::optimize::likelihood::evaluate_with_indels;
 use crate::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inner};
@@ -17,7 +18,7 @@ use treetime_graph::graph::Graph;
 pub(crate) fn run_optimize_mixed(
   graph: &Graph,
   total_length: usize,
-  contributions: &BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>,
+  contributions: &impl EdgeContributions,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   method: BranchOptMethod,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -44,7 +45,7 @@ pub(crate) fn run_optimize_mixed(
 pub(crate) fn run_optimize_mixed_with_indel_rate(
   graph: &Graph,
   total_length: usize,
-  contributions: &BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>,
+  contributions: &impl EdgeContributions,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   method: BranchOptMethod,
   indel_rate: f64,
@@ -63,10 +64,6 @@ pub(crate) fn run_optimize_mixed_with_indel_rate(
   Ok(())
 }
 
-#[allow(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 #[expect(
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
@@ -74,7 +71,7 @@ pub(crate) fn run_optimize_mixed_with_indel_rate(
 pub(crate) fn run_optimize_mixed_inner(
   graph: &Graph,
   total_length: usize,
-  contributions: &BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>,
+  contributions: &impl EdgeContributions,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
   method: BranchOptMethod,
   indel_rate: f64,
@@ -103,108 +100,16 @@ pub(crate) fn run_optimize_mixed_inner(
     .into_par_iter()
     .map(|edge_ref| -> Result<(GraphEdgeKey, f64), Report> {
       let edge_key = edge_ref.key();
-      let mut branch_length = branch_lengths_in[&edge_key]
+      let branch_length = branch_lengths_in[&edge_key]
         .ok_or_else(|| make_internal_report!("Validated edge {edge_key} lost its branch length"))?;
-
-      let contributions = &contributions[&edge_key];
-
-      let indel_count: usize = if no_indels { 0 } else { indel_counts[&edge_key] };
-
-      if branch_length == 0.0 && indel_count > 0 {
-        branch_length = if indel_rate > 0.0 {
-          (indel_count as f64 / indel_rate).max(one_mutation)
-        } else {
-          one_mutation
-        };
-      }
-
-      if branch_length == 0.0 && !contributions.iter().all(|c| c.all_sites_valid_at_zero()) {
-        branch_length = one_mutation;
-      }
-
-      if indel_count == 0 && is_zero_branch_optimal(contributions) {
-        return Ok((edge_key, 0.0));
-      }
-
-      let min_branch_length = min_branch_length_for_indels(indel_count, one_mutation);
-
-      let new_branch_length = match method {
-        BranchOptMethod::Brent => brent_inner(
-          branch_length,
-          contributions,
-          indel_count,
-          indel_rate,
-          min_branch_length,
-          one_mutation,
-        ),
-        BranchOptMethod::BrentSqrt => brent_sqrt_inner(
-          branch_length,
-          contributions,
-          indel_count,
-          indel_rate,
-          min_branch_length,
-          one_mutation,
-        ),
-        BranchOptMethod::BrentLog => brent_log_inner(
-          branch_length,
-          contributions,
-          indel_count,
-          indel_rate,
-          min_branch_length,
-          one_mutation,
-        ),
-        BranchOptMethod::Newton => {
-          let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
-          newton_inner(
-            branch_length,
-            &metrics,
-            contributions,
-            indel_count,
-            indel_rate,
-            min_branch_length,
-            one_mutation,
-          )
-        },
-        BranchOptMethod::NewtonSqrt => {
-          let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
-          newton_sqrt_inner(
-            branch_length,
-            &metrics,
-            contributions,
-            indel_count,
-            indel_rate,
-            min_branch_length,
-            one_mutation,
-          )
-        },
-        BranchOptMethod::NewtonLog => {
-          let bl = if branch_length == 0.0 {
-            one_mutation
-          } else {
-            branch_length
-          };
-          let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, bl)?;
-          newton_log_inner(
-            bl,
-            &metrics,
-            contributions,
-            indel_count,
-            indel_rate,
-            min_branch_length,
-            one_mutation,
-          )
-        },
-      }?;
-
-      let new_branch_length = reconcile_zero_boundary(
-        new_branch_length,
+      let edge = EdgeOptimization {
         branch_length,
-        contributions,
-        indel_count,
+        indel_count: if no_indels { 0 } else { indel_counts[&edge_key] },
         indel_rate,
         one_mutation,
-      )?;
-
+        method,
+      };
+      let new_branch_length = contributions.with_edge(edge_key, |contributions| optimize_edge(contributions, &edge))?;
       Ok((edge_key, new_branch_length))
     })
     .collect::<Result<Vec<_>, Report>>()?;
@@ -317,4 +222,124 @@ pub(crate) fn initial_guess_mixed(
   }
 
   Ok(())
+}
+
+#[derive(Clone, Copy)]
+struct EdgeOptimization {
+  branch_length: f64,
+  indel_count: usize,
+  indel_rate: f64,
+  one_mutation: f64,
+  method: BranchOptMethod,
+}
+
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
+fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimization) -> Result<f64, Report> {
+  let EdgeOptimization {
+    mut branch_length,
+    indel_count,
+    indel_rate,
+    one_mutation,
+    method,
+  } = *edge;
+
+  if branch_length == 0.0 && indel_count > 0 {
+    branch_length = if indel_rate > 0.0 {
+      (indel_count as f64 / indel_rate).max(one_mutation)
+    } else {
+      one_mutation
+    };
+  }
+
+  if branch_length == 0.0 && !contributions.iter().all(|c| c.all_sites_valid_at_zero()) {
+    branch_length = one_mutation;
+  }
+
+  if indel_count == 0 && is_zero_branch_optimal(contributions) {
+    return Ok(0.0);
+  }
+
+  let min_branch_length = min_branch_length_for_indels(indel_count, one_mutation);
+
+  let new_branch_length = match method {
+    BranchOptMethod::Brent => brent_inner(
+      branch_length,
+      contributions,
+      indel_count,
+      indel_rate,
+      min_branch_length,
+      one_mutation,
+    ),
+    BranchOptMethod::BrentSqrt => brent_sqrt_inner(
+      branch_length,
+      contributions,
+      indel_count,
+      indel_rate,
+      min_branch_length,
+      one_mutation,
+    ),
+    BranchOptMethod::BrentLog => brent_log_inner(
+      branch_length,
+      contributions,
+      indel_count,
+      indel_rate,
+      min_branch_length,
+      one_mutation,
+    ),
+    BranchOptMethod::Newton => {
+      let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
+      newton_inner(
+        branch_length,
+        &metrics,
+        contributions,
+        indel_count,
+        indel_rate,
+        min_branch_length,
+        one_mutation,
+      )
+    },
+    BranchOptMethod::NewtonSqrt => {
+      let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
+      newton_sqrt_inner(
+        branch_length,
+        &metrics,
+        contributions,
+        indel_count,
+        indel_rate,
+        min_branch_length,
+        one_mutation,
+      )
+    },
+    BranchOptMethod::NewtonLog => {
+      let bl = if branch_length == 0.0 {
+        one_mutation
+      } else {
+        branch_length
+      };
+      let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, bl)?;
+      newton_log_inner(
+        bl,
+        &metrics,
+        contributions,
+        indel_count,
+        indel_rate,
+        min_branch_length,
+        one_mutation,
+      )
+    },
+  }?;
+
+  let new_branch_length = reconcile_zero_boundary(
+    new_branch_length,
+    branch_length,
+    contributions,
+    indel_count,
+    indel_rate,
+    one_mutation,
+  )?;
+
+  Ok(new_branch_length)
 }
