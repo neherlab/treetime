@@ -9,7 +9,7 @@
 - [x] Initial node divergences always initialized
 - [x] Date assignment fails when no valid dates or fewer than three leaves have valid dates
 - [x] ML branch-length optimization pre-step (v0: `optimize_tree(max_iter=1)` before and after rerooting)
-- [ ] Tree inference from alignment path is `todo!`
+- [ ] Tree inference from alignment: v0 calls IQ-TREE, FastTree, or RAxML as subprocesses; v1 requires `--tree` ([kb/issues/H-timetree-tree-inference-unimplemented.md](../issues/H-timetree-tree-inference-unimplemented.md))
 
 ## Time Distribution Propagation
 

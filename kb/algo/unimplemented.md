@@ -275,9 +275,9 @@ v1: CLI arg declared (hidden) at [`packages/treetime/src/commands/timetree/args.
 
 ## Tree Inference from Alignment
 
-When no input tree is provided, infer a phylogenetic tree from the alignment. v0 delegates to external tools (IQ-TREE, FastTree) or uses Bio.Phylo. Both the `timetree` and `clock` commands require a tree; these stubs guard the code path where the user omits `--tree`.
+When no input tree is provided, infer a phylogenetic tree from the alignment. v0 has no tree builder of its own: `fn tree_inference()` calls the external programs IQ-TREE, FastTree, and RAxML as subprocesses, in that order ([`packages/legacy/treetime/treetime/utils.py#L410-L452`](../../packages/legacy/treetime/treetime/utils.py#L410-L452)).
 
-v1: `todo!()` at [`packages/treetime/src/commands/timetree/initialization.rs#L34`](../../packages/treetime/src/commands/timetree/initialization.rs#L34) and `unimplemented!()` at [`packages/treetime/src/commands/clock/run.rs#L60`](../../packages/treetime/src/commands/clock/run.rs#L60).
+v1: the `timetree` and `clock` commands declare `--tree` as optional and stop with the required-arguments error when it is missing ([`packages/app-commands/src/commands/timetree/args.rs#L157-L159`](../../packages/app-commands/src/commands/timetree/args.rs#L157-L159), [`packages/app-commands/src/commands/clock/args.rs#L101-L108`](../../packages/app-commands/src/commands/clock/args.rs#L101-L108)). Methods and open design decisions: [kb/reports/feat-tree-infer.md](../reports/feat-tree-infer.md).
 
 ---
 
