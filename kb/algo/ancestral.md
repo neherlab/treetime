@@ -115,50 +115,31 @@ See [unimplemented](unimplemented.md#joint-ml) for full v0 algorithm details.
 
 ---
 
-## Branch Mutation Annotation
+## Branch Mutations
 
-After ancestral reconstruction (Fitch or marginal), branch mutations are extracted from partition data and attached to tree nodes for Newick/Nexus output. The annotation pipeline is shared across all commands that output annotated trees (ancestral, timetree, optimize).
+The `ancestral` and `timetree` commands write the substitutions between the emitted parent and child sequences of every edge, together with the edge's indels. The `optimize` command writes the substitutions of the marginal reconstruction engine instead ([kb/issues/M-optimize-mutations-not-derived-from-emitted-sequences.md](../issues/M-optimize-mutations-not-derived-from-emitted-sequences.md)), and the `prune` command writes the Fitch substitutions of its partition.
 
-v1: [`packages/treetime/src/payload/ancestral.rs#L152-L186`](../../packages/treetime/src/payload/ancestral.rs#L152-L186) (`annotate_branch_mutations()`).
-v0: annotation is inline in `treeanc.py` tree-writing methods.
+v1: `MarginalReconstruction::stream_sequences()` in [`packages/treetime/src/partition/marginal/reconstruction.rs`](../../packages/treetime/src/partition/marginal/reconstruction.rs), called by `AncestralPartition::stream_sequences()` in [`packages/treetime/src/ancestral/partition.rs`](../../packages/treetime/src/ancestral/partition.rs) and by `fn reconstruct_final_sequences()` in [`packages/treetime/src/timetree/pipeline.rs`](../../packages/treetime/src/timetree/pipeline.rs).
 
-### Algorithm
+### Rule
 
-For each edge in the tree, `annotate_branch_mutations()` calls `PartitionBranchOps::edge_subs()` on every partition, collects all substitutions, sorts them by position, and writes the formatted comma-separated string (e.g. `"A55G,T93C"`, 1-based positions) into the child node's `mutations` field. This field is emitted as a `mutations="..."` NHX comment in Newick/Nexus output.
+At every position, a substitution is reported when the parent and child states differ and neither is a gap. Unknown (`N`) and ambiguous states are reported at this stage; `UnknownMutationFilter` in [`packages/app-output/src/mutation_filter.rs`](../../packages/app-output/src/mutation_filter.rs) removes the substitutions to and from `N` before writing, unless `--report-ambiguous` is set ([kb/issues/N-edge-mutations-carry-a-substitution-per-unknown-position.md](../issues/N-edge-mutations-carry-a-substitution-per-unknown-position.md)).
 
-Both dense and sparse `edge_subs()` implementations apply the same filtering: only canonical nucleotide substitutions where parent and child states differ are reported. Gaps, unknowns, and ambiguity codes are excluded.
+### Full sequence comparison
 
-### Dense `edge_subs()`
+`fn stream_sequence_mutations()` in [`packages/treetime/src/seq/mutation.rs`](../../packages/treetime/src/seq/mutation.rs) materializes every node sequence in preorder, writes it to the sequence sink, and compares each child with its parent over all positions (`fn sequence_subs()`). It serves dense reconstructions, Fitch reconstructions, and marginal reconstructions with sampled sequences (`--sample-from-profile`).
 
-[`packages/treetime/src/partition/marginal_dense.rs#L81-L112`](../../packages/treetime/src/partition/marginal_dense.rs#L81-L112)
+### Sparse derivation
 
-Iterates every alignment position (0..L where L = number of rows in the profile matrix). At each position, takes the MAP state (`argmax_first()` of the posterior profile) for both parent and child. Skips positions that fall within either endpoint's original gap ranges (`DenseSeqInfo.gaps`), because gap positions receive uniform profiles under `treat_gap_as_unknown` and their argmax would return an arbitrary canonical state.
+`fn sparse_edge_mutations()` in [`packages/treetime/src/partition/marginal/sparse/mutations.rs`](../../packages/treetime/src/partition/marginal/sparse/mutations.rs) gives the same result for sparse marginal reconstructions without materializing the sequences. Each node state holds a stored sequence and a set of variable positions. The emitted sequence of an internal node differs from its stored sequence only at its variable positions; a leaf's emitted sequence differs from its stored sequence only at its ambiguous positions and, with imputation, its unknown positions. So the parent and child emitted states can differ only at:
 
-### Sparse `edge_subs()`
+- positions where the two stored sequences differ, found by comparing them in 64-byte blocks
+- the parent's variable positions
+- the child's variable positions (internal child) or its ambiguous and unknown positions (leaf)
 
-[`packages/treetime/src/partition/marginal_sparse.rs#L233-L239`](../../packages/treetime/src/partition/marginal_sparse.rs#L233-L239)
+The function evaluates both emitted states at these positions only, with the same per-position rules as the full comparison: the argmax of the variable profile for internal nodes, and `fn impute_state()` in [`packages/treetime/src/partition/marginal/sparse/reconstruct.rs`](../../packages/treetime/src/partition/marginal/sparse/reconstruct.rs) for leaves. The candidate set does not depend on the edge's Fitch substitutions, because topology changes such as polytomy resolution create edges without Fitch data.
 
-Returns MAP-derived substitutions stored in `subs_ml`. Requires marginal inference to have run (errors if `subs_ml` is `None`). The ML subs are computed during the marginal forward pass by `compute_ml_subs_for_edge()` in [`marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs), which compares parent and child MAP states at candidate positions (union of Fitch subs and variable sites). ML subs are cleared automatically by any fitch-sub mutation and by `clear_ml_subs()` during reroot.
-
-The candidate set is complete: any position where parent and child could differ must appear as a variable site on at least one endpoint or as a Fitch substitution on the edge.
-
-### Dense vs sparse equivalence
-
-Both implementations produce the same mutation set for the same reconstruction. Dense scans all L positions but most comparisons are equal (no-op). Sparse scans only the variable-site union, which for conserved alignments (>90% invariant) is a small fraction of L.
-
-### Call sites
-
-- [`packages/treetime/src/commands/ancestral/run.rs#L142`](../../packages/treetime/src/commands/ancestral/run.rs#L142) and [`#L192`](../../packages/treetime/src/commands/ancestral/run.rs#L192): ancestral command (both dense and sparse paths)
-- [`packages/treetime/src/commands/timetree/run.rs#L490`](../../packages/treetime/src/commands/timetree/run.rs#L490): timetree command
-- [`packages/treetime/src/commands/optimize/run.rs#L225`](../../packages/treetime/src/commands/optimize/run.rs#L225): optimize command
-
-### Key functions
-
-- `annotate_branch_mutations()` (`#annotate_branch_mutations`): generic over graph payload, iterates edges and partitions, writes formatted mutation string to child node
-- `PartitionBranchOps::edge_subs()` (`#edge_subs`): trait method implemented by both `PartitionMarginalDense` and `PartitionMarginalSparse`
-- `compute_ml_subs_for_edge()` (`#compute_ml_subs_for_edge`): sparse-only, computes MAP-derived subs from finalized parent and child profiles during the forward pass, stores result in `subs_ml`
-- `reconstruct_map_sequence()` (`#reconstruct_map_sequence`): sparse-only, rebuilds node sequence from parent + edge mutations + MAP variable-site states during the forward pass
-- `HasBranchMutations::set_branch_mutations()` (`#set_branch_mutations`): trait implemented by `NodeAncestral` and `NodeTimetree` (via delegation to inner `NodeAncestral`)
+The property test `test_prop_sparse_edge_mutations_match_full_sequence_comparison` in [`packages/treetime/src/ancestral/__tests__/test_sparse_mutations_prop.rs`](../../packages/treetime/src/ancestral/__tests__/test_sparse_mutations_prop.rs) checks equality with the full comparison, with and without imputation and with the edge Fitch substitutions removed.
 
 ---
 
@@ -167,12 +148,13 @@ Both implementations produce the same mutation set for the same reconstruction. 
 | File                                                                                                               | Algorithms                                                                       |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
 | [`packages/treetime/src/ancestral/fitch.rs`](../../packages/treetime/src/ancestral/fitch.rs)                       | Fitch parsimony (backward, forward, cleanup)                                     |
-| [`packages/treetime/src/ancestral/marginal.rs`](../../packages/treetime/src/branch_lengths.rs)                 | Marginal ML orchestration                                                        |
+| [`packages/treetime/src/ancestral/marginal.rs`](../../packages/treetime/src/branch_lengths.rs)                     | Marginal ML orchestration                                                        |
 | [`packages/treetime/src/commands/ancestral/run.rs`](../../packages/treetime/src/commands/ancestral/run.rs)         | Ancestral command entry point, method dispatch                                   |
 | [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)     | Dense marginal (Felsenstein pruning)                                             |
 | [`packages/treetime/src/partition/marginal_sparse.rs`](../../packages/treetime/src/partition/marginal_sparse.rs)   | Sparse marginal                                                                  |
 | [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs)   | Sparse message passing                                                           |
 | [`packages/treetime-graph/src/pass.rs`](../../packages/treetime-graph/src/pass.rs)                                 | Topology-indexed work-first pass storage for Fitch and marginal passes           |
 | [`packages/treetime/src/partition/marginal_helpers.rs`](../../packages/treetime/src/partition/marginal_helpers.rs) | `combine_messages()` (`#combine_messages`), `propagate_raw()` (`#propagate_raw`) |
-| [`packages/treetime/src/payload/ancestral.rs`](../../packages/treetime/src/payload/ancestral.rs)                   | Branch mutation annotation (`annotate_branch_mutations()`)                       |
+| [`packages/treetime/src/seq/mutation.rs`](../../packages/treetime/src/seq/mutation.rs) | Branch mutations by full sequence comparison (`stream_sequence_mutations()`) |
+| [`packages/treetime/src/partition/marginal/sparse/mutations.rs`](../../packages/treetime/src/partition/marginal/sparse/mutations.rs) | Sparse branch mutations (`sparse_edge_mutations()`) |
 | [`packages/treetime/src/partition/traits.rs`](../../packages/treetime/src/partition/traits.rs)                     | `PartitionBranchOps` trait (`edge_subs()`)                                       |

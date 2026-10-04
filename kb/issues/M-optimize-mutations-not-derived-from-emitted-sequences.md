@@ -19,4 +19,4 @@ A parent `C` and a tip that observes `Y` (`C` or `T`) whose posterior favors `T`
 
 ## Fix direction
 
-Stream the optimize node sequences through `fn stream_sequence_mutations()` in `packages/treetime/src/seq/mutation.rs`, as the `ancestral` and `timetree` commands do, so the root, the mutations and the mutation counts of all three commands come from one source and one rule.
+Derive the optimize mutations through `MarginalReconstruction::stream_sequences()` in `packages/treetime/src/partition/marginal/reconstruction.rs`, as the `ancestral` and `timetree` commands do, so the root, the mutations and the mutation counts of all three commands come from one source and one rule. That method compares the emitted node sequences (`fn stream_sequence_mutations()` in `packages/treetime/src/seq/mutation.rs`) for dense reconstructions and derives the same result from the sparse node states without materializing the sequences (`fn sparse_edge_mutations()` in `packages/treetime/src/partition/marginal/sparse/mutations.rs`) for sparse ones.
