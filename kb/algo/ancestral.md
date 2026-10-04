@@ -123,7 +123,7 @@ v1: `MarginalReconstruction::stream_sequences()` in [`packages/treetime/src/part
 
 ### Rule
 
-At every position, a substitution is reported when the parent and child states differ and neither is a gap. Unknown (`N`) and ambiguous states are reported at this stage; `UnknownMutationFilter` in [`packages/app-output/src/mutation_filter.rs`](../../packages/app-output/src/mutation_filter.rs) removes the substitutions to and from `N` before writing, unless `--report-ambiguous` is set ([kb/issues/N-edge-mutations-carry-a-substitution-per-unknown-position.md](../issues/N-edge-mutations-carry-a-substitution-per-unknown-position.md)).
+At every position, a substitution is reported when the parent and child states differ and neither is a gap. A substitution into `N` on the edge into a leaf is derived only with `--report-ambiguous`, because no descendant can bridge it. Other substitutions to and from `N` are derived and then resolved by `UnknownMutationFilter` in [`packages/app-output/src/mutation_filter.rs`](../../packages/app-output/src/mutation_filter.rs): unless `--report-ambiguous` is set, it drops them and reports a change across a masked stretch on the edge where the residue is observed again.
 
 ### Full sequence comparison
 

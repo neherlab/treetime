@@ -2,11 +2,11 @@
 
 ## Symptom
 
-The sparse backend materializes one full-length `Seq` for every node in `SparseSeqInfo::sequence`, plus a second one for every tip in `SparseNodePartition::emitted`. Storage is `O(N * L)` in node count and alignment length, which is the cost the sparse representation exists to avoid for probability vectors.
+The sparse backend materializes one full-length `Seq` for every node in `SparseNodeState::sequence` ([packages/treetime/src/partition/storage/sparse.rs](../../packages/treetime/src/partition/storage/sparse.rs)), and during partition construction in `FitchSeqInfo::sequence`. Storage is `O(N * L)` in node count and alignment length, which is the cost the sparse representation exists to avoid for probability vectors.
 
-On `data/sc2/4500` (10199 nodes, L = 29903): 305 MB of per-node sequences and 153 MB of tip `emitted`, against 0.21 MB for all 26300 edge substitutions and 1.95 MB for all missing-data ranges. Roughly 458 MB where 2.2 MB carries the same information.
+On `data/sc2/4500` (10199 nodes, L = 29903): 305 MB of per-node sequences, against 0.21 MB for all 26300 edge substitutions and 1.95 MB for all missing-data ranges.
 
-`capture_ancestral_states` ([timetree/convergence/sequence_changes.rs#L45](../../packages/treetime/src/timetree/convergence/sequence_changes.rs#L45)) additionally snapshots every internal sequence twice per timetree iteration, about 610 MB on the same dataset, purely to count changed positions.
+The marginal forward pass keeps a node's sequence when it rebuilds it unchanged, and the timetree convergence snapshot (`fn capture_ancestral_states()` in [packages/treetime/src/timetree/convergence/sequence_changes.rs](../../packages/treetime/src/timetree/convergence/sequence_changes.rs)) shares the node sequences and stores only the states inferred at variable positions, so neither adds a second set of sequences.
 
 ## Reproduction
 
@@ -25,5 +25,3 @@ This was verified per edge on `data/sc2/4500`: across all 10198 edges there are 
 ## Fix approach
 
 See the proposal [Mutation-first sequence representation](../proposals/mutation-first-sequence-representation.md) for the design axes, staging and validation plan. The open axes are the random-access `PartitionBranchOps::node_sequence` accessor, `--sample-from-profile=all` (whose realization is not compressible), and whether the augur per-node `sequence` field can be gated behind a flag.
-
-The first stage is independent and has no open questions: make the timetree convergence check compare per-node mutation sets rather than sequences.

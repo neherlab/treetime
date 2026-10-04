@@ -82,7 +82,7 @@ If a sequence is _defined_ as root plus path, `parent + mutations == child` beco
 ## Expected impact
 
 - Peak memory on `data/sc2/4500` drops by roughly 450 MB for the ancestral path.
-- `capture_ancestral_states` ([timetree/convergence/sequence_changes.rs](../../packages/treetime/src/timetree/convergence/sequence_changes.rs)) snapshots every internal sequence twice per timetree iteration, about 610 MB on this dataset, purely to count changed positions. Comparing per-node mutation sets is both cheaper and a more direct convergence signal.
+- `capture_ancestral_states` ([timetree/convergence/sequence_changes.rs](../../packages/treetime/src/timetree/convergence/sequence_changes.rs)) shares the node sequences and stores only the states inferred at variable positions, so the convergence check adds no second set of sequences. Comparing per-node mutation sets would still give a more direct convergence signal.
 - Dense is unaffected; it stores `(L, K)` profiles per node regardless, and per-node sequences are not its dominant term.
 - No output changes if the streaming traversal produces byte-identical sequences, which is the acceptance criterion below.
 
