@@ -69,7 +69,7 @@
 - [x] `--allow-negative-rate` (for midpoint rooting)
 - [x] `--tip-slack` (terminal node excess variance)
 - [x] `--reroot` / `--reroot-tips`
-- [ ] `--aln` (parsed but not wired)
+- [ ] `--aln` (parsed but not wired: [kb/issues/M-clock-alignment-ignored.md](../issues/M-clock-alignment-ignored.md))
 - [ ] `--vcf-reference` (parsed but not wired)
 - [ ] `--gtr` (parsed but not wired)
 - [ ] `--gtr-params` (parsed but not wired)

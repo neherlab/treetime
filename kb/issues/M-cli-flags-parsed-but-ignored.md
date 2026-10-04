@@ -11,7 +11,7 @@ Flags marked _hidden_ are accepted but not listed in `--help`.
 | Command     | Flags                                                                                                                                                                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ancestral` | `--model-params`/`--gtr-params`, `--zero-based`, `--aa` (hidden), `--marginal` (hidden), `--custom-gtr` (hidden)                                                                                                                                             |
-| `clock`     | `--alignment`/`--aln`, `--model`/`--gtr`, `--model-params`/`--gtr-params`, `--branch-length-mode`, `--method-anc`, `--prune-short`, `--clock-filter-method` (hidden), `--plot-rtt` (hidden), `--prune-outliers` (hidden)                           |
+| `clock`     | `--model`/`--gtr`, `--model-params`/`--gtr-params`, `--branch-length-mode`, `--method-anc`, `--prune-short`, `--clock-filter-method` (hidden), `--plot-rtt` (hidden), `--prune-outliers` (hidden)                           |
 | `timetree`  | `--model-params`/`--gtr-params`, `--tip-labels`, `--no-tip-labels`, `--n-iqd`, `--keep-polytomies`, `--zero-based`, `--aa` (hidden), `--custom-gtr` (hidden), `--clock-filter-method` (hidden), `--greedy-resolve` (hidden), `--stochastic-resolve` (hidden) |
 
 `optimize` also accepts `--model-params`/`--gtr-params` and never reads it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. `ModelArgs` derives `Serialize`, which reads every field, so no `dead_code` expectation marks the field. For example, `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
@@ -20,6 +20,7 @@ Flags marked _hidden_ are accepted but not listed in `--help`.
 
 Tracked elsewhere, with their own `expect` reasons:
 
+- `--alignment`/`--aln` in `clock`: [M-clock-alignment-ignored.md](M-clock-alignment-ignored.md)
 - `--vcf-reference` in `ancestral`, `clock`, and `timetree`: [M-io-vcf-input-output-unimplemented.md](M-io-vcf-input-output-unimplemented.md)
 - `--method-anc` in `timetree`: [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md)
 - every `homoplasy` flag: [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md)

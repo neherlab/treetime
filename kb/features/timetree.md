@@ -135,6 +135,7 @@
 - [x] Clock regression table (`--output-clock-csv`, opt-in; one row per sample with the date, date source (`input` or `inferred`), root-to-tip distance and clock-filter flag the final clock model was fitted on; new in v1, v0 has no table; app runs request it for the root-to-tip plot)
 - [x] Confidence TSV
 - [x] Coalescent time scale TSV/CSV/JSON (`--output-coalescent-{tsv,csv,json}`; per-segment $T_c$, $N_e$, and confidence band for skyline, optimized-constant, and fixed $T_c$; TSV in the default `--output-all` set, CSV and JSON opt-in; the `skyline.pdf` plot and the grid-points default remain, see [kb/issues/N-timetree-missing-skyline-output.md](../issues/N-timetree-missing-skyline-output.md))
+- [ ] Root sequence sampled from its posterior in every reconstruction, as v0 does; v1 takes the most likely state ([kb/issues/M-timetree-root-sequence-not-sampled.md](../issues/M-timetree-root-sequence-not-sampled.md))
 - [x] Ancestral sequences FASTA (`--output-reconstructed-nuc-fasta`, default under `--output-all`; reuses the `ancestral` marginal reconstruction, internal nodes always, tips with `--include-leaves`)
 - [ ] Branch mutations table ([kb/issues/N-timetree-branch-mutations-output-unimplemented.md](../issues/N-timetree-branch-mutations-output-unimplemented.md))
 - [ ] Molecular clock text output or approved replacement ([kb/issues/N-timetree-molecular-clock-text-output-undecided.md](../issues/N-timetree-molecular-clock-text-output-undecided.md))
