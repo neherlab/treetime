@@ -1,6 +1,6 @@
 #![allow(
   clippy::wildcard_enum_match_arm,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
+  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
 )]
 
 #[cfg(test)]

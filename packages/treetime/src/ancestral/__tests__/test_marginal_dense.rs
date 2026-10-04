@@ -1,8 +1,3 @@
-#![allow(
-  clippy::disallowed_methods,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
@@ -29,6 +24,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
+  use treetime_utils::sync::random::get_random_number_generator;
 
   fn assert_dense_rows_normalized(dis: &Array2<f64>, max_ulps: u32) {
     for (row_idx, row) in dis.rows().into_iter().enumerate() {
@@ -147,7 +143,7 @@ mod tests {
     let actual = emitted_sequences_by_name(
       &names,
       &internal_node_keys(&graph),
-      &recon.sample_sequences(&graph, SampleMode::Argmax, &mut rand::thread_rng())?,
+      &recon.sample_sequences(&graph, SampleMode::Argmax, &mut get_random_number_generator(0))?,
       |key| recon.node_sequence(&graph, false, key),
     )?;
 

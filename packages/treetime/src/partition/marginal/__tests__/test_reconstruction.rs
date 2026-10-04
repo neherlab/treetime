@@ -15,14 +15,13 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
-  use rand::SeedableRng;
-  use rand::rngs::StdRng;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::AlignmentRecord;
+  use treetime_utils::sync::random::get_random_number_generator;
 
   #[test]
   fn test_partition_timetree_edge_sub_count_unavailable_before_inference() -> Result<(), Report> {
@@ -54,7 +53,7 @@ mod tests {
     let (graph, names, reconstruction) = helpers::updated_four_leaves(representation)?;
     let keys = helpers::keys(&graph, &names, &["root", "X", "Y"]);
 
-    let actual = reconstruction.sample_sequences(&graph, SampleMode::Argmax, &mut StdRng::seed_from_u64(0))?;
+    let actual = reconstruction.sample_sequences(&graph, SampleMode::Argmax, &mut get_random_number_generator(0))?;
 
     assert_eq!(BTreeMap::new(), actual);
     for key in keys {
@@ -117,7 +116,7 @@ mod tests {
   ) -> Result<(), Report> {
     let (graph, names, reconstruction) = helpers::updated_four_leaves(representation)?;
 
-    let actual = reconstruction.sample_sequences(&graph, mode, &mut StdRng::seed_from_u64(0))?;
+    let actual = reconstruction.sample_sequences(&graph, mode, &mut get_random_number_generator(0))?;
 
     let mut expected_keys = helpers::keys(&graph, &names, expected_sampled);
     expected_keys.sort_unstable();

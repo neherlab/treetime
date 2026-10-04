@@ -3,14 +3,13 @@ mod tests {
   use crate::partition::marginal::sample::{Resolve, SampleMode, resolve_profile, sample_from_profile};
   use ndarray::array;
   use pretty_assertions::assert_eq;
-  use rand::SeedableRng;
-  use rand::rngs::StdRng;
   use rstest::rstest;
+  use treetime_utils::sync::random::get_random_number_generator;
 
   #[test]
   fn test_sample_deterministic_profile() {
     let profile = array![0.0, 0.0, 1.0, 0.0];
-    let mut rng = StdRng::seed_from_u64(42);
+    let mut rng = get_random_number_generator(42);
     let idx = sample_from_profile(profile.view(), &mut rng);
     assert_eq!(2, idx);
   }
@@ -18,8 +17,8 @@ mod tests {
   #[test]
   fn test_sample_reproducible_with_seed() {
     let profile = array![0.25, 0.25, 0.25, 0.25];
-    let mut rng1 = StdRng::seed_from_u64(123);
-    let mut rng2 = StdRng::seed_from_u64(123);
+    let mut rng1 = get_random_number_generator(123);
+    let mut rng2 = get_random_number_generator(123);
 
     let results1: Vec<usize> = std::iter::repeat_with(|| sample_from_profile(profile.view(), &mut rng1))
       .take(100)
@@ -34,7 +33,7 @@ mod tests {
   #[test]
   fn test_sample_respects_distribution() {
     let profile = array![0.9, 0.1, 0.0, 0.0];
-    let mut rng = StdRng::seed_from_u64(42);
+    let mut rng = get_random_number_generator(42);
 
     let mut counts = [0_usize; 4];
     for _ in 0..1000 {
@@ -49,7 +48,7 @@ mod tests {
   #[test]
   fn test_sample_zero_profile_returns_zero() {
     let profile = array![0.0, 0.0, 0.0, 0.0];
-    let mut rng = StdRng::seed_from_u64(42);
+    let mut rng = get_random_number_generator(42);
     let idx = sample_from_profile(profile.view(), &mut rng);
     assert_eq!(0, idx);
   }
@@ -69,7 +68,7 @@ mod tests {
   #[test]
   fn test_resolve_profile_samples_when_true() {
     let profile = array![0.5, 0.5, 0.0, 0.0];
-    let mut rng = StdRng::seed_from_u64(42);
+    let mut rng = get_random_number_generator(42);
 
     let mut saw_zero = false;
     let mut saw_one = false;

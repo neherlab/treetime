@@ -1,6 +1,6 @@
 #![allow(
   clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
+  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
 )]
 
 #[cfg(test)]
@@ -12,10 +12,9 @@ mod tests {
 
   use crate::array::ndarray::*;
   use crate::pretty_assert_ulps_eq;
+  use crate::sync::random::get_random_number_generator;
   use eyre::Report;
   use ndarray::{Array0, Array1, Array2, Axis, arr0, array};
-  use rand::SeedableRng;
-  use rand_isaac::Isaac64Rng;
   use rstest::rstest;
   use std::sync::LazyLock;
 
@@ -160,7 +159,7 @@ mod tests {
 
   #[rstest]
   fn generates_predictable_random_uniform() {
-    let mut rng = Isaac64Rng::seed_from_u64(42);
+    let mut rng = get_random_number_generator(42);
 
     let r: Array2<f64> = random((3, 4), &mut rng);
     #[rustfmt::skip]

@@ -1,8 +1,3 @@
-#![allow(
-  clippy::disallowed_methods,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
@@ -24,6 +19,7 @@ mod tests {
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AlignmentRecord, Seq};
+  use treetime_utils::sync::random::get_random_number_generator;
 
   #[test]
   fn test_marginal_tip_c3_preserves_observed_leaf() -> Result<(), Report> {
@@ -167,7 +163,7 @@ mod tests {
     recon: &MarginalReconstruction,
     impute: bool,
   ) -> Result<BTreeMap<String, Seq>, Report> {
-    let sampled = recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?;
+    let sampled = recon.sample_sequences(graph, SampleMode::Argmax, &mut get_random_number_generator(0))?;
     emitted_sequences_by_name(names, &node_keys(graph), &sampled, |key| {
       recon.node_sequence(graph, impute, key)
     })

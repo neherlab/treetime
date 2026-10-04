@@ -1,8 +1,3 @@
-#![allow(
-  clippy::disallowed_methods,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -34,6 +29,7 @@ mod tests {
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AlignmentRecord, Seq};
   use treetime_utils::make_report;
+  use treetime_utils::sync::random::get_random_number_generator;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -354,7 +350,7 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     recon: &MarginalReconstruction,
   ) -> Result<BTreeMap<String, Seq>, Report> {
-    let sampled = recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?;
+    let sampled = recon.sample_sequences(graph, SampleMode::Argmax, &mut get_random_number_generator(0))?;
     emitted_sequences_by_name(names, &internal_node_keys(graph), &sampled, |key| {
       recon.node_sequence(graph, false, key)
     })

@@ -1,8 +1,3 @@
-#![allow(
-  clippy::disallowed_methods,
-  reason = "test and benchmark code: index and expected-value casts, property-style tests over thread_rng inputs (seeding is a separate test-quality follow-up), and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
@@ -24,6 +19,7 @@ mod tests {
   use treetime_io::fasta::read_many_fasta_str;
   use treetime_io::nwk::nwk_read_str;
   use treetime_primitives::{AlignmentRecord, Seq};
+  use treetime_utils::sync::random::get_random_number_generator;
 
   #[test]
   fn test_marginal_map_deviation_does_not_leak_into_subtree() -> Result<(), Report> {
@@ -143,7 +139,7 @@ mod tests {
     named_strings(
       names,
       &node_keys(graph),
-      &recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?,
+      &recon.sample_sequences(graph, SampleMode::Argmax, &mut get_random_number_generator(0))?,
       |key| recon.node_sequence(graph, false, key),
     )
   }
@@ -165,7 +161,7 @@ mod tests {
     named_strings(
       names,
       &node_keys(graph),
-      &recon.sample_sequences(graph, SampleMode::Argmax, &mut rand::thread_rng())?,
+      &recon.sample_sequences(graph, SampleMode::Argmax, &mut get_random_number_generator(0))?,
       |key| recon.node_sequence(graph, false, key),
     )
   }

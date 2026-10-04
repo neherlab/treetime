@@ -58,7 +58,7 @@ mod tests {
       assert_eq!(
         "ACGT",
         root.chars().take(4).collect::<String>(),
-        "constant columns are certain at seed {seed}"
+        "with branch lengths of 1e-4 the posterior of a constant column is 1 - O(1e-9) on the observed state, at seed {seed}"
       );
     }
     Ok(())
@@ -90,13 +90,12 @@ mod tests {
     use crate::test_utils::{emitted_sequences_by_name, internal_node_keys};
     use eyre::{OptionExt, Report};
     use indoc::indoc;
-    use rand::SeedableRng;
-    use rand::rngs::StdRng;
     use std::collections::BTreeMap;
     use treetime_graph::graph::Graph;
     use treetime_io::fasta::read_many_fasta_str;
     use treetime_io::nwk::nwk_read_str;
     use treetime_primitives::AlignmentRecord;
+    use treetime_utils::sync::random::get_random_number_generator;
 
     pub(super) const ROOT_NAME: &str = "root";
 
@@ -120,7 +119,7 @@ mod tests {
 
     pub(super) fn reconstruct_two_leaves(mode: SampleMode, seed: u64) -> Result<String, Report> {
       let mut sequences = reconstruct_named(
-        "(A:0.1,B:0.1)root;",
+        "(A:0.0001,B:0.0001)root;",
         indoc! {r#"
         >A
         ACGTA
@@ -159,7 +158,7 @@ mod tests {
 
       let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-      let sampled = recon.sample_sequences(&graph, mode, &mut StdRng::seed_from_u64(seed))?;
+      let sampled = recon.sample_sequences(&graph, mode, &mut get_random_number_generator(seed))?;
       Ok(
         emitted_sequences_by_name(&names, &internal_node_keys(&graph), &sampled, |key| {
           recon.node_sequence(&graph, false, key)
