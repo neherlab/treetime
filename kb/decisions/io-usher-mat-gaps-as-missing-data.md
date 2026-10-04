@@ -27,8 +27,6 @@ The MAT reference is the root sequence. For each edge, on the nucleotide track:
 - **Order**: the mutations of each node are sorted by position
 - **Warning**: when any event was converted or left out, the command logs one warning per run, for example `UShER MAT has no gap state: wrote 25 deletion(s) as missing data (N)`. It counts deletion events, insertion events with a site in a root gap column, and substitutions in root gap columns
 
-Amino-acid mutations are outside this rule; MAT still rejects them ([kb/issues/M-io-usher-mat-rejects-amino-acid-mutations.md](../issues/M-io-usher-mat-rejects-amino-acid-mutations.md)).
-
 ## Example
 
 Tree `((C,D)B,E)root`:
