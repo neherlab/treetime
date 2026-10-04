@@ -32,34 +32,18 @@ name="${1:?binary or package name}"
 target="${2:-${CROSS_COMPILE:?target}}"
 target_safe="${target//-/_}"
 
-case "${target}" in
-aarch64-apple-*)
-  c_arch="-mcpu=apple-m1"
-  rust_arch="-C target-cpu=apple-m1"
-  ;;
-aarch64-*)
-  # Features of -C target-feature=+v8.2a, which is unstable, listed explicitly.
-  c_arch="-march=armv8.2-a"
-  rust_arch="-C target-cpu=generic -C target-feature=+crc,+dpb,+lor,+lse,+neon,+pan,+ras,+rdm,+vh"
-  ;;
-x86_64-*)
-  c_arch="-march=haswell"
-  rust_arch="-C target-cpu=haswell"
-  ;;
-*)
-  printf 'Unsupported target: %s\n' "${target}" >&2
-  exit 1
-  ;;
-esac
+# shellcheck source=../lib/dist-flags.sh
+source "${root}/dev/lib/dist-flags.sh"
+export_dist_flags "${target}"
 
 static="-C target-feature=+crt-static -C link-arg=-static -C link-self-contained=yes"
 case "${target}" in
 *-apple-darwin)
   # https://github.com/NixOS/nixpkgs/issues/177129
-  rustflags="${rust_arch} -C target-feature=+crt-static -C link-arg=-lgcc_eh"
+  rustflags="${RUSTFLAGS} -C target-feature=+crt-static -C link-arg=-lgcc_eh"
   ;;
 *-linux-gnu)
-  rustflags="${rust_arch}"
+  rustflags="${RUSTFLAGS}"
   ;;
 *-linux-musl)
   if [[ -n "${lib}" ]]; then
@@ -67,10 +51,10 @@ case "${target}" in
     exit 1
   fi
   # The musl toolchains do not find these libraries on their own.
-  rustflags="${rust_arch} -C link-args=-lpthread -C link-args=-lm -C link-args=-lc ${static}"
+  rustflags="${RUSTFLAGS} -C link-args=-lpthread -C link-args=-lm -C link-args=-lc ${static}"
   ;;
 *-windows-gnu)
-  rustflags="${rust_arch} ${static}"
+  rustflags="${RUSTFLAGS} ${static}"
   ;;
 esac
 # The cross images install the OpenBLAS archive into OPENBLAS_LIB_DIR. The
@@ -92,13 +76,7 @@ if [[ -n "${lib}" && "${target}" == *-windows-gnu ]]; then
   rustflags="${rustflags} -C link-arg=-Wl,--end-group"
 fi
 
-c_flags="-O3 -ftree-vectorize -funroll-loops ${c_arch}"
-# RUSTFLAGS replaces the target rustflags of .cargo/config.toml (native mold
-# linking and development flags) instead of adding to them.
 export RUSTFLAGS="${rustflags}"
-export "CFLAGS_${target_safe}=${CFLAGS:-} ${c_flags}"
-export "CXXFLAGS_${target_safe}=${CXXFLAGS:-} ${c_flags}"
-export "FCFLAGS_${target_safe}=${FCFLAGS:-} ${c_flags}"
 
 # The optional kache compiler cache (KACHE_STORE in .env.example), one store per
 # kache version and target, next to the stores of the justfile.

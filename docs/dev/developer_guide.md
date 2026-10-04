@@ -319,8 +319,8 @@ After changing `pixi.toml`, run `pixi lock` and commit both files. Package relea
 - `dev` (`just build`, `just run`, the tests): unoptimized workspace crates, dependencies at `opt-level = 2`, full debug info
 - `dev-opt` (`just run-dev-opt`): `dev` with optimized workspace crates, for long runs on real datasets; rebuilds are slower
 - `release` (`just build-release`, `just run-release`, `just example`, `just smoke`): optimized and fast to rebuild, without LTO
-- `dist` (`just build-dist`, `just cross`, `just build-napi dist`, `just cross-napi`, nightly releases): the shipped binary and Node addon, with fat LTO and one codegen unit
-- `profiling` (`just build-profiling`, `just profile`): `dist` with full debug info
+- `dist` (`just build-dist`, `just cross`, `just build-napi dist`, `just cross-napi`, nightly releases): the shipped binary and Node addon, with fat LTO, one codegen unit, and the CPU flags of the shipped builds from `dev/lib/dist-flags.sh` (`-C target-cpu=haswell` on x86-64, no frame pointers)
+- `profiling` (`just build-profiling`, `just profile`): `dist` with full debug info; without frame pointers, profilers unwind call stacks with DWARF (`dev/profile` does) or LBR
 - `profiling-heap` (`just build-profiling-heap`): `profiling` with jemalloc heap profiling compiled in, for heap profiles only
 - `bench` (`just bench`): the `dist` settings
 

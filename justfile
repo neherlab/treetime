@@ -149,23 +149,23 @@ build-release bin="treetime" *args:
 # Build a binary as shipped (dist profile: fat LTO) and copy it to .out/: just build-dist treetime
 [group("build")]
 build-dist bin="treetime" *args:
-    cargo build --locked --profile=dist --bin {{ quote(bin) }} "${@:2}"
+    source dev/lib/dist-flags.sh && export_dist_flags && cargo build --locked --profile=dist --bin {{ quote(bin) }} "${@:2}"
     mkdir -p .out && cp {{ quote(CARGO_TARGET_DIR / "dist" / bin) }} .out/
 
 # Build a binary (profiling profile: dist with full debug info)
 [group("build")]
 build-profiling bin="treetime" *args:
-    cargo build --locked --profile=profiling --bin {{ quote(bin) }} "${@:2}"
+    source dev/lib/dist-flags.sh && export_dist_flags && cargo build --locked --profile=profiling --bin {{ quote(bin) }} "${@:2}"
 
 # Build the CLI with jemalloc heap profiling (profiling-heap profile); see "Heap profiles" in docs/dev/developer_guide.md
 [group("build")]
 build-profiling-heap *args:
-    cargo build --locked --profile=profiling-heap --package=app-cli --features=heap-profiling --bin=treetime "$@"
+    source dev/lib/dist-flags.sh && export_dist_flags && cargo build --locked --profile=profiling-heap --package=app-cli --features=heap-profiling --bin=treetime "$@"
 
 # Build the Node addon of the desktop app and copy it to packages/app-napi/app-napi.node: just build-napi [dev|dist]
 [group("build")]
 build-napi profile="dev":
-    cargo build --locked -p app-napi --lib --profile {{ quote(profile) }}
+    {{ if profile == "dev" { "" } else { "source dev/lib/dist-flags.sh && export_dist_flags &&" } }} cargo build --locked -p app-napi --lib --profile {{ quote(profile) }}
     cp {{ quote(CARGO_TARGET_DIR / (if profile == "dev" { "debug" } else { profile }) / "libapp_napi.so") }} packages/app-napi/app-napi.node
 
 # Cross-compile shipped (dist profile) binaries in the cross images (host only, needs Docker): just cross [--target=<triple>]
@@ -523,7 +523,7 @@ package-desktop target="x86_64-unknown-linux-gnu": _js
 # Run all benchmarks (bench profile: the shipped dist settings)
 [group("bench")]
 bench *args:
-    cargo bench --locked --workspace --benches "$@"
+    source dev/lib/dist-flags.sh && export_dist_flags && cargo bench --locked --workspace --benches "$@"
 
 # Sample a profile of a binary (host only, needs Docker and perf or samply): just profile treetime -- <args>
 [group("bench")]

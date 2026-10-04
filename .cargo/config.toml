@@ -30,7 +30,8 @@ KACHE_PROGRESS = { value = "off", force = true }
 # - the static OpenBLAS archive needs libgfortran and pthreads, which the
 #   openblas-src build script does not declare; both link statically, so the
 #   binaries and the Node addon do not depend on the compiler runtime
-# Release cross builds set their own flags in dev/cross/build.
+# The dist, profiling, and bench builds and the cross builds replace these
+# flags with the CPU flags of the shipped builds (dev/lib/dist-flags.sh).
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
   "-Clink-arg=-fuse-ld=mold",
