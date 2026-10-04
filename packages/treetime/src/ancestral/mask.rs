@@ -5,17 +5,17 @@ pub fn create_mask(aln: &[AlignmentRecord], alignment_length: usize, alphabet: &
   let ambiguous = alphabet.unknown();
   let gap = alphabet.gap();
 
-  let mut mask = vec![true; alignment_length];
-
-  for record in aln {
-    for (pos, &state) in record.seq.iter().enumerate() {
-      if pos < alignment_length && state != ambiguous && state != gap {
-        mask[pos] = false;
-      }
-    }
-  }
-
-  mask
+  (0..alignment_length)
+    .map(|pos| {
+      !aln.iter().any(|record| {
+        record
+          .seq
+          .as_slice()
+          .get(pos)
+          .is_some_and(|&state| state != ambiguous && state != gap)
+      })
+    })
+    .collect()
 }
 
 pub fn mask_to_string(mask: &[bool]) -> String {
