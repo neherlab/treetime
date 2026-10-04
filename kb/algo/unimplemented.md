@@ -1,7 +1,5 @@
 # Unimplemented Algorithms
 
-[Back to index](README.md)
-
 Algorithms present in v0 Python that remain unported or were intentionally removed from v1 Rust. Struck-through entries marked **Ported** record capabilities that have since been implemented and should move to the relevant algorithm document when this inventory is reorganized.
 
 ---

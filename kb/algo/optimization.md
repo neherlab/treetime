@@ -1,7 +1,5 @@
 # Numerical Optimization Algorithms
 
-[Back to index](README.md)
-
 ## Newton-Raphson for Branch Length Optimization
 
 Per-edge branch length optimization using Newton's method with analytical first and second derivatives of the log-likelihood. Three parameterizations trade off singularity handling near zero:
@@ -67,7 +65,7 @@ v1: [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/opti
 
 v0: not implemented; v0 ignores indels in this branch-length likelihood.
 
-This is a v1-only feature. See [indel models report](../reports/indel-models/README.md) for the full catalog of indel modeling approaches, [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md), [design doc](../_raw/optimize.md), and [alternatives proposal](../proposals/optimize-indel-model-alternatives.md).
+This is a v1-only feature. See the indel models report ([kb/reports/indel-models/1-introduction.md](../reports/indel-models/1-introduction.md)) for the full catalog of indel modeling approaches, [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md), [design doc](../_raw/optimize.md), and [alternatives proposal](../proposals/optimize-indel-model-alternatives.md).
 
 ---
 

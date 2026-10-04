@@ -1,6 +1,6 @@
 # Chapter 1: Introduction
 
-[Back to index](README.md) | Next: [Chapter 2: Substitution models](2-substitution-models.md)
+Next: [Chapter 2: Substitution models](2-substitution-models.md)
 
 ## What is a phylogenetic tree?
 

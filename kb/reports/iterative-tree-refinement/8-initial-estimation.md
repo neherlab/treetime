@@ -1,6 +1,6 @@
 # Chapter 8: Initial branch length estimation
 
-[Back to index](README.md) | Previous: [Chapter 7: Polytomy resolution](7-polytomy-resolution.md) | Next: [Chapter 9: The iteration loop](9-iteration-loop.md)
+Previous: [Chapter 7: Polytomy resolution](7-polytomy-resolution.md) | Next: [Chapter 9: The iteration loop](9-iteration-loop.md)
 
 ## Why initial guesses matter
 

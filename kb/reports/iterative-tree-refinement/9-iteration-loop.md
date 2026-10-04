@@ -1,6 +1,6 @@
 # Chapter 9: The iteration loop -- putting it all together
 
-[Back to index](../../README.md) | Previous: [Chapter 8: Initial estimation](8-initial-estimation.md) | Next: [Chapter 10: Implementation status](10-status-and-recommendations.md)
+Previous: [Chapter 8: Initial estimation](8-initial-estimation.md) | Next: [Chapter 10: Implementation status](10-status-and-recommendations.md)
 
 ## The alternating optimization framework
 

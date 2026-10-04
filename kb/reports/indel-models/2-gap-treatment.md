@@ -1,6 +1,6 @@
 # Chapter 2: Gap treatment and counting models
 
-[Back to index](README.md) | Previous: [Chapter 1: Introduction](1-introduction.md) | Next: [Chapter 3: Single-residue birth-death models](3-single-residue.md)
+Previous: [Chapter 1: Introduction](1-introduction.md) | Next: [Chapter 3: Single-residue birth-death models](3-single-residue.md)
 
 ## Gaps as missing data
 

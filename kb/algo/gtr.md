@@ -1,7 +1,5 @@
 # GTR Substitution Models
 
-[Back to index](README.md)
-
 ## Substitution Models
 
 All models are continuous-time Markov chains on the nucleotide (or amino acid) alphabet. Each defines a rate matrix Q such that the transition probability matrix over branch length t is P(t) = exp(Qt). Models are normalized so that the expected rate of change at equilibrium equals 1: `beta = 1 / (-sum_i pi_i * Q_ii)`, and Q is scaled by beta so that branch length directly represents expected substitutions per site.

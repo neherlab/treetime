@@ -1,6 +1,6 @@
 # Chapter 7: Audit - inventory, inconsistencies, and proposals
 
-[Back to index](README.md) | Previous: [Chapter 6: The argmin crate](6-argmin-crate.md) | Next: [Glossary](glossary.md)
+Previous: [Chapter 6: The argmin crate](6-argmin-crate.md) | Next: [Glossary](glossary.md)
 
 This chapter is the actionable output of the optimization methods audit. It inventories every optimization in v1, identifies inconsistencies across commands, and proposes prioritized refactoring.
 

@@ -1,6 +1,6 @@
 # Chapter 5: Empirical models and parsimony
 
-[Back to index](README.md) | Previous: [Chapter 4: Multi-residue extensions](4-multi-residue.md) | Next: [Chapter 6: Comparative analysis](6-comparison.md)
+Previous: [Chapter 4: Multi-residue extensions](4-multi-residue.md) | Next: [Chapter 6: Comparative analysis](6-comparison.md)
 
 ## SIM/RIM (Loewenthal et al. 2021)
 

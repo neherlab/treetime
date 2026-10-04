@@ -2,7 +2,7 @@
 
 This glossary is optimized for TreeTime and reflects the local terminology used in this codebase and its documentation. Bioinformatics terminology is often poorly defined, with the same concept called different things by different communities and tools. This is our best effort at a clear, consistent set of definitions for the concepts that matter in TreeTime's context. We do not pretend these definitions are universally accepted or standard, and we are not trying to replace existing terminology, just to be precise about what we mean when we use these terms.
 
-Terms used throughout the [iterative tree refinement book](README.md). Ordered alphabetically.
+Terms used throughout the iterative tree refinement book ([1-introduction.md](1-introduction.md)). Ordered alphabetically.
 
 ## Adaptive LASSO
 

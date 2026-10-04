@@ -1,7 +1,5 @@
 # Distribution and Convolution Algorithms
 
-[Back to index](README.md)
-
 ## FFT Convolution
 
 O(n log n) convolution via the convolution theorem (<a id="cite-1"></a>[Cooley and Tukey 1965](https://doi.org/10.2307/2003354) [[1](#ref-1)]): `IFFT(FFT(f) * FFT(g))`. The discrete Fourier transform converts convolution (an O(n^2) operation in the time domain) into pointwise multiplication in the frequency domain, then transforms back.

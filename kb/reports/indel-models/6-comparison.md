@@ -1,6 +1,6 @@
 # Chapter 6: Comparative analysis and software landscape
 
-[Back to index](README.md) | Previous: [Chapter 5: Empirical models and parsimony](5-empirical.md)
+Previous: [Chapter 5: Empirical models and parsimony](5-empirical.md)
 
 ## Model hierarchy
 

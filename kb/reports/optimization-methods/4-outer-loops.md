@@ -1,6 +1,6 @@
 # Chapter 4: Outer loops and EM convergence
 
-[Back to index](README.md) | Previous: [Chapter 3: Coalescent skyline](3-coalescent-skyline.md) | Next: [Chapter 5: Supporting optimizations](5-supporting-optimizations.md)
+Previous: [Chapter 3: Coalescent skyline](3-coalescent-skyline.md) | Next: [Chapter 5: Supporting optimizations](5-supporting-optimizations.md)
 
 The per-edge branch length optimization (Chapter 2) runs inside an outer loop that alternates between ancestral reconstruction and parameter updates. This outer loop has an EM (Expectation-Maximization) structure. See [Iterative tree refinement, Chapter 9](../iterative-tree-refinement/9-iteration-loop.md) for the pipeline-level view.
 

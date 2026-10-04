@@ -1,7 +1,5 @@
 # Glossary
 
-[Back to index](README.md)
-
 Consolidated glossary of domain-specific terms used across all chapters. Each term is also defined in the chapter where it first appears.
 
 ## ABC (Approximate Bayesian Computation)

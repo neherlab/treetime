@@ -1,6 +1,6 @@
 # Chapter 3: Coalescent skyline optimization
 
-[Back to index](README.md) | Previous: [Chapter 2: Branch length optimization](2-branch-length-optimization.md) | Next: [Chapter 4: Outer loops](4-outer-loops.md)
+Previous: [Chapter 2: Branch length optimization](2-branch-length-optimization.md) | Next: [Chapter 4: Outer loops](4-outer-loops.md)
 
 The coalescent skyline estimates how the effective population size Ne(t) (or its inverse, the coalescent time scale Tc(t)) varied over time. TreeTime parameterizes this as `log(Tc)` on a grid and minimizes a penalized negative log-likelihood. This is a multi-dimensional optimization problem.
 

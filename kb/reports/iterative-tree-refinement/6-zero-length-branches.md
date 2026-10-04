@@ -1,6 +1,6 @@
 # Chapter 6: Zero-length branches -- detection and pruning
 
-[Back to index](README.md) | Previous: [Chapter 5: Branch length optimization](5-branch-length-optimization.md) | Next: [Chapter 7: Polytomy resolution](7-polytomy-resolution.md)
+Previous: [Chapter 5: Branch length optimization](5-branch-length-optimization.md) | Next: [Chapter 7: Polytomy resolution](7-polytomy-resolution.md)
 
 ## What is a zero-length branch?
 

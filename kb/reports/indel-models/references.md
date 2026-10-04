@@ -1,7 +1,5 @@
 # References
 
-[Back to index](README.md)
-
 Consolidated bibliography for all chapters. Ordered by reference number (assignment order from the original survey). DOIs verified via OpenAlex, Crossref, and Semantic Scholar (March 2026).
 
 1. <a id="ref-1"></a> Warnow, Tandy. 2012. "Standard Maximum Likelihood Analyses of Alignments with Gaps Can Be Statistically Inconsistent." _PLOS Currents Tree of Life_. https://doi.org/10.1371/currents.rrn1308

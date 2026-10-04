@@ -1,6 +1,6 @@
 # Chapter 5: Per-edge branch length optimization
 
-[Back to index](README.md) | Previous: [Chapter 4: Ancestral reconstruction](4-ancestral-reconstruction.md) | Next: [Chapter 6: Zero-length branches](6-zero-length-branches.md)
+Previous: [Chapter 4: Ancestral reconstruction](4-ancestral-reconstruction.md) | Next: [Chapter 6: Zero-length branches](6-zero-length-branches.md)
 
 ## The inner optimization problem
 

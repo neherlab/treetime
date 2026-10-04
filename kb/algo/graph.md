@@ -1,7 +1,5 @@
 # Graph Traversal Algorithms
 
-[Back to index](README.md)
-
 ## Work-first Parallel Pass
 
 The single parallel tree traversal (<a id="cite-1"></a>[Leiserson and Schardl 2010](https://doi.org/10.1145/1810479.1810534) [[1](#ref-1)]). Fitch, marginal, clock, and timetree passes arrange partition payloads in stable indexed slots and run them in one Rayon scope. Roots seed forward passes and leaves seed backward passes. Each completed node decrements an atomic prerequisite counter for its successors; a successor enters the shared work queue as soon as its counter reaches zero, so a ready node runs without waiting on a per-level barrier.

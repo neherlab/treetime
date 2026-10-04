@@ -1,6 +1,6 @@
 # Chapter 2: Substitution models and sequence evolution
 
-[Back to index](README.md) | Previous: [Chapter 1: Introduction](1-introduction.md) | Next: [Chapter 3: Tree likelihood](3-tree-likelihood.md)
+Previous: [Chapter 1: Introduction](1-introduction.md) | Next: [Chapter 3: Tree likelihood](3-tree-likelihood.md)
 
 ## How DNA changes over time
 

@@ -1,7 +1,5 @@
 # Timetree Inference Algorithms
 
-[Back to index](../README.md)
-
 ## Belief Propagation
 
 Two-pass message passing for time inference on the phylogenetic tree (<a id="cite-1"></a>[Pearl 1988](https://doi.org/10.1016/C2009-0-27609-4) [[1](#ref-1)]). The backward pass convolves and multiplies child distributions from leaves toward the root. The forward pass divides and convolves parent distributions from root toward leaves, refining each node's time estimate with information from the rest of the tree.

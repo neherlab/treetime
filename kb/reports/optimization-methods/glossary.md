@@ -1,7 +1,5 @@
 # Glossary
 
-[Back to index](README.md)
-
 Terms used throughout this book. For phylogenetic terms not listed here, see the [Iterative tree refinement glossary](../iterative-tree-refinement/glossary.md).
 
 ## argmin

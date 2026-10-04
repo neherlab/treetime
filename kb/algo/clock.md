@@ -1,7 +1,5 @@
 # Clock Inference Algorithms
 
-[Back to index](../README.md)
-
 ## WLS Sufficient Statistics
 
 TreeTime estimates the molecular clock rate via weighted least squares (WLS) regression of root-to-tip divergence against sampling dates (<a id="cite-1"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/10.1093/ve/vex042) [[1](#ref-1)], Equations 11-14). Rather than materializing the full N x N covariance matrix for generalized least squares, TreeTime propagates six sufficient statistics through the tree in O(N) time using the `ClockSet` data structure:

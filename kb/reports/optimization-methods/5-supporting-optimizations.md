@@ -1,6 +1,6 @@
 # Chapter 5: Supporting optimizations
 
-[Back to index](README.md) | Previous: [Chapter 4: Outer loops](4-outer-loops.md) | Next: [Chapter 6: The argmin crate](6-argmin-crate.md)
+Previous: [Chapter 4: Outer loops](4-outer-loops.md) | Next: [Chapter 6: The argmin crate](6-argmin-crate.md)
 
 Beyond branch lengths (Chapter 2) and skyline (Chapter 3), TreeTime performs several supporting optimizations. Each has different structure and optimizer requirements.
 

@@ -1,6 +1,6 @@
 # Chapter 10: Implementation status and recommendations
 
-[Back to index](README.md) | Previous: [Chapter 9: The iteration loop](9-iteration-loop.md)
+Previous: [Chapter 9: The iteration loop](9-iteration-loop.md)
 
 ## Feature matrix
 

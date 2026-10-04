@@ -1,7 +1,5 @@
 # Mugration (Discrete Trait Reconstruction)
 
-[Back to index](../README.md)
-
 Discrete trait ancestral reconstruction treats categorical metadata (locations, hosts, lineages) as characters evolving on the phylogeny. The term "mugration" (mutation + migration) reflects the model: transitions between discrete states are treated like substitutions using GTR-like machinery.
 
 ---

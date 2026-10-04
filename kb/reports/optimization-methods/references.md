@@ -1,7 +1,5 @@
 # References
 
-[Back to index](README.md)
-
 Consolidated bibliography for all chapters. Ordered by first author surname. DOIs verified via search skills (March 2026). For the full phylogenetics reference list including substitution models and tree-building algorithms, see [Iterative tree refinement references](../iterative-tree-refinement/references.md).
 
 1. Brent, Richard P. 1973. _Algorithms for Minimization without Derivatives._ Prentice-Hall. https://maths-people.anu.edu.au/~brent/pd/rpb011i.pdf

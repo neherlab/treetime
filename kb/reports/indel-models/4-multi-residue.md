@@ -1,6 +1,6 @@
 # Chapter 4: Multi-residue extensions and approximations
 
-[Back to index](README.md) | Previous: [Chapter 3: Single-residue birth-death models](3-single-residue.md) | Next: [Chapter 5: Empirical models and parsimony](5-empirical.md)
+Previous: [Chapter 3: Single-residue birth-death models](3-single-residue.md) | Next: [Chapter 5: Empirical models and parsimony](5-empirical.md)
 
 ## TKF92 (Thorne-Kishino-Felsenstein 1992)
 

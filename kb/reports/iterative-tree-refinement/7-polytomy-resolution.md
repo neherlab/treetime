@@ -1,6 +1,6 @@
 # Chapter 7: Polytomy resolution
 
-[Back to index](README.md) | Previous: [Chapter 6: Zero-length branches](6-zero-length-branches.md) | Next: [Chapter 8: Initial estimation](8-initial-estimation.md)
+Previous: [Chapter 6: Zero-length branches](6-zero-length-branches.md) | Next: [Chapter 8: Initial estimation](8-initial-estimation.md)
 
 ## What is a polytomy?
 
@@ -101,7 +101,7 @@ The process is stochastic -- different runs produce different topologies. This r
 
 v0 code: `generate_subtree()` at [`packages/legacy/treetime/treetime/treetime.py#L872-L1010`](../../../packages/legacy/treetime/treetime/treetime.py#L872-L1010). v0 has deprecated greedy mode with a warning recommending stochastic resolution.
 
-v1: implemented in [`packages/treetime/src/timetree/optimization/polytomy/`](../../../packages/treetime/src/timetree/optimization/polytomy/). The pure sweep returns a merger plan, and graph mutation applies the complete validated plan. v1 corrects the v0 rate-selection, parent-bound, and arrival-boundary defects recorded in [`kb/v0-errata/`](../../v0-errata/README.md).
+v1: implemented in [`packages/treetime/src/timetree/optimization/polytomy/`](../../../packages/treetime/src/timetree/optimization/polytomy/). The pure sweep returns a merger plan, and graph mutation applies the complete validated plan. v1 corrects the v0 rate-selection, parent-bound, and arrival-boundary defects recorded in [`kb/v0-errata/`](../../v0-errata/).
 
 ## Strategy 4: Shared-mutation merging (sequence-based)
 

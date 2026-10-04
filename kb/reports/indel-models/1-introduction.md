@@ -1,6 +1,6 @@
 # Chapter 1: Introduction
 
-[Back to index](README.md) | Next: [Chapter 2: Gap treatment and counting models](2-gap-treatment.md)
+Next: [Chapter 2: Gap treatment and counting models](2-gap-treatment.md)
 
 ## The problem
 

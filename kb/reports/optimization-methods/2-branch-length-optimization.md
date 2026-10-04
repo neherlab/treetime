@@ -1,6 +1,6 @@
 # Chapter 2: Branch length optimization
 
-[Back to index](README.md) | Previous: [Chapter 1: Introduction](1-introduction.md) | Next: [Chapter 3: Coalescent skyline](3-coalescent-skyline.md)
+Previous: [Chapter 1: Introduction](1-introduction.md) | Next: [Chapter 3: Coalescent skyline](3-coalescent-skyline.md)
 
 The per-edge branch length optimization is the innermost and most frequently called optimization in the pipeline. Given fixed ancestral state distributions at both endpoints of an edge, find the branch length `t` that maximizes the likelihood. This is a 1D scalar optimization problem. See [Iterative tree refinement, Chapter 5](../iterative-tree-refinement/5-branch-length-optimization.md) for the mathematical formulation.
 

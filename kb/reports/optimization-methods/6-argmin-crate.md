@@ -1,6 +1,6 @@
 # Chapter 6: The argmin crate
 
-[Back to index](README.md) | Previous: [Chapter 5: Supporting optimizations](5-supporting-optimizations.md) | Next: [Chapter 7: Audit](7-audit.md)
+Previous: [Chapter 5: Supporting optimizations](5-supporting-optimizations.md) | Next: [Chapter 7: Audit](7-audit.md)
 
 TreeTime v1 uses [argmin](https://docs.rs/argmin/0.10.0/argmin/) as its optimization framework. This chapter documents argmin's architecture, how to write custom solvers, and practical patterns for this project.
 

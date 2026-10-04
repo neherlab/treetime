@@ -6,7 +6,7 @@ Evaluate whether the current Poisson indel count model should be extended with l
 
 ## Current state
 
-v1 uses a Poisson count model where each indel event contributes equally to the branch length log-likelihood regardless of indel length. This prevents zero-length assignment on branches with only indel evidence. See [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md) and [indel models report](../reports/indel-models/README.md) for the full catalog of indel models and the rationale for the current choice.
+v1 uses a Poisson count model where each indel event contributes equally to the branch length log-likelihood regardless of indel length. This prevents zero-length assignment on branches with only indel evidence. See [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md) and the indel models report ([kb/reports/indel-models/1-introduction.md](../reports/indel-models/1-introduction.md)) for the full catalog of indel models and the rationale for the current choice.
 
 The model is implemented in [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs).
 
@@ -118,7 +118,7 @@ Fit indel length distributions (geometric, Zipf/power-law, multi-exponential) fr
 
 ## Related documents
 
-- [Indel models report](../reports/indel-models/README.md) - full catalog of indel modeling approaches
+- [kb/reports/indel-models/1-introduction.md](../reports/indel-models/1-introduction.md) - full catalog of indel modeling approaches
 - [Indel contribution intentional change](../decisions/optimize-indel-contribution-to-likelihood.md) - current Poisson model documentation
 - ~~Grid search ignores indels~~ - **FIXED**
 - ~~Timetree ignores indels~~ - **FIXED**

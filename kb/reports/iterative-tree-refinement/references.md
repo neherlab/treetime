@@ -1,7 +1,5 @@
 # References
 
-[Back to index](README.md)
-
 Consolidated bibliography for all chapters. Ordered by first author surname. DOIs verified via OpenAlex and Google Scholar (March 2026). Entries without DOIs are pre-DOI-era books or book chapters; ISBNs provided where available.
 
 1. Akaike, H. 1974. "A New Look at the Statistical Model Identification." _IEEE Trans. Autom. Control_ 19(6):716-723. https://doi.org/10.1109/TAC.1974.1100705

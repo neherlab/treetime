@@ -1,6 +1,6 @@
 # Chapter 4: Ancestral sequence reconstruction
 
-[Back to index](README.md) | Previous: [Chapter 3: Tree likelihood](3-tree-likelihood.md) | Next: [Chapter 5: Branch length optimization](5-branch-length-optimization.md)
+Previous: [Chapter 3: Tree likelihood](3-tree-likelihood.md) | Next: [Chapter 5: Branch length optimization](5-branch-length-optimization.md)
 
 ## What is ancestral reconstruction?
 

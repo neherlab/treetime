@@ -1,6 +1,6 @@
 # Chapter 3: Single-residue birth-death models
 
-[Back to index](README.md) | Previous: [Chapter 2: Gap treatment and counting models](2-gap-treatment.md) | Next: [Chapter 4: Multi-residue extensions and approximations](4-multi-residue.md)
+Previous: [Chapter 2: Gap treatment and counting models](2-gap-treatment.md) | Next: [Chapter 4: Multi-residue extensions and approximations](4-multi-residue.md)
 
 ## TKF91 (Thorne-Kishino-Felsenstein 1991)
 

@@ -1,8 +1,6 @@
 # Indel Models
 
-[Back to index](README.md)
-
-For the full survey of indel modeling approaches in phylogenetics (12 models, 17 software tools, 30 references), see the [Indel Models in Phylogenetics](../reports/indel-models/README.md) report.
+For the full survey of indel modeling approaches in phylogenetics (12 models, 17 software tools, 30 references), see the report Indel Models in Phylogenetics ([kb/reports/indel-models/1-introduction.md](../reports/indel-models/1-introduction.md)).
 
 This page covers only the algorithm implemented in v1.
 
@@ -14,7 +12,7 @@ v1: [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/opti
 
 v0: not implemented. v0 ignores indels in the likelihood, same as RAxML, IQ-TREE, PhyML.
 
-This is a v1-only feature. See [indel models report](../reports/indel-models/README.md) for the full catalog of alternative approaches, [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md), and [alternatives proposal](../proposals/optimize-indel-model-alternatives.md).
+This is a v1-only feature. See the indel models report ([kb/reports/indel-models/1-introduction.md](../reports/indel-models/1-introduction.md)) for the full catalog of alternative approaches, [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md), and [alternatives proposal](../proposals/optimize-indel-model-alternatives.md).
 
 ## Indel Composition on Consecutive Edges
 

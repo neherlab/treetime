@@ -1,7 +1,5 @@
 # Ancestral Reconstruction Algorithms
 
-[Back to index](README.md)
-
 ## Fitch Parsimony
 
 Maximum parsimony (<a id="cite-1"></a>[Fitch 1971](https://doi.org/10.2307/2412116) [[1](#ref-1)]) reconstructs ancestral character states by minimizing the total number of state changes on the tree. The method makes no assumptions about branch lengths or substitution rates, treating all state transitions as equally costly. It remains widely used for seeding ML optimization with initial ancestral assignments due to its speed, and for compression of sequence data to variable-position-only representations.

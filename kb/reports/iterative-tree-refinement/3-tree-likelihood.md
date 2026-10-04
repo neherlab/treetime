@@ -1,6 +1,6 @@
 # Chapter 3: Tree likelihood and the pruning algorithm
 
-[Back to index](README.md) | Previous: [Chapter 2: Substitution models](2-substitution-models.md) | Next: [Chapter 4: Ancestral reconstruction](4-ancestral-reconstruction.md)
+Previous: [Chapter 2: Substitution models](2-substitution-models.md) | Next: [Chapter 4: Ancestral reconstruction](4-ancestral-reconstruction.md)
 
 ## What is tree likelihood?
 
