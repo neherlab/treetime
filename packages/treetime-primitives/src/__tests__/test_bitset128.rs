@@ -13,6 +13,29 @@ mod tests {
   use std::iter::repeat_n;
 
   #[test]
+  fn test_bitset128_contains_exactly_each_single_char_in_both_halves() {
+    let expected: Vec<Vec<bool>> = (0_u8..128)
+      .map(|c| (0_u8..128).map(|other| other == c).collect())
+      .collect();
+    let actual: Vec<Vec<bool>> = (0_u8..128)
+      .map(|c| {
+        let set = BitSet128::from_char(c);
+        (0_u8..128).map(|other| set.contains(other)).collect()
+      })
+      .collect();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_bitset128_contains_members_of_a_set_spanning_both_halves() {
+    let members = [0_u8, 5, 63, 64, 65, 100, 127];
+    let set = BitSet128::from_iter(members);
+    let expected: Vec<bool> = (0_u8..128).map(|c| members.contains(&c)).collect();
+    let actual: Vec<bool> = (0_u8..128).map(|c| set.contains(c)).collect();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
   fn test_bitset128_new_is_empty() {
     let actual = BitSet128::new();
     let expected = bitset128! {};

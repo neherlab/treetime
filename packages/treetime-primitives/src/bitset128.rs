@@ -44,10 +44,20 @@ impl BitSet128 {
     self.bits.count_ones() as usize
   }
 
+  #[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    reason = "each half of the 128-bit set is selected before the cast, so no bit is truncated"
+  )]
   pub fn contains<T: Into<u32>>(&self, c: T) -> bool {
     let c = c.into();
     debug_assert!(c < 128, "BitSet128::contains requires c < 128, got {c}");
-    (self.bits & (1 << c)) != 0
+    let half = if c < 64 {
+      self.bits as u64
+    } else {
+      (self.bits >> 64) as u64
+    };
+    (half >> (c & 63)) & 1 != 0
   }
 
   pub(crate) fn insert<T: Into<u32>>(&mut self, c: T) {
