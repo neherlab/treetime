@@ -83,6 +83,7 @@ pub(crate) fn discover_fixed_disagreements_backward(
   alphabet: &Alphabet,
   sequence: &mut Seq,
 ) -> Vec<usize> {
+  let canonical = canonical_table(alphabet);
   let mut discovered = vec![];
   let length = sequence.len();
   for &(child, _) in children {
@@ -98,7 +99,7 @@ pub(crate) fn discover_fixed_disagreements_backward(
         if *parent_state == child_state || *parent_state == NON_CHAR || *parent_state == VARIABLE_CHAR {
           continue;
         }
-        if alphabet.is_canonical(child_state) {
+        if canonical[usize::from(child_state)] {
           if *parent_state == FILL_CHAR {
             *parent_state = child_state;
           } else {
@@ -199,4 +200,12 @@ pub(crate) fn finalize_sequence_forward(
   if is_root {
     *composition = Composition::with_seq(sequence.as_slice(), alphabet.chars(), alphabet.gap());
   }
+}
+
+#[allow(
+  clippy::as_conversions,
+  reason = "table indices below 128 convert exactly to ASCII bytes"
+)]
+fn canonical_table(alphabet: &Alphabet) -> [bool; 128] {
+  std::array::from_fn(|index| alphabet.is_canonical(AsciiChar::from_byte_unchecked(index as u8)))
 }
