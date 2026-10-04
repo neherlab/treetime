@@ -25,8 +25,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
   use treetime_utils::make_report;
   use treetime_utils::sync::random::get_random_number_generator;
@@ -37,7 +37,7 @@ mod tests {
 
   fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {
     Ok(
-      read_many_fasta_str(
+      fasta_read(
         indoc! {r#"
       >A
       ACGTACGTACGTACGT
@@ -47,7 +47,8 @@ mod tests {
       ACGTACGTACGTACGG
       >D
       ACGTACGTACGTACGC
-    "#},
+    "#}
+        .as_bytes(),
         &*NUC_ALPHABET,
       )?
       .into_iter()
@@ -58,7 +59,7 @@ mod tests {
 
   fn ambiguous_r_in_g_clade_alignment() -> Result<Vec<AlignmentRecord>, Report> {
     Ok(
-      read_many_fasta_str(
+      fasta_read(
         indoc! {r#"
       >A
       RCGTACGT
@@ -68,7 +69,8 @@ mod tests {
       GCGTACGT
       >D
       GCGTACGT
-    "#},
+    "#}
+        .as_bytes(),
         &*NUC_ALPHABET,
       )?
       .into_iter()
@@ -111,7 +113,7 @@ mod tests {
   #[test]
   fn test_marginal_dense_sparse_log_lh_consistency_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -137,7 +139,7 @@ mod tests {
   #[test]
   fn test_marginal_sparse_varpos_matches_dense_profile_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -176,7 +178,7 @@ mod tests {
 
   #[test]
   fn test_marginal_dense_sparse_ambiguous_character_expectations_documented() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACGTACGTACGTACNT
@@ -186,14 +188,15 @@ mod tests {
       ACGTACGTACGTACGG
       >D
       ACGTACGTACGTACGC
-    "#},
+    "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -259,7 +262,7 @@ mod tests {
   #[test]
   fn test_marginal_dense_sparse_ambiguous_r_reference_state_consistency() -> Result<(), Report> {
     let aln = ambiguous_r_in_g_clade_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -292,7 +295,7 @@ mod tests {
 
   #[test]
   fn test_marginal_consistency_leaf_unknown_under_gapped_ancestor_stays_unknown() -> Result<(), Report> {
-    let aln = read_many_fasta_str(
+    let aln = fasta_read(
       indoc! {r#"
       >L1
       ACNNGT
@@ -300,13 +303,14 @@ mod tests {
       ACNNGT
       >L3
       AC--GT
-    "#},
+    "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect_vec();
-    let nwk_parsed = nwk_read_str("((L1:0.1,L2:0.1)X:0.1,L3:0.1)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((L1:0.1,L2:0.1)X:0.1,L3:0.1)root:0.01;".as_slice())?;
     let names = nwk_parsed.names();
     let graph: Graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -395,13 +399,13 @@ mod tests {
       .build()?;
 
     let tree_newick = "((A:0.601,B:0.301):0.1,C:0.2):0.001;";
-    let nwk_parsed = nwk_read_str(tree_newick)?;
+    let nwk_parsed = nwk_read(tree_newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
 
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         AAAAAAAAAAAAAAAACCCCCCCCCCCCCCCCGGGGGGGGGGGGGGGGTTTTTTTTTTTTTTTT
@@ -409,7 +413,8 @@ mod tests {
         AAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTTAAAACCCCGGGGTTTT
         >C
         ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
-      "#},
+      "#}
+      .as_bytes(),
       &alphabet,
     )?
     .into_iter()
@@ -441,7 +446,7 @@ mod tests {
   #[test]
   fn test_marginal_sparse_uniform_site_rates_matches_scalar() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -469,7 +474,7 @@ mod tests {
   #[test]
   fn test_marginal_dense_uniform_site_rates_matches_scalar() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

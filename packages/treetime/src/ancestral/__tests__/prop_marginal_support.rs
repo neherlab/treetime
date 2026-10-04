@@ -10,10 +10,10 @@ pub(super) mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   pub(crate) fn run_dense_marginal(input: &MarginalTestInput) -> Result<(f64, DenseReconstruction), Report> {
-    let nwk_parsed = nwk_read_str(&input.newick)?;
+    let nwk_parsed = nwk_read(input.newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -33,7 +33,7 @@ pub(super) mod tests {
   }
 
   pub(crate) fn run_sparse_marginal(input: &MarginalTestInput) -> Result<(f64, SparseReconstruction), Report> {
-    let nwk_parsed = nwk_read_str(&input.newick)?;
+    let nwk_parsed = nwk_read(input.newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

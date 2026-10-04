@@ -11,38 +11,23 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::fmt::float::float_to_digits;
-use treetime_utils::io::file::open_file_or_stdin;
-use treetime_utils::io::file::write_file_with;
+use treetime_utils::io::file::{read_file_with, write_file_with};
 use treetime_utils::make_error;
 use treetime_utils::make_internal_report;
 use treetime_utils::make_report;
 pub use util_newick::NwkStyle;
-use util_newick::{
-  NewickGraph, NewickValue, newick_from_reader, newick_from_string, write_beast_attrs, write_label, write_nhx_attrs,
-};
+use util_newick::{NewickGraph, NewickValue, newick_from_reader, write_beast_attrs, write_label, write_nhx_attrs};
 
 pub const NEWICK_EXTENSIONS: [&str; 4] = ["nwk", "newick", "tree", "tre"];
 
 pub fn nwk_read_file(filepath: impl AsRef<Path>) -> Result<NwkParse, Report> {
-  let filepath = filepath.as_ref();
-  nwk_read(open_file_or_stdin(&Some(filepath))?).wrap_err_with(|| format!("When reading file '{}'", filepath.display()))
+  read_file_with(filepath, nwk_read)
 }
 
-#[cfg_attr(
-  dylint_lib = "treetime_lints",
-  allow(
-    pub_unused_in_workspace,
-    reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
-  )
-)]
-pub fn nwk_read_str(nwk_string: impl AsRef<str>) -> Result<NwkParse, Report> {
-  let nwk_graph = newick_from_string(nwk_string.as_ref()).wrap_err("When parsing Newick string")?;
-  graph_from_newick(&nwk_graph)
-}
-
-fn nwk_read(reader: impl Read) -> Result<NwkParse, Report> {
-  let nwk_graph = newick_from_reader(reader)?;
-  graph_from_newick(&nwk_graph)
+pub fn nwk_read(reader: impl Read) -> Result<NwkParse, Report> {
+  newick_from_reader(reader)
+    .and_then(|nwk_graph| graph_from_newick(&nwk_graph))
+    .wrap_err("When reading Newick")
 }
 
 fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
@@ -133,7 +118,7 @@ pub struct NwkNodeMeta {
   confidence: Option<f64>,
 }
 
-pub fn nwk_write_file_with(
+pub fn nwk_write_file(
   filepath: impl AsRef<Path>,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -141,10 +126,11 @@ pub fn nwk_write_file_with(
   options: &NwkWriteOptions,
   providers: &CommentProviders,
 ) -> Result<(), Report> {
-  let filepath = filepath.as_ref();
-  let text = nwk_write_str_with(graph, names, weights, options, providers)?;
-  write_file_with(filepath, |f| writeln!(f, "{text}").map_err(Report::new))
-    .wrap_err_with(|| format!("When writing Newick file '{}'", filepath.display()))
+  write_file_with(filepath, |writer| {
+    nwk_write(&mut *writer, graph, names, weights, options, providers)?;
+    writeln!(writer)?;
+    Ok(())
+  })
 }
 
 pub fn nwk_write_str(
@@ -152,21 +138,23 @@ pub fn nwk_write_str(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
+  providers: &CommentProviders,
 ) -> Result<String, Report> {
-  let providers = CommentProviders::new();
-  nwk_write_str_with(graph, names, weights, options, &providers)
+  let mut text = String::new();
+  write_nwk_text(&mut text, graph, names, weights, options, providers).wrap_err("When writing Newick")?;
+  Ok(text)
 }
 
-pub(crate) fn nwk_write_str_with(
+pub fn nwk_write(
+  mut writer: impl Write,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   providers: &CommentProviders,
-) -> Result<String, Report> {
-  let mut text = String::new();
-  write_nwk_text(&mut text, graph, names, weights, options, providers)?;
-  Ok(text)
+) -> Result<(), Report> {
+  let text = nwk_write_str(graph, names, weights, options, providers)?;
+  writer.write_all(text.as_bytes()).wrap_err("When writing Newick")
 }
 
 fn write_nwk_text(

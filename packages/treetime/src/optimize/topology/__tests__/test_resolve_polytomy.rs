@@ -11,13 +11,13 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   const NWK: &str = "(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;";
 
   #[test]
   fn test_resolve_polytomy_merge_hoist_retire_worked_example() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -61,7 +61,7 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomy_incompatible_splits_five_to_four() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -102,7 +102,7 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomy_bifurcating_root_cross_root_reversion() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((G1:0.1,G2:0.1,A1:0.1,A2:0.1)V:0.1,S:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((G1:0.1,G2:0.1,A1:0.1,A2:0.1)V:0.1,S:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -149,7 +149,7 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomy_retirement_preserves_preexisting_internal_node() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((((X1:0.1,X2:0.1)W:0.0,C1:0.1,C2:0.1)V:0.2)U:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((((X1:0.1,X2:0.1)W:0.0,C1:0.1,C2:0.1)V:0.2)U:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -195,7 +195,7 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomy_root_polytomy_skipped() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -231,7 +231,7 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomy_no_change_without_reversions() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

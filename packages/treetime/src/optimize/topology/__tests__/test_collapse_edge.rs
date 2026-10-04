@@ -11,7 +11,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
 
@@ -52,7 +52,7 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_sparse_composes_subs() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -103,7 +103,7 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_graph_cleanup() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -131,7 +131,7 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_branch_length_sum() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -161,7 +161,7 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_branch_length_sum_with_zero() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -191,7 +191,7 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_branch_length_none_plus_some() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -220,7 +220,7 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_branch_length_some_plus_none() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -248,7 +248,7 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_indel_concatenation() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -298,7 +298,7 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_reversion_cancels() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1)I:0.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1)I:0.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -340,7 +340,7 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_no_partitions() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -362,7 +362,7 @@ mod tests {
 
   #[test]
   fn test_topology_collapse_edge_multiple_sparse_partitions() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:0.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

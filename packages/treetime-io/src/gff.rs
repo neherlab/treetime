@@ -1,9 +1,10 @@
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use percent_encoding::percent_decode_str;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+use std::io::Read;
 use std::path::Path;
-use treetime_utils::io::fs::read_file_to_string;
+use treetime_utils::io::file::read_file_with;
 use treetime_utils::make_error;
 
 const NAME_ATTRS_CDS: &[&str] = &[
@@ -26,37 +27,21 @@ const NAME_ATTRS_CDS: &[&str] = &[
   "ID",
 ];
 
-pub fn read_gff3_cds_features_filtered(path: &Path, cdses: &[String]) -> Result<Vec<GffCdsFeature>, Report> {
-  let contents = read_file_to_string(path)?;
-  let features = parse_gff3_cds_features(&contents, path)?;
+pub fn gff3_cds_read_file(filepath: impl AsRef<Path>) -> Result<Vec<GffCdsFeature>, Report> {
+  read_file_with(filepath, gff3_cds_read)
+}
 
-  if cdses.is_empty() {
-    return Ok(features);
-  }
-
-  let wanted: BTreeSet<&str> = cdses.iter().map(String::as_str).collect();
-  for cds in &wanted {
-    if !features.iter().any(|f| f.name == *cds) {
-      return make_error!(
-        "--annotation '{}' does not contain a CDS feature for CDS '{cds}'",
-        path.display()
-      );
-    }
-  }
-
-  Ok(
-    features
-      .into_iter()
-      .filter(|f| wanted.contains(f.name.as_str()))
-      .collect(),
-  )
+pub fn gff3_cds_read(mut reader: impl Read) -> Result<Vec<GffCdsFeature>, Report> {
+  let mut contents = String::new();
+  reader.read_to_string(&mut contents)?;
+  parse_gff3_cds_features(&contents).wrap_err("When reading GFF3")
 }
 
 #[allow(
   clippy::expect_used,
   reason = "each grouped feature has at least one row, so rows.first() is Some by construction"
 )]
-pub(super) fn parse_gff3_cds_features(contents: &str, path: &Path) -> Result<Vec<GffCdsFeature>, Report> {
+fn parse_gff3_cds_features(contents: &str) -> Result<Vec<GffCdsFeature>, Report> {
   let mut raw_features: BTreeMap<String, Vec<RawCdsRow>> = BTreeMap::new();
 
   for (line_no, line) in contents.lines().enumerate() {
@@ -70,23 +55,14 @@ pub(super) fn parse_gff3_cds_features(contents: &str, path: &Path) -> Result<Vec
 
     let cols = line.split('\t').collect_vec();
     if cols.len() != 9 {
-      return make_error!(
-        "Invalid GFF3 line {} in '{}': expected 9 tab-separated columns",
-        line_no + 1,
-        path.display()
-      );
+      return make_error!("Invalid GFF3 line {}: expected 9 tab-separated columns", line_no + 1);
     }
     if cols[2] != "CDS" {
       continue;
     }
 
-    let attrs = parse_gff_attributes(cols[8]).wrap_err_with(|| {
-      format!(
-        "Invalid GFF3 attributes on line {} in '{}'",
-        line_no + 1,
-        path.display()
-      )
-    })?;
+    let attrs =
+      parse_gff_attributes(cols[8]).wrap_err_with(|| format!("Invalid GFF3 attributes on line {}", line_no + 1))?;
     let Some(cds) = resolve_cds_name(&attrs) else {
       continue;
     };

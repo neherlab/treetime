@@ -32,8 +32,8 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::reroot::RerootResult;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, AsciiChar, Seq, seq};
   use treetime_utils::least_squares::LineFit;
   use treetime_utils::make_report;
@@ -69,7 +69,7 @@ mod tests {
   fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {
     let alphabet = Alphabet::default();
     Ok(
-      read_many_fasta_str(
+      fasta_read(
         indoc! {r#"
         >A
         ACGTACGTACGTACGT
@@ -79,7 +79,8 @@ mod tests {
         ACGTACGTACGTACGG
         >D
         ACGTACGTACGTACGC
-      "#},
+      "#}
+        .as_bytes(),
         &alphabet,
       )?
       .into_iter()
@@ -91,7 +92,7 @@ mod tests {
   #[test]
   fn test_reroot_tree_sparse_with_edge_split() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -168,7 +169,7 @@ mod tests {
 
   #[test]
   fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -240,7 +241,7 @@ mod tests {
 
   #[test]
   fn test_sparse_reroot_inverts_edge_mutations() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -319,7 +320,7 @@ mod tests {
 
   #[test]
   fn test_reroot_root_sequence_updated_with_indel() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -374,7 +375,7 @@ mod tests {
 
   #[test]
   fn test_reroot_root_sequence_multi_hop() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -442,7 +443,7 @@ mod tests {
   #[test]
   fn test_reroot_tree_sparse_flow_does_not_panic() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

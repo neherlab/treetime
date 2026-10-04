@@ -4731,11 +4731,11 @@
         ]
       },
       "TimetreeConfig": {
-        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
         "type": "object",
         "properties": {
           "alignment": {
-            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
             "type": "array",
             "items": {
               "type": "string"
@@ -5552,11 +5552,11 @@
         ]
       },
       "OptimizeConfig": {
-        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
         "type": "object",
         "properties": {
           "alignment": {
-            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
             "type": "array",
             "items": {
               "type": "string"
@@ -5911,11 +5911,11 @@
         ]
       },
       "PruneConfig": {
-        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
         "type": "object",
         "properties": {
           "alignment": {
-            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6133,7 +6133,7 @@
             "x-cli-flag": "--merge-shared-mutations"
           },
           "prune_nodes_list": {
-            "description": "List of node names to prune\n\nList of node names to remove from the tree, comma-separated (,)\n\nUse --prune-nodes-list-delimiter to specify a different delimiter.",
+            "description": "List of node names to prune\n\nList of node names to remove from the tree, comma-separated (,)\n\nSurrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.",
             "type": [
               "string",
               "null"
@@ -6150,7 +6150,7 @@
             "x-cli-flag": "--prune-nodes-list-delimiter"
           },
           "prune_nodes_list_file": {
-            "description": "File containing list of node names to prune\n\nPath to a file containing node names to remove from the tree, newline-delimited (\\n).\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter.",
+            "description": "File containing list of node names to prune\n\nPath to a file containing node names to remove from the tree, newline-delimited (\\n). Surrounding whitespace is trimmed and empty names are ignored.\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter.",
             "type": [
               "string",
               "null"
@@ -6215,11 +6215,11 @@
         ]
       },
       "AncestralConfig": {
-        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
         "type": "object",
         "properties": {
           "alignment": {
-            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6752,11 +6752,11 @@
         "additionalProperties": false
       },
       "ClockConfig": {
-        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
         "type": "object",
         "properties": {
           "alignment": {
-            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
             "type": "array",
             "items": {
               "type": "string"
@@ -8781,7 +8781,7 @@
               "FILEPATH"
             ],
             "conflicts": [],
-            "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input.",
+            "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
             "more": ""
           },
           {
@@ -11076,7 +11076,7 @@
               "FILEPATH"
             ],
             "conflicts": [],
-            "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input.",
+            "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
             "more": ""
           },
           {
@@ -12269,7 +12269,7 @@
               "FILEPATH"
             ],
             "conflicts": [],
-            "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input.",
+            "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
             "more": ""
           },
           {
@@ -12932,7 +12932,7 @@
             ],
             "conflicts": [],
             "help": "List of node names to prune",
-            "more": "List of node names to remove from the tree, comma-separated (,)\n\nUse --prune-nodes-list-delimiter to specify a different delimiter."
+            "more": "List of node names to remove from the tree, comma-separated (,)\n\nSurrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter."
           },
           {
             "key": "prune_nodes_list_delimiter",
@@ -12978,7 +12978,7 @@
             ],
             "conflicts": [],
             "help": "File containing list of node names to prune",
-            "more": "Path to a file containing node names to remove from the tree, newline-delimited (\\n).\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter."
+            "more": "Path to a file containing node names to remove from the tree, newline-delimited (\\n). Surrounding whitespace is trimmed and empty names are ignored.\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter."
           },
           {
             "key": "prune_nodes_list_file_delimiter",
@@ -13073,7 +13073,7 @@
               "FILEPATH"
             ],
             "conflicts": [],
-            "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input.",
+            "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
             "more": ""
           },
           {
@@ -14474,7 +14474,7 @@
               "FILEPATH"
             ],
             "conflicts": [],
-            "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input.",
+            "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
             "more": ""
           },
           {

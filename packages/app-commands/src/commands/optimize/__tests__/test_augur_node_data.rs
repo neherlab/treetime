@@ -121,7 +121,7 @@ mod tests {
     use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
     use treetime::progress::NoopProgress;
-    use treetime_io::fasta::read_many_fasta_path;
+    use treetime_io::fasta::fasta_read_file;
     use treetime_io::nwk::nwk_read_file;
 
     let root = project_root();
@@ -131,12 +131,11 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let sequences: Vec<AlignmentRecord> =
-      read_many_fasta_path(&[root.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)
-        .unwrap()
-        .into_iter()
-        .map(AlignmentRecord::from)
-        .collect();
+    let sequences: Vec<AlignmentRecord> = fasta_read_file(root.join("data/flu/h3n2/20/aln.fasta.xz"), &alphabet)
+      .unwrap()
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect();
 
     let params = OptimizeParams {
       model: GtrModelName::default(),
@@ -185,7 +184,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::nwk::nwk_read;
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
@@ -210,7 +209,7 @@ mod tests {
     }
 
     pub(super) fn write_json(nwk: &str) -> String {
-      let parse = nwk_read_str(nwk).unwrap();
+      let parse = nwk_read(nwk.as_bytes()).unwrap();
       let names = parse.names();
       let confidences = parse.confidences();
       let graph: Graph = parse.graph;
@@ -232,7 +231,7 @@ mod tests {
     }
 
     pub(super) fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
-      let parse = nwk_read_str(nwk).unwrap();
+      let parse = nwk_read(nwk.as_bytes()).unwrap();
       let names = parse.names();
       let confidences = parse.confidences();
       let graph: Graph = parse.graph;

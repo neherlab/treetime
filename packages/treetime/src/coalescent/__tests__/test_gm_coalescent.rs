@@ -4,7 +4,6 @@ mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
-  use crate::o;
   use crate::progress::NoopProgress;
   use eyre::{Report, WrapErr};
   use indexmap::IndexMap;
@@ -17,7 +16,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::grid::Grid;
-  use treetime_io::dates_csv::read_dates;
+  use treetime_io::dates_csv::metadata_read_file;
   use treetime_io::nwk::nwk_read_file;
   use treetime_utils::array::serde::indexmap_array1_from_map;
   use treetime_utils::io::json::json_read_file;
@@ -116,13 +115,14 @@ mod tests {
     let nwk_parsed = nwk_read_file(fixtures_dir.join(&snapshot.inputs.tree_path))?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates = read_dates(
+    let dates = metadata_read_file(
       fixtures_dir.join(&snapshot.inputs.metadata_path),
       &[',', '\t', ';'],
       &[],
-      &Some(o!("name")),
-      &Some(o!("date")),
-    )?;
+      Some("name"),
+      Some("date"),
+    )
+    .and_then(|table| table.dates())?;
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
     Ok((graph, names, constraints))
   }

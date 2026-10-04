@@ -16,7 +16,7 @@ mod tests {
   use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
   use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_io::usher_mat::UsherMutation;
   use treetime_utils::{assert_error, o};
 
@@ -194,7 +194,7 @@ mod tests {
       .into_iter()
       .zip(documents)
     {
-      let nwk_parsed = nwk_read_str(&document.newick)?;
+      let nwk_parsed = nwk_read(document.newick.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -233,7 +233,7 @@ mod tests {
     use treetime::progress::NoopProgress;
     use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
     use treetime_io::graph::TreeWriteKind;
-    use treetime_io::nwk::{CommentProviders, nwk_read_str};
+    use treetime_io::nwk::{CommentProviders, nwk_read};
     use treetime_io::usher_mat::{UsherMutation, UsherTree};
     use treetime_primitives::{AsciiChar, Seq};
     use treetime_utils::io::json::json_read_file;
@@ -261,7 +261,7 @@ mod tests {
       reference: &str,
       edge_mutations: &BTreeMap<&str, Vec<Mutation>>,
     ) -> Result<(BTreeMap<String, Vec<UsherMutation>>, MatGapCounts), Report> {
-      let parsed = nwk_read_str(nwk)?;
+      let parsed = nwk_read(nwk.as_bytes())?;
       let names = parsed.names();
       let MatOutput { tree, gaps } = mat_from_graph(
         &parsed.graph,

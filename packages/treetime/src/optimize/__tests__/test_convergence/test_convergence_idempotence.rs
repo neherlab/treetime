@@ -10,7 +10,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   #[rustfmt::skip]
   #[rstest]
@@ -23,7 +23,7 @@ mod tests {
   #[trace]
   fn test_optimization_converges_with_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -80,7 +80,7 @@ mod tests {
   fn test_second_optimization_produces_same_likelihood(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph1_names = nwk_parsed.names();
     let graph1 = nwk_parsed.graph;
     let mut branch_lengths1 = nwk_parsed.branch_lengths;
@@ -96,7 +96,7 @@ mod tests {
 
     let (_, lh1) = compute_total_lh(&graph1, reconstruction1, &branch_lengths1)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph2_names = nwk_parsed.names();
     let graph2 = nwk_parsed.graph;
     let mut branch_lengths2 = nwk_parsed.branch_lengths;

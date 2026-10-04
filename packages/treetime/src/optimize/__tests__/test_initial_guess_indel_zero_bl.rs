@@ -16,8 +16,8 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::seq::Seq;
 
@@ -104,7 +104,7 @@ mod tests {
       newick: &str,
     ) -> Result<(Graph, MarginalReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-      let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+      let aln: Vec<AlignmentRecord> = fasta_read(
         indoc! {r#"
           >A
           AAAACCCCGGGGTTTT
@@ -112,13 +112,14 @@ mod tests {
           CCCCGGGGTTTTAAAA
           >C
           GGGGTTTTAAAACCCC
-        "#},
+        "#}
+        .as_bytes(),
         &alphabet,
       )?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-      let nwk_parsed = nwk_read_str(newick)?;
+      let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;

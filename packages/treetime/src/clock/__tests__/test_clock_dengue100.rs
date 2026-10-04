@@ -113,14 +113,13 @@ mod tests {
     use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
     use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
     use crate::clock::reroot::RerootParams;
-    use crate::o;
     use crate::progress::NoopProgress;
     use eyre::Report;
     use itertools::Itertools;
     use std::collections::{BTreeMap, BTreeSet};
     use std::path::Path;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::dates_csv::read_dates;
+    use treetime_io::dates_csv::metadata_read_file;
     use treetime_io::nwk::{NwkParse, nwk_read_file};
     use treetime_primitives::date::DatesMap;
 
@@ -196,13 +195,14 @@ mod tests {
     fn load() -> Result<(NwkParse, DatesMap), Report> {
       let data_dir = Path::new(DATA_DIR);
       let nwk_parsed = nwk_read_file(data_dir.join("tree.nwk"))?;
-      let dates = read_dates(
+      let dates = metadata_read_file(
         data_dir.join("metadata.tsv"),
         &[',', '\t', ';'],
         &[],
-        &Some(o!("genbank_accession")),
-        &Some(o!("date")),
-      )?;
+        Some("genbank_accession"),
+        Some("date"),
+      )
+      .and_then(|table| table.dates())?;
       Ok((nwk_parsed, dates))
     }
 

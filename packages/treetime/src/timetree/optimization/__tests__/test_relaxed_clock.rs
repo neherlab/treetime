@@ -13,7 +13,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::pretty_assert_map_ulps_eq;
 
@@ -33,7 +33,7 @@ mod tests {
       .iter()
       .find(|output| output.name == case_name)
       .ok_or_else(|| eyre::eyre!("Golden-master output case {case_name} not found"))?;
-    let nwk_parsed = nwk_read_str(&input.newick)?;
+    let nwk_parsed = nwk_read(input.newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -119,7 +119,7 @@ mod tests {
     reason = "an edge count is far below 2^53, so the conversion to f64 is exact"
   )]
   fn test_relaxed_clock_uniform_branches_produce_similar_gamma() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -235,7 +235,7 @@ mod tests {
 
   #[test]
   fn test_relaxed_clock_one_mutation_affects_gamma() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.01,B:0.02)AB:0.015,(C:0.005,D:0.01)CD:0.008)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.01,B:0.02)AB:0.015,(C:0.005,D:0.01)CD:0.008)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -286,7 +286,7 @@ mod tests {
 
   #[test]
   fn test_relaxed_clock_root_has_branch_penalty() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -312,7 +312,7 @@ mod tests {
     #[values(0.1, 1.0, 10.0, 100.0)] slack: f64,
     #[values(1e-6, 0.001, 0.01, 0.1, 1.0)] one_mutation: f64,
   ) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("root:0.0;")?;
+    let nwk_parsed = nwk_read(b"root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -330,7 +330,7 @@ mod tests {
 
   #[test]
   fn test_relaxed_clock_childless_root_gamma_stored() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.01)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.01)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -377,14 +377,14 @@ mod tests {
     }
 
     pub(super) fn build_simple_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
-      let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
+      let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root:0.0;".as_slice())?;
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, branch_lengths))
     }
 
     pub(super) fn build_deep_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
-      let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;")?;
+      let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;".as_slice())?;
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, branch_lengths))

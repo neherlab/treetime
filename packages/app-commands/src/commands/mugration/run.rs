@@ -2,7 +2,6 @@ use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::augur_node_data_mugration::write_augur_node_data_json;
 use app_output::discrete_trait_comment::DiscreteTraitCommentProvider;
-use app_output::gtr::write_gtr_json;
 use app_output::mugration_result::MugrationResult;
 use app_output::mugration_tree_output::write_mugration_tree_outputs;
 use app_output::output_plan::OutputSelection;
@@ -14,9 +13,10 @@ use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime_graph::graph::Graph;
-use treetime_io::discrete_states_csv::read_discrete_attrs;
+use treetime_io::discrete_states_csv::discrete_attrs_read_file;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
@@ -34,25 +34,25 @@ pub fn run_mugration(
 
   let resolved = mugration_args.resolve_outputs()?;
 
-  let attribute_column = Some(mugration_args.attribute().to_owned());
+  let attribute_column = Some(mugration_args.attribute());
 
-  let (attr_values, _attr_name) = read_discrete_attrs::<String>(
+  let (attr_values, _attr_name) = discrete_attrs_read_file::<String>(
     mugration_args.metadata(),
     &mugration_args.metadata_id.metadata_delimiters,
     &mugration_args.metadata_id.metadata_id_columns,
-    &None,
-    &attribute_column,
+    None,
+    attribute_column,
     |s| Ok(s.to_owned()),
   )?;
   let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
 
   let weights = if let Some(weights_filepath) = &mugration_args.weights {
-    let (map, _) = read_discrete_attrs::<f64>(
+    let (map, _) = discrete_attrs_read_file::<f64>(
       weights_filepath,
       &mugration_args.metadata_id.metadata_delimiters,
       &[],
-      &attribute_column,
-      &Some("weight".to_owned()),
+      attribute_column,
+      Some("weight"),
       |s| Ok(s.parse::<f64>()?),
     )?;
     Some(map.into_iter().collect::<BTreeMap<String, f64>>())
@@ -108,7 +108,7 @@ pub fn run_mugration(
       .attribute(mugration_args.attribute())
       .states(output.states.iter().map(ToOwned::to_owned).collect())
       .build();
-    write_gtr_json(&gtr_output, path)?;
+    json_write_file(path, &gtr_output, JsonPretty(true))?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::TraitsCsv) {

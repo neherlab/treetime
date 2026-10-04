@@ -14,7 +14,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   #[rustfmt::skip]
   #[rstest]
@@ -27,7 +27,7 @@ mod tests {
   #[trace]
   fn test_dense_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -85,7 +85,7 @@ mod tests {
   #[trace]
   fn test_sparse_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

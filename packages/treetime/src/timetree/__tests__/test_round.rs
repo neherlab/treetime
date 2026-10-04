@@ -41,8 +41,8 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::assert_error;
   use treetime_utils::sync::random::get_random_number_generator;
@@ -283,6 +283,7 @@ mod tests {
         &state.names,
         &state.branch_lengths,
         &NwkWriteOptions::default(),
+        &CommentProviders::new(),
       )
     }
 
@@ -341,12 +342,12 @@ mod tests {
       fasta: &str,
       dates: &DatesMap,
     ) -> Result<(RoundState, TimetreeContext), Report> {
-      let nwk_parsed = nwk_read_str(newick)?;
+      let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-      let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
+      let aln: Vec<AlignmentRecord> = fasta_read(fasta.as_bytes(), &alphabet)?
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();

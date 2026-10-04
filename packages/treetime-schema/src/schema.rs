@@ -1,13 +1,13 @@
 use crate::{ErrorResponse, ProgressEvent, VersionInfo};
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use log::info;
 use schemars::JsonSchema;
 use schemars::generate::SchemaSettings;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
-use treetime_utils::io::json::{JsonPretty, json_write_str};
+use treetime_utils::io::file::is_path_stdout;
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 #[cfg(feature = "clap")]
 use clap::ValueEnum;
@@ -64,19 +64,9 @@ impl TreetimeSchemaFormat {
 fn generate_schema_for<T: JsonSchema>(output: &Path) -> Result<(), Report> {
   let settings = SchemaSettings::draft07();
   let schema = settings.into_generator().into_root_schema_for::<T>();
-  let json = json_write_str(&schema, JsonPretty(true))?;
-
-  if output == Path::new("-") {
-    std::io::stdout()
-      .write_all(json.as_bytes())
-      .wrap_err("When writing the JSON schema to standard output")?;
-  } else {
-    if let Some(parent) = output.parent() {
-      std::fs::create_dir_all(parent).wrap_err_with(|| format!("When creating directory '{}'", parent.display()))?;
-    }
-    std::fs::write(output, json).wrap_err_with(|| format!("When writing JSON schema file '{}'", output.display()))?;
+  json_write_file(output, &schema, JsonPretty(true))?;
+  if !is_path_stdout(output) {
+    info!("Wrote JSON schema to '{}'", output.display());
   }
-
-  info!("Wrote JSON schema to '{}'", output.display());
   Ok(())
 }

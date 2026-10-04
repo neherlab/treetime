@@ -1,9 +1,9 @@
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
+use crate::commands::shared::alignment::read_alignment;
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data_optimize::write_augur_node_data_json;
-use app_output::gtr::write_gtr_json;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
 use app_output::optimize_tree_output::write_optimize_tree_outputs;
@@ -22,10 +22,10 @@ use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::{MutationTrack, edge_state_change_counts};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::AlignmentRecord;
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
@@ -38,7 +38,7 @@ pub fn run_optimize(
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
   let gap_fill = args.gap_fill_args.effective_gap_fill();
-  let mut aln = read_many_fasta_path(&args.alignment.alignment, &alphabet)?;
+  let mut aln = read_alignment(&args.alignment.alignment, &alphabet)?;
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
   }
@@ -103,7 +103,7 @@ pub fn run_optimize(
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     let gtr_output = GtrOutput::builder().gtr(&gtr).model_name(model_name).build();
-    write_gtr_json(&gtr_output, path)?;
+    json_write_file(path, &gtr_output, JsonPretty(true))?;
   }
 
   if !resolved.tree_outputs.is_empty() {

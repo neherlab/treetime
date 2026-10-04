@@ -18,7 +18,7 @@ mod tests {
     #[case] content: &str,
   ) -> Result<(), Report> {
     let (values, attr_name) =
-      read_discrete_attrs_from_reader(content.as_bytes(), delimiter, &default_name_candidates(), None, Some("location"), |s| Ok(s.to_owned()))?;
+      discrete_attrs_read(content.as_bytes(), None, &[char::from(delimiter)], &default_name_candidates(), None, Some("location"), |s| Ok(s.to_owned()))?;
 
     let expected = btreemap! {
       o!("A") => o!("usa"),
@@ -43,7 +43,7 @@ mod tests {
     #[case] content: &str,
   ) -> Result<(), Report> {
     let (values, _) =
-      read_discrete_attrs_from_reader(content.as_bytes(), b'\t', &default_name_candidates(), name_column.as_deref(), Some("location"), |s| Ok(s.to_owned()))?;
+      discrete_attrs_read(content.as_bytes(), None, &[char::from(b'\t')], &default_name_candidates(), name_column.as_deref(), Some("location"), |s| Ok(s.to_owned()))?;
 
     let expected = btreemap! {
       o!("A") => o!("usa"),
@@ -65,7 +65,7 @@ mod tests {
     #[case] content: &str,
   ) -> Result<(), Report> {
     let (values, attr_name) =
-      read_discrete_attrs_from_reader(content.as_bytes(), b'\t', &default_name_candidates(), None, Some(value_col_name), |s| Ok(s.to_owned()))?;
+      discrete_attrs_read(content.as_bytes(), None, &[char::from(b'\t')], &default_name_candidates(), None, Some(value_col_name), |s| Ok(s.to_owned()))?;
 
     assert_eq!(attr_name, value_col_name);
     assert!(values.contains_key(&o!("A")));
@@ -77,10 +77,15 @@ mod tests {
   fn test_discrete_states_csv_header_normalization() -> Result<(), Report> {
     let content = "#name#\t#location#\nA\tusa\nB\teurope";
 
-    let (values, attr_name) =
-      read_discrete_attrs_from_reader(content.as_bytes(), b'\t', &[], Some("name"), Some("location"), |s| {
-        Ok(s.to_owned())
-      })?;
+    let (values, attr_name) = discrete_attrs_read(
+      content.as_bytes(),
+      None,
+      &[char::from(b'\t')],
+      &[],
+      Some("name"),
+      Some("location"),
+      |s| Ok(s.to_owned()),
+    )?;
 
     let expected = btreemap! {
       o!("A") => o!("usa"),
@@ -97,9 +102,10 @@ mod tests {
   fn test_discrete_states_csv_custom_parser() -> Result<(), Report> {
     let content = "name\tweight\nA\t1.5\nB\t2.0\nC\t0.5";
 
-    let (values, attr_name) = read_discrete_attrs_from_reader(
+    let (values, attr_name) = discrete_attrs_read(
       content.as_bytes(),
-      b'\t',
+      None,
+      &[char::from(b'\t')],
       &default_name_candidates(),
       None,
       Some("weight"),
@@ -122,9 +128,10 @@ mod tests {
   fn test_discrete_states_csv_whitespace_trimming() -> Result<(), Report> {
     let content = "name\tlocation\n  A  \t  usa  \n  B  \t  europe  ";
 
-    let (values, _) = read_discrete_attrs_from_reader(
+    let (values, _) = discrete_attrs_read(
       content.as_bytes(),
-      b'\t',
+      None,
+      &[char::from(b'\t')],
       &default_name_candidates(),
       None,
       Some("location"),

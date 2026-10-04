@@ -22,7 +22,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AsciiChar, Seq};
 
   fn c(b: u8) -> AsciiChar {
@@ -90,7 +90,7 @@ mod tests {
 
   #[test]
   fn test_merge_no_polytomy() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)internal:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)internal:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -115,7 +115,7 @@ mod tests {
 
   #[test]
   fn test_merge_polytomy_no_shared_mutations() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -140,7 +140,7 @@ mod tests {
 
   #[test]
   fn test_merge_polytomy_two_siblings_share_all_mutations() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -195,7 +195,7 @@ mod tests {
 
   #[test]
   fn test_merge_polytomy_partial_overlap() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -248,7 +248,7 @@ mod tests {
 
   #[test]
   fn test_merge_greedy_picks_best_pair() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3,D:0.4)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3,D:0.4)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -296,7 +296,7 @@ mod tests {
 
   #[test]
   fn test_merge_branch_length_adjustment() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -337,7 +337,7 @@ mod tests {
 
   #[test]
   fn test_merge_child_bl_zero_when_all_shared() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.05,B:0.2,C:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.05,B:0.2,C:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -373,7 +373,7 @@ mod tests {
 
   #[test]
   fn test_merge_multiple_partitions() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -454,7 +454,7 @@ mod tests {
 
   #[test]
   fn test_merge_repeated_until_exhausted() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -485,7 +485,7 @@ mod tests {
 
   #[test]
   fn test_merge_empty_partitions() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -499,7 +499,7 @@ mod tests {
 
   #[test]
   fn test_merge_preserves_tree_structure_for_non_polytomies() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1,C:0.1)internal1:0.1,D:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1,C:0.1)internal1:0.1,D:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -532,7 +532,7 @@ mod tests {
 
   #[test]
   fn test_merge_single_mutation_shared() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.05,B:0.05,C:0.05)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.05,B:0.05,C:0.05)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -569,7 +569,7 @@ mod tests {
 
   #[test]
   fn test_merge_branch_length_jc_correction_differs_from_raw() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.5,B:0.5,C:0.5)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -621,7 +621,7 @@ mod tests {
     #[case] newick_bl: f64,
   ) -> Result<(), Report> {
     let newick = format!("(A:{newick_bl},B:{newick_bl},C:{newick_bl})root;");
-    let nwk_parsed = nwk_read_str(&newick)?;
+    let nwk_parsed = nwk_read(newick.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -645,7 +645,7 @@ mod tests {
 
   #[test]
   fn test_merge_child_bl_includes_indels_in_remaining() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.5,B:0.5,C:0.5)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -682,7 +682,7 @@ mod tests {
 
   #[test]
   fn test_merge_child_bl_across_partitions() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.5,B:0.5,C:0.5)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.5,B:0.5,C:0.5)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -730,7 +730,7 @@ mod tests {
 
   #[test]
   fn test_merge_group_three_siblings_same_mutation() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -763,7 +763,7 @@ mod tests {
 
   #[test]
   fn test_merge_shared_indels_only() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -797,7 +797,7 @@ mod tests {
 
   #[test]
   fn test_merge_shared_subs_and_indels_split_correctly() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

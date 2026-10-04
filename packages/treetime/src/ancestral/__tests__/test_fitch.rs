@@ -18,15 +18,15 @@ pub(super) mod tests {
   use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::vec_of_owned;
 
   #[test]
   fn test_ancestral_reconstruction_fitch() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -36,14 +36,15 @@ pub(super) mod tests {
         CCGGCGATGTRTTG--
         >D
         TCGGCCGTGTRTTG--
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let expected = read_many_fasta_str(
+    let expected = fasta_read(
       indoc! {r#"
         >root
         ACAGCCATGTATTG--
@@ -51,14 +52,15 @@ pub(super) mod tests {
         ACATCCCTGTA--G--
         >CD
         CCGGCCATGTATTG--
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -95,7 +97,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_ancestral_reconstruction_fitch_with_leaves() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -105,14 +107,15 @@ pub(super) mod tests {
         CCGGCGATGTRTTG--
         >D
         TCGGCCGTGTRTTG--
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let expected = read_many_fasta_str(
+    let expected = fasta_read(
       indoc! {r#"
         >root
         ACAGCCATGTATTG--
@@ -128,14 +131,15 @@ pub(super) mod tests {
         CCGGCGATGTRTTG--
         >D
         TCGGCCGTGTRTTG--
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -172,7 +176,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_compress_sequences_retains_internal_exact_sequences() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         RCGTACGT
@@ -182,14 +186,15 @@ pub(super) mod tests {
         GCGTACGT
         >D
         GCGTACGT
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -217,7 +222,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_fitch_internals() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -227,14 +232,15 @@ pub(super) mod tests {
         CCGGCGATGTRTTG--
         >D
         TCGGCCGTGTRTTG--
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -278,7 +284,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_fitch_complex_gaps() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         NC--G
@@ -290,14 +296,15 @@ pub(super) mod tests {
         TGTTG
         >E
         TGCCG
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -345,7 +352,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_fitch_polytomy() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         NC--G
@@ -357,14 +364,15 @@ pub(super) mod tests {
         TGTTG
         >E
         TGCCG
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -410,7 +418,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_fitch_backward_state() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         ACATCGCCNNA--GAC
@@ -420,14 +428,15 @@ pub(super) mod tests {
         CCGGCGATGTRTTG--
         >D
         TCGGCCGTGTRTTG--
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

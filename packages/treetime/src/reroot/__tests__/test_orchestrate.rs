@@ -11,7 +11,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   fn root_to_tip_distances(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     let root_key = graph.get_exactly_one_root().unwrap().key();
@@ -42,7 +42,7 @@ mod tests {
 
   #[test]
   fn test_orchestrate_reroot_reduces_rtt_variance() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -65,11 +65,11 @@ mod tests {
 
   #[test]
   fn test_orchestrate_reroot_min_dev_removes_an_undated_stem_before_the_root_search() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(((A:0.1,B:0.3)X:0.05,C:0.4)R:0.7)STEM;")?;
+    let nwk_parsed = nwk_read(b"(((A:0.1,B:0.3)X:0.05,C:0.4)R:0.7)STEM;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let unstemmed = nwk_read_str("((A:0.1,B:0.3)X:0.05,C:0.4)R;")?;
+    let unstemmed = nwk_read(b"((A:0.1,B:0.3)X:0.05,C:0.4)R;".as_slice())?;
     let unstemmed_names = unstemmed.names();
     let mut unstemmed_graph = unstemmed.graph;
     let mut unstemmed_branch_lengths = unstemmed.branch_lengths;
@@ -102,7 +102,7 @@ mod tests {
 
   #[test]
   fn test_orchestrate_brent_finds_equidistant_root() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -124,7 +124,7 @@ mod tests {
 
   #[test]
   fn test_orchestrate_endpoint_snap_split_zero_roots_at_source() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -151,7 +151,7 @@ mod tests {
 
   #[test]
   fn test_orchestrate_no_split_snaps_to_nearer_endpoint() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.5)i:0.02,C:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.5)i:0.02,C:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

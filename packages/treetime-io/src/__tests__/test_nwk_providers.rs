@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::nwk::{
-    CommentProviders, NodeCommentProvider, NwkParse, NwkStyle, NwkWriteOptions, nwk_read_str, nwk_write_str,
-    nwk_write_str_with,
+    CommentProviders, NodeCommentProvider, NwkParse, NwkStyle, NwkWriteOptions, nwk_read, nwk_write_str,
   };
   use eyre::Report;
   use maplit::btreemap;
@@ -23,8 +22,14 @@ mod tests {
     let (graph, names, branch_lengths) = helpers::make_graph()?;
     let providers = CommentProviders::new();
 
-    let expected = nwk_write_str(&graph, &names, &branch_lengths, &beast_options())?;
-    let actual = nwk_write_str_with(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
+    let expected = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &beast_options(),
+      &CommentProviders::new(),
+    )?;
+    let actual = nwk_write_str(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
 
     assert_eq!(expected, actual);
 
@@ -42,7 +47,7 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nwk_write_str_with(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
+    let actual = nwk_write_str(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
     let expected = "((A[&country=usa]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -66,7 +71,7 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&country_provider).with(&region_provider);
 
-    let actual = nwk_write_str_with(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
+    let actual = nwk_write_str(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
     let expected = "((A[&country=usa,region=na]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -90,7 +95,7 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&first_provider).with(&second_provider);
 
-    let actual = nwk_write_str_with(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
+    let actual = nwk_write_str(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
     let expected = "((A[&country=canada]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -115,7 +120,7 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&base_provider).with(&override_provider);
 
-    let actual = nwk_write_str_with(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
+    let actual = nwk_write_str(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
     let expected = "((A[&country=usa,note=base]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -134,7 +139,7 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nwk_write_str_with(&graph, &names, &branch_lengths, &NwkWriteOptions::default(), &providers)?;
+    let actual = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default(), &providers)?;
     let expected = "((A:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -158,7 +163,7 @@ mod tests {
       style: NwkStyle::Nhx,
       ..NwkWriteOptions::default()
     };
-    let actual = nwk_write_str_with(&graph, &names, &branch_lengths, &options, &providers)?;
+    let actual = nwk_write_str(&graph, &names, &branch_lengths, &options, &providers)?;
     let expected = "((A[&&NHX:D=Y:S=human]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -177,7 +182,7 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nwk_write_str_with(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
+    let actual = nwk_write_str(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
     let expected = "((A[&date=2020.5]:0.1,B:0.2)inner:0.3,C:0.4)root;";
 
     assert_eq!(expected, actual);
@@ -196,7 +201,7 @@ mod tests {
     });
     let providers = CommentProviders::new().with(&provider);
 
-    let actual = nwk_write_str_with(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
+    let actual = nwk_write_str(&graph, &names, &branch_lengths, &beast_options(), &providers)?;
     assert!(actual.contains(r#""New York, USA""#));
 
     Ok(())
@@ -204,13 +209,19 @@ mod tests {
 
   #[test]
   fn test_nwk_name_quoting_special_chars() -> Result<(), Report> {
-    let parse = nwk_read_str("('node (1)':0.1,B:0.2)root;")?;
+    let parse = nwk_read(b"('node (1)':0.1,B:0.2)root;".as_slice())?;
     let names = parse.names();
     let NwkParse {
       graph, branch_lengths, ..
     } = parse;
 
-    let actual = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let actual = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!("('node (1)':0.1,B:0.2)root;", actual);
 
     Ok(())
@@ -244,7 +255,7 @@ mod tests {
       ),
       Report,
     > {
-      let parse = nwk_read_str("((A:0.1,B:0.2)inner:0.3,C:0.4)root;")?;
+      let parse = nwk_read(b"((A:0.1,B:0.2)inner:0.3,C:0.4)root;".as_slice())?;
       let names = parse.names();
       let NwkParse {
         graph, branch_lengths, ..

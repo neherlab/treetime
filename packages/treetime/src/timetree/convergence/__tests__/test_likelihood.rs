@@ -29,7 +29,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::DateConstraint;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::LogLh;
   use treetime_utils::{o, pretty_assert_ulps_eq};
 
@@ -73,7 +73,7 @@ mod tests {
 
   #[test]
   fn test_likelihood_positional_log_lh_absent_without_distributions() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(child:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(child:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -172,7 +172,7 @@ mod tests {
     }
 
     pub(super) fn positional_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
-      let nwk_parsed = nwk_read_str("(child:0.1)root;")?;
+      let nwk_parsed = nwk_read(b"(child:0.1)root;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       Ok((graph, names))
@@ -209,7 +209,7 @@ mod tests {
         o!("leaf2") => Some(DateConstraint::exact(2010.0)),
         o!("leaf3") => Some(DateConstraint::exact(2012.0)),
       };
-      let nwk_parsed = nwk_read_str("((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;")?;
+      let nwk_parsed = nwk_read(b"((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;

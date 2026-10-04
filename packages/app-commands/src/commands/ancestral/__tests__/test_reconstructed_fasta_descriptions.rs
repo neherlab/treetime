@@ -16,7 +16,7 @@ mod tests {
   use treetime::alphabet::alphabet::Alphabet;
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
-  use treetime_io::fasta::read_many_fasta_path;
+  use treetime_io::fasta::fasta_read_file;
   use treetime_utils::o;
 
   #[test]
@@ -88,7 +88,7 @@ mod tests {
       run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
       Ok(
-        read_many_fasta_path(&[out_path], &Alphabet::default())?
+        fasta_read_file(out_path, &Alphabet::default())?
           .into_iter()
           .map(|record| (record.seq_name, record.desc))
           .collect(),

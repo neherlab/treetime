@@ -17,8 +17,8 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
   use treetime_utils::collections::container::get_exactly_one;
 
@@ -85,9 +85,9 @@ mod tests {
       dense: Option<bool>,
     ) -> Result<(AncestralOutput, BTreeMap<GraphNodeKey, Seq>), Report> {
       let alphabet = Alphabet::default();
-      let parse = nwk_read_str(nwk)?;
+      let parse = nwk_read(nwk.as_bytes())?;
       let names = parse.names();
-      let sequences = read_many_fasta_str(fasta, &alphabet)?
+      let sequences = fasta_read(fasta.as_bytes(), &alphabet)?
         .into_iter()
         .map(AlignmentRecord::from)
         .collect_vec();

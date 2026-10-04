@@ -16,7 +16,7 @@ mod tests {
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
@@ -32,7 +32,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_computes_internal_node_time() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:2.5)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:2.5)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -58,7 +58,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_nan_leaf_likelihood_error_reaches_caller() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:2.5)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:2.5)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -80,7 +80,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_multiplies_child_messages() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -109,7 +109,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_preserves_leaf_time_distribution_with_coalescent() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -146,7 +146,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_preserves_internal_time_with_strong_coalescent() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -173,7 +173,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_coalescent_prior_adds_the_internal_merger_term_to_the_subtree() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -207,7 +207,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_leaf_subtree_distribution_is_its_date_constraint() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -227,7 +227,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_applies_internal_node_date_constraint() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -265,7 +265,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_sets_edge_messages() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:2.5)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:2.5)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -288,7 +288,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_skips_bad_branch_children() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -320,7 +320,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_bad_branch_equivalent_to_removal() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0)I:1.0)root;".as_slice())?;
     let ref_names = nwk_parsed.names();
     let ref_graph = nwk_parsed.graph;
     let ref_a_key = find_node_key_by_name(&ref_graph, &ref_names, "A").expect("leaf A not found");
@@ -335,7 +335,7 @@ mod tests {
       .likely_time()?
       .expect("should have likely_time");
 
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0)root;".as_slice())?;
     let test_names = nwk_parsed.names();
     let test_graph = nwk_parsed.graph;
     let test_a_key = find_node_key_by_name(&test_graph, &test_names, "A").expect("leaf A not found");
@@ -393,7 +393,7 @@ mod tests {
     let yc = gaussian_neglog(&x, 2005.0, 2.0);
 
     let fold_in_order = |newick: &str| -> Result<(Array1<f64>, f64), Report> {
-      let nwk_parsed = nwk_read_str(newick)?;
+      let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let mut inputs = BackwardInputs::new(&graph);
@@ -422,7 +422,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_bad_branch_sends_no_message() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -444,7 +444,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_sends_no_message_without_a_subtree_or_a_branch_likelihood() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0,C:1.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0,C:1.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -468,7 +468,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_missing_bad_branch_flag_is_an_internal_error() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -487,7 +487,7 @@ mod tests {
 
   #[test]
   fn test_backward_pass_node_without_evidence_has_no_subtree_distribution() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0,B:2.0)I:1.0,C:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0,C:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -610,7 +610,7 @@ mod tests {
     }
 
     pub(super) fn fold_laplace_children() -> Result<(Arc<Distribution<NegLog>>, f64), Report> {
-      let nwk_parsed = nwk_read_str("((A:0.0,B:0.0,C:0.0)I:1.0)root;")?;
+      let nwk_parsed = nwk_read(b"((A:0.0,B:0.0,C:0.0)I:1.0)root;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let x = Array1::linspace(2000.0, 2010.0, 2001);

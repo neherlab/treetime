@@ -18,7 +18,7 @@ mod tests {
   use std::path::PathBuf;
   use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_path;
+  use treetime_io::fasta::fasta_read_file;
   use treetime_io::nwk::nwk_read_file;
   use treetime_primitives::AlignmentRecord;
 
@@ -84,7 +84,7 @@ mod tests {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 
-    let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[&alignment_path], &*DENSE_NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read_file(alignment_path, &*DENSE_NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();

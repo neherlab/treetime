@@ -8,13 +8,13 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
   use treetime_utils::assert_error;
 
   #[test]
   fn test_sparse_node_sequence_leaf_with_two_parents_errors() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)X:0.1,C:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)X:0.1,C:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = branch_lengths_or_zero(&nwk_parsed.branch_lengths);

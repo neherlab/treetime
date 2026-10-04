@@ -6,7 +6,7 @@ mod tests {
   use crate::seq::composition::Composition;
   use proptest::prelude::*;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlphabetLike;
   use treetime_utils::prop_assert_abs_diff_eq;
 
@@ -15,7 +15,7 @@ mod tests {
 
     #[test]
     fn test_prop_marginal_idempotency_dense(input in arb_marginal_input_small()) {
-      let nwk_parsed = nwk_read_str(&input.newick).unwrap();
+      let nwk_parsed = nwk_read(input.newick.as_bytes()).unwrap();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
@@ -31,7 +31,7 @@ mod tests {
 
     #[test]
     fn test_prop_marginal_idempotency_sparse(input in arb_marginal_input_small()) {
-      let nwk_parsed = nwk_read_str(&input.newick).unwrap();
+      let nwk_parsed = nwk_read(input.newick.as_bytes()).unwrap();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;

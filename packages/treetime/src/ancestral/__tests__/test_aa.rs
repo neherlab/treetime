@@ -10,7 +10,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AsciiChar, Seq};
   use treetime_utils::{assert_error, o};
   use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
@@ -96,7 +96,7 @@ mod tests {
 
   #[test]
   fn test_reconstruct_aa_reconstructs_each_cds_independently_with_stop_codon() {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;").unwrap();
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice()).unwrap();
     let names = nwk_parsed.names();
     let name_to_key = helpers::node_name_to_key(&names, &nwk_parsed.graph);
     let aa = Alphabet::new(AlphabetName::Aa).unwrap();
@@ -180,8 +180,8 @@ mod tests {
     use std::sync::atomic::{AtomicBool, Ordering};
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::fasta::read_many_fasta_str;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::fasta::fasta_read;
+    use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, AsciiChar, Seq};
 
     pub(super) struct FlagCancel(Arc<AtomicBool>);
@@ -221,7 +221,7 @@ mod tests {
     }
 
     pub(super) fn reconstruct_two_cdses(cancel: &FlagCancel, mut sink: Box<dyn SeqSink>) -> Result<AaNodeData, Report> {
-      let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+      let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
       let names = nwk_parsed.names();
       let aa = Alphabet::new(AlphabetName::Aa)?;
       let cdses = vec![
@@ -277,7 +277,7 @@ mod tests {
     }
 
     pub(super) fn named_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
-      let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+      let nwk_parsed = nwk_read(b"(A:0.1,B:0.1)root;".as_slice()).unwrap();
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       (graph, names)
@@ -295,7 +295,7 @@ mod tests {
         writeln!(fasta, ">{name}").unwrap();
         writeln!(fasta, "{seq}").unwrap();
       }
-      let sequences: Vec<AlignmentRecord> = read_many_fasta_str(&fasta, &alphabet)
+      let sequences: Vec<AlignmentRecord> = fasta_read(fasta.as_bytes(), &alphabet)
         .unwrap()
         .into_iter()
         .map(AlignmentRecord::from)

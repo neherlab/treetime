@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::attach::sanitize_to_alphabet;
 use treetime::make_error;
-use treetime_io::fasta::read_many_fasta_path;
-use treetime_io::gff::{GffCdsFeature, read_gff3_cds_features_filtered};
+use treetime_io::fasta::fasta_read_file;
+use treetime_io::gff::{GffCdsFeature, gff3_cds_read_file};
 use treetime_primitives::Seq;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
 
@@ -112,7 +112,7 @@ pub(crate) fn read_aa_root_sequences(
   };
 
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
-  let records = read_many_fasta_path(&[path], &read_alphabet)?;
+  let records = fasta_read_file(path, &read_alphabet)?;
   let mut by_cds = BTreeMap::new();
   for record in records {
     let (seq, _changed) = sanitize_to_alphabet(&record.seq, recon_alphabet);
@@ -149,7 +149,7 @@ pub(crate) fn read_gff3_annotations(
     return Ok(BTreeMap::new());
   };
 
-  let features = read_gff3_cds_features_filtered(path, cdses)?;
+  let features = select_cds_features(gff3_cds_read_file(path)?, cdses, path)?;
   Ok(
     features
       .into_iter()
@@ -157,6 +157,34 @@ pub(crate) fn read_gff3_annotations(
         let annotation = gff_cds_to_annotation(&feature);
         (feature.name, annotation)
       })
+      .collect(),
+  )
+}
+
+fn select_cds_features(
+  features: Vec<GffCdsFeature>,
+  cdses: &[String],
+  path: &Path,
+) -> Result<Vec<GffCdsFeature>, Report> {
+  if cdses.is_empty() {
+    return Ok(features);
+  }
+
+  let wanted: BTreeSet<&str> = cdses.iter().map(String::as_str).collect();
+  if let Some(cds) = wanted
+    .iter()
+    .find(|cds| !features.iter().any(|feature| feature.name == **cds))
+  {
+    return make_error!(
+      "--annotation '{}' does not contain a CDS feature for CDS '{cds}'",
+      path.display()
+    );
+  }
+
+  Ok(
+    features
+      .into_iter()
+      .filter(|feature| wanted.contains(feature.name.as_str()))
       .collect(),
   )
 }

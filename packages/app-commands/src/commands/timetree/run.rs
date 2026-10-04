@@ -7,13 +7,9 @@ use crate::commands::timetree::trace::TimetreeTraceSink;
 use app_output::DateCommentProvider;
 use app_output::EdgeMutationCommentProvider;
 use app_output::augur_node_data::write_augur_node_data_json;
-use app_output::clock_model::write_clock_model;
-use app_output::coalescent::{write_coalescent_delimited, write_coalescent_json};
-use app_output::confidence::write_confidence_intervals_file;
-use app_output::gtr::write_gtr_json;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{OutputSelection, ResolvedOutputs};
-use app_output::rtt::write_clock_regression_result_csv;
+use app_output::table_output::table_write_file;
 use app_output::timetree_tree_output::write_timetree_tree_outputs;
 use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use eyre::{Report, WrapErr};
@@ -38,7 +34,7 @@ use treetime_io::fasta::FastaWriter;
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 use treetime_primitives::AlignmentRecord;
-use treetime_utils::io::file::create_file_or_stdout;
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_timetree_estimation(
   args: &TreetimeTimetreeArgs,
@@ -96,7 +92,7 @@ pub fn run_timetree_estimation(
     .as_ref()
     .map(|path| {
       Ok::<_, Report>(ReconstructedNucSink::new(
-        FastaWriter::new(create_file_or_stdout(path)?),
+        FastaWriter::create(path)?,
         parse_names,
         aln_descs,
       ))
@@ -183,7 +179,8 @@ fn write_model_outputs(
   if let Some(path) = outputs.get(&OutputSelection::ConfidenceTsv) {
     match output.confidence_intervals.as_ref() {
       Some(intervals) => {
-        write_confidence_intervals_file(intervals, path).wrap_err("Failed to write confidence intervals")?;
+        table_write_file(OutputSelection::ConfidenceTsv, path, intervals)
+          .wrap_err("Failed to write confidence intervals")?;
         progress_info!(log, "Wrote confidence intervals to {path}", path = path.display());
       },
       None if args.output_confidence_tsv.is_some() => {
@@ -202,32 +199,34 @@ fn write_model_outputs(
   let coalescent = output.coalescent.as_ref();
   if let Some(path) = outputs.get(&OutputSelection::CoalescentTsv) {
     let explicit = args.output_coalescent_tsv.is_some();
-    let write = |output: &CoalescentOutput, path: &Path| write_coalescent_delimited(output, path, b'\t');
+    let write =
+      |output: &CoalescentOutput, path: &Path| table_write_file(OutputSelection::CoalescentTsv, path, output.rows());
     write_coalescent_output(coalescent, path, explicit, write, log)?;
   }
   if let Some(path) = outputs.get(&OutputSelection::CoalescentCsv) {
     let explicit = args.output_coalescent_csv.is_some();
-    let write = |output: &CoalescentOutput, path: &Path| write_coalescent_delimited(output, path, b',');
+    let write =
+      |output: &CoalescentOutput, path: &Path| table_write_file(OutputSelection::CoalescentCsv, path, output.rows());
     write_coalescent_output(coalescent, path, explicit, write, log)?;
   }
   if let Some(path) = outputs.get(&OutputSelection::CoalescentJson) {
     let explicit = args.output_coalescent_json.is_some();
-    let write = |output: &CoalescentOutput, path: &Path| write_coalescent_json(output, path);
+    let write = |output: &CoalescentOutput, path: &Path| json_write_file(path, output, JsonPretty(true));
     write_coalescent_output(coalescent, path, explicit, write, log)?;
   }
 
   if let Some(path) = outputs.get(&OutputSelection::ClockModel) {
-    write_clock_model(&output.clock_model, path)?;
+    json_write_file(path, &output.clock_model, JsonPretty(true))?;
   }
   if let Some(path) = outputs.get(&OutputSelection::ClockCsv) {
-    write_clock_regression_result_csv(&output.clock_regression, path, b',')?;
+    table_write_file(OutputSelection::ClockCsv, path, &output.clock_regression)?;
   }
 
   if let Some(path) = outputs.get(&OutputSelection::Gtr) {
     match (output.gtr.as_ref(), output.model_name) {
       (Some(gtr), Some(model_name)) => {
         let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
-        write_gtr_json(&gtr_output, path)?;
+        json_write_file(path, &gtr_output, JsonPretty(true))?;
       },
       _ if args.output_gtr.is_some() => {
         return make_error!("GTR output requested but no GTR model was fitted. Provide sequence alignment input.");
@@ -381,7 +380,7 @@ impl SeqSink for ReconstructedNucSink {
       SeqTrack::Nuc => {
         let name = self.names[&item.key].clone().unwrap_or_default();
         let desc = self.descs[&item.key].clone();
-        self.writer.write(&name, &desc, item.seq)
+        self.writer.write(&name, desc.as_deref(), item.seq)
       },
       SeqTrack::Aa(cds) => {
         make_internal_error!("Timetree reconstructed-nucleotide FASTA sink received an amino-acid track '{cds}'")

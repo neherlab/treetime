@@ -11,7 +11,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
   use treetime_utils::error::report_to_string;
   use treetime_utils::{o, vec_of_owned};
@@ -67,7 +67,7 @@ mod tests {
   #[case::failed(   Failure::Message("profile unavailable"), "InferenceFailed: profile unavailable")]
   #[trace]
   fn test_mutation_stream_classifies_sequence_errors(#[case] failure: Failure, #[case] expected: &str) {
-    let graph = nwk_read_str(TREE).unwrap().graph;
+    let graph = nwk_read(TREE.as_bytes()).unwrap().graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
     let result = stream_sequence_mutations(
@@ -136,7 +136,7 @@ mod tests {
       sequences: &BTreeMap<&str, &str>,
       sink: Option<&mut dyn SeqSink>,
     ) -> Result<Stream, OperationError> {
-      let parsed = nwk_read_str(TREE).unwrap();
+      let parsed = nwk_read(TREE.as_bytes()).unwrap();
       let names = parsed.names();
       let graph = parsed.graph;
       let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();

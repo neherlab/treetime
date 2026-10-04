@@ -200,7 +200,7 @@ mod tests {
     use crate::progress::NoopProgress;
     use eyre::Report;
     use std::collections::{BTreeMap, BTreeSet};
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::nwk::nwk_read;
 
     pub(super) const LEAF_NAMES: [&str; 4] = ["A", "B", "C", "D"];
 
@@ -244,7 +244,7 @@ mod tests {
       force_positive_rate: bool,
       clock_rate: Option<f64>,
     ) -> Result<RootSearch, Report> {
-      let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+      let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let times = graph

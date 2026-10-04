@@ -3,13 +3,12 @@ use crate::commands::ancestral::aa_node_data::{
   validate_aa_args,
 };
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
-use crate::commands::shared::alignment::sequence_descriptions;
+use crate::commands::shared::alignment::{read_alignment, sequence_descriptions};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::EdgeMutationCommentProvider;
 use app_output::ancestral_result::{AncestralNodeOut, AncestralOutputMaps, AugurOutputMaps};
 use app_output::ancestral_tree_output::write_ancestral_tree_outputs;
 use app_output::augur_node_data_ancestral::write_augur_node_data_json_with_aa;
-use app_output::gtr::write_gtr_json;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 use eyre::Report;
@@ -33,11 +32,11 @@ use treetime::{progress_info, progress_warn};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::{FastaReader, FastaWriter, read_many_fasta, read_many_fasta_path};
+use treetime_io::fasta::{FastaWriter, fasta_read_file};
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::{AlignmentRecord, Seq};
-use treetime_utils::io::file::{create_file_or_stdout, open_stdin};
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 pub fn run_ancestral_reconstruction(
@@ -216,7 +215,7 @@ fn write_ancestral_gtr(
   match gtr {
     Some(gtr) => {
       let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
-      write_gtr_json(&gtr_output, path)
+      json_write_file(path, &gtr_output, JsonPretty(true))
     },
     None if args.output_gtr.is_some() => {
       make_error!("GTR output requested but no GTR model was fitted. Use --model=infer or --gtr-iterations.")
@@ -247,7 +246,7 @@ impl AncestralSeqSink {
     let fasta = resolved
       .non_tree_outputs
       .get(&OutputSelection::ReconstructedNucFasta)
-      .map(|path| Ok::<_, Report>(FastaWriter::new(create_file_or_stdout(path)?)))
+      .map(FastaWriter::create)
       .transpose()?;
     Ok(Self {
       fasta,
@@ -266,7 +265,7 @@ impl SeqSink for AncestralSeqSink {
     if let (Some(writer), true) = (self.fasta.as_mut(), item.emitted) {
       let name = self.names[&item.key].as_deref();
       let desc = name.and_then(|name| self.descs.get(name)).cloned().flatten();
-      writer.write(name.unwrap_or(""), &desc, item.seq)?;
+      writer.write(name.unwrap_or(""), desc.as_deref(), item.seq)?;
     }
     if let Some(node_sequences) = self.node_sequences.as_mut() {
       node_sequences.insert(item.key, item.seq.clone());
@@ -287,13 +286,10 @@ fn read_nwk_fasta(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
-  let mut aln = if args.alignment.alignment.is_empty() {
-    progress_info!(log, "Reading input fasta from standard input");
-    let reader = FastaReader::new(open_stdin()?, &alphabet);
-    read_many_fasta(reader)?
-  } else {
-    read_many_fasta_path(&args.alignment.alignment, &alphabet)?
-  };
+  if args.alignment.alignment.is_empty() {
+    return make_error!("--alignment is required: pass one or more FASTA files, or '-' to read standard input");
+  }
+  let mut aln = read_alignment(&args.alignment.alignment, &alphabet)?;
 
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
@@ -461,7 +457,7 @@ fn read_cds_translations(
   log: &dyn LogSink,
 ) -> Result<Vec<AlignmentRecord>, Report> {
   let path = translation_path(translations, cds);
-  let mut sequences = read_many_fasta_path(&[&path], read_alphabet)?;
+  let mut sequences = fasta_read_file(&path, read_alphabet)?;
   let mut sanitized = 0_usize;
   for record in &mut sequences {
     let (seq, changed) = sanitize_to_alphabet(&record.seq, recon_alphabet);
@@ -507,12 +503,12 @@ impl AaFastaSink {
     let Some((cds, sequences)) = self.pending.take() else {
       return Ok(());
     };
-    let mut writer = FastaWriter::new(create_file_or_stdout(translation_path(&self.template, &cds))?);
+    let mut writer = FastaWriter::create(translation_path(&self.template, &cds))?;
     for (key, seq) in &sequences {
       let name = self.names[key]
         .as_deref()
         .map_or_else(|| format!("node_{}", key.0), str::to_owned);
-      writer.write(&name, &None, seq)?;
+      writer.write(&name, None, seq)?;
     }
     writer.finish()
   }

@@ -1,6 +1,7 @@
 use crate::command::{AppCommand, OutputFile};
 use crate::results::tree::ResultTree;
 use app_output::output_plan::OutputSelection;
+use app_output::table_output::table_read_file;
 use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -11,7 +12,6 @@ use treetime::gtr::get_gtr::GtrOutput;
 use treetime::timetree::coalescent::CoalescentSegmentRow;
 use treetime::timetree::convergence::metrics::ConvergenceMetrics;
 use treetime_io::auspice_types::AuspiceTree;
-use treetime_io::csv::csv_read_file;
 use treetime_utils::io::json::json_read_file;
 use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
@@ -69,11 +69,11 @@ impl RunOutputs {
         self.auspice = Some(auspice);
       },
       OutputSelection::ClockModel => self.clock_model = Some(json_read_file(path)?),
-      OutputSelection::ClockCsv => self.clock_rows = Some(csv_read_file(path, b',')?),
+      OutputSelection::ClockCsv => self.clock_rows = Some(table_read_file(kind, path)?),
       OutputSelection::AugurNodeData => self.node_data = Some(json_read_file(path)?),
       OutputSelection::Gtr => self.gtr = Some(json_read_file(path)?),
-      OutputSelection::Tracelog => self.trace = Some(csv_read_file(path, b',')?),
-      OutputSelection::CoalescentTsv => self.coalescent = Some(csv_read_file(path, b'\t')?),
+      OutputSelection::Tracelog => self.trace = Some(table_read_file(kind, path)?),
+      OutputSelection::CoalescentTsv => self.coalescent = Some(table_read_file(kind, path)?),
       _ => {},
     }
     Ok(())

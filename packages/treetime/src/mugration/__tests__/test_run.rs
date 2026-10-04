@@ -17,7 +17,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::iter::once;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::{o, vec_of_owned};
 
   #[expect(
@@ -34,7 +34,7 @@ mod tests {
     smooth_initial_pi: bool,
     filter_uninformative_root: bool,
   ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
-    let nwk_parsed = nwk_read_str(nwk)?;
+    let nwk_parsed = nwk_read(nwk.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

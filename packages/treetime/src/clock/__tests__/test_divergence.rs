@@ -5,7 +5,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   #[rustfmt::skip]
@@ -20,7 +20,7 @@ mod tests {
     #[case] nwk: &str,
     #[case] expected: &[(&str, f64)],
   ) -> Result<(), Report> {
-    let parsed = nwk_read_str(nwk)?;
+    let parsed = nwk_read(nwk.as_bytes())?;
     let names = parsed.names();
 
     let actual: BTreeMap<String, f64> = root_to_node_divergences(&parsed.graph, |edge_key| parsed.branch_lengths[&edge_key].unwrap_or_default())?
@@ -35,7 +35,7 @@ mod tests {
 
   #[test]
   fn test_root_to_node_divergences_gives_internal_nodes_their_path_sum() -> Result<(), Report> {
-    let parsed = nwk_read_str("((A:0.1,B:0.2):0.3,C:0.4);")?;
+    let parsed = nwk_read(b"((A:0.1,B:0.2):0.3,C:0.4);".as_slice())?;
     let names = parsed.names();
 
     let actual = root_to_node_divergences(&parsed.graph, |edge_key| {
@@ -66,7 +66,7 @@ mod tests {
       "{};",
       (1..20).fold("A:0.05".to_owned(), |nwk, _| format!("({nwk}):0.05"))
     );
-    let parsed = nwk_read_str(&nwk)?;
+    let parsed = nwk_read(nwk.as_bytes())?;
     let names = parsed.names();
 
     let actual = root_to_node_divergences(&parsed.graph, |edge_key| {

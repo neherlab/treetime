@@ -26,7 +26,7 @@ pub(super) mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
 
   #[rustfmt::skip]
@@ -39,7 +39,7 @@ pub(super) mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_equivalence_no_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -70,7 +70,7 @@ pub(super) mod tests {
   #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_local_optimality(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -112,7 +112,7 @@ pub(super) mod tests {
   #[case::newton_log( BranchOptMethod::NewtonLog)]
   #[trace]
   fn test_optimize_method_stationarity(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -147,7 +147,7 @@ pub(super) mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_cross_method_lh_agreement(#[case] n_indels: usize) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_brent_names = nwk_parsed.names();
     let graph_brent = nwk_parsed.graph;
     let mut bl_brent = nwk_parsed.branch_lengths;
@@ -159,7 +159,7 @@ pub(super) mod tests {
     let bl_brent = first_edge_bl(&graph_brent, &bl_brent);
     let lh_brent = eval_combined_first_edge(&graph_brent, &reconstruction_brent, rate_brent, bl_brent)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_sqrt_names = nwk_parsed.names();
     let graph_sqrt = nwk_parsed.graph;
     let mut bl_sqrt = nwk_parsed.branch_lengths;
@@ -188,7 +188,7 @@ pub(super) mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_cross_method_lh_agreement_newton_log(#[case] n_indels: usize) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_brent_names = nwk_parsed.names();
     let graph_brent = nwk_parsed.graph;
     let mut bl_brent = nwk_parsed.branch_lengths;
@@ -200,7 +200,7 @@ pub(super) mod tests {
     let bl_brent = first_edge_bl(&graph_brent, &bl_brent);
     let lh_brent = eval_combined_first_edge(&graph_brent, &reconstruction_brent, rate_brent, bl_brent)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_log_names = nwk_parsed.names();
     let graph_log = nwk_parsed.graph;
     let mut bl_log = nwk_parsed.branch_lengths;
@@ -245,7 +245,7 @@ pub(super) mod tests {
     #[case] n_indels: usize,
   ) -> Result<(), Report> {
     let lh_ref = {
-      let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+      let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
       let graph_ref_names = nwk_parsed.names();
       let graph_ref = nwk_parsed.graph;
       let mut bl_ref = nwk_parsed.branch_lengths;
@@ -258,7 +258,7 @@ pub(super) mod tests {
       eval_combined_first_edge(&graph_ref, &reconstruction_ref, rate_ref, bl_ref)?
     };
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -282,7 +282,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_optimize_method_newton_log_improves_over_newton() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_newton_names = nwk_parsed.names();
     let graph_newton = nwk_parsed.graph;
     let mut bl_newton = nwk_parsed.branch_lengths;
@@ -302,7 +302,7 @@ pub(super) mod tests {
     let bl_newton = first_edge_bl(&graph_newton, &bl_newton);
     let lh_newton = eval_combined_first_edge(&graph_newton, &reconstruction_newton, rate_newton, bl_newton)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_log_names = nwk_parsed.names();
     let graph_log = nwk_parsed.graph;
     let mut bl_log = nwk_parsed.branch_lengths;
@@ -335,7 +335,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_optimize_method_newton_sqrt_improves_over_newton() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_newton_names = nwk_parsed.names();
     let graph_newton = nwk_parsed.graph;
     let mut bl_newton = nwk_parsed.branch_lengths;
@@ -355,7 +355,7 @@ pub(super) mod tests {
     let bl_newton = first_edge_bl(&graph_newton, &bl_newton);
     let lh_newton = eval_combined_first_edge(&graph_newton, &reconstruction_newton, rate_newton, bl_newton)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_sqrt_names = nwk_parsed.names();
     let graph_sqrt = nwk_parsed.graph;
     let mut bl_sqrt = nwk_parsed.branch_lengths;
@@ -393,7 +393,7 @@ pub(super) mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_cross_conditioning_ordering(#[case] n_indels: usize) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_newton_names = nwk_parsed.names();
     let graph_newton = nwk_parsed.graph;
     let mut bl_newton = nwk_parsed.branch_lengths;
@@ -405,7 +405,7 @@ pub(super) mod tests {
     let bl_newton = first_edge_bl(&graph_newton, &bl_newton);
     let lh_newton = eval_combined_first_edge(&graph_newton, &reconstruction_newton, rate_newton, bl_newton)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_sqrt_names = nwk_parsed.names();
     let graph_sqrt = nwk_parsed.graph;
     let mut bl_sqrt = nwk_parsed.branch_lengths;
@@ -417,7 +417,7 @@ pub(super) mod tests {
     let bl_sqrt = first_edge_bl(&graph_sqrt, &bl_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &reconstruction_sqrt, rate_sqrt, bl_sqrt)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_log_names = nwk_parsed.names();
     let graph_log = nwk_parsed.graph;
     let mut bl_log = nwk_parsed.branch_lengths;
@@ -460,7 +460,7 @@ pub(super) mod tests {
     #[case] method: BranchOptMethod,
     #[case] n_indels: usize,
   ) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -484,7 +484,7 @@ pub(super) mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_log_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -508,7 +508,7 @@ pub(super) mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_sqrt_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -532,7 +532,7 @@ pub(super) mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_newton_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -553,7 +553,7 @@ pub(super) mod tests {
   fn test_optimize_method_brent_cross_parameterization_lh_agreement() -> Result<(), Report> {
     let n_indels = 3;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_t_names = nwk_parsed.names();
     let graph_t = nwk_parsed.graph;
     let mut bl_t = nwk_parsed.branch_lengths;
@@ -572,7 +572,7 @@ pub(super) mod tests {
     let bl_t = first_edge_bl(&graph_t, &bl_t);
     let lh_t = eval_combined_first_edge(&graph_t, &reconstruction_t, rate_t, bl_t)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_sqrt_names = nwk_parsed.names();
     let graph_sqrt = nwk_parsed.graph;
     let mut bl_sqrt = nwk_parsed.branch_lengths;
@@ -591,7 +591,7 @@ pub(super) mod tests {
     let bl_sqrt = first_edge_bl(&graph_sqrt, &bl_sqrt);
     let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &reconstruction_sqrt, rate_sqrt, bl_sqrt)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_log_names = nwk_parsed.names();
     let graph_log = nwk_parsed.graph;
     let mut bl_log = nwk_parsed.branch_lengths;

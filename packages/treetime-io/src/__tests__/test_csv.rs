@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::csv::{default_name_candidates, detect_csv_delimiter, get_col_name};
+  use crate::csv::{
+    CsvWriter, TableFormat, csv_read, default_name_candidates, delimiter_from_path, detect_csv_delimiter, get_col_name,
+  };
   use eyre::{Report, WrapErr};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -78,7 +80,7 @@ mod tests {
     #[case] expected: u8,
   ) -> Result<(), Report> {
     let mut reader = BufReader::new(Cursor::new(content));
-    let actual = detect_csv_delimiter(&mut reader, filepath, &[',', '\t', ';'], |headers| {
+    let actual = detect_csv_delimiter(&mut reader, delimiter_from_path(filepath), &[',', '\t', ';'], |headers| {
       headers == ["strain", "date"]
     })?;
     assert_eq!(expected, actual);
@@ -89,9 +91,12 @@ mod tests {
   fn test_csv_detect_delimiter_does_not_consume_reader() -> Result<(), Report> {
     let content = b"strain\tdate\nA\t2020\n";
     let mut reader = BufReader::new(Cursor::new(content));
-    detect_csv_delimiter(&mut reader, "metadata.tsv.xz", &[',', '\t', ';'], |headers| {
-      headers == ["strain", "date"]
-    })?;
+    detect_csv_delimiter(
+      &mut reader,
+      delimiter_from_path("metadata.tsv.xz"),
+      &[',', '\t', ';'],
+      |headers| headers == ["strain", "date"],
+    )?;
 
     let mut actual = Vec::new();
     reader
@@ -104,7 +109,7 @@ mod tests {
   #[test]
   fn test_csv_detect_delimiter_uses_only_explicit_candidate() -> Result<(), Report> {
     let mut reader = BufReader::new(Cursor::new(b"not,a,header"));
-    let actual = detect_csv_delimiter(&mut reader, "metadata.tsv.xz", &['|'], |_| false)?;
+    let actual = detect_csv_delimiter(&mut reader, delimiter_from_path("metadata.tsv.xz"), &['|'], |_| false)?;
     assert_eq!(b'|', actual);
     Ok(())
   }
@@ -112,7 +117,12 @@ mod tests {
   #[test]
   fn test_csv_detect_delimiter_uses_logical_extension_for_invalid_header() -> Result<(), Report> {
     let mut reader = BufReader::new(Cursor::new(b"unexpected header"));
-    let actual = detect_csv_delimiter(&mut reader, "metadata.tsv.xz", &[',', '\t', ';'], |_| false)?;
+    let actual = detect_csv_delimiter(
+      &mut reader,
+      delimiter_from_path("metadata.tsv.xz"),
+      &[',', '\t', ';'],
+      |_| false,
+    )?;
     assert_eq!(b'\t', actual);
     Ok(())
   }
@@ -120,17 +130,60 @@ mod tests {
   #[test]
   fn test_csv_detect_delimiter_rejects_empty_candidates() {
     let mut reader = BufReader::new(Cursor::new(b"strain,date"));
-    let result = detect_csv_delimiter(&mut reader, "metadata.csv", &[], |_| true);
+    let result = detect_csv_delimiter(&mut reader, delimiter_from_path("metadata.csv"), &[], |_| true);
     assert_error!(result, "At least one metadata delimiter is required");
   }
 
   #[test]
   fn test_csv_detect_delimiter_rejects_multibyte_candidate() {
     let mut reader = BufReader::new(Cursor::new(b"strain,date"));
-    let result = detect_csv_delimiter(&mut reader, "metadata.csv", &['‣'], |_| true);
+    let result = detect_csv_delimiter(&mut reader, delimiter_from_path("metadata.csv"), &['‣'], |_| true);
     assert_error!(
       result,
       "Metadata delimiter '‣' must fit in one byte: out of range integral type conversion attempted"
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::csv(TableFormat::Csv, "name,value\n\"A,1\",0.5\nB,2.0\n")]
+  #[case::tsv(TableFormat::Tsv, "name\tvalue\nA,1\t0.5\nB\t2.0\n")]
+  #[trace]
+  fn test_csv_writer_round_trips_rows(#[case] format: TableFormat, #[case] expected: &str) -> Result<(), Report> {
+    let rows = vec![
+      helpers::Row { name: o!("A,1"), value: 0.5 },
+      helpers::Row { name: o!("B"), value: 2.0 },
+    ];
+
+    let mut buf = Vec::new();
+    let mut csv = CsvWriter::new(&mut buf, format);
+    rows.iter().try_for_each(|row| csv.write_row(row))?;
+    csv.into_inner()?;
+
+    assert_eq!(expected, String::from_utf8(buf.clone())?);
+    assert_eq!(rows, csv_read::<helpers::Row>(buf.as_slice(), format)?);
+    Ok(())
+  }
+
+  #[test]
+  fn test_csv_writer_writes_records_of_any_width() -> Result<(), Report> {
+    let mut buf = Vec::new();
+    let mut csv = CsvWriter::new(&mut buf, TableFormat::Csv);
+    csv.write_record(["node", "Congo, DR", "usa"])?;
+    csv.write_record(["A", "0.25", "0.75"])?;
+    csv.into_inner()?;
+
+    assert_eq!("node,\"Congo, DR\",usa\nA,0.25,0.75\n", String::from_utf8(buf)?);
+    Ok(())
+  }
+
+  mod helpers {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, PartialEq, Serialize, Deserialize)]
+    pub(super) struct Row {
+      pub(super) name: String,
+      pub(super) value: f64,
+    }
   }
 }

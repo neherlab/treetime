@@ -11,19 +11,19 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   #[test]
   fn test_eval_zero_branch_mismatch_no_nan() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let alphabet = Alphabet::default();
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         AAAAAAAAAAAAAAAA
@@ -33,7 +33,8 @@ mod tests {
         GGGGGGGGGGGGGGGG
         >D
         TTTTTTTTTTTTTTTT
-      "#},
+      "#}
+      .as_bytes(),
       &alphabet,
     )?
     .into_iter()

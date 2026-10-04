@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::fasta::{FastaRecord, read_many_fasta_str};
+  use crate::fasta::{FastaRecord, fasta_read, fasta_write_record};
+  use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use treetime_primitives::{AlphabetLike, AsciiChar, Seq};
@@ -16,11 +17,11 @@ mod tests {
       TTGC
     "};
 
-    let actual = read_many_fasta_str(fasta, &helpers::Nuc).unwrap();
+    let actual = fasta_read(fasta.as_bytes(), &helpers::Nuc).unwrap();
 
     let expected = vec![
-      helpers::record("a", Some("first sample"), "ACGTNN-A", 0),
-      helpers::record("b", None, "TTGC", 1),
+      helpers::record("a", Some("first sample"), "ACGTNN-A"),
+      helpers::record("b", None, "TTGC"),
     ];
     assert_eq!(expected, actual);
   }
@@ -35,7 +36,7 @@ mod tests {
     "};
 
     assert_error!(
-      read_many_fasta_str(fasta, &helpers::Nuc),
+      fasta_read(fasta.as_bytes(), &helpers::Nuc),
       r#"When processing sequence #2: ">b desc": FASTA input is incorrect: character "X" is not in the alphabet. Expected characters: '-', 'A', 'C', 'G', 'N', 'T'"#
     );
   }
@@ -45,9 +46,19 @@ mod tests {
     let fasta = ">a\nAC\u{e9}T\n";
 
     assert_error!(
-      read_many_fasta_str(fasta, &helpers::Nuc),
+      fasta_read(fasta.as_bytes(), &helpers::Nuc),
       r#"When processing sequence #1: ">a": AsciiChar: 'é' is not ASCII"#
     );
+  }
+
+  #[test]
+  fn test_fasta_write_record_writes_headers_with_descriptions() -> Result<(), Report> {
+    let mut buf = Vec::new();
+    fasta_write_record(&mut buf, "a", Some("first sample"), &Seq::try_from_str("ACGT")?)?;
+    fasta_write_record(&mut buf, "b", None, &Seq::try_from_str("TT")?)?;
+
+    assert_eq!(">a first sample\nACGT\n>b\nTT\n", String::from_utf8(buf)?);
+    Ok(())
   }
 
   mod helpers {
@@ -65,12 +76,11 @@ mod tests {
       }
     }
 
-    pub(super) fn record(name: &str, desc: Option<&str>, seq: &str, index: usize) -> FastaRecord {
+    pub(super) fn record(name: &str, desc: Option<&str>, seq: &str) -> FastaRecord {
       FastaRecord {
         seq_name: name.to_owned(),
         desc: desc.map(str::to_owned),
         seq: Seq::try_from_str(seq).unwrap(),
-        index,
       }
     }
   }

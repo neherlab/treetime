@@ -16,7 +16,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
   const CAVITY_GRID_POINTS: usize = 1001;
@@ -37,7 +37,7 @@ mod tests {
 
   #[test]
   fn test_forward_pass_leaves_internal_node_with_empty_distribution_undated() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:2.5)root;")?;
+    let nwk_parsed = nwk_read(b"(A:2.5)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -69,7 +69,7 @@ mod tests {
 
   #[test]
   fn test_forward_pass_refines_uncertain_leaf_date_from_parent() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
@@ -93,7 +93,7 @@ mod tests {
 
   #[test]
   fn test_forward_pass_keeps_exact_leaf_date_earlier_than_its_parent() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
@@ -117,7 +117,7 @@ mod tests {
 
   #[test]
   fn test_forward_pass_clamps_uncertain_leaf_date_to_parent_time() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
@@ -137,7 +137,7 @@ mod tests {
 
   #[test]
   fn test_forward_pass_keeps_uncertain_leaf_date_the_tree_contradicts() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
@@ -180,7 +180,7 @@ mod tests {
     };
 
     let refine = |parent: Distribution<NegLog>| -> Result<f64, Report> {
-      let nwk_parsed = nwk_read_str("(A:1.0)root;")?;
+      let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
@@ -205,7 +205,7 @@ mod tests {
 
   #[test]
   fn test_forward_pass_refines_a_date_range_narrower_than_the_parent_grid() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
@@ -255,7 +255,7 @@ mod tests {
 
   #[test]
   fn test_forward_pass_missing_backward_output_is_an_internal_error() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -354,7 +354,7 @@ mod tests {
       parent_posterior: Distribution<NegLog>,
       message_from_child: Option<Distribution<NegLog>>,
     ) -> Result<Option<f64>, Report> {
-      let nwk_parsed = nwk_read_str("(N:1.0)root;")?;
+      let nwk_parsed = nwk_read(b"(N:1.0)root;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");

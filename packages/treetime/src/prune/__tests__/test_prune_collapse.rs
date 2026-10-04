@@ -16,13 +16,13 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::seq;
   use treetime_utils::make_report;
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_basic() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -51,7 +51,7 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_node_with_children() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal1:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal1:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -78,7 +78,7 @@ mod tests {
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_root() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -133,7 +133,7 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_compose_non_overlapping() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -212,7 +212,7 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_compose_chain() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -275,7 +275,7 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_compose_cancellation() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -336,7 +336,7 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_compose_multiple_partitions() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -422,7 +422,7 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_branch_length_sum_both_some() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.2,B:0.1)internal:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.2,B:0.1)internal:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -459,7 +459,7 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_branch_length_sum_precision() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:2e-10,B:3e-10)internal:1e-10)root;")?;
+    let nwk_parsed = nwk_read(b"((A:2e-10,B:3e-10)internal:1e-10)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -636,7 +636,7 @@ mod tests {
 
   #[test]
   fn test_prune_then_merge_exposes_hidden_polytomy() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)I:1e-8,C:0.1,D:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:1e-8,C:0.1,D:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -708,7 +708,7 @@ mod tests {
 
   #[test]
   fn test_collapse_edge_indel_preservation() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)internal:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

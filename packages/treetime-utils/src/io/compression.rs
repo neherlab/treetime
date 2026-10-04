@@ -37,8 +37,6 @@ pub fn remove_compression_ext(filepath: impl AsRef<Path>) -> PathBuf {
 
 pub struct Decompressor<'r> {
   decompressor: Box<dyn Read + 'r>,
-  compression_type: CompressionType,
-  filepath: Option<String>,
 }
 
 impl<'r> Decompressor<'r> {
@@ -56,22 +54,10 @@ impl<'r> Decompressor<'r> {
       CompressionType::None => Box::new(reader),
     };
 
-    Ok(Self {
-      decompressor,
-      compression_type: compression_type.clone(),
-      filepath: None,
-    })
-  }
-
-  pub fn from_str_and_path(content: &'r str, filepath: impl AsRef<Path>) -> Result<Self, Report> {
-    let filepath = filepath.as_ref();
-    let reader = content.as_bytes();
-    let (compression_type, _) = guess_compression_from_filepath(filepath);
-    Self::new(reader, &compression_type)
+    Ok(Self { decompressor })
   }
 
   pub fn from_path<R: 'r + Read>(reader: R, filepath: impl AsRef<Path>) -> Result<Self, Report> {
-    let filepath = filepath.as_ref();
     let (compression_type, _) = guess_compression_from_filepath(filepath);
     Self::new(reader, &compression_type)
   }
@@ -82,16 +68,7 @@ impl Read for Decompressor<'_> {
     self
       .decompressor
       .read(buf)
-      .wrap_err_with(|| "While decompressing file")
-      .with_section(|| {
-        self
-          .filepath
-          .clone()
-          .unwrap_or_else(|| "None".to_owned())
-          .header("Filename")
-      })
-      .with_section(|| self.compression_type.clone().header("Decompressor"))
-      .map_err(|report| io::Error::other(report_to_string(&report)))
+      .map_err(|error| io::Error::new(error.kind(), format!("While decompressing file: {error}")))
   }
 }
 

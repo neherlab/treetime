@@ -12,7 +12,6 @@ use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub, mutat
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::auspice::auspice_write_file;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
   AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeBranchAttrsLabels,
@@ -20,11 +19,10 @@ use treetime_io::auspice_types::{
 };
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::graphviz::graphviz_write_file;
-use treetime_io::nex::{NexWriteOptions, nex_write_file_with};
-use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_write_file_with, nwk_write_str};
+use treetime_io::nex::nex_write_file;
+use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_write_file, nwk_write_str};
 use treetime_io::usher_mat::{
-  UsherMatJsonOptions, UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode,
-  usher_mat_json_write_file, usher_mat_pb_write_file,
+  UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode, usher_mat_pb_write_file,
 };
 use treetime_primitives::AsciiChar;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -60,7 +58,7 @@ where
         graph
           .get_exactly_one_root()
           .wrap_err_with(|| format!("When converting {command} graph to Newick"))?;
-        nwk_write_file_with(
+        nwk_write_file(
           path,
           graph,
           names,
@@ -76,27 +74,21 @@ where
         graph
           .get_exactly_one_root()
           .wrap_err_with(|| format!("When converting {command} graph to Nexus"))?;
-        nex_write_file_with(
+        nex_write_file(
           path,
           graph,
           names,
           nwk_weights,
-          &NexWriteOptions {
+          &NwkWriteOptions {
             style: spec.style,
-            ..NexWriteOptions::default()
+            ..NwkWriteOptions::default()
           },
           providers,
         )?;
       },
-      TreeWriteKind::Auspice => auspice_write_file(path, &to_auspice()?)?,
+      TreeWriteKind::Auspice => json_write_file(path, &to_auspice()?, JsonPretty(true))?,
       TreeWriteKind::MatPb => usher_mat_pb_write_file(path, converted_mat(&mut mat, &to_mat, log)?)?,
-      TreeWriteKind::MatJson => {
-        usher_mat_json_write_file(
-          path,
-          converted_mat(&mut mat, &to_mat, log)?,
-          &UsherMatJsonOptions::default(),
-        )?;
-      },
+      TreeWriteKind::MatJson => json_write_file(path, converted_mat(&mut mat, &to_mat, log)?, JsonPretty(true))?,
       TreeWriteKind::GraphJson => {
         json_write_file(path, graph, JsonPretty(true))?;
       },
@@ -460,7 +452,13 @@ where
   })?;
   Ok(MatOutput {
     tree: UsherTree {
-      newick: nwk_write_str(graph, names, nwk_weights, &NwkWriteOptions::default())?,
+      newick: nwk_write_str(
+        graph,
+        names,
+        nwk_weights,
+        &NwkWriteOptions::default(),
+        &CommentProviders::new(),
+      )?,
       node_mutations,
       condensed_nodes,
       metadata,

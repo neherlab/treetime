@@ -3,16 +3,15 @@ use app_commands::command::AppCommand;
 use app_commands::config::cli_flags::annotated_config_schema;
 use app_commands::config::schema::draft2020_generator;
 use clap::ValueEnum;
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use log::info;
 use schemars::Schema;
 use schemars::transform::{Transform, transform_subschemas};
 use serde_json::{Value, json};
-use std::fs::{create_dir_all, write};
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use treetime_schema::TreetimeSchemaFormat;
-use treetime_utils::io::json::{JsonPretty, json_write_str};
+use treetime_utils::io::file::is_path_stdout;
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 #[allow(
   clippy::expect_used,
@@ -125,16 +124,8 @@ pub(crate) fn command_schema_for(tag: &str) -> Option<Schema> {
 }
 
 fn write_schema(schema: &Schema, output: &Path) -> Result<(), Report> {
-  let json = json_write_str(schema, JsonPretty(true))?;
-  if output == Path::new("-") {
-    std::io::stdout()
-      .write_all(json.as_bytes())
-      .wrap_err("When writing the JSON schema to standard output")?;
-  } else {
-    if let Some(parent) = output.parent() {
-      create_dir_all(parent).wrap_err_with(|| format!("When creating directory '{}'", parent.display()))?;
-    }
-    write(output, json).wrap_err_with(|| format!("When writing JSON schema file '{}'", output.display()))?;
+  json_write_file(output, schema, JsonPretty(true))?;
+  if !is_path_stdout(output) {
     info!("Wrote JSON schema to '{}'", output.display());
   }
   Ok(())

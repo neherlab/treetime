@@ -1,52 +1,48 @@
-use crate::csv::{detect_csv_delimiter, get_col_name, normalize_csv_headers};
-use csv::{ReaderBuilder, StringRecord, Trim};
+use crate::csv::{delimiter_from_path, detect_csv_delimiter, get_col_name, normalize_csv_headers, table_reader};
+use csv::StringRecord;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
-use std::io::Read;
+use std::io::BufRead;
 use std::path::Path;
-use treetime_utils::io::file::open_file_or_stdin;
+use treetime_utils::io::file::read_file_with;
 use treetime_utils::{make_internal_report, make_report};
 
-pub fn read_discrete_attrs<T>(
+pub fn discrete_attrs_read_file<T>(
   filepath: impl AsRef<Path>,
   delimiters: &[char],
-  name_candidates: &[String],
-  name_column: &Option<String>,
-  value_column: &Option<String>,
-  parser: impl Fn(&str) -> Result<T, Report>,
-) -> Result<(BTreeMap<String, T>, String), Report> {
-  let filepath = filepath.as_ref();
-  let mut file =
-    open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
-  let delimiter = detect_csv_delimiter(&mut *file, filepath, delimiters, |headers| {
-    get_col_name(headers, name_candidates, name_column.as_deref()).is_ok()
-      && get_col_name(headers, &[], value_column.as_deref()).is_ok()
-  })
-  .wrap_err_with(|| format!("When detecting CSV delimiter for '{}'", filepath.display()))?;
-  read_discrete_attrs_from_reader(
-    file,
-    delimiter,
-    name_candidates,
-    name_column.as_deref(),
-    value_column.as_deref(),
-    parser,
-  )
-  .wrap_err_with(|| format!("When reading discrete attributes from file: '{}'", filepath.display()))
-}
-
-pub(crate) fn read_discrete_attrs_from_reader<T>(
-  reader: impl Read,
-  delimiter: u8,
   name_candidates: &[String],
   name_column: Option<&str>,
   value_column: Option<&str>,
   parser: impl Fn(&str) -> Result<T, Report>,
 ) -> Result<(BTreeMap<String, T>, String), Report> {
-  let mut reader = ReaderBuilder::new()
-    .trim(Trim::All)
-    .delimiter(delimiter)
-    .comment(None)
-    .from_reader(reader);
+  let filepath = filepath.as_ref();
+  read_file_with(filepath, |reader| {
+    discrete_attrs_read(
+      reader,
+      delimiter_from_path(filepath),
+      delimiters,
+      name_candidates,
+      name_column,
+      value_column,
+      parser,
+    )
+  })
+}
+
+pub fn discrete_attrs_read<T>(
+  mut reader: impl BufRead,
+  path_delimiter: Option<u8>,
+  delimiters: &[char],
+  name_candidates: &[String],
+  name_column: Option<&str>,
+  value_column: Option<&str>,
+  parser: impl Fn(&str) -> Result<T, Report>,
+) -> Result<(BTreeMap<String, T>, String), Report> {
+  let delimiter = detect_csv_delimiter(&mut reader, path_delimiter, delimiters, |headers| {
+    get_col_name(headers, name_candidates, name_column).is_ok() && get_col_name(headers, &[], value_column).is_ok()
+  })
+  .wrap_err("When detecting the table delimiter")?;
+  let mut reader = table_reader(reader, delimiter);
 
   let headers = reader
     .headers()

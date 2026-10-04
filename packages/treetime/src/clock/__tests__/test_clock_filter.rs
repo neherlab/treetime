@@ -180,7 +180,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::nwk::nwk_read;
 
     pub(super) const OUTLIER_TREE: &str = "(((A:0.1,B:0.2)AB:0.01,(C:0.15,D:0.25)CD:0.01)ABCD:0.01,((E:0.12,F:0.18)EF:0.01,(G:2.0,H:3.0)GH:0.01)EFGH:0.01)root;";
 
@@ -252,7 +252,7 @@ mod tests {
     }
 
     pub(super) fn setup_graph(newick: &str, dates: &BTreeMap<String, f64>) -> Result<GraphSetup, Report> {
-      let nwk_parsed = nwk_read_str(newick)?;
+      let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let times = graph
@@ -275,7 +275,7 @@ mod tests {
       ),
       Report,
     > {
-      let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.3)root;")?;
+      let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
       let graph = nwk_parsed.graph;
       let times = graph
         .get_leaves()

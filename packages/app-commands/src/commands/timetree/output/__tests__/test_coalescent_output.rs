@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use app_output::coalescent::write_coalescent_delimited_to;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -8,6 +7,7 @@ mod tests {
     CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSegmentRow, CoalescentSolve,
     Estimate, SegmentInterval,
   };
+  use treetime_io::csv::TableFormat;
   use treetime_utils::assert_error;
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
@@ -240,7 +240,7 @@ mod tests {
     assert!(json.contains("\"stiffness\": 2.0"));
     assert!(json.contains("\"log_likelihood\": -12.5"));
 
-    let csv = String::from_utf8(write_coalescent_delimited_to(&output, Vec::new(), b',')?)?;
+    let csv = helpers::table(&output, TableFormat::Csv)?;
     assert!(!csv.contains("n_points"));
     assert!(!csv.contains("stiffness"));
     assert!(!csv.contains("log_likelihood"));
@@ -249,11 +249,11 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::csv(b',',  "index,segment.start,segment.end,T_c.value,T_c.lower,T_c.upper,N_e.value,N_e.lower,N_e.upper")]
-  #[case::tsv(b'\t', "index\tsegment.start\tsegment.end\tT_c.value\tT_c.lower\tT_c.upper\tN_e.value\tN_e.lower\tN_e.upper")]
+  #[case::csv(TableFormat::Csv, "index,segment.start,segment.end,T_c.value,T_c.lower,T_c.upper,N_e.value,N_e.lower,N_e.upper")]
+  #[case::tsv(TableFormat::Tsv, "index\tsegment.start\tsegment.end\tT_c.value\tT_c.lower\tT_c.upper\tN_e.value\tN_e.lower\tN_e.upper")]
   #[trace]
   fn test_coalescent_output_delimited_headers_are_dotted(
-    #[case] delimiter: u8,
+    #[case] format: TableFormat,
     #[case] expected_header: &str,
   ) -> Result<(), Report> {
     let output = CoalescentOutput::new(
@@ -275,7 +275,7 @@ mod tests {
       },
     )?;
 
-    let serialized = String::from_utf8(write_coalescent_delimited_to(&output, Vec::new(), delimiter)?)?;
+    let serialized = helpers::table(&output, format)?;
     let header = serialized.lines().next().unwrap();
     assert_eq!(expected_header, header);
     Ok(())
@@ -301,7 +301,7 @@ mod tests {
         }),
       },
     )?;
-    let csv = String::from_utf8(write_coalescent_delimited_to(&constant, Vec::new(), b',')?)?;
+    let csv = helpers::table(&constant, TableFormat::Csv)?;
     assert_eq!("1,0.0,10.0,2.0,1.0,4.0,100.0,50.0,200.0", csv.lines().nth(1).unwrap());
 
     let fixed = CoalescentOutput::new(
@@ -319,7 +319,7 @@ mod tests {
         band: None,
       },
     )?;
-    let csv = String::from_utf8(write_coalescent_delimited_to(&fixed, Vec::new(), b',')?)?;
+    let csv = helpers::table(&fixed, TableFormat::Csv)?;
     assert_eq!("1,0.0,10.0,2.0,,,100.0,,", csv.lines().nth(1).unwrap());
     Ok(())
   }
@@ -371,5 +371,19 @@ mod tests {
       result,
       "Coalescent band bounds must have one entry per segment (2), got lower=1, upper=2"
     );
+  }
+
+  mod helpers {
+    use eyre::Report;
+    use treetime::timetree::coalescent::CoalescentOutput;
+    use treetime_io::csv::{CsvWriter, TableFormat};
+
+    pub(super) fn table(output: &CoalescentOutput, format: TableFormat) -> Result<String, Report> {
+      let mut buf = Vec::new();
+      let mut csv = CsvWriter::new(&mut buf, format);
+      output.rows().iter().try_for_each(|row| csv.write_row(row))?;
+      csv.into_inner()?;
+      Ok(String::from_utf8(buf)?)
+    }
   }
 }

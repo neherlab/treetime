@@ -20,7 +20,7 @@ use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::NoopProgress;
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
 use treetime::seq::sink::{SeqItem, SeqSink};
-use treetime_io::fasta::read_many_fasta_path;
+use treetime_io::fasta::fasta_read_file;
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::init::global::global_init;
@@ -91,12 +91,11 @@ fn setup() -> AncestralInput {
   let project_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
   let nwk_parsed = nwk_read_file(project_root.join("data/flu/h3n2/200/tree.nwk")).unwrap();
   let names = nwk_parsed.names();
-  let alignment: Vec<AlignmentRecord> =
-    read_many_fasta_path(&[project_root.join("data/flu/h3n2/200/aln.fasta.xz")], &alphabet)
-      .unwrap()
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
+  let alignment: Vec<AlignmentRecord> = fasta_read_file(project_root.join("data/flu/h3n2/200/aln.fasta.xz"), &alphabet)
+    .unwrap()
+    .into_iter()
+    .map(AlignmentRecord::from)
+    .collect();
   let mask = create_mask(&alignment, get_common_length(&alignment).unwrap(), &alphabet);
   AncestralInput {
     nodes: node_seq_inputs(&nwk_parsed.graph, &names, alignment),

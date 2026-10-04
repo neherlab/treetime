@@ -19,8 +19,8 @@ mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::{read_many_fasta_path, read_many_fasta_str};
-  use treetime_io::nwk::{nwk_read_file, nwk_read_str};
+  use treetime_io::fasta::{fasta_read, fasta_read_file};
+  use treetime_io::nwk::{nwk_read, nwk_read_file};
   use treetime_primitives::AlignmentRecord;
 
   #[rstest]
@@ -35,7 +35,7 @@ mod tests {
     let expected = &OUTPUTS.synthetic[case_name];
 
     let fasta_str = alignment_to_fasta(&case.alignment);
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(&fasta_str, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(fasta_str.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -136,7 +136,7 @@ mod tests {
     tree_nwk: &str,
     aln: &[AlignmentRecord],
   ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
-    let nwk_parsed = nwk_read_str(tree_nwk)?;
+    let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -166,7 +166,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[&alignment_path], &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read_file(alignment_path, &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();

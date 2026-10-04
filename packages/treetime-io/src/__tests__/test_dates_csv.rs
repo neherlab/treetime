@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::csv::delimiter_from_path;
   use crate::dates_csv::*;
   use eyre::Report;
   use maplit::btreemap;
@@ -110,7 +111,7 @@ mod tests {
   }
 
   #[test]
-  fn test_read_metadata_table_from_reader_dates() -> Result<(), Report> {
+  fn test_metadata_read_dates() -> Result<(), Report> {
     let content = r#"name	 date
 A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409	2013.40520192
 A/Boston/DOA2_107/2012|CY148382|11/01/2012|USA|12_13|H3N2/1-1409	2012.83778234
@@ -133,9 +134,9 @@ A/Peru/PER247/2011|CY162234|08/26/2011|Peru||H3N2/8-1416	2011.65160849
 A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
 "#;
 
-    let actual = read_metadata_table_from_reader(
+    let actual = metadata_read(
       content.as_bytes(),
-      "dates.tsv",
+      delimiter_from_path("dates.tsv"),
       &['\t'],
       &[],
       Some("name"),
@@ -181,15 +182,15 @@ A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
   #[case::tie_broken_by_tsv( "metadata.tsv",    "strain,date,x\tstrain\tdate\nq\tA\t2020-01-15\nq\tB\t2020-02-03\n", '\t', Some("date"))]
   #[case::tie_broken_by_csv( "metadata.csv",    "strain,date,x\tstrain\tdate\nA,2020-01-15,q\nB,2020-02-03,q\n",     ',',  Some("date"))]
   #[trace]
-  fn test_read_metadata_table_from_reader_picks_columns(
+  fn test_metadata_read_picks_columns(
     #[case] file_name: &str,
     #[case] content: &str,
     #[case] delimiter: char,
     #[case] date_column: Option<&str>,
   ) {
-    let table = read_metadata_table_from_reader(
+    let table = metadata_read(
       content.as_bytes(),
-      file_name,
+      delimiter_from_path(file_name),
       &[',', '\t', ';'],
       &[o!("strain"), o!("name")],
       None,
@@ -208,10 +209,10 @@ A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
   }
 
   #[test]
-  fn test_read_metadata_table_dates_require_a_date_column() {
-    let table = read_metadata_table_from_reader(
+  fn test_metadata_read_dates_require_a_date_column() {
+    let table = metadata_read(
       &b"strain\tcountry\nA\tusa\n"[..],
-      "metadata.tsv",
+      delimiter_from_path("metadata.tsv"),
       &[',', '\t'],
       &[o!("strain")],
       None,

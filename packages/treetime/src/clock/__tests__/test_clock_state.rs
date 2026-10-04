@@ -6,11 +6,11 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   #[test]
   fn test_clock_inputs_from_times_sources_times_and_edge_inputs_and_defaults_the_rest() -> Result<(), Report> {
-    let parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
     let names = parsed.names();
     let graph = parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).unwrap();

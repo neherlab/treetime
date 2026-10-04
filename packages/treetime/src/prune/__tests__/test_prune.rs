@@ -16,7 +16,7 @@ pub(super) mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
 
@@ -33,7 +33,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(A:0,B:0.1)root;");
     Ok(())
   }
@@ -51,7 +57,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(A:0.01,B:0.02,C:0.1)root;");
     Ok(())
   }
@@ -69,7 +81,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(A:0.1,B:0.2)root;");
     Ok(())
   }
@@ -106,7 +124,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(A:0,B:0.1)root;");
     Ok(())
   }
@@ -124,7 +148,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(A:1.0e-5,B:0.1)root;");
     Ok(())
   }
@@ -144,7 +174,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(
       output_nwk,
       "(E:5.0e-5,(C:3.0e-5,D:0.1)internal2:0.1,A:6.00e-5,B:0.1)root;"
@@ -280,7 +316,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(A:0.05,B:0.05,C:0.051)root;");
     Ok(())
   }
@@ -298,7 +340,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(A:0.049,B:0.05,C:0.051)root;");
     Ok(())
   }
@@ -368,7 +416,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(A:0.1,C:0.3)root;");
     Ok(())
   }
@@ -386,7 +440,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(B:0.2,D:0.4)root;");
     Ok(())
   }
@@ -404,7 +464,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(A:0.1,B:0.2)root;");
     Ok(())
   }
@@ -422,7 +488,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(C:0.4,A:0.4,B:0.5)root;");
     Ok(())
   }
@@ -440,7 +512,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(C:0.4,A:0.4,B:0.5)root;");
     Ok(())
   }
@@ -458,7 +536,13 @@ pub(super) mod tests {
       &names,
       &mut branch_lengths,
     )?;
-    let output_nwk = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output_nwk = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(output_nwk, "(A:0.1,B:0.2,C:0.3)root;");
     Ok(())
   }
@@ -540,7 +624,7 @@ pub(super) mod tests {
       ),
       Report,
     > {
-      let nwk_parsed = nwk_read_str(nwk)?;
+      let nwk_parsed = nwk_read(nwk.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -594,7 +678,7 @@ pub(super) mod tests {
       ),
       Report,
     > {
-      let nwk_parsed = nwk_read_str(nwk)?;
+      let nwk_parsed = nwk_read(nwk.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;

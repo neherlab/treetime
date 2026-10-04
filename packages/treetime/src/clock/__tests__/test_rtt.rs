@@ -8,12 +8,12 @@ mod tests {
   use helpers::row;
   use maplit::{btreemap, btreeset};
   use std::collections::BTreeMap;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_eq;
 
   #[test]
   fn test_gather_clock_regression_results_reports_every_node_against_the_clock_line() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:1,B:2)AB:1,C:4)root;")?;
+    let nwk_parsed = nwk_read(b"((A:1,B:2)AB:1,C:4)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("named node exists");

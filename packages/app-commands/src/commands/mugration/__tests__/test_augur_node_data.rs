@@ -8,7 +8,7 @@ mod tests {
   use treetime::cancel::NoopCancel;
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
   use treetime::progress::NoopProgress;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
   use treetime_utils::o;
   use util_augur_node_data_json::AugurNodeDataJsonTraits;
@@ -109,7 +109,7 @@ mod tests {
     use super::*;
 
     pub(super) fn run_and_serialize(tree: &str, traits: &std::collections::BTreeMap<String, String>) -> String {
-      let nwk_parsed = nwk_read_str(tree).unwrap();
+      let nwk_parsed = nwk_read(tree.as_bytes()).unwrap();
       let confidences = nwk_parsed.confidences();
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;

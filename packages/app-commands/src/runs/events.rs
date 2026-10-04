@@ -4,9 +4,10 @@ use eyre::{Report, WrapErr};
 use parking_lot::Mutex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::fs::{self, File, OpenOptions};
-use std::io::{ErrorKind, Write};
+use std::fs::{File, OpenOptions};
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use treetime_utils::io::fs::read_file_to_string_if_exists;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use treetime_utils::make_error;
 
@@ -23,10 +24,8 @@ pub struct RunEvent {
 }
 
 pub fn read_events(path: &Path, from: usize) -> Result<Vec<RunEvent>, Report> {
-  let text = match fs::read_to_string(path) {
-    Ok(text) => text,
-    Err(err) if err.kind() == ErrorKind::NotFound => return Ok(vec![]),
-    Err(err) => return Err(Report::new(err).wrap_err(format!("When reading events from '{}'", path.display()))),
+  let Some(text) = read_file_to_string_if_exists(path)? else {
+    return Ok(vec![]);
   };
   text
     .lines()

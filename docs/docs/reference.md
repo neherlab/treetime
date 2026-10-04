@@ -108,7 +108,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 ###### **Options:**
 
 * `--config <CONFIG>`
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — Only for vcf input: fasta file of the sequence the VCF was mapped to
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — CSV/TSV file with metadata including sampling dates
@@ -396,7 +396,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 ###### **Options:**
 
 * `--config <CONFIG>`
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
@@ -614,7 +614,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 ###### **Options:**
 
 * `--config <CONFIG>`
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
@@ -727,7 +727,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
    List of node names to remove from the tree, comma-separated (,)
 
-   Use --prune-nodes-list-delimiter to specify a different delimiter.
+   Surrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.
 * `--prune-nodes-list-delimiter <DELIMITER>` — Name separator for `--prune-nodes-list`
 
    String used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.
@@ -735,7 +735,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
   Default value: `,`
 * `-N`, `--prune-nodes-list-file <FILEPATH>` — File containing list of node names to prune
 
-   Path to a file containing node names to remove from the tree, newline-delimited (\n).
+   Path to a file containing node names to remove from the tree, newline-delimited (\n). Surrounding whitespace is trimmed and empty names are ignored.
 
    Use '-' to read from standard input (stdin).
 
@@ -758,7 +758,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 ###### **Options:**
 
 * `--config <CONFIG>`
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet
@@ -972,7 +972,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 ###### **Options:**
 
 * `--config <CONFIG>`
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — Only for vcf input: fasta file of the sequence the VCF was mapped to
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — CSV/TSV file with metadata including sampling dates
@@ -1177,7 +1177,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 ###### **Options:**
 
 * `--config <CONFIG>`
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. With no files, reads uncompressed FASTA from standard input
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet

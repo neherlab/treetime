@@ -23,9 +23,9 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::{nwk_read_file, nwk_read_str};
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::fasta::fasta_read_file;
+  use treetime_io::nwk::{nwk_read, nwk_read_file};
   use treetime_primitives::{AlignmentRecord, Seq};
   use treetime_utils::sync::random::get_random_number_generator;
   use treetime_utils::{o, vec_of_owned};
@@ -158,7 +158,7 @@ mod tests {
         MutationTrack::Nucleotide => alphabet.clone(),
         MutationTrack::AminoAcid(_) => Alphabet::new(AlphabetName::Aa)?,
       };
-      let sequences = read_many_fasta_path(&[root.join(alignment)], &read_alphabet)?
+      let sequences = fasta_read_file(root.join(alignment), &read_alphabet)?
         .into_iter()
         .map(|mut record| {
           record.seq = sanitize_to_alphabet(&record.seq, &alphabet).0;
@@ -280,10 +280,10 @@ mod tests {
       impute: bool,
     ) -> Result<(BTreeMap<String, Vec<String>>, BTreeMap<String, String>), Report> {
       let alphabet = Alphabet::default();
-      let parse = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root;")?;
+      let parse = nwk_read(b"((A:0.1,B:0.1)AB:0.1,C:0.1)root;".as_slice())?;
       let names = parse.names();
       let graph = &parse.graph;
-      let sequences = read_many_fasta_str(">A\nAKGANC\n>B\nAGGTAC\n>C\nAGGTAC\n", &alphabet)?
+      let sequences = fasta_read(b">A\nAKGANC\n>B\nAGGTAC\n>C\nAGGTAC\n".as_slice(), &alphabet)?
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();

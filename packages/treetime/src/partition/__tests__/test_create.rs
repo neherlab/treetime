@@ -83,7 +83,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, Seq};
 
     pub(super) type GtrOracle = fn(&Input) -> Result<GTR, Report>;
@@ -96,7 +96,7 @@ mod tests {
 
     impl Input {
       pub(super) fn star(sequences: &[(&str, &str)]) -> Result<Self, Report> {
-        let nwk_parsed = nwk_read_str("(A:0.1,B:0.1,C:0.1)root;")?;
+        let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
         let names = nwk_parsed.names();
         let aln = sequences
           .iter()

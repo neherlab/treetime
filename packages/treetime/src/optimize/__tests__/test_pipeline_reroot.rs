@@ -169,8 +169,8 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::fasta::read_many_fasta_path;
-    use treetime_io::nwk::{NwkParse, nwk_read_file, nwk_read_str};
+    use treetime_io::fasta::fasta_read_file;
+    use treetime_io::nwk::{NwkParse, nwk_read, nwk_read_file};
     use treetime_primitives::AlignmentRecord;
 
     pub(super) type Loaded = (
@@ -188,7 +188,7 @@ mod tests {
     pub(super) fn load_with_unary_root() -> Result<Loaded, Report> {
       let newick = read_to_string(workspace_root().join("data/flu/h3n2/20/tree.nwk"))?;
       let subtree = newick.trim_end().trim_end_matches(';');
-      loaded(nwk_read_str(format!("({subtree}:0.001)UNARYROOT;"))?)
+      loaded(nwk_read(format!("({subtree}:0.001)UNARYROOT;").as_bytes())?)
     }
 
     pub(super) fn params_with(reroot_spec: Option<RerootSpec>) -> OptimizeParams {
@@ -245,7 +245,7 @@ mod tests {
       let alphabet = Alphabet::default();
       let names = nwk_parsed.names();
       let aln = workspace_root().join("data/flu/h3n2/20/aln.fasta.xz");
-      let sequences: Vec<AlignmentRecord> = read_many_fasta_path(&[aln.to_str().expect("utf-8 path")], &alphabet)?
+      let sequences: Vec<AlignmentRecord> = fasta_read_file(&aln, &alphabet)?
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();

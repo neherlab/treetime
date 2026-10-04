@@ -14,7 +14,7 @@ pub(super) mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::fasta::fasta_read;
   use treetime_primitives::AlignmentRecord;
 
   pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -23,7 +23,7 @@ pub(super) mod tests {
 
   pub(crate) fn gap_free_alignment() -> Result<Vec<AlignmentRecord>, Report> {
     Ok(
-      read_many_fasta_str(
+      fasta_read(
         indoc! {r#"
       >A
       ACGTACGTACGTACGT
@@ -33,7 +33,8 @@ pub(super) mod tests {
       ACGTACGTACGTACGG
       >D
       ACGTACGTACGTACGC
-    "#},
+    "#}
+        .as_bytes(),
         &*NUC_ALPHABET,
       )?
       .into_iter()

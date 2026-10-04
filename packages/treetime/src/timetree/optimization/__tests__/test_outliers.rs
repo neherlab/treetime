@@ -7,11 +7,11 @@ mod tests {
   use helpers::{header, row};
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   #[test]
   fn test_report_outliers_lists_dated_outliers_by_descending_residual() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:1,B:2,C:3,D:4,E:5,F:6)root;")?;
+    let nwk_parsed = nwk_read(b"(A:1,B:2,C:3,D:4,E:5,F:6)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("named node exists");
@@ -60,7 +60,7 @@ mod tests {
 
   #[test]
   fn test_report_outliers_is_silent_without_outliers() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:1,B:2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:1,B:2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let log = RecordingLog::default();

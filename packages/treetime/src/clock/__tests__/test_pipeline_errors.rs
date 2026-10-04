@@ -11,7 +11,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::date::{DateConstraint, DatesMap};
   use treetime_utils::error::report_to_string;
   use treetime_utils::o;
@@ -25,7 +25,7 @@ mod tests {
     #[case] dates: BTreeMap<String, f64>,
     #[case] expected: &str,
   ) -> Result<(), Report> {
-    let parsed = nwk_read_str("((A:0.1,B:0.2)X:0.1,C:0.3)root;")?;
+    let parsed = nwk_read(b"((A:0.1,B:0.2)X:0.1,C:0.3)root;".as_slice())?;
     let names = parsed.names();
     let dates: DatesMap = dates
       .into_iter()

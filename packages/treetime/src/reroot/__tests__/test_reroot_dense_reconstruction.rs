@@ -11,17 +11,17 @@ mod tests {
   use crate::test_utils::{NUC_ALPHABET, find_node_key_by_name};
   use eyre::Report;
   use indoc::indoc;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   #[test]
   fn test_reroot_dense_reconstruction_matches_a_fresh_reconstruction_on_the_rerooted_tree() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {"
         >A
         ACGTACGTACGTACGT
@@ -31,7 +31,8 @@ mod tests {
         ACTTACGTACGAACGG
         >D
         ACTTACGTACGAACGC
-      "},
+      "}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()

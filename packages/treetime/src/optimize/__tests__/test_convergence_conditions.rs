@@ -13,7 +13,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   #[rustfmt::skip]
   #[rstest]
@@ -25,7 +25,7 @@ mod tests {
     #[case] expected_old_weight: f64,
   ) -> Result<(), Report> {
     let damping = 0.75;
-    let nwk_parsed = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:1.0,B:1.0)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -48,7 +48,7 @@ mod tests {
     let expected_old_weight = pow(damping, iteration + 1);
     assert!(expected_old_weight > DAMPING_FLOOR);
 
-    let nwk_parsed = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:1.0,B:1.0)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -68,7 +68,7 @@ mod tests {
   #[test]
   fn test_convergence_conditions_converged_reason() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -99,7 +99,7 @@ mod tests {
   #[test]
   fn test_convergence_conditions_worsened_reverts_to_best() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -141,7 +141,7 @@ mod tests {
   #[test]
   fn test_convergence_conditions_worsened_rollback_reproduces_best_lh() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -179,7 +179,7 @@ mod tests {
   #[test]
   fn test_convergence_conditions_oscillation_detection() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -211,7 +211,7 @@ mod tests {
   #[test]
   fn test_convergence_conditions_exhausts_max_iter() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -242,7 +242,7 @@ mod tests {
   #[test]
   fn test_convergence_conditions_dense_only_converges() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

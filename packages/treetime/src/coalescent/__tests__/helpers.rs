@@ -11,7 +11,7 @@ pub(crate) mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::o;
 
   const TREE_NWK: &str = "((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;";
@@ -24,7 +24,7 @@ pub(crate) mod tests {
       o!("leaf2") => Some(DateConstraint::exact(2010.0)),
       o!("leaf3") => Some(DateConstraint::exact(2012.0)),
     };
-    let nwk_parsed = nwk_read_str(TREE_NWK)?;
+    let nwk_parsed = nwk_read(TREE_NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
@@ -54,7 +54,7 @@ pub(crate) mod tests {
   }
 
   pub(crate) fn graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<(Graph, DateConstraints), Report> {
-    let nwk_parsed = nwk_read_str(tree_nwk)?;
+    let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let constraints = load_date_constraints(dates, &graph, &names, &NoopProgress)?;

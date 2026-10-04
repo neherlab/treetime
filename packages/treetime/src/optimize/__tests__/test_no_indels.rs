@@ -22,19 +22,19 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
 
   #[test]
   fn test_no_indels_drops_indel_contribution_from_likelihood() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_with_names = nwk_parsed.names();
     let mut graph_with = nwk_parsed.graph;
     let mut branch_lengths_with = nwk_parsed.branch_lengths;
     let mut reconstruction_with = setup_reconstruction(&graph_with, &graph_with_names, &aln, &mut branch_lengths_with)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_without_names = nwk_parsed.names();
     let mut graph_without = nwk_parsed.graph;
     let mut branch_lengths_without = nwk_parsed.branch_lengths;
@@ -99,7 +99,7 @@ mod tests {
   #[test]
   fn test_no_indels_optimizer_ignores_indel_counts() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -139,13 +139,13 @@ mod tests {
   #[test]
   fn test_no_indels_matches_no_indel_data() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_no_flag_names = nwk_parsed.names();
     let mut graph_no_flag = nwk_parsed.graph;
     let mut branch_lengths_nf = nwk_parsed.branch_lengths;
     let reconstruction_nf = setup_reconstruction(&graph_no_flag, &graph_no_flag_names, &aln, &mut branch_lengths_nf)?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_flag_names = nwk_parsed.names();
     let mut graph_flag = nwk_parsed.graph;
     let mut branch_lengths_f = nwk_parsed.branch_lengths;
@@ -229,7 +229,7 @@ mod tests {
   #[trace]
   fn test_no_indels_initial_guess_ignores_indel_counts(#[case] mode: InitialGuessMode,
   ) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_with_indel_names = nwk_parsed.names();
     let graph_with_indel = nwk_parsed.graph;
     let mut branch_lengths_with_indel = nwk_parsed.branch_lengths;
@@ -241,7 +241,7 @@ mod tests {
       &indels,
     );
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_without_indel_names = nwk_parsed.names();
     let graph_without_indel = nwk_parsed.graph;
     let mut branch_lengths_without_indel = nwk_parsed.branch_lengths;

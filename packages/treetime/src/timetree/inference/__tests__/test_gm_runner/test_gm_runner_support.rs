@@ -15,8 +15,8 @@ pub(super) mod support {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::dates_csv::{DatesMap, read_dates};
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
+  use treetime_io::dates_csv::{DatesMap, metadata_read_file};
+  use treetime_io::fasta::{FastaRecord, fasta_read_file};
 
   const FIXTURES_DIR: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -88,19 +88,20 @@ pub(super) mod support {
   pub(crate) fn load_dates_for_dataset(dataset: &str) -> Result<DatesMap, Report> {
     let input = &INPUTS[dataset];
     let metadata_path = PROJECT_ROOT.join(&input.metadata_path);
-    read_dates(
+    metadata_read_file(
       &metadata_path,
       &[',', '\t', ';'],
       &treetime_io::csv::default_name_candidates(),
-      &input.name_column,
-      &None,
+      input.name_column.as_deref(),
+      None,
     )
+    .and_then(|table| table.dates())
   }
 
   pub(crate) fn load_alignment_for_dataset(dataset: &str) -> Result<Vec<FastaRecord>, Report> {
     let input = &INPUTS[dataset];
     let aln_path = PROJECT_ROOT.join(&input.aln_path);
-    read_many_fasta_path(&[&aln_path], &*ALPHABET)
+    fasta_read_file(aln_path, &*ALPHABET)
   }
 
   pub(crate) fn extract_node_times(

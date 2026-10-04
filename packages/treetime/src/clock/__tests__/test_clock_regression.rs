@@ -19,7 +19,7 @@ mod tests {
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
     let t: f64 = dates.values().sum();
@@ -38,7 +38,7 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    let nwk_parsed = nwk_read_str(TREE_4)?;
+    let nwk_parsed = nwk_read(TREE_4.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -192,7 +192,7 @@ mod tests {
       keep_root: bool,
       prev_clock_rate: Option<f64>,
     ) -> Result<(ClockModel, Vec<(String, Option<f64>, f64, bool)>), Report> {
-      let nwk_parsed = nwk_read_str(tree)?;
+      let nwk_parsed = nwk_read(tree.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -255,7 +255,7 @@ mod tests {
       dates: &BTreeMap<String, f64>,
       options: &ClockVarianceParams,
     ) -> Result<ClockRegression, Report> {
-      let nwk_parsed = nwk_read_str(tree)?;
+      let nwk_parsed = nwk_read(tree.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let times = leaf_times(&names, &graph, dates);

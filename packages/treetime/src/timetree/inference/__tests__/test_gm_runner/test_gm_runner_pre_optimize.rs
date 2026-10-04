@@ -12,7 +12,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   #[rustfmt::skip]
@@ -21,7 +21,7 @@ mod tests {
   #[trace]
   fn test_gm_runner_pre_optimize_changes_branch_lengths_and_dates_every_node(#[case] dataset: &str) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
-    let nwk_parsed = nwk_read_str(case.rerooted_tree_nwk())?;
+    let nwk_parsed = nwk_read(case.rerooted_tree_nwk().as_bytes())?;
     let names = nwk_parsed.names();
     let input_branch_lengths = nwk_parsed.branch_lengths.clone();
     let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?

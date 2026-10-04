@@ -7,15 +7,15 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use indoc::indoc;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   #[test]
   fn test_dense_sparse_initial_log_lh_equivalence() -> Result<(), Report> {
     let aln = super::super::test_dense_sparse_equivalence_support::tests::gap_free_alignment()?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
     let branch_lengths_dense = nwk_parsed.branch_lengths;
@@ -24,7 +24,7 @@ mod tests {
       dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&branch_lengths_dense))?;
     let log_lh_dense = log_lh_dense.value();
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
     let branch_lengths_sparse = nwk_parsed.branch_lengths;
@@ -40,7 +40,7 @@ mod tests {
 
   #[test]
   fn test_dense_sparse_initial_log_lh_equivalence_with_mutations() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       AAAAAAAAAAAAAAAA
@@ -50,14 +50,15 @@ mod tests {
       GGGGGGGGGGGGGGGG
       >D
       TTTTTTTTTTTTTTTT
-    "#},
+    "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
     let branch_lengths_dense = nwk_parsed.branch_lengths;
@@ -66,7 +67,7 @@ mod tests {
       dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&branch_lengths_dense))?;
     let log_lh_dense = log_lh_dense.value();
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
     let branch_lengths_sparse = nwk_parsed.branch_lengths;

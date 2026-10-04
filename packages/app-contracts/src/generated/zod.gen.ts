@@ -1052,8 +1052,8 @@ export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
  * Sequence alignment input shared by all commands that read sequences.
  *
  * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
- * from standard input.
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
  */
 export const zTimetreeConfig = z.strictObject({
   alignment: z.array(z.string()).optional().default([]),
@@ -1203,8 +1203,8 @@ export const zOptimizeRerootMethod = z.enum(['min-dev']);
  * Sequence alignment input shared by all commands that read sequences.
  *
  * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
- * from standard input.
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
  */
 export const zOptimizeConfig = z.strictObject({
   alignment: z.array(z.string()).optional().default([]),
@@ -1264,8 +1264,8 @@ export const zPruneOutputSelection = z.enum([
  * Sequence alignment input shared by all commands that read sequences.
  *
  * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
- * from standard input.
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
  */
 export const zPruneConfig = z.strictObject({
   alignment: z.array(z.string()).optional().default([]),
@@ -1335,8 +1335,8 @@ export const zSampleMode = z.enum([
  * Sequence alignment input shared by all commands that read sequences.
  *
  * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
- * from standard input.
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
  */
 export const zAncestralConfig = z.strictObject({
   alignment: z.array(z.string()).optional().default([]),
@@ -1436,8 +1436,8 @@ export const zClockRegressionArgs = z.strictObject({
  * Sequence alignment input shared by all commands that read sequences.
  *
  * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA
- * from standard input.
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
  */
 export const zClockConfig = z.strictObject({
   alignment: z.array(z.string()).optional().default([]),

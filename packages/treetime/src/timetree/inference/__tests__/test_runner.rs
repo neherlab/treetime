@@ -17,7 +17,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_write_str};
 
   const DYADIC_CLOCK_RATE: f64 = 0.5;
 
@@ -25,7 +25,7 @@ mod tests {
 
   #[test]
   fn test_create_branch_distributions_input_mode_gives_each_edge_a_point_at_its_time_length() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:1.5,B:3.0)AB:4.5,C:6.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:1.5,B:3.0)AB:4.5,C:6.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -48,7 +48,7 @@ mod tests {
 
   #[test]
   fn test_input_mode_newick_output_uses_time_lengths() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.003,B:0.006)AB:0.009,C:0.012)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.003,B:0.006)AB:0.009,C:0.012)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -63,7 +63,13 @@ mod tests {
         (key, branches[&key].time_length)
       })
       .collect();
-    let actual = nwk_write_str(&graph, &names, &time_lengths, &NwkWriteOptions::default())?;
+    let actual = nwk_write_str(
+      &graph,
+      &names,
+      &time_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
 
     let expected = "((A:3,B:6)AB:9,C:12)root;";
     assert_eq!(expected, actual);
@@ -73,7 +79,7 @@ mod tests {
 
   #[test]
   fn test_input_mode_gamma_scales_time_length() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:3.0)I:1.5)root;")?;
+    let nwk_parsed = nwk_read(b"((A:3.0)I:1.5)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
@@ -95,7 +101,7 @@ mod tests {
 
   #[test]
   fn test_input_mode_edge_without_branch_length_has_no_branch_likelihood() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A)root;")?;
+    let nwk_parsed = nwk_read(b"(A)root;".as_slice())?;
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let edge_key = graph
@@ -186,7 +192,7 @@ mod tests {
 
     impl BlendFixture {
       pub(super) fn new() -> Result<Self, Report> {
-        let nwk_parsed = nwk_read_str(BLEND_TREE)?;
+        let nwk_parsed = nwk_read(BLEND_TREE.as_bytes())?;
         let names = nwk_parsed.names();
         let graph = nwk_parsed.graph;
         let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");

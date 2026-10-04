@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TreetimeOptimizeArgsRaw",
-  "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+  "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
   "type": "object",
   "properties": {
     "alignment": {
-      "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+      "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
       "type": "array",
       "items": {
         "type": "string"

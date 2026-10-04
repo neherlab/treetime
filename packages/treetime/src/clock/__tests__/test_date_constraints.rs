@@ -16,12 +16,12 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::io::json::json_read_str;
 
   #[test]
   fn test_load_date_constraints_success_three_leaves() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -47,7 +47,7 @@ mod tests {
 
   #[test]
   fn test_load_date_constraints_mixed_leaves() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -74,7 +74,7 @@ mod tests {
 
   #[test]
   fn test_load_date_constraints_range() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -100,7 +100,7 @@ mod tests {
 
   #[test]
   fn test_load_date_constraints_internal_node() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -128,7 +128,7 @@ mod tests {
 
   #[test]
   fn test_derive_bad_branches_over_loaded_dates_marks_only_the_undated_leaf() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -170,7 +170,7 @@ mod tests {
 
   #[test]
   fn test_derive_bad_branches_over_loaded_dates_marks_a_subtree_whose_children_are_all_bad() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)ABCD:0.1,E:0.2)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)ABCD:0.1,E:0.2)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -216,7 +216,7 @@ mod tests {
 
   #[test]
   fn test_load_date_constraints_boundary_exactly_three_leaves() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -234,7 +234,7 @@ mod tests {
 
   #[test]
   fn test_load_date_constraints_date_with_none_value() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -262,8 +262,9 @@ mod tests {
 
   #[test]
   fn test_derive_bad_branches_over_loaded_dates_stops_at_the_first_dated_descendant() -> Result<(), Report> {
-    let nwk_parsed =
-      nwk_read_str("((((((A:0.1,B:0.1)L1:0.1,C:0.1)L2:0.1,D:0.1)L3:0.1,E:0.1)L4:0.1,F:0.1)L5:0.1,G:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read(
+      b"((((((A:0.1,B:0.1)L1:0.1,C:0.1)L2:0.1,D:0.1)L3:0.1,E:0.1)L4:0.1,F:0.1)L5:0.1,G:0.1)root:0.0;".as_slice(),
+    )?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -320,7 +321,7 @@ mod tests {
   #[test]
   fn test_load_date_constraints_wide_tree() -> Result<(), Report> {
     let nwk_parsed =
-      nwk_read_str("(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1,G:0.1,H:0.1,I:0.1,J:0.1,K:0.1,L:0.1)root:0.0;")?;
+      nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1,G:0.1,H:0.1,I:0.1,J:0.1,K:0.1,L:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -358,7 +359,7 @@ mod tests {
 
   #[test]
   fn test_load_date_constraints_mixed_ranges_and_points() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -386,7 +387,7 @@ mod tests {
 
   #[test]
   fn test_load_date_constraints_internal_node_with_range() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {
@@ -414,7 +415,7 @@ mod tests {
 
   #[test]
   fn test_load_date_constraints_negative_time() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2,C:0.15)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let dates: DatesMap = btreemap! {

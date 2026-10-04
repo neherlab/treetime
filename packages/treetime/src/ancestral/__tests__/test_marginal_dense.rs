@@ -20,8 +20,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::sync::random::get_random_number_generator;
@@ -70,7 +70,7 @@ mod tests {
   }
 
   fn run_dense_lh_for_newick(newick: &str, aln: &[AlignmentRecord], gtr: GTR) -> Result<f64, Report> {
-    let nwk_parsed = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read(newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -84,7 +84,7 @@ mod tests {
   static TREE_7_TAXON: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
   static ALN_7_TAXON: LazyLock<Vec<AlignmentRecord>> = LazyLock::new(|| {
-    read_many_fasta_str(
+    fasta_read(
       indoc! {r#"
       >root
       TCAGCCATGTATTG--
@@ -100,7 +100,8 @@ mod tests {
       CCGGCGATGTRTTG--
       >D
       TCGGCCGTGTRTTG--
-    "#},
+    "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )
     .unwrap()
@@ -111,7 +112,7 @@ mod tests {
 
   #[test]
   fn test_ancestral_reconstruction_marginal_dense() -> Result<(), Report> {
-    let expected = read_many_fasta_str(
+    let expected = fasta_read(
       indoc! {r#"
       >root
       TCGGCGCTGTATTG--
@@ -119,14 +120,15 @@ mod tests {
       ACATCGCTGTA--G--
       >CD
       TCGGCGGTGTATTG--
-    "#},
+    "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(|fasta| (fasta.seq_name, fasta.seq))
     .collect::<BTreeMap<_, _>>();
 
-    let nwk_parsed = nwk_read_str(TREE_7_TAXON)?;
+    let nwk_parsed = nwk_read(TREE_7_TAXON.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -157,7 +159,7 @@ mod tests {
 
   #[test]
   fn test_marginal_dense_probability_normalization() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_7_TAXON)?;
+    let nwk_parsed = nwk_read(TREE_7_TAXON.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -190,7 +192,7 @@ mod tests {
 
   #[test]
   fn test_marginal_dense_update_is_idempotent() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_7_TAXON)?;
+    let nwk_parsed = nwk_read(TREE_7_TAXON.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -215,7 +217,7 @@ mod tests {
 
   #[test]
   fn test_marginal_dense_log_lh_root_invariance_reversible_model() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACGTACGTACGTACGT
@@ -225,7 +227,8 @@ mod tests {
       ACGTACGTACGTACGG
       >D
       ACGTACGTACGTACGC
-    "#},
+    "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -260,7 +263,7 @@ mod tests {
     let pi = array![0.9, 0.06, 0.02, 0.02];
     let gtr = GTR::builder().n_states(alphabet.n_canonical()).pi(pi).mu(mu).build()?;
 
-    let nwk_parsed = nwk_read_str("((A:0.6,B:0.3):0.1,C:0.2)root:0.001;")?;
+    let nwk_parsed = nwk_read(b"((A:0.6,B:0.3):0.1,C:0.2)root:0.001;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -270,11 +273,13 @@ mod tests {
     for &state_a in &states {
       for &state_b in &states {
         for &state_c in &states {
-          let aln: Vec<AlignmentRecord> =
-            read_many_fasta_str(format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n"), &*NUC_ALPHABET)?
-              .into_iter()
-              .map(AlignmentRecord::from)
-              .collect();
+          let aln: Vec<AlignmentRecord> = fasta_read(
+            format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n").as_bytes(),
+            &*NUC_ALPHABET,
+          )?
+          .into_iter()
+          .map(AlignmentRecord::from)
+          .collect();
           let (log_lh, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr.clone())?;
           total_lh += log_lh.exp();
         }

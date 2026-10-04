@@ -187,8 +187,7 @@ mod tests {
     assert_error!(
       AppSettingsStore::open(dir.path()).unwrap().read(),
       format!(
-        "When reading the settings file '{}': When reading JSON string: When reading JSON: When parsing JSON: unknown \
-         variant `blue`, expected one of `system`, `light`, `dark` at line 1 column 23",
+        "When reading the settings file '{}': When parsing JSON: unknown variant `blue`, expected one of `system`, `light`, `dark` at line 1 column 23",
         path.display()
       )
     );

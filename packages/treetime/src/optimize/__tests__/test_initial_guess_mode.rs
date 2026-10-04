@@ -25,8 +25,8 @@ pub(super) mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::{FastaRecord, fasta_read};
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::Seq;
 
@@ -43,7 +43,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_detects_nan_from_newick() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_WITHOUT_LENGTHS)?;
+    let nwk_parsed = nwk_read(TREE_WITHOUT_LENGTHS.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -53,7 +53,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_detects_explicit_nan() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let nwk_parsed = nwk_read(TREE_WITH_LENGTHS.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -65,7 +65,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_detects_negative_branch_length() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let nwk_parsed = nwk_read(TREE_WITH_LENGTHS.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -76,7 +76,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_describes_all_invalid_edges_and_warning() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let nwk_parsed = nwk_read(TREE_WITH_LENGTHS.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -97,7 +97,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_initial_guess_mode_no_missing_when_all_finite() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_WITH_LENGTHS)?;
+    let nwk_parsed = nwk_read(TREE_WITH_LENGTHS.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -528,7 +528,7 @@ pub(super) mod tests {
     > {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln: Vec<AlignmentRecord> = test_alignment()?.into_iter().map(AlignmentRecord::from).collect();
-      let nwk_parsed = nwk_read_str(newick)?;
+      let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -544,7 +544,7 @@ pub(super) mod tests {
 
     fn test_alignment() -> Result<Vec<FastaRecord>, Report> {
       let alphabet = Alphabet::default();
-      read_many_fasta_str(
+      fasta_read(
         indoc! {r#"
           >A
           AAAACCCCGGGGTTTT
@@ -552,7 +552,8 @@ pub(super) mod tests {
           CCCCGGGGTTTTAAAA
           >C
           GGGGTTTTAAAACCCC
-        "#},
+        "#}
+        .as_bytes(),
         &alphabet,
       )
     }

@@ -143,7 +143,7 @@ pub struct TreetimePruneArgsRaw {
   ///
   /// List of node names to remove from the tree, comma-separated (,)
   ///
-  /// Use --prune-nodes-list-delimiter to specify a different delimiter.
+  /// Surrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.
   #[cfg_attr(
     feature = "clap",
     clap(long, short = 'n', value_name = "NODE_NAMES", help_heading = "Pruning")
@@ -162,7 +162,7 @@ pub struct TreetimePruneArgsRaw {
 
   /// File containing list of node names to prune
   ///
-  /// Path to a file containing node names to remove from the tree, newline-delimited (\n).
+  /// Path to a file containing node names to remove from the tree, newline-delimited (\n). Surrounding whitespace is trimmed and empty names are ignored.
   ///
   /// Use '-' to read from standard input (stdin).
   ///

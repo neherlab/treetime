@@ -13,12 +13,12 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
   #[test]
   fn test_discrete_marginal_new_maps_observed_and_missing_profiles() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph: Graph = nwk_parsed.graph;
     let traits = btreemap! {
@@ -41,7 +41,7 @@ mod tests {
 
   #[test]
   fn test_discrete_marginal_new_rejects_tree_leaf_missing_from_metadata() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph: Graph = nwk_parsed.graph;
     let traits = btreemap! {
@@ -56,7 +56,7 @@ mod tests {
 
   #[test]
   fn test_discrete_marginal_new_accepts_metadata_name_missing_from_tree() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph: Graph = nwk_parsed.graph;
     let traits = btreemap! {
@@ -159,7 +159,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::nwk::nwk_read;
     use treetime_utils::pretty_assert_abs_diff_eq;
 
     pub(super) fn make_partition(
@@ -206,7 +206,7 @@ mod tests {
       ),
       Report,
     > {
-      let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)inner:0.01,C:0.25)root;")?;
+      let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)inner:0.01,C:0.25)root;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;

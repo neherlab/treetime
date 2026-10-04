@@ -56,7 +56,7 @@ mod tests {
     use eyre::{OptionExt, Report};
     use std::path::PathBuf;
     use std::sync::LazyLock;
-    use treetime_io::fasta::read_many_fasta_path;
+    use treetime_io::fasta::fasta_read_file;
     use treetime_io::nwk::nwk_read_file;
     use treetime_primitives::AlignmentRecord;
 
@@ -72,7 +72,7 @@ mod tests {
       let alphabet = Alphabet::default();
       let parse = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
       let sequences: Vec<AlignmentRecord> =
-        read_many_fasta_path(&[PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz")], &alphabet)?
+        fasta_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz"), &alphabet)?
           .into_iter()
           .map(AlignmentRecord::from)
           .collect();

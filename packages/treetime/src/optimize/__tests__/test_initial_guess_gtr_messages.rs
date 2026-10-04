@@ -16,15 +16,15 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::{FastaRecord, fasta_read};
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
   fn biased_alignment() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
-    read_many_fasta_str(
+    fasta_read(
       indoc! {r#"
         >A
         AAAAAAAAAAAAAAAA
@@ -34,7 +34,8 @@ mod tests {
         AAAAAAAAAAAAAAAA
         >D
         CCCCCCCCCCCCCCCC
-      "#},
+      "#}
+      .as_bytes(),
       &alphabet,
     )
   }
@@ -68,7 +69,7 @@ mod tests {
       ..Default::default()
     })?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_stale_names = nwk_parsed.names();
     let graph_stale = nwk_parsed.graph;
     let mut branch_lengths_stale = nwk_parsed.branch_lengths;
@@ -94,7 +95,7 @@ mod tests {
     }
     let bl_stale = get_branch_lengths(&graph_stale, &branch_lengths_stale);
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_fresh_names = nwk_parsed.names();
     let graph_fresh = nwk_parsed.graph;
     let mut branch_lengths_fresh = nwk_parsed.branch_lengths;
@@ -138,7 +139,7 @@ mod tests {
       ..Default::default()
     })?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -164,7 +165,7 @@ mod tests {
     }
     let bl_first = get_branch_lengths(&graph, &branch_lengths);
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph2_names = nwk_parsed.names();
     let graph2 = nwk_parsed.graph;
     let mut branch_lengths2 = nwk_parsed.branch_lengths;

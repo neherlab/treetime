@@ -1,13 +1,12 @@
 use crate::commands::prune::args::TreetimePruneArgs;
+use crate::commands::shared::alignment::read_alignment;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
-use app_output::gtr::write_gtr_json;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::OutputSelection;
 use app_output::prune_result::{PruneNodeOut, PruneOutputMaps};
 use app_output::prune_tree_output::write_prune_tree_outputs;
 use eyre::Report;
-use itertools::Itertools;
 use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -23,12 +22,12 @@ use treetime::{make_error, make_report};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::fasta::read_many_fasta_path;
 use treetime_io::graph::TreeWriteKind;
+use treetime_io::name_list::{name_list_read_file, name_list_read_str};
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
-use treetime_io::parse_delimited::{parse_delimited_file, parse_delimited_str};
 use treetime_primitives::AlignmentRecord;
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_prune(
   args: &TreetimePruneArgs,
@@ -53,7 +52,7 @@ pub fn run_prune(
 
   let needs_sequences = args.prune_empty || args.merge_shared_mutations;
   let sequences = if needs_sequences && !args.alignment.alignment.is_empty() {
-    let records = read_many_fasta_path(&args.alignment.alignment, &alphabet)?;
+    let records = read_alignment(&args.alignment.alignment, &alphabet)?;
     Some(records.into_iter().map(AlignmentRecord::from).collect())
   } else {
     None
@@ -127,7 +126,7 @@ pub fn run_prune(
     match gtr.as_ref() {
       Some(gtr) => {
         let gtr_output = GtrOutput::builder().gtr(gtr).model_name(GtrModelName::JC69).build();
-        write_gtr_json(&gtr_output, path)?;
+        json_write_file(path, &gtr_output, JsonPretty(true))?;
       },
       None if args.output_gtr.is_some() => {
         return make_error!(
@@ -213,15 +212,17 @@ fn parse_node_names(
   let mut node_names = btreeset! {};
 
   if let Some(prune_nodes_list) = prune_nodes_list {
-    let names: Vec<String> =
-      parse_delimited_str(prune_nodes_list, ascii_delimiter(prune_nodes_list_delimiter)?).try_collect()?;
-    node_names.extend(names);
+    node_names.extend(name_list_read_str(
+      prune_nodes_list,
+      ascii_delimiter(prune_nodes_list_delimiter)?,
+    )?);
   }
 
   if let Some(prune_nodes_list_file) = prune_nodes_list_file {
-    let names: Vec<String> =
-      parse_delimited_file(prune_nodes_list_file, ascii_delimiter(prune_nodes_list_file_delimiter)?)?.try_collect()?;
-    node_names.extend(names);
+    node_names.extend(name_list_read_file(
+      prune_nodes_list_file,
+      ascii_delimiter(prune_nodes_list_file_delimiter)?,
+    )?);
   }
 
   Ok(node_names)

@@ -1,3 +1,4 @@
+use crate::yaml::yaml_read_str;
 use bon::bon;
 use color_eyre::Section;
 use eyre::Report;
@@ -7,17 +8,12 @@ use saphyr::{LoadableYamlNode, MarkedYaml, Scalar, YamlData};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde_saphyr::DuplicateKeyPolicy;
 use std::collections::BTreeMap;
 use std::fmt::Display;
 use treetime_utils::make_report;
 
 pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
-  let options = serde_saphyr::options! {
-    duplicate_keys: DuplicateKeyPolicy::Error,
-    reject_non_finite_typeless_float: true,
-  };
-  match serde_saphyr::from_str_with_options::<Value>(text, options) {
+  match yaml_read_str::<Value>(text) {
     Ok(value) => Ok(value),
     Err(err) => {
       render_and_bail(

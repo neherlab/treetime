@@ -14,15 +14,15 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   #[test]
   fn test_get_mutation_counts_fitch() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACATCGCCNNA--GAC
@@ -32,14 +32,15 @@ mod tests {
       CCGGCGATGTRTTG--
       >D
       TCGGCCGTGTRTTG--
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -66,7 +67,7 @@ mod tests {
 
   #[test]
   fn test_infer_gtr_fitch() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACATCGCCNNA--GAC
@@ -76,14 +77,15 @@ mod tests {
       CCGGCGATGTRTTG--
       >D
       TCGGCCGTGTRTTG--
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

@@ -27,8 +27,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::assert_error;
 
@@ -181,12 +181,12 @@ mod tests {
 
     impl SusceptibilityFixture {
       pub(super) fn new() -> Result<Self, Report> {
-        let nwk_parsed = nwk_read_str("((A:0.01,B:0.02)AB:0.01,(C:0.015,D:0.01)CD:0.02)root;")?;
+        let nwk_parsed = nwk_read(b"((A:0.01,B:0.02)AB:0.01,(C:0.015,D:0.01)CD:0.02)root;".as_slice())?;
         let names = nwk_parsed.names();
         let graph = nwk_parsed.graph;
         let branch_lengths = nwk_parsed.branch_lengths;
         let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-        let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+        let aln: Vec<AlignmentRecord> = fasta_read(
           indoc! {"
             >A
             ACGTACGTACGTACGTACGTACGT
@@ -196,7 +196,8 @@ mod tests {
             ACGTTCGTACGTACGTACGTACGT
             >D
             ACGTTCGTACGTACGTAGGTACGT
-          "},
+          "}
+          .as_bytes(),
           &alphabet,
         )?
         .into_iter()

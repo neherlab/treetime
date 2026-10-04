@@ -102,8 +102,8 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::fasta::read_many_fasta_str;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::fasta::fasta_read;
+    use treetime_io::nwk::nwk_read;
     use treetime_primitives::AlignmentRecord;
 
     pub(super) struct Input {
@@ -115,9 +115,9 @@ mod tests {
 
     impl Input {
       pub(super) fn new() -> Result<Self, Report> {
-        let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;")?;
+        let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
         let names = nwk_parsed.names();
-        let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+        let aln: Vec<AlignmentRecord> = fasta_read(
           indoc! {r#"
           >A
           ACGTACGTACGTACGT
@@ -127,7 +127,8 @@ mod tests {
           ACCTACGTTCGTACGG
           >D
           ACCTACGTTCGAACGC
-        "#},
+        "#}
+          .as_bytes(),
           &Alphabet::new(AlphabetName::Nuc)?,
         )?
         .into_iter()

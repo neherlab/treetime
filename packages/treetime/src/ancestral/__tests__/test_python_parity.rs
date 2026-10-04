@@ -20,8 +20,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::{read_many_fasta_path, read_many_fasta_str};
-  use treetime_io::nwk::{nwk_read_file, nwk_read_str};
+  use treetime_io::fasta::{fasta_read, fasta_read_file};
+  use treetime_io::nwk::{nwk_read, nwk_read_file};
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::make_report;
 
@@ -55,7 +55,7 @@ mod tests {
     let aln_path = root.join("data/flu/h3n2/20/aln.fasta.xz");
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[aln_path], &alphabet)?
+    let aln: Vec<AlignmentRecord> = fasta_read_file(aln_path, &alphabet)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -114,12 +114,12 @@ mod tests {
 
   #[test]
   fn test_internal_node_ab_profile_matches_python() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(PYTHON_ALN.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -143,12 +143,12 @@ mod tests {
 
   #[test]
   fn test_root_profile_matches_python() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(PYTHON_ALN.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -172,12 +172,12 @@ mod tests {
 
   #[test]
   fn test_internal_node_cd_profile_valid() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(PYTHON_ALN.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -206,12 +206,12 @@ mod tests {
 
   #[test]
   fn test_all_internal_nodes_normalized() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(PYTHON_ALN.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -236,12 +236,12 @@ mod tests {
 
   #[test]
   fn test_multi_partition_independent_computation() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(PYTHON_ALN.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -276,12 +276,12 @@ mod tests {
 
   #[test]
   fn test_multi_partition_internal_node_ab() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(PYTHON_ALN, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(PYTHON_ALN.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -318,13 +318,13 @@ mod tests {
   fn test_multi_partition_sparse_dense_consistency() -> Result<(), Report> {
     let simple_aln = ">A\nACATCGCCTTACGGAC\n>B\nGCATCCCTGTACTGAC\n>C\nCCGGCGATGTATTGAC\n>D\nTCGGCCGTGTATTGAC\n";
 
-    let nwk_parsed = nwk_read_str(PYTHON_TREE)?;
+    let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(simple_aln, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(simple_aln.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();

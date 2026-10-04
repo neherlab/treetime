@@ -22,8 +22,8 @@ mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::{
     pretty_assert_array_diag_abs, pretty_assert_array_nonneg, pretty_assert_array_positive, pretty_assert_ulps_eq,
@@ -40,7 +40,7 @@ mod tests {
     tree_nwk: &str,
     aln: &[AlignmentRecord],
   ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
-    let nwk_parsed = nwk_read_str(tree_nwk)?;
+    let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -60,7 +60,7 @@ mod tests {
     tree_nwk: &str,
     aln: &[AlignmentRecord],
   ) -> Result<(Graph, PartitionFitch, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
-    let nwk_parsed = nwk_read_str(tree_nwk)?;
+    let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -72,7 +72,7 @@ mod tests {
 
   #[test]
   fn test_nij_orientation_dense() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >ref1
       AAAAAAAA
@@ -82,7 +82,8 @@ mod tests {
       AAAAAAAA
       >mut1
       CAAAAAAA
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -119,13 +120,14 @@ mod tests {
 
   #[test]
   fn test_nij_orientation_sparse() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >leaf_a
       AAAAAAAA
       >leaf_c
       CAAAAAAA
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -147,7 +149,7 @@ mod tests {
   #[case::small_vs_large(    (0.05, 0.5))]
   #[trace]
   fn test_ti_scaling_sparse(#[case] (bl1, bl2): (f64, f64)) -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACGTACGT
@@ -157,7 +159,7 @@ mod tests {
       ACGTACGT
       >D
       ACGTACGT
-      "#},
+      "#}.as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -185,7 +187,7 @@ mod tests {
   #[case::small_vs_large(    (0.05, 0.5))]
   #[trace]
   fn test_ti_scaling_dense(#[case] (bl1, bl2): (f64, f64)) -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACGTACGT
@@ -195,7 +197,7 @@ mod tests {
       ACGTACGT
       >D
       ACGTACGT
-      "#},
+      "#}.as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -219,7 +221,7 @@ mod tests {
 
   #[test]
   fn test_dense_sparse_consistency() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACGTACGT
@@ -229,7 +231,8 @@ mod tests {
       ACGTACGT
       >D
       GCGTACGT
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -289,7 +292,7 @@ mod tests {
 
   #[test]
   fn test_root_state_dense() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       AAAAAAAA
@@ -299,7 +302,8 @@ mod tests {
       AAAAAAAA
       >D
       CAAAAAAA
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -328,7 +332,7 @@ mod tests {
 
   #[test]
   fn test_root_state_sparse() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       AAAAAAAA
@@ -338,7 +342,8 @@ mod tests {
       AAAAAAAA
       >D
       CAAAAAAA
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -358,7 +363,7 @@ mod tests {
 
   #[test]
   fn test_nij_orientation_multiple_mutations_sparse() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >ref1
       ACGAAAAA
@@ -368,7 +373,8 @@ mod tests {
       ACGAAAAA
       >mut1
       GTAAAAAA
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -405,7 +411,7 @@ mod tests {
 
   #[test]
   fn test_nij_accumulation_dense() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >a1
       AAAAAAAA
@@ -419,7 +425,8 @@ mod tests {
       AAAAAAAA
       >t2
       TAAAAAAA
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -455,7 +462,7 @@ mod tests {
 
   #[test]
   fn test_ti_proportional_to_composition_sparse() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       AACCGGTT
@@ -465,7 +472,8 @@ mod tests {
       AACCGGTT
       >D
       AACCGGTT
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -485,7 +493,7 @@ mod tests {
 
   #[test]
   fn test_dense_sparse_nij_direction_agreement() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACGTACGT
@@ -495,7 +503,8 @@ mod tests {
       CCGTACGT
       >D
       CCGTACGT
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -541,7 +550,7 @@ mod tests {
 
   #[test]
   fn test_root_state_total_equals_alignment_length_dense() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACATCGCCGTAGAC
@@ -551,7 +560,8 @@ mod tests {
       CCGGCGATGTGTTG
       >D
       TCGGCCGTGTGTTG
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -576,7 +586,7 @@ mod tests {
 
   #[test]
   fn test_nij_diagonal_zero() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACATCGCC
@@ -586,7 +596,8 @@ mod tests {
       CCGGCGAT
       >D
       TCGGCCGT
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -616,7 +627,7 @@ mod tests {
 
   #[test]
   fn test_nij_non_negative() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACATCGCC
@@ -626,7 +637,8 @@ mod tests {
       CCGGCGAT
       >D
       TCGGCCGT
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -656,7 +668,7 @@ mod tests {
 
   #[test]
   fn test_ti_non_negative() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
       >A
       ACATCGCC
@@ -666,7 +678,8 @@ mod tests {
       CCGGCGAT
       >D
       TCGGCCGT
-      "#},
+      "#}
+      .as_bytes(),
       &*NUC_ALPHABET,
     )?
     .into_iter()

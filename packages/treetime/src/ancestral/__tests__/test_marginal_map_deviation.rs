@@ -16,8 +16,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
   use treetime_utils::sync::random::get_random_number_generator;
 
@@ -41,8 +41,8 @@ mod tests {
       >C7
       CAAAAAAAAA
     "#})?;
-    let nwk_parsed = nwk_read_str(
-      "((T1:0.0,((((C1:0.005,C2:0.005)Y3:0.005,C3:0.005)Y2:0.005,C4:0.005)Y1:0.005,C5:0.005)Z:0.5,C6:0.5)X:0.3,C7:0.3)root:0.0;",
+    let nwk_parsed = nwk_read(
+      b"((T1:0.0,((((C1:0.005,C2:0.005)Y3:0.005,C3:0.005)Y2:0.005,C4:0.005)Y1:0.005,C5:0.005)Z:0.5,C6:0.5)X:0.3,C7:0.3)root:0.0;".as_slice(),
     )?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -80,7 +80,8 @@ mod tests {
       >A2
       TCGTACGTAC
     "#})?;
-    let nwk_parsed = nwk_read_str("(((D1:0.05,D2:0.05)DD:0.05,D3:0.05)DEL:0.2,(A1:0.05,A2:0.05)POLY:0.2)root:0.0;")?;
+    let nwk_parsed =
+      nwk_read(b"(((D1:0.05,D2:0.05)DD:0.05,D3:0.05)DEL:0.2,(A1:0.05,A2:0.05)POLY:0.2)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -110,7 +111,7 @@ mod tests {
 
   fn parse_aln(fasta: &str) -> Result<Vec<AlignmentRecord>, Report> {
     Ok(
-      read_many_fasta_str(fasta, &Alphabet::default())?
+      fasta_read(fasta.as_bytes(), &Alphabet::default())?
         .into_iter()
         .map(AlignmentRecord::from)
         .collect(),

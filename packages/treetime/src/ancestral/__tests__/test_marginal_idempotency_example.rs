@@ -7,12 +7,12 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   fn example_input() -> Result<MarginalTestInput, Report> {
-    let alignment: Vec<AlignmentRecord> = read_many_fasta_str(
+    let alignment: Vec<AlignmentRecord> = fasta_read(
       "
 >A
 ACATCGCCNNA--GAC
@@ -22,7 +22,8 @@ GCATCCCTGTA-NG--
 CCGGCGATGTRTTG--
 >D
 TCGGCCGTGTRTTG--
-",
+"
+      .as_bytes(),
       &*crate::test_utils::NUC_ALPHABET,
     )?
     .into_iter()
@@ -41,7 +42,7 @@ TCGGCCGTGTRTTG--
   #[test]
   fn test_marginal_idempotency_example_dense() -> Result<(), Report> {
     let input = example_input()?;
-    let nwk_parsed = nwk_read_str(&input.newick)?;
+    let nwk_parsed = nwk_read(input.newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -60,7 +61,7 @@ TCGGCCGTGTRTTG--
   #[test]
   fn test_marginal_idempotency_example_sparse() -> Result<(), Report> {
     let input = example_input()?;
-    let nwk_parsed = nwk_read_str(&input.newick)?;
+    let nwk_parsed = nwk_read(input.newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

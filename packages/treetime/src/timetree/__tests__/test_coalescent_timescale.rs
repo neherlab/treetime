@@ -21,7 +21,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::{o, pretty_assert_array_eq};
 
   const GEN_PER_YEAR: f64 = 50.0;
@@ -195,7 +195,7 @@ mod tests {
       o!("b")    => Some(DateConstraint::exact(2010.0)),
       o!("c")    => Some(DateConstraint::exact(2010.0)),
     };
-    let nwk_parsed = nwk_read_str("((a:1,b:1)x:1,c:1)root:0;")?;
+    let nwk_parsed = nwk_read(b"((a:1,b:1)x:1,c:1)root:0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;

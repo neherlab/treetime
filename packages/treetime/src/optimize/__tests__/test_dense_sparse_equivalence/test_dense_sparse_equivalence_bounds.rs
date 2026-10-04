@@ -9,7 +9,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   #[rustfmt::skip]
   #[rstest]
@@ -23,7 +23,7 @@ mod tests {
   fn test_dense_sparse_log_lh_bounded_difference_after_optimization(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
     let mut bl_dense = nwk_parsed.branch_lengths;
@@ -40,7 +40,7 @@ mod tests {
     let (dense_reconstruction, log_lh_dense) = dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&bl_dense))?;
     let log_lh_dense = log_lh_dense.value();
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
     let mut bl_sparse = nwk_parsed.branch_lengths;
@@ -87,7 +87,7 @@ mod tests {
   fn test_dense_sparse_branch_lengths_bounded_difference(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
     let mut bl_dense = nwk_parsed.branch_lengths;
@@ -103,7 +103,7 @@ mod tests {
 
     let branch_lengths_dense = get_branch_lengths(&graph_dense, &bl_dense);
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
     let mut bl_sparse = nwk_parsed.branch_lengths;

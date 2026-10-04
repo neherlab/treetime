@@ -121,11 +121,11 @@
       ]
     },
     "TreetimeTimetreeArgsRaw": {
-      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
       "type": "object",
       "properties": {
         "alignment": {
-          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
           "type": "array",
           "items": {
             "anyOf": [
@@ -1308,11 +1308,11 @@
       ]
     },
     "TreetimeOptimizeArgsRaw": {
-      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
       "type": "object",
       "properties": {
         "alignment": {
-          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
           "type": "array",
           "items": {
             "anyOf": [
@@ -1872,11 +1872,11 @@
       ]
     },
     "TreetimePruneArgsRaw": {
-      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
       "type": "object",
       "properties": {
         "alignment": {
-          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
           "type": "array",
           "items": {
             "anyOf": [
@@ -2096,7 +2096,7 @@
           ]
         },
         "prune_nodes_list": {
-          "description": "List of node names to prune\n\nList of node names to remove from the tree, comma-separated (,)\n\nUse --prune-nodes-list-delimiter to specify a different delimiter.",
+          "description": "List of node names to prune\n\nList of node names to remove from the tree, comma-separated (,)\n\nSurrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.",
           "type": [
             "string",
             "null"
@@ -2119,7 +2119,7 @@
           ]
         },
         "prune_nodes_list_file": {
-          "description": "File containing list of node names to prune\n\nPath to a file containing node names to remove from the tree, newline-delimited (\\n).\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter.",
+          "description": "File containing list of node names to prune\n\nPath to a file containing node names to remove from the tree, newline-delimited (\\n). Surrounding whitespace is trimmed and empty names are ignored.\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter.",
           "type": [
             "string",
             "null"
@@ -2168,11 +2168,11 @@
       ]
     },
     "TreetimeAncestralArgsRaw": {
-      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
       "type": "object",
       "properties": {
         "alignment": {
-          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
           "type": "array",
           "items": {
             "anyOf": [
@@ -2724,11 +2724,11 @@
       ]
     },
     "TreetimeClockArgsRaw": {
-      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; each is one input alignment. When the list is empty, callers read uncompressed FASTA\nfrom standard input.",
+      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
       "type": "object",
       "properties": {
         "alignment": {
-          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. With no files,\nreads uncompressed FASTA from standard input.",
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
           "type": "array",
           "items": {
             "anyOf": [

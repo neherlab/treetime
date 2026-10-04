@@ -1,12 +1,22 @@
 use eyre::Report;
 use itertools::Itertools;
 use saphyr::{Mapping, Scalar, ScalarStyle, Yaml, YamlEmitter};
+use serde::de::DeserializeOwned;
 use serde_json::Value;
+use serde_saphyr::DuplicateKeyPolicy;
 use std::borrow::Cow;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_report;
 
 const DOCUMENT_START: &str = "---\n";
+
+pub fn yaml_read_str<T: DeserializeOwned>(text: &str) -> Result<T, Report> {
+  let options = serde_saphyr::options! {
+    duplicate_keys: DuplicateKeyPolicy::Error,
+    reject_non_finite_typeless_float: true,
+  };
+  serde_saphyr::from_str_with_options(text, options).map_err(Report::new)
+}
 
 pub fn yaml_text(key: &str, value: &Value) -> Result<String, Report> {
   let mut entry = Mapping::new();

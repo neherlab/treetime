@@ -2,7 +2,7 @@ use crate::ancestral::__tests__::prop_generators::branch_length::arb_branch_leng
 use proptest::prelude::*;
 use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
-use treetime_io::nwk::nwk_read_str;
+use treetime_io::nwk::nwk_read;
 
 fn format_subtree(subtree: &str, bl: f64) -> String {
   if subtree.contains(',') {
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_prop_tree_arb_newick_parseable_and_leaf_names_exact(newick in arb_newick(6)) {
-      let nwk_parsed = nwk_read_str(&newick).unwrap();
+      let nwk_parsed = nwk_read(newick.as_bytes()).unwrap();
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;

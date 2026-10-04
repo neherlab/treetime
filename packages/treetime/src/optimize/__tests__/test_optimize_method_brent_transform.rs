@@ -18,11 +18,11 @@ mod tests {
   use crate::optimize::zero_boundary::min_branch_length_for_indels;
   use eyre::Report;
   use rstest::rstest;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   #[test]
   fn test_optimize_method_brent_sqrt_transform_round_trip() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -73,7 +73,7 @@ mod tests {
 
   #[test]
   fn test_optimize_method_brent_log_transform_round_trip() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -124,7 +124,7 @@ mod tests {
   #[case::brent_log( BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_method_brent_bracket_validity(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

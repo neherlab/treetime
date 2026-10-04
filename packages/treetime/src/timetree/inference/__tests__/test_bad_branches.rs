@@ -13,7 +13,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.1)AB:0.1,C:0.1)root;";
 
@@ -294,7 +294,7 @@ mod tests {
     use super::*;
 
     pub(super) fn tree(newick: &str) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
-      let nwk_parsed = nwk_read_str(newick)?;
+      let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
       Ok((nwk_parsed.graph, names))
     }

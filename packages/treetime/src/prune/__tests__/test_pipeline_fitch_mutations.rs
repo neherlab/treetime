@@ -12,7 +12,7 @@ mod tests {
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, AsciiChar, Seq};
 
   #[test]
@@ -49,7 +49,7 @@ mod tests {
     use super::*;
 
     pub(super) fn run_prune_empty() -> Result<PruneOutput, Report> {
-      let parsed = nwk_read_str("(((A:0.1,B:0.1)AB:0.1,C:0.1)ABC:0.1,D:0.1)root;")?;
+      let parsed = nwk_read(b"(((A:0.1,B:0.1)AB:0.1,C:0.1)ABC:0.1,D:0.1)root;".as_slice())?;
       let names = parsed.names();
       let sequences = vec![
         record("A", "ACGT")?,

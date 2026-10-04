@@ -6,12 +6,12 @@ mod tests {
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::{NwkWriteOptions, nwk_read_file, nwk_read_str, nwk_write_str};
+  use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_read_file, nwk_write_str};
 
   #[test]
   fn test_nwk_roundtrip_binary_tree() -> Result<(), Report> {
     let input = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root;";
-    let nwk_parsed = nwk_read_str(input)?;
+    let nwk_parsed = nwk_read(input.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -24,7 +24,13 @@ mod tests {
     let root_name = names[&root.key()].clone();
     assert_eq!(root_name.as_deref(), Some("root"));
 
-    let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(input, output);
     Ok(())
   }
@@ -32,7 +38,7 @@ mod tests {
   #[test]
   fn test_nwk_parse_no_branch_lengths() -> Result<(), Report> {
     let input = "((A,B)AB,(C,D)CD)root;";
-    let nwk_parsed = nwk_read_str(input)?;
+    let nwk_parsed = nwk_read(input.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -52,7 +58,7 @@ mod tests {
   #[test]
   fn test_nwk_roundtrip_single_node() -> Result<(), Report> {
     let input = "A;";
-    let nwk_parsed = nwk_read_str(input)?;
+    let nwk_parsed = nwk_read(input.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -65,7 +71,13 @@ mod tests {
     let root_name = names[&root.key()].clone();
     assert_eq!(root_name.as_deref(), Some("A"));
 
-    let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(input, output);
     Ok(())
   }
@@ -73,7 +85,7 @@ mod tests {
   #[test]
   fn test_nwk_roundtrip_polytomy() -> Result<(), Report> {
     let input = "(A:0.1,B:0.2,C:0.3)root;";
-    let nwk_parsed = nwk_read_str(input)?;
+    let nwk_parsed = nwk_read(input.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -86,7 +98,13 @@ mod tests {
     let root_outbound = root.outbound().len();
     assert_eq!(root_outbound, 3, "Root should have 3 children (polytomy)");
 
-    let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(input, output);
     Ok(())
   }
@@ -94,7 +112,7 @@ mod tests {
   #[test]
   fn test_nwk_roundtrip_nested_polytomy() -> Result<(), Report> {
     let input = "((A:0.1,B:0.2,C:0.3)ABC:0.4,D:0.5,E:0.6)root;";
-    let nwk_parsed = nwk_read_str(input)?;
+    let nwk_parsed = nwk_read(input.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -103,7 +121,13 @@ mod tests {
     assert_eq!(graph.get_edges().count(), 6, "Should have 6 edges");
     assert_eq!(graph.get_leaves().count(), 5, "Should have 5 leaves");
 
-    let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(input, output);
     Ok(())
   }
@@ -111,7 +135,7 @@ mod tests {
   #[test]
   fn test_nwk_roundtrip_zero_length_branches() -> Result<(), Report> {
     let input = "((A:0,B:0.2)AB:0,(C:0.2,D:0)CD:0.05)root;";
-    let nwk_parsed = nwk_read_str(input)?;
+    let nwk_parsed = nwk_read(input.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -125,7 +149,13 @@ mod tests {
       .count();
     assert_eq!(zero_branches, 3, "Should have 3 zero-length branches");
 
-    let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(input, output);
     Ok(())
   }
@@ -133,7 +163,7 @@ mod tests {
   #[test]
   fn test_nwk_parse_verifies_branch_lengths() -> Result<(), Report> {
     let input = "((A:0.123,B:0.456)AB:0.789,C:1.5)root;";
-    let nwk_parsed = nwk_read_str(input)?;
+    let nwk_parsed = nwk_read(input.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let edge_lengths = nwk_parsed.branch_lengths;
@@ -176,7 +206,7 @@ mod tests {
   #[test]
   fn test_nwk_parse_verifies_leaf_names() -> Result<(), Report> {
     let input = "((leaf_A:0.1,leaf_B:0.2)internal:0.1,leaf_C:0.3)root;";
-    let nwk_parsed = nwk_read_str(input)?;
+    let nwk_parsed = nwk_read(input.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -196,7 +226,7 @@ mod tests {
 
   #[test]
   fn test_nwk_rejects_enewick_hybrid() {
-    let result = nwk_read_str("((A,(B)x#H1)c,(x#H1,C)d);");
+    let result = nwk_read(b"((A,(B)x#H1)c,(x#H1,C)d);".as_slice());
     let err = result.unwrap_err();
     let msg = format!("{err:?}");
     assert!(
@@ -207,7 +237,7 @@ mod tests {
 
   #[test]
   fn test_nwk_parse_error_includes_position() {
-    let result = nwk_read_str("(A:0.1,B:0.2");
+    let result = nwk_read(b"(A:0.1,B:0.2".as_slice());
     let err = result.unwrap_err();
     let msg = format!("{err:?}");
     assert!(
@@ -219,7 +249,7 @@ mod tests {
   #[test]
   fn test_nwk_parse_with_beast_comment_succeeds() -> Result<(), Report> {
     let input = "(A[&prob=0.95]:0.1,B:0.2);";
-    let nwk_parsed = nwk_read_str(input)?;
+    let nwk_parsed = nwk_read(input.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let edge_lengths = nwk_parsed.branch_lengths;
@@ -248,7 +278,7 @@ mod tests {
   #[test]
   fn test_nwk_parse_negative_branch_length() -> Result<(), Report> {
     let input = "(A:-0.001,B:0.2)root;";
-    let nwk_parsed = nwk_read_str(input)?;
+    let nwk_parsed = nwk_read(input.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -256,7 +286,13 @@ mod tests {
     assert_eq!(graph.get_nodes().count(), 3);
     assert_eq!(graph.get_edges().count(), 2);
 
-    let output = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let output = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(input, output);
 
     Ok(())

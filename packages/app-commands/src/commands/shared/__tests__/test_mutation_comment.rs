@@ -8,12 +8,12 @@ mod tests {
   use treetime::seq::mutation::{AlignedMutation, Sub};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NodeCommentProvider, nwk_read_str};
+  use treetime_io::nwk::{NodeCommentProvider, nwk_read};
   use treetime_primitives::Seq;
 
   #[test]
   fn test_mutation_comment_provider_formats_1_based_substitutions_and_indels() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1)root;".as_slice())?;
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let edge_subs = &[(
@@ -39,7 +39,7 @@ mod tests {
 
   #[test]
   fn test_mutation_comment_provider_root_has_no_comments() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1)root;".as_slice())?;
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let edge_subs = &[(0, vec![Sub::new(c(b'A'), 0_usize, c(b'T'))?])];
@@ -53,7 +53,7 @@ mod tests {
 
   #[test]
   fn test_mutation_comment_provider_no_mutations_returns_empty() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1)root;".as_slice())?;
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let edge_subs = &[(0, vec![])];
@@ -66,7 +66,7 @@ mod tests {
 
   #[test]
   fn test_mutation_comment_provider_sorts_by_position() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1)root;".as_slice())?;
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let edge_subs = &[(

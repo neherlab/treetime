@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::check_inputs::{
-    AlignmentFacts, DateFacts, InputKind, MetadataFacts, TreeFacts, check_inputs, metadata_read,
+    AlignmentFacts, DateFacts, InputKind, MetadataFacts, TreeFacts, check_inputs, metadata_summary,
   };
   use crate::command::AppCommand;
   use crate::config::properties::leaf_properties;
@@ -15,7 +15,7 @@ mod tests {
   use strum::IntoEnumIterator;
   use tempfile::tempdir;
   use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
-  use treetime_io::dates_csv::read_metadata_table_from_reader;
+  use treetime_io::dates_csv::metadata_read;
 
   #[test]
   fn test_check_inputs_zika_86_tree_facts() {
@@ -192,18 +192,18 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::csv(             "metadata.csv", ',')]
-  #[case::tsv(             "metadata.tsv", '\t')]
-  #[case::tsv_named_as_csv("metadata.csv", '\t')]
-  #[case::csv_named_as_tsv("metadata.tsv", ',')]
+  #[case::csv(             b',',  ',')]
+  #[case::tsv(             b'\t', '\t')]
+  #[case::tsv_named_as_csv(b',',  '\t')]
+  #[case::csv_named_as_tsv(b'\t', ',')]
   #[trace]
-  fn test_check_inputs_metadata_facts_match_the_command_dates(#[case] file_name: &str, #[case] delimiter: char) {
+  fn test_check_inputs_metadata_facts_match_the_command_dates(#[case] path_delimiter: u8, #[case] delimiter: char) {
     let rows = [["strain", "date", "country"], ["A", "2020-01-15", "usa"], ["B", "2020-02-03", "peru"], ["C", "soon", "chile"]];
     let text = rows.iter().map(|row| row.join(&delimiter.to_string())).join("\n");
     let table = || {
-      read_metadata_table_from_reader(
+      metadata_read(
         text.as_bytes(),
-        file_name,
+        Some(path_delimiter),
         &default_metadata_delimiters(),
         &default_name_candidates(),
         None,
@@ -213,7 +213,7 @@ mod tests {
     };
 
     let command_dates = table().dates().unwrap();
-    let read = metadata_read(table());
+    let read = metadata_summary(table());
 
     let date_facts = read.facts.dates.clone().unwrap();
     assert_eq!(
@@ -238,16 +238,16 @@ mod tests {
 
   #[test]
   fn test_check_inputs_metadata_without_date_column_has_no_date_facts() {
-    let table = read_metadata_table_from_reader(
+    let table = metadata_read(
       &b"name\tcountry\nA\tusa\n"[..],
-      "traits.tsv",
+      Some(b'\t'),
       &default_metadata_delimiters(),
       &default_name_candidates(),
       None,
       None,
     )
     .unwrap();
-    let read = metadata_read(table);
+    let read = metadata_summary(table);
     assert_eq!(
       (1, "name".to_owned(), None, None, true),
       (

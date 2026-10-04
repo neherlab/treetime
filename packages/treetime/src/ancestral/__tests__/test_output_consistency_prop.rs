@@ -16,7 +16,7 @@ mod tests {
   use proptest::test_runner::TestCaseError;
   use std::collections::BTreeMap;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
 
   const RECONSTRUCTIONS: [(MethodAncestral, Option<bool>, SampleMode); 7] = [
@@ -86,7 +86,7 @@ mod tests {
       input: &MarginalTestInput,
       params: &AncestralParams,
     ) -> Result<(RecordingSeqSink, AncestralOutput), Report> {
-      let nwk_parsed = nwk_read_str(&input.newick)?;
+      let nwk_parsed = nwk_read(input.newick.as_bytes())?;
       let names = nwk_parsed.names();
       let alphabet = Alphabet::default();
       let alignment: Vec<AlignmentRecord> = input.alignment.clone();

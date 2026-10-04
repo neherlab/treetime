@@ -5,12 +5,12 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::fasta::fasta_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
   fn example_input() -> Result<MarginalTestInput, Report> {
-    let alignment: Vec<AlignmentRecord> = read_many_fasta_str(
+    let alignment: Vec<AlignmentRecord> = fasta_read(
       "
 >A
 ACGTACGT
@@ -20,7 +20,8 @@ ACGTACGA
 ACGTACGG
 >D
 ACGTACGC
-",
+"
+      .as_bytes(),
       &*crate::test_utils::NUC_ALPHABET,
     )?
     .into_iter()

@@ -184,7 +184,7 @@ mod tests {
     use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AsciiChar, Seq};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use treetime_utils::o;
@@ -203,7 +203,7 @@ mod tests {
     }
 
     pub(super) fn mutation_case() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>, OutputMaps) {
-      let nwk_parsed = nwk_read_str("(A:0.1,B:0.1)root;").unwrap();
+      let nwk_parsed = nwk_read(b"(A:0.1,B:0.1)root;".as_slice()).unwrap();
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;

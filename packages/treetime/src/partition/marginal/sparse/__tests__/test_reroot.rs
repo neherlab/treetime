@@ -13,12 +13,12 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::reroot::{RerootResult, remove_stem_root};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
 
   #[test]
   fn test_sparse_reroot_stem_removal_gives_the_root_the_stem_child_sequence() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)R:0.001)STEM;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)R:0.001)STEM;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;

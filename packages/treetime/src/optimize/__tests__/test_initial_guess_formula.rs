@@ -25,8 +25,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::{FastaRecord, fasta_read};
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
@@ -34,7 +34,7 @@ mod tests {
   #[test]
   fn test_initial_guess_formula_sparse() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -78,7 +78,7 @@ mod tests {
   #[test]
   fn test_initial_guess_formula_dense() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -126,11 +126,11 @@ mod tests {
       .map(AlignmentRecord::from)
       .collect();
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
     let mut branch_lengths_dense = nwk_parsed.branch_lengths;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
     let mut branch_lengths_sparse = nwk_parsed.branch_lengths;
@@ -186,11 +186,11 @@ mod tests {
       .map(AlignmentRecord::from)
       .collect();
 
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_dense_names = nwk_parsed.names();
     let graph_dense = nwk_parsed.graph;
     let branch_lengths_dense = nwk_parsed.branch_lengths;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_sparse_names = nwk_parsed.names();
     let graph_sparse = nwk_parsed.graph;
     let branch_lengths_sparse = nwk_parsed.branch_lengths;
@@ -225,7 +225,7 @@ mod tests {
 
   fn divergent_alignment() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
-    read_many_fasta_str(
+    fasta_read(
       indoc! {r#"
         >A
         AAAACCCCGGGGTTTT
@@ -235,14 +235,15 @@ mod tests {
         GGGGTTTTAAAACCCC
         >D
         TTTTAAAACCCCGGGG
-      "#},
+      "#}
+      .as_bytes(),
       &alphabet,
     )
   }
 
   fn ambiguous_r_in_g_clade_alignment() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
-    read_many_fasta_str(
+    fasta_read(
       indoc! {r#"
         >A
         RCGTACGT
@@ -252,7 +253,8 @@ mod tests {
         GCGTACGT
         >D
         GCGTACGT
-      "#},
+      "#}
+      .as_bytes(),
       &alphabet,
     )
   }

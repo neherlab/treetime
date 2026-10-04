@@ -8,13 +8,13 @@ mod tests {
   use treetime::cancel::NoopCancel;
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
   use treetime::progress::NoopProgress;
-  use treetime_io::nex::NexWriteOptions;
-  use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
+  use treetime_io::nex::nex_write;
+  use treetime_io::nwk::{CommentProviders, NwkStyle, NwkWriteOptions, nwk_read};
   use treetime_utils::o;
 
   #[test]
   fn test_mugration_annotated_tree_has_trait_comments() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -41,11 +41,13 @@ mod tests {
     let provider = DiscreteTraitCommentProvider::new(&output.reconstructed_traits, "country");
     let providers = CommentProviders::new().with(&provider);
 
-    let options = NexWriteOptions {
+    let options = NwkWriteOptions {
       style: NwkStyle::Beast,
-      ..NexWriteOptions::default()
+      ..NwkWriteOptions::default()
     };
-    let actual = treetime_io::nex::nex_write_str_with(&output.graph, &names, &branch_lengths, &options, &providers)?;
+    let mut buf = Vec::new();
+    nex_write(&mut buf, &output.graph, &names, &branch_lengths, &options, &providers)?;
+    let actual = String::from_utf8(buf)?;
     let expected = indoc! {r#"
       #NEXUS
       Begin Taxa;
@@ -55,7 +57,6 @@ mod tests {
       Begin Trees;
         Tree tree1=(A[&country=usa]:0.1,B[&country=germany]:0.2)root[&country=usa];
       End;
-
     "#};
     assert_eq!(expected, actual);
 

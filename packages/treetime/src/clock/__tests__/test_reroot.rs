@@ -9,13 +9,13 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
-  use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+  use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   #[test]
   fn test_remove_node_if_trivial_simple() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.5)mid:0.3,B:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.5)mid:0.3,B:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -31,7 +31,13 @@ mod tests {
     assert!(graph.get_node(mid_key).is_none(), "Expected node to be removed");
 
     let expected = "(B:0.2,A:0.8)root;";
-    let actual = nwk_write_str(&graph, &names, &branch_lengths, &NwkWriteOptions::default())?;
+    let actual = nwk_write_str(
+      &graph,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &CommentProviders::new(),
+    )?;
     assert_eq!(expected, actual);
 
     Ok(())
@@ -309,7 +315,7 @@ mod tests {
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::reroot::RerootResult;
-    use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+    use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_write_str};
 
     const TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -391,7 +397,13 @@ mod tests {
       let names = fixture.names.clone();
       let (tree, _) = reroot(fixture, reroot_params)?;
       let names = assign_node_names(names, &tree.graph)?;
-      nwk_write_str(&tree.graph, &names, &tree.branch_lengths, &NwkWriteOptions::default())
+      nwk_write_str(
+        &tree.graph,
+        &names,
+        &tree.branch_lengths,
+        &NwkWriteOptions::default(),
+        &CommentProviders::new(),
+      )
     }
 
     pub(super) fn child_names(
@@ -446,7 +458,7 @@ mod tests {
     }
 
     fn setup_graph(newick: &str, dates: &BTreeMap<String, f64>) -> Result<RerootFixture, Report> {
-      let nwk_parsed = nwk_read_str(newick)?;
+      let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let times = names

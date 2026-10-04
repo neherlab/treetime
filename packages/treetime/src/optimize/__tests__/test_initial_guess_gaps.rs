@@ -18,15 +18,15 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::{FastaRecord, read_many_fasta_str};
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::{FastaRecord, fasta_read};
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
   fn gap_free_alignment() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
-    read_many_fasta_str(
+    fasta_read(
       indoc! {r#"
         >A
         ACGTACGTACGTACGT
@@ -36,14 +36,15 @@ mod tests {
         ACGTACGTACGTACGG
         >D
         ACGTACGTACGTACGC
-      "#},
+      "#}
+      .as_bytes(),
       &alphabet,
     )
   }
 
   fn gappy_alignment_shared() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
-    read_many_fasta_str(
+    fasta_read(
       indoc! {r#"
         >A
         ACGT----ACGTACGT
@@ -53,14 +54,15 @@ mod tests {
         ACGT----ACGTACGG
         >D
         ACGT----ACGTACGC
-      "#},
+      "#}
+      .as_bytes(),
       &alphabet,
     )
   }
 
   fn gappy_alignment_one_leaf() -> Result<Vec<FastaRecord>, Report> {
     let alphabet = Alphabet::default();
-    read_many_fasta_str(
+    fasta_read(
       indoc! {r#"
         >A
         ACGTACGTACGTACGT
@@ -70,7 +72,8 @@ mod tests {
         ACGTACGTACGTACGG
         >D
         ACGTACGTACGTACGC
-      "#},
+      "#}
+      .as_bytes(),
       &alphabet,
     )
   }
@@ -120,7 +123,7 @@ mod tests {
   #[test]
   fn test_sparse_effective_length_no_gaps() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = gap_free_alignment()?.into_iter().map(AlignmentRecord::from).collect();
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -138,7 +141,7 @@ mod tests {
   #[test]
   fn test_dense_effective_length_no_gaps() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = gap_free_alignment()?.into_iter().map(AlignmentRecord::from).collect();
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -159,7 +162,7 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -180,7 +183,7 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -201,7 +204,7 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -226,7 +229,7 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -246,7 +249,7 @@ mod tests {
   #[test]
   fn test_initial_guess_sparse_gap_adjusted_rate() -> Result<(), Report> {
     let aln_clean: Vec<AlignmentRecord> = gap_free_alignment()?.into_iter().map(AlignmentRecord::from).collect();
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_clean_names = nwk_parsed.names();
     let graph_clean = nwk_parsed.graph;
     let mut branch_lengths_clean = nwk_parsed.branch_lengths;
@@ -273,7 +276,7 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_gappy_names = nwk_parsed.names();
     let graph_gappy = nwk_parsed.graph;
     let mut branch_lengths_gappy = nwk_parsed.branch_lengths;

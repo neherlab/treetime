@@ -1,12 +1,12 @@
 use crate::app_settings::settings::AppSettings;
 use crate::atomic_write::write_atomically;
-use crate::yaml::yaml_document;
+use crate::yaml::{yaml_document, yaml_read_str};
 use eyre::{Report, WrapErr};
 use parking_lot::Mutex;
-use serde_saphyr::DuplicateKeyPolicy;
 use std::fs;
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
+use treetime_utils::io::fs::read_file_to_string_if_exists;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use treetime_utils::make_error;
 
@@ -61,10 +61,8 @@ impl AppSettingsStore {
   }
 
   fn read_file(&self) -> Result<AppSettings, Report> {
-    let text = match fs::read_to_string(&self.path) {
-      Ok(text) => text,
-      Err(err) if err.kind() == ErrorKind::NotFound => return Ok(AppSettings::default()),
-      Err(err) => return Err(Report::new(err)).wrap_err_with(|| format!("When reading '{}'", self.path.display())),
+    let Some(text) = read_file_to_string_if_exists(&self.path)? else {
+      return Ok(AppSettings::default());
     };
     self
       .format
@@ -93,12 +91,7 @@ impl SettingsFormat {
       return Ok(AppSettings::default());
     }
     match self {
-      Self::Yaml => {
-        let options = serde_saphyr::options! {
-          duplicate_keys: DuplicateKeyPolicy::Error,
-        };
-        serde_saphyr::from_str_with_options(text, options).map_err(Report::new)
-      },
+      Self::Yaml => yaml_read_str(text),
       Self::Json => json_read_str(text),
     }
   }

@@ -8,11 +8,11 @@ mod tests {
   use crate::reroot::variance::VarianceModel;
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   #[test]
   fn test_search_root_stats_score_matches_analytical() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -26,7 +26,7 @@ mod tests {
 
   #[test]
   fn test_search_finds_equidistant_root_on_unbalanced_tree() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -48,7 +48,7 @@ mod tests {
 
   #[test]
   fn test_search_keeps_balanced_root() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.2,B:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.2,B:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -69,7 +69,7 @@ mod tests {
 
   #[test]
   fn test_search_keeps_balanced_star_root() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.2,B:0.2,C:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.2,B:0.2,C:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -90,7 +90,7 @@ mod tests {
 
   #[test]
   fn test_search_traversal_covers_all_edges() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)i:0.3,C:0.4)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)i:0.3,C:0.4)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -105,7 +105,7 @@ mod tests {
 
   #[test]
   fn test_search_root_stats_trait_dispatch() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

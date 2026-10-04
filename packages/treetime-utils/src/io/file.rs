@@ -4,49 +4,59 @@ use eyre::{Report, WrapErr};
 use log::info;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write, stdin, stdout};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub const DEFAULT_FILE_BUF_SIZE: usize = 256 * 1024;
 
-pub fn open_file_or_stdin<P: AsRef<Path>>(filepath: &Option<P>) -> Result<Box<dyn BufRead>, Report> {
-  match filepath {
-    Some(filepath) => {
-      let filepath = filepath.as_ref();
-      if is_path_stdin(filepath) {
-        open_stdin()
-      } else {
-        let file = File::open(filepath).wrap_err_with(|| format!("When opening file '{}'", filepath.display()))?;
-        let buf_file = BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, file);
-        let decompressor = Decompressor::from_path(buf_file, filepath)?;
-        let buf_decompressor = BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, decompressor);
-        Ok(Box::new(buf_decompressor))
-      }
-    },
-    None => open_stdin(),
+pub fn open_file_or_stdin(filepath: impl AsRef<Path>) -> Result<Box<dyn BufRead>, Report> {
+  let filepath = filepath.as_ref();
+  if is_path_stdin(filepath) {
+    return Ok(open_stdin());
   }
+  let file = File::open(filepath).wrap_err_with(|| format!("When opening file '{}'", filepath.display()))?;
+  let buf_file = BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, file);
+  let decompressor = Decompressor::from_path(buf_file, filepath)?;
+  let buf_decompressor = BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, decompressor);
+  Ok(Box::new(buf_decompressor))
 }
 
-pub fn open_stdin() -> Result<Box<dyn BufRead>, Report> {
+fn open_stdin() -> Box<dyn BufRead> {
   info!("Reading from standard input");
 
   #[cfg(not(target_arch = "wasm32"))]
   non_wasm::warn_if_tty();
 
-  Ok(Box::new(BufReader::new(stdin())))
+  Box::new(BufReader::new(stdin()))
+}
+
+pub fn read_file_with<T>(
+  filepath: impl AsRef<Path>,
+  read: impl FnOnce(Box<dyn BufRead>) -> Result<T, Report>,
+) -> Result<T, Report> {
+  let filepath = filepath.as_ref();
+  let reader = open_file_or_stdin(filepath)?;
+  read(reader).wrap_err_with(|| format!("When reading file '{}'", filepath.display()))
 }
 
 pub struct FileWriter {
   inner: BufWriter<Compressor<'static>>,
+  filepath: PathBuf,
 }
 
 impl FileWriter {
+  pub fn filepath(&self) -> &Path {
+    &self.filepath
+  }
+
   pub fn finish(self) -> Result<(), Report> {
+    let filepath = self.filepath;
     self
       .inner
       .into_inner()
       .map_err(|error| Report::new(error.into_error()))
-      .wrap_err("While flushing the output buffer")?
-      .finish()
+      .wrap_err("While flushing the output buffer")
+      .and_then(Compressor::finish)
+      .wrap_err_with(|| format!("When writing file '{}'", filepath.display()))
   }
 }
 
@@ -68,13 +78,16 @@ pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<FileWriter, R
     Box::new(BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, stdout()))
   } else {
     ensure_dir(filepath)?;
-    Box::new(File::create(filepath).wrap_err_with(|| format!("When creating file: '{}'", filepath.display()))?)
+    Box::new(File::create(filepath).wrap_err_with(|| format!("When creating file '{}'", filepath.display()))?)
   };
 
   let buf_file = BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, file);
   let compressor = Compressor::from_path(buf_file, filepath)?;
   let buf_compressor = BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, compressor);
-  Ok(FileWriter { inner: buf_compressor })
+  Ok(FileWriter {
+    inner: buf_compressor,
+    filepath: filepath.to_owned(),
+  })
 }
 
 pub fn write_file_with(
@@ -83,9 +96,8 @@ pub fn write_file_with(
 ) -> Result<(), Report> {
   let filepath = filepath.as_ref();
   let mut writer = create_file_or_stdout(filepath)?;
-  write(&mut writer)
-    .and_then(|()| writer.finish())
-    .wrap_err_with(|| format!("When writing file '{}'", filepath.display()))
+  write(&mut writer).wrap_err_with(|| format!("When writing file '{}'", filepath.display()))?;
+  writer.finish()
 }
 
 pub fn is_path_stdin(filepath: impl AsRef<Path>) -> bool {
@@ -105,13 +117,11 @@ mod non_wasm {
 
   const TTY_WARNING: &str = r#"Reading from standard input which is a TTY (e.g. an interactive terminal). This is likely not what you meant. Instead:
 
- - if you want to read from the output of another program, try:
+ - if you want to read from the output of another program, pipe it in and pass '-' as the file path:
 
-    cat /path/to/file | treetime <your other flags>
+    cat /path/to/file | treetime <command> --alignment - <your other flags>
 
- - if you want to read from file(s), don't forget to provide a path:
-
-    treetime /path/to/file
+ - if you want to read from a file, pass its path instead of '-'
 "#;
 
   pub(super) fn warn_if_tty() {

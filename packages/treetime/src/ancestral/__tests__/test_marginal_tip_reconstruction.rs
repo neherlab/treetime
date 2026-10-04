@@ -16,8 +16,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
   use treetime_utils::sync::random::get_random_number_generator;
 
@@ -29,7 +29,7 @@ mod tests {
       >B
       GCGT
     "#})?;
-    let nwk_parsed = nwk_read_str("(A:0.4,B:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.4,B:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -54,7 +54,7 @@ mod tests {
       >C
       ATGTC
     "#})?;
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)AB:0.1,C:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)AB:0.1,C:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -98,7 +98,7 @@ mod tests {
       >C
       ACGT
     "#})?;
-    let nwk_parsed = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -130,7 +130,7 @@ mod tests {
       >C
       ACGT
     "#})?;
-    let nwk_parsed = nwk_read_str("(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -146,7 +146,7 @@ mod tests {
 
   fn parse_aln(fasta: &str) -> Result<Vec<AlignmentRecord>, Report> {
     Ok(
-      read_many_fasta_str(fasta, &Alphabet::default())?
+      fasta_read(fasta.as_bytes(), &Alphabet::default())?
         .into_iter()
         .map(AlignmentRecord::from)
         .collect(),

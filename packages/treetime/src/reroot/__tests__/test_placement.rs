@@ -6,7 +6,7 @@ mod tests {
   use helpers::{Expected, edge_fixture};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
   #[rustfmt::skip]
@@ -71,7 +71,7 @@ mod tests {
 
   #[test]
   fn test_require_dated_new_leaves_rejects_a_new_undated_leaf() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let b_key = find_node_key_by_name(&graph, &names, "B").expect("B exists");
@@ -89,7 +89,7 @@ mod tests {
 
   #[test]
   fn test_require_dated_new_leaves_accepts_a_new_dated_leaf() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let b_key = find_node_key_by_name(&graph, &names, "B").expect("B exists");
@@ -102,7 +102,7 @@ mod tests {
 
   #[test]
   fn test_require_dated_new_leaves_ignores_undated_leaves_that_were_leaves_before() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
 
@@ -116,7 +116,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::nwk::nwk_read;
 
     #[derive(Debug, Clone, Copy)]
     pub(super) enum Expected {
@@ -126,7 +126,7 @@ mod tests {
     }
 
     pub(super) fn edge_fixture() -> Result<(Graph, GraphEdgeKey, GraphNodeKey, GraphNodeKey), Report> {
-      let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.3,C:0.4)root;")?;
+      let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let edge_key = find_edge_key(&graph, &names, "root", "AB").expect("root->AB exists");

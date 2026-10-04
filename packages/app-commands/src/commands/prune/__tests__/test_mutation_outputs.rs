@@ -21,7 +21,7 @@ mod tests {
     let outdir = TempDir::new()?;
     run_flu_20_prune(outdir.path(), true)?;
     let auspice = auspice_mutations(&read_auspice(outdir.path())?);
-    let mat = mat_mutations(&json_read_file::<UsherTree, _>(outdir.path().join("prune.mat.json"))?)?;
+    let mat = mat_mutations(&json_read_file::<UsherTree>(outdir.path().join("prune.mat.json"))?)?;
     assert_eq!(auspice, mat);
     Ok(())
   }

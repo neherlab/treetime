@@ -12,7 +12,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_io::dates_csv::DateConstraint;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::o;
 
   fn setup_polytomy_graph() -> Result<(Graph, DateConstraints), Report> {
@@ -24,7 +24,7 @@ mod tests {
       o!("leaf3") => Some(DateConstraint::exact(2010.0)),
       o!("leaf4") => Some(DateConstraint::exact(2012.0)),
     };
-    let nwk_parsed = nwk_read_str("((leaf1:0.005,leaf2:0.005,leaf3:0.005)internal:0.01,leaf4:0.02)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((leaf1:0.005,leaf2:0.005,leaf3:0.005)internal:0.01,leaf4:0.02)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;

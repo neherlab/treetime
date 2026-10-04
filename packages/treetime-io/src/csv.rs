@@ -1,69 +1,71 @@
-use csv::{ReaderBuilder, Trim, Writer, WriterBuilder};
+use csv::{Reader, ReaderBuilder, Trim, Writer, WriterBuilder};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::io::{BufRead, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use treetime_utils::io::compression::remove_compression_ext;
-use treetime_utils::io::file::{FileWriter, create_file_or_stdout, open_file_or_stdin};
+use treetime_utils::io::file::{FileWriter, create_file_or_stdout, read_file_with, write_file_with};
 use treetime_utils::io::fs::extension;
 use treetime_utils::make_error;
 use treetime_utils::make_report;
 
 pub const DELIMITED_EXTENSIONS: [(&str, u8); 3] = [("csv", b','), ("tsv", b'\t'), ("ssv", b';')];
 
-pub fn csv_read_file<T: DeserializeOwned>(filepath: impl AsRef<Path>, delimiter: u8) -> Result<Vec<T>, Report> {
-  let filepath = filepath.as_ref();
-  let reader = open_file_or_stdin(&Some(filepath))?;
-  csv_read(reader, delimiter).wrap_err_with(|| format!("When reading '{}'", filepath.display()))
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TableFormat {
+  Csv,
+  Tsv,
 }
 
-pub(crate) fn csv_read<T: DeserializeOwned>(reader: impl Read, delimiter: u8) -> Result<Vec<T>, Report> {
-  ReaderBuilder::new()
-    .delimiter(delimiter)
-    .from_reader(reader)
+impl TableFormat {
+  pub const fn delimiter(self) -> u8 {
+    match self {
+      Self::Csv => b',',
+      Self::Tsv => b'\t',
+    }
+  }
+}
+
+pub fn csv_read_file<T: DeserializeOwned>(filepath: impl AsRef<Path>, format: TableFormat) -> Result<Vec<T>, Report> {
+  read_file_with(filepath, |reader| csv_read(reader, format))
+}
+
+pub fn csv_read<T: DeserializeOwned>(reader: impl Read, format: TableFormat) -> Result<Vec<T>, Report> {
+  table_reader(reader, format.delimiter())
     .deserialize()
     .enumerate()
     .map(|(index, record)| record.wrap_err_with(|| format!("When parsing row {}", index + 1)))
     .collect()
 }
 
-pub struct CsvStructFileWriter {
-  writer: CsvStructWriter<FileWriter>,
-}
-
-impl CsvStructFileWriter {
-  pub fn new(filepath: impl AsRef<Path>, delimiter: u8) -> Result<Self, Report> {
-    let filepath = filepath.as_ref();
-    let file = create_file_or_stdout(filepath)?;
-    let writer = CsvStructWriter::new(file, delimiter)?;
-    Ok(Self { writer })
-  }
-
-  pub fn write<T: Serialize>(&mut self, record: &T) -> Result<(), Report> {
-    self.writer.write(record)?;
+pub fn csv_write_file<T: Serialize>(
+  filepath: impl AsRef<Path>,
+  rows: impl IntoIterator<Item = T>,
+  format: TableFormat,
+) -> Result<(), Report> {
+  write_file_with(filepath, |writer| {
+    let mut csv = CsvWriter::new(writer, format);
+    rows.into_iter().try_for_each(|row| csv.write_row(&row))?;
+    csv.into_inner()?;
     Ok(())
-  }
-
-  pub fn finish(self) -> Result<(), Report> {
-    self.writer.into_inner()?.finish()
-  }
+  })
 }
 
-pub struct CsvStructWriter<W: Write + Send> {
+pub struct CsvWriter<W: Write> {
   writer: Writer<W>,
+  filepath: Option<PathBuf>,
 }
 
-impl<W: Write + Send> CsvStructWriter<W> {
-  pub fn new(writer: W, delimiter: u8) -> Result<Self, Report> {
-    let writer = WriterBuilder::new().delimiter(delimiter).from_writer(writer);
-    Ok(Self { writer })
+impl<W: Write> CsvWriter<W> {
+  pub fn new(writer: W, format: TableFormat) -> Self {
+    Self::with_filepath(writer, format, None)
   }
 
-  pub fn write<T: Serialize>(&mut self, record: &T) -> Result<(), Report> {
-    self.writer.serialize(record)?;
-    Ok(())
+  pub fn write_row<T: Serialize>(&mut self, row: &T) -> Result<(), Report> {
+    let result = self.writer.serialize(row).wrap_err("When writing a table row");
+    self.wrap_filepath(result)
   }
 
   pub fn write_record<I, T>(&mut self, record: I) -> Result<(), Report>
@@ -71,17 +73,57 @@ impl<W: Write + Send> CsvStructWriter<W> {
     I: IntoIterator<Item = T>,
     T: AsRef<[u8]>,
   {
-    self.writer.write_record(record)?;
-    Ok(())
+    let result = self.writer.write_record(record).wrap_err("When writing a table row");
+    self.wrap_filepath(result)
   }
 
   pub fn into_inner(self) -> Result<W, Report> {
-    self
-      .writer
+    let Self { writer, filepath } = self;
+    let result = writer
       .into_inner()
       .map_err(|error| Report::new(error.into_error()))
-      .wrap_err("While flushing CSV output")
+      .wrap_err("When flushing the table");
+    match filepath {
+      Some(filepath) => result.wrap_err_with(|| format!("When writing file '{}'", filepath.display())),
+      None => result,
+    }
   }
+
+  fn with_filepath(writer: W, format: TableFormat, filepath: Option<PathBuf>) -> Self {
+    Self {
+      writer: WriterBuilder::new().delimiter(format.delimiter()).from_writer(writer),
+      filepath,
+    }
+  }
+
+  fn wrap_filepath<T>(&self, result: Result<T, Report>) -> Result<T, Report> {
+    match &self.filepath {
+      Some(filepath) => result.wrap_err_with(|| format!("When writing file '{}'", filepath.display())),
+      None => result,
+    }
+  }
+}
+
+impl CsvWriter<FileWriter> {
+  pub fn create(filepath: impl AsRef<Path>, format: TableFormat) -> Result<Self, Report> {
+    let filepath = filepath.as_ref();
+    Ok(Self::with_filepath(
+      create_file_or_stdout(filepath)?,
+      format,
+      Some(filepath.to_owned()),
+    ))
+  }
+
+  pub fn finish(self) -> Result<(), Report> {
+    self.into_inner()?.finish()
+  }
+}
+
+pub(crate) fn table_reader<R: Read>(reader: R, delimiter: u8) -> Reader<R> {
+  ReaderBuilder::new()
+    .trim(Trim::All)
+    .delimiter(delimiter)
+    .from_reader(reader)
 }
 
 pub fn default_name_candidates() -> Vec<String> {
@@ -126,7 +168,7 @@ pub(crate) fn get_col_name(
 
 pub(crate) fn detect_csv_delimiter<R: BufRead + ?Sized>(
   reader: &mut R,
-  filepath: impl AsRef<Path>,
+  path_delimiter: Option<u8>,
   delimiters: &[char],
   header_matches: impl Fn(&[String]) -> bool,
 ) -> Result<u8, Report> {
@@ -146,13 +188,9 @@ pub(crate) fn detect_csv_delimiter<R: BufRead + ?Sized>(
     return Ok(*delimiter);
   }
 
-  let filepath = filepath.as_ref();
-  let sample = reader.fill_buf().wrap_err_with(|| {
-    format!(
-      "When reading the start of '{}' to detect its delimiter",
-      filepath.display()
-    )
-  })?;
+  let sample = reader
+    .fill_buf()
+    .wrap_err("When reading the start of the table to detect its delimiter")?;
   let sample = &sample[..sample.len().min(SAMPLE_SIZE)];
   let matches = delimiters
     .iter()
@@ -163,7 +201,6 @@ pub(crate) fn detect_csv_delimiter<R: BufRead + ?Sized>(
   if let [delimiter] = matches.as_slice() {
     Ok(*delimiter)
   } else {
-    let path_delimiter = delimiter_from_path(filepath);
     if let Some(delimiter) = path_delimiter
       && delimiters.contains(&delimiter)
       && (matches.is_empty() || matches.contains(&delimiter))
@@ -187,11 +224,7 @@ fn delimiter_to_byte(delimiter: char) -> Result<u8, Report> {
 }
 
 fn csv_headers(sample: &[u8], delimiter: u8) -> Result<Vec<String>, csv::Error> {
-  let mut reader = ReaderBuilder::new()
-    .trim(Trim::All)
-    .delimiter(delimiter)
-    .from_reader(sample);
-  reader.headers().map(normalize_csv_headers)
+  table_reader(sample, delimiter).headers().map(normalize_csv_headers)
 }
 
 pub(crate) fn normalize_csv_headers(headers: &csv::StringRecord) -> Vec<String> {
@@ -201,7 +234,7 @@ pub(crate) fn normalize_csv_headers(headers: &csv::StringRecord) -> Vec<String> 
     .collect()
 }
 
-fn delimiter_from_path(filepath: impl AsRef<Path>) -> Option<u8> {
+pub(crate) fn delimiter_from_path(filepath: impl AsRef<Path>) -> Option<u8> {
   let filepath = remove_compression_ext(filepath);
   let ext = extension(filepath)?.to_lowercase();
   DELIMITED_EXTENSIONS

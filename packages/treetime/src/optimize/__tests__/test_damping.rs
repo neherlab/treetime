@@ -11,11 +11,11 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   #[test]
   fn test_parse_branch_lengths_covers_all_edges() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -31,7 +31,7 @@ mod tests {
 
   #[test]
   fn test_apply_damping_zero_is_noop() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -57,7 +57,7 @@ mod tests {
   #[trace]
   fn test_apply_damping_weights_match_v0(#[case] iteration: usize, #[case] expected_old_weight: f64) -> Result<(), Report> {
     let damping = 0.75;
-    let nwk_parsed = nwk_read_str("(A:1.0,B:1.0)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:1.0,B:1.0)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -75,7 +75,7 @@ mod tests {
 
   #[test]
   fn test_apply_damping_blends_correctly() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1,B:0.2)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -102,7 +102,7 @@ mod tests {
 
     let mut prev_damped = old_bl;
     for iteration in 0..10 {
-      let nwk_parsed = nwk_read_str("(A:1.0)root:0.0;")?;
+      let nwk_parsed = nwk_read(b"(A:1.0)root:0.0;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -133,7 +133,7 @@ mod tests {
   #[trace]
   fn test_damped_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -186,7 +186,7 @@ mod tests {
   #[trace]
   fn test_damped_optimization_does_not_regress(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

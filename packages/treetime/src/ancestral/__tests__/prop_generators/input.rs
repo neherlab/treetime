@@ -6,7 +6,7 @@ use ndarray::{Array1, Array2};
 use proptest::prelude::*;
 use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
-use treetime_io::nwk::nwk_read_str;
+use treetime_io::nwk::nwk_read;
 use treetime_primitives::AlignmentRecord;
 
 fn arb_pi_nuc() -> impl Strategy<Value = Array1<f64>> {
@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_prop_input_arb_marginal_input_parseable_and_taxa_exact(input in arb_marginal_input_small()) {
-      let nwk_parsed = nwk_read_str(&input.newick).unwrap();
+      let nwk_parsed = nwk_read(input.newick.as_bytes()).unwrap();
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;

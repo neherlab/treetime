@@ -12,9 +12,10 @@ use serde_json::Value;
 use std::cmp::Reverse;
 use std::fmt::Display;
 use std::fs;
-use std::io::{self, ErrorKind, Write};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use treetime_schema::version_info;
+use treetime_utils::io::fs::read_file_to_string_if_exists;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
 const RUN_FILE: &str = "run.json";
@@ -180,12 +181,8 @@ fn create_new_dir(dir: &Path) -> io::Result<()> {
 }
 
 fn read_record(path: &Path, id: &JobId) -> Result<RunRecord, Report> {
-  let text = match fs::read_to_string(path) {
-    Ok(text) => text,
-    Err(err) if err.kind() == ErrorKind::NotFound => {
-      return Err(not_found(format!("no run with id `{}`", id.as_str())));
-    },
-    Err(err) => return Err(Report::new(err).wrap_err(format!("When reading '{}'", path.display()))),
+  let Some(text) = read_file_to_string_if_exists(path)? else {
+    return Err(not_found(format!("no run with id `{}`", id.as_str())));
   };
   json_read_str(&text).wrap_err_with(|| format!("When reading the run record '{}'", path.display()))
 }

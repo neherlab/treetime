@@ -30,8 +30,8 @@ pub(super) mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
@@ -47,7 +47,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_no_zero_edges() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -59,7 +59,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_skips_leaves() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.0,B:0.2)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.0,B:0.2)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -71,7 +71,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_collects_internal() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)I:0.0,C:0.3)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.0,C:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -90,7 +90,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_multiple() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -111,7 +111,7 @@ pub(super) mod tests {
   #[trace]
   fn test_optimize_loop_with_topology_cleanup_sparse(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -121,14 +121,14 @@ pub(super) mod tests {
         ACGTACGTACGG
         >D
         TCGTACGTACGT
-      "#},
+      "#}.as_bytes(),
       &nuc,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -196,7 +196,7 @@ pub(super) mod tests {
   #[trace]
   fn test_optimize_loop_no_collapse_when_branches_nonzero(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -206,14 +206,14 @@ pub(super) mod tests {
         ACGTACGTACGG
         >D
         ACGTACGTACGA
-      "#},
+      "#}.as_bytes(),
       &nuc,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -263,7 +263,7 @@ pub(super) mod tests {
   #[test]
   fn test_optimize_merge_then_marginal_finite_likelihood() -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         TCGTACGTACGTACGT
@@ -275,14 +275,15 @@ pub(super) mod tests {
         ACGTACGTACGTACGT
         >E
         ACGTACGTACGTACGT
-      "#},
+      "#}
+      .as_bytes(),
       &nuc,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -327,7 +328,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_optimize_cascading_collapse_parent_child_both_zero() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -378,7 +379,7 @@ pub(super) mod tests {
   #[trace]
   fn test_optimize_loop_with_topology_cleanup_dense(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -388,14 +389,14 @@ pub(super) mod tests {
         ACGTACGTACGG
         >D
         TCGTACGTACGT
-      "#},
+      "#}.as_bytes(),
       &nuc,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -458,7 +459,7 @@ pub(super) mod tests {
   #[trace]
   fn test_run_optimize_loop_collapse_disabled_keeps_zero_edge(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -468,14 +469,14 @@ pub(super) mod tests {
         ACGTACGTACGG
         >D
         TCGTACGTACGT
-      "#},
+      "#}.as_bytes(),
       &nuc,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -523,7 +524,7 @@ pub(super) mod tests {
   #[test]
   fn test_run_optimize_loop_topology_change_map_matches_edge_set() -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {r#"
         >A
         ACGTACGTACGT
@@ -533,14 +534,15 @@ pub(super) mod tests {
         ACGTACGTACGG
         >D
         TCGTACGTACGT
-      "#},
+      "#}
+      .as_bytes(),
       &nuc,
     )?
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
 
-    let nwk_parsed = nwk_read_str("((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;")?;
+    let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

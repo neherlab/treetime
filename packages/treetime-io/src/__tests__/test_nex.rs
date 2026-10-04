@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::nex::{NexWriteOptions, nex_write_str_with};
-  use crate::nwk::CommentProviders;
-  use crate::nwk::{NwkParse, nwk_read_str};
+  use crate::nex::nex_write;
+  use crate::nwk::{CommentProviders, NwkParse, NwkWriteOptions, nwk_read};
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -21,7 +20,6 @@ mod tests {
       Begin Trees;
         Tree tree1=(A:0.1,B:0.2)root;
       End;
-
     "#},
   )]
   #[case::nested_tree(
@@ -35,7 +33,6 @@ mod tests {
       Begin Trees;
         Tree tree1=((C:0.3,D:0.4)E:0.5,F:0.1)G;
       End;
-
     "#},
   )]
   #[case::single_leaf(
@@ -49,18 +46,31 @@ mod tests {
       Begin Trees;
         Tree tree1=(A:0.1)root;
       End;
-
+    "#},
+  )]
+  #[case::quoted_labels(
+    "('A B':0.1,'C''D':0.2)root;",
+    indoc! {r#"
+      #NEXUS
+      Begin Taxa;
+        Dimensions NTax=2;
+        TaxLabels 'A B' 'C''D';
+      End;
+      Begin Trees;
+        Tree tree1=('A B':0.1,'C''D':0.2)root;
+      End;
     "#},
   )]
   #[trace]
   fn test_nex_exact_output(#[case] nwk: &str, #[case] expected: &str) -> Result<(), Report> {
-    let parse = nwk_read_str(nwk)?;
+    let parse = nwk_read(nwk.as_bytes())?;
     let names = parse.names();
     let NwkParse {
       graph, branch_lengths, ..
     } = parse;
-    let actual = nex_write_str_with(&graph, &names, &branch_lengths, &NexWriteOptions::default(), &CommentProviders::new())?;
-    assert_eq!(expected, actual);
+    let mut actual = Vec::new();
+    nex_write(&mut actual, &graph, &names, &branch_lengths, &NwkWriteOptions::default(), &CommentProviders::new())?;
+    assert_eq!(expected, String::from_utf8(actual)?);
     Ok(())
   }
 }

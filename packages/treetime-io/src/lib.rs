@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod __tests__;
-pub mod auspice;
 pub mod auspice_types;
-pub mod concat;
 pub mod csv;
 pub mod dates_csv;
 pub mod discrete_states_csv;
@@ -10,9 +8,9 @@ pub mod fasta;
 pub mod gff;
 pub mod graph;
 pub mod graphviz;
+pub mod name_list;
 pub mod nex;
 pub mod nwk;
-pub mod parse_delimited;
 pub mod usher_mat;
 
 #[cfg(test)]

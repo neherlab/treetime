@@ -116,7 +116,7 @@ mod tests {
     use std::path::PathBuf;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::csv::default_name_candidates;
-    use treetime_io::discrete_states_csv::read_discrete_attrs;
+    use treetime_io::discrete_states_csv::discrete_attrs_read_file;
     use treetime_io::nwk::nwk_read_file;
     use treetime_utils::io::json::json_read_file;
 
@@ -173,12 +173,12 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
 
       let metadata_path = project_root.join(&fixture.metadata_path);
-      let (attr_values, _attr_name) = read_discrete_attrs::<String>(
+      let (attr_values, _attr_name) = discrete_attrs_read_file::<String>(
         &metadata_path,
         &[',', '\t', ';'],
         &default_name_candidates(),
-        &fixture.name_column,
-        &Some(fixture.attribute.clone()),
+        fixture.name_column.as_deref(),
+        Some(fixture.attribute.as_str()),
         |s| Ok(s.to_owned()),
       )?;
       let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
@@ -186,12 +186,12 @@ mod tests {
       let weights = match &fixture.parameters.weights_path {
         Some(weights_path) => {
           let weights_filepath = project_root.join(weights_path);
-          let (map, _) = read_discrete_attrs::<f64>(
+          let (map, _) = discrete_attrs_read_file::<f64>(
             &weights_filepath,
             &[',', '\t', ';'],
             &[],
-            &Some(fixture.attribute.clone()),
-            &Some("weight".to_owned()),
+            Some(fixture.attribute.as_str()),
+            Some("weight"),
             |s| Ok(s.parse::<f64>()?),
           )?;
           Some(map.into_iter().collect())

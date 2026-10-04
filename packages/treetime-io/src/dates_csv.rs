@@ -1,5 +1,4 @@
-use crate::csv::{detect_csv_delimiter, get_col_name, normalize_csv_headers};
-use csv::{ReaderBuilder, Trim};
+use crate::csv::{delimiter_from_path, detect_csv_delimiter, get_col_name, normalize_csv_headers, table_reader};
 use eyre::{Report, WrapErr};
 use std::io::BufRead;
 use std::path::Path;
@@ -8,7 +7,7 @@ use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::datetime::parse_date::{parse_date, parse_date_range};
 use treetime_utils::datetime::parse_uncertain_date::parse_date_uncertain;
 use treetime_utils::datetime::year_fraction::{date_range_to_year_fraction_range, date_to_year_fraction};
-use treetime_utils::io::file::open_file_or_stdin;
+use treetime_utils::io::file::read_file_with;
 use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
 #[derive(Debug)]
@@ -46,42 +45,7 @@ impl MetadataTable {
   }
 }
 
-pub fn read_dates(
-  filepath: impl AsRef<Path>,
-  delimiters: &[char],
-  name_candidates: &[String],
-  name_column: &Option<String>,
-  date_column: &Option<String>,
-) -> Result<DatesMap, Report> {
-  let filepath = filepath.as_ref();
-  read_metadata_table(filepath, delimiters, name_candidates, name_column, date_column)?
-    .dates()
-    .wrap_err_with(|| format!("When reading dates from file: '{}'", filepath.display()))
-}
-
-pub fn read_metadata_table(
-  filepath: impl AsRef<Path>,
-  delimiters: &[char],
-  name_candidates: &[String],
-  name_column: &Option<String>,
-  date_column: &Option<String>,
-) -> Result<MetadataTable, Report> {
-  let filepath = filepath.as_ref();
-  let file =
-    open_file_or_stdin(&Some(filepath)).wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
-  read_metadata_table_from_reader(
-    file,
-    filepath,
-    delimiters,
-    name_candidates,
-    name_column.as_deref(),
-    date_column.as_deref(),
-  )
-  .wrap_err_with(|| format!("When reading metadata from file: '{}'", filepath.display()))
-}
-
-pub fn read_metadata_table_from_reader(
-  mut reader: impl BufRead,
+pub fn metadata_read_file(
   filepath: impl AsRef<Path>,
   delimiters: &[char],
   name_candidates: &[String],
@@ -89,22 +53,39 @@ pub fn read_metadata_table_from_reader(
   date_column: Option<&str>,
 ) -> Result<MetadataTable, Report> {
   let filepath = filepath.as_ref();
+  read_file_with(filepath, |reader| {
+    metadata_read(
+      reader,
+      delimiter_from_path(filepath),
+      delimiters,
+      name_candidates,
+      name_column,
+      date_column,
+    )
+  })
+}
+
+pub fn metadata_read(
+  mut reader: impl BufRead,
+  path_delimiter: Option<u8>,
+  delimiters: &[char],
+  name_candidates: &[String],
+  name_column: Option<&str>,
+  date_column: Option<&str>,
+) -> Result<MetadataTable, Report> {
   let date_candidates = vec_of_owned!["date"];
-  let delimiter = detect_csv_delimiter(&mut reader, filepath, delimiters, |headers| {
+  let delimiter = detect_csv_delimiter(&mut reader, path_delimiter, delimiters, |headers| {
     get_col_name(headers, name_candidates, name_column).is_ok()
       && get_col_name(headers, &date_candidates, date_column).is_ok()
   })
   .or_else(|_without_dates| {
-    detect_csv_delimiter(&mut reader, filepath, delimiters, |headers| {
+    detect_csv_delimiter(&mut reader, path_delimiter, delimiters, |headers| {
       get_col_name(headers, name_candidates, name_column).is_ok()
     })
   })
-  .wrap_err_with(|| format!("When detecting CSV delimiter for '{}'", filepath.display()))?;
+  .wrap_err("When detecting the metadata delimiter")?;
 
-  let mut reader = ReaderBuilder::new()
-    .trim(Trim::All)
-    .delimiter(delimiter)
-    .from_reader(reader);
+  let mut reader = table_reader(reader, delimiter);
   let columns = reader
     .headers()
     .map(normalize_csv_headers)

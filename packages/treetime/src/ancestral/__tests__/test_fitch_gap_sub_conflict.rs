@@ -10,19 +10,19 @@ mod tests {
   use itertools::Itertools;
   use maplit::btreemap;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   type EdgeReport = (String, Vec<(String, usize)>, Vec<(usize, usize)>);
 
   fn compress(nwk: &str, fasta: &str) -> Result<Vec<EdgeReport>, Report> {
     let alphabet = Alphabet::default();
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
+    let aln: Vec<AlignmentRecord> = fasta_read(fasta.as_bytes(), &alphabet)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let nwk_parsed = nwk_read_str(nwk)?;
+    let nwk_parsed = nwk_read(nwk.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;

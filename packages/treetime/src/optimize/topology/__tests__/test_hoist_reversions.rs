@@ -14,13 +14,13 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   const NWK: &str = "(((A:0.1,B:0.1,Z:0.1)V:0.2)U:0.1)root:0.0;";
 
   #[test]
   fn test_hoist_reversions_large_t_not_duplicated() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -58,7 +58,7 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_chain_composed() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -90,7 +90,7 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_reversion_removed_reduces_count() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -126,7 +126,7 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_branch_length_distance_preserved() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -165,7 +165,7 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_multi_partition() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -212,7 +212,7 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_indel_cancellation() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -251,7 +251,7 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_indel_overlap_fallback() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -294,7 +294,7 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_indel_no_interaction_hoisted() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK)?;
+    let nwk_parsed = nwk_read(NWK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -335,7 +335,7 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_slide_moves_sibling_sub_to_parent() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK_BIFURCATING)?;
+    let nwk_parsed = nwk_read(NWK_BIFURCATING.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -369,7 +369,7 @@ mod tests {
 
   #[test]
   fn test_hoist_reversions_slide_then_hoist_removes_cross_root_reversion() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(NWK_BIFURCATING)?;
+    let nwk_parsed = nwk_read(NWK_BIFURCATING.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

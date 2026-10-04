@@ -11,12 +11,12 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nex::{NexWriteOptions, nex_write_str_with};
-  use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkStyle, nwk_read_str};
+  use treetime_io::nex::nex_write;
+  use treetime_io::nwk::{CommentProviders, NodeCommentProvider, NwkStyle, NwkWriteOptions, nwk_read};
 
   #[test]
   fn test_timetree_mutation_provider_produces_comments() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
@@ -37,7 +37,7 @@ mod tests {
 
   #[test]
   fn test_timetree_nexus_output_includes_mutations_and_date() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("(A:0.1)root;")?;
+    let nwk_parsed = nwk_read(b"(A:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
@@ -55,25 +55,24 @@ mod tests {
     let provider = EdgeMutationCommentProvider::new(&edge_mutations, &graph);
     let date_provider = DateCommentProvider::new(&date_times);
     let providers = CommentProviders::new().with(&provider).with(&date_provider);
-    let options = NexWriteOptions {
+    let options = NwkWriteOptions {
       style: NwkStyle::Beast,
-      ..NexWriteOptions::default()
+      ..NwkWriteOptions::default()
     };
     let time_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph.get_edges().map(|edge| (edge.key(), None)).collect();
-    let nexus = nex_write_str_with(&graph, &names, &time_lengths, &options, &providers)?;
-    let expected = concat!(
-      indoc! {r#"
-        #NEXUS
-        Begin Taxa;
-          Dimensions NTax=1;
-          TaxLabels A;
-        End;
-        Begin Trees;
-          Tree tree1=(A[&date=2003.84,mutations="A55G,T93C"])root;
-        End;
-      "#},
-      "\n"
-    );
+    let mut buf = Vec::new();
+    nex_write(&mut buf, &graph, &names, &time_lengths, &options, &providers)?;
+    let nexus = String::from_utf8(buf)?;
+    let expected = indoc! {r#"
+      #NEXUS
+      Begin Taxa;
+        Dimensions NTax=1;
+        TaxLabels A;
+      End;
+      Begin Trees;
+        Tree tree1=(A[&date=2003.84,mutations="A55G,T93C"])root;
+      End;
+    "#};
     assert_eq!(nexus, expected);
     Ok(())
   }

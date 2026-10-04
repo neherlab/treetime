@@ -23,8 +23,8 @@ mod tests {
   use proptest::prelude::*;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   const CLOCK_RATE: f64 = 0.001;
@@ -127,13 +127,13 @@ mod tests {
     }
 
     pub(super) fn run_once(case: &TimetreeCase) -> Result<BTreeMap<String, LeafOutcome>, Report> {
-      let nwk_parsed = nwk_read_str(&case.newick)?;
+      let nwk_parsed = nwk_read(case.newick.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-      let aln: Vec<AlignmentRecord> = read_many_fasta_str(&case.fasta, &alphabet)?
+      let aln: Vec<AlignmentRecord> = fasta_read(case.fasta.as_bytes(), &alphabet)?
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();

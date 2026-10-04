@@ -16,7 +16,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
   use treetime_utils::sync::random::get_random_number_generator;
 
@@ -28,7 +28,7 @@ mod tests {
 
   #[test]
   fn test_time_inference_likely_times_names_node_with_nan_date_constraint() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
@@ -48,7 +48,7 @@ mod tests {
 
   #[test]
   fn test_time_inference_likely_times_prefer_the_date_constraint() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
@@ -70,7 +70,7 @@ mod tests {
 
   #[test]
   fn test_time_inference_node_times_reads_the_committed_time_of_every_node() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
@@ -105,7 +105,7 @@ mod tests {
   #[test]
   fn test_time_inference_coalescent_node_times_pair_the_committed_time_with_the_distribution_peak() -> Result<(), Report>
   {
-    let nwk_parsed = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
@@ -148,7 +148,7 @@ mod tests {
 
   #[test]
   fn test_time_inference_likely_times_cover_every_node() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:1.0,B:1.0)I:1.0)root;")?;
+    let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
@@ -182,7 +182,7 @@ mod tests {
 
   #[test]
   fn test_time_inference_likely_times_take_the_posterior_of_a_polytomy_merger() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2,C:0.15)ABC:0.05)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2,C:0.15)ABC:0.05)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");

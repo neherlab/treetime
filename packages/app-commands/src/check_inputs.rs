@@ -1,4 +1,5 @@
 use crate::command::AppCommand;
+use crate::commands::shared::alignment::read_alignment;
 use chrono::Datelike;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -10,8 +11,8 @@ use std::path::{Path, PathBuf};
 use strum_macros::Display;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime_io::csv::{DELIMITED_EXTENSIONS, default_metadata_delimiters, default_name_candidates};
-use treetime_io::dates_csv::{DateValue, DatesMap, MetadataTable, read_metadata_table};
-use treetime_io::fasta::{FASTA_EXTENSIONS, read_many_fasta_path};
+use treetime_io::dates_csv::{DateValue, DatesMap, MetadataTable, metadata_read_file};
+use treetime_io::fasta::FASTA_EXTENSIONS;
 use treetime_io::nwk::{NEWICK_EXTENSIONS, nwk_read_file};
 use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::datetime::parse_date::parse_date;
@@ -326,7 +327,7 @@ fn read_tree(path: &Path) -> Result<(TreeFacts, Vec<String>), Report> {
 }
 
 fn read_sequence_names(paths: &[PathBuf]) -> Result<(AlignmentFacts, BTreeSet<String>), Report> {
-  let records = read_many_fasta_path(paths, &Alphabet::default())?;
+  let records = read_alignment(paths, &Alphabet::default())?;
   let names = records.iter().map(|record| record.seq_name.clone()).collect_vec();
   let lengths = records.iter().map(|record| record.seq.len()).collect_vec();
   let facts = AlignmentFacts {
@@ -350,10 +351,10 @@ fn read_metadata(
   id_candidates: &[String],
   date_column: Option<&str>,
 ) -> Result<MetadataRead, Report> {
-  read_metadata_table(path, delimiters, id_candidates, &None, &date_column.map(str::to_owned)).map(metadata_read)
+  metadata_read_file(path, delimiters, id_candidates, None, date_column).map(metadata_summary)
 }
 
-pub(crate) fn metadata_read(table: MetadataTable) -> MetadataRead {
+pub(crate) fn metadata_summary(table: MetadataTable) -> MetadataRead {
   let (dates, date_problem) = if table.date_column.is_ok() {
     match table.dates() {
       Ok(dates) => (Some(date_facts(&dates)), None),

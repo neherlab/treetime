@@ -5,6 +5,8 @@ mod tests {
   use crate::commands::shared::seed::SeedArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
+  use app_output::output_plan::OutputSelection;
+  use app_output::table_output::table_read_file;
   use approx::{assert_relative_eq, assert_ulps_eq};
   use eyre::Report;
   use helpers::{fixed_rate_intercept, ordinary_least_squares, run_zika, zika_dir};
@@ -17,10 +19,9 @@ mod tests {
   use treetime::cancel::NoopCancel;
   use treetime::clock::clock_model::ClockModel;
   use treetime::clock::rtt::{ClockDateSource, ClockRegressionResult};
-  use treetime::o;
   use treetime::progress::NoopProgress;
-  use treetime_io::csv::{csv_read_file, default_metadata_delimiters, default_name_candidates};
-  use treetime_io::dates_csv::read_dates;
+  use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
+  use treetime_io::dates_csv::metadata_read_file;
   use treetime_io::nwk::nwk_read_file;
   use treetime_utils::io::json::json_read_file;
 
@@ -71,13 +72,14 @@ mod tests {
       .get_leaves()
       .filter_map(|leaf| names[&leaf.key()].clone())
       .collect();
-    let dates = read_dates(
+    let dates = metadata_read_file(
       &metadata,
       &default_metadata_delimiters(),
       &default_name_candidates(),
-      &None,
-      &Some(o!("date")),
-    )?;
+      None,
+      Some("date"),
+    )
+    .and_then(|table| table.dates())?;
 
     let listed: BTreeSet<String> = rows.iter().filter_map(|row| row.name.clone()).collect();
     assert_eq!(20, rows.len());
@@ -156,7 +158,7 @@ mod tests {
       configure(&mut raw);
       let args = TreetimeTimetreeArgs::try_from(raw)?;
       run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
-      let rows = csv_read_file(output.join("timetree.clock.csv"), b',')?;
+      let rows = table_read_file(OutputSelection::ClockCsv, &output.join("timetree.clock.csv"))?;
       let model = json_read_file(output.join("timetree.clock-model.json"))?;
       Ok((rows, model))
     }

@@ -29,7 +29,7 @@ pub(super) mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
   use treetime_io::graph::TreeWriteKind;
-  use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read_str};
+  use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read};
   use treetime_primitives::{AsciiChar, Seq};
   use treetime_utils::io::json::{JsonPretty, json_read_file, json_read_str, json_write_str};
   use treetime_utils::{assert_error, o};
@@ -447,7 +447,7 @@ pub(super) mod tests {
     );
 
     pub(crate) fn ancestral_graph(mutations: Mutations) -> Result<AncestralGraphSetup, Report> {
-      let nwk_parsed = nwk_read_str("(A:0.5,B:0)root;")?;
+      let nwk_parsed = nwk_read(b"(A:0.5,B:0)root;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -575,7 +575,7 @@ pub(super) mod tests {
       ),
       Report,
     > {
-      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -789,7 +789,7 @@ pub(super) mod tests {
       ),
       Report,
     > {
-      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -824,7 +824,7 @@ pub(super) mod tests {
       ),
       Report,
     > {
-      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -839,7 +839,7 @@ pub(super) mod tests {
       ),
       Report,
     > {
-      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -897,7 +897,7 @@ pub(super) mod tests {
       ),
       Report,
     > {
-      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
       let names = nwk_parsed.names();
       let graph: Graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -935,7 +935,7 @@ pub(super) mod tests {
       ),
       Report,
     > {
-      let nwk_parsed = nwk_read_str(MODEL_TREE)?;
+      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;

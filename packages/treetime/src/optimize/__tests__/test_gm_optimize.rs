@@ -147,7 +147,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::fasta::read_many_fasta_path;
+    use treetime_io::fasta::fasta_read_file;
     use treetime_io::nwk::nwk_read_file;
     use treetime_primitives::AlignmentRecord;
     use treetime_primitives::LogLh;
@@ -197,7 +197,7 @@ mod tests {
 
       let tree_path = workspace_root.join(&case.tree);
       let aln_path = workspace_root.join(&case.aln);
-      let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?
+      let aln: Vec<AlignmentRecord> = fasta_read_file(&aln_path, &alphabet)?
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();

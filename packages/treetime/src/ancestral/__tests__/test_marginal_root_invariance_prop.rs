@@ -49,10 +49,10 @@ mod tests {
     use treetime_graph::reroot::{
       apply_reroot_topology, record_merge, remove_node_if_trivial, trivial_node_branch_lengths,
     };
-    use treetime_io::nwk::{NwkWriteOptions, nwk_read_str, nwk_write_str};
+    use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_write_str};
 
     pub(super) fn reroot_at_internal_node(newick: &str, node_idx: usize) -> Result<String, Report> {
-      let nwk_parsed = nwk_read_str(newick)?;
+      let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -82,7 +82,7 @@ mod tests {
         weight_significant_digits: Some(17),
         ..NwkWriteOptions::default()
       };
-      nwk_write_str(&graph, &names, &branch_lengths, &options)
+      nwk_write_str(&graph, &names, &branch_lengths, &options, &CommentProviders::new())
     }
 
     #[cfg(test)]
@@ -100,7 +100,7 @@ mod tests {
           assert!(rerooted.contains(taxon), "Missing taxon {taxon} in {rerooted}");
         }
 
-        let nwk_parsed = nwk_read_str(&rerooted)?;
+        let nwk_parsed = nwk_read(rerooted.as_bytes())?;
         let names = nwk_parsed.names();
         let graph = nwk_parsed.graph;
         let branch_lengths = nwk_parsed.branch_lengths;

@@ -13,7 +13,7 @@ mod tests {
   use crate::seq::alignment::node_seq_inputs;
   use eyre::Report;
   use std::path::Path;
-  use treetime_io::fasta::read_many_fasta_path;
+  use treetime_io::fasta::fasta_read_file;
   use treetime_io::nwk::nwk_read_file;
   use treetime_primitives::AlignmentRecord;
 
@@ -27,7 +27,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let tree_path = workspace_root.join("data/sc2/2844/tree.nwk");
     let aln_path = workspace_root.join("data/sc2/2844/aln.fasta.xz");
-    let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?
+    let aln: Vec<AlignmentRecord> = fasta_read_file(&aln_path, &alphabet)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -94,7 +94,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
     let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
-    let aln: Vec<AlignmentRecord> = read_many_fasta_path(&[aln_path.to_str().unwrap()], &alphabet)?
+    let aln: Vec<AlignmentRecord> = fasta_read_file(&aln_path, &alphabet)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();

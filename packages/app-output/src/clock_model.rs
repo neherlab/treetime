@@ -1,8 +1,0 @@
-use eyre::Report;
-use std::path::Path;
-use treetime::clock::clock_model::ClockModel;
-use treetime_utils::io::json::{JsonPretty, json_write_file};
-
-pub fn write_clock_model(clock_model: &ClockModel, path: &Path) -> Result<(), Report> {
-  json_write_file(path, clock_model, JsonPretty(true))
-}

@@ -1,3 +1,5 @@
+use crate::output_plan::OutputSelection;
+use crate::table_output::table_create;
 use eyre::Report;
 use indexmap::IndexMap;
 use ndarray::Array1;
@@ -7,8 +9,7 @@ use std::iter::once;
 use std::path::Path;
 use treetime::mugration::pipeline::MugrationOutput;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::csv::CsvStructWriter;
-use treetime_utils::io::file::write_file_with;
+use treetime_io::csv::CsvWriter;
 
 #[derive(Debug)]
 pub struct MugrationResult {
@@ -78,18 +79,17 @@ impl MugrationConfidenceOutput {
   }
 
   pub fn write_csv_file(&self, filepath: &Path) -> Result<(), Report> {
-    write_file_with(filepath, |file| self.write_csv(file))
+    let mut csv = table_create(OutputSelection::ConfidenceCsv, filepath)?;
+    self.write_rows(&mut csv)?;
+    csv.finish()
   }
 
-  fn write_csv(&self, writer: impl Write + Send) -> Result<(), Report> {
-    let mut csv = CsvStructWriter::new(writer, b',')?;
+  fn write_rows<W: Write>(&self, csv: &mut CsvWriter<W>) -> Result<(), Report> {
     csv.write_record(once("node").chain(self.states.iter().map(String::as_str)))?;
     self.rows.iter().try_for_each(|row| {
       let probs = row.profile.iter().map(|p| format!("{p:.6}"));
       csv.write_record(once(row.node.clone()).chain(probs))
-    })?;
-    csv.into_inner()?;
-    Ok(())
+    })
   }
 }
 
@@ -114,19 +114,18 @@ impl MugrationTraitsOutput {
   }
 
   pub fn write_csv_file(&self, filepath: &Path) -> Result<(), Report> {
-    write_file_with(filepath, |file| self.write_csv(file))
+    let mut csv = table_create(OutputSelection::TraitsCsv, filepath)?;
+    self.write_rows(&mut csv)?;
+    csv.finish()
   }
 
-  fn write_csv(&self, writer: impl Write + Send) -> Result<(), Report> {
-    let mut csv = CsvStructWriter::new(writer, b',')?;
+  fn write_rows<W: Write>(&self, csv: &mut CsvWriter<W>) -> Result<(), Report> {
     csv.write_record(["node", self.attribute.as_str()])?;
     self
       .assignments
       .iter()
       .map(<[&String; 2]>::from)
-      .try_for_each(|record| csv.write_record(record))?;
-    csv.into_inner()?;
-    Ok(())
+      .try_for_each(|record| csv.write_record(record))
   }
 }
 
@@ -167,6 +166,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_io::csv::{CsvWriter, TableFormat};
   use treetime_utils::o;
 
   #[rustfmt::skip]
@@ -185,7 +185,9 @@ mod tests {
     let traits = MugrationTraitsOutput::new(attribute, indexmap! { o!(node) => o!(value) });
 
     let mut buf = Vec::new();
-    traits.write_csv(&mut buf).unwrap();
+    let mut csv = CsvWriter::new(&mut buf, TableFormat::Csv);
+    traits.write_rows(&mut csv).unwrap();
+    csv.into_inner().unwrap();
 
     assert_eq!(expected, String::from_utf8(buf).unwrap());
   }
@@ -207,7 +209,9 @@ mod tests {
     };
 
     let mut buf = Vec::new();
-    confidence.write_csv(&mut buf).unwrap();
+    let mut csv = CsvWriter::new(&mut buf, TableFormat::Csv);
+    confidence.write_rows(&mut csv).unwrap();
+    csv.into_inner().unwrap();
 
     let expected = "\
       node,\"Congo, DR\",usa\n\

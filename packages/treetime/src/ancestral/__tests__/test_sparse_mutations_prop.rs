@@ -6,7 +6,7 @@ mod tests {
   use crate::partition::marginal::sparse::mutations::sparse_edge_mutations;
   use crate::seq::mutation::{MutationTrack, stream_sequence_mutations};
   use proptest::prelude::*;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   proptest! {
     #![proptest_config(ProptestConfig::with_cases(300))]
@@ -18,7 +18,7 @@ mod tests {
       without_edge_fitch_subs in any::<bool>(),
       report_unknown in any::<bool>(),
     ) {
-      let graph = nwk_read_str(&input.newick).unwrap().graph;
+      let graph = nwk_read(input.newick.as_bytes()).unwrap().graph;
       let (_, mut sparse) = run_sparse_marginal(&input).unwrap();
       if without_edge_fitch_subs {
         sparse.partition.obs_edges.values_mut().for_each(|edge| edge.set_fitch_subs(vec![]));

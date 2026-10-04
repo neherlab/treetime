@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
+use treetime_io::name_list::name_list_read_file;
 use treetime_io::nwk::nwk_read_file;
-use treetime_utils::io::fs::read_file_to_string;
 use treetime_utils::{make_error, make_report};
 
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
@@ -140,16 +140,7 @@ impl TopologyOrderArgs {
           .topology_order_target_file
           .as_ref()
           .ok_or_else(|| make_report!("--topology-order-target-file is required for list"))?;
-        let contents = read_file_to_string(path)
-          .wrap_err_with(|| format!("When reading topology order target list '{}'", path.display()))?;
-        Ok(
-          contents
-            .lines()
-            .map(str::trim)
-            .filter(|line| !line.is_empty())
-            .map(str::to_owned)
-            .collect(),
-        )
+        name_list_read_file(path, b'\n').wrap_err("When reading the topology order target list")
       },
     }
   }

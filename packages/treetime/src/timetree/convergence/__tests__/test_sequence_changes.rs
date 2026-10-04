@@ -18,8 +18,8 @@ mod tests {
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
 
   const TREE: &str = "((A:0.1,B:0.1)AB:0.1,(C:0.1,D:0.1)CD:0.1)root;";
@@ -53,7 +53,7 @@ mod tests {
 
   #[test]
   fn test_capture_ancestral_states_without_reconstruction_is_empty() -> Result<(), Report> {
-    let graph = nwk_read_str(TREE)?.graph;
+    let graph = nwk_read(TREE.as_bytes())?.graph;
 
     assert_eq!(
       BTreeMap::<GraphNodeKey, Seq>::new(),
@@ -122,12 +122,12 @@ mod tests {
     }
 
     pub(super) fn sparse_model(fasta: &str) -> Result<(Graph, BranchModel), Report> {
-      let nwk_parsed = nwk_read_str(TREE)?;
+      let nwk_parsed = nwk_read(TREE.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = branch_lengths_or_zero(&nwk_parsed.branch_lengths);
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-      let aln: Vec<AlignmentRecord> = read_many_fasta_str(fasta, &alphabet)?
+      let aln: Vec<AlignmentRecord> = fasta_read(fasta.as_bytes(), &alphabet)?
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();

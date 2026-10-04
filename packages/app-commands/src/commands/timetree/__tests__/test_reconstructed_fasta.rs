@@ -120,12 +120,12 @@ mod tests {
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::cancel::NoopCancel;
     use treetime::progress::NoopProgress;
-    use treetime_io::fasta::{FastaRecord, read_many_fasta_path};
+    use treetime_io::fasta::{FastaRecord, fasta_read_file};
     use treetime_primitives::Seq;
 
     pub(super) fn input_leaves() -> Result<BTreeMap<String, Seq>, Report> {
       let alignment = project_root().join("data/flu/h3n2/20/aln.fasta.xz");
-      let records = read_many_fasta_path(&[alignment], &Alphabet::default())?;
+      let records = fasta_read_file(alignment, &Alphabet::default())?;
       Ok(
         records
           .into_iter()
@@ -157,7 +157,7 @@ mod tests {
       configure(&mut args);
 
       run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
-      read_many_fasta_path(&[fasta], &Alphabet::default())
+      fasta_read_file(fasta, &Alphabet::default())
     }
   }
 }

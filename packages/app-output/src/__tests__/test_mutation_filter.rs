@@ -136,12 +136,12 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::nwk_read_str;
+    use treetime_io::nwk::nwk_read;
 
     pub(super) type Names = BTreeMap<GraphNodeKey, Option<String>>;
 
     pub(super) fn tree() -> Result<(Graph, Names), Report> {
-      let parsed = nwk_read_str("((A:1,B:1)X:1,C:1)root;")?;
+      let parsed = nwk_read(b"((A:1,B:1)X:1,C:1)root;".as_slice())?;
       let names = parsed.names();
       Ok((parsed.graph, names))
     }

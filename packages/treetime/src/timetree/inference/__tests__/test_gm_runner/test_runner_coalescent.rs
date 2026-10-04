@@ -33,7 +33,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   #[rustfmt::skip]
@@ -100,7 +100,7 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
       dataset: &str,
       case: &super::super::super::test_gm_runner_support::support::DatasetOutputs,
     ) -> Result<TimetreeSetup, Report> {
-      let nwk_parsed = nwk_read_str(case.rerooted_tree_nwk())?;
+      let nwk_parsed = nwk_read(case.rerooted_tree_nwk().as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;

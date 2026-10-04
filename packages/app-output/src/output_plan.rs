@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+use treetime_io::csv::TableFormat;
 use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::NwkStyle;
 use treetime_utils::make_error;
@@ -411,6 +412,29 @@ impl OutputSelection {
       Self::Tracelog => "Convergence values of every iteration",
       Self::CoalescentTsv | Self::CoalescentCsv => "Coalescent time scale and effective population size",
       Self::CoalescentJson => "Coalescent model and its likelihood",
+    }
+  }
+
+  pub const fn table_format(self) -> Option<TableFormat> {
+    match self {
+      Self::ConfidenceTsv | Self::CoalescentTsv => Some(TableFormat::Tsv),
+      Self::ConfidenceCsv | Self::TraitsCsv | Self::ClockCsv | Self::Tracelog | Self::CoalescentCsv => {
+        Some(TableFormat::Csv)
+      },
+      Self::All
+      | Self::Nwk
+      | Self::Nexus
+      | Self::Auspice
+      | Self::MatPb
+      | Self::MatJson
+      | Self::GraphJson
+      | Self::Dot
+      | Self::AugurNodeData
+      | Self::Gtr
+      | Self::ClockModel
+      | Self::ReconstructedNucFasta
+      | Self::ReconstructedAaFasta
+      | Self::CoalescentJson => None,
     }
   }
 

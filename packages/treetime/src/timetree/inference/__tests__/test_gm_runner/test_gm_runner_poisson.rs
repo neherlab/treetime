@@ -14,7 +14,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   #[rustfmt::skip]
@@ -27,7 +27,7 @@ mod tests {
     let case = &OUTPUTS[dataset];
     let expected = case.poisson();
 
-    let nwk_parsed = nwk_read_str(case.rerooted_tree_nwk())?;
+    let nwk_parsed = nwk_read(case.rerooted_tree_nwk().as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;

@@ -25,8 +25,8 @@ mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::{
     pretty_assert_abs_diff_eq, pretty_assert_array_nonneg, pretty_assert_array_offdiag_upper_bounded,
@@ -39,7 +39,7 @@ mod tests {
     tree_nwk: &str,
     aln: &[AlignmentRecord],
   ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
-    let nwk_parsed = nwk_read_str(tree_nwk)?;
+    let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -58,8 +58,8 @@ mod tests {
 
   #[test]
   fn test_uniform_sequences() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
-      indoc! {r#"
+    let aln: Vec<AlignmentRecord> = fasta_read(
+      indoc! {br#"
       >A
       ACGT
       >B
@@ -68,7 +68,8 @@ mod tests {
       ACGT
       >D
       ACGT
-      "#},
+      "#}
+      .as_slice(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -97,13 +98,14 @@ mod tests {
 
   #[test]
   fn test_single_mutation() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
-      indoc! {r#"
+    let aln: Vec<AlignmentRecord> = fasta_read(
+      indoc! {br#"
       >A
       ACGT
       >B
       CCGT
-      "#},
+      "#}
+      .as_slice(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -142,8 +144,8 @@ mod tests {
 
   #[test]
   fn test_zero_branch_lengths() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
-      indoc! {r#"
+    let aln: Vec<AlignmentRecord> = fasta_read(
+      indoc! {br#"
       >A
       ACGT
       >B
@@ -152,7 +154,8 @@ mod tests {
       ACGT
       >D
       CCGT
-      "#},
+      "#}
+      .as_slice(),
       &*NUC_ALPHABET,
     )?
     .into_iter()
@@ -216,8 +219,8 @@ mod tests {
 
   #[test]
   fn test_produces_valid_model() -> Result<(), Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
-      indoc! {r#"
+    let aln: Vec<AlignmentRecord> = fasta_read(
+      indoc! {br#"
       >A
       ACATCGCCGTAGAC
       >B
@@ -226,7 +229,8 @@ mod tests {
       CCGGCGATGTGTTG
       >D
       TCGGCCGTGTGTTG
-      "#},
+      "#}
+      .as_slice(),
       &*NUC_ALPHABET,
     )?
     .into_iter()

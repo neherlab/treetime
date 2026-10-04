@@ -26,8 +26,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   const IDENTICAL_TREE_NEWICK: &str = "((A:0.1,B:0.1)AB:0.1,(C:0.1,D:0.1)CD:0.1)root:0.1;";
@@ -49,7 +49,7 @@ mod tests {
     model: GtrModelName,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MarginalReconstruction, Report> {
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(IDENTICAL_ALIGNMENT, &Alphabet::default())?
+    let aln: Vec<AlignmentRecord> = fasta_read(IDENTICAL_ALIGNMENT.as_bytes(), &Alphabet::default())?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -97,7 +97,7 @@ mod tests {
   #[trace]
   fn test_dispatch_zero_boundary_k80_identical_sequences(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(IDENTICAL_TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -136,7 +136,7 @@ mod tests {
   #[trace]
   fn test_dispatch_zero_boundary_non_unimodal_models_all_reach_zero(#[case] model: GtrModelName,
   ) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(IDENTICAL_TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -172,7 +172,7 @@ mod tests {
 
   #[test]
   fn test_dispatch_zero_boundary_jc69_pre_dispatch_shortcut_reaches_zero() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(IDENTICAL_TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -351,7 +351,7 @@ mod tests {
   #[trace]
   fn test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str(IDENTICAL_TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(IDENTICAL_TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

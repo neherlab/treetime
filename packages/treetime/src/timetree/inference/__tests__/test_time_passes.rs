@@ -17,7 +17,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
 
   const TREE_NEWICK: &str = "((B:1,C:1,(U1:1,U2:1)N:1)P:1,A:1)root;";
 
@@ -118,7 +118,7 @@ mod tests {
 
     impl Fixture {
       pub(super) fn new() -> Result<Self, Report> {
-        let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+        let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
         let names = nwk_parsed.names();
         let graph = nwk_parsed.graph;
         let branches = graph

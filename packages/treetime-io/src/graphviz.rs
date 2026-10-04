@@ -3,7 +3,7 @@ use eyre::{Report, WrapErr};
 use itertools::{Itertools, iproduct};
 use std::collections::BTreeMap;
 use std::fmt::Write;
-use std::io::Write as _;
+use std::io;
 use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -20,35 +20,29 @@ pub fn graphviz_write_file(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  let filepath = filepath.as_ref();
-  let text = graphviz_write_str(graph, names, weights)?;
-  write_file_with(filepath, |f| writeln!(f, "{text}").map_err(Report::new))
-    .wrap_err_with(|| format!("When writing Graphviz file '{}'", filepath.display()))
+  write_file_with(filepath, |writer| graphviz_write(writer, graph, names, weights))
 }
 
-fn graphviz_write_str(
+pub fn graphviz_write(
+  mut writer: impl io::Write,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<String, Report> {
+) -> Result<(), Report> {
   let mut text = String::new();
-  graphviz_write(&mut text, graph, names, weights)?;
-  Ok(text)
+  write_graphviz_text(&mut text, graph, names, weights)?;
+  writer.write_all(text.as_bytes()).wrap_err("When writing Graphviz")
 }
 
-fn graphviz_write<W>(
-  mut writer: W,
+fn write_graphviz_text(
+  mut writer: impl Write,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report>
-where
-  W: Write,
-{
+) -> Result<(), Report> {
   write!(
     writer,
-    r#"
-digraph Phylogeny {{
+    r#"digraph Phylogeny {{
   graph [rankdir=LR, overlap=scale, splines=ortho, nodesep=1.0, ordering=out];
   edge  [overlap=scale];
   node  [shape=box];

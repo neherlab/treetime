@@ -7,12 +7,12 @@ mod tests {
   use crate::test_utils::dense_partition_with_constant_leaves;
   use eyre::Report;
   use std::collections::BTreeMap;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
   #[test]
   fn test_optimize_zero_sequence_length_run_optimize_error() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;".as_slice())?;
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let total_length = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 0)?.length;
@@ -33,7 +33,7 @@ mod tests {
 
   #[test]
   fn test_optimize_zero_sequence_length_initial_guess_error() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;".as_slice())?;
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let total_length = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 0)?.length;
@@ -56,7 +56,7 @@ mod tests {
 
   #[test]
   fn test_optimize_zero_sequence_length_run_optimize_with_fixed_rate_error() -> Result<(), Report> {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.2)root:0.01;".as_slice())?;
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let total_length = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 0)?.length;

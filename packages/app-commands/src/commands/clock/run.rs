@@ -2,11 +2,10 @@ use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, Treet
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::rtt_chart::{write_clock_regression_chart_png, write_clock_regression_chart_svg};
-use app_output::clock_model::write_clock_model;
 use app_output::clock_result::ClockNodeOut;
 use app_output::clock_tree_output::write_clock_tree_outputs;
 use app_output::output_plan::OutputSelection;
-use app_output::rtt::write_clock_regression_result_csv;
+use app_output::table_output::table_write_file;
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime::cancel::Cancel;
@@ -20,9 +19,10 @@ use treetime::make_report;
 use treetime::progress::{LogSink, StageSink};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::dates_csv::read_dates;
+use treetime_io::dates_csv::metadata_read_file;
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
+use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 #[expect(
   clippy::as_conversions,
@@ -43,13 +43,14 @@ pub fn run_clock(
   let branch_lengths = nwk_parsed.branch_lengths;
   let input_order = leaf_order(&graph, &names)?;
 
-  let dates = read_dates(
+  let dates = metadata_read_file(
     clock_args.metadata(),
     &clock_args.metadata_id.metadata_delimiters,
     &clock_args.metadata_id.metadata_id_columns,
-    &None,
-    &clock_args.date_column.date_column,
+    None,
+    clock_args.date_column.date_column.as_deref(),
   )
+  .and_then(|table| table.dates())
   .wrap_err("When reading dates")?;
 
   let resolved = clock_args.resolve_outputs()?;
@@ -116,11 +117,11 @@ pub fn run_clock(
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
-    write_clock_model(&clock_model, path)?;
+    json_write_file(path, &clock_model, JsonPretty(true))?;
   }
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockCsv) {
-    write_clock_regression_result_csv(&regression_results, path, b',')?;
+    table_write_file(OutputSelection::ClockCsv, path, &regression_results)?;
   }
 
   if let Some(outdir) = &clock_args.output.output_all {

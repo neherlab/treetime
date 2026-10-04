@@ -15,13 +15,13 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use helpers::manual_total_indel_log_lh;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
 
   #[test]
   fn test_run_optimize_loop_records_lh_history() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -50,7 +50,7 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_records_joint_likelihood_with_sparse_indels() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -93,7 +93,7 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_breaks_on_convergence() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -124,7 +124,7 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_zero_max_iter_is_noop() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -152,7 +152,7 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_all_likelihoods_finite() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -181,7 +181,7 @@ mod tests {
   #[test]
   fn test_run_optimize_loop_improves_likelihood() -> Result<(), Report> {
     let aln = simple_alignment()?;
-    let nwk_parsed = nwk_read_str(TREE_NEWICK)?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

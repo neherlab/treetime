@@ -5,11 +5,11 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
-  use treetime_io::fasta::read_many_fasta_str;
+  use treetime_io::fasta::fasta_read;
   use treetime_primitives::AlignmentRecord;
 
   fn example_gap_free_input() -> Result<MarginalTestInput, Report> {
-    let alignment: Vec<AlignmentRecord> = read_many_fasta_str(
+    let alignment: Vec<AlignmentRecord> = fasta_read(
       "
 >A
 ACGTACGTACGTACGT
@@ -19,7 +19,8 @@ ACGTACGTACGTACGA
 ACGTACGTACGTACGG
 >D
 ACGTACGTACGTACGC
-",
+"
+      .as_bytes(),
       &*crate::test_utils::NUC_ALPHABET,
     )?
     .into_iter()

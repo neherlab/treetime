@@ -10,7 +10,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::{assert_error, make_report, pretty_assert_abs_diff_eq};
 
@@ -24,7 +24,7 @@ mod tests {
     ),
     Report,
   > {
-    let nwk_parsed = nwk_read_str("((A:0.1,B:0.2,C:0.15)P:0.05)root;")?;
+    let nwk_parsed = nwk_read(b"((A:0.1,B:0.2,C:0.15)P:0.05)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

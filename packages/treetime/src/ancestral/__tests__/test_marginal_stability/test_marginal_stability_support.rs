@@ -13,8 +13,8 @@ pub(super) mod tests {
   use eyre::Report;
   use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
@@ -58,12 +58,12 @@ pub(super) mod tests {
     aln_str: &str,
     gtr: GTR,
   ) -> Result<(f64, DenseReconstruction), Report> {
-    let nwk_parsed = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read(newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
@@ -81,12 +81,12 @@ pub(super) mod tests {
     aln_str: &str,
     gtr: GTR,
   ) -> Result<(f64, SparseReconstruction), Report> {
-    let nwk_parsed = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read(newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();

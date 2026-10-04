@@ -9,8 +9,8 @@ pub(super) mod tests {
   use eyre::Report;
   use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -76,12 +76,12 @@ pub(super) mod tests {
   }
 
   pub(crate) fn run_dense_marginal_get_log_lh(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
-    let nwk_parsed = nwk_read_str(newick)?;
+    let nwk_parsed = nwk_read(newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(aln_str, &*NUC_ALPHABET)?
+    let aln: Vec<AlignmentRecord> = fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();

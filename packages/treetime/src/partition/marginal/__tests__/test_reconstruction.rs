@@ -18,8 +18,8 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::sync::random::get_random_number_generator;
 
@@ -147,8 +147,8 @@ mod tests {
 
     pub(super) fn seeded_sparse() -> Result<(Graph, SparseReconstruction), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-      let aln: Vec<AlignmentRecord> = read_many_fasta_str(
-        indoc! {r#"
+      let aln: Vec<AlignmentRecord> = fasta_read(
+        indoc! {br#"
         >A
         ACATCGCCNNA--GAC
         >B
@@ -157,13 +157,14 @@ mod tests {
         CCGGCGATGTRTTG--
         >D
         TCGGCCGTGTRTTG--
-      "#},
+      "#}
+        .as_slice(),
         &alphabet,
       )?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-      let nwk_parsed = nwk_read_str(TREE)?;
+      let nwk_parsed = nwk_read(TREE.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
@@ -173,18 +174,18 @@ mod tests {
     }
 
     pub(super) fn branch_lengths() -> Result<BTreeMap<GraphEdgeKey, Option<f64>>, Report> {
-      Ok(nwk_read_str(TREE)?.branch_lengths)
+      Ok(nwk_read(TREE.as_bytes())?.branch_lengths)
     }
 
     pub(super) fn updated_four_leaves(
       representation: Representation,
     ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, MarginalReconstruction), Report> {
-      let nwk_parsed = nwk_read_str("((A:0.1,B:0.1)X:0.1,(C:0.1,D:0.1)Y:0.1)root;")?;
+      let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)X:0.1,(C:0.1,D:0.1)Y:0.1)root;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = branch_lengths_or_zero(&nwk_parsed.branch_lengths);
-      let aln: Vec<AlignmentRecord> = read_many_fasta_str(
-        indoc! {r#"
+      let aln: Vec<AlignmentRecord> = fasta_read(
+        indoc! {br#"
         >A
         ACGT
         >B
@@ -193,7 +194,8 @@ mod tests {
         ACGT
         >D
         ACGA
-      "#},
+      "#}
+        .as_slice(),
         &Alphabet::new(AlphabetName::Nuc)?,
       )?
       .into_iter()

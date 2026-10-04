@@ -18,9 +18,9 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::csv::default_name_candidates;
-  use treetime_io::dates_csv::{DateConstraint, DatesMap, read_dates};
-  use treetime_io::fasta::read_many_fasta_path;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::dates_csv::{DateConstraint, DatesMap, metadata_read_file};
+  use treetime_io::fasta::fasta_read_file;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::{assert_error, o, pretty_assert_abs_diff_eq};
 
@@ -178,7 +178,7 @@ mod tests {
 
   #[test]
   fn test_pipeline_date_branch_lengths_need_both_end_dates() -> Result<(), Report> {
-    let parsed = nwk_read_str("((A:1,B:1)X:1,C:1)root;")?;
+    let parsed = nwk_read(b"((A:1,B:1)X:1,C:1)root;".as_slice())?;
     let names = parsed.names();
     let graph = parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node must exist");
@@ -233,7 +233,7 @@ mod tests {
   #[test]
   fn test_pipeline_marginal_mode_removes_an_undated_single_child_root() -> Result<(), Report> {
     let newick = helpers::zika_newick_with_stem()?;
-    let samples = nwk_read_str(&helpers::zika_newick()?)?;
+    let samples = nwk_read((helpers::zika_newick()?).as_bytes())?;
     let sample_names = helpers::leaf_names(&samples.graph, &samples.names());
     let input = helpers::zika_input(&newick, helpers::zika_dates()?, true)?;
     let params = TimetreeParams {
@@ -272,7 +272,7 @@ mod tests {
     }
 
     pub(super) fn star_input(dates: Option<DatesMap>) -> Result<TimetreeInput, Report> {
-      let nwk_parsed = nwk_read_str(STAR_TREE)?;
+      let nwk_parsed = nwk_read(STAR_TREE.as_bytes())?;
       let names = nwk_parsed.names();
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
@@ -296,24 +296,25 @@ mod tests {
     }
 
     pub(super) fn zika_dates() -> Result<DatesMap, Report> {
-      read_dates(
+      metadata_read_file(
         zika_path("metadata.tsv"),
         &['\t'],
         &default_name_candidates(),
-        &None,
-        &None,
+        None,
+        None,
       )
+      .and_then(|table| table.dates())
     }
 
     pub(super) fn zika_input(newick: &str, dates: DatesMap, with_alignment: bool) -> Result<TimetreeInput, Report> {
       let alphabet = Alphabet::default();
       let sequences = if with_alignment {
-        let records = read_many_fasta_path(&[zika_path("aln.fasta.xz")], &alphabet)?;
+        let records = fasta_read_file(zika_path("aln.fasta.xz"), &alphabet)?;
         Some(records.into_iter().map(AlignmentRecord::from).collect())
       } else {
         None
       };
-      let nwk_parsed = nwk_read_str(newick)?;
+      let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
       let input = TimetreeInput {
         graph: nwk_parsed.graph,

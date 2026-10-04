@@ -1,8 +1,8 @@
-use crate::io::file::open_file_or_stdin;
+use crate::io::file::read_file_with;
 use crate::make_report;
 use eyre::{Report, WrapErr};
 use std::ffi::{OsStr, OsString};
-use std::io::{BufReader, Read};
+use std::io::{ErrorKind, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
@@ -73,22 +73,18 @@ pub fn add_extension(filepath: impl AsRef<Path>, extension: impl AsRef<OsStr>) -
 }
 
 pub fn read_file_to_string(filepath: impl AsRef<Path>) -> Result<String, Report> {
-  let filepath = filepath.as_ref();
-  let mut file = open_file_or_stdin(&Some(filepath))?;
-  let mut data = String::new();
-  file
-    .read_to_string(&mut data)
-    .wrap_err_with(|| format!("When reading file: '{}'", filepath.display()))?;
-  Ok(data)
+  read_file_with(filepath, |mut reader| {
+    let mut data = String::new();
+    reader.read_to_string(&mut data)?;
+    Ok(data)
+  })
 }
 
-pub fn read_reader_to_string(reader: impl Read) -> Result<String, Report> {
-  const BUF_SIZE: usize = 2 * 1024 * 1024;
-
-  let mut reader = BufReader::with_capacity(BUF_SIZE, reader);
-
-  let mut data = String::new();
-  reader.read_to_string(&mut data).wrap_err("When reading input")?;
-
-  Ok(data)
+pub fn read_file_to_string_if_exists(filepath: impl AsRef<Path>) -> Result<Option<String>, Report> {
+  let filepath = filepath.as_ref();
+  match fs::read_to_string(filepath) {
+    Ok(data) => Ok(Some(data)),
+    Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+    Err(error) => Err(Report::new(error)).wrap_err_with(|| format!("When reading file '{}'", filepath.display())),
+  }
 }

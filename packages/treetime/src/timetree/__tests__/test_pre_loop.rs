@@ -19,8 +19,8 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::edge::GraphEdgeKey;
-  use treetime_io::fasta::read_many_fasta_str;
-  use treetime_io::nwk::nwk_read_str;
+  use treetime_io::fasta::fasta_read;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
   const INPUT_BRANCH_LENGTH: f64 = 0.5;
@@ -31,12 +31,12 @@ mod tests {
   fn test_pre_loop_ml_step_shortens_branches_far_longer_than_the_alignment_supports() -> Result<(), Report> {
     let length = INPUT_BRANCH_LENGTH;
     let newick = format!("((A:{length},B:{length})AB:{length},(C:{length},D:{length})CD:{length})root;");
-    let nwk_parsed = nwk_read_str(&newick)?;
+    let nwk_parsed = nwk_read(newick.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let aln: Vec<AlignmentRecord> = read_many_fasta_str(
+    let aln: Vec<AlignmentRecord> = fasta_read(
       indoc! {"
         >A
         ACGTACGTACGTACGTACGTACGT
@@ -46,7 +46,8 @@ mod tests {
         ACGTTCGTACGTACGTACGTACGT
         >D
         ACGTTCGTACGTACGTACGTACGT
-      "},
+      "}
+      .as_bytes(),
       &alphabet,
     )?
     .into_iter()
