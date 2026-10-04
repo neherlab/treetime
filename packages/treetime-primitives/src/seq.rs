@@ -145,7 +145,7 @@ impl Seq {
 
 impl PartialEq for Seq {
   fn eq(&self, other: &Self) -> bool {
-    self.data == other.data
+    self.as_str().as_bytes() == other.as_str().as_bytes()
   }
 }
 
