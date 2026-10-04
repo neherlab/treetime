@@ -56,7 +56,6 @@ pub fn run(
 
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
   let sequences = std::mem::take(&mut input.sequences);
-  let node_inputs = node_seq_inputs(&input.graph, names, sequences);
 
   let reconstruction = build_marginal_partition(
     Representation::resolve(params.dense),
@@ -64,7 +63,7 @@ pub fn run(
     &input.graph,
     0,
     input.alphabet,
-    &node_inputs,
+    &node_seq_inputs(&input.graph, names, sequences),
     &branch_lengths_or_zero(&branch_lengths),
     log,
   )
