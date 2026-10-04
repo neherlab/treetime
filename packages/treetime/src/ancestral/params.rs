@@ -16,6 +16,7 @@ pub struct AncestralParams {
   pub model: GtrModelName,
   pub dense: Option<bool>,
   pub include_leaves: bool,
+  pub report_ambiguous: bool,
   pub impute_missing_data: bool,
   pub gtr_iterations: usize,
   pub site_specific_gtr: bool,

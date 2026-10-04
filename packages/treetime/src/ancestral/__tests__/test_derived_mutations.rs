@@ -197,7 +197,7 @@ mod tests {
         })
         .collect::<Result<EdgeSubs, Report>>()?;
       let mut sink = RecordingSeqSink::default();
-      let derived = partition.stream_sequences(graph, track, include_leaves, Some(&mut sink))?;
+      let derived = partition.stream_sequences(graph, track, include_leaves, true, Some(&mut sink))?;
       let actual: EdgeSubs = derived
         .edge_mutations
         .into_iter()
@@ -302,7 +302,8 @@ mod tests {
         &NoopProgress,
       )?;
       let mut sink = RecordingSeqSink::default();
-      let derived = partition.stream_sequences(graph, &MutationTrack::Nucleotide, include_leaves, Some(&mut sink))?;
+      let derived =
+        partition.stream_sequences(graph, &MutationTrack::Nucleotide, include_leaves, true, Some(&mut sink))?;
       let node_sequences: BTreeMap<GraphNodeKey, Seq> =
         sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
       let name = |key: GraphNodeKey| names[&key].clone().expect("all test nodes are named");

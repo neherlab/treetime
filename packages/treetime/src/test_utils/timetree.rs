@@ -77,6 +77,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     time_marginal: TimeMarginalMode::Never,
     confidence: false,
     include_leaves: false,
+    report_ambiguous: true,
     impute_missing_data: false,
     sequence_outputs_requested: false,
     seed: 0,

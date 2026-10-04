@@ -30,6 +30,7 @@ pub(crate) fn stream_sequence_mutations(
   alphabet: &Alphabet,
   track: &MutationTrack,
   include_leaves: bool,
+  report_unknown: bool,
   mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
   edge_indels: impl Fn(GraphEdgeKey) -> Vec<InDel>,
   mut sink: Option<&mut (dyn SeqSink + '_)>,
@@ -57,7 +58,8 @@ pub(crate) fn stream_sequence_mutations(
           let (parent_seq, pending_children) = pending_parents
             .get_mut(parent_key)
             .ok_or_else(|| make_internal_report!("Parent {parent_key} of node {} was not visited first", node.key))?;
-          let subs = sequence_subs(parent_seq, &seq, alphabet)?;
+          let skip_unknown = !report_unknown && node.child_edge_keys.is_empty();
+          let subs = sequence_subs(parent_seq, &seq, alphabet, skip_unknown)?;
           *pending_children -= 1;
           if *pending_children == 0 {
             pending_parents.remove(parent_key);
@@ -119,7 +121,12 @@ fn emit_item(sink: &mut (dyn SeqSink + '_), item: SeqItem<'_>, sink_error: &mut 
   })
 }
 
-pub(crate) fn sequence_subs(parent: &Seq, child: &Seq, alphabet: &Alphabet) -> Result<Vec<Sub>, Report> {
+pub(crate) fn sequence_subs(
+  parent: &Seq,
+  child: &Seq,
+  alphabet: &Alphabet,
+  skip_unknown: bool,
+) -> Result<Vec<Sub>, Report> {
   if parent.len() != child.len() {
     return make_internal_error!(
       "Parent sequence has length {}, but child sequence has length {}",
@@ -131,7 +138,12 @@ pub(crate) fn sequence_subs(parent: &Seq, child: &Seq, alphabet: &Alphabet) -> R
     .iter()
     .zip(child.iter())
     .enumerate()
-    .filter(|(_, (reff, qry))| reff != qry && !alphabet.is_gap(**reff) && !alphabet.is_gap(**qry))
+    .filter(|(_, (reff, qry))| {
+      reff != qry
+        && !alphabet.is_gap(**reff)
+        && !alphabet.is_gap(**qry)
+        && (!skip_unknown || **qry != alphabet.unknown())
+    })
     .map(|(pos, (reff, qry))| Sub::new(*reff, pos, *qry))
     .collect()
 }

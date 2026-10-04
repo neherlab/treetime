@@ -167,6 +167,7 @@ fn timetree_params(args: &TreetimeTimetreeArgs, sequence_outputs_requested: bool
     time_marginal: args.time_marginal,
     confidence: args.confidence,
     include_leaves: args.include_leaves,
+    report_ambiguous: args.report_ambiguous,
     impute_missing_data: args.impute_missing_data,
     sequence_outputs_requested,
     seed,

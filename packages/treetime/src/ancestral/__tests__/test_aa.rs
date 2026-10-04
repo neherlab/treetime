@@ -74,7 +74,7 @@ mod tests {
     let reference = Seq::try_from_str("AA").unwrap();
 
     let mutations = partition
-      .stream_sequences(&graph, &MutationTrack::AminoAcid(o!("S")), false, None)
+      .stream_sequences(&graph, &MutationTrack::AminoAcid(o!("S")), false, true, None)
       .unwrap();
     let unknown = partition.alphabet().unknown();
 

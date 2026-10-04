@@ -76,6 +76,7 @@ pub fn reconstruct_aa(
         graph,
         &MutationTrack::AminoAcid(name.clone()),
         params.include_leaves,
+        true,
         seq_sink.as_deref_mut(),
       )
       .map_err(OperationError::into_report)?;

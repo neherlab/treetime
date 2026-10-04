@@ -551,6 +551,7 @@ fn reconstruct_final_sequences(
     params.impute_missing_data,
     &MutationTrack::Nucleotide,
     params.include_leaves,
+    params.report_ambiguous,
     seq_sink,
   )?;
   let edge_mutation_counts =

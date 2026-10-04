@@ -43,6 +43,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
     model: GtrModelName::JC69,
     dense: Some(false),
     include_leaves: false,
+    report_ambiguous: true,
     impute_missing_data: false,
     gtr_iterations: 0,
     site_specific_gtr: false,

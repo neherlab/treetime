@@ -24,6 +24,7 @@ pub(crate) fn sparse_edge_mutations(
   node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
   forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
   impute: bool,
+  report_unknown: bool,
   track: &MutationTrack,
 ) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
   let edges = graph
@@ -44,7 +45,8 @@ pub(crate) fn sparse_edge_mutations(
         parent_key,
         edge_key,
       )?;
-      let subs = edge_sequence_subs(&node_states[&parent_key], &child, &partition.alphabet)?;
+      let skip_unknown = !report_unknown && child.leaf.is_some();
+      let subs = edge_sequence_subs(&node_states[&parent_key], &child, &partition.alphabet, skip_unknown)?;
       let mutations = combine_edge_mutations(subs, &partition.obs_edges[&edge_key].indels, track)?;
       Ok((edge_key, mutations))
     })
@@ -55,6 +57,7 @@ fn edge_sequence_subs(
   parent: &SparseNodeState,
   child: &EdgeChild<'_>,
   alphabet: &Alphabet,
+  skip_unknown: bool,
 ) -> Result<Vec<Sub>, Report> {
   if parent.sequence.len() != child.state.sequence.len() {
     return make_internal_error!(
@@ -82,7 +85,8 @@ fn edge_sequence_subs(
     .filter_map(|pos| {
       let reff = internal_state(parent, pos, alphabet);
       let qry = child.state_at(pos, alphabet);
-      (reff != qry && !alphabet.is_gap(reff) && !alphabet.is_gap(qry)).then(|| Sub::new(reff, pos, qry))
+      let skipped = alphabet.is_gap(reff) || alphabet.is_gap(qry) || (skip_unknown && qry == alphabet.unknown());
+      (reff != qry && !skipped).then(|| Sub::new(reff, pos, qry))
     })
     .collect()
 }

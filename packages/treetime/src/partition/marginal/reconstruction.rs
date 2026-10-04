@@ -134,6 +134,7 @@ impl MarginalReconstruction {
     impute: bool,
     track: &MutationTrack,
     include_leaves: bool,
+    report_unknown: bool,
     sink: Option<&mut (dyn SeqSink + '_)>,
   ) -> Result<SequenceMutations, OperationError> {
     let node_sequence = |node_key| self.node_sequence(graph, impute, node_key);
@@ -143,6 +144,7 @@ impl MarginalReconstruction {
         self.alphabet(),
         track,
         include_leaves,
+        report_unknown,
         node_sequence,
         |edge_key| self.edge_indels(edge_key),
         sink,
@@ -159,6 +161,7 @@ impl MarginalReconstruction {
       &reconstruction.node_states,
       &reconstruction.edges.forward,
       impute,
+      report_unknown,
       track,
     )
     .map_err(OperationError::classify)?;

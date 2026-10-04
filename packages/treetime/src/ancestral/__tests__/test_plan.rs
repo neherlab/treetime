@@ -108,6 +108,7 @@ mod tests {
         model: GtrModelName::Infer,
         dense: None,
         include_leaves: false,
+        report_ambiguous: true,
         impute_missing_data: false,
         gtr_iterations: 0,
         site_specific_gtr: false,

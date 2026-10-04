@@ -109,6 +109,7 @@ mod tests {
         model: GtrModelName::JC69,
         dense,
         include_leaves: true,
+        report_ambiguous: true,
         impute_missing_data: false,
         gtr_iterations: 0,
         site_specific_gtr: false,

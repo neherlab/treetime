@@ -121,6 +121,7 @@ pub struct TimetreeParams {
   pub time_marginal: TimeMarginalMode,
   pub confidence: bool,
   pub include_leaves: bool,
+  pub report_ambiguous: bool,
   pub impute_missing_data: bool,
   pub sequence_outputs_requested: bool,
   pub seed: u64,

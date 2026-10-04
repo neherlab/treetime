@@ -26,6 +26,7 @@ pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralPar
     model: args.model_args.model_name(),
     dense: args.dense,
     include_leaves: args.include_leaves,
+    report_ambiguous: args.report_ambiguous,
     impute_missing_data: args.impute_missing_data,
     gtr_iterations: args.gtr_iterations,
     site_specific_gtr: args.site_specific_gtr,

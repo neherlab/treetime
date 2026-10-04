@@ -54,6 +54,27 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::leaf_edges(        btreemap! { "A" => vec!["C1N", "G2T"], "B" => vec!["C1N"] },
+                             btreemap! { "A" => vec!["G2T"],        "B" => vec![] })]
+  #[case::below_unknown_node(btreemap! { "X" => vec!["A2N"], "A" => vec!["N2G", "C3N"], "B" => vec!["N2A", "T4N"] },
+                             btreemap! { "X" => vec!["A2N"], "A" => vec!["N2G"],        "B" => vec!["N2A"] })]
+  #[trace]
+  fn test_mutation_filter_hidden_unknown_ignores_leaf_subs_into_unknown(
+    #[case] with_leaf_unknown: BTreeMap<&str, Vec<&str>>,
+    #[case] without_leaf_unknown: BTreeMap<&str, Vec<&str>>,
+  ) -> Result<(), Report> {
+    let (graph, names) = tree()?;
+    let filter = UnknownMutationFilter::hiding_unknown(AsciiChar::try_new(b'N')?);
+
+    let expected = filter.reported_edge_mutations(&graph, nucleotide_edges(&graph, &names, &with_leaf_unknown)?)?;
+    let actual = filter.reported_edge_mutations(&graph, nucleotide_edges(&graph, &names, &without_leaf_unknown)?)?;
+
+    assert_eq!(edge_strings(&graph, &names, &expected)?, edge_strings(&graph, &names, &actual)?);
+    Ok(())
+  }
+
   #[test]
   fn test_mutation_filter_keeps_indels() -> Result<(), Report> {
     let (graph, names) = tree()?;

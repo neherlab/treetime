@@ -48,6 +48,7 @@ pub fn run(
     &input.graph,
     &MutationTrack::Nucleotide,
     params.include_leaves,
+    params.report_ambiguous,
     Some(seq_sink),
   )?;
   Ok(AncestralOutput {

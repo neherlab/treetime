@@ -84,6 +84,7 @@ mod tests {
       reconstruction.alphabet(),
       &MutationTrack::Nucleotide,
       include_leaves,
+      true,
       |key| reconstruction.node_sequence(&graph, false, key),
       |edge_key| reconstruction.edge_indels(edge_key),
       Some(&mut sink),
