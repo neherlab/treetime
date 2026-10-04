@@ -1,5 +1,5 @@
 use itertools::izip;
-use ndarray::prelude::*;
+use ndarray::{Array, Array2, Axis, Dimension, Zip};
 use treetime_primitives::LogLh;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 
@@ -51,4 +51,10 @@ pub(crate) fn forward_log_lh_add_normalization(log_lh: LogLh, normalization: f64
   } else {
     log_lh + LogLh::new(normalization)
   }
+}
+
+pub(crate) fn divide_out<D: Dimension>(profile: &Array<f64, D>, message: &Array<f64, D>) -> Array<f64, D> {
+  Zip::from(profile)
+    .and(message)
+    .map_collect(|&value, &divisor| value / divisor.max(f64::MIN_POSITIVE))
 }

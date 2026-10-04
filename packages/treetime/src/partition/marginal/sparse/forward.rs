@@ -1,7 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
-use crate::partition::marginal::shared::normalize::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
+use crate::partition::marginal::shared::normalize::{
+  divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child,
+};
 use crate::partition::marginal::shared::update::MarginalForward;
 use crate::partition::marginal::sparse::message::{
   combine_messages, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
@@ -212,8 +214,7 @@ fn compute_msg_to_child(
       .variable
       .get(&pos)
       .map_or(&parent.profile.fixed[&parent_state], |distribution| &distribution.dis);
-    let safe_divisor = divisor.mapv(|value| value.max(f64::MIN_POSITIVE));
-    let mut dis = numerator / &safe_divisor;
+    let mut dis = divide_out(numerator, divisor);
     let normalization = normalize_1d_inplace(&mut dis, 1.0);
     delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
     seq_dis.variable.insert(
@@ -226,8 +227,7 @@ fn compute_msg_to_child(
     seq_dis.fixed_counts.adjust_count(parent_state, -1);
   }
   for (state, profile) in &parent.profile.fixed {
-    let safe_fixed = child_dis.fixed[state].mapv(|value| value.max(f64::MIN_POSITIVE));
-    let mut dis = profile / &safe_fixed;
+    let mut dis = divide_out(profile, &child_dis.fixed[state]);
     let weight = seq_dis.fixed_counts.get(*state).unwrap() as f64;
     let normalization = normalize_1d_inplace(&mut dis, weight);
     delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);

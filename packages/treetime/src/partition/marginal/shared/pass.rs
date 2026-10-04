@@ -3,7 +3,7 @@ use crate::gtr::gtr::GTR;
 use crate::partition::marginal::dense::partition::assign_sequence;
 use crate::partition::marginal::shared::data::DenseInputs;
 use crate::partition::marginal::shared::normalize::{
-  forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_from_log, normalize_inplace,
+  divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_from_log, normalize_inplace,
 };
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward};
 use crate::partition::storage::dense::{
@@ -244,8 +244,7 @@ fn indexed_node_forward(
 
   if let Some((edge_key, backward, out)) = edge_out.as_mut() {
     let parent = context.parent.expect("Non-root node must have a parent");
-    let safe_child = backward.msg_from_child.dis.mapv(|value| value.max(f64::MIN_POSITIVE));
-    let mut dis = &parent.profile.dis / &safe_child;
+    let mut dis = divide_out(&parent.profile.dis, &backward.msg_from_child.dis);
     let delta_ll = normalize_inplace(&mut dis);
     let log_lh = forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh);
     let log_lh = forward_log_lh_add_normalization(log_lh, delta_ll);
