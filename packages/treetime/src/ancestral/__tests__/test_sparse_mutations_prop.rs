@@ -15,9 +15,13 @@ mod tests {
     fn test_prop_sparse_edge_mutations_match_full_sequence_comparison(
       input in arb_marginal_input(),
       impute in any::<bool>(),
+      without_edge_fitch_subs in any::<bool>(),
     ) {
       let graph = nwk_read_str(&input.newick).unwrap().graph;
-      let (_, sparse) = run_sparse_marginal(&input).unwrap();
+      let (_, mut sparse) = run_sparse_marginal(&input).unwrap();
+      if without_edge_fitch_subs {
+        sparse.partition.obs_edges.values_mut().for_each(|edge| edge.set_fitch_subs(vec![]));
+      }
       let track = MutationTrack::Nucleotide;
 
       let actual =

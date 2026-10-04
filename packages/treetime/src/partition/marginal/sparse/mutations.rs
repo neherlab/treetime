@@ -6,14 +6,17 @@ use crate::partition::storage::sparse::{SparseEdgeForward, SparseNodeObs, Sparse
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Either, Itertools};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+use std::iter;
+use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::AsciiChar;
-use treetime_utils::interval::range_union::range_union;
+use treetime_primitives::{AsciiChar, Seq};
+
+const COMPARED_BLOCK_LEN: usize = 64;
 
 pub(crate) fn sparse_edge_mutations(
   partition: &PartitionMarginalSparse,
@@ -41,7 +44,7 @@ pub(crate) fn sparse_edge_mutations(
         parent_key,
         edge_key,
       )?;
-      let subs = edge_sequence_subs(partition, &node_states[&parent_key], &child, edge_key)?;
+      let subs = edge_sequence_subs(&node_states[&parent_key], &child, &partition.alphabet)?;
       let mutations = combine_edge_mutations(subs, &partition.obs_edges[&edge_key].indels, track)?;
       Ok((edge_key, mutations))
     })
@@ -49,12 +52,10 @@ pub(crate) fn sparse_edge_mutations(
 }
 
 fn edge_sequence_subs(
-  partition: &PartitionMarginalSparse,
   parent: &SparseNodeState,
   child: &EdgeChild<'_>,
-  edge_key: GraphEdgeKey,
+  alphabet: &Alphabet,
 ) -> Result<Vec<Sub>, Report> {
-  let alphabet = &partition.alphabet;
   if parent.sequence.len() != child.state.sequence.len() {
     return make_internal_error!(
       "Parent sequence has length {}, but child sequence has length {}",
@@ -62,24 +63,21 @@ fn edge_sequence_subs(
       child.state.sequence.len()
     );
   }
-  let edge_obs = &partition.obs_edges[&edge_key];
-
-  let mut positions: BTreeSet<usize> = parent.profile.variable.keys().copied().collect();
-  positions.extend(edge_obs.fitch_subs().iter().map(Sub::pos));
-  if child.leaf.is_some() {
-    positions.extend(child.obs.fitch.variable.keys());
-  } else {
-    positions.extend(child.state.profile.variable.keys());
-  }
-  let ranges = range_union(&[
-    edge_obs.indels.iter().map(|indel| indel.range).collect_vec(),
-    child.obs.unknown.clone(),
-  ]);
-
-  positions
-    .iter()
-    .copied()
-    .merge(ranges.iter().flat_map(|&(start, end)| start..end))
+  let child_overrides = match &child.leaf {
+    Some(_) => Either::Left(
+      child
+        .obs
+        .fitch
+        .variable
+        .keys()
+        .copied()
+        .merge(child.obs.unknown.iter().flat_map(|&(start, end)| start..end)),
+    ),
+    None => Either::Right(child.state.profile.variable.keys().copied()),
+  };
+  differing_positions(&parent.sequence, &child.state.sequence)
+    .merge(parent.profile.variable.keys().copied())
+    .merge(child_overrides)
     .dedup()
     .filter_map(|pos| {
       let reff = internal_state(parent, pos, alphabet);
@@ -87,6 +85,27 @@ fn edge_sequence_subs(
       (reff != qry && !alphabet.is_gap(reff) && !alphabet.is_gap(qry)).then(|| Sub::new(reff, pos, qry))
     })
     .collect()
+}
+
+pub(crate) fn differing_positions<'a>(parent: &'a Arc<Seq>, child: &'a Arc<Seq>) -> impl Iterator<Item = usize> + 'a {
+  if Arc::ptr_eq(parent, child) {
+    return Either::Left(iter::empty());
+  }
+  let positions = parent
+    .as_str()
+    .as_bytes()
+    .chunks(COMPARED_BLOCK_LEN)
+    .zip(child.as_str().as_bytes().chunks(COMPARED_BLOCK_LEN))
+    .enumerate()
+    .filter(|(_, (parent, child))| parent != child)
+    .flat_map(|(block, (parent, child))| {
+      parent
+        .iter()
+        .zip(child.iter())
+        .positions(|(parent, child)| parent != child)
+        .map(move |offset| block * COMPARED_BLOCK_LEN + offset)
+    });
+  Either::Right(positions)
 }
 
 fn internal_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
