@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::iter::zip;
 use treetime_primitives::{AsciiChar, LogLh};
 use treetime_utils::array::ndarray::is_max_above;
-use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
+use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm_owned;
 use treetime_utils::interval::range::range_contains;
 
 const EPS: f64 = 1e-4;
@@ -65,7 +65,7 @@ pub(crate) fn combine_messages(
       }
     }
 
-    let (dis, log_norm) = softmax_with_log_norm(log_vec.view());
+    let (dis, log_norm) = softmax_with_log_norm_owned(log_vec);
     seq_dis.log_lh += LogLh::new(log_norm);
     if let Some(count) = fixed_counts.get_mut(&state) {
       *count -= 1.0;
@@ -84,7 +84,7 @@ pub(crate) fn combine_messages(
       log_vec.zip_mut_with(&msg.fixed[&state], |lv, &p| *lv += p.ln());
     }
 
-    let (dis, log_norm) = softmax_with_log_norm(log_vec.view());
+    let (dis, log_norm) = softmax_with_log_norm_owned(log_vec);
     seq_dis.log_lh += LogLh::new(fixed_counts[&state] * log_norm);
     seq_dis.fixed.insert(state, dis);
   }
