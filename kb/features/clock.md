@@ -76,5 +76,5 @@
 - [ ] `--branch-length-mode` (parsed but not wired)
 - [ ] `--method-anc` (parsed but not wired)
 - [ ] `--prune-short` (parsed but not wired)
-- [ ] `--seed` (parsed but not wired)
+- [ ] `--seed` (not accepted: clock has no random step; see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))
 - [ ] Tree inference from alignment (help text mentions it, not implemented)
