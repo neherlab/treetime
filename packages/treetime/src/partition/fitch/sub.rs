@@ -3,7 +3,7 @@ use crate::partition::storage::sparse::{FitchSeqInfo, SparseEdgeObs};
 use crate::seq::composition::Composition;
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use std::collections::BTreeMap;
 use treetime_primitives::{AlphabetLike, AsciiChar, Seq, StateSet, StateSetStatus};
 use treetime_utils::interval::range::range_contains;
@@ -93,9 +93,9 @@ pub(crate) fn discover_fixed_disagreements_backward(
       if AsRef::<[u8]>::as_ref(&*sequence)[block.clone()] == child_bytes[block.clone()] {
         continue;
       }
-      for pos in block {
-        let child_state = child.sequence[pos];
-        let parent_state = &mut sequence[pos];
+      let parent_block = &mut sequence.as_mut_slice()[block.clone()];
+      let child_block = &child.sequence.as_slice()[block.clone()];
+      for (pos, parent_state, &child_state) in izip!(block, parent_block, child_block) {
         if *parent_state == child_state || *parent_state == NON_CHAR || *parent_state == VARIABLE_CHAR {
           continue;
         }
