@@ -8,6 +8,8 @@ use std::collections::BTreeMap;
 use treetime_primitives::{AlphabetLike, AsciiChar, Seq, StateSet, StateSetStatus};
 use treetime_utils::interval::range::range_contains;
 
+const COMPARED_BLOCK_LEN: usize = 64;
+
 pub(crate) fn resolve_variable_positions_backward(
   children: &[(&FitchSeqInfo, &SparseEdgeObs)],
   discovered: &[usize],
@@ -82,18 +84,27 @@ pub(crate) fn discover_fixed_disagreements_backward(
   sequence: &mut Seq,
 ) -> Vec<usize> {
   let mut discovered = vec![];
+  let length = sequence.len();
   for &(child, _) in children {
-    for (pos, parent_state) in sequence.iter_mut().enumerate() {
-      let child_state = child.sequence[pos];
-      if *parent_state == child_state || *parent_state == NON_CHAR || *parent_state == VARIABLE_CHAR {
+    let child_bytes: &[u8] = child.sequence.as_ref();
+    for block_start in (0..length).step_by(COMPARED_BLOCK_LEN) {
+      let block = block_start..(block_start + COMPARED_BLOCK_LEN).min(length);
+      if AsRef::<[u8]>::as_ref(&*sequence)[block.clone()] == child_bytes[block.clone()] {
         continue;
       }
-      if alphabet.is_canonical(child_state) {
-        if *parent_state == FILL_CHAR {
-          *parent_state = child_state;
-        } else {
-          *parent_state = VARIABLE_CHAR;
-          discovered.push(pos);
+      for pos in block {
+        let child_state = child.sequence[pos];
+        let parent_state = &mut sequence[pos];
+        if *parent_state == child_state || *parent_state == NON_CHAR || *parent_state == VARIABLE_CHAR {
+          continue;
+        }
+        if alphabet.is_canonical(child_state) {
+          if *parent_state == FILL_CHAR {
+            *parent_state = child_state;
+          } else {
+            *parent_state = VARIABLE_CHAR;
+            discovered.push(pos);
+          }
         }
       }
     }
