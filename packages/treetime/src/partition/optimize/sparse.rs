@@ -3,6 +3,7 @@ use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, S
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
 use itertools::Itertools;
+use std::collections::BTreeMap;
 use std::iter::zip;
 
 #[allow(
@@ -28,11 +29,16 @@ pub(crate) fn get_coefficients(
     .unique()
     .collect();
 
+  let mut fitch_states = BTreeMap::new();
+  for sub in edge_obs.fitch_subs() {
+    fitch_states.entry(sub.pos()).or_insert_with(|| (sub.reff(), sub.qry()));
+  }
+
   let variable_states = variable_positions
     .iter()
     .map(|pos| -> Result<_, Report> {
-      if let Some(sub) = edge_obs.fitch_subs().iter().find(|m| m.pos() == *pos) {
-        Ok((sub.reff(), sub.qry()))
+      if let Some(&states) = fitch_states.get(pos) {
+        Ok(states)
       } else {
         let parent = msg_to_child
           .variable
@@ -51,7 +57,7 @@ pub(crate) fn get_coefficients(
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  let mut site_contributions: Vec<SiteContribution> = Vec::new();
+  let mut site_contributions = Vec::with_capacity(variable_positions.len() + msg_to_child.fixed.len());
   for (&pos, (parent_state, child_state)) in zip(&variable_positions, variable_states) {
     let parent = if let Some(parent) = msg_to_child.variable.get(&pos) {
       &parent.dis
