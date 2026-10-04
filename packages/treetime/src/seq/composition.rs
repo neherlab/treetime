@@ -37,16 +37,20 @@ impl Composition {
     this
   }
 
-  #[allow(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   pub(crate) fn add_seq(&mut self, sequence: impl AsRef<[AsciiChar]>) {
     let mut additions = [0; 128];
     for &c in sequence.as_ref() {
       additions[usize::from(c)] += 1;
     }
-    for (index, count) in additions.into_iter().enumerate().filter(|(_, count)| *count > 0) {
+    self.add_histogram(&additions);
+  }
+
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
+  pub(crate) fn add_histogram(&mut self, additions: &[usize; 128]) {
+    for (index, &count) in additions.iter().enumerate().filter(|(_, count)| **count > 0) {
       let c = AsciiChar::from_byte_unchecked(index as u8);
       *self.counts.entry(c).or_default() += count;
     }

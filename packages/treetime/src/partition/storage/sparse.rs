@@ -1,7 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::shared::update::MarginalNodeState;
 use crate::seq::composition::Composition;
-use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
@@ -39,28 +38,18 @@ impl SparseNodeObs {
   }
 
   pub fn new(seq: &Seq, alphabet: &Alphabet) -> Self {
-    let variable = seq
-      .iter()
-      .enumerate()
-      .filter(|&(_, c)| alphabet.is_ambiguous(*c))
-      .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
-      .collect();
-
-    let fitch = FitchSeqDistribution {
-      variable,
-      variable_indel: BTreeSet::new(),
-      chosen_state: btreemap! {},
-    };
-
-    let unknown = find_letter_ranges(seq, alphabet.unknown());
-    let gaps = find_letter_ranges(seq, alphabet.gap());
-    let non_char = range_union(&[unknown.clone(), gaps.clone()]);
-
+    let SeqObservation {
+      unknown,
+      gaps,
+      non_char,
+      composition,
+      fitch,
+    } = observe_seq(seq, alphabet);
     Self {
       unknown,
       gaps,
       non_char,
-      composition: Composition::with_seq(seq, alphabet.chars(), alphabet.gap()),
+      composition,
       fitch,
     }
   }
@@ -200,29 +189,19 @@ impl FitchNodeData {
   }
 
   pub fn new(seq: &Seq, alphabet: &Alphabet) -> Result<Self, Report> {
-    let variable = seq
-      .iter()
-      .enumerate()
-      .filter(|&(_, c)| alphabet.is_ambiguous(*c))
-      .map(|(pos, &c)| (pos, alphabet.char_to_set(c)))
-      .collect();
-
-    let fitch = FitchSeqDistribution {
-      variable,
-      variable_indel: BTreeSet::new(),
-      chosen_state: btreemap! {},
-    };
-
-    let unknown = find_letter_ranges(seq, alphabet.unknown());
-    let gaps = find_letter_ranges(seq, alphabet.gap());
-    let non_char = range_union(&[unknown.clone(), gaps.clone()]);
-
+    let SeqObservation {
+      unknown,
+      gaps,
+      non_char,
+      composition,
+      fitch,
+    } = observe_seq(seq, alphabet);
     Ok(Self {
       seq: FitchSeqInfo {
         unknown,
         gaps,
         non_char,
-        composition: Composition::with_seq(seq, alphabet.chars(), alphabet.gap()),
+        composition,
         sequence: seq.to_owned(),
         fitch,
       },
@@ -256,3 +235,70 @@ pub struct VarPos {
 }
 
 impl VarPos {}
+
+struct SeqObservation {
+  unknown: Vec<(usize, usize)>,
+  gaps: Vec<(usize, usize)>,
+  non_char: Vec<(usize, usize)>,
+  composition: Composition,
+  fitch: FitchSeqDistribution,
+}
+
+fn observe_seq(seq: &Seq, alphabet: &Alphabet) -> SeqObservation {
+  let unknown_char = alphabet.unknown();
+  let gap_char = alphabet.gap();
+  let mut variable = Vec::new();
+  let mut histogram = [0_usize; 128];
+  let mut unknown = RangeRuns::default();
+  let mut gaps = RangeRuns::default();
+  for (pos, &c) in seq.iter().enumerate() {
+    histogram[usize::from(c)] += 1;
+    if alphabet.is_ambiguous(c) {
+      variable.push((pos, alphabet.char_to_set(c)));
+    }
+    unknown.step(pos, c == unknown_char);
+    gaps.step(pos, c == gap_char);
+  }
+  let unknown = unknown.finish(seq.len());
+  let gaps = gaps.finish(seq.len());
+  let non_char = range_union(&[unknown.clone(), gaps.clone()]);
+  let mut composition = Composition::new(alphabet.chars(), gap_char);
+  composition.add_histogram(&histogram);
+  SeqObservation {
+    unknown,
+    gaps,
+    non_char,
+    composition,
+    fitch: FitchSeqDistribution {
+      variable: variable.into_iter().collect(),
+      variable_indel: BTreeSet::new(),
+      chosen_state: btreemap! {},
+    },
+  }
+}
+
+#[derive(Debug, Default)]
+struct RangeRuns {
+  ranges: Vec<(usize, usize)>,
+  start: Option<usize>,
+}
+
+impl RangeRuns {
+  fn step(&mut self, pos: usize, inside: bool) {
+    match (inside, self.start) {
+      (true, None) => self.start = Some(pos),
+      (false, Some(start)) => {
+        self.ranges.push((start, pos));
+        self.start = None;
+      },
+      _ => {},
+    }
+  }
+
+  fn finish(mut self, length: usize) -> Vec<(usize, usize)> {
+    if let Some(start) = self.start {
+      self.ranges.push((start, length));
+    }
+    self.ranges
+  }
+}
