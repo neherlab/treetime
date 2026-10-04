@@ -339,14 +339,17 @@ The CLI allocates through jemalloc, whose symbols carry the `_rjem_` prefix, so 
 mkdir -p tmp/heap
 _RJEM_MALLOC_CONF=prof:true,prof_gdump:true,prof_final:true,lg_prof_sample:17,prof_prefix:tmp/heap/treetime \
   .build/container/cargo/profiling-heap/treetime <command> <args>
-jeprof --text .build/container/cargo/profiling-heap/treetime tmp/heap/<dump>.heap
+peak="$(ls -v tmp/heap/*.u*.heap | tail -n 1)"
+jeprof --collapsed .build/container/cargo/profiling-heap/treetime "${peak}" > tmp/heap/peak.folded
+flamegraph.pl --countname=bytes tmp/heap/peak.folded > tmp/heap/peak.svg
 ```
 
 - `_RJEM_MALLOC_CONF` configures the prefixed jemalloc; plain `MALLOC_CONF` has no effect
-- `prof_gdump` writes a dump each time the heap grows past its previous maximum, so the last of these dumps is the closest to the peak. `prof_final` writes one more at exit
+- `prof_gdump` writes a `.u<n>.heap` dump each time the heap grows past its previous maximum, so the dump with the highest number is the closest to the peak. A run on a few hundred sequences writes thousands of dumps and several hundred MB; delete the others once the peak dump is chosen. `prof_final` writes one more dump (`.f.heap`) at exit
 - `lg_prof_sample:17` samples once per 128 KiB allocated on average (the default is 512 KiB)
-- `jeprof --base=<earlier>.heap` subtracts an earlier dump, `--collapsed` writes flame graph input, and `--alloc_space` reports total allocation volume when the run had `prof_accum:true`
-- `jeprof` comes with the `libjemalloc-dev` package on Debian and Ubuntu
+- `--collapsed` keeps full Rust paths and inlined frames. `--text` shortens Rust names to their last segment and charges every byte to jemalloc's sampler, which makes it hard to read
+- `jeprof --base=<earlier>.heap` subtracts an earlier dump, and `--alloc_space` reports total allocation volume when the run had `prof_accum:true`
+- `jeprof` comes with the `libjemalloc-dev` package on Debian and Ubuntu; `flamegraph.pl` is in [FlameGraph](https://github.com/brendangregg/FlameGraph)
 
 ## Dependencies
 
