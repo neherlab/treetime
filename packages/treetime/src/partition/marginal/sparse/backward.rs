@@ -99,7 +99,7 @@ fn process_node_backward_indexed(
       for (pos, profile) in &child_backward.msg_from_child.variable {
         variable_pos.entry(*pos).or_insert(profile.state);
       }
-      child_messages.push(child_backward.msg_from_child.clone());
+      child_messages.push(&child_backward.msg_from_child);
     }
 
     for (ci, child) in context.children.iter().enumerate() {

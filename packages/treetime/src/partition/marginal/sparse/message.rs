@@ -20,7 +20,7 @@ const EPS: f64 = 1e-4;
 )]
 pub(crate) fn combine_messages(
   composition: &Composition,
-  messages: &[SparseSeqDistribution],
+  messages: &[&SparseSeqDistribution],
   variable_pos: &BTreeMap<usize, AsciiChar>,
   reference_states: &[BTreeMap<usize, AsciiChar>],
   alphabet: &Alphabet,

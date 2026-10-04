@@ -118,20 +118,20 @@ fn process_node_forward_indexed(
         edge_obs.transmission.as_deref(),
       )
     };
-    let msg_from_parent_out = if context.is_leaf {
-      msg_from_parent.clone()
-    } else {
-      SparseSeqDistribution::default()
-    };
     let profile = combine_messages(
       &obs.composition,
-      &[msg_from_parent, backward.msg_to_parent.clone()],
+      &[&msg_from_parent, &backward.msg_to_parent],
       &variable_pos,
       &[parent_state, child_state],
       alphabet,
       None,
     )?;
     node.profile = profile;
+    let msg_from_parent_out = if context.is_leaf {
+      msg_from_parent
+    } else {
+      SparseSeqDistribution::default()
+    };
 
     if !context.is_leaf && !parent.sequence.is_empty() {
       node.sequence = Arc::new(parsimony_seq(&parent.sequence, edge_obs, obs, alphabet));
