@@ -15,7 +15,11 @@ With `--output-selection=all`, the command exits with this error after it has wr
 
 ## Reference behavior
 
-A MAT stores nucleotide mutations only: the `mut` message of `parsimony.proto` has a position, a chromosome and nucleotide codes (0 to 3 for A, C, G, T), and no protein track ([UShER](https://github.com/yatisht/usher), revision `ac9c982d`). matUtils derives amino-acid changes from the nucleotide mutations and a GTF annotation (`matUtils summary --translate`).
+A MAT stores nucleotide mutations only: the `mut` message of `parsimony.proto` has a position, a chromosome and nucleotide codes (0 to 3 for A, C, G, T), and no protein track [[src](https://github.com/yatisht/usher/blob/ac9c982d937c3bc43e2c16a0b73d30cf2b937118/parsimony.proto#L4-L11)]. The schema marks the `chromosome` string as unused. The UShER reader turns each state into a 4-bit nucleotide mask and asserts that every state is between 0 and 3 [[src](https://github.com/yatisht/usher/blob/ac9c982d937c3bc43e2c16a0b73d30cf2b937118/src/mutation_annotated_tree.cpp#L77-L85)], so no encoding of the 20 amino-acid states fits the format.
+
+UShER tools compute amino-acid changes when they read a MAT: `matUtils summary --translate` and `matUtils extract --write-taxodium` both take the MAT, a GTF annotation and the reference FASTA [[src](https://github.com/yatisht/usher/blob/ac9c982d937c3bc43e2c16a0b73d30cf2b937118/src/matUtils/summary.cpp#L17-L31)] [[src](https://github.com/yatisht/usher/blob/ac9c982d937c3bc43e2c16a0b73d30cf2b937118/src/matUtils/extract.cpp#L13-L14)]. Writing the nucleotide mutations therefore loses no amino-acid information that a MAT could hold.
+
+Taxonium JSONL stores amino-acid and nucleotide mutations together, and is the only format of the UShER family that can carry TreeTime's amino-acid track: [N-io-taxonium-jsonl-output-unsupported.md](N-io-taxonium-jsonl-output-unsupported.md).
 
 ## Open question
 
@@ -23,6 +27,8 @@ How should the MAT writers handle amino-acid mutations?
 
 - Keep the error, and document that MAT output cannot be combined with `--translations`
 - Write the nucleotide mutations only and leave the amino-acid track out, with or without a warning. The amino-acid changes stay in Auspice JSON, augur node-data JSON and the reconstructed amino-acid FASTA
+
+Recommendation, not yet approved: write the nucleotide mutations only, with a warning. The error stops MAT output for every run with `--translations`, although the MAT could never hold the amino-acid track, and UShER tools compute the amino-acid changes again from the nucleotide mutations.
 
 ## Smoke coverage
 

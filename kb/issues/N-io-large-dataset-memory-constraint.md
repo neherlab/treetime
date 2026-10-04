@@ -4,13 +4,14 @@ The current input model loads all sequences into memory before attachment, then 
 
 ## Current flow
 
-Sequence loading at [packages/treetime/src/commands/ancestral/run.rs#L61-L69](../../packages/treetime/src/commands/ancestral/run.rs#L61-L69):
+Sequence loading at [packages/app-commands/src/commands/ancestral/run.rs#L287-L293](../../packages/app-commands/src/commands/ancestral/run.rs#L287-L293):
 
 ```rust
-let aln = if input_fastas.is_empty() {
-    // read from stdin
+let mut aln = if args.alignment.alignment.is_empty() {
+  let reader = FastaReader::new(open_stdin()?, &alphabet);
+  read_many_fasta(reader)?
 } else {
-    read_many_fasta(input_fastas, &alphabet)?  // loads ALL sequences
+  read_many_fasta_path(&args.alignment.alignment, &alphabet)?  // loads ALL sequences
 };
 ```
 
