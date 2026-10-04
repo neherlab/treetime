@@ -137,7 +137,7 @@ One test generator (`prop_generators/alignment.rs:94`) asserts positional orderi
 
 The FASTA data flows through three stages:
 
-1. `read_many_fasta()` (`treetime-io/src/fasta.rs` [[src](../../packages/treetime-io/src/fasta.rs)]) produces `Vec<FastaRecord>`
+1. `fasta_read()` (`treetime-io/src/fasta.rs` [[src](../../packages/treetime-io/src/fasta.rs)]) produces `Vec<FastaRecord>`
 2. `complete_alignment_for_leaves()` (`attach.rs:28-89` [[src](../../packages/treetime/src/ancestral/attach.rs#L28-L89)]) checks for missing leaves (builds a temporary `BTreeSet` of names internally), appends synthetic ambiguous records for missing tips, returns `Vec<FastaRecord>`
 3. `attach_seqs_to_graph()` / `attach_sequences()` iterates leaves, does the linear `.find()` lookup
 
@@ -159,7 +159,7 @@ Cons:
 
 ##### Option B: Index at parse time
 
-Have `read_many_fasta` return `HashMap<String, FastaRecord>`. The indexed representation propagates through the entire pipeline.
+Have `fasta_read` return `HashMap<String, FastaRecord>`. The indexed representation propagates through the entire pipeline.
 
 Pros:
 

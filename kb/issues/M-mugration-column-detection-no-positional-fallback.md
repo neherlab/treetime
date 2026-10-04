@@ -1,6 +1,6 @@
 # Mugration column detection has no positional fallback
 
-v0's mugration falls back to header position when named column detection fails: [`columns[0]`](../../packages/legacy/treetime/treetime/wrappers.py#L847) for the taxon-name column and [`columns[1]`](../../packages/legacy/treetime/treetime/wrappers.py#L858) for the attribute column. v1 [`read_discrete_attrs_from_reader()`](../../packages/treetime-io/src/discrete_states_csv.rs#L32) hard-errors instead:
+v0's mugration falls back to header position when named column detection fails: [`columns[0]`](../../packages/legacy/treetime/treetime/wrappers.py#L847) for the taxon-name column and [`columns[1]`](../../packages/legacy/treetime/treetime/wrappers.py#L858) for the attribute column. v1 [`discrete_attrs_read()`](../../packages/treetime-io/src/discrete_states_csv.rs#L32) hard-errors instead:
 
 ```rust
 let name_column_idx = get_col_name(&headers, name_candidates, name_column)?;

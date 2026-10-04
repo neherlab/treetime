@@ -47,7 +47,7 @@ Format considerations:
 - `packages/treetime/src/alphabet/alphabet.rs` - `struct Alphabet`, `Serialize` impl, `TryFrom<AlphabetConfig>`
 - `packages/treetime/src/alphabet/alphabet_config.rs` - `struct AlphabetConfig`
 - `packages/treetime/src/commands/*/args.rs` - `--alphabet` CLI flag (4 commands)
-- `packages/treetime-io/src/fasta.rs` - `FastaReader` uses `AlphabetLike` trait
+- `packages/treetime-io/src/fasta.rs` - `fasta_read()` uses `AlphabetLike` trait
 
 ## Impact
 

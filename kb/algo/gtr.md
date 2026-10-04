@@ -113,7 +113,7 @@ Key functions:
 
 ## GTR Output
 
-`write_gtr_json()` (`#write_gtr_json`) at [`packages/treetime/src/gtr/get_gtr.rs#L81-L94`](../../packages/treetime/src/gtr/get_gtr.rs#L81-L94) writes GTR model parameters (model type, model name, mu, pi, W) to JSON. Accepts an optional `qualifier` parameter: `None` writes `gtr.json`, `Some("sparse")` writes `gtr_sparse.json`, `Some("dense")` writes `gtr_dense.json`. Commands with a single partition pass `None`; the `optimize` command passes partition-type qualifiers to avoid overwriting when both sparse and dense partitions coexist. Parameters are logged at info level via `log_gtr()` (`#log_gtr`).
+`struct GtrOutput` at [`packages/treetime/src/gtr/get_gtr.rs#L27`](../../packages/treetime/src/gtr/get_gtr.rs#L27) holds the GTR model parameters (model type, model name, mu, pi, W). Each command writes it with `json_write_file()` to the path of the `gtr` output (`.gtr.json` by default). Parameters are logged at info level via `log_gtr()` (`#log_gtr`).
 
 ---
 

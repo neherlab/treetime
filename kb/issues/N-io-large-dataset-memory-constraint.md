@@ -4,15 +4,10 @@ The current input model loads all sequences into memory before attachment, then 
 
 ## Current flow
 
-Sequence loading at [packages/app-commands/src/commands/ancestral/run.rs#L287-L293](../../packages/app-commands/src/commands/ancestral/run.rs#L287-L293):
+Sequence loading at [packages/app-commands/src/commands/ancestral/run.rs#L293](../../packages/app-commands/src/commands/ancestral/run.rs#L293):
 
 ```rust
-let mut aln = if args.alignment.alignment.is_empty() {
-  let reader = FastaReader::new(open_stdin()?, &alphabet);
-  read_many_fasta(reader)?
-} else {
-  read_many_fasta_path(&args.alignment.alignment, &alphabet)?  // loads ALL sequences
-};
+let mut aln = read_alignment(&args.alignment.alignment, &alphabet)?; // loads ALL sequences of every file
 ```
 
 The entire `Vec<FastaRecord>` must fit in memory. After attachment, sequences are copied/transformed into partition data structures, then the original vector is dropped.
@@ -53,7 +48,7 @@ Public reports ask about TreeTime operation with approximately 10 million tips [
 
 First pass: scan FASTA, build index mapping sequence name to file byte offset. Store only the index in memory. During attachment: seek to offset, read single sequence on demand.
 
-Requires changes to `FastaReader` API to support seeking.
+Requires a FASTA reader that supports seeking; `fasta_read()` reads the whole input into records.
 
 ### Memory-mapped FASTA
 

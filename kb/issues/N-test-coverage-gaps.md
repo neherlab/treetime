@@ -24,7 +24,7 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 - `fn run_clock()`: no end-to-end CLI test
 - `fn clock_regression_forward`: no direct unit test
 - `fn load_date_constraints()`: validation failure paths untested
-- `fn write_clock_model()`, CSV writers, RTT chart writers: untested at serialized-output level
+- Clock model JSON output, clock CSV output, RTT chart writers: untested at serialized-output level
 
 ### Timetree optimization and output
 
@@ -70,7 +70,7 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 
 - `fn GTR::new()` invalid-input handling: no tests assert error returns vs panic
 - Nucleotide constructors: no tests rejecting non-nucleotide alphabets
-- `fn write_gtr_json()`: tests only check filename and existence, not JSON payload content
+- GTR JSON output: command tests only check filename and existence, not JSON payload content
 - `fn jtt92`: no direct regression coverage for 20-state empirical model
 
 ### Foundation
