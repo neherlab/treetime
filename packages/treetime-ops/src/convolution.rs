@@ -5,7 +5,8 @@ use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, FftProcessor, PaddingMode};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 
-const FFT_PROCESSORS_PER_THREAD: usize = 64;
+const FFT_PROCESSORS_PER_THREAD: usize = 8;
+const MAX_CACHED_FFT_LEN: usize = 1 << 14;
 
 thread_local! {
   static FFT_PROCESSORS_BY_FFT_LEN: RefCell<Vec<(usize, FftProcessor<f64>)>> = const { RefCell::new(Vec::new()) };
@@ -66,11 +67,15 @@ impl ConvolveAlgo for FftConvolve {
 }
 
 pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  let output_len = (f_values.len() + g_values.len()).saturating_sub(1);
-  let discrete_conv = FFT_PROCESSORS_BY_FFT_LEN.with_borrow_mut(|processors| {
-    let processor = processor_for_fft_len(processors, fft_len(output_len));
-    f_values.conv_fft_with_processor(g_values, ConvMode::Full, PaddingMode::Zeros, processor)
-  })?;
+  let fft_len = fft_len((f_values.len() + g_values.len()).saturating_sub(1));
+  let discrete_conv = if fft_len > MAX_CACHED_FFT_LEN {
+    f_values.conv_fft(g_values, ConvMode::Full, PaddingMode::Zeros)?
+  } else {
+    FFT_PROCESSORS_BY_FFT_LEN.with_borrow_mut(|processors| {
+      let processor = processor_for_fft_len(processors, fft_len);
+      f_values.conv_fft_with_processor(g_values, ConvMode::Full, PaddingMode::Zeros, processor)
+    })?
+  };
   let continuous_conv = &discrete_conv * dx;
   Ok(continuous_conv)
 }
