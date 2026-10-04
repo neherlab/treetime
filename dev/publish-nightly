@@ -59,14 +59,24 @@ details_close() {
   printf "\n</details>\n"
 }
 
-# Rows of the downloads table, in display order: the platform label, then the
-# target triples whose CLI binaries and desktop packages share the row.
-DOWNLOAD_ROWS=(
-  "**Linux** x86_64|x86_64-unknown-linux-gnu x86_64-unknown-linux-musl"
-  "**Linux** ARM64|aarch64-unknown-linux-gnu aarch64-unknown-linux-musl"
-  "**macOS** Apple Silicon|aarch64-apple-darwin"
-  "**macOS** Intel|x86_64-apple-darwin"
-  "**Windows** x86_64|x86_64-pc-windows-gnu"
+# Rows of the CLI and desktop subtables of the install table, in display order:
+# the platform label, then one "triple=text" entry per asset sharing the row.
+# The link text of an asset with a file extension starts with the extension.
+# Trailing asterisks of the text mark a footnote and are printed after the
+# link.
+CLI_ROWS=(
+  "<b>Linux</b> x86_64|x86_64-unknown-linux-gnu=glibc x86_64-unknown-linux-musl=musl*"
+  "<b>Linux</b> ARM64|aarch64-unknown-linux-gnu=glibc aarch64-unknown-linux-musl=musl*"
+  "<b>macOS</b>** Apple Silicon|aarch64-apple-darwin=executable"
+  "<b>macOS</b>** Intel|x86_64-apple-darwin=executable"
+  "<b>Windows</b> x86_64|x86_64-pc-windows-gnu=.exe"
+)
+DESKTOP_ROWS=(
+  "<b>Linux</b> x86_64|x86_64-unknown-linux-gnu="
+  "<b>Linux</b> ARM64|aarch64-unknown-linux-gnu="
+  "<b>macOS</b>** Apple Silicon|aarch64-apple-darwin="
+  "<b>macOS</b>** Intel|x86_64-apple-darwin="
+  "<b>Windows</b> x86_64|x86_64-pc-windows-gnu="
 )
 
 # Size in binary megabytes, labeled "MB" as in the asset list of the GitHub
@@ -75,40 +85,51 @@ format_size() {
   awk -v bytes="${1}" 'BEGIN { printf "%.1f MB", bytes / 1048576 }'
 }
 
-# Print a Markdown link to an asset of the release, followed by its size.
-download_link() {
-  local base_url="${1}"
-  local path="${2}"
-  local text="${3}"
-  printf "[%s](%s/%s) (%s)" "${text}" "${base_url}" "${path##*/}" "$(format_size "$(wc -c <"${path}")")"
-}
-
-# Join table cell entries with line breaks, or print a dash for an empty cell.
-join_cell() {
-  if (($# == 0)); then
-    printf -- "-"
-    return 0
-  fi
-  local cell="${1}"
-  shift
-  local entry
-  for entry in "$@"; do
-    cell+="<br>${entry}"
-  done
-  printf "%s" "${cell}"
-}
-
-# Emit a table linking every uploaded asset, one row per platform, with CLI
-# binaries and desktop packages in separate columns. Rows of platforms without
-# assets are omitted, so a CLI-only or desktop-only release lists only what it
-# contains. An asset of no known platform gets a row of its own, so a new target
-# is listed even before its row is added to DOWNLOAD_ROWS.
-generate_downloads_table() {
-  local repo="${1}"
-  local tag="${2}"
+# Emit one subtable of the install table: a row per platform with links to its
+# assets and a column of their sizes. Reads the asset paths of `unlisted` from
+# the caller and removes each asset it lists. Platforms without assets are
+# omitted, and so is the whole subtable when none has assets.
+generate_install_subtable() {
+  local title="${1}"
+  local prefix="${2}"
   shift 2
 
-  local base_url="https://github.com/${repo}/releases/download/${tag//+/%2B}"
+  local rows="" row entry triple text mark name links sizes
+  for row in "$@"; do
+    links=""
+    sizes=""
+    for entry in ${row#*|}; do
+      triple="${entry%%=*}"
+      text="${entry#*=}"
+      mark="${text##*[!*]}"
+      text="${text%"${mark}"}"
+      for name in "${!unlisted[@]}"; do
+        [[ "${name}" == "${prefix}${triple}" || "${name}" == "${prefix}${triple}."* ]] || continue
+        if [[ "${name}" == "${prefix}${triple}."* && "${text}" != .* ]]; then
+          text=".${name##*.}${text:+ ${text}}"
+        fi
+        links+="${links:+<br>}<a href=\"${base_url}/${name}\">${text}</a>${mark}"
+        sizes+="${sizes:+<br>}$(format_size "$(wc -c <"${unlisted[${name}]}")")"
+        unset "unlisted[${name}]"
+      done
+    done
+    [[ -z "${links}" ]] || rows+="<tr><td>${row%%|*}</td><td>${links}</td><td>${sizes}</td></tr>"$'\n'
+  done
+  [[ -z "${rows}" ]] || printf "<tr><td>%s</td><td><table>\n%s</table></td></tr>\n" "${title}" "${rows}"
+}
+
+# Emit the install table: desktop and CLI subtables linking every uploaded
+# asset, the source code, the issue tracker, and the footnotes of the marked
+# entries. An asset of no known platform is listed under "Other", so a new
+# target appears even before its entry is added to CLI_ROWS or DESKTOP_ROWS.
+generate_install_table() {
+  local source_repo="${1}"
+  local git_sha="${2}"
+  local release_repo="${3}"
+  local tag="${4}"
+  shift 4
+
+  local base_url="https://github.com/${release_repo}/releases/download/${tag//+/%2B}"
 
   local -A unlisted=()
   local artifact
@@ -116,53 +137,29 @@ generate_downloads_table() {
     unlisted["${artifact##*/}"]="${artifact}"
   done
 
-  printf "\n### Downloads\n\n| Platform | CLI | Desktop app |\n|---|---|---|\n"
+  printf "\n### Installation and usage\n\n<table>\n"
+  generate_install_subtable "🖥️ <b>Desktop app</b>" "treetime-desktop-" "${DESKTOP_ROWS[@]}"
+  generate_install_subtable "⌨️ <b>CLI</b>" "treetime-" "${CLI_ROWS[@]}"
 
-  local row triple name cli_text
-  local -a triples cli desktop
-  for row in "${DOWNLOAD_ROWS[@]}"; do
-    cli=()
-    desktop=()
-    read -ra triples <<<"${row#*|}"
-    for triple in "${triples[@]}"; do
-      case "${triple}" in
-      *-linux-gnu) cli_text="glibc" ;;
-      *-linux-musl) cli_text="musl (static)" ;;
-      *-windows-*) cli_text=".exe" ;;
-      *) cli_text="binary" ;;
-      esac
-      for name in "treetime-${triple}" "treetime-${triple}.exe"; do
-        if [[ -n "${unlisted[${name}]:-}" ]]; then
-          cli+=("$(download_link "${base_url}" "${unlisted[${name}]}" "${cli_text}")")
-          unset "unlisted[${name}]"
-        fi
-      done
-      for name in "${!unlisted[@]}"; do
-        if [[ "${name}" == "treetime-desktop-${triple}."* ]]; then
-          desktop+=("$(download_link "${base_url}" "${unlisted[${name}]}" ".${name##*.}")")
-          unset "unlisted[${name}]"
-        fi
-      done
-    done
-    if ((${#cli[@]} + ${#desktop[@]} > 0)); then
-      printf "| %s | %s | %s |\n" "${row%%|*}" "$(join_cell "${cli[@]}")" "$(join_cell "${desktop[@]}")"
-    fi
-  done
-
-  local link
-  printf "%s\n" "${!unlisted[@]}" | sort | while IFS= read -r name; do
+  local other="" name
+  while IFS= read -r name; do
     [[ -n "${name}" ]] || continue
-    link=$(download_link "${base_url}" "${unlisted[${name}]}" "download")
-    if [[ "${name}" == treetime-desktop-* ]]; then
-      printf "| \`%s\` | - | %s |\n" "${name}" "${link}"
-    else
-      printf "| \`%s\` | %s | - |\n" "${name}" "${link}"
-    fi
-  done
+    other+="${other:+<br>}<a href=\"${base_url}/${name}\">${name}</a> ($(format_size "$(wc -c <"${unlisted[${name}]}")"))"
+  done < <(printf "%s\n" "${!unlisted[@]}" | sort)
+  [[ -z "${other}" ]] || printf "<tr><td>📦 <b>Other</b></td><td>%s</td></tr>\n" "${other}"
+
+  cat <<EOF
+<tr><td>📂 <b>Source code</b></td><td><a href="https://github.com/${source_repo}">github.com/${source_repo}</a> (<a href="https://github.com/${source_repo}/commit/${git_sha}">${git_sha:0:7}</a>)</td></tr>
+<tr><td>🚩 <b>Issues</b></td><td><a href="https://github.com/${source_repo}/issues">Report bugs, suggest features</a></td></tr>
+</table>
+
+<sub>* glibc builds are faster and recommended. musl builds are static, run on older Linux distributions, and are slightly slower</sub>
+<sub>** macOS executables and apps are not signed by a registered developer. If macOS refuses to open one, right-click it and select "Open", or run <code>xattr -d com.apple.quarantine &lt;file&gt;</code></sub>
+EOF
 }
 
-# Emit the release body: the base template, the changelog, and the downloads
-# table.
+# Emit the release body: the base template, the install table, and the
+# changelog.
 generate_release_notes() {
   local source_repo="${1}"
   local release_repo="${2}"
@@ -176,14 +173,12 @@ generate_release_notes() {
   cat <<EOF
 Nightly build of [treetime](https://github.com/${source_repo}).
 
-**Source**: [\`${short_sha}\`](https://github.com/${source_repo}/commit/${git_sha})
-
 > [!WARNING]
 > Automated nightly build for early testing. May contain bugs and breaking changes.
 EOF
 
+  generate_install_table "${source_repo}" "${git_sha}" "${release_repo}" "${tag}" "$@"
   generate_changelog "${source_repo}" "${git_sha}" "${short_sha}" "${last_sha}"
-  generate_downloads_table "${release_repo}" "${tag}" "$@"
 }
 
 # Emit the changelog: compare link, merged pull requests, and commits landed
