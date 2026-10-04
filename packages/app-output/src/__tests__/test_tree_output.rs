@@ -65,7 +65,7 @@ pub(super) mod tests {
     assert_eq!(Some(0.5), child.node_attrs.div);
     assert_eq!(vec!["A1T".to_owned()], child.branch_attrs.mutations["nuc"]);
 
-    let mat = ancestral_to_mat(&graph, &names, &branch_lengths, &maps, aa_node_data.as_ref())?.tree;
+    let mat = ancestral_to_mat(&graph, &names, &branch_lengths, &maps)?.tree;
     let mutation = mat
       .node_mutations
       .iter()
@@ -123,8 +123,9 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_conversion_failure_does_not_create_target_and_keeps_prior_file() -> Result<(), Report> {
-    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
+    let (graph, names, branch_lengths, mut maps, aa_node_data, aa_annotations) =
+      helpers::ancestral_graph(helpers::Mutations::NucleotideSubstitution)?;
+    maps.root_sequence = Seq::try_from_str("NCG")?;
     let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
     let nwk_path = dir.path().join("tree.nwk");
     let mat_path = dir.path().join("tree.mat.json");
@@ -145,7 +146,7 @@ pub(super) mod tests {
       &NoopProgress,
     )
     .expect_err("MAT conversion must fail");
-    assert!(error.to_string().contains("amino-acid mutation"));
+    assert!(format!("{error:?}").contains("root reference nucleotide 'N'"));
     assert!(nwk_path.is_file());
     assert!(!mat_path.exists());
 
@@ -413,6 +414,7 @@ pub(super) mod tests {
     pub(crate) enum Mutations {
       None,
       NucleotideSubstitution,
+      NucleotideSubstitutionAndAminoAcid,
       Indel,
       AminoAcid,
       IndelAndAminoAcid,
@@ -455,9 +457,15 @@ pub(super) mod tests {
       let b_edge = graph.node_parent(b_key)?.unwrap().1;
       let root_sequence = Seq::try_from_str("ACG")?;
 
-      let include_substitution = matches!(mutations, Mutations::NucleotideSubstitution);
+      let include_substitution = matches!(
+        mutations,
+        Mutations::NucleotideSubstitution | Mutations::NucleotideSubstitutionAndAminoAcid
+      );
       let include_indel = matches!(mutations, Mutations::Indel | Mutations::IndelAndAminoAcid);
-      let include_aa = matches!(mutations, Mutations::AminoAcid | Mutations::IndelAndAminoAcid);
+      let include_aa = matches!(
+        mutations,
+        Mutations::AminoAcid | Mutations::NucleotideSubstitutionAndAminoAcid | Mutations::IndelAndAminoAcid
+      );
       let mut a_mutations = Vec::new();
       if include_substitution {
         a_mutations.push(Mutation::substitution(
@@ -676,7 +684,6 @@ pub(super) mod tests {
             root_sequence: Seq::try_from_str("ACG")?,
             edge_mutations: BTreeMap::new(),
           },
-          None,
         )?
         .tree,
         optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize)?)?.tree,

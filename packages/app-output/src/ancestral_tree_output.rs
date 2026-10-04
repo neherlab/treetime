@@ -52,7 +52,7 @@ pub fn write_ancestral_tree_outputs(
         &updated,
       )
     },
-    || ancestral_to_mat(graph, &names, branch_lengths, maps, aa_node_data),
+    || ancestral_to_mat(graph, &names, branch_lengths, maps),
     log,
   )
 }
@@ -91,17 +91,10 @@ pub(crate) fn ancestral_to_mat(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   nwk_weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &AncestralOutputMaps,
-  aa_node_data: Option<&AaNodeData>,
 ) -> Result<MatOutput, Report> {
-  let reference = ancestral_root_sequences(maps, aa_node_data).remove(NUC_TRACK);
-  mat_from_graph(graph, names, nwk_weights, reference.as_deref(), |node_key, edge_key| {
-    Ok(ancestral_node_mutations(
-      graph,
-      maps,
-      node_key,
-      Some(edge_key),
-      aa_node_data,
-    ))
+  let reference = maps.root_sequence.to_string();
+  mat_from_graph(graph, names, nwk_weights, Some(&reference), |node_key, edge_key| {
+    Ok(ancestral_node_mutations(graph, maps, node_key, Some(edge_key), None))
   })
 }
 

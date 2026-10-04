@@ -7,9 +7,8 @@
 mod tests {
 
   use crate::__tests__::test_tree_output::tests::helpers::{
-    Mutations, all_mat_documents, ancestral_graph, branch_length, c,
+    Mutations, all_mat_documents, branch_length, c,
   };
-  use crate::ancestral_tree_output::ancestral_to_mat;
   use crate::tree_output::{MatGapCounts, mat_mutation};
   use eyre::Report;
   use maplit::btreemap;
@@ -21,13 +20,29 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read_str;
   use treetime_io::usher_mat::UsherMutation;
+  use treetime_utils::o;
 
   #[test]
-  fn test_tree_output_mat_rejects_amino_acid_mutations() -> Result<(), Report> {
-    let (graph, names, branch_lengths, maps, aa_node_data, _aa_annotations) = ancestral_graph(Mutations::AminoAcid)?;
-    let error = ancestral_to_mat(&graph, &names, &branch_lengths, &maps, aa_node_data.as_ref())
-      .expect_err("MAT must reject amino-acid mutations");
-    assert!(error.to_string().contains("amino-acid mutation"));
+  fn test_tree_output_mat_leaves_out_amino_acid_mutations() -> Result<(), Report> {
+    let expected = helpers::written_ancestral_mat(Mutations::NucleotideSubstitution)?;
+    let actual = helpers::written_ancestral_mat(Mutations::NucleotideSubstitutionAndAminoAcid)?;
+    assert_eq!(expected, actual);
+    let positions: Vec<i32> = actual
+      .node_mutations
+      .iter()
+      .flat_map(|mutations| &mutations.mutation)
+      .map(|mutation| mutation.position)
+      .collect();
+    assert_eq!(vec![1], positions);
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_mat_rejects_amino_acid_mutation_as_internal_error() -> Result<(), Report> {
+    let mutation = Mutation::substitution(MutationTrack::AminoAcid(o!("S")), Sub::new(c(b'A'), 0_usize, c(b'T'))?);
+    let error = mat_mutation(&mutation, Some("A"), &Alphabet::new(AlphabetName::Nuc)?, "A")
+      .expect_err("MAT conversion must receive nucleotide mutations only");
+    assert!(error.to_string().contains("UShER MAT stores nucleotide mutations only"));
     Ok(())
   }
 
@@ -209,13 +224,38 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_tree_output::tests::helpers::{Mutations, ancestral_graph, ancestral_nodes};
+    use crate::ancestral_tree_output::write_ancestral_tree_outputs;
     use crate::tree_output::{MatGapCounts, MatOutput, mat_from_graph};
-    use eyre::Report;
+    use eyre::{Report, WrapErr};
+    use maplit::btreemap;
     use std::collections::BTreeMap;
+    use tempfile::TempDir;
+    use treetime::progress::NoopProgress;
     use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
-    use treetime_io::nwk::nwk_read_str;
-    use treetime_io::usher_mat::UsherMutation;
+    use treetime_io::graph::TreeWriteKind;
+    use treetime_io::nwk::{CommentProviders, nwk_read_str};
+    use treetime_io::usher_mat::{UsherMutation, UsherTree};
     use treetime_primitives::{AsciiChar, Seq};
+    use treetime_utils::io::json::json_read_file;
+
+    pub(super) fn written_ancestral_mat(mutations: Mutations) -> Result<UsherTree, Report> {
+      let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) = ancestral_graph(mutations)?;
+      let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
+      let path = dir.path().join("tree.mat.json");
+      write_ancestral_tree_outputs(
+        &graph,
+        &ancestral_nodes(&names, &graph, &btreemap! {}),
+        &branch_lengths,
+        &maps,
+        aa_node_data.as_ref(),
+        &aa_annotations,
+        &btreemap! { TreeWriteKind::MatJson => path.clone() },
+        &CommentProviders::new(),
+        &NoopProgress,
+      )?;
+      json_read_file(&path)
+    }
 
     pub(super) fn mat_mutations(
       nwk: &str,

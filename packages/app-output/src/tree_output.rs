@@ -509,7 +509,7 @@ pub(crate) fn mat_mutation(
   node_name: &str,
 ) -> Result<UsherMutation, Report> {
   if mutation.track != MutationTrack::Nucleotide {
-    return make_error!("Node '{node_name}' has an amino-acid mutation that UShER MAT cannot represent");
+    return make_internal_error!("Node '{node_name}' has an amino-acid mutation, but UShER MAT stores nucleotide mutations only");
   }
   let MutationEvent::Substitution(substitution) = &mutation.event else {
     return make_internal_error!(
