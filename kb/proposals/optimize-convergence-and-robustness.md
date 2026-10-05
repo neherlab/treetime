@@ -54,17 +54,17 @@ Six methods via `--opt-method`: Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ sp
 
 ## Implemented features
 
-| ID  | Feature                                               | Reference                                                                                                                                                                                                        |
-| --- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| I1  | Exponential damping (`--damping`, default 0.75)       | `apply_damping()` [optimize/run.rs#L513](../../packages/treetime/src/commands/optimize/run.rs#L513)                                                                                                     |
-| I2  | Six per-edge methods (`--opt-method`)                 | [optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs), [optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)         |
-| I3  | Grid search fallback (100-point, non-concave regions) | [optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs)                                                                                                       |
-| I4  | `--model` wired to GTR dispatch                       | [optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs)                                                                                                                                 |
-| I5  | Gap-aware initial guess (`edge_effective_length`)     | [partition/optimization_contribution.rs](../../packages/treetime/src/partition/optimization_contribution.rs)                                                                                                             |
-| I6  | Zero-branch short-circuit (unimodal models)           | `is_zero_branch_optimal()` [optimize/zero_boundary.rs#L328](../../packages/treetime/src/optimize/zero_boundary.rs#L328)                                                                  |
+| ID  | Feature                                               | Reference                                                                                                                                                                        |
+| --- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I1  | Exponential damping (`--damping`, default 0.75)       | `apply_damping()` [optimize/run.rs#L513](../../packages/treetime/src/commands/optimize/run.rs#L513)                                                                              |
+| I2  | Six per-edge methods (`--opt-method`)                 | [optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs), [optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)             |
+| I3  | Grid search fallback (100-point, non-concave regions) | [optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs)                                                                                                         |
+| I4  | `--model` wired to GTR dispatch                       | [optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs)                                                                                                          |
+| I5  | Gap-aware initial guess (`edge_effective_length`)     | [partition/optimization_contribution.rs](../../packages/treetime/src/partition/optimization_contribution.rs)                                                                     |
+| I6  | Zero-branch short-circuit (unimodal models)           | `is_zero_branch_optimal()` [optimize/zero_boundary.rs#L328](../../packages/treetime/src/optimize/zero_boundary.rs#L328)                                                          |
 | I7  | Eigenvalue-space coefficient caching                  | [partition/optimize_sparse.rs](../../packages/treetime/src/partition/optimize_sparse.rs), [partition/optimize_dense.rs](../../packages/treetime/src/partition/optimize_dense.rs) |
-| I8  | Poisson indel contribution                            | [optimize/indel.rs](../../packages/treetime/src/optimize/indel.rs)                                                                                                           |
-| I9  | Collapse guard (skip edges with mutations)            | `find_zero_optimal_internal_edges()` [optimize/run.rs#L563](../../packages/treetime/src/commands/optimize/run.rs#L563)                                                                                  |
+| I8  | Poisson indel contribution                            | [optimize/indel.rs](../../packages/treetime/src/optimize/indel.rs)                                                                                                               |
+| I9  | Collapse guard (skip edges with mutations)            | `find_zero_optimal_internal_edges()` [optimize/run.rs#L563](../../packages/treetime/src/commands/optimize/run.rs#L563)                                                           |
 
 ## Proposed improvements
 
@@ -213,7 +213,6 @@ The optimizer convergence work progressed through three phases:
 - [optimize-indel-contribution-to-likelihood](../decisions/optimize-indel-contribution-to-likelihood.md) -- v1-only Poisson indel term
 - [optimize-newton-raphson-per-edge](../decisions/optimize-newton-raphson-per-edge.md) -- per-method rationale
 - [kb/reports/iterative-tree-refinement/1-introduction.md](../reports/iterative-tree-refinement/1-introduction.md) -- damping, convergence theory, loop variants
-- [../\_raw/optimize.md](../_raw/optimize.md) -- design document
 
 ## References
 

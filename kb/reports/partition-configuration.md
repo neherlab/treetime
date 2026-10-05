@@ -28,19 +28,19 @@ When `--dense` is omitted, `infer_dense()` in `partition/algo/infer_dense.rs` de
 
 ### 2.3 Multiple alignment files
 
-The design document `_raw/optimize.md` specifies "alignment(s) (corresponding to partitions)" and notes that "for more complex inputs (multiple alignments and models along with discrete characters) a config file format may be needed." Currently only single `--aln` is accepted. Multiple alignments would create one partition per file.
+The intended input is one partition per alignment, and complex inputs that combine several alignments, models, and discrete characters need a config file format. Currently only single `--aln` is accepted. Multiple alignments would create one partition per file.
 
 Ambiguity: when two alignment files are given, are they different genes on the same tree (multi-partition) or replicate alignments? The config file approach (S2.5) resolves this.
 
-**Sources:** `kb/issues/N-optimize-multi-alignment-input.md`, `_raw/optimize.md`
+**Sources:** `kb/issues/N-optimize-multi-alignment-input.md`
 
 ### 2.4 `--segment` flag (multi-segment genomes)
 
-For segmented viruses (influenza: 8 segments, same alphabet, independent evolution, shared tree), a `--segment` flag would load segment-aware FASTA and create one partition per segment. Branch `worktree/feat/multi-segment-genome-input` has 9 commits implementing this, unmerged. The design document `_raw/sequence_evolution.md` asks: "For flu, genomes come in segments -- should these sequences be saved as list of multiple sequences, or concatenated?"
+For segmented viruses (influenza: 8 segments, same alphabet, independent evolution, shared tree), a `--segment` flag would load segment-aware FASTA and create one partition per segment. Branch `worktree/feat/multi-segment-genome-input` has 9 commits implementing this, unmerged. The open question is whether segments are separate partitions or one concatenated sequence.
 
 v0 handles segments via concatenation.
 
-**Sources:** `kb/issues/N-io-multi-segment-genome-input.md`, `_raw/sequence_evolution.md`
+**Sources:** `kb/issues/N-io-multi-segment-genome-input.md`
 
 ### 2.5 Config file (YAML/JSON)
 
@@ -210,8 +210,3 @@ The fix is not "extract shared init helper" but "implement partition configurati
 ### Features
 
 - [representation](../features/representation.md) - codon-position partitioning `[ ]`
-
-### Design documents
-
-- `_raw/optimize.md` - "alignment(s) (corresponding to partitions)"
-- `_raw/sequence_evolution.md` - segment handling question

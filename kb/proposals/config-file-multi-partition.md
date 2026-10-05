@@ -2,7 +2,7 @@
 
 ## Motivation
 
-The `optimize.md` design document notes: "For more complex inputs (multiple alignments and models along with discrete characters we might need a config file format)." Currently each command accepts a single alignment via `--aln`. Multi-segment genomes, mixed data types, and per-partition model specification all require a configuration system that the CLI flag approach cannot scale to.
+Complex inputs combine several alignments, their substitution models, and discrete characters, and need a config file format. Currently each command accepts a single alignment via `--aln`. Multi-segment genomes, mixed data types, and per-partition model specification all require a configuration system that the CLI flag approach cannot scale to.
 
 ## Use cases
 
@@ -85,11 +85,6 @@ The `mugration` command already demonstrates multi-partition operation (discrete
 ### Proposals
 
 - [unified-input-format-support](unified-input-format-support.md) -- alternative input path via Auspice/MAT/PhyloXML
-
-### Design documents
-
-- [../\_raw/sequence_evolution.md](../_raw/sequence_evolution.md) -- source: "For flu, genomes come in segments"
-- [../\_raw/optimize.md](../_raw/optimize.md) -- source: "we might need a config file format"
 
 ## References
 

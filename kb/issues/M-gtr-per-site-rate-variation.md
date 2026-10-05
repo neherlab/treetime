@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **Decision required.** The target rate contract is undecided: a supplied fixed rate vector, discrete-gamma categories, v0 full site-specific inference, or separately exposed contracts. Compressed fixed-site behavior, serialization, validation, and CLI behavior also need decisions. See "Decisions required".
 
-v1 represents and propagates an optional per-site rate vector, but no command constructs that vector from input or inference and optimizer coverage is incomplete. The design document specifies a vector $\mu^a$, where $a$ indexes sites and each site evolves at its own supplied rate. [`kb/_raw/sequence_evolution.md#L87-L89`](../_raw/sequence_evolution.md#L87-L89)
+v1 represents and propagates an optional per-site rate vector, but no command constructs that vector from input or inference and optimizer coverage is incomplete. The intended model is a vector $\mu^a$, where $a$ indexes sites and each site evolves at its own supplied rate with eigenvalues and eigenvectors shared by all sites ([kb/algo/unimplemented.md](../algo/unimplemented.md)).
 
 ## Background
 
@@ -36,7 +36,7 @@ Implementation waits until these contracts are decided.
 
 ## Site-specific equilibrium frequencies
 
-The design document (`../_raw/sequence_evolution.md:85-86`) also describes a more general case: "If instead the equilibrium frequencies $\pi$ vary from site to site, then eigenvalues and eigenvectors change along the sequence." This means the matrix $e^{Q^a t}$ becomes site-specific, requiring per-site eigendecomposition rather than just per-site rate scaling.
+A more general case lets the equilibrium frequencies $\pi$ vary from site to site, so eigenvalues and eigenvectors change along the sequence. This means the matrix $e^{Q^a t}$ becomes site-specific, requiring per-site eigendecomposition rather than just per-site rate scaling.
 
 Per-site $\mu$ (rate only): shared eigendecomposition, scaled eigenvalues. Computational cost: $O(n \cdot L \cdot s)$ where $s$ is alphabet size.
 
@@ -54,7 +54,6 @@ These are two independent decisions:
 ## Related
 
 - [N-gtr-site-specific-model-not-implemented.md](N-gtr-site-specific-model-not-implemented.md) - full site-specific GTR (per-site $\pi$) is not implemented
-- [../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) - design document specifying per-site rate variation (lines 81-89)
 
 ## Glossary
 

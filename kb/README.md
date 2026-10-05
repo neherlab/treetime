@@ -4,7 +4,7 @@ Shared knowledge base (KB). AI agents and humans collaborate here: documenting p
 
 > 💡 ## LLM wiki pattern
 >
-> This knowledge base follows the [LLM wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) pattern: raw source material is compiled by AI agents into structured, cross-linked knowledge articles. The organizing structure is human-defined. AI maintains content within that structure.
+> This knowledge base follows the [LLM wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) pattern: source material is compiled by AI agents into structured, cross-linked knowledge articles. The organizing structure is human-defined. AI maintains content within that structure.
 
 ## Motivation
 
@@ -19,7 +19,6 @@ Shared knowledge base (KB). AI agents and humans collaborate here: documenting p
 
 | Directory                  | Description                                                                                                                                                                                                                                               |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`_raw/`](_raw/)           | Human-produced source material (specifications, papers, notes). Read-only for AI.                                                                                                                                                                         |
 | [`algo/`](algo/)           | Algorithm documentation: scientific background, implementation status, v0/v1 locations                                                                                                                                                                    |
 | [`decisions/`](decisions/) | Deliberate v1 design choices with rationale (one file per decision)                                                                                                                                                                                       |
 | [`features/`](features/)   | Feature parity checklist: `[x]` done, `[/]` partial, `[ ]` not done                                                                                                                                                                                       |
@@ -30,11 +29,9 @@ Shared knowledge base (KB). AI agents and humans collaborate here: documenting p
 
 ## Structure
 
-[`_raw/`](_raw/) contains source material. All other directories contain AI-maintained derived knowledge. Source code is ground truth. KB entries are guides, not substitutes for code verification.
+All directories contain AI-maintained knowledge derived from source code, the v0 reference implementation, papers, and human decisions. Source code is ground truth. KB entries are guides, not substitutes for code verification.
 
 The knowledge base holds prose and data only -- no executable code. Scripts, notebooks, and helper programs belong in [`test_scripts/`](../test_scripts/) (Python research code) or [`dev/`](../dev/) (development scripts).
-
-When new material is added to [`_raw/`](_raw/), dependent articles in other directories should be reviewed and updated.
 
 ## Taxonomy
 

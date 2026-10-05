@@ -1,6 +1,6 @@
 # Dense optimize iteration is slow
 
-The `optimize.md` design document notes: "the iteration is slow for dense (which comes down to ancestral being compute heavy)."
+The optimize iteration is slow in dense mode, because each iteration runs a full dense ancestral reconstruction.
 
 Dense marginal reconstruction computes full probability profiles at every node for every alignment position. Each backward/forward pass costs $O(N \cdot s^2 \cdot L)$ where $N$ is the number of nodes, $s$ is the alphabet size, and $L$ is the alignment length -- the standard complexity of <a id="gloss-use-1"></a>Felsenstein pruning <sup>[1](#gloss-1)</sup> <a id="cite-1"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[1](#ref-1)]. For a 30,000-site SARS-CoV-2 alignment with 500 taxa and $s = 5$, each pass processes $\sim 500 \times 25 \times 30{,}000 = 375{,}000{,}000$ operations. Sparse mode avoids this by operating only on variable sites (typically 1-5% of $L$).
 

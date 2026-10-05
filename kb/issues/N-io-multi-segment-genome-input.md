@@ -1,6 +1,6 @@
 # Multi-segment genome input not wired
 
-The design document ([../_raw/sequence_evolution.md](../_raw/sequence_evolution.md)) asks how flu genome segments should be handled: "should these sequences be saved as list of multiple sequences, or concatenated?"
+Segmented genomes such as influenza need a representation: one partition per segment, or one concatenated sequence. All flu segments use the same alphabet, so either works for sequences. Discrete traits such as location or host have their own alphabets, which favors the partition structure.
 
 ## Current state
 
@@ -18,10 +18,6 @@ v0 accepts only a single alignment file. Multi-segment genomes are handled by co
 
 Concatenate segment alignments into a single FASTA. This loses per-segment model assignment but preserves all sequence data.
 
-## Design document context
-
-[../_raw/sequence_evolution.md](../_raw/sequence_evolution.md): "For flu, genomes come in segments -- should these sequences be saved as list of multiple sequences, or concatenated? Flu genome segments all use the same alphabet, so this could be implemented either way."
-
 ## Related
 
 ### Known issues
@@ -33,7 +29,3 @@ Concatenate segment alignments into a single FASTA. This loses per-segment model
 
 - [config-file-multi-partition](../proposals/config-file-multi-partition.md) -- configuration file format that would subsume per-segment CLI flags
 - [unified-input-format-support](../proposals/unified-input-format-support.md) -- alternative input via formats with embedded sequences
-
-### Design documents
-
-- [../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) -- source of the multi-segment requirement

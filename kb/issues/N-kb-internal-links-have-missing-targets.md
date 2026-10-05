@@ -1,6 +1,6 @@
 # Knowledge base contains internal links with missing targets
 
-A check of every relative Markdown link target in `kb/` (excluding `kb/_raw/`) finds links whose target file does not exist. The missing targets prevent readers and automated checks from following the KB's evidence graph. Most of them point to source files that moved during refactors.
+A check of every relative Markdown link target in `kb/` finds links whose target file does not exist. The missing targets prevent readers and automated checks from following the KB's evidence graph. Most of them point to source files that moved during refactors.
 
 ## Removed `packages/treetime/src/commands/` tree
 
@@ -106,7 +106,6 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 - Replace links to deleted issues, decisions, reports, and proposals with their live successor when one exists; otherwise remove the stale statement or rewrite it to stand alone
 - Replace links to untracked build artifacts and removed scripts with stable reproduction instructions or tracked evidence
 - Preserve the scientific and design meaning of each surrounding paragraph
-- Leave `kb/_raw/` unchanged
 
 ## Validation
 

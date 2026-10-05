@@ -36,7 +36,7 @@ Study v0's `treeanc.infer_gtr(site_specific=True)` path for the inference-to-tra
 ## Related
 
 - [M-gtr-per-site-rate-variation.md](M-gtr-per-site-rate-variation.md) - simpler feature where only $\mu$ varies per site (shared eigendecomposition)
-- [../_raw/sequence_evolution.md](../_raw/sequence_evolution.md) - design document specifying site-specific models
+- [kb/algo/unimplemented.md](../algo/unimplemented.md) - site-specific GTR in v0
 
 ## References
 
