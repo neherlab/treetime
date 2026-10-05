@@ -1,4 +1,4 @@
-import type { StalePath } from "@neherlab/app-contracts";
+import type { ExamplesDownloadStatus, StalePath } from "@neherlab/app-contracts";
 import {
   events,
   resumableStream,
@@ -18,6 +18,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { EMPTY_PROGRESS, foldRunEvents, type RunEvent, type RunProgress } from "../results/progress";
+import { useExamplesDownloadStore } from "../store/examplesDownload";
 import { useApiContext } from "./context";
 import { requestKey, staleCoversKey } from "./keys";
 
@@ -27,6 +28,7 @@ export interface FollowAppEventsOptions extends StreamTiming {
   client: ApiClient;
   queryClient: QueryClient;
   signal: AbortSignal;
+  onExamplesDownload?: (status: ExamplesDownloadStatus) => void;
 }
 
 export interface RunEventStreamOptions extends StreamTiming {
@@ -44,7 +46,12 @@ export function useAppEvents(): Error | undefined {
 
     const follow = async () => {
       try {
-        await followAppEvents({ client, queryClient, signal: controller.signal });
+        await followAppEvents({
+          client,
+          queryClient,
+          signal: controller.signal,
+          onExamplesDownload: useExamplesDownloadStore.getState().apply,
+        });
       } catch (error: unknown) {
         if (!controller.signal.aborted) {
           const failed = error instanceof Error ? error : new Error(String(error));
@@ -66,11 +73,16 @@ export async function followAppEvents({
   client,
   queryClient,
   signal,
+  onExamplesDownload,
   ...timing
 }: FollowAppEventsOptions): Promise<void> {
   const stream = resumableStream({ ...timing, open: (request) => events({ ...request, client }), from: 0, signal });
 
   for await (const event of stream) {
+    if (event.kind === "examples-download") {
+      onExamplesDownload?.({ download: event.download, seq: event.seq });
+    }
+
     void invalidateStale(queryClient, event.stale);
   }
 }

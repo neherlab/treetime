@@ -3,6 +3,8 @@ import { datasets, runsList } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import { useExamplesDownloadStatus, useStartExamplesDownload } from "../analysis/ExamplesDownload";
+import { examplesDownloadView } from "../analysis/examplesDownloadView";
 import { settingFieldId } from "../analysis/fieldIds";
 import { useConfigLoader } from "../analysis/useConfigLoader";
 import { useApi } from "../api/hooks";
@@ -138,6 +140,8 @@ function usePaletteItems(): PaletteItem[] {
   const { theme, chooseTheme } = useThemeChoice();
   const loadConfig = useConfigLoader();
   const toasts = useToastManager();
+  const downloadStatus = useExamplesDownloadStatus(host !== null);
+  const { mutate: startDownload } = useStartExamplesDownload();
 
   const loadExample = useCallback(
     async (example: ExampleConfig) => {
@@ -217,6 +221,42 @@ function usePaletteItems(): PaletteItem[] {
       );
     }
 
+    if (examplesDownloadView(host !== null, catalog, downloadStatus).kind !== "hidden") {
+      items.push(
+        paletteItem(
+          "Example",
+          "example-download",
+          "Download examples",
+          "Example datasets and configs of this TreeTime release",
+          () => {
+            startDownload(undefined, {
+              onError: (error) => {
+                toasts.add({ title: "The download cannot start", description: errorMessage(error) });
+              },
+            });
+            toasts.add({
+              title: "Downloading the example datasets",
+              description: "The Example datasets panel of a new analysis shows the progress.",
+            });
+          },
+        ),
+      );
+    }
+
     return items;
-  }, [catalog, chooseTheme, command, compareIds, loadExample, navigate, runList, setWorkspaceOpen, theme, host]);
+  }, [
+    catalog,
+    chooseTheme,
+    command,
+    compareIds,
+    downloadStatus,
+    host,
+    loadExample,
+    navigate,
+    runList,
+    setWorkspaceOpen,
+    startDownload,
+    theme,
+    toasts,
+  ]);
 }

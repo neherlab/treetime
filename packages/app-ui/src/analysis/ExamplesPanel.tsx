@@ -15,14 +15,19 @@ import { Card } from "../ui/card";
 import { Spinner } from "../ui/spinner";
 import { Table, TableBody, TableCell, TableRow } from "../ui/table";
 import { useToastManager } from "../ui/toast";
+import { ExamplesDownload } from "./ExamplesDownload";
 import { useConfigLoader } from "./useConfigLoader";
 import { useInputActions } from "./useInputActions";
 
 const EARLIER_RUNS_SHOWN = 8;
 
 export const EXAMPLES_PANELS = {
-  datasets: { title: "Example datasets", hint: "Bundled datasets with tree, alignment and metadata", icon: Database },
-  configs: { title: "Example configs", hint: "Ready-made settings and inputs from the repository", icon: FileCog },
+  datasets: {
+    title: "Example datasets",
+    hint: "Datasets of the examples folder: tree, alignment and metadata",
+    icon: Database,
+  },
+  configs: { title: "Example configs", hint: "Ready-made settings and inputs of the examples folder", icon: FileCog },
 } as const;
 
 export type ExamplesPanelKind = keyof typeof EXAMPLES_PANELS;
@@ -52,6 +57,7 @@ export function ExamplesPanel({
           <AlertDescription>The examples cannot be listed: {error.message}</AlertDescription>
         </Alert>
       )}
+      <ExamplesDownload />
       {kind === "datasets" ? (
         <>
           <div className="max-h-72 overflow-auto overscroll-contain">
