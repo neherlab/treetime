@@ -321,16 +321,18 @@ fn write_ancestral_trees(
     dates: None,
     traits: None,
   };
-  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
-  let Some(tree) = tree_view_for_outputs(&annotated, resolved)? else {
-    return Ok(());
-  };
-  write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Ancestral, log)?;
-  if let (Some(path), Some(node_sequences)) = (resolved.path(OutputSelection::AugurNodeData), node_sequences) {
-    write_augur_node_data_ancestral(&tree, node_sequences, path)?;
+  let tree = tree_view_for_outputs(&annotated, resolved);
+  if let (Ok(Some(tree)), Some(path), Some(node_sequences)) =
+    (&tree, resolved.path(OutputSelection::AugurNodeData), node_sequences)
+  {
+    write_augur_node_data_ancestral(tree, node_sequences, path)?;
     progress_info!(log, "Wrote augur node data JSON to {}", path.display());
   }
-  Ok(())
+  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
+  let Some(tree) = tree? else {
+    return Ok(());
+  };
+  write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Ancestral, log)
 }
 
 struct AncestralOutputMaps {
