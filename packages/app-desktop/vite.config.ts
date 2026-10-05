@@ -1,3 +1,5 @@
+/// <reference types="vite-plugin-electron/electron-env" />
+
 import { resolve } from "node:path";
 
 import { auspice } from "@neherlab/app-ui/build/auspice-vite";
@@ -9,9 +11,13 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import electron from "vite-plugin-electron/simple";
 
+import { restartChain } from "./build/electron-restart";
+
 const projectRoot = resolve(__dirname, "../..");
 
 process.env["TREETIME_PROJECT_ROOT"] ??= projectRoot;
+
+const restartElectron = restartChain();
 
 const electronArgs = process.env["ELECTRON_DISABLE_SANDBOX"] === "1" ? ["--no-sandbox"] : [];
 
@@ -36,7 +42,12 @@ export default defineConfig({
           },
         },
         async onstart(args) {
-          await args.startup([__dirname, ...electronArgs, "--enable-logging"]);
+          await restartElectron({
+            current: () => process.electronApp,
+            start: async () => {
+              await args.startup([__dirname, ...electronArgs, "--enable-logging"]);
+            },
+          });
         },
       },
       preload: {
