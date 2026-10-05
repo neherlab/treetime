@@ -171,6 +171,36 @@ pub(crate) mod tests {
   }
 
   #[test]
+  fn test_ancestral_results_skip_ambiguous_changes_and_indels_in_recurrent_sites() -> Result<(), Report> {
+    let mut auspice = fixture();
+    auspice
+      .tree
+      .branch_attrs
+      .mutations
+      .insert(o!("nuc"), vec_of_owned!["G451R", "G30-"]);
+    auspice.tree.children[0].children[1]
+      .branch_attrs
+      .mutations
+      .insert(o!("nuc"), vec_of_owned!["G451R"]);
+    let tree = ResultTree::from_auspice(&auspice)?;
+
+    let recurrent_sites = ancestral_results(Some(&tree), &Alphabet::default())?.recurrent_sites;
+
+    let expected = vec![
+      RecurrentSite {
+        position: 10,
+        branches: 2,
+      },
+      RecurrentSite {
+        position: 20,
+        branches: 2,
+      },
+    ];
+    assert_eq!(expected, recurrent_sites);
+    Ok(())
+  }
+
+  #[test]
   fn test_ancestral_results_reject_a_mutation_with_two_positions() -> Result<(), Report> {
     let mut auspice = fixture();
     auspice

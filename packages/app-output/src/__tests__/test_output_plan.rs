@@ -151,6 +151,37 @@ mod tests {
     )
   }
 
+  #[test]
+  fn test_output_plan_homoplasy_default_outputs() -> Result<(), Report> {
+    let resolved = plan(&helpers::homoplasy_request(btreemap! {}))?;
+
+    let expected = btreemap! {
+      OutputSelection::Nwk => vec![PathBuf::from("out/homoplasy.nwk")],
+      OutputSelection::Nexus => vec![PathBuf::from("out/homoplasy.nexus")],
+      OutputSelection::HomoplasyStats => vec![PathBuf::from("out/homoplasy.stats.json")],
+      OutputSelection::HomoplasyReport => vec![PathBuf::from("out/homoplasy.report.txt")],
+    };
+    assert_eq!(expected, resolved.paths_by_selection());
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_homoplasy_per_file_flags_override_output_all() -> Result<(), Report> {
+    let resolved = plan(&helpers::homoplasy_request(btreemap! {
+      OutputSelection::HomoplasyStats => PathBuf::from("stats.json"),
+      OutputSelection::HomoplasyReport => PathBuf::from("-"),
+    }))?;
+
+    assert_eq!(
+      (Some(Path::new("stats.json")), Some(Path::new("-"))),
+      (
+        resolved.path(OutputSelection::HomoplasyStats),
+        resolved.path(OutputSelection::HomoplasyReport)
+      )
+    );
+    Ok(())
+  }
+
   mod helpers {
     use crate::output_plan::{CommandKind, OutputPlanRequest, OutputSelection};
     use std::collections::BTreeMap;
@@ -167,6 +198,17 @@ mod tests {
         output_all: Some(PathBuf::from("out")),
         nwk_styles: vec![],
         selection,
+        tree_overrides: BTreeMap::new(),
+        non_tree_overrides,
+      }
+    }
+
+    pub(super) fn homoplasy_request(non_tree_overrides: BTreeMap<OutputSelection, PathBuf>) -> OutputPlanRequest {
+      OutputPlanRequest {
+        command: CommandKind::Homoplasy,
+        output_all: Some(PathBuf::from("out")),
+        nwk_styles: vec![],
+        selection: vec![],
         tree_overrides: BTreeMap::new(),
         non_tree_overrides,
       }
