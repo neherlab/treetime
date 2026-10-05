@@ -1207,7 +1207,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
-* `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
@@ -1235,7 +1234,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as a `key=value` list
 
    Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-* `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences
+* `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences, which places the mutations on the branches
 
   Default value: `marginal`
 
@@ -1255,56 +1254,54 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
   Possible values: `only-terminal`, `all`, `none`
 
-* `--zero-based` — Zero-based mutation indexing
-* `--include-leaves` — Emit reconstructed leaf (tip) sequences in addition to internal nodes
+* `--zero-based` — Report sequence positions counted from 0 instead of 1.
+
+   Applies to the positions of the report, the statistics JSON, and the `GENOMIC_POSITION` column of `--drms`, which is always counted from 1.
 * `--impute-missing-data` — Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.
 
-   Gaps are left as deletions (inferred structure, not missing data). Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.
-* `--reconstruct-tip-states` — v0-compatible alias for `--include-leaves --impute-missing-data`.
-
-   Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
-* `--report-ambiguous` — Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).
-
-   By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice JSON, and the `muts` and `aa_muts` lists of augur node data. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT outputs, which store `N` as missing data and never contain these mutations, or the root `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence` reference and the inferred root and always omit `X` and gaps.
+   Changes involving ambiguous characters on terminal branches then disappear from the report. Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.
 * `--ignore-missing-alns` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
 
-   Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
-* `--output-augur-node-data <OUTPUT_AUGUR_NODE_DATA>` — Path to output augur-compatible node data JSON.
+   Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.
+* `--gtr-iterations <GTR_ITERATIONS>` — Number of outer GTR refinement iterations.
 
-   Contains per-node nucleotide mutations, reconstructed sequences, the alignment mask, genome annotations, and the reference (root) sequence. The output is compatible with augur export v2 --node-data for Nextstrain pipeline integration.
+   Re-estimates the rate matrix from marginal posterior profiles after each reconstruction pass. Only effective with `--model infer`. Default 0 preserves the current single-pass behavior.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-* `--output-gtr <OUTPUT_GTR>` — Path to output GTR model JSON.
+  Default value: `0`
+* `--sample-from-profile <SAMPLE_FROM_PROFILE>` — How to pick ancestral states from the marginal posterior profile.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-* `--output-reconstructed-nuc-fasta <OUTPUT_RECONSTRUCTED_NUC_FASTA>` — Path to output reconstructed nucleotide FASTA.
+   'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere. 'all': sample from the posterior at every node.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
-* `--translations <TRANSLATIONS>` — Path template for per-CDS amino-acid FASTA alignments.
+   Only affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.
 
-   The template must contain a CDS placeholder, replaced with each value from `--cdses` (or each CDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade `--output-translations`) and `%GENE` (augur) placeholders are accepted.
-* `--cdses <CDS>` [alias: `genes`] — Comma-separated CDS names to reconstruct from `--translations`.
+  Default value: `argmax`
 
-   When omitted, the CDS set is derived from `--annotation`.
-* `--annotation <ANNOTATION>` — GFF3 file with CDS coordinates for Augur node data annotations.
+  Possible values: `argmax`, `root`, `all`
 
-   Also supplies the CDS set when `--cdses` is omitted.
-* `--aa-root-sequence <AA_ROOT_SEQUENCE>` — FASTA file with one amino-acid root/reference sequence per CDS
-* `--aa-model <AA_MODEL>` — Amino-acid substitution model. Mirrors the nucleotide `--model`; default `infer` matches augur
+* `--seed <SEED>` [alias: `rng-seed`] — Random seed
 
-  Default value: `infer`
+   Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
+* `--const <CONSTANT_SITES>` — Number of constant sites that the alignment leaves out.
 
-  Possible values:
-  - `infer`:
-    Infer an amino-acid GTR from the data over the stop-inclusive alphabet. Matches augur
-  - `jtt92`:
-    Jones-Taylor-Thornton 1992 empirical 20-amino-acid model (no stop codon). Stop codons and any other out-of-alphabet characters in the input are mapped to the unknown state `X`
+   Added to the alignment length to give the number of sites of the genome, which sets the number of sites without mutations and the rate of the Poisson comparison.
 
-* `--output-reconstructed-aa-fasta <OUTPUT_RECONSTRUCTED_AA_FASTA>` — Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).
+  Default value: `0`
+* `--rescale <RESCALE>` — Factor that multiplies every branch length of the input tree.
 
-   Off by default. When set, the reconstructed sequence of every node is written per CDS. The file name accepts the `{cds}`/`%GENE` placeholders of `--translations`, and needs one when more than one CDS is reconstructed; folder names are used as given.
+   Use it when the tree is not in substitutions per site, for example `--rescale=0.001` for a tree in substitutions per thousand sites. Scales the reconstruction, the tree outputs, and the reported tree lengths.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  Default value: `1`
+* `--detailed` — Add the mutations on terminal branches and the taxa that carry recurrent mutations to the report.
+
+   The statistics JSON always contains them.
+* `--drms <DRMS>` — TSV file of drug resistance mutations (DRM) that annotates the report.
+
+   Columns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`. A mutation at a listed position gets the gene and the drug, and the substitution when its derived base is a listed `ALT_BASE`.
+* `-n`, `--num-mut <NUM_MUT>` — Number of rows of each list in the report.
+
+   The statistics JSON always contains the complete lists.
+
+  Default value: `10`
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.
 
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
@@ -1367,13 +1364,21 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
+* `--output-homoplasy-stats <OUTPUT_HOMOPLASY_STATS>` — Path to output homoplasy statistics JSON.
+
+   Contains the counts, histograms, Poisson comparison, and complete ranked lists of the report, for substitutions, changes involving ambiguous characters, and insertions and deletions.
+
+   Takes precedence over paths configured with `--output-all` and `--output-selection`.
+* `--output-homoplasy-report <OUTPUT_HOMOPLASY_REPORT>` — Path to output homoplasy report text.
+
+   The run also logs the report at info level (`-v`).
+
+   Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `--output-selection <OUTPUT_SELECTION>` — Comma-separated list of outputs to produce with `--output-all`.
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
-   A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
-
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `reconstructed-aa-fasta`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `homoplasy-stats`, `homoplasy-report`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
@@ -1394,31 +1399,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
   Possible values: `mean`, `median`
 
-* `--gtr-iterations <GTR_ITERATIONS>` — Number of outer GTR refinement iterations.
-
-   Re-estimates the rate matrix from marginal posterior profiles after each reconstruction pass. Only effective with `--model infer`. Default 0 preserves the current single-pass behavior. Mugration uses 5 by default.
-
-  Default value: `0`
-* `--seed <SEED>` [alias: `rng-seed`] — Random seed
-
-   Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
-* `--sample-from-profile <SAMPLE_FROM_PROFILE>` — How to pick ancestral states from the marginal posterior profile.
-
-   'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere (matches augur's `sample_from_profile='root'`). Use `--seed` for reproducible draws. 'all': sample from the posterior at every node.
-
-   Only affects marginal reconstruction (`--method-anc=marginal`).
-
-  Default value: `argmax`
-
-  Possible values: `argmax`, `root`, `all`
-
-* `--const <CONSTANT_SITES>` — Number of constant sites not included in alignment
-* `--rescale` — rescale branch lengths
-* `--detailed <DETAILED>` — generate a more detailed report
-* `--drms <DRMS>` — TSV file containing DRM info. Columns headers: GENOMIC_POSITION, ALT_BASE, DRUG, GENE, SUBSTITUTION
-* `-n`, `--num-mut <NUM_MUT>` — number of mutations/nodes that are printed to screen
-
-  Default value: `10`
 
 
 

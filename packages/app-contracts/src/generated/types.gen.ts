@@ -710,7 +710,7 @@ export type OutputFile = {
  * selection enums into this type, and [`plan`] resolves each key to a path.
  * Tree variants do not encode the separately selected Newick style.
  */
-export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json' | 'clock-chart-svg' | 'clock-chart-png';
+export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json' | 'clock-chart-svg' | 'clock-chart-png' | 'homoplasy-stats' | 'homoplasy-report';
 
 /**
  * Error of a failed run.
@@ -1257,7 +1257,8 @@ export type AncestralResults = {
    */
   branches: Array<BranchMutations>;
   /**
-   * Sequence positions that mutate on more than one branch, most branches first.
+   * Sequence positions with substitutions between determined states on more than one branch, most
+   * branches first.
    */
   recurrent_sites: Array<RecurrentSite>;
 };

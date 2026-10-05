@@ -433,7 +433,9 @@ export const zOutputSelection = z.enum([
   'coalescent-csv',
   'coalescent-json',
   'clock-chart-svg',
-  'clock-chart-png'
+  'clock-chart-png',
+  'homoplasy-stats',
+  'homoplasy-report'
 ]);
 
 /**
