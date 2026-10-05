@@ -71,7 +71,7 @@ async fn main() -> eyre::Result<()> {
 
   let shutdown = CancellationToken::new();
   let config = ServerConfig {
-    data_dir: args.data_dir,
+    examples_dir: args.examples_dir,
     runs_dir: args.runs_dir,
     max_upload_size: args.max_upload_size,
     shutdown: shutdown.clone(),
@@ -114,9 +114,10 @@ struct ServerArgs {
   #[arg(long, short = 'j', default_value_t = available_jobs())]
   jobs: usize,
 
-  /// Directory containing input datasets
+  /// Folder of the example datasets and example configurations that the app lists. Relative input paths of a run
+  /// resolve inside it
   #[arg(long)]
-  data_dir: PathBuf,
+  examples_dir: PathBuf,
 
   /// Directory that holds the runs: one folder per run with its record, events, inputs and outputs
   #[arg(long)]

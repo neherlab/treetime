@@ -149,7 +149,7 @@ Each checkout resolves its own ports, so worktrees run side by side; `TREETIME_A
 
 #### Storage
 
-The web app has no database. The server keeps each run in its own folder `<runs-dir>/<run-id>/`: the run record `run.json`, the event log `events.jsonl`, the uploaded files in `inputs/`, and the results in `out/`. The browser keeps the preferences of the user interface (theme, sidebar width, and the unfinished form) in `localStorage`, under the key `treetime-preferences`. The server reads example datasets from `--data-dir`.
+The web app has no database. The server keeps each run in its own folder `<runs-dir>/<run-id>/`: the run record `run.json`, the event log `events.jsonl`, the uploaded files in `inputs/`, and the results in `out/`. The browser keeps the preferences of the user interface (theme, sidebar width, and the unfinished form) in `localStorage`, under the key `treetime-preferences`. The server reads example datasets and example configurations from its examples folder, `--examples-dir`.
 
 Each app mode keeps its runs in its own directory:
 
@@ -159,7 +159,7 @@ Each app mode keeps its runs in its own directory:
 - `tmp/app/treetime-prod/runs`: production build of the desktop app started from the checkout (`just desktop-prod`)
 - `<app folder>/runs`: installed desktop app, unless the settings or `TREETIME_RUNS_DIR` name another folder; see [Desktop app](#desktop-app)
 
-A deployment passes `--data-dir` and `--runs-dir` to `treetime-server` itself.
+A deployment passes `--examples-dir` and `--runs-dir` to `treetime-server` itself.
 
 When the portless proxy runs on the machine, the web server also registers `https://treetime.localhost` in the main checkout and `https://<branch>.treetime.localhost` in a linked worktree.
 

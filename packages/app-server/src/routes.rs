@@ -143,7 +143,7 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
       "/api/datasets",
       get_with(datasets, |op| {
         op.id("datasets")
-          .description("Example datasets and example configurations in the data directory.")
+          .description("Example datasets and example configurations in the examples folder.")
       }),
     )
     .api_route(

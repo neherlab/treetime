@@ -9,9 +9,8 @@ COPY .out/treetime-server-${TARGET} /app/treetime-server
 COPY packages/app-web/dist /app/dist
 COPY data /app/data
 
-# /app mirrors the repository root: the example configs name their inputs
-# relative to it (data/<dataset>/...), and the server resolves a relative input
-# that is not inside the data directory from its working directory.
+# The server resolves a relative input path inside the examples folder first,
+# then from this working directory.
 WORKDIR /app
 
 ENV HOST=0.0.0.0

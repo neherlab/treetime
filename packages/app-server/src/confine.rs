@@ -11,20 +11,20 @@ use treetime_utils::{make_error, make_report};
 
 #[derive(Clone, Debug)]
 pub(crate) struct PathPolicy {
-  data_dir: PathBuf,
+  examples_dir: PathBuf,
   input_roots: Vec<PathBuf>,
 }
 
 impl PathPolicy {
-  pub(crate) fn new(data_dir: &Path, extra_input_roots: &[PathBuf]) -> Result<Self, Report> {
-    let data_dir = canonical_dir(data_dir).wrap_err("When resolving the data directory")?;
+  pub(crate) fn new(examples_dir: &Path, extra_input_roots: &[PathBuf]) -> Result<Self, Report> {
+    let examples_dir = canonical_dir(examples_dir).wrap_err("When resolving the examples folder")?;
     let extra_input_roots: Vec<PathBuf> = extra_input_roots
       .iter()
       .map(|root| canonical_dir(root).wrap_err("When resolving an input directory"))
       .try_collect()?;
     Ok(Self {
-      input_roots: [vec![data_dir.clone()], extra_input_roots].concat(),
-      data_dir,
+      input_roots: [vec![examples_dir.clone()], extra_input_roots].concat(),
+      examples_dir,
     })
   }
 
@@ -79,11 +79,11 @@ impl PathPolicy {
   }
 
   pub(crate) fn confine_path(&self, setting: &str, path: &Path) -> Result<PathBuf, Report> {
-    let in_data_dir = self.data_dir.join(path);
-    let candidate = if path.is_relative() && !in_data_dir.exists() {
+    let in_examples_dir = self.examples_dir.join(path);
+    let candidate = if path.is_relative() && !in_examples_dir.exists() {
       path.to_path_buf()
     } else {
-      in_data_dir
+      in_examples_dir
     };
     let resolved = candidate.canonicalize().map_err(|err| {
       make_report!(
@@ -110,11 +110,11 @@ impl PathPolicy {
     let Some(Value::String(template)) = setting_mut(settings, key_path) else {
       return Ok(());
     };
-    let in_data_dir = self.data_dir.join(&*template);
-    *template = if Path::new(template).is_relative() && !in_data_dir.parent().is_some_and(Path::exists) {
+    let in_examples_dir = self.examples_dir.join(&*template);
+    *template = if Path::new(template).is_relative() && !in_examples_dir.parent().is_some_and(Path::exists) {
       absolute_path(&*template)?
     } else {
-      in_data_dir
+      in_examples_dir
     }
     .to_string_lossy()
     .into_owned();

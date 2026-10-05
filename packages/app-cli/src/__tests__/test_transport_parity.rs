@@ -57,7 +57,7 @@ mod tests {
     use tower::ServiceExt;
     use treetime::progress::NoopProgress;
 
-    pub(super) fn data_dir() -> PathBuf {
+    pub(super) fn examples_dir() -> PathBuf {
       Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../data")
         .canonicalize()
@@ -65,7 +65,7 @@ mod tests {
     }
 
     pub(super) fn config_for(command: AppCommand) -> Value {
-      let data = data_dir();
+      let data = examples_dir();
       let zika = data.join("zika/20");
       let flu = data.join("flu/h3n2/20");
       match command {
@@ -126,7 +126,7 @@ mod tests {
     pub(super) async fn run_server(command: AppCommand, config: &Value, runs_dir: &Path) -> ServerRun {
       let router = create_router(
         ServerConfig {
-          data_dir: data_dir(),
+          examples_dir: examples_dir(),
           runs_dir: runs_dir.to_path_buf(),
           max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
           shutdown: CancellationToken::new(),

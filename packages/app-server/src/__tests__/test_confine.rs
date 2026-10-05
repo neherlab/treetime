@@ -12,7 +12,7 @@ mod tests {
   use treetime_utils::assert_error;
 
   #[test]
-  fn test_confine_relative_input_resolves_inside_data_dir() {
+  fn test_confine_relative_input_resolves_inside_examples_dir() {
     let Dirs { data, outside } = dirs();
     let policy = PathPolicy::new(data.path(), &[]).unwrap();
     let mut config = json!({ "tree": "sub/tree.nwk", "alignment": ["sub/aln.fasta"] });
@@ -29,7 +29,7 @@ mod tests {
   }
 
   #[test]
-  fn test_confine_absolute_input_inside_data_dir_is_accepted() {
+  fn test_confine_absolute_input_inside_examples_dir_is_accepted() {
     let Dirs { data, .. } = dirs();
     let policy = PathPolicy::new(data.path(), &[]).unwrap();
     let tree = data.path().canonicalize().unwrap().join("sub/tree.nwk");
@@ -116,7 +116,7 @@ mod tests {
   }
 
   #[test]
-  fn test_confine_relative_input_missing_from_data_dir_resolves_from_working_directory() {
+  fn test_confine_relative_input_missing_from_examples_dir_resolves_from_working_directory() {
     let policy = PathPolicy::new(Path::new("../../data"), &[]).unwrap();
     let mut config = json!({ "tree": "../../data/zika/20/tree.nwk" });
     policy.confine(AppCommand::Prune, &mut config).unwrap();
@@ -127,7 +127,7 @@ mod tests {
   }
 
   #[test]
-  fn test_confine_working_directory_input_outside_data_dir_is_rejected() {
+  fn test_confine_working_directory_input_outside_examples_dir_is_rejected() {
     let policy = PathPolicy::new(Path::new("../../data"), &[]).unwrap();
     let mut config = json!({ "tree": "Cargo.toml" });
     assert_error!(
@@ -175,7 +175,7 @@ mod tests {
   }
 
   #[test]
-  fn test_confine_translation_template_is_rewritten_to_the_checked_data_dir_location() {
+  fn test_confine_translation_template_is_rewritten_to_the_checked_examples_dir_location() {
     let Dirs { data, .. } = dirs();
     fs::create_dir_all(data.path().join("src")).unwrap();
     fs::write(data.path().join("src/lib.rs"), ">a\nM\n").unwrap();
@@ -193,7 +193,7 @@ mod tests {
   }
 
   #[test]
-  fn test_confine_translation_template_missing_from_data_dir_is_rewritten_to_the_working_directory() {
+  fn test_confine_translation_template_missing_from_examples_dir_is_rewritten_to_the_working_directory() {
     let Dirs { data, .. } = dirs();
     let policy = PathPolicy::new(data.path(), &[Path::new("src").to_path_buf()]).unwrap();
     let mut config = json!({
@@ -227,13 +227,13 @@ mod tests {
   }
 
   #[test]
-  fn test_confine_rejects_missing_data_dir() {
+  fn test_confine_rejects_missing_examples_dir() {
     let Dirs { data, .. } = dirs();
     let missing = data.path().join("missing");
     assert_error!(
       PathPolicy::new(&missing, &[]),
       format!(
-        "When resolving the data directory: When resolving directory '{}': No such file or directory (os error 2)",
+        "When resolving the examples folder: When resolving directory '{}': No such file or directory (os error 2)",
         missing.display()
       )
     );

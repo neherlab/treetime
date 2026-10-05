@@ -37,13 +37,17 @@ impl InputPolicy for Unconfined {
 
 pub struct AppService {
   runs: Arc<RunManager>,
-  data_dir: PathBuf,
+  examples_dir: PathBuf,
   policy: Arc<dyn InputPolicy>,
 }
 
 impl AppService {
-  pub fn new(runs: Arc<RunManager>, data_dir: PathBuf, policy: Arc<dyn InputPolicy>) -> Self {
-    Self { runs, data_dir, policy }
+  pub fn new(runs: Arc<RunManager>, examples_dir: PathBuf, policy: Arc<dyn InputPolicy>) -> Self {
+    Self {
+      runs,
+      examples_dir,
+      policy,
+    }
   }
 
   pub fn runs(&self) -> &Arc<RunManager> {
@@ -55,7 +59,7 @@ impl AppService {
   }
 
   pub fn datasets(&self) -> Result<DatasetCatalog, Report> {
-    dataset_catalog(&self.data_dir)
+    dataset_catalog(&self.examples_dir)
   }
 
   pub fn check_config(&self, request: &CheckConfigRequest) -> Result<CheckConfigResponse, Report> {

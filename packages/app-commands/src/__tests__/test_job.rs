@@ -116,13 +116,13 @@ mod tests {
   #[test]
   fn test_job_error_ends_error_with_message() {
     let terminal = run_job(&JobId::parse("job-6").unwrap(), &NoopCancel, || {
-      Err(Report::msg("input path is outside the data directory"))
+      Err(Report::msg("input path is outside the examples folder"))
     });
     assert_eq!(
       json!({
         "status": "error",
         "job_id": "job-6",
-        "message": "input path is outside the data directory",
+        "message": "input path is outside the examples folder",
         "causes": [],
       }),
       serde_json::to_value(terminal).unwrap()

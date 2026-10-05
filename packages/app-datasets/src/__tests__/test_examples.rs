@@ -64,9 +64,9 @@ mod tests {
   }
 
   #[test]
-  fn test_examples_discovery_names_the_data_dir_as_given() {
+  fn test_examples_discovery_names_the_examples_dir_as_given() {
     let catalog = discover_datasets(Path::new("../../data"), COMMANDS).unwrap();
-    assert_eq!("../../data", catalog.data_dir);
+    assert_eq!("../../data", catalog.examples_dir);
   }
 
   #[test]

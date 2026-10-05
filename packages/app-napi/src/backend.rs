@@ -54,7 +54,7 @@ impl DesktopService {
     let (router, _) = api_router(
       Arc::clone(&app),
       ServerConfig {
-        data_dir: examples,
+        examples_dir: examples,
         runs_dir: paths.runs.path.clone(),
         max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
         shutdown: CancellationToken::new(),

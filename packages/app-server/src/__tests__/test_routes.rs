@@ -132,7 +132,7 @@ pub(crate) mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_input_outside_the_data_dir_ends_with_an_error_run() {
+  async fn test_routes_input_outside_the_examples_dir_ends_with_an_error_run() {
     let test = app();
     let (_, record) = request(
       &test,
@@ -299,7 +299,7 @@ pub(crate) mod tests {
     )
     .await;
     let id = record["id"].as_str().unwrap().to_owned();
-    let data = TestApp::data_dir();
+    let data = TestApp::examples_dir();
     let tree = test
       .upload(&id, "tree.nwk", std::fs::read(data.join("zika/20/tree.nwk")).unwrap())
       .await;
@@ -411,7 +411,7 @@ pub(crate) mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_check_inputs_rejects_paths_outside_the_data_dir() {
+  async fn test_routes_check_inputs_rejects_paths_outside_the_examples_dir() {
     let test = app();
     let (status, body) = request(
       &test,
@@ -902,7 +902,7 @@ pub(crate) mod tests {
     }
 
     impl TestApp {
-      pub(crate) fn data_dir() -> PathBuf {
+      pub(crate) fn examples_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data")
       }
 
@@ -934,7 +934,7 @@ pub(crate) mod tests {
       let runs_dir = tempdir().unwrap();
       let router = create_router(
         ServerConfig {
-          data_dir: TestApp::data_dir(),
+          examples_dir: TestApp::examples_dir(),
           runs_dir: runs_dir.path().to_path_buf(),
           max_upload_size,
           shutdown: shutdown.clone(),

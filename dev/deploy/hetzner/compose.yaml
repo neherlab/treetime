@@ -14,7 +14,7 @@ services:
   app:
     image: treetime-web:${TREETIME_TAG:?}
     command:
-      - --data-dir=/app/data
+      - --examples-dir=/app/data
       - --runs-dir=/runs
       - --max-upload-size=52428800
       # The server answers only the hosts it knows: `app` for the health check of

@@ -14,26 +14,33 @@ const SCHEMA_FILE_SUFFIX: &str = ".schema.json";
 const SCHEMA_URL_BASE: &str = "https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas";
 const YAML_EXTENSIONS: [&str; 2] = ["yaml", "yml"];
 
-pub fn discover_datasets(data_dir: &Path, commands: &[&str]) -> Result<DataDirectory, Report> {
+pub fn discover_datasets(examples_dir: &Path, commands: &[&str]) -> Result<ExamplesFolder, Report> {
   let mut datasets = Vec::new();
   let mut examples = Vec::new();
-  match fs::read_dir(data_dir) {
-    Ok(entries) => collect(data_dir, data_dir, entries, commands, &mut datasets, &mut examples)?,
+  match fs::read_dir(examples_dir) {
+    Ok(entries) => collect(
+      examples_dir,
+      examples_dir,
+      entries,
+      commands,
+      &mut datasets,
+      &mut examples,
+    )?,
     Err(error) if error.kind() == ErrorKind::NotFound => {},
-    Err(error) => return Err(read_dir_report(error, data_dir)),
+    Err(error) => return Err(read_dir_report(error, examples_dir)),
   }
   datasets.sort_by(|a, b| a.name.cmp(&b.name));
   examples.sort_by(|a, b| a.path.cmp(&b.path));
-  Ok(DataDirectory {
-    data_dir: data_dir.to_string_lossy().replace('\\', "/"),
+  Ok(ExamplesFolder {
+    examples_dir: examples_dir.to_string_lossy().replace('\\', "/"),
     datasets,
     examples,
   })
 }
 
 #[derive(Clone, Debug)]
-pub struct DataDirectory {
-  pub data_dir: String,
+pub struct ExamplesFolder {
+  pub examples_dir: String,
   pub datasets: Vec<DatasetFiles>,
   pub examples: Vec<ExampleFile>,
 }

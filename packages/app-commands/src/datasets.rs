@@ -16,25 +16,21 @@ const DATASET_FILES: [(InputKind, &[&str]); 3] = [
   (InputKind::Metadata, &["metadata.tsv", "metadata.csv"]),
 ];
 
-pub fn dataset_catalog(data_dir: &Path) -> Result<DatasetCatalog, Report> {
-  let discovered = discover_datasets(data_dir, AppCommand::VARIANTS)?;
+pub fn dataset_catalog(examples_dir: &Path) -> Result<DatasetCatalog, Report> {
+  let discovered = discover_datasets(examples_dir, AppCommand::VARIANTS)?;
   Ok(DatasetCatalog {
     datasets: discovered
       .datasets
       .iter()
-      .map(|dataset| Dataset::new(&discovered.data_dir, dataset))
+      .map(|dataset| Dataset::new(&discovered.examples_dir, dataset))
       .collect(),
     examples: discovered.examples.into_iter().map(ExampleConfig::new).try_collect()?,
-    data_dir: discovered.data_dir,
   })
 }
 
-/// Example datasets and example command configurations found in the data directory.
+/// Example datasets and example command configurations found in the examples folder.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DatasetCatalog {
-  /// Data directory as a run configuration names it: a path relative to the working directory of the process that
-  /// runs the commands, as in the example configurations.
-  pub data_dir: String,
   /// Directories that hold a `tree.nwk`, with their files.
   pub datasets: Vec<Dataset>,
   /// Example configurations of the commands the application runs.
@@ -44,7 +40,7 @@ pub struct DatasetCatalog {
 /// A directory of example input files.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Dataset {
-  /// Path of the directory relative to the data directory, with `/` separators.
+  /// Path of the directory relative to the examples folder, with `/` separators.
   pub name: String,
   /// Names of the files in the directory, sorted.
   pub files: Vec<String>,
@@ -53,7 +49,7 @@ pub struct Dataset {
 }
 
 impl Dataset {
-  fn new(data_dir: &str, dataset: &DatasetFiles) -> Self {
+  fn new(examples_dir: &str, dataset: &DatasetFiles) -> Self {
     let inputs = DATASET_FILES
       .iter()
       .filter_map(|(kind, names)| {
@@ -63,7 +59,7 @@ impl Dataset {
         Some(DatasetInput {
           kind: *kind,
           file: format!("{}/{file}", dataset.name),
-          path: [data_dir, &dataset.name, file]
+          path: [examples_dir, &dataset.name, file]
             .iter()
             .filter(|part| !part.is_empty())
             .copied()
@@ -85,7 +81,7 @@ impl Dataset {
 pub struct DatasetInput {
   /// Input the file fills.
   pub kind: InputKind,
-  /// Path of the file relative to the data directory, with `/` separators.
+  /// Path of the file relative to the examples folder, with `/` separators.
   pub file: String,
   /// Path of the file as a run configuration names it.
   pub path: String,
@@ -94,7 +90,7 @@ pub struct DatasetInput {
 /// An example configuration file of one command.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ExampleConfig {
-  /// Path of the file relative to the data directory, with `/` separators.
+  /// Path of the file relative to the examples folder, with `/` separators.
   pub path: String,
   /// Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
   pub command: AppCommand,

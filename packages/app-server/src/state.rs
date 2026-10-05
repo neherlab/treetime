@@ -14,7 +14,7 @@ pub const DEFAULT_MAX_UPLOAD_SIZE: usize = 1 << 30;
 
 #[derive(Clone, Debug)]
 pub struct ServerConfig {
-  pub data_dir: PathBuf,
+  pub examples_dir: PathBuf,
   pub runs_dir: PathBuf,
   pub max_upload_size: usize,
   pub shutdown: CancellationToken,
@@ -28,13 +28,13 @@ pub struct LocalSettings {
 }
 
 pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> {
-  PathPolicy::new(&config.data_dir, &[])?;
+  PathPolicy::new(&config.examples_dir, &[])?;
   let runs = RunManager::open(&config.runs_dir)?;
   let policy = Arc::new(ServerInputs {
-    data_dir: config.data_dir.clone(),
+    examples_dir: config.examples_dir.clone(),
     runs: Arc::clone(&runs),
   });
-  Ok(Arc::new(AppService::new(runs, config.data_dir.clone(), policy)))
+  Ok(Arc::new(AppService::new(runs, config.examples_dir.clone(), policy)))
 }
 
 pub(crate) struct AppState {
@@ -46,12 +46,12 @@ pub(crate) struct AppState {
 }
 
 struct ServerInputs {
-  data_dir: PathBuf,
+  examples_dir: PathBuf,
   runs: Arc<RunManager>,
 }
 
 impl InputPolicy for ServerInputs {
   fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report> {
-    PathPolicy::new(&self.data_dir, &self.runs.input_dirs()?)?.confine(command, config)
+    PathPolicy::new(&self.examples_dir, &self.runs.input_dirs()?)?.confine(command, config)
   }
 }
