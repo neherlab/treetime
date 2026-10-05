@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from "electron";
 
+import type { BackendStop } from "./backend-process";
 import {
   BACKEND_PORT_CHANNEL,
   BACKEND_PORT_REQUEST_CHANNEL,
@@ -28,8 +29,8 @@ const shell: DesktopShell = {
     ipcRenderer.send(BACKEND_PORT_REQUEST_CHANNEL);
   },
   onBackendStopped: (listener) => {
-    ipcRenderer.on(BACKEND_STOPPED_CHANNEL, (_event, reason: string, restarts: boolean) => {
-      listener(reason, restarts);
+    ipcRenderer.on(BACKEND_STOPPED_CHANNEL, (_event, stop: BackendStop) => {
+      listener(stop);
     });
   },
   pickFiles: (request) => ipcRenderer.invoke(PICK_FILES_CHANNEL, request),

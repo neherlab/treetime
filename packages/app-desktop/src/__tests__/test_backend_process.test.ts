@@ -1,6 +1,7 @@
+import type { ErrorResponse } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
 
-import { shouldRestart, stopReason } from "../backend-process";
+import { backendStop, shouldRestart, stopReason } from "../backend-process";
 
 describe("backend_process restarts", () => {
   test("the first crash restarts the back end", () => {
@@ -37,5 +38,35 @@ describe("backend_process stop reasons", () => {
     expect(stopReason(3, false, false)).toBe(
       "the back end stopped with exit code 3 too often and does not restart; restart TreeTime",
     );
+  });
+});
+
+describe("backend_process stops", () => {
+  const startError: ErrorResponse = {
+    code: "internal_error",
+    message: "When opening the runs folder '/r'",
+    causes: ["denied"],
+  };
+
+  test("a back end that could not start does not restart and carries its error", () => {
+    expect(backendStop({ code: 0, requested: false, startError, exitTimes: [], now: 0 })).toStrictEqual({
+      reason: "the back end could not start: When opening the runs folder '/r': denied",
+      restarts: false,
+      error: startError,
+    });
+  });
+
+  test("a requested restart after a failed start restarts", () => {
+    expect(backendStop({ code: 0, requested: true, startError, exitTimes: [], now: 0 })).toStrictEqual({
+      reason: "the back end restarts to open the new runs folder; the request was not answered",
+      restarts: true,
+    });
+  });
+
+  test("a crash restarts until it happened too often", () => {
+    expect([
+      backendStop({ code: 1, requested: false, startError: undefined, exitTimes: [0], now: 0 }).restarts,
+      backendStop({ code: 1, requested: false, startError: undefined, exitTimes: [0, 1, 2, 3, 4], now: 4 }).restarts,
+    ]).toStrictEqual([true, false]);
   });
 });

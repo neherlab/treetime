@@ -6,5 +6,10 @@
     "outDir": "dist-electron",
     "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../app-contracts/tsconfig.generated.json"
+    }
+  ]
 }

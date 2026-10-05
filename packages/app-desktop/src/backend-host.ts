@@ -1,7 +1,7 @@
 import { errorMessage, type ErrorCode } from "@neherlab/app-contracts";
 import type { Backend, PortExchange, PortRequest } from "@neherlab/app-napi";
 
-import type { ControlReply, FetchEndpoint, SaveRequest } from "./backend-protocol";
+import type { FetchEndpoint, SaveRequest, SaveResult } from "./backend-protocol";
 
 type Abort = Pick<PortExchange, "abort">;
 
@@ -56,7 +56,7 @@ export function serveFetch(endpoint: FetchEndpoint, backend: Pick<AddonBackend, 
   });
 }
 
-export async function saveRunFiles(backend: AddonBackend, request: SaveRequest): Promise<ControlReply> {
+export async function saveRunFiles(backend: AddonBackend, request: SaveRequest): Promise<SaveResult> {
   try {
     await (request.kind === "save-file"
       ? backend.saveRunFile(request.request)

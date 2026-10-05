@@ -1,6 +1,9 @@
+import type { ErrorResponse } from "@neherlab/app-contracts";
+import { ApiError } from "@neherlab/app-contracts/client";
 import type { PortMessage, PortReply } from "@neherlab/app-napi";
 import { describe, expect, test, vi } from "vitest";
 
+import type { BackendStop } from "../backend-process";
 import { createPortFetch, type FetchConnection, type FetchPort } from "../port-fetch";
 
 const ORIGIN = "http://treetime.desktop";
@@ -214,7 +217,7 @@ describe("port_fetch back end stops", () => {
     backend.reply({ kind: "head", seq: 1, status: 200, headers: [] });
     const open = await streaming;
 
-    backend.stop("the back end stopped with exit code 1 and restarts", true);
+    backend.stop({ reason: "the back end stopped with exit code 1 and restarts", restarts: true });
     await expect(pending).rejects.toThrow(new TypeError("the back end stopped with exit code 1 and restarts"));
     await expect(open.text()).rejects.toThrow("the back end stopped with exit code 1 and restarts");
     const later = portFetch(`${ORIGIN}/api/version`);
@@ -235,10 +238,47 @@ describe("port_fetch back end stops", () => {
     const backend = fakeBackend({ connected: true });
     const portFetch = createPortFetch(backend.connection);
 
-    backend.stop("the back end stopped too often", false);
+    backend.stop({ reason: "the back end stopped too often", restarts: false });
 
     await expect(portFetch(`${ORIGIN}/api/version`)).rejects.toThrow("the back end stopped too often");
     expect(backend.posted).toStrictEqual([]);
+  });
+
+  test("a back end that could not start rejects pending and later requests with its error response", async () => {
+    const backend = fakeBackend();
+    const portFetch = createPortFetch(backend.connection);
+    const pending = portFetch(`${ORIGIN}/api/version`);
+
+    const error: ErrorResponse = {
+      code: "internal_error",
+      message: "When opening the runs folder '/r'",
+      causes: ["denied"],
+    };
+
+    backend.stop({ reason: "the back end could not start", restarts: false, error });
+
+    const expected = new ApiError(500, error);
+
+    const rejections = await Promise.all(
+      [pending, portFetch(`${ORIGIN}/api/runs`)].map(async (request) => request.catch((reason: unknown) => reason)),
+    );
+
+    expect(rejections).toStrictEqual([expected, expected]);
+    expect(rejections.map((rejection) => rejection instanceof ApiError && rejection.status)).toStrictEqual([500, 500]);
+  });
+
+  test("a new port after a stop without restart accepts requests again", async () => {
+    const backend = fakeBackend({ connected: true });
+    const portFetch = createPortFetch(backend.connection);
+
+    backend.stop({ reason: "the back end stopped too often", restarts: false });
+    backend.connect();
+    void portFetch(`${ORIGIN}/api/version`);
+    await sent(backend, 1);
+
+    expect(backend.posted).toStrictEqual([
+      { kind: "request", request: { seq: 0, method: "GET", url: "/api/version", headers: [] } },
+    ]);
   });
 });
 
@@ -247,12 +287,12 @@ interface FakeBackend {
   posted: PortMessage[];
   connect(): void;
   reply(reply: PortReply): void;
-  stop(reason: string, restarts: boolean): void;
+  stop(stop: BackendStop): void;
 }
 
 function fakeBackend({ connected = false } = {}): FakeBackend {
   const portListeners: Array<(port: FetchPort) => void> = [];
-  const stoppedListeners: Array<(reason: string, restarts: boolean) => void> = [];
+  const stoppedListeners: Array<(stop: BackendStop) => void> = [];
   let deliver: (reply: PortReply) => void = () => undefined;
 
   const backend: FakeBackend = {
@@ -289,10 +329,10 @@ function fakeBackend({ connected = false } = {}): FakeBackend {
     reply(reply) {
       deliver(reply);
     },
-    stop(reason, restarts) {
+    stop(stop) {
       deliver = () => undefined;
       stoppedListeners.forEach((listener) => {
-        listener(reason, restarts);
+        listener(stop);
       });
     },
   };

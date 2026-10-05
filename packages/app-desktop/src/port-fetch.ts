@@ -1,4 +1,7 @@
+import { ApiError } from "@neherlab/app-contracts/client";
 import type { PortError, PortHeader, PortMessage, PortReply, PortRequest } from "@neherlab/app-napi";
+
+import type { BackendStop } from "./backend-process";
 
 export interface FetchPort {
   postMessage(message: PortMessage): void;
@@ -8,10 +11,12 @@ export interface FetchPort {
 
 export interface FetchConnection {
   onPort(listener: (port: FetchPort) => void): void;
-  onStopped(listener: (reason: string, restarts: boolean) => void): void;
+  onStopped(listener: (stop: BackendStop) => void): void;
 }
 
 export type PortFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+const SERVER_ERROR_STATUS = 500;
 
 const MISSING_HEAD = "the back end ended the exchange without a response head";
 
@@ -55,8 +60,8 @@ class PortClient {
     connection.onPort((port) => {
       this.connect(port);
     });
-    connection.onStopped((reason, restarts) => {
-      this.stop(reason, restarts);
+    connection.onStopped((stop) => {
+      this.stop(stop);
     });
   }
 
@@ -158,6 +163,7 @@ class PortClient {
 
   private connect(port: FetchPort): void {
     this.port = port;
+    this.failure = undefined;
     port.addEventListener("message", (event) => {
       this.exchanges.get(event.data.seq)?.reply(event.data);
     });
@@ -170,9 +176,9 @@ class PortClient {
     this.waiting.clear();
   }
 
-  private stop(reason: string, restarts: boolean): void {
+  private stop({ reason, restarts, error: startError }: BackendStop): void {
     this.port = undefined;
-    const error = new TypeError(reason);
+    const error = startError === undefined ? new TypeError(reason) : new ApiError(SERVER_ERROR_STATUS, startError);
 
     if (!restarts) {
       this.failure = error;

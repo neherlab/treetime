@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import type { BackendStop } from "../backend-process";
 import { BACKEND_PORT_CHANNEL } from "../channels";
 import {
   SaveError,
@@ -119,7 +120,7 @@ describe("desktop_shell window connection", () => {
     const received: FetchPort[] = [];
 
     target.emit({ source: target, data: { channel: BACKEND_PORT_CHANNEL }, ports: [fakeFetchPort()] });
-    shell.stop("crashed", true);
+    shell.stop({ reason: "crashed", restarts: true });
     connection.onPort((next) => {
       received.push(next);
     });
@@ -146,14 +147,14 @@ describe("desktop_shell window connection", () => {
   test("a stop of the back end reaches the listeners with its reason", () => {
     const shell = fakeShell({});
     const connection = windowFetchConnection(fakeWindow(), shell);
-    const stops: Array<[string, boolean]> = [];
+    const stops: BackendStop[] = [];
 
-    connection.onStopped((reason, restarts) => {
-      stops.push([reason, restarts]);
+    connection.onStopped((stop) => {
+      stops.push(stop);
     });
-    shell.stop("crashed", false);
+    shell.stop({ reason: "crashed", restarts: false });
 
-    expect(stops).toStrictEqual([["crashed", false]]);
+    expect(stops).toStrictEqual([{ reason: "crashed", restarts: false }]);
   });
 });
 
@@ -161,7 +162,7 @@ interface FakeShell extends DesktopShell {
   connections: number;
   restarts: number;
   saves: unknown[];
-  stop(reason: string, restarts: boolean): void;
+  stop(stop: BackendStop): void;
 }
 
 function fakeShell({
@@ -173,7 +174,7 @@ function fakeShell({
   folder?: unknown;
   saved?: SaveReply;
 }): FakeShell {
-  const stopListeners: Array<(reason: string, restarts: boolean) => void> = [];
+  const stopListeners: Array<(stop: BackendStop) => void> = [];
 
   const shell: FakeShell = {
     connections: 0,
@@ -185,9 +186,9 @@ function fakeShell({
     onBackendStopped(listener) {
       stopListeners.push(listener);
     },
-    stop(reason, restarts) {
+    stop(stop) {
       stopListeners.forEach((listener) => {
-        listener(reason, restarts);
+        listener(stop);
       });
     },
     pickFiles: () => Promise.resolve(picked),

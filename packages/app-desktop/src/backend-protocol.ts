@@ -1,3 +1,4 @@
+import type { ErrorResponse } from "@neherlab/app-contracts";
 import type { PortMessage, PortReply, SaveRunArchiveRequest, SaveRunFileRequest } from "@neherlab/app-napi";
 
 export type SaveRequest =
@@ -6,7 +7,9 @@ export type SaveRequest =
 
 export type ControlRequest = { kind: "port" } | SaveRequest;
 
-export type ControlReply = { kind: "saved"; seq: number } | { kind: "error"; seq: number; error: string };
+export type SaveResult = { kind: "saved"; seq: number } | { kind: "error"; seq: number; error: string };
+
+export type ControlReply = SaveResult | { kind: "failed"; error: ErrorResponse };
 
 export interface FetchEndpoint {
   post(message: PortReply): void;

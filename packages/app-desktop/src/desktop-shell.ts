@@ -9,6 +9,7 @@ import {
   type WorkspaceShell,
 } from "@neherlab/app-contracts";
 
+import type { BackendStop } from "./backend-process";
 import { BACKEND_PORT_CHANNEL } from "./channels";
 import type { FetchConnection, FetchPort } from "./port-fetch";
 import type { SaveReply, SaveRunArchiveDialog, SaveRunFileDialog } from "./shell-protocol";
@@ -25,7 +26,7 @@ export interface WindowLike {
 
 export interface DesktopShell {
   connectBackend(): void;
-  onBackendStopped(listener: (reason: string, restarts: boolean) => void): void;
+  onBackendStopped(listener: (stop: BackendStop) => void): void;
   pickFiles(request: PickFilesRequest): Promise<unknown>;
   pickFolder(request: PickFolderRequest): Promise<unknown>;
   restartBackend(): Promise<unknown>;
