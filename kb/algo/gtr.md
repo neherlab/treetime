@@ -20,8 +20,8 @@ The average rate is $-\sum_i \pi_i Q_{ii} = \sum_{ij} \pi_i W_{ij} \pi_j$. The c
 
 Consumers of $P(t)$:
 
-- `GTR::propagate_profile()` computes `profile · P(t)`, the distribution of descendant states given a distribution of ancestral states (rows of `profile` are sites)
-- `GTR::evolve()` computes `profile · P(t)^T`, the likelihood of each ancestral state given a likelihood vector of descendant states
+- `GTR::propagate_profile()` computes `profile * P(t)`, the distribution of descendant states given a distribution of ancestral states (rows of `profile` are sites)
+- `GTR::evolve()` computes `profile * P(t)^T`, the likelihood of each ancestral state given a likelihood vector of descendant states
 
 Both are at [`packages/treetime/src/gtr/gtr.rs#L103-L135`](../../packages/treetime/src/gtr/gtr.rs#L103-L135).
 
@@ -105,7 +105,7 @@ $$P(t) = \mathbf{D}\, \mathbf{V} \,\mathrm{diag}\!\left(e^{\mu \lambda_k t}\righ
 
 where the columns of $\mathbf{V}$ are the $w^k$. In the row convention used by most textbooks the same matrix is written $\Pi^{1/2} Q \Pi^{-1/2}$.
 
-`eig_single_site()` stores the right eigenvectors in `v`, scaled to unit L1 norm, and the left eigenvectors in `v_inv`, scaled by the inverse factor so that `v · v_inv = I`. `expQt()` computes `v · diag(exp(mu * lambda * t)) · v_inv` and clamps negative round-off to 0.
+`eig_single_site()` stores the right eigenvectors in `v`, scaled to unit L1 norm, and the left eigenvectors in `v_inv`, scaled by the inverse factor so that `v * v_inv = I`. `expQt()` computes `v * diag(exp(mu * lambda * t)) * v_inv` and clamps negative round-off to 0.
 
 The eigendecomposition is computed once per model. Per-branch computation reduces to multiplying diagonal exponentials by pre-computed eigenvector matrices - O(k^2) per branch rather than a full matrix exponential.
 
