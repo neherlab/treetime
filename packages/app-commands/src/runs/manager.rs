@@ -4,11 +4,12 @@ use crate::job::{CancelToken, JobEvent, JobId, JobProgress, JobStarted, Terminal
 use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
 use crate::runs::errors::{UploadTooLarge, conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
-use crate::runs::files::{RunFile, list_run_files, resolve_run_file};
+use crate::runs::files::{RunFile, list_run_files, resolve_run_file, write_run_zip};
 use crate::runs::headline::{RunHeadline, run_headline};
 use crate::runs::inputs::{file_sha256, hash_inputs};
 use crate::runs::record::{
-  CreateRunRequest, RunError, RunList, RunRecord, RunStatus, RunSummary, StartRunRequest, UpdateRunRequest,
+  CreateRunRequest, RunError, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest,
+  UpdateRunRequest,
 };
 use crate::runs::store::RunStore;
 use chrono::{TimeDelta, Utc};
@@ -21,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -273,6 +274,33 @@ impl RunManager {
   pub fn out_dir(&self, id: &JobId) -> Result<PathBuf, Report> {
     self.store.read(id)?;
     Ok(self.store.out_dir(id))
+  }
+
+  pub fn save_file(&self, id: &JobId, relative: &str, destination: &Path) -> Result<(), Report> {
+    let source = self.file_path(id, relative)?;
+    write_atomically(destination, |file| {
+      let mut reader = fs::File::open(&source).wrap_err_with(|| format!("When opening '{}'", source.display()))?;
+      io::copy(&mut reader, file).wrap_err_with(|| format!("When copying '{}'", source.display()))?;
+      Ok(())
+    })
+  }
+
+  pub fn save_archive(&self, id: &JobId, destination: &Path) -> Result<(), Report> {
+    let out_dir = self.out_dir(id)?;
+    write_atomically(destination, |file| write_run_zip(&out_dir, id.as_str(), file))
+  }
+
+  pub fn save(&self, id: &JobId, request: &SaveRunRequest) -> Result<(), Report> {
+    if !request.destination.is_absolute() {
+      return Err(invalid(format!(
+        "the destination must be an absolute path, got '{}'",
+        request.destination.display()
+      )));
+    }
+    match &request.path {
+      Some(relative) => self.save_file(id, relative, &request.destination),
+      None => self.save_archive(id, &request.destination),
+    }
   }
 
   fn modify(&self, id: &JobId, change: impl FnOnce(&mut RunRecord) -> Result<(), Report>) -> Result<RunRecord, Report> {

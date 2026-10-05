@@ -3,7 +3,7 @@ use crate::api::download::{serve_run_file, stream_run_archive};
 use crate::api::extract::{ApiJson, ApiPath, ApiQuery, OctetStream};
 use crate::api::generate::with_project_schemas;
 use crate::api::response::{FileContent, TypedSse, ZipAttachment};
-use crate::app_settings_routes::app_settings_routes;
+use crate::app_settings_routes::{app_settings_routes, host_routes};
 use crate::error::{AppError, panic_response, plain_error};
 use crate::events::{app_events_sse, run_events_sse};
 use crate::openapi::{add_components, add_discriminators, add_setting_catalog};
@@ -62,15 +62,57 @@ pub(crate) const NO_STORE: &str = "no-store";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 
 pub fn api_router(service: Arc<AppService>, config: ServerConfig) -> Result<(Router, OpenApi), Report> {
-  let (router, api) = build_api(config.settings.is_some())?;
-  let state = Arc::new(AppState {
+  let scope = if config.settings.is_some() {
+    RouteScope::Renderer
+  } else {
+    RouteScope::Public
+  };
+  let (routes, api) = build_api(scope)?;
+  let state = app_state(service, config, &api)?;
+  Ok((finish_router(routes, state), api))
+}
+
+pub fn local_api_routers(service: Arc<AppService>, config: ServerConfig) -> Result<LocalRouters, Report> {
+  let (host, api) = build_api(RouteScope::Host)?;
+  let (renderer, _) = build_api(RouteScope::Renderer)?;
+  let state = app_state(service, config, &api)?;
+  Ok(LocalRouters {
+    host: finish_router(host, Arc::clone(&state)),
+    renderer: finish_router(renderer, state),
+  })
+}
+
+pub fn api_doc() -> Result<Value, Report> {
+  let (_, api) = build_api(RouteScope::Host)?;
+  Ok(serde_json::to_value(api)?)
+}
+
+/// Routers of a local app: the host router also saves run files to a path that the caller names, so only the process
+/// that hosts the app may reach it.
+pub struct LocalRouters {
+  pub host: Router,
+  pub renderer: Router,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RouteScope {
+  Public,
+  Renderer,
+  Host,
+}
+
+fn app_state(service: Arc<AppService>, config: ServerConfig, api: &OpenApi) -> Result<Arc<AppState>, Report> {
+  Ok(Arc::new(AppState {
     config,
     runs: Arc::clone(service.runs()),
     service,
-    openapi: serde_json::to_value(&api)?,
+    openapi: serde_json::to_value(api)?,
     instance: instance_id()?,
-  });
-  let router = router
+  }))
+}
+
+fn finish_router(routes: Router<Arc<AppState>>, state: Arc<AppState>) -> Router {
+  routes
     .method_not_allowed_fallback(method_not_allowed)
     .fallback(not_found)
     .layer(SetResponseHeaderLayer::if_not_present(
@@ -80,16 +122,10 @@ pub fn api_router(service: Arc<AppService>, config: ServerConfig) -> Result<(Rou
     .layer(CatchPanicLayer::custom(|payload: Box<dyn Any + Send>| {
       panic_response(&*payload)
     }))
-    .with_state(state);
-  Ok((router, api))
+    .with_state(state)
 }
 
-pub fn api_doc() -> Result<Value, Report> {
-  let (_, api) = build_api(true)?;
-  Ok(serde_json::to_value(api)?)
-}
-
-fn build_api(local_settings: bool) -> Result<(Router<Arc<AppState>>, OpenApi), Report> {
+fn build_api(scope: RouteScope) -> Result<(Router<Arc<AppState>>, OpenApi), Report> {
   let mut api = OpenApi {
     info: Info {
       title: "TreeTime API".to_owned(),
@@ -109,10 +145,10 @@ fn build_api(local_settings: bool) -> Result<(Router<Arc<AppState>>, OpenApi), R
     ..OpenApi::default()
   };
   let router = with_project_schemas(|| {
-    let routes = if local_settings {
-      api_routes().merge(app_settings_routes())
-    } else {
-      api_routes()
+    let routes = match scope {
+      RouteScope::Public => api_routes(),
+      RouteScope::Renderer => api_routes().merge(app_settings_routes()),
+      RouteScope::Host => api_routes().merge(app_settings_routes()).merge(host_routes()),
     };
     routes.finish_api_with(&mut api, |api| api.default_response::<AppError>())
   })?;
@@ -302,9 +338,9 @@ struct HealthStatus {
 /// Path of a run.
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[schemars(inline)]
-struct RunPath {
+pub(crate) struct RunPath {
   /// Id of the run.
-  id: JobId,
+  pub(crate) id: JobId,
 }
 
 /// Path of two runs.

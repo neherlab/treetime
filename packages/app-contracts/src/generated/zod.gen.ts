@@ -950,6 +950,14 @@ export const zWorkspaceUpdate = z.strictObject({
   path: z.string().nullish()
 });
 
+/**
+ * Where to save an output file of a run, or the archive of all its outputs.
+ */
+export const zSaveRunRequest = z.strictObject({
+  path: z.string().nullish().default(null),
+  destination: z.string()
+});
+
 export const zBranchLengthMode = z.enum(['input', 'marginal']);
 
 export const zTimeMarginalMode = z.enum([
@@ -2359,3 +2367,12 @@ export const zWorkspaceUpdateBody = zWorkspaceUpdate;
  * setting is optional.
  */
 export const zWorkspaceUpdateResponse = zAppSettings;
+
+/**
+ * Where to save an output file of a run, or the archive of all its outputs.
+ */
+export const zRunsSaveBody = zSaveRunRequest;
+
+export const zRunsSavePath = z.object({
+  id: zJobId
+});

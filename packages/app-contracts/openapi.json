@@ -1109,6 +1109,51 @@
           }
         }
       }
+    },
+    "/api/runs/{id}/save": {
+      "post": {
+        "description": "Write an output file of a run, or the zip archive of all its outputs, to an absolute path. Only the process that hosts a local app reaches this path; its windows do not.",
+        "operationId": "runsSave",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Id of the run.",
+            "required": true,
+            "schema": {
+              "description": "Id of the run.",
+              "$ref": "#/components/schemas/JobId"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "description": "Where to save an output file of a run, or the archive of all its outputs.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "no content"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4587,6 +4632,28 @@
           }
         },
         "additionalProperties": false
+      },
+      "SaveRunRequest": {
+        "description": "Where to save an output file of a run, or the archive of all its outputs.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Path of the file relative to the run's `out/` folder. Unset: a zip archive of the whole `out/` folder.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "destination": {
+            "description": "Absolute path of the file to write.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "destination"
+        ]
       },
       "BranchLengthMode": {
         "type": "string",

@@ -1987,6 +1987,20 @@ export type WorkspaceUpdate = {
   path?: string | null;
 };
 
+/**
+ * Where to save an output file of a run, or the archive of all its outputs.
+ */
+export type SaveRunRequest = {
+  /**
+   * Path of the file relative to the run's `out/` folder. Unset: a zip archive of the whole `out/` folder.
+   */
+  path?: string | null;
+  /**
+   * Absolute path of the file to write.
+   */
+  destination: string;
+};
+
 export type BranchLengthMode = 'input' | 'marginal';
 
 export type TimeMarginalMode = 'never' | 'always' | 'only-final';
@@ -5476,3 +5490,34 @@ export type WorkspaceUpdateResponses = {
 };
 
 export type WorkspaceUpdateResponse = WorkspaceUpdateResponses[keyof WorkspaceUpdateResponses];
+
+export type RunsSaveData = {
+  /**
+   * Where to save an output file of a run, or the archive of all its outputs.
+   */
+  body: SaveRunRequest;
+  path: {
+    /**
+     * Id of the run.
+     */
+    id: JobId;
+  };
+  query?: never;
+  url: '/api/runs/{id}/save';
+};
+
+export type RunsSaveErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsSaveError = RunsSaveErrors[keyof RunsSaveErrors];
+
+export type RunsSaveResponses = {
+  /**
+   * no content
+   */
+  200: unknown;
+};

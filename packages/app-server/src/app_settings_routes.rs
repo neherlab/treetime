@@ -1,15 +1,29 @@
-use crate::api::extract::ApiJson;
+use crate::api::extract::{ApiJson, ApiPath};
 use crate::error::AppError;
+use crate::routes::RunPath;
 use crate::state::{AppState, LocalSettings};
 use aide::axum::ApiRouter;
-use aide::axum::routing::{get_with, put_with};
+use aide::axum::routing::{get_with, post_with, put_with};
 use app_commands::app_settings::settings::{AppSettings, UiSettings, Workspace, WorkspaceUpdate};
 use app_commands::app_settings::workspace::{active_workspace, prepare_workspace};
+use app_commands::runs::record::SaveRunRequest;
 use axum::Json;
 use axum::extract::State;
 use eyre::Report;
 use std::sync::Arc;
 use treetime_utils::make_internal_report;
+
+pub(crate) fn host_routes() -> ApiRouter<Arc<AppState>> {
+  ApiRouter::new().api_route(
+    "/api/runs/{id}/save",
+    post_with(runs_save, |op| {
+      op.id("runsSave").description(
+        "Write an output file of a run, or the zip archive of all its outputs, to an absolute path. Only the \
+         process that hosts a local app reaches this path; its windows do not.",
+      )
+    }),
+  )
+}
 
 pub(crate) fn app_settings_routes() -> ApiRouter<Arc<AppState>> {
   ApiRouter::new()
@@ -77,6 +91,15 @@ async fn workspace_update(
   })
   .await
   .map(Json)
+}
+
+async fn runs_save(
+  State(state): State<Arc<AppState>>,
+  ApiPath(RunPath { id }): ApiPath<RunPath>,
+  ApiJson(request): ApiJson<SaveRunRequest>,
+) -> Result<(), AppError> {
+  let runs = Arc::clone(&state.runs);
+  blocking(&state, move |_| runs.save(&id, &request)).await
 }
 
 async fn blocking<T, F>(state: &AppState, operation: F) -> Result<T, AppError>

@@ -4,8 +4,8 @@ import * as z from 'zod';
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, ServerSentEventsResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AppSettingsData, AppSettingsErrors, AppSettingsResponses, AppSettingsUiData, AppSettingsUiErrors, AppSettingsUiResponses, CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, DatasetsData, DatasetsErrors, DatasetsResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, HealthData, HealthErrors, HealthResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, OpenapiData, OpenapiErrors, OpenapiResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses, WorkspaceData, WorkspaceErrors, WorkspaceResponses, WorkspaceUpdateData, WorkspaceUpdateErrors, WorkspaceUpdateResponses } from './types.gen';
-import { zAppSettingsResponse, zAppSettingsUiBody, zAppSettingsUiResponse, zCladeInRunsBody, zCladeInRunsResponse, zConfigCheckBody, zConfigCheckResponse, zDatasetsResponse, zEventsQuery, zEventsResponse, zHealthResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsResultsPath, zRunsResultsResponse, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputResponse, zVersionResponse, zWorkspaceResponse, zWorkspaceUpdateBody, zWorkspaceUpdateResponse } from './zod.gen';
+import type { AppSettingsData, AppSettingsErrors, AppSettingsResponses, AppSettingsUiData, AppSettingsUiErrors, AppSettingsUiResponses, CladeInRunsData, CladeInRunsErrors, CladeInRunsResponses, ConfigCheckData, ConfigCheckErrors, ConfigCheckResponses, DatasetsData, DatasetsErrors, DatasetsResponses, EventsData, EventsErrors, EventsResponse, EventsResponses, HealthData, HealthErrors, HealthResponses, InputsCheckData, InputsCheckErrors, InputsCheckResponses, OpenapiData, OpenapiErrors, OpenapiResponses, RunConfigData, RunConfigErrors, RunConfigResponses, RunsArchiveData, RunsArchiveErrors, RunsArchiveResponses, RunsAuspiceData, RunsAuspiceErrors, RunsAuspiceResponses, RunsCancelData, RunsCancelErrors, RunsCancelResponses, RunsCompareData, RunsCompareErrors, RunsCompareResponses, RunsCreateData, RunsCreateErrors, RunsCreateResponses, RunsEventsData, RunsEventsErrors, RunsEventsResponse, RunsEventsResponses, RunsFileData, RunsFileErrors, RunsFileResponses, RunsFilesData, RunsFilesErrors, RunsFilesResponses, RunsGetData, RunsGetErrors, RunsGetResponses, RunsListData, RunsListErrors, RunsListResponses, RunsResultsData, RunsResultsErrors, RunsResultsResponses, RunsSaveData, RunsSaveErrors, RunsSaveResponses, RunsStartData, RunsStartErrors, RunsStartResponses, RunsUpdateData, RunsUpdateErrors, RunsUpdateResponses, RunsUploadInputData, RunsUploadInputErrors, RunsUploadInputResponses, VersionData, VersionErrors, VersionResponses, WorkspaceData, WorkspaceErrors, WorkspaceResponses, WorkspaceUpdateData, WorkspaceUpdateErrors, WorkspaceUpdateResponses } from './types.gen';
+import { zAppSettingsResponse, zAppSettingsUiBody, zAppSettingsUiResponse, zCladeInRunsBody, zCladeInRunsResponse, zConfigCheckBody, zConfigCheckResponse, zDatasetsResponse, zEventsQuery, zEventsResponse, zHealthResponse, zInputsCheckBody, zInputsCheckResponse, zRunConfigBody, zRunConfigResponse2, zRunsArchivePath, zRunsArchiveResponse, zRunsAuspicePath, zRunsAuspiceResponse, zRunsCancelPath, zRunsCancelResponse, zRunsComparePath, zRunsCompareResponse, zRunsCreateBody, zRunsCreateResponse, zRunsEventsPath, zRunsEventsQuery, zRunsEventsResponse, zRunsFilePath, zRunsFileQuery, zRunsFileResponse, zRunsFilesPath, zRunsFilesResponse, zRunsGetPath, zRunsGetResponse, zRunsListResponse, zRunsResultsPath, zRunsResultsResponse, zRunsSaveBody, zRunsSavePath, zRunsStartBody, zRunsStartPath, zRunsStartResponse, zRunsUpdateBody, zRunsUpdatePath, zRunsUpdateResponse, zRunsUploadInputBody, zRunsUploadInputPath, zRunsUploadInputResponse, zVersionResponse, zWorkspaceResponse, zWorkspaceUpdateBody, zWorkspaceUpdateResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
   /**
@@ -432,6 +432,23 @@ export const workspaceUpdate = <ThrowOnError extends boolean = false>(options: O
   }).parseAsync(data),
   responseValidator: async (data) => await zWorkspaceUpdateResponse.parseAsync(data),
   url: '/api/workspace',
+  ...options,
+  headers: {
+    'Content-Type': 'application/json',
+    ...options.headers
+  }
+});
+
+/**
+ * Write an output file of a run, or the zip archive of all its outputs, to an absolute path. Only the process that hosts a local app reaches this path; its windows do not.
+ */
+export const runsSave = <ThrowOnError extends boolean = false>(options: Options<RunsSaveData, ThrowOnError>): RequestResult<RunsSaveResponses, RunsSaveErrors, ThrowOnError> => (options.client ?? client).post<RunsSaveResponses, RunsSaveErrors, ThrowOnError>({
+  requestValidator: async (data) => await z.object({
+    body: zRunsSaveBody,
+    path: zRunsSavePath,
+    query: z.never().optional()
+  }).parseAsync(data),
+  url: '/api/runs/{id}/save',
   ...options,
   headers: {
     'Content-Type': 'application/json',

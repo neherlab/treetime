@@ -182,6 +182,17 @@ pub struct CancelRunResponse {
   pub cancelled: bool,
 }
 
+/// Where to save an output file of a run, or the archive of all its outputs.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SaveRunRequest {
+  /// Path of the file relative to the run's `out/` folder. Unset: a zip archive of the whole `out/` folder.
+  #[serde(default)]
+  pub path: Option<String>,
+  /// Absolute path of the file to write.
+  pub destination: PathBuf,
+}
+
 /// Changes to the presentation of a run.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
