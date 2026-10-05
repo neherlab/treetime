@@ -25,7 +25,7 @@ Support is stored per edge: the Newick parse keys each value by the edge above i
 - A branch created for a new split (polytomy resolution in [packages/treetime/src/timetree/optimization/polytomy/apply.rs](../../packages/treetime/src/timetree/optimization/polytomy/apply.rs)): no value
 - Reordering children (`topology_order.apply()`) keeps edge keys, so values stay
 
-Once support follows its split, `timetree` and `clock` write it in Auspice JSON as the other commands do. v0 has no counterpart: it writes no input support after a timetree run (`n.confidence = None`, [packages/legacy/treetime/treetime/CLI_io.py#L160](../../packages/legacy/treetime/treetime/CLI_io.py#L160)), and its Auspice `confidence` is a substitute from mutation counts, `1 - exp(-n)` ([packages/legacy/treetime/treetime/CLI_io.py#L321-L327](../../packages/legacy/treetime/treetime/CLI_io.py#L321-L327)).
+Once support follows its split, `timetree` and `clock` write it in Auspice JSON as the other commands do. v0 has no counterpart: it writes no input support after a timetree run (`n.confidence = None`, [packages/legacy/treetime/treetime/CLI_io.py#L160](../../packages/legacy/treetime/treetime/CLI_io.py#L160)), and its Auspice `confidence` is a substitute from mutation counts, `1 - exp(-n)` ([packages/legacy/treetime/treetime/CLI_io.py#L321-L327](../../packages/legacy/treetime/treetime/CLI_io.py#L321-L327)). Only v0 `clock` writes input support, fused into the node names of its Newick output and on the wrong splits after a reroot ([kb/v0-errata/clock-newick-support-fused-into-node-names.md](../v0-errata/clock-newick-support-fused-into-node-names.md)).
 
 ## Open: how support travels through a run
 

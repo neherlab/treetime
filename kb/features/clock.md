@@ -21,7 +21,7 @@
 - [x] Parent-branch split optimization around best node
 - [x] Child-branch split optimization around best node
 - [x] Reroot rejects candidates with non-positive inferred clock rate
-- [x] `--keep-root` (disable rerooting)
+- [x] `--keep-root` (disable rerooting; v0 still reroots in its clock filter, see [kb/v0-errata/clock-keep-root-ignored-by-clock-filter.md](../v0-errata/clock-keep-root-ignored-by-clock-filter.md))
 
 ## Reroot Modes (4 modes)
 
@@ -56,7 +56,7 @@
 ## Clock Model Output
 
 - [x] Rate, intercept, chisq, R-value, hessian, covariance
-- [x] Rerooted Newick tree
+- [x] Rerooted Newick tree (plain node names; v0 fuses input support into them, see [kb/v0-errata/clock-newick-support-fused-into-node-names.md](../v0-errata/clock-newick-support-fused-into-node-names.md))
 - [x] Graph JSON and Graphviz DOT
 - [x] Clock model JSON
 - [x] Regression CSV (populated for all nodes, includes predicted date, clock deviation, outlier state)
