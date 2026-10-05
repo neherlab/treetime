@@ -2,11 +2,11 @@
 
 This directory holds the example datasets and, next to each one, ready-to-run configuration files for TreeTime. Every command reads its full argument object from a file with `--config`, and the `pipeline` command runs an ordered chain of commands from a single file. The examples double as living documentation: each file is a saved, reviewed, version-controlled invocation you can copy and adapt.
 
-All examples are run from the repository root and write their outputs under `tmp/` (git-ignored). Input paths inside the files are relative to the repository root.
+Examples run from any folder. A relative path inside a file resolves from the folder of that file, so a dataset folder works wherever it is unpacked. A relative path given as a command-line flag resolves from the working directory. The files name no output paths: choose the output folder with `--output-all`, for example `tmp/` (git-ignored) when running from the repository root.
 
 ## Per-command configs
 
-A per-command config is exactly the command's argument object. Its keys map one-to-one to the CLI flags: `--alignment a.fasta` is `alignment: [a.fasta]`, `--clock-rate 0.003` is `clock_rate: 0.003`, `--output-all dir` is `output_all: dir`. An explicit flag on the command line still overrides the file (flag > config > default).
+A per-command config is exactly the command's argument object. Its keys map one-to-one to the CLI flags: `--alignment a.fasta` is `alignment: [a.fasta]`, `--clock-rate 0.003` is `clock_rate: 0.003`. An explicit flag on the command line still overrides the file (flag > config > default).
 
 | File                                                                     | Command     | Demonstrates                                                |
 | ------------------------------------------------------------------------ | ----------- | ----------------------------------------------------------- |
@@ -23,12 +23,12 @@ A per-command config is exactly the command's argument object. Its keys map one-
 Run one with, for example:
 
 ```bash
-treetime ancestral --config data/zika/20/ancestral.yaml
+treetime ancestral --config data/zika/20/ancestral.yaml --output-all tmp/zika-ancestral
 ```
 
 ## Pipelines
 
-A pipeline file lists named steps, each an analysis command with its arguments. Steps run sequentially in one process. A step reads an earlier step's output with `{{ steps.<name>.outputs.<selection> }}`, so intermediate paths are never hand-written. `vars` names shared values once; a top-level `output_all` gives each step its own `<dir>/<step>/` output directory.
+A pipeline file lists named steps, each an analysis command with its arguments. Steps run sequentially in one process. A step reads an earlier step's output with `{{ steps.<name>.outputs.<selection> }}`, so intermediate paths are never hand-written. `vars` names shared values once. `treetime pipeline --output-all <dir>`, or a top-level `output_all` in the file, gives each step its own `<dir>/<step>/` output directory; the flag takes precedence.
 
 | File                                                                   | Chain                                   | Demonstrates                                                     |
 | ---------------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------- |
@@ -42,9 +42,9 @@ A pipeline file lists named steps, each an analysis command with its arguments. 
 Run a pipeline, preview its plan, or run only part of it:
 
 ```bash
-treetime pipeline --config data/zika/20/pipeline.yaml
-treetime pipeline --config data/zika/20/pipeline.yaml --check
-treetime pipeline --config data/zika/20/pipeline.yaml --steps mugration
+treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/zika-pipeline
+treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/zika-pipeline --check
+treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/zika-pipeline --steps mugration
 ```
 
 `--check` resolves the whole plan (each step's inputs, its concrete output files, and every chained path) and prints it without running anything. `--steps` runs a named subset in list order; a referenced upstream step that is not selected must already have its outputs on disk. When a step fails, the error names the completed steps and prints the exact `--steps` value that resumes the rest.
@@ -52,7 +52,7 @@ treetime pipeline --config data/zika/20/pipeline.yaml --steps mugration
 ## Why a config or pipeline instead of a shell command
 
 - One file, not one long flag string. The invocation is reviewable in a pull request, diffable across runs, and stored next to the data it analyzes.
-- No repetition. `vars` holds the dataset directory or the clock rate once; every step references it. A whole-value reference such as `{{ vars.clock_rate }}` keeps its JSON type, so a number stays a number.
+- No repetition. `vars` holds a shared value such as the clock rate once; every step references it. A whole-value reference such as `{{ vars.clock_rate }}` keeps its JSON type, so a number stays a number.
 - No path bookkeeping. `{{ steps.optimize.outputs.nwk }}` resolves to the optimized tree the first step actually writes. Rename an output directory in one place and the chain follows.
 - Errors before computation. `--check` resolves and type-checks the whole plan up front. A misspelled key is rejected with a suggestion (`unknown field opt_methd`; `unknown top-level key step; did you mean steps?`) rather than running silently or halfway.
 - One process. Steps share the thread pool; there is no shell loop, no temporary files to name, and no second tool to install.

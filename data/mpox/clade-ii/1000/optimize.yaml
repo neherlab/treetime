@@ -2,8 +2,9 @@
 
 # Branch-length optimization for a Nextstrain mpox build (mpox/clade-ii/1000).
 #
-# Run from the repository root:
-#   treetime optimize --config data/mpox/clade-ii/1000/optimize.yaml
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/mpox/clade-ii/1000/optimize.yaml --output-all tmp/examples/mpox/clade-ii/1000/optimize
 #
 # This is the date-free step that replaces `augur refine` in the nextstrain/mpox
 # `WIP/new_tt` workflow. It re-estimates every branch length and reroots on the
@@ -11,12 +12,10 @@
 # (`divergence_units: mutations`), and indels are excluded from the branch-length
 # likelihood (`no_indels`), matching the pipeline's `treetime optimize` rule.
 
-tree: "data/mpox/clade-ii/1000/tree.nwk"
+tree: "tree.nwk"
 alignment:
-  - "data/mpox/clade-ii/1000/aln.fasta.xz"
+  - "aln.fasta.xz"
 
 reroot: "min-dev"
 divergence_units: "mutations"
 no_indels: true
-
-output_all: "tmp/examples/mpox/clade-ii/1000/optimize"

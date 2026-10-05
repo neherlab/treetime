@@ -2,12 +2,13 @@
 
 # Nextstrain mpox build (clade IIb, hmpxv1), TreeTime part in one file (mpox/clade-ii/1000).
 #
-# Run from the repository root:
-#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --output-all tmp/examples/mpox/clade-ii/1000/pipeline
 #
 # Preview the whole plan, or resume after a failure, without recomputing earlier steps:
-#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --check
-#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --steps ancestral,timetree
+#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --check --output-all tmp/examples/mpox/clade-ii/1000/pipeline
+#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --steps ancestral,timetree --output-all tmp/examples/mpox/clade-ii/1000/pipeline
 #
 # On the nextstrain/mpox `WIP/new_tt` phylogenetic workflow, three Snakemake
 # rules drive TreeTime: `treetime optimize` (replacing `augur refine`), then
@@ -23,19 +24,16 @@
 # to the later steps with no hand-written path.
 
 vars:
-  data: "data/mpox/clade-ii/1000"
   clock_rate: 5.7e-5
   clock_std_dev: 2e-5
-
-output_all: "tmp/examples/mpox/clade-ii/1000/pipeline"
 
 steps:
   # 1. Optimize branch lengths and reroot on the minimum-divergence branch.
   - name: "optimize"
     optimize:
-      tree: "{{ vars.data }}/tree.nwk"
+      tree: "tree.nwk"
       alignment:
-        - "{{ vars.data }}/aln.fasta.xz"
+        - "aln.fasta.xz"
       reroot: "min-dev"
       divergence_units: "mutations"
       no_indels: true
@@ -45,18 +43,18 @@ steps:
     ancestral:
       tree: "{{ steps.optimize.outputs.nwk }}"
       alignment:
-        - "{{ vars.data }}/aln.fasta.xz"
+        - "aln.fasta.xz"
       method_anc: "marginal"
 
   # 3. Date the optimized tree with the fixed clock, keeping its root and polytomies.
   - name: "timetree"
     timetree:
       tree: "{{ steps.optimize.outputs.nwk }}"
-      metadata: "{{ vars.data }}/metadata.tsv"
+      metadata: "metadata.tsv"
       metadata_id_columns:
         - "accession"
       alignment:
-        - "{{ vars.data }}/aln.fasta.xz"
+        - "aln.fasta.xz"
       clock_rate: "{{ vars.clock_rate }}"
       clock_std_dev: "{{ vars.clock_std_dev }}"
       keep_root: true

@@ -2,17 +2,16 @@
 
 # Marginal ancestral reconstruction with an inferred GTR model (zika/20).
 #
-# Run from the repository root:
-#   treetime ancestral --config data/zika/20/ancestral.yaml
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime ancestral --config data/zika/20/ancestral.yaml --output-all tmp/examples/zika/20/ancestral
 #
 # Marginal reconstruction treats every site independently and reports the
 # maximum-likelihood ancestral state per node. It fits a GTR rate matrix from the
 # data (the default `model: infer`) and writes it alongside the tree.
 
-tree: "data/zika/20/tree.nwk"
+tree: "tree.nwk"
 alignment:
-  - "data/zika/20/aln.fasta.xz"
+  - "aln.fasta.xz"
 
 method_anc: "marginal"
-
-output_all: "tmp/examples/zika/20/ancestral"

@@ -1025,9 +1025,10 @@ subcommands = [
 ]
 
 
-# Every `<pattern>` file in a dataset directory is an example config and runs as `treetime <command> --config=<file>`
-# in a sandbox directory, so that the relative output paths of the file resolve inside the case. Files elsewhere, such
-# as the fixtures in `data/smoke/`, are not examples. The command is `pipeline` for `pipeline.yaml`,
+# Every `<pattern>` file in a dataset directory is an example config and runs as
+# `treetime <command> --config=<file> --output-all={out}` in a sandbox directory: the relative input paths of the file
+# resolve from its folder, and the outputs go to the case. Files elsewhere, such as the fixtures in `data/smoke/`, are
+# not examples. The command is `pipeline` for `pipeline.yaml`,
 # otherwise the file name up to the first `-` (`ancestral-parsimony.yaml` runs `ancestral`).
 [config]
 pattern = "*.yaml"
@@ -1057,16 +1058,16 @@ args = "help-markdown"
 
 [[cli]]
 variant = "pipeline-check"
-args = "pipeline --config={data}/zika/20/pipeline.yaml --check"
+args = "pipeline --config={data}/zika/20/pipeline.yaml --check --output-all=tmp/pipeline-check"
 
 [[cli]]
 variant = "pipeline-steps-timetree"
-args = "pipeline --config={data}/zika/20/pipeline.yaml --steps=timetree"
+args = "pipeline --config={data}/zika/20/pipeline.yaml --steps=timetree --output-all={out}"
 sandbox = true
 
 # A config file with settings that conflict on the command line
 [[cli]]
 variant = "config-keep-root-and-reroot"
-args = "clock --config={data}/smoke/clock-keep-root-and-reroot.yaml"
+args = "clock --config={data}/smoke/clock-keep-root-and-reroot.yaml --output-all={out}"
 sandbox = true
 fail = "kb/issues/M-config-file-values-skip-cli-conflict-rules.md"

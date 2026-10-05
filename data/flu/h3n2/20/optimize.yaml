@@ -2,21 +2,20 @@
 
 # Branch-length optimization with divergence-based rerooting (flu/h3n2/20).
 #
-# Run from the repository root:
-#   treetime optimize --config data/flu/h3n2/20/optimize.yaml
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/flu/h3n2/20/optimize.yaml --output-all tmp/examples/flu/h3n2/20/optimize
 #
 # `optimize` re-estimates every branch length under the substitution model and
 # (here) reroots to minimize root-to-tip divergence variance. This is the
 # date-free step that replaces `augur refine` in a Nextstrain build.
 
-tree: "data/flu/h3n2/20/tree.nwk"
+tree: "tree.nwk"
 alignment:
-  - "data/flu/h3n2/20/aln.fasta.xz"
+  - "aln.fasta.xz"
 
 # Per-edge optimizer: Brent's method in sqrt(t) space (the default, matches v0).
 opt_method: "brent-sqrt"
 
 # Reroot by minimizing root-to-tip divergence variance (a date-free method).
 reroot: "min-dev"
-
-output_all: "tmp/examples/flu/h3n2/20/optimize"

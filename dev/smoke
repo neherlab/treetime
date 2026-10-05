@@ -575,7 +575,8 @@ def config_cases(root: Path, spec: CaseSpec, datasets: dict[str, Dataset]) -> li
     cases.append(Case(
       id=f"config/{dataset.name}/{config.stem}", command="config", dataset=dataset.name, size=dataset.size,
       tier=size.tier, timeout_s=size.timeout_s * dataset.family.timeout_factor,
-      argv=("{bin}", command, f"--config={dataset.path}/{config.name}"), cwd_mode=CwdMode.SANDBOX,
+      argv=("{bin}", command, f"--config={dataset.path}/{config.name}", "--output-all={out}"),
+      cwd_mode=CwdMode.SANDBOX,
     ))
   return cases
 
@@ -1000,7 +1001,15 @@ def run_one(case: Case, binary: Path, run_dir: Path, extra_args: list[str],
     for entry in cwd.iterdir():
       shutil.move(str(entry), out / entry.name)
     cwd.rmdir()
+  if case.compare_stdout:
+    without_checkout_root(run_dir / "stdout.txt")
   return outcome, missing_outputs(case, run_dir)
+
+
+def without_checkout_root(path: Path) -> None:
+  """Replace the checkout root in a printed text with `{root}`, because snapshots are shared between checkouts."""
+  if path.is_file():
+    path.write_bytes(path.read_bytes().replace(str(PROJECT_ROOT).encode(), b"{root}"))
 
 
 def resolve_argv(case: Case, binary: Path, out: Path) -> list[str]:
