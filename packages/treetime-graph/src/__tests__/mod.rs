@@ -11,3 +11,4 @@ mod test_prop_reachability;
 mod test_reachability;
 mod test_reroot;
 mod test_topology_order;
+mod test_tree_view;
