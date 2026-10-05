@@ -111,6 +111,7 @@ function SortIcon<Row extends RowData>({ header }: { header: Header<DataFeatures
   return <ArrowUpDown aria-hidden className="opacity-40" />;
 }
 
+// oxlint-disable-next-line treetime/no-contract-enum-copy -- ARIA sort values; they equal values of the LadderizeArg enum by chance
 function ariaSort<Row extends RowData>(header: Header<DataFeatures, Row>): "ascending" | "descending" | "none" {
   const sorted = header.column.getIsSorted();
 

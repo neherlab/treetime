@@ -1,3 +1,4 @@
+import type { LogLevel } from "@neherlab/app-contracts";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useCallback } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
@@ -6,6 +7,14 @@ import ArrowDown from "~icons/lucide/arrow-down";
 import { formatSeconds, type LogEntry } from "../results/progress";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+
+const LEVEL_CLASS: Record<LogLevel, string | undefined> = {
+  trace: "text-muted-foreground",
+  debug: "text-muted-foreground",
+  info: undefined,
+  warn: "text-warning",
+  error: "text-destructive font-bold",
+};
 
 const FOLLOW = { initial: "instant", resize: "instant" } as const;
 
@@ -98,19 +107,7 @@ function entryKey(entry: LogEntry | undefined): string | undefined {
 }
 
 function lineClass(entry: LogEntry): string | undefined {
-  if (entry.kind === "stage") {
-    return "text-primary font-bold";
-  }
-
-  if (entry.level === "warn") {
-    return "text-warning";
-  }
-
-  if (entry.level === "error") {
-    return "text-destructive font-bold";
-  }
-
-  return entry.level === "debug" || entry.level === "trace" ? "text-muted-foreground" : undefined;
+  return entry.kind === "stage" ? "text-primary font-bold" : LEVEL_CLASS[entry.level];
 }
 
 declare module "react" {

@@ -6,6 +6,7 @@ pub mod fallible_new;
 pub mod file_length;
 pub mod handwritten_fmt;
 mod hir_refs;
+pub mod json_value_in_schema;
 pub mod needless_builder;
 pub mod no_comments;
 pub mod panic_in_drop;

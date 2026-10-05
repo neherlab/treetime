@@ -15,6 +15,7 @@ use app_commands::bridge::error::ErrorCode;
 use app_commands::bridge::service::AppService;
 use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
+use app_commands::config::schema::draft2020_settings;
 use app_commands::datasets::DatasetCatalog;
 use app_commands::job::JobId;
 use app_commands::results::auspice::AuspiceDocument;
@@ -37,6 +38,7 @@ use axum::{BoxError, Json, Router};
 use eyre::{Report, eyre};
 use itertools::Itertools;
 use schemars::JsonSchema;
+use schemars::generate::SchemaSettings;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::any::Any;
@@ -67,14 +69,14 @@ pub fn api_router(service: Arc<AppService>, config: ServerConfig) -> Result<(Rou
   } else {
     RouteScope::Public
   };
-  let (routes, api) = build_api(scope)?;
+  let (routes, api) = build_api(scope, &draft2020_settings())?;
   let state = app_state(service, config, &api)?;
   Ok((finish_router(routes, state), api))
 }
 
 pub fn local_api_routers(service: Arc<AppService>, config: ServerConfig) -> Result<LocalRouters, Report> {
-  let (host, api) = build_api(RouteScope::Host)?;
-  let (renderer, _) = build_api(RouteScope::Renderer)?;
+  let (host, api) = build_api(RouteScope::Host, &draft2020_settings())?;
+  let (renderer, _) = build_api(RouteScope::Renderer, &draft2020_settings())?;
   let state = app_state(service, config, &api)?;
   Ok(LocalRouters {
     host: finish_router(host, Arc::clone(&state)),
@@ -83,7 +85,11 @@ pub fn local_api_routers(service: Arc<AppService>, config: ServerConfig) -> Resu
 }
 
 pub fn api_doc() -> Result<Value, Report> {
-  let (_, api) = build_api(RouteScope::Host)?;
+  api_doc_with(&draft2020_settings())
+}
+
+pub(crate) fn api_doc_with(settings: &SchemaSettings) -> Result<Value, Report> {
+  let (_, api) = build_api(RouteScope::Host, settings)?;
   Ok(serde_json::to_value(api)?)
 }
 
@@ -125,7 +131,7 @@ fn finish_router(routes: Router<Arc<AppState>>, state: Arc<AppState>) -> Router 
     .with_state(state)
 }
 
-fn build_api(scope: RouteScope) -> Result<(Router<Arc<AppState>>, OpenApi), Report> {
+fn build_api(scope: RouteScope, settings: &SchemaSettings) -> Result<(Router<Arc<AppState>>, OpenApi), Report> {
   let mut api = OpenApi {
     info: Info {
       title: "TreeTime API".to_owned(),
@@ -144,7 +150,7 @@ fn build_api(scope: RouteScope) -> Result<(Router<Arc<AppState>>, OpenApi), Repo
     },
     ..OpenApi::default()
   };
-  let router = with_project_schemas(|| {
+  let router = with_project_schemas(settings, || {
     let routes = match scope {
       RouteScope::Public => api_routes(),
       RouteScope::Renderer => api_routes().merge(app_settings_routes()),
@@ -152,7 +158,7 @@ fn build_api(scope: RouteScope) -> Result<(Router<Arc<AppState>>, OpenApi), Repo
     };
     routes.finish_api_with(&mut api, |api| api.default_response::<AppError>())
   })?;
-  add_components(&mut api)?;
+  add_components(&mut api, settings)?;
   add_discriminators(&mut api)?;
   Ok((router, api))
 }

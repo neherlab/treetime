@@ -65,6 +65,7 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
         lints::no_comments::NO_COMMENTS,
         lints::no_comments::DOC_COMMENT_LIMIT,
         lints::pub_unused_in_workspace::PUB_UNUSED_IN_WORKSPACE,
+        lints::json_value_in_schema::JSON_VALUE_IN_SCHEMA,
     ]);
     lint_store.register_pre_expansion_pass(|| {
         Box::new(lints::bon_builder_collector::BonBuilderCollector)
@@ -109,11 +110,18 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
     lint_store.register_late_pass(|_| {
         Box::new(lints::pub_unused_in_workspace::PubUnusedInWorkspace::new())
     });
+    lint_store
+        .register_late_pass(|_| Box::new(lints::json_value_in_schema::JsonValueInSchema::new()));
 }
 
 #[test]
 fn ui_topological_ordering() {
     dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui/topological_ordering").run();
+}
+
+#[test]
+fn ui_json_value_in_schema() {
+    dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui/json_value_in_schema").run();
 }
 
 #[test]

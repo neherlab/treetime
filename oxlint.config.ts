@@ -43,37 +43,150 @@ const packageManifestSchema = z.object({
   peerDependencies: z.record(z.string(), z.string()).optional(),
 });
 
-function packageBoundaryOverrides(): OxlintOverride[] {
-  const packages = workspacePackages();
-  const names = packages.map((entry) => entry.name);
+const WEB_PROPERTIES = [
+  { property: "innerHTML", message: "Assigning innerHTML injects raw HTML. Render via React." },
+  { property: "outerHTML", message: "Assigning outerHTML injects raw HTML. Render via React." },
+  { property: "insertAdjacentHTML", message: "insertAdjacentHTML injects raw HTML. Render via React." },
+  { object: "document", property: "write", message: "document.write injects raw HTML. Render via React." },
+];
 
-  return packages.flatMap((entry) => {
-    const allowed = new Set([entry.name, ...entry.dependencies]);
-    const banned = names.filter((other) => !allowed.has(other));
+const RESTRICTIONS = {
+  zod: {
+    path: {
+      name: "zod",
+      allowTypeImports: true,
+      message:
+        "Validate back-end data with the zod schemas generated into @neherlab/app-contracts. Write a zod schema only for data that never reaches Rust, in an allowed module.",
+    },
+  },
+  ipcMain: {
+    property: {
+      object: "ipcMain",
+      message:
+        "Register main-process channels through handle() and listen() of ipc-main.ts, which check the sender and the request.",
+    },
+  },
+  ipcRenderer: {
+    property: {
+      object: "ipcRenderer",
+      message: "Reach the main process through ipc-renderer.ts, which types every channel from the host channel table.",
+    },
+  },
+  jsonParse: {
+    property: {
+      object: "JSON",
+      property: "parse",
+      message:
+        "Parsed JSON is untyped. Receive typed data from the generated client, or parse in an allowed boundary module.",
+    },
+  },
+} as const;
 
-    if (banned.length === 0) {
-      return [];
-    }
+type Restriction = keyof typeof RESTRICTIONS;
 
-    return [
-      {
-        files: [`packages/${entry.dir}/**`],
-        rules: {
-          "no-restricted-imports": [
-            "error",
-            {
-              patterns: [
-                ...IMPORT_BOUNDARY_PATTERNS,
-                ...REJECTED_LIBRARY_PATTERNS,
-                { group: banned, message: PACKAGE_GRAPH_MESSAGE },
-              ],
-            },
-          ],
-        },
-      },
-    ];
-  });
+interface RestrictedFiles {
+  files: string[];
+  dir: string;
+  web: boolean;
+  allow: readonly Restriction[];
 }
+
+const TEST_FILES = ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"];
+
+const RESTRICTED_SCOPES: readonly RestrictedFiles[] = [
+  { files: ["packages/app-desktop/**"], dir: "app-desktop", web: false, allow: [] },
+  { files: ["packages/app-desktop/renderer/**"], dir: "app-desktop", web: true, allow: [] },
+  { files: ["packages/app-ui/src/**"], dir: "app-ui", web: true, allow: [] },
+  { files: ["packages/app-web/src/**"], dir: "app-web", web: true, allow: [] },
+];
+
+const RESTRICTION_ALLOWANCES: readonly RestrictedFiles[] = [
+  {
+    files: [
+      "packages/app-ui/src/host.ts",
+      "packages/app-ui/src/runs/RootToTipPlot.tsx",
+      "packages/app-ui/src/settings/inputs.ts",
+    ],
+    dir: "app-ui",
+    web: true,
+    allow: ["zod"],
+  },
+  { files: ["packages/app-ui/src/preferences/storage.ts"], dir: "app-ui", web: true, allow: ["zod", "jsonParse"] },
+  { files: ["packages/app-desktop/src/napi-error.ts"], dir: "app-desktop", web: false, allow: ["jsonParse"] },
+  { files: ["packages/app-desktop/src/ipc-main.ts"], dir: "app-desktop", web: false, allow: ["ipcMain"] },
+  { files: ["packages/app-desktop/src/ipc-renderer.ts"], dir: "app-desktop", web: false, allow: ["ipcRenderer"] },
+];
+
+const ALL_RESTRICTIONS = Object.keys(RESTRICTIONS).filter((key): key is Restriction => key in RESTRICTIONS);
+
+export function packageGraphPatterns(dir: string): Array<{ group: string[]; message: string }> {
+  const packages = workspacePackages();
+  const entry = packages.find((candidate) => candidate.dir === dir);
+
+  if (entry === undefined) {
+    return [];
+  }
+
+  const allowed = new Set([entry.name, ...entry.dependencies]);
+  const banned = packages.map((other) => other.name).filter((name) => !allowed.has(name));
+
+  return banned.length === 0 ? [] : [{ group: banned, message: PACKAGE_GRAPH_MESSAGE }];
+}
+
+function packageBoundaryOverrides(): OxlintOverride[] {
+  return workspacePackages().flatMap((entry) =>
+    packageGraphPatterns(entry.dir).length === 0
+      ? []
+      : [{ files: [`packages/${entry.dir}/**`], rules: { "no-restricted-imports": importRule(entry.dir, []) } }],
+  );
+}
+
+function restrictionOverrides(): OxlintOverride[] {
+  const override = (files: string[], { dir, web, allow }: RestrictedFiles): OxlintOverride => {
+    const applied = ALL_RESTRICTIONS.filter((restriction) => !allow.includes(restriction)).map(
+      (restriction) => RESTRICTIONS[restriction],
+    );
+
+    return {
+      files,
+      rules: {
+        "no-restricted-imports": importRule(dir, applied),
+        "no-restricted-properties": propertyRule(web, applied),
+      },
+    };
+  };
+
+  return [
+    ...RESTRICTED_SCOPES.map((scope) => override(scope.files, scope)),
+    ...RESTRICTION_ALLOWANCES.map((allowance) => override(allowance.files, allowance)),
+    ...RESTRICTED_SCOPES.map((scope) =>
+      override(
+        scope.files.flatMap((files) => TEST_FILES.map((tests) => `${files.replace(/\*\*$/u, "")}${tests}`)),
+        { ...scope, allow: ALL_RESTRICTIONS },
+      ),
+    ),
+  ];
+}
+
+function importRule(dir: string, applied: ReadonlyArray<(typeof RESTRICTIONS)[Restriction]>): ImportRule {
+  const paths = applied.flatMap((restriction) => ("path" in restriction ? [restriction.path] : []));
+  const patterns = [...IMPORT_BOUNDARY_PATTERNS, ...REJECTED_LIBRARY_PATTERNS, ...packageGraphPatterns(dir)];
+
+  return ["error", { paths, patterns }];
+}
+
+function propertyRule(web: boolean, applied: ReadonlyArray<(typeof RESTRICTIONS)[Restriction]>): PropertyRule {
+  const properties = [
+    ...(web ? WEB_PROPERTIES : []),
+    ...applied.flatMap((restriction) => ("property" in restriction ? [restriction.property] : [])),
+  ];
+
+  return properties.length === 0 ? "off" : ["error", ...properties];
+}
+
+type ImportRule = NonNullable<NonNullable<OxlintOverride["rules"]>["no-restricted-imports"]>;
+
+type PropertyRule = NonNullable<NonNullable<OxlintOverride["rules"]>["no-restricted-properties"]>;
 
 function workspacePackages(): WorkspacePackage[] {
   const packages: WorkspacePackage[] = [];
@@ -257,6 +370,7 @@ export default defineConfig({
     "treetime/no-unbounded-suppression": "error",
     "treetime/callers-before-callees": "error",
     "treetime/no-side-effects-in-getters": "error",
+    "treetime/no-declare-global": "error",
 
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-conditional-empty-object-spread": "error",
@@ -361,6 +475,31 @@ export default defineConfig({
 
   overrides: [
     ...packageBoundaryOverrides(),
+    ...restrictionOverrides(),
+    {
+      files: ["packages/app-ui/src/**", "packages/app-web/src/**", "packages/app-desktop/**"],
+      rules: {
+        "treetime/no-contract-alias": "error",
+        "treetime/no-contract-enum-copy": "error",
+        "treetime/no-contract-parse": "error",
+      },
+    },
+    {
+      files: [
+        "packages/app-desktop/src/**",
+        "packages/app-ui/src/runs/ShiftPlot.tsx",
+        "packages/app-ui/src/preferences/storage.ts",
+      ],
+      rules: {
+        "treetime/no-contract-parse": "off",
+      },
+    },
+    {
+      files: ["packages/app-desktop/renderer/main.tsx"],
+      rules: {
+        "treetime/no-declare-global": "off",
+      },
+    },
     {
       files: ["packages/app-web/src/**", "packages/app-ui/src/**", "packages/app-desktop/renderer/**"],
       rules: {
@@ -398,13 +537,6 @@ export default defineConfig({
           "error",
           { forbid: [{ propName: "style", message: "Use Tailwind classes, not inline styles." }] },
         ],
-        "no-restricted-properties": [
-          "error",
-          { property: "innerHTML", message: "Assigning innerHTML injects raw HTML. Render via React." },
-          { property: "outerHTML", message: "Assigning outerHTML injects raw HTML. Render via React." },
-          { property: "insertAdjacentHTML", message: "insertAdjacentHTML injects raw HTML. Render via React." },
-          { object: "document", property: "write", message: "document.write injects raw HTML. Render via React." },
-        ],
       },
     },
     {
@@ -439,6 +571,9 @@ export default defineConfig({
         "treetime/no-focused-tests": "error",
         "treetime/prefer-test-over-it": "error",
         "treetime/no-leaky-mocks": "error",
+        "treetime/no-contract-alias": "off",
+        "treetime/no-contract-enum-copy": "off",
+        "treetime/no-contract-parse": "off",
         "vitest/no-restricted-matchers": [
           "error",
           {

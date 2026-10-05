@@ -3,6 +3,10 @@ import { definePlugin } from "@oxlint/plugins";
 import { callersBeforeCalleesRule } from "./rules/callers-before-callees.ts";
 import { noAssertionInLoopRule } from "./rules/no-assertion-in-loop.ts";
 import { noAsyncArrayPredicateRule } from "./rules/no-async-array-predicate.ts";
+import { noContractAliasRule } from "./rules/no-contract-alias.ts";
+import { noContractEnumCopyRule } from "./rules/no-contract-enum-copy.ts";
+import { noContractParseRule } from "./rules/no-contract-parse.ts";
+import { noDeclareGlobalRule } from "./rules/no-declare-global.ts";
 import { noDisabledTestsRule } from "./rules/no-disabled-tests.ts";
 import { noExecShellStringRule } from "./rules/no-exec-shell-string.ts";
 import { noFakeSuccessRule } from "./rules/no-fake-success.ts";
@@ -29,6 +33,10 @@ export default definePlugin({
     "callers-before-callees": callersBeforeCalleesRule,
     "no-assertion-in-loop": noAssertionInLoopRule,
     "no-async-array-predicate": noAsyncArrayPredicateRule,
+    "no-contract-alias": noContractAliasRule,
+    "no-contract-enum-copy": noContractEnumCopyRule,
+    "no-contract-parse": noContractParseRule,
+    "no-declare-global": noDeclareGlobalRule,
     "no-disabled-tests": noDisabledTestsRule,
     "no-exec-shell-string": noExecShellStringRule,
     "no-fake-success": noFakeSuccessRule,

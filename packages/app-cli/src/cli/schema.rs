@@ -182,6 +182,20 @@ mod tests {
   }
 
   #[test]
+  fn test_schema_no_property_defaults_to_null() {
+    let dir = tempdir().unwrap();
+    generate_schema(SchemaTarget::All, Some(&dir.path().to_path_buf())).unwrap();
+    let null_defaults = all_targets()
+      .flat_map(|target| {
+        let filename = target.default_filename().expect("non-aggregate target has a filename");
+        let schema: Value = serde_json::from_str(&fs::read_to_string(dir.path().join(filename)).unwrap()).unwrap();
+        helpers::null_defaults(&schema, filename)
+      })
+      .collect::<Vec<_>>();
+    assert_eq!(Vec::<String>::new(), null_defaults);
+  }
+
+  #[test]
   fn test_schema_pipeline_loosens_scalar_leaf_to_template() {
     let schema = serde_json::to_value(pipeline_schema()).unwrap();
     let branches = &schema["$defs"]["PipelineStep"]["properties"]["name"]["anyOf"];
@@ -223,6 +237,28 @@ mod tests {
         },
         Value::Array(items) => items.iter().any(contains_template_pattern),
         _ => false,
+      }
+    }
+
+    pub(super) fn null_defaults(value: &Value, pointer: &str) -> Vec<String> {
+      match value {
+        Value::Object(object) => object
+          .iter()
+          .flat_map(|(key, child)| {
+            let here = format!("{pointer}/{key}");
+            if key == "default" && child.is_null() {
+              vec![here]
+            } else {
+              null_defaults(child, &here)
+            }
+          })
+          .collect(),
+        Value::Array(items) => items
+          .iter()
+          .enumerate()
+          .flat_map(|(index, item)| null_defaults(item, &format!("{pointer}/{index}")))
+          .collect(),
+        _ => vec![],
       }
     }
   }

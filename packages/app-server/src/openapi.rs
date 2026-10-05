@@ -2,11 +2,12 @@ use aide::openapi::{Components, OpenApi, SchemaObject};
 use app_commands::command::AppCommand;
 use app_commands::config::catalog::SettingCatalog;
 use app_commands::config::cli_flags::annotated_config_schema;
-use app_commands::config::schema::{SCHEMA_KEY, draft2020_generator};
+use app_commands::config::schema::SCHEMA_KEY;
 use eyre::Report;
 use heck::ToUpperCamelCase;
 use indexmap::IndexMap;
 use itertools::{Itertools, izip};
+use schemars::generate::{Contract, SchemaSettings};
 use schemars::{JsonSchema, Schema};
 use serde_json::{Map, Value, json};
 use std::collections::BTreeSet;
@@ -24,12 +25,14 @@ const SCHEMA_LISTS: &[&str] = &["anyOf", "oneOf", "allOf", "prefixItems"];
 
 const SCHEMA_SINGLES: &[&str] = &["items", "additionalProperties", "not", "if", "then", "else"];
 
-pub(crate) fn add_components(api: &mut OpenApi) -> Result<(), Report> {
+pub(crate) fn add_components(api: &mut OpenApi, settings: &SchemaSettings) -> Result<(), Report> {
   let mut components = Map::new();
-  add_type::<SettingCatalog>(&mut components)?;
+  add_type::<SettingCatalog>(&mut components, settings)?;
 
   let schemas = &mut api.components.get_or_insert_with(Components::default).schemas;
-  replace_config_components(schemas, &mut components)?;
+  if settings.contract == Contract::Deserialize {
+    replace_config_components(schemas, &mut components)?;
+  }
   for (name, schema) in components {
     let schema = Schema::try_from(schema)?;
     match schemas.get(&name) {
@@ -327,8 +330,8 @@ fn strip_defaults(schema: &mut Value) {
   }
 }
 
-fn add_type<T: JsonSchema>(components: &mut Map<String, Value>) -> Result<(), Report> {
-  let schema = draft2020_generator().into_root_schema_for::<T>();
+fn add_type<T: JsonSchema>(components: &mut Map<String, Value>, settings: &SchemaSettings) -> Result<(), Report> {
+  let schema = settings.clone().into_generator().into_root_schema_for::<T>();
   add_root(components, &T::schema_name(), schema)
 }
 
