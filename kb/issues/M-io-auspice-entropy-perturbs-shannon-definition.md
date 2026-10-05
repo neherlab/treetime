@@ -8,7 +8,7 @@
 
 Entropy is computed with an added `TINY` inside every logarithm. This changes every positive term and gives a deterministic distribution such as $(1,0)$ a nonzero entropy.
 
-`fn compute_entropy()` applies $p\ln(p+10^{-12})$ to every state [packages/app-output/src/mugration_tree_output.rs#L177-L180](../../packages/app-output/src/mugration_tree_output.rs#L177-L180). Both the mugration node-data JSON [packages/app-output/src/augur_node_data_mugration.rs#L121](../../packages/app-output/src/augur_node_data_mugration.rs#L121) and the Auspice tree-output entropy [packages/app-output/src/mugration_tree_output.rs#L126](../../packages/app-output/src/mugration_tree_output.rs#L126) consume this function.
+`fn compute_entropy()` applies $p\ln(p+10^{-12})$ to every state [packages/app-output/src/trait_profile.rs#L13-L16](../../packages/app-output/src/trait_profile.rs#L13-L16). Both the traits node-data JSON [packages/app-output/src/augur_node_data_traits.rs#L82](../../packages/app-output/src/augur_node_data_traits.rs#L82) and the Auspice tree-output entropy [packages/app-output/src/auspice.rs#L319](../../packages/app-output/src/auspice.rs#L319) consume this function.
 
 For state probabilities $p_i$, Shannon entropy is
 

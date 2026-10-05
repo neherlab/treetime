@@ -17,7 +17,7 @@ v0 is consistent: it names the value `numdate`, constructs it with `numeric_date
 
 v1 had drifted into three names for the same value:
 
-- `numdate` -- augur JSON input and output ([packages/treetime/src/commands/timetree/output/augur_node_data.rs](../../packages/treetime/src/commands/timetree/output/augur_node_data.rs)), inherited from the Auspice `num_date` node attribute.
+- `numdate` -- augur JSON input and output ([packages/app-output/src/augur_node_data_refine.rs](../../packages/app-output/src/augur_node_data_refine.rs)), inherited from the Auspice `num_date` node attribute.
 - `CalendarTime` -- the coalescent time coordinate ([packages/treetime/src/coalescent/time_coordinate.rs](../../packages/treetime/src/coalescent/time_coordinate.rs)).
 - `year_fraction` -- the datetime utilities ([packages/treetime-utils/src/datetime/year_fraction.rs](../../packages/treetime-utils/src/datetime/year_fraction.rs)).
 

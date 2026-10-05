@@ -57,6 +57,9 @@ The natural mechanism is a preorder traversal carrying a single mutable buffer: 
 
 ### Axis 1: the random-access accessor
 
+> [!WARNING]
+> **Needs review.** The trait `PartitionBranchOps` no longer exists, and the output layer receives reconstructed sequences through `SeqSink` during the run instead of calling an accessor. `node_sequence()` is called only inside the core: [packages/treetime/src/ancestral/partition.rs#L67-L83](../../packages/treetime/src/ancestral/partition.rs#L67-L83) and [packages/treetime/src/partition/marginal/reconstruction.rs#L120-L141](../../packages/treetime/src/partition/marginal/reconstruction.rs#L120-L141).
+
 `PartitionBranchOps::node_sequence(&self, node_key) -> Seq` is called from about ten sites (`commands/shared/tree_output.rs`, `commands/ancestral/augur_node_data.rs`, `partition/io/augur.rs`, `partition/timetree/branch.rs`) in arbitrary key order. It is the central obstacle: a transient buffer cannot serve arbitrary-order queries.
 
 - **Option A - streaming visitor.** Replace the accessor with a traversal that hands each node its sequence in preorder. Matches how the output layer already walks the tree. Largest diff, cleanest end state.

@@ -6,9 +6,9 @@ Example: the input root has children `A`, `B` and `X = (C, (D, E)70)80`. After a
 
 ## Affected outputs
 
-- `treetime timetree` augur node data: the per-node `confidence` field (`fn write_augur_node_data_json()` in [packages/app-output/src/augur_node_data.rs](../../packages/app-output/src/augur_node_data.rs)). Timetree reroots by default
+- `treetime timetree` augur node data: the per-node `confidence` field (`fn write_augur_node_data_refine()` in [packages/app-output/src/augur_node_data_refine.rs](../../packages/app-output/src/augur_node_data_refine.rs), from `RefineRun.branch_support` [packages/app-commands/src/commands/timetree/run.rs#L301](../../packages/app-commands/src/commands/timetree/run.rs#L301)). Timetree reroots by default
 - `treetime optimize --reroot`: the Auspice node `confidence` and the augur node data `confidence`
-- `treetime clock` Auspice JSON: writes no input support values (`fn clock_to_auspice()` in [packages/app-output/src/clock_tree_output.rs](../../packages/app-output/src/clock_tree_output.rs)), and `ClockNodeOut` has no field for them. Clock reroots by default, so adding the values needs the same remap
+- `treetime clock` Auspice JSON: writes no input support values, because the clock runner sets no `branch_support` in its struct of facts (`fn write_clock_trees()`, [packages/app-commands/src/commands/clock/run.rs#L159](../../packages/app-commands/src/commands/clock/run.rs#L159)). Clock reroots by default, so adding the values needs the same remap
 - Outputs of runs that keep the root are correct
 
 `timetree` and `clock` Auspice JSON do not write input support values until this is fixed, while `ancestral`, `optimize`, `prune` and `mugration` Auspice JSON do.

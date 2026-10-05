@@ -58,20 +58,13 @@ Each cell depends on two factors: whether the format adapter trait is implemente
 | graph-json            | works                | works                | works                   | works             | works    | works    |
 | dot                   | works                | works                | works                   | works             | works    | works    |
 
-Current annotation data per command (traced from source):
+Annotation data in the current code: every command builds one struct of per-node facts, `AnnotatedGraph` (`packages/app-output/src/annotated_graph.rs`), and `fn nwk_node_comments()` (`packages/app-output/src/nwk_comments.rs`) writes each fact group that is present, whatever the command:
 
-- ancestral: `MutationCommentProvider` emitting `mutations` key (`ancestral/run.rs:155,176`). Empty for parsimony mode
-- timetree: `MutationCommentProvider` emitting `mutations` key (`timetree/run.rs:108-109`). `NodeTimetree.nwk_comments()` independently emits `date` key from `self.time` (`payload/timetree.rs:130-135`). Empty when no partitions
-- optimize: `MutationCommentProvider` emitting `mutations` key (`optimize/run.rs:62,67`)
-- mugration: `DiscreteCommentProvider` emitting `{attribute}` key, e.g. `country` (`mugration/run.rs:75`)
-- clock, prune: empty `CommentProviders` -- no annotation data
+- `mutations` when the struct has sequences: ancestral, optimize, prune with a root sequence, timetree with an alignment
+- `date` when the struct has dates: clock, timetree
+- the trait attribute, for example `country`, when the struct has traits: mugration
 
-Format adapter trait implementations that exist today:
-
-- `NodeToNwk`/`EdgeToNwk`, `NodeToGraphviz`/`EdgeToGraphviz`, `Serialize`: all command graph types
-- `AuspiceWrite`: timetree only (`TimetreeAuspiceWriter` at `timetree/output/auspice.rs`)
-- `PhyloxmlFromGraph`: zero implementations on any analysis command type
-- `UsherWrite`: zero implementations on any analysis command type
+Format writers in the current code: `fn write_tree_outputs()` (`packages/app-output/src/tree_output.rs`) writes Newick, Nexus, Auspice JSON and UShER MAT for every command, and `fn write_graph_outputs()` (same file) writes graph JSON and Graphviz DOT. No analysis command writes PhyloXML.
 
 ### Three-tier output control
 
@@ -122,20 +115,7 @@ Transparent compression from output path extension (`.gz`, `.bz2`, `.xz`, `.zst`
 
 ## Writer dispatch
 
-The current NWK writer hardcodes BEAST-style annotations at `treetime-io/src/nwk.rs:255`:
-
-```rust
-.map(|(key, val)| format!("[&{key}=\"{val}\"]"))
-```
-
-`CommentProviders` produces dialect-agnostic `BTreeMap<String, String>` data per node. The format variant determines how that data is serialized: BEAST `[&key="value"]`, NHX `[&&NHX:key=value:...]`, or suppressed (plain). This single format string becomes a dispatch on the output format variant.
-
-Annotation data reaches the writer from two independent sources that merge at `nwk.rs:239`:
-
-- `NodeToNwk::nwk_comments()` on the node type (e.g. `NodeTimetree` emits `date` at `payload/timetree.rs:130-135`)
-- `CommentProviders` injected by the command (e.g. `MutationCommentProvider` emits `mutations`)
-
-Both produce `BTreeMap<String, String>`. The format variant dispatch applies after merging, at the serialization step.
+`fn nwk_node_comments()` produces typed, dialect-agnostic data per node: an ordered list of `(key, NewickValue)` (`NwkNodeComments` in `packages/treetime-io/src/nwk.rs`). The style (`NwkStyle`) selects the serialization in `packages/util-newick/src/write.rs`: BEAST `[&key="value"]`, NHX `[&&NHX:key=value:...]`, or none (plain).
 
 ## Impact
 

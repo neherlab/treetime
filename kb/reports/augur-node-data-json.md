@@ -635,8 +635,8 @@ Residual parity gaps to track, not to bury under a completion claim:
 
 | Node data field                             | v1 source                                                        | Status                       |
 | ------------------------------------------- | ---------------------------------------------------------------- | ---------------------------- |
-| `<column>`                                  | `MugrationResult.traits.assignments`                             | Available                    |
-| `<column>_confidence`                       | `MugrationResult.confidence.rows[].profile` + `partition.states` | Available (needs formatting) |
+| `<column>`                                  | `TreeTraits.values`                                              | Available                    |
+| `<column>_confidence`                       | `TreeTraits.profiles` + `TreeTraits.states`                      | Available (needs formatting) |
 | `<column>_entropy`                          | Compute from confidence: `-sum(p * ln(p + 1e-12))`               | Available                    |
 | `models.<column>.rate`                      | `partition.gtr().mu`                                             | Available                    |
 | `models.<column>.alphabet`                  | `partition.states` + missing data marker                         | Available                    |
@@ -644,7 +644,7 @@ Residual parity gaps to track, not to bury under a completion claim:
 | `models.<column>.transition_matrix`         | `partition.gtr().W`                                              | Available                    |
 | `branches.*.labels`                         | Compare parent/child trait assignments                           | Derivable                    |
 
-`MugrationResult` carries the partition. Best-positioned command for node data JSON.
+`fn write_augur_node_data_traits()` ([packages/app-output/src/augur_node_data_traits.rs](../../packages/app-output/src/augur_node_data_traits.rs)) writes this layout from the `traits` fact group of `AnnotatedGraph` (`TreeTraits` in [packages/app-output/src/annotated_graph.rs](../../packages/app-output/src/annotated_graph.rs)) and the mugration substitution model.
 
 ### Existing utilities
 

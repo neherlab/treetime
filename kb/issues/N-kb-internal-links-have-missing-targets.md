@@ -6,26 +6,18 @@ A check of every relative Markdown link target in `kb/` finds links whose target
 
 Command code moved to `packages/app-commands/src/commands/` and the output code to `packages/app-output/src/`. Links to the old `packages/treetime/src/commands/...` paths are in:
 
-- `kb/algo/ancestral.md`
-- `kb/algo/optimization.md`
-- `kb/algo/unimplemented.md`
 - `kb/decisions/ancestral-iterative-gtr-refinement.md`
 - `kb/decisions/coalescent-output-schema.md`
-- `kb/decisions/command-optimize-standalone.md`
 - `kb/decisions/command-prune-standalone.md`
-- `kb/decisions/datetime-numeric-date-naming.md`
 - `kb/decisions/prune-merge-jukes-cantor-branch-length.md`
-- `kb/decisions/timetree-no-zero-branch-collapse-in-loop.md`
 - `kb/issues/H-homoplasy-command-unimplemented.md`
 - `kb/issues/M-command-output-ownership-is-scattered.md`
 - `kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md`
 - `kb/issues/M-output-module-mixes-topology-ordering.md`
-- `kb/issues/M-timetree-clock-filter-default-differs-from-v0.md`
 - `kb/issues/N-amino-acid-mutation-indel-representation-undecided.md`
 - `kb/issues/N-ancestral-auspice-json-not-produced.md`
 - `kb/issues/N-datetime-date-and-range-representation-inconsistent.md`
 - `kb/issues/N-optimize-topology-cleanup-fitch-vs-ml-subs.md`
-- `kb/issues/N-timetree-augur-root-branch-field-tests-stale.md`
 - `kb/proposals/amino-acid-mutation-output-substitution-only.md`
 - `kb/proposals/optimize-convergence-and-robustness.md`
 - `kb/reports/iterative-tree-refinement/8-initial-estimation.md`

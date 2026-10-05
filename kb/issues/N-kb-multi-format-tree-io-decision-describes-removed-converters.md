@@ -8,6 +8,8 @@ These parts were removed:
 - `b944399c` refactor: remove unreachable usher-read, initialize_partitions, reseed_transitional_from_payloads
 - `0460901b` refactor: remove unused graph reader paths and payload accessors
 
+The Newick section is also stale: it names the `NodeFromNwk`/`NodeToNwk` and `EdgeFromNwk`/`EdgeToNwk` traits, a `CommentProviders` mechanism and the `bio` crate parser, and the Auspice section names `auspice_from_graph()`. None of them exist. Newick reading builds `NwkParse` with the `util-newick` parser (`packages/treetime-io/src/nwk.rs`), Newick annotations come from `fn nwk_node_comments()` (`packages/app-output/src/nwk_comments.rs`), and Auspice JSON comes from `fn auspice_tree()` (`packages/app-output/src/auspice.rs`).
+
 Current state: the commands read Newick and FASTA only. The format parsers for MAT (`packages/util-usher-mat`) and PhyloXML (`packages/util-phyloxml`) remain, without graph converters. Tree output goes through `packages/app-output`.
 
 ## Decision needed

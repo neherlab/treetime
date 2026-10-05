@@ -5,11 +5,11 @@
 
 ## Problem
 
-`pub(crate) fn format_number()` [packages/app-output/src/tree_output.rs#L694-L708](../../packages/app-output/src/tree_output.rs#L694-L708) reimplements Augur's significant-digit behavior for divergence, numeric dates and their confidence intervals, trait confidences, and trait entropy. Its unit tests use manually written expected values attributed to `augur export_v2.format_number`; they do not capture outputs from a pinned Augur revision.
+`pub(crate) fn format_number()` [packages/app-output/src/auspice.rs#L93-L107](../../packages/app-output/src/auspice.rs#L93-L107) reimplements Augur's significant-digit behavior for divergence, numeric dates and their confidence intervals, trait confidences, and trait entropy. Its unit tests use manually written expected values attributed to `augur export_v2.format_number`; they do not capture outputs from a pinned Augur revision.
 
 This leaves boundary behavior unverified for negative values, powers of ten, values crossing an integer-digit boundary after rounding, very small magnitudes, and ties affected by Python and Rust formatting differences. Output-generating tests cannot serve as an independent oracle because they read output produced by the same code.
 
-The `i32` precision API also performs unchecked `significand + precision` [packages/app-output/src/tree_output.rs#L704](../../packages/app-output/src/tree_output.rs#L704). Extreme values can panic in debug, wrap in release, or request disproportionate formatting allocation. Equivalent significant-digit formatting already exists in `treetime-utils`.
+The `i32` precision API also performs unchecked `significand + precision` [packages/app-output/src/auspice.rs#L103](../../packages/app-output/src/auspice.rs#L103). Extreme values can panic in debug, wrap in release, or request disproportionate formatting allocation. Equivalent significant-digit formatting already exists in `treetime-utils`.
 
 ## Potential solutions
 
@@ -45,8 +45,8 @@ For finite nonzero $n$, let $d = \lfloor \log_{10}(\lfloor |n| \rfloor) \rfloor 
 
 ## Locations
 
-- `pub(crate) fn format_number()` [packages/app-output/src/tree_output.rs#L694-L708](../../packages/app-output/src/tree_output.rs#L694-L708)
-- Callers [packages/app-output/src/tree_output.rs#L618](../../packages/app-output/src/tree_output.rs#L618), [#L624](../../packages/app-output/src/tree_output.rs#L624), [#L671](../../packages/app-output/src/tree_output.rs#L671), [packages/app-output/src/timetree_tree_output.rs#L156](../../packages/app-output/src/timetree_tree_output.rs#L156)
+- `pub(crate) fn format_number()` [packages/app-output/src/auspice.rs#L93-L107](../../packages/app-output/src/auspice.rs#L93-L107)
+- Callers [packages/app-output/src/auspice.rs#L317](../../packages/app-output/src/auspice.rs#L317), [#L324](../../packages/app-output/src/auspice.rs#L324), [#L363](../../packages/app-output/src/auspice.rs#L363), [#L371](../../packages/app-output/src/auspice.rs#L371)
 - Unit tests [`packages/app-output/src/__tests__/test_tree_output.rs`](../../packages/app-output/src/__tests__/test_tree_output.rs)
 
 ## Related KB items

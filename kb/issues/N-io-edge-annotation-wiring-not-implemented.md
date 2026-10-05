@@ -1,15 +1,15 @@
-# Edge annotations from Newick not wired into EdgeFromNwk
+# Edge annotations from Newick not wired into the parsed graph
 
-`EdgeFromNwk::from_nwk(weight: Option<f64>)` receives only the branch length. Parsed branch-level annotations (`NewickEdgeData.branch_attrs`) from `util-newick` are discarded during `graph_from_newick()` at `packages/treetime-io/src/nwk.rs`.
+`graph_from_newick()` in `packages/treetime-io/src/nwk.rs` keeps only the branch length of each edge (`NwkParse.branch_lengths`). Parsed branch-level annotations (`NewickEdgeData.branch_attrs`) from `util-newick` are discarded.
 
-BEAST2 canonical format places branch annotations after `:` (e.g. `A:[&rate=0.003]0.1`). These are parsed by `util-newick` into `branch_attrs` but never passed to `treetime-io` edge payloads.
+BEAST2 canonical format places branch annotations after `:` (e.g. `A:[&rate=0.003]0.1`). These are parsed by `util-newick` into `branch_attrs` but never reach `NwkParse`.
 
-No current command reads or writes branch-level annotations -- all annotation data flows through `NodeToNwk::nwk_comments()` and `CommentProviders`, which are node-scoped. Wiring would require extending the `EdgeFromNwk` trait signature to accept a `BTreeMap<String, String>` parameter, updating all implementations.
+No current command reads or writes branch-level annotations. All written annotation data comes from `fn nwk_node_comments()` in `packages/app-output/src/nwk_comments.rs`, which returns node-keyed `NwkNodeComments` (`packages/treetime-io/src/nwk.rs`). Wiring would require an edge-keyed annotation map in `NwkParse` beside `branch_lengths`, and an edge-keyed comment map for the writers.
 
 ## Locations
 
-- Trait: `packages/treetime-io/src/nwk.rs` `EdgeFromNwk::from_nwk`
 - Discarded data: `packages/treetime-io/src/nwk.rs` `graph_from_newick()` edge loop
+- Parse result: `packages/treetime-io/src/nwk.rs` `NwkParse`
 - Parsed data: `packages/util-newick/src/types.rs` `NewickEdgeData.branch_attrs`
 
 ## Related issues
