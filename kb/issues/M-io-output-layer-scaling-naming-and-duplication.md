@@ -44,12 +44,6 @@ Every output is listed separately in `OutputSelection` and in `CommandKind::non_
 
 Required behavior: one table with one row per output (name, file extension, CLI flag, description, commands, default status) that every list derives from.
 
-## Thin modules and several ways to write the same thing in `app-output`
-
-- `gtr.rs` and `clock_model.rs` each wrap a single `json_write_file()` call
-- CSV is written in three ways: `CsvStructFileWriter`, `CsvStructWriter` with `write_file_with()`, and `create_file_or_stdout()` with `finish()`
-
-Required behavior: delete the one-call wrapper modules and call the writer directly, and write every CSV through one path.
 
 ## Mugration duplicates ancestral reconstruction
 
@@ -63,7 +57,7 @@ Required behavior: reimplement mugration on top of ancestral reconstruction. Mug
 
 - `kb/decisions/multi-format-tree-io.md` describes format traits, `ConverterGraph` and a `convert` command that no longer exist
 - `kb/issues/H-graph-lock-topology-is-exposed-to-consumers.md` describes `Arc<RwLock<Node>>`; the graph has no locks now
-- `kb/issues/M-payloads-own-format-adapters.md`, `kb/issues/M-command-output-ownership-is-scattered.md` and `kb/issues/M-output-module-mixes-topology-ordering.md` cite paths under `packages/treetime/src/commands/`, which no longer exists
+- `kb/issues/M-command-output-ownership-is-scattered.md` and `kb/issues/M-output-module-mixes-topology-ordering.md` cite paths under `packages/treetime/src/commands/`, which no longer exists
 
 Required behavior: update each entry to the current code, or delete it when the problem it records is gone.
 
