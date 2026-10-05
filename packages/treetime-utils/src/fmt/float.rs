@@ -57,6 +57,18 @@ pub fn float_to_digits<F: Into<f64>>(
   float_format(x, config)
 }
 
+pub fn float_to_exponential<F: Into<f64>>(x: F, decimals: usize) -> String {
+  let x = x.into();
+  let formatted = format!("{x:.decimals$e}");
+  let Some((mantissa, exponent)) = formatted.split_once('e') else {
+    return formatted;
+  };
+  let (sign, digits) = exponent
+    .strip_prefix('-')
+    .map_or(('+', exponent), |digits| ('-', digits));
+  format!("{mantissa}e{sign}{digits:0>2}")
+}
+
 fn float_format<F: Into<f64>>(x: F, config: FmtFloatConfig) -> String {
   let raw = dtoa(x.into(), config);
   trim_trailing_zeros(&raw)

@@ -14,6 +14,19 @@ mod tests {
     assert_eq!(float_to_significant_digits(input, digits), expected);
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::small_positive(    (0.066_17,   3), "6.617e-02")]
+  #[case::negative(          (-70.77,     3), "-7.077e+01")]
+  #[case::zero(              (0.0,        3), "0.000e+00")]
+  #[case::three_digit_exp(   (1e-100,     3), "1.000e-100")]
+  #[case::rounds_mantissa(   (123_456.0,  2), "1.23e+05")]
+  #[case::one(               (1.0,        0), "1e+00")]
+  #[trace]
+  fn test_float_to_exponential(#[case] (input, decimals): (f64, usize), #[case] expected: &str) {
+    assert_eq!(float_to_exponential(input, decimals), expected);
+  }
+
   #[rstest]
   #[case::truncate_decimals((1.23456, 2), "1.23")]
   #[case::round_up((123.456, 2), "123.46")]
