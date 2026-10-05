@@ -4,7 +4,7 @@ mod tests {
   use crate::config::catalog::{SettingRole, command_settings};
   use crate::config::code::{CodeLineKind, config_code};
   use crate::config::settings::setting_mut;
-  use helpers::{changed_value, load_yaml, parse_command_line, with_output_dir};
+  use helpers::{changed_value, load_yaml, parse_command_line, set_setting, with_output_dir};
   use indoc::indoc;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
@@ -21,7 +21,7 @@ mod tests {
         }
         let mut config = defaults.clone();
         let value = changed_value(&spec);
-        *setting_mut(&mut config, &spec.path).unwrap() = value.clone();
+        set_setting(&mut config, &spec.path, value.clone());
         let code = config_code(command, &config).unwrap();
         assert!(
           code.command_line.iter().all(|line| line.kind != CodeLineKind::Comment),
@@ -48,7 +48,7 @@ mod tests {
         "metadata": "metadata.tsv",
         "clock_rate": 0.0008,
         "relax": [1.0, 0.5],
-        "output_selection": ["Auspice", "Tracelog"],
+        "output_selection": ["auspice", "tracelog"],
         "output_all": "out",
       })
       .as_object()
@@ -77,8 +77,8 @@ mod tests {
             - 1.0
             - 0.5
           output_selection:
-            - "Auspice"
-            - "Tracelog"
+            - "auspice"
+            - "tracelog"
           output_all: "out"
         "#}
         .to_owned(),
@@ -158,7 +158,7 @@ mod tests {
           continue;
         }
         let mut config = defaults.clone();
-        *setting_mut(&mut config, &spec.path).unwrap() = changed_value(&spec);
+        set_setting(&mut config, &spec.path, changed_value(&spec));
         let code = config_code(command, &config).unwrap();
         assert_eq!(
           Value::Object(with_output_dir(config)),
@@ -207,17 +207,21 @@ mod tests {
     use serde::Serialize;
     use serde_json::{Map, Value, json};
 
+    fn default_of(spec: &SettingSpec) -> Option<&Value> {
+      spec.default_value.as_deref()
+    }
+
     pub(super) fn changed_value(spec: &SettingSpec) -> Value {
       match (spec.role, spec.kind) {
         (SettingRole::Input | SettingRole::InputTemplate, SettingKind::List) => json!(["a b.fasta", "c.fasta"]),
         (SettingRole::Input | SettingRole::InputTemplate, _) => json!("my data/file one.txt"),
         (_, SettingKind::Switch) => json!(true),
-        (_, SettingKind::Tristate) => json!(!spec.default_value.as_bool().unwrap_or(false)),
+        (_, SettingKind::Tristate) => json!(!default_of(spec).and_then(Value::as_bool).unwrap_or(false)),
         (_, SettingKind::Enum) => spec
           .options
           .iter()
           .map(|option| json!(option.value))
-          .find(|value| *value != spec.default_value)
+          .find(|value| Some(value) != default_of(spec))
           .unwrap(),
         (_, SettingKind::EnumList) => json!(
           spec
@@ -228,8 +232,8 @@ mod tests {
             .take(2)
             .collect::<Vec<_>>()
         ),
-        (_, SettingKind::Integer) => json!(spec.default_value.as_u64().unwrap_or(0) + 3),
-        (_, SettingKind::Number) => json!(spec.default_value.as_f64().unwrap_or(0.0) + 0.5),
+        (_, SettingKind::Integer) => json!(default_of(spec).and_then(Value::as_u64).unwrap_or(0) + 3),
+        (_, SettingKind::Number) => json!(default_of(spec).and_then(Value::as_f64).unwrap_or(0.0) + 0.5),
         (_, SettingKind::Text) => json!("x"),
         (_, SettingKind::List) => match spec.item_kind {
           ListItemKind::String => json!(["x", "y"]),
@@ -237,6 +241,18 @@ mod tests {
           ListItemKind::Integer => json!([1, 2]),
         },
       }
+    }
+
+    pub(super) fn set_setting(config: &mut Map<String, Value>, path: &[String], value: Value) {
+      let (last, parents) = path.split_last().unwrap();
+      let parent = parents.iter().fold(config, |map, key| {
+        map
+          .entry(key.clone())
+          .or_insert_with(|| json!({}))
+          .as_object_mut()
+          .unwrap()
+      });
+      parent.insert(last.clone(), value);
     }
 
     pub(super) fn with_output_dir(mut config: Map<String, Value>) -> Map<String, Value> {

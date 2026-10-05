@@ -3,12 +3,14 @@ use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_io::auspice_types::AuspiceTree;
 
 pub const UNCERTAIN_STATE_PROBABILITY: f64 = 0.8;
 
 /// Results of a `mugration` run.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct MugrationResults {
   /// The reconstructed attribute.

@@ -12,7 +12,7 @@ const RECORD: RunRecord = {
     metadata: "/data/zika/86/metadata.tsv",
     keep_root: true,
     output_all: "/runs/r1/out",
-    output_selection: ["Nwk", "Auspice"],
+    output_selection: ["nwk", "auspice"],
   },
   status: "ok",
   pinned: false,
@@ -40,8 +40,8 @@ describe("edit and run again", () => {
     }).toStrictEqual({
       tree: "/runs/r0/inputs/tree.nwk",
       keepRoot: true,
-      outputAll: null,
-      selection: ["Nwk", "Auspice"],
+      outputAll: undefined,
+      selection: ["nwk", "auspice"],
       labels: { tree: "tree.nwk", metadata: "metadata.tsv" },
     });
   });

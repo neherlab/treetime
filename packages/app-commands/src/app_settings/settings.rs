@@ -1,8 +1,9 @@
 use crate::command::AppCommand;
 use crate::job::JobId;
+use crate::json_value::SparseConfig;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_with::skip_serializing_none;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -22,23 +23,24 @@ pub struct AppSettings {
 
 /// Folders of the app. A relative path is relative to the app folder. The environment variables
 /// `TREETIME_PROFILE_DIR`, `TREETIME_RUNS_DIR`, `TREETIME_LOGS_DIR`, and `TREETIME_EXAMPLES_DIR` take precedence.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AppPathSettings {
   /// Browser profile of the desktop app: cache, local storage, and crash reports. Default: `profile`.
-  #[serde(default, skip_serializing_if = "Option::is_none")]
+  #[serde(default)]
   pub profile: Option<PathBuf>,
 
   /// Runs, each in its own folder. Default: `runs`.
-  #[serde(default, skip_serializing_if = "Option::is_none")]
+  #[serde(default)]
   pub runs: Option<PathBuf>,
 
   /// Logs and crash diagnostics. Default: `logs`.
-  #[serde(default, skip_serializing_if = "Option::is_none")]
+  #[serde(default)]
   pub logs: Option<PathBuf>,
 
   /// Example datasets and configurations that the app lists. Default: `examples`.
-  #[serde(default, skip_serializing_if = "Option::is_none")]
+  #[serde(default)]
   pub examples: Option<PathBuf>,
 }
 
@@ -49,19 +51,20 @@ impl AppPathSettings {
 }
 
 /// Preferences of the user interface. Unset preferences take the defaults of the user interface.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct UiSettings {
   /// Color theme.
-  #[serde(default, skip_serializing_if = "Option::is_none")]
+  #[serde(default)]
   pub theme: Option<UiTheme>,
 
   /// Width of the sidebar in pixels.
-  #[serde(default, skip_serializing_if = "Option::is_none")]
+  #[serde(default)]
   pub sidebar_width: Option<u32>,
 
   /// The unfinished analysis form.
-  #[serde(default, skip_serializing_if = "Option::is_none")]
+  #[serde(default)]
   pub draft: Option<UiDraft>,
 }
 
@@ -82,13 +85,14 @@ pub enum UiTheme {
 }
 
 /// The unfinished analysis form: the command, its settings, and how the form is shown.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct UiDraft {
   pub command: AppCommand,
 
   /// Settings of the command, as in a configuration file.
-  pub config: Map<String, Value>,
+  pub config: SparseConfig,
 
   /// Where each input file came from, by setting key.
   pub sources: BTreeMap<String, UiDraftSource>,
@@ -111,6 +115,7 @@ pub struct UiDraft {
 }
 
 /// Origin of an input file of the form.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct UiDraftSource {
@@ -158,6 +163,7 @@ pub enum UiCodeFormat {
 }
 
 /// The runs folder of the running back end, and the folder used when the settings name none.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Workspace {
   /// The runs folder in use.
@@ -171,6 +177,7 @@ pub struct Workspace {
 }
 
 /// A new runs folder. It takes effect when the back end starts again.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct WorkspaceUpdate {

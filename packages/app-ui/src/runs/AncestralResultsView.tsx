@@ -1,9 +1,8 @@
-import type { RunRecord, RunResults } from "@neherlab/app-contracts";
+import type { RunRecord, RunResults, AncestralResults, BranchMutations, RecurrentSite } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
 import { DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
-import type { AncestralData, BranchMutations, RecurrentSite } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
 import { settingText } from "./settingText";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
@@ -40,7 +39,7 @@ const COUNT_SORT = [{ id: "count", desc: true }];
 
 const BRANCHES_SORT = [{ id: "branches", desc: true }];
 
-export function AncestralResults({
+export function AncestralResultsView({
   record,
   results,
   data,
@@ -48,7 +47,7 @@ export function AncestralResults({
 }: {
   record: RunRecord;
   results: RunResults;
-  data: AncestralData;
+  data: AncestralResults;
   tree: TreeData | undefined;
 }) {
   const branches = data.branches;

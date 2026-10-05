@@ -1,8 +1,17 @@
-import type { AppCommand, CheckInputsRequest, Dataset, InputFacts, InputKind, RunInput } from "@neherlab/app-contracts";
+import type {
+  AppCommand,
+  CheckInputsRequest,
+  Dataset,
+  InputFacts,
+  InputKind,
+  JsonValue,
+  RunInput,
+  SparseConfig,
+} from "@neherlab/app-contracts";
 import * as z from "zod";
 
 import { COMMAND_SETTINGS } from "./catalog";
-import { getAt, type JsonObject, type JsonValue } from "./json";
+import { getAt } from "./json";
 
 export interface InputAssignment {
   key: string;
@@ -29,14 +38,22 @@ export function runInputAssignments(command: AppCommand, inputs: readonly RunInp
     bySetting.set(input.setting, [...(bySetting.get(input.setting) ?? []), input]);
   }
 
-  return [...bySetting.entries()].map(([key, files]) => ({
-    key,
-    value: isListInput(command, key) ? files.map((file) => file.path) : (files[0]?.path ?? null),
-    label: files.map((file) => baseName(file.path)).join(", "),
-  }));
+  return [...bySetting.entries()].flatMap(([key, files]) => {
+    const [first] = files;
+
+    return first === undefined
+      ? []
+      : [
+          {
+            key,
+            value: isListInput(command, key) ? files.map((file) => file.path) : first.path,
+            label: files.map((file) => baseName(file.path)).join(", "),
+          },
+        ];
+  });
 }
 
-export function inputFactsRequest(command: AppCommand, config: JsonObject): CheckInputsRequest | null {
+export function inputFactsRequest(command: AppCommand, config: SparseConfig): CheckInputsRequest | null {
   const given = COMMAND_SETTINGS[command].inputs.some((slot) => pathList(getAt(config, [slot.kind])).length > 0);
 
   return given ? { command, config } : null;
@@ -84,7 +101,7 @@ export function slotFactsText(slot: InputKind, facts: InputFacts | undefined, us
   if (slot === "tree") {
     const tree = facts?.tree;
 
-    return tree === null || tree === undefined
+    return tree === undefined
       ? null
       : `${tree.tips} tips, ${tree.internal_nodes} internal nodes, ${tree.polytomies} polytomies`;
   }
@@ -92,7 +109,7 @@ export function slotFactsText(slot: InputKind, facts: InputFacts | undefined, us
   if (slot === "alignment") {
     const alignment = facts?.alignment;
 
-    if (alignment === null || alignment === undefined) {
+    if (alignment === undefined) {
       return null;
     }
 
@@ -106,14 +123,12 @@ export function slotFactsText(slot: InputKind, facts: InputFacts | undefined, us
 
   const metadata = facts?.metadata;
 
-  if (metadata === null || metadata === undefined) {
+  if (metadata === undefined) {
     return null;
   }
 
   const dateColumn =
-    metadata.date_column === null || metadata.date_column === undefined
-      ? "no date column found"
-      : `date column ${metadata.date_column}`;
+    metadata.date_column === undefined ? "no date column found" : `date column ${metadata.date_column}`;
 
   const dates = usesDates ? `; ${dateColumn}` : "";
 

@@ -14,14 +14,13 @@ import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { changedSpecs, normalizeConfig } from "../settings/config";
 import { inputFactsRequest } from "../settings/inputs";
-import { zJsonObject } from "../settings/json";
 import { useDraftStore } from "../store/draft";
 import { Button } from "../ui/button";
 import { ChecksPanel } from "./ChecksPanel";
 import { CodePanel } from "./CodePanel";
 import { CommandCards } from "./CommandCards";
 import { configResolver } from "./configResolver";
-import { toFormConfig, type FormConfig } from "./formValues";
+import { fromFormConfig, toFormConfig, type FormConfig } from "./formValues";
 import { InputsSection } from "./InputsSection";
 import { SettingsPanel } from "./SettingsPanel";
 import { useStartRun } from "./useStartRun";
@@ -29,8 +28,8 @@ import { useStartRun } from "./useStartRun";
 const CHECK_DEBOUNCE = { wait: 400 };
 
 export function DraftForm({ command }: { command: AppCommand }) {
-  const specs = COMMAND_SETTINGS[command].specs;
-  const [initial] = useState(() => normalizeConfig(specs, useDraftStore.getState().config));
+  const specs = COMMAND_SETTINGS[command].settings;
+  const [initial] = useState(() => normalizeConfig(specs, useDraftStore.getState().draft.config));
 
   const form = useForm<FormConfig>({
     defaultValues: toFormConfig(initial),
@@ -41,11 +40,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
   const setConfig = useDraftStore((state) => state.setConfig);
   const watched = useWatch({ control: form.control });
 
-  const config = useMemo(() => {
-    const parsed = zJsonObject.safeParse(watched);
-
-    return parsed.success ? normalizeConfig(specs, parsed.data) : initial;
-  }, [initial, specs, watched]);
+  const config = useMemo(() => normalizeConfig(specs, fromFormConfig(watched)), [specs, watched]);
 
   const [settled] = useDebouncedValue(config, CHECK_DEBOUNCE);
   const factsRequest = useMemo(() => inputFactsRequest(command, settled), [command, settled]);
@@ -56,8 +51,14 @@ export function DraftForm({ command }: { command: AppCommand }) {
   );
 
   const { data: check } = useApi(
-    (context) =>
-      configCheck({ ...context, body: { command, text: JSON.stringify(settled), input_facts: facts ?? null } }),
+    (context) => {
+      const text = JSON.stringify(settled);
+
+      return configCheck({
+        ...context,
+        body: facts === undefined ? { command, text } : { command, text, input_facts: facts },
+      });
+    },
     { placeholderData: keepPreviousData, staleTime: Infinity },
   );
 
@@ -73,13 +74,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
     () =>
       form.subscribe({
         formState: { values: true },
-        callback: ({ values }) => {
-          const parsed = zJsonObject.safeParse(values);
-
-          if (parsed.success) {
-            setConfig(parsed.data);
-          }
-        },
+        callback: ({ values }) => setConfig(fromFormConfig(values)),
       }),
     [form, setConfig],
   );
@@ -87,11 +82,11 @@ export function DraftForm({ command }: { command: AppCommand }) {
   const checks = check?.checks;
   const code = runConfig?.status === "valid" ? runConfig.code : null;
 
-  const configHash = runConfig?.status === "valid" ? (runConfig.config_hash ?? null) : null;
+  const configHash = runConfig?.status === "valid" ? runConfig.config_hash : undefined;
 
   const duplicate = useMemo(
     () =>
-      configHash === null
+      configHash === undefined
         ? undefined
         : runList?.runs.find((run) => run.status === "ok" && run.command === command && run.config_hash === configHash),
     [command, configHash, runList],
@@ -100,7 +95,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
   const changed = changedSpecs(specs, config);
 
   const submit = useMemo(
-    () => form.handleSubmit((values) => startRun(normalizeConfig(specs, values))),
+    () => form.handleSubmit((values) => startRun(normalizeConfig(specs, fromFormConfig(values)))),
     [form, specs, startRun],
   );
 
@@ -143,8 +138,8 @@ export function DraftForm({ command }: { command: AppCommand }) {
 }
 
 function PageHeader() {
-  const fromRunId = useDraftStore((state) => state.from_run_id);
-  const command = useDraftStore((state) => state.command);
+  const fromRunId = useDraftStore((state) => state.draft.from_run_id);
+  const command = useDraftStore((state) => state.draft.command);
   const reset = useDraftStore((state) => state.reset);
   const { data: runList } = useApi((context) => runsList(context));
   const fromTitle = runList?.runs.find((run) => run.id === fromRunId)?.title ?? fromRunId;
@@ -152,9 +147,9 @@ function PageHeader() {
 
   return (
     <PageHeading
-      title={fromRunId === null ? "New analysis" : "Edit and run again"}
+      title={fromRunId === undefined ? "New analysis" : "Edit and run again"}
       description={
-        fromRunId === null
+        fromRunId === undefined
           ? "Choose an analysis, add the data, check the settings, run."
           : `Settings copied from "${fromTitle ?? ""}". The original run stays unchanged.`
       }

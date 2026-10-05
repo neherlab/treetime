@@ -42,7 +42,7 @@ fn given_settings<'a>(
     .filter(|spec| spec.role != SettingRole::Output)
     .filter_map(|spec| {
       let value = setting_ref(config, &spec.path)?;
-      (*value != spec.default_value).then_some((spec, value))
+      (Some(value) != spec.default_value.as_deref()).then_some((spec, value))
     })
     .map(|(spec, value)| {
       let arg = cli

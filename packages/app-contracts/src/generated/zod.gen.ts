@@ -96,6 +96,22 @@ export const zDatasetCatalog = z.object({
 });
 
 /**
+ * A JSON value other than `null`: a boolean, a number, a string, a list, or a mapping of them.
+ */
+export const zJsonValue = z.union([
+  z.boolean(),
+  z.number(),
+  z.string(),
+  z.array(z.lazy((): any => zJsonValue)),
+  z.record(z.string(), z.lazy((): any => zJsonValue))
+]);
+
+/**
+ * Settings of a command by key, as in a configuration file. Settings that are not listed take their defaults.
+ */
+export const zSparseConfig = z.record(z.string(), zJsonValue);
+
+/**
  * Facts about a tree.
  */
 export const zTreeFacts = z.object({
@@ -133,8 +149,8 @@ export const zMetadataFacts = z.object({
   rows: z.int().gte(0),
   columns: z.array(z.string()),
   id_column: z.string(),
-  date_column: z.string().nullish(),
-  dates: zDateFacts.nullish()
+  date_column: z.string().optional(),
+  dates: zDateFacts.optional()
 });
 
 /**
@@ -149,11 +165,11 @@ export const zInputProblem = z.object({
  * Facts about the input files of a run, read with the readers the commands use.
  */
 export const zInputFacts = z.object({
-  tree: zTreeFacts.nullish(),
-  alignment: zAlignmentFacts.nullish(),
-  metadata: zMetadataFacts.nullish(),
-  tips_without_metadata: z.array(z.string()).nullish(),
-  tips_without_sequence: z.array(z.string()).nullish(),
+  tree: zTreeFacts.optional(),
+  alignment: zAlignmentFacts.optional(),
+  metadata: zMetadataFacts.optional(),
+  tips_without_metadata: z.array(z.string()).optional(),
+  tips_without_sequence: z.array(z.string()).optional(),
   problems: z.array(zInputProblem)
 });
 
@@ -163,9 +179,9 @@ export const zInputFacts = z.object({
 export const zCheckConfigRequest = z.strictObject({
   command: zAppCommand,
   text: z.string(),
-  inputs: z.record(z.string(), z.unknown()).optional().default({}),
-  input_facts: zInputFacts.nullish().default(null),
-  folder: z.string().nullish().default(null)
+  inputs: zSparseConfig.optional().default({}),
+  input_facts: zInputFacts.optional(),
+  folder: z.string().optional()
 });
 
 /**
@@ -213,7 +229,7 @@ export const zCheckLevel = z.union([
  */
 export const zSettingPatch = z.object({
   path: z.array(z.string()),
-  value: z.unknown()
+  value: zJsonValue.optional()
 });
 
 /**
@@ -232,7 +248,7 @@ export const zRunCheck = z.object({
   level: zCheckLevel,
   text: z.string(),
   settings: z.array(z.string()),
-  fix: zCheckFix.nullish()
+  fix: zCheckFix.optional()
 });
 
 /**
@@ -249,8 +265,8 @@ export const zConfigSpan = z.object({
 export const zConfigProblem = z.object({
   code: z.string(),
   message: z.string(),
-  span: zConfigSpan.nullish(),
-  help: z.string().nullish()
+  span: zConfigSpan.optional(),
+  help: z.string().optional()
 });
 
 /**
@@ -258,7 +274,7 @@ export const zConfigProblem = z.object({
  */
 export const zRunConfigRequest = z.strictObject({
   command: zAppCommand,
-  config: z.unknown()
+  config: zSparseConfig
 });
 
 /**
@@ -266,7 +282,7 @@ export const zRunConfigRequest = z.strictObject({
  */
 export const zCheckInputsRequest = z.strictObject({
   command: zAppCommand,
-  config: z.record(z.string(), z.unknown())
+  config: zSparseConfig
 });
 
 /**
@@ -310,9 +326,9 @@ export const zJsonFloat = z.union([
  * Key results of a finished run, for run lists; the same values the run's results show.
  */
 export const zRunHeadline = z.object({
-  root_date: zYearDate.nullish(),
-  clock_rate: zJsonFloat.nullish(),
-  r_squared: zJsonFloat.nullish()
+  root_date: zYearDate.optional(),
+  clock_rate: zJsonFloat.optional(),
+  r_squared: zJsonFloat.optional()
 });
 
 /**
@@ -325,9 +341,9 @@ export const zRunSummary = z.object({
   status: zRunStatus,
   pinned: z.boolean(),
   created_at: z.string(),
-  finished_at: z.string().nullish(),
-  duration_seconds: z.number().nullish(),
-  config_hash: z.string().nullish(),
+  finished_at: z.string().optional(),
+  duration_seconds: z.number().optional(),
+  config_hash: z.string().optional(),
   changed_settings: z.array(z.string()),
   headline: zRunHeadline
 });
@@ -345,7 +361,7 @@ export const zRunList = z.object({
  */
 export const zCreateRunRequest = z.strictObject({
   command: zAppCommand,
-  config: z.unknown(),
+  config: zSparseConfig,
   defer_start: z.boolean().optional().default(false)
 });
 
@@ -407,42 +423,19 @@ export const zRunError = z.object({
 });
 
 /**
- * Durable record of one command run, stored as `run.json` in the run's folder.
- */
-export const zRunRecord = z.object({
-  id: zJobId,
-  title: z.string(),
-  command: zAppCommand,
-  config: z.record(z.string(), z.unknown()),
-  status: zRunStatus,
-  pinned: z.boolean(),
-  created_at: z.string(),
-  started_at: z.string().nullish(),
-  finished_at: z.string().nullish(),
-  duration_seconds: z.number().nullish(),
-  treetime_version: z.string(),
-  inputs: z.array(zRunInput),
-  config_hash: z.string().nullish(),
-  changed_settings: z.array(z.string()),
-  headline: zRunHeadline,
-  output_files: z.array(zOutputFile),
-  error: zRunError.nullish()
-});
-
-/**
  * Changes to the presentation of a run.
  */
 export const zUpdateRunRequest = z.strictObject({
-  title: z.string().nullish().default(null),
-  pinned: z.boolean().nullish().default(null)
+  title: z.string().optional(),
+  pinned: z.boolean().optional()
 });
 
 /**
  * Request to start a created run.
  */
 export const zStartRunRequest = z.strictObject({
-  command: zAppCommand.nullish().default(null),
-  config: z.unknown().optional().default(null)
+  command: zAppCommand.optional(),
+  config: zSparseConfig.optional()
 });
 
 /**
@@ -458,7 +451,7 @@ export const zCancelRunResponse = z.object({
 export const zRunFile = z.object({
   path: z.string(),
   size: z.int().gte(0),
-  kind: zOutputSelection.nullish(),
+  kind: zOutputSelection.optional(),
   description: z.string()
 });
 
@@ -477,13 +470,13 @@ export const zDateInterval = z.object({
  */
 export const zResultNode = z.object({
   name: z.string(),
-  parent: z.int().gte(0).nullish(),
+  parent: z.int().gte(0).optional(),
   children: z.array(z.int().gte(0)),
   tips: z.int().gte(0),
-  div: z.number().nullish(),
-  date: zYearDate.nullish(),
-  date_interval: zDateInterval.nullish(),
-  excluded: z.boolean().nullish(),
+  div: z.number().optional(),
+  date: zYearDate.optional(),
+  date_interval: zDateInterval.optional(),
+  excluded: z.boolean().optional(),
   mutations: z.array(z.string())
 });
 
@@ -512,7 +505,7 @@ export const zResultColoring = z.object({
 export const zResultTree = z.object({
   nodes: z.array(zResultNode),
   colorings: z.array(zResultColoring),
-  default_color_by: z.string().nullish()
+  default_color_by: z.string().optional()
 });
 
 /**
@@ -537,11 +530,11 @@ export const zClockDateSource = z.union([
  */
 export const zRootToTipPoint = z.object({
   name: z.string(),
-  date: zYearDate.nullish(),
-  date_source: zClockDateSource.nullish(),
+  date: zYearDate.optional(),
+  date_source: zClockDateSource.optional(),
   div: z.number(),
   predicted_date: zYearDate,
-  residual_days: z.number().nullish(),
+  residual_days: z.number().optional(),
   outlier: z.boolean()
 });
 
@@ -558,7 +551,7 @@ export const zClockLine = z.object({
  */
 export const zRootToTip = z.object({
   points: z.array(zRootToTipPoint),
-  line: zClockLine.nullish()
+  line: zClockLine.optional()
 });
 
 /**
@@ -566,12 +559,12 @@ export const zRootToTip = z.object({
  */
 export const zIterationRow = z.object({
   iteration: z.int().gte(0),
-  max_time_change: zJsonFloat.nullish(),
-  rms_time_change: zJsonFloat.nullish(),
-  log_lh_seq: zJsonFloat.nullish(),
-  log_lh_pos: zJsonFloat.nullish(),
-  log_lh_coal: zJsonFloat.nullish(),
-  log_lh_total: zJsonFloat.nullish()
+  max_time_change: zJsonFloat.optional(),
+  rms_time_change: zJsonFloat.optional(),
+  log_lh_seq: zJsonFloat.optional(),
+  log_lh_pos: zJsonFloat.optional(),
+  log_lh_coal: zJsonFloat.optional(),
+  log_lh_total: zJsonFloat.optional()
 });
 
 /**
@@ -579,8 +572,8 @@ export const zIterationRow = z.object({
  */
 export const zBand = z.object({
   value: z.number(),
-  lower: z.number().nullish(),
-  upper: z.number().nullish()
+  lower: z.number().optional(),
+  upper: z.number().optional()
 });
 
 /**
@@ -597,10 +590,10 @@ export const zSkylineSegment = z.object({
  * Estimates of a `clock` run.
  */
 export const zClockEstimates = z.object({
-  clock_rate: z.number().nullish(),
+  clock_rate: z.number().optional(),
   clock_rate_fixed: z.boolean(),
-  r: z.number().nullish(),
-  r_squared: z.number().nullish(),
+  r: z.number().optional(),
+  r_squared: z.number().optional(),
   dated_samples: z.int().gte(0),
   outliers: z.int().gte(0)
 });
@@ -610,7 +603,7 @@ export const zClockEstimates = z.object({
  */
 export const zClockResults = z.object({
   estimates: zClockEstimates,
-  root_to_tip: zRootToTip.nullish()
+  root_to_tip: zRootToTip.optional()
 });
 
 /**
@@ -668,7 +661,7 @@ export const zMugrationResults = z.object({
   changed_branches: z.int().gte(0),
   uncertain_below: z.number(),
   uncertain_ancestors: z.array(zAncestorState),
-  root: zAncestorState.nullish()
+  root: zAncestorState.optional()
 });
 
 /**
@@ -686,8 +679,8 @@ export const zTreeSummary = z.object({
   samples: z.int().gte(0),
   internal_nodes: z.int().gte(0),
   mutations: z.int().gte(0),
-  total_branch_length: z.number().nullish(),
-  substitution_model: zSubstitutionModel.nullish()
+  total_branch_length: z.number().optional(),
+  substitution_model: zSubstitutionModel.optional()
 });
 
 /**
@@ -728,7 +721,7 @@ export const zAncestorShift = z.object({
 export const zAncestorComparison = z.object({
   shifts: z.array(zAncestorShift),
   ancestors: z.int().gte(0),
-  mean_absolute_shift_days: z.number().nullish()
+  mean_absolute_shift_days: z.number().optional()
 });
 
 /**
@@ -746,8 +739,8 @@ export const zCladeMatch = z.object({
   run: zJobId,
   title: z.string(),
   node: z.string(),
-  date: zYearDate.nullish(),
-  date_interval: zDateInterval.nullish()
+  date: zYearDate.optional(),
+  date_interval: zDateInterval.optional()
 });
 
 /**
@@ -802,14 +795,14 @@ export const zIterationEvent = z.object({
   iteration: z.int().gte(0),
   n_diff: z.int().gte(0),
   n_resolved: z.int().gte(0),
-  max_time_change: zJsonFloat.nullish(),
-  rms_time_change: zJsonFloat.nullish(),
-  log_lh_seq: zJsonFloat.nullish(),
-  log_lh_pos: zJsonFloat.nullish(),
-  log_lh_coal: zJsonFloat.nullish(),
-  log_lh_total: zJsonFloat.nullish(),
+  max_time_change: zJsonFloat.optional(),
+  rms_time_change: zJsonFloat.optional(),
+  log_lh_seq: zJsonFloat.optional(),
+  log_lh_pos: zJsonFloat.optional(),
+  log_lh_coal: zJsonFloat.optional(),
+  log_lh_total: zJsonFloat.optional(),
   clock_rate: zJsonFloat,
-  r_squared: zJsonFloat.nullish()
+  r_squared: zJsonFloat.optional()
 });
 
 /**
@@ -851,10 +844,10 @@ export const zUploadedInput = z.object({
  * `TREETIME_PROFILE_DIR`, `TREETIME_RUNS_DIR`, `TREETIME_LOGS_DIR`, and `TREETIME_EXAMPLES_DIR` take precedence.
  */
 export const zAppPathSettings = z.strictObject({
-  profile: z.string().nullish(),
-  runs: z.string().nullish(),
-  logs: z.string().nullish(),
-  examples: z.string().nullish()
+  profile: z.string().optional(),
+  runs: z.string().optional(),
+  logs: z.string().optional(),
+  examples: z.string().optional()
 });
 
 /**
@@ -883,7 +876,7 @@ export const zUiDraftOrigin = z.union([
 export const zUiDraftSource = z.strictObject({
   label: z.string(),
   origin: zUiDraftOrigin,
-  size: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).nullish()
+  size: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
 });
 
 /**
@@ -907,10 +900,10 @@ export const zUiCodeFormat = z.union([
  */
 export const zUiDraft = z.strictObject({
   command: zAppCommand,
-  config: z.record(z.string(), z.unknown()),
+  config: zSparseConfig,
   sources: z.record(z.string(), zUiDraftSource),
-  from_run_id: zJobId.nullish(),
-  upload_run_id: zJobId.nullish(),
+  from_run_id: zJobId.optional(),
+  upload_run_id: zJobId.optional(),
   view: zUiSettingsView,
   search: z.string(),
   changed_only: z.boolean(),
@@ -921,9 +914,9 @@ export const zUiDraft = z.strictObject({
  * Preferences of the user interface. Unset preferences take the defaults of the user interface.
  */
 export const zUiSettings = z.strictObject({
-  theme: zUiTheme.nullish(),
-  sidebar_width: z.int().gte(0).max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' }).nullish(),
-  draft: zUiDraft.nullish()
+  theme: zUiTheme.optional(),
+  sidebar_width: z.int().gte(0).max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' }).optional(),
+  draft: zUiDraft.optional()
 });
 
 /**
@@ -941,650 +934,23 @@ export const zAppSettings = z.strictObject({
 export const zWorkspace = z.object({
   path: z.string(),
   default_path: z.string(),
-  fixed_by: z.string().nullish(),
-  error: z.string().nullish()
+  fixed_by: z.string().optional(),
+  error: z.string().optional()
 });
 
 /**
  * A new runs folder. It takes effect when the back end starts again.
  */
 export const zWorkspaceUpdate = z.strictObject({
-  path: z.string().nullish()
+  path: z.string().optional()
 });
 
 /**
  * Where to save an output file of a run, or the archive of all its outputs.
  */
 export const zSaveRunRequest = z.strictObject({
-  path: z.string().nullish().default(null),
+  path: z.string().optional(),
   destination: z.string()
-});
-
-export const zBranchLengthMode = z.enum(['input', 'marginal']);
-
-export const zTimeMarginalMode = z.enum([
-  'never',
-  'always',
-  'only-final'
-]);
-
-export const zRerootMethod = z.enum([
-  'least-squares',
-  'min-dev',
-  'oldest',
-  'clock-filter'
-]);
-
-export const zGtrModelName = z.union([
-  z.literal('jc69'),
-  z.literal('k80'),
-  z.literal('f81'),
-  z.literal('hky85'),
-  z.literal('t92'),
-  z.literal('tn93'),
-  z.literal('jtt92'),
-  z.literal('infer')
-]);
-
-export const zMethodAncestral = z.enum(['marginal', 'parsimony']);
-
-export const zAlphabetName = z.enum([
-  'nuc',
-  'aa',
-  'aa-no-stop'
-]);
-
-export const zGapFill = z.enum([
-  'only-terminal',
-  'all',
-  'none'
-]);
-
-export const zDivergenceUnits = z.enum(['mutations-per-site', 'mutations']);
-
-/**
- * CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
- */
-export const zNwkStyleArg = z.enum([
-  'plain',
-  'beast',
-  'nhx'
-]);
-
-export const zTimetreeOutputSelection = z.enum([
-  'All',
-  'Nwk',
-  'Nexus',
-  'Auspice',
-  'MatPb',
-  'MatJson',
-  'GraphJson',
-  'Dot',
-  'AugurNodeData',
-  'Gtr',
-  'ReconstructedNucFasta',
-  'ClockModel',
-  'ClockCsv',
-  'ConfidenceTsv',
-  'Tracelog',
-  'CoalescentTsv',
-  'CoalescentCsv',
-  'CoalescentJson'
-]);
-
-export const zLadderizeArg = z.enum([
-  'none',
-  'ascending',
-  'descending'
-]);
-
-export const zTopologyOrderArg = z.enum([
-  'keep',
-  'descendant-count',
-  'descendant-count-reverse',
-  'height',
-  'height-reverse',
-  'divergence',
-  'divergence-reverse',
-  'label',
-  'label-reverse',
-  'target-order',
-  'target-order-reverse'
-]);
-
-export const zTopologyOrderTargetSourceArg = z.enum([
-  'input',
-  'reference-topology',
-  'list'
-]);
-
-export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
-
-/**
- * Sequence alignment input shared by all commands that read sequences.
- *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
- */
-export const zTimetreeConfig = z.strictObject({
-  alignment: z.array(z.string()).optional().default([]),
-  tree: z.string().nullish().default(null),
-  vcf_reference: z.string().nullish().default(null),
-  metadata: z.string().nullish().default(null),
-  metadata_id_columns: z.array(z.string()).optional().default([
-    'strain',
-    'name',
-    'accession'
-  ]),
-  metadata_delimiters: z.array(z.string().length(1)).optional().default([
-    ',',
-    '\t',
-    ';'
-  ]),
-  date_column: z.string().nullish().default(null),
-  date_format: z.string().optional().default('%Y-%m-%d'),
-  sequence_length: z.int().gte(0).nullish().default(null),
-  clock_rate: z.number().nullish().default(null),
-  clock_std_dev: z.number().nullish().default(null),
-  branch_length_mode: zBranchLengthMode.optional().default('marginal'),
-  time_marginal: zTimeMarginalMode.optional().default('never'),
-  confidence: z.boolean().optional().default(false),
-  keep_polytomies: z.boolean().optional().default(false),
-  resolve_polytomies: z.boolean().optional().default(false),
-  relax: z.array(z.number()).optional().default([]),
-  max_iter: z.int().gte(0).optional().default(2),
-  coalescent: z.number().nullish().default(null),
-  coalescent_opt: z.boolean().optional().default(false),
-  coalescent_skyline: z.boolean().optional().default(false),
-  skyline_n_points: z.int().gte(0).optional().default(20),
-  skyline_stiffness: z.number().optional().default(2),
-  coalescent_confidence: z.number().optional().default(2),
-  n_branches_posterior: z.int().gte(0).nullish().default(null),
-  plot_tree: z.string().nullish().default(null),
-  plot_rtt: z.string().nullish().default(null),
-  tip_labels: z.boolean().optional().default(false),
-  no_tip_labels: z.boolean().optional().default(false),
-  clock_filter: z.number().optional().default(3),
-  n_iqd: z.number().nullish().default(null),
-  reroot: zRerootMethod.nullish().default(null),
-  reroot_tips: z.array(z.string()).optional().default([]),
-  keep_root: z.boolean().optional().default(false),
-  allow_negative_rate: z.boolean().optional().default(false),
-  tip_slack: z.number().nullish().default(null),
-  covariation: z.boolean().optional().default(false),
-  model: zGtrModelName.optional().default('infer'),
-  model_params: z.array(z.string()).optional().default([]),
-  method_anc: zMethodAncestral.optional().default('marginal'),
-  alphabet: zAlphabetName.nullish().default(null),
-  dense: z.boolean().nullish().default(null),
-  gap_fill: zGapFill.optional().default('only-terminal'),
-  keep_overhangs: z.boolean().optional().default(false),
-  zero_based: z.boolean().optional().default(false),
-  include_leaves: z.boolean().optional().default(false),
-  impute_missing_data: z.boolean().optional().default(false),
-  reconstruct_tip_states: z.boolean().optional().default(false),
-  report_ambiguous: z.boolean().optional().default(false),
-  no_indels: z.boolean().optional().default(false),
-  divergence_units: zDivergenceUnits.optional().default('mutations-per-site'),
-  output_augur_node_data: z.string().nullish().default(null),
-  output_gtr: z.string().nullish().default(null),
-  output_reconstructed_nuc_fasta: z.string().nullish().default(null),
-  output_clock_model: z.string().nullish().default(null),
-  output_clock_csv: z.string().nullish().default(null),
-  output_confidence_tsv: z.string().nullish().default(null),
-  output_tracelog: z.string().nullish().default(null),
-  output_coalescent_tsv: z.string().nullish().default(null),
-  output_coalescent_csv: z.string().nullish().default(null),
-  output_coalescent_json: z.string().nullish().default(null),
-  output_all: z.string().nullish().default(null),
-  output_nwk_style: z.array(zNwkStyleArg).optional().default([]),
-  output_tree_nwk: z.string().nullish().default(null),
-  output_tree_nexus: z.string().nullish().default(null),
-  output_tree_auspice: z.string().nullish().default(null),
-  output_tree_mat_pb: z.string().nullish().default(null),
-  output_tree_mat_json: z.string().nullish().default(null),
-  output_tree_graph_json: z.string().nullish().default(null),
-  output_tree_dot: z.string().nullish().default(null),
-  output_selection: z.array(zTimetreeOutputSelection).optional().default([]),
-  ladderize: zLadderizeArg.nullish().default(null),
-  topology_order: zTopologyOrderArg.nullish().default(null),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.nullish().default(null),
-  topology_order_target_file: z.string().nullish().default(null),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional().default('mean'),
-  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).nullish().default(null),
-  aa: z.boolean().optional().default(false),
-  custom_gtr: z.string().nullish().default(null),
-  clock_filter_method: z.string().nullish().default(null),
-  gen_per_year: z.number().optional().default(50),
-  $schema: z.string().optional()
-});
-
-export const zOptimizeOutputSelection = z.enum([
-  'All',
-  'Nwk',
-  'Nexus',
-  'Auspice',
-  'MatPb',
-  'MatJson',
-  'GraphJson',
-  'Dot',
-  'AugurNodeData',
-  'Gtr'
-]);
-
-/**
- * Controls whether marginal reconstruction estimates initial branch lengths
- * from substitutions divided by effective alignment length. Preserving valid
- * input lengths can provide a better Newton starting point.
- */
-export const zInitialGuessMode = z.union([
-  z.literal('auto'),
-  z.literal('always'),
-  z.literal('never')
-]);
-
-/**
- * Per-edge branch length optimization method.
- *
- * Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
- * length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
- * vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
- */
-export const zBranchOptMethod = z.union([
-  z.literal('brent'),
-  z.literal('brent-sqrt'),
-  z.literal('brent-log'),
-  z.literal('newton'),
-  z.literal('newton-sqrt'),
-  z.literal('newton-log')
-]);
-
-/**
- * Reroot methods available in the optimize command.
- *
- * Only date-free methods are valid here because optimize has no sampling dates.
- * Date-dependent methods (least-squares, oldest, clock-filter) are available
- * in the timetree and clock commands.
- */
-export const zOptimizeRerootMethod = z.enum(['min-dev']);
-
-/**
- * Sequence alignment input shared by all commands that read sequences.
- *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
- */
-export const zOptimizeConfig = z.strictObject({
-  alignment: z.array(z.string()).optional().default([]),
-  tree: z.string().nullish().default(null),
-  alphabet: zAlphabetName.nullish().default(null),
-  model: zGtrModelName.optional().default('infer'),
-  model_params: z.array(z.string()).optional().default([]),
-  dense: z.boolean().nullish().default(null),
-  output_all: z.string().nullish().default(null),
-  output_nwk_style: z.array(zNwkStyleArg).optional().default([]),
-  output_tree_nwk: z.string().nullish().default(null),
-  output_tree_nexus: z.string().nullish().default(null),
-  output_tree_auspice: z.string().nullish().default(null),
-  output_tree_mat_pb: z.string().nullish().default(null),
-  output_tree_mat_json: z.string().nullish().default(null),
-  output_tree_graph_json: z.string().nullish().default(null),
-  output_tree_dot: z.string().nullish().default(null),
-  divergence_units: zDivergenceUnits.optional().default('mutations-per-site'),
-  output_augur_node_data: z.string().nullish().default(null),
-  output_gtr: z.string().nullish().default(null),
-  output_selection: z.array(zOptimizeOutputSelection).optional().default([]),
-  ladderize: zLadderizeArg.nullish().default(null),
-  topology_order: zTopologyOrderArg.nullish().default(null),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.nullish().default(null),
-  topology_order_target_file: z.string().nullish().default(null),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional().default('mean'),
-  max_iter: z.int().gte(0).optional().default(10),
-  dp: z.number().optional().default(0.1),
-  damping: z.number().optional().default(0.75),
-  branch_length_initial_guess: zInitialGuessMode.optional().default('auto'),
-  opt_method: zBranchOptMethod.optional().default('brent-sqrt'),
-  no_indels: z.boolean().optional().default(false),
-  reroot: zOptimizeRerootMethod.nullish().default(null),
-  reroot_tips: z.array(z.string()).optional().default([]),
-  keep_root: z.boolean().optional().default(false),
-  no_collapse_short_branches: z.boolean().optional().default(false),
-  no_merge_siblings: z.boolean().optional().default(false),
-  no_flip_parent_child: z.boolean().optional().default(false),
-  gap_fill: zGapFill.optional().default('only-terminal'),
-  keep_overhangs: z.boolean().optional().default(false),
-  $schema: z.string().optional()
-});
-
-export const zPruneOutputSelection = z.enum([
-  'All',
-  'Nwk',
-  'Nexus',
-  'Auspice',
-  'MatPb',
-  'MatJson',
-  'GraphJson',
-  'Dot',
-  'Gtr'
-]);
-
-/**
- * Sequence alignment input shared by all commands that read sequences.
- *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
- */
-export const zPruneConfig = z.strictObject({
-  alignment: z.array(z.string()).optional().default([]),
-  tree: z.string().nullish().default(null),
-  alphabet: zAlphabetName.nullish().default(null),
-  output_all: z.string().nullish().default(null),
-  output_nwk_style: z.array(zNwkStyleArg).optional().default([]),
-  output_tree_nwk: z.string().nullish().default(null),
-  output_tree_nexus: z.string().nullish().default(null),
-  output_tree_auspice: z.string().nullish().default(null),
-  output_tree_mat_pb: z.string().nullish().default(null),
-  output_tree_mat_json: z.string().nullish().default(null),
-  output_tree_graph_json: z.string().nullish().default(null),
-  output_tree_dot: z.string().nullish().default(null),
-  output_gtr: z.string().nullish().default(null),
-  output_selection: z.array(zPruneOutputSelection).optional().default([]),
-  ladderize: zLadderizeArg.nullish().default(null),
-  topology_order: zTopologyOrderArg.nullish().default(null),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.nullish().default(null),
-  topology_order_target_file: z.string().nullish().default(null),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional().default('mean'),
-  prune_short: z.number().nullish().default(null),
-  prune_empty: z.boolean().optional().default(false),
-  merge_shared_mutations: z.boolean().optional().default(false),
-  prune_nodes_list: z.string().nullish().default(null),
-  prune_nodes_list_delimiter: z.string().length(1).optional().default(','),
-  prune_nodes_list_file: z.string().nullish().default(null),
-  prune_nodes_list_file_delimiter: z.string().length(1).optional().default('\n'),
-  $schema: z.string().optional()
-});
-
-/**
- * Amino-acid substitution model, mirroring the nucleotide `--model` but restricted to the values
- * that are sound over an amino-acid alphabet.
- *
- * The default `infer` matches augur, which reconstructs amino acids with a JC69-seeded inferred
- * GTR over the stop-inclusive alphabet (`augur ancestral` calls `TreeAnc(..., gtr='JC69',
- * alphabet='aa')` with `infer_gtr=True`). Empirical matrices are opt-in.
- */
-export const zAaModelName = z.union([
-  z.literal('infer'),
-  z.literal('jtt92')
-]);
-
-export const zAncestralOutputSelection = z.enum([
-  'All',
-  'Nwk',
-  'Nexus',
-  'Auspice',
-  'MatPb',
-  'MatJson',
-  'GraphJson',
-  'Dot',
-  'AugurNodeData',
-  'Gtr',
-  'ReconstructedNucFasta',
-  'ReconstructedAaFasta'
-]);
-
-export const zSampleMode = z.enum([
-  'argmax',
-  'root',
-  'all'
-]);
-
-/**
- * Sequence alignment input shared by all commands that read sequences.
- *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
- */
-export const zAncestralConfig = z.strictObject({
-  alignment: z.array(z.string()).optional().default([]),
-  vcf_reference: z.string().nullish().default(null),
-  tree: z.string().nullish().default(null),
-  alphabet: zAlphabetName.nullish().default(null),
-  model: zGtrModelName.optional().default('infer'),
-  model_params: z.array(z.string()).optional().default([]),
-  method_anc: zMethodAncestral.optional().default('marginal'),
-  dense: z.boolean().nullish().default(null),
-  gap_fill: zGapFill.optional().default('only-terminal'),
-  keep_overhangs: z.boolean().optional().default(false),
-  zero_based: z.boolean().optional().default(false),
-  include_leaves: z.boolean().optional().default(false),
-  impute_missing_data: z.boolean().optional().default(false),
-  reconstruct_tip_states: z.boolean().optional().default(false),
-  report_ambiguous: z.boolean().optional().default(false),
-  ignore_missing_alns: z.boolean().optional().default(false),
-  output_augur_node_data: z.string().nullish().default(null),
-  output_gtr: z.string().nullish().default(null),
-  output_reconstructed_nuc_fasta: z.string().nullish().default(null),
-  translations: z.string().nullish().default(null),
-  cdses: z.array(z.string()).optional().default([]),
-  annotation: z.string().nullish().default(null),
-  aa_root_sequence: z.string().nullish().default(null),
-  aa_model: zAaModelName.optional().default('infer'),
-  output_reconstructed_aa_fasta: z.string().nullish().default(null),
-  output_all: z.string().nullish().default(null),
-  output_nwk_style: z.array(zNwkStyleArg).optional().default([]),
-  output_tree_nwk: z.string().nullish().default(null),
-  output_tree_nexus: z.string().nullish().default(null),
-  output_tree_auspice: z.string().nullish().default(null),
-  output_tree_mat_pb: z.string().nullish().default(null),
-  output_tree_mat_json: z.string().nullish().default(null),
-  output_tree_graph_json: z.string().nullish().default(null),
-  output_tree_dot: z.string().nullish().default(null),
-  output_selection: z.array(zAncestralOutputSelection).optional().default([]),
-  ladderize: zLadderizeArg.nullish().default(null),
-  topology_order: zTopologyOrderArg.nullish().default(null),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.nullish().default(null),
-  topology_order_target_file: z.string().nullish().default(null),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional().default('mean'),
-  gtr_iterations: z.int().gte(0).optional().default(0),
-  site_specific_gtr: z.boolean().optional().default(false),
-  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).nullish().default(null),
-  aa: z.boolean().optional().default(false),
-  marginal: z.boolean().optional().default(false),
-  custom_gtr: z.string().nullish().default(null),
-  sample_from_profile: zSampleMode.optional().default('argmax'),
-  $schema: z.string().optional()
-});
-
-export const zClockOutputSelection = z.enum([
-  'All',
-  'Nwk',
-  'Nexus',
-  'Auspice',
-  'MatPb',
-  'MatJson',
-  'GraphJson',
-  'Dot',
-  'ClockModel',
-  'ClockCsv',
-  'ClockChartSvg',
-  'ClockChartPng'
-]);
-
-/**
- * Optimization method selection
- */
-export const zOptimizationMethod = z.union([
-  z.literal('grid'),
-  z.literal('brent'),
-  z.literal('golden-section')
-]);
-
-/**
- * Branch split optimization parameters
- */
-export const zBranchSplitArgs = z.strictObject({
-  method: zOptimizationMethod.optional().default('grid'),
-  n_points: z.int().gte(0).optional().default(11),
-  brent_max_iters: z.int().gte(0).optional().default(50),
-  brent_tolerance: z.number().optional().default(1e-12),
-  golden_max_iters: z.int().gte(0).optional().default(50),
-  golden_tolerance: z.number().optional().default(1e-12)
-});
-
-/**
- * Clock regression model parameters
- */
-export const zClockRegressionArgs = z.strictObject({
-  variance_factor: z.number().optional().default(0),
-  variance_offset: z.number().optional().default(0),
-  variance_offset_leaf: z.number().optional().default(1)
-});
-
-/**
- * Sequence alignment input shared by all commands that read sequences.
- *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
- */
-export const zClockConfig = z.strictObject({
-  alignment: z.array(z.string()).optional().default([]),
-  tree: z.string().nullish().default(null),
-  vcf_reference: z.string().nullish().default(null),
-  metadata: z.string().nullish().default(null),
-  metadata_id_columns: z.array(z.string()).optional().default([
-    'strain',
-    'name',
-    'accession'
-  ]),
-  metadata_delimiters: z.array(z.string().length(1)).optional().default([
-    ',',
-    '\t',
-    ';'
-  ]),
-  date_column: z.string().nullish().default(null),
-  date_format: z.string().optional().default('%Y-%m-%d'),
-  sequence_length: z.int().gte(0).nullish().default(null),
-  model: zGtrModelName.optional().default('infer'),
-  model_params: z.array(z.string()).optional().default([]),
-  branch_length_mode: zBranchLengthMode.optional().default('marginal'),
-  method_anc: zMethodAncestral.optional().default('marginal'),
-  clock_filter: z.number().optional().default(3),
-  reroot: zRerootMethod.nullish().default(null),
-  reroot_tips: z.array(z.string()).optional().default([]),
-  keep_root: z.boolean().optional().default(false),
-  prune_short: z.boolean().optional().default(false),
-  tip_slack: z.number().nullish().default(null),
-  covariation: z.boolean().optional().default(false),
-  allow_negative_rate: z.boolean().optional().default(false),
-  output_all: z.string().nullish().default(null),
-  output_nwk_style: z.array(zNwkStyleArg).optional().default([]),
-  output_tree_nwk: z.string().nullish().default(null),
-  output_tree_nexus: z.string().nullish().default(null),
-  output_tree_auspice: z.string().nullish().default(null),
-  output_tree_mat_pb: z.string().nullish().default(null),
-  output_tree_mat_json: z.string().nullish().default(null),
-  output_tree_graph_json: z.string().nullish().default(null),
-  output_tree_dot: z.string().nullish().default(null),
-  output_clock_model: z.string().nullish().default(null),
-  output_clock_csv: z.string().nullish().default(null),
-  output_clock_chart_svg: z.string().nullish().default(null),
-  output_clock_chart_png: z.string().nullish().default(null),
-  output_selection: z.array(zClockOutputSelection).optional().default([]),
-  ladderize: zLadderizeArg.nullish().default(null),
-  topology_order: zTopologyOrderArg.nullish().default(null),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.nullish().default(null),
-  topology_order_target_file: z.string().nullish().default(null),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional().default('mean'),
-  clock_filter_method: z.string().nullish().default(null),
-  plot_rtt: z.string().nullish().default(null),
-  prune_outliers: z.boolean().optional().default(false),
-  branch_split: zBranchSplitArgs.optional().default({
-    method: 'grid',
-    n_points: 11,
-    brent_max_iters: 50,
-    brent_tolerance: 1e-12,
-    golden_max_iters: 50,
-    golden_tolerance: 1e-12
-  }),
-  clock_regression: zClockRegressionArgs.optional().default({
-    variance_factor: 0,
-    variance_offset: 0,
-    variance_offset_leaf: 1
-  }),
-  $schema: z.string().optional()
-});
-
-export const zMugrationOutputSelection = z.enum([
-  'All',
-  'Nwk',
-  'Nexus',
-  'Auspice',
-  'MatPb',
-  'MatJson',
-  'GraphJson',
-  'Dot',
-  'AugurNodeData',
-  'Gtr',
-  'ConfidenceCsv',
-  'TraitsCsv'
-]);
-
-/**
- * Metadata identity and delimiter options shared by every command that reads a metadata table
- * (`timetree`, `clock`, `mugration`).
- *
- * `--metadata-id-columns` (alias `--name-column`) lists the candidate columns holding the taxon
- * identifier that links a metadata row to a tree tip; the first column present in the header wins.
- * Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
- * candidate field separators; the delimiter actually present in the file is used.
- */
-export const zMugrationConfig = z.strictObject({
-  tree: z.string().nullish().default(null),
-  attribute: z.string().nullish().default(null),
-  metadata: z.string().nullish().default(null),
-  weights: z.string().nullish().default(null),
-  metadata_id_columns: z.array(z.string()).optional().default([
-    'strain',
-    'name',
-    'accession'
-  ]),
-  metadata_delimiters: z.array(z.string().length(1)).optional().default([
-    ',',
-    '\t',
-    ';'
-  ]),
-  output_confidence_csv: z.string().nullish().default(null),
-  pc: z.number().nullish().default(null),
-  missing_data: z.string().optional().default('?'),
-  missing_weights_threshold: z.number().optional().default(0.5),
-  iterations: z.int().gte(0).optional().default(5),
-  sampling_bias_correction: z.number().nullish().default(null),
-  smooth_initial_pi: z.boolean().optional().default(false),
-  filter_uninformative_root: z.boolean().optional().default(false),
-  output_augur_node_data: z.string().nullish().default(null),
-  output_gtr: z.string().nullish().default(null),
-  output_traits_csv: z.string().nullish().default(null),
-  output_all: z.string().nullish().default(null),
-  output_nwk_style: z.array(zNwkStyleArg).optional().default([]),
-  output_tree_nwk: z.string().nullish().default(null),
-  output_tree_nexus: z.string().nullish().default(null),
-  output_tree_auspice: z.string().nullish().default(null),
-  output_tree_mat_pb: z.string().nullish().default(null),
-  output_tree_mat_json: z.string().nullish().default(null),
-  output_tree_graph_json: z.string().nullish().default(null),
-  output_tree_dot: z.string().nullish().default(null),
-  output_selection: z.array(zMugrationOutputSelection).optional().default([]),
-  ladderize: zLadderizeArg.nullish().default(null),
-  topology_order: zTopologyOrderArg.nullish().default(null),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.nullish().default(null),
-  topology_order_target_file: z.string().nullish().default(null),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional().default('mean'),
-  $schema: z.string().optional()
 });
 
 /**
@@ -1663,9 +1029,9 @@ export const zSettingSpec = z.object({
   nullable: z.boolean(),
   options: z.array(zSettingOption),
   item_kind: zListItemKind,
-  default_value: z.unknown(),
-  minimum: z.number().nullish(),
-  examples: z.array(z.unknown()),
+  default_value: zJsonValue.optional(),
+  minimum: z.number().optional(),
+  examples: z.array(zJsonValue),
   value_names: z.array(z.string()),
   conflicts: z.array(z.string()),
   help: z.string(),
@@ -1690,12 +1056,598 @@ export const zSettingCatalog = z.object({
   commands: z.array(zCommandSettings)
 });
 
+export const zBranchLengthMode = z.enum(['input', 'marginal']);
+
+export const zTimeMarginalMode = z.enum([
+  'never',
+  'always',
+  'only-final'
+]);
+
+export const zRerootMethod = z.enum([
+  'least-squares',
+  'min-dev',
+  'oldest',
+  'clock-filter'
+]);
+
+export const zGtrModelName = z.union([
+  z.literal('jc69'),
+  z.literal('k80'),
+  z.literal('f81'),
+  z.literal('hky85'),
+  z.literal('t92'),
+  z.literal('tn93'),
+  z.literal('jtt92'),
+  z.literal('infer')
+]);
+
+export const zMethodAncestral = z.enum(['marginal', 'parsimony']);
+
+export const zAlphabetName = z.enum([
+  'nuc',
+  'aa',
+  'aa-no-stop'
+]);
+
+export const zGapFill = z.enum([
+  'only-terminal',
+  'all',
+  'none'
+]);
+
+export const zDivergenceUnits = z.enum(['mutations-per-site', 'mutations']);
+
+/**
+ * CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
+ */
+export const zNwkStyleArg = z.enum([
+  'plain',
+  'beast',
+  'nhx'
+]);
+
+export const zTimetreeOutputSelection = z.enum([
+  'all',
+  'nwk',
+  'nexus',
+  'auspice',
+  'mat-pb',
+  'mat-json',
+  'graph-json',
+  'dot',
+  'augur-node-data',
+  'gtr',
+  'reconstructed-nuc-fasta',
+  'clock-model',
+  'clock-csv',
+  'confidence-tsv',
+  'tracelog',
+  'coalescent-tsv',
+  'coalescent-csv',
+  'coalescent-json'
+]);
+
+export const zLadderizeArg = z.enum([
+  'none',
+  'ascending',
+  'descending'
+]);
+
+export const zTopologyOrderArg = z.enum([
+  'keep',
+  'descendant-count',
+  'descendant-count-reverse',
+  'height',
+  'height-reverse',
+  'divergence',
+  'divergence-reverse',
+  'label',
+  'label-reverse',
+  'target-order',
+  'target-order-reverse'
+]);
+
+export const zTopologyOrderTargetSourceArg = z.enum([
+  'input',
+  'reference-topology',
+  'list'
+]);
+
+export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export const zTimetreeConfig = z.strictObject({
+  alignment: z.array(z.string()).optional(),
+  tree: z.string().optional(),
+  vcf_reference: z.string().optional(),
+  metadata: z.string().optional(),
+  metadata_id_columns: z.array(z.string()).optional(),
+  metadata_delimiters: z.array(z.string().length(1)).optional(),
+  date_column: z.string().optional(),
+  date_format: z.string().optional(),
+  sequence_length: z.int().gte(0).optional(),
+  clock_rate: z.number().optional(),
+  clock_std_dev: z.number().optional(),
+  branch_length_mode: zBranchLengthMode.optional(),
+  time_marginal: zTimeMarginalMode.optional(),
+  confidence: z.boolean().optional(),
+  keep_polytomies: z.boolean().optional(),
+  resolve_polytomies: z.boolean().optional(),
+  relax: z.array(z.number()).optional(),
+  max_iter: z.int().gte(0).optional(),
+  coalescent: z.number().optional(),
+  coalescent_opt: z.boolean().optional(),
+  coalescent_skyline: z.boolean().optional(),
+  skyline_n_points: z.int().gte(0).optional(),
+  skyline_stiffness: z.number().optional(),
+  coalescent_confidence: z.number().optional(),
+  n_branches_posterior: z.int().gte(0).optional(),
+  plot_tree: z.string().optional(),
+  plot_rtt: z.string().optional(),
+  tip_labels: z.boolean().optional(),
+  no_tip_labels: z.boolean().optional(),
+  clock_filter: z.number().optional(),
+  n_iqd: z.number().optional(),
+  reroot: zRerootMethod.optional(),
+  reroot_tips: z.array(z.string()).optional(),
+  keep_root: z.boolean().optional(),
+  allow_negative_rate: z.boolean().optional(),
+  tip_slack: z.number().optional(),
+  covariation: z.boolean().optional(),
+  model: zGtrModelName.optional(),
+  model_params: z.array(z.string()).optional(),
+  method_anc: zMethodAncestral.optional(),
+  alphabet: zAlphabetName.optional(),
+  dense: z.boolean().optional(),
+  gap_fill: zGapFill.optional(),
+  keep_overhangs: z.boolean().optional(),
+  zero_based: z.boolean().optional(),
+  include_leaves: z.boolean().optional(),
+  impute_missing_data: z.boolean().optional(),
+  reconstruct_tip_states: z.boolean().optional(),
+  report_ambiguous: z.boolean().optional(),
+  no_indels: z.boolean().optional(),
+  divergence_units: zDivergenceUnits.optional(),
+  output_augur_node_data: z.string().optional(),
+  output_gtr: z.string().optional(),
+  output_reconstructed_nuc_fasta: z.string().optional(),
+  output_clock_model: z.string().optional(),
+  output_clock_csv: z.string().optional(),
+  output_confidence_tsv: z.string().optional(),
+  output_tracelog: z.string().optional(),
+  output_coalescent_tsv: z.string().optional(),
+  output_coalescent_csv: z.string().optional(),
+  output_coalescent_json: z.string().optional(),
+  output_all: z.string().optional(),
+  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  output_tree_nwk: z.string().optional(),
+  output_tree_nexus: z.string().optional(),
+  output_tree_auspice: z.string().optional(),
+  output_tree_mat_pb: z.string().optional(),
+  output_tree_mat_json: z.string().optional(),
+  output_tree_graph_json: z.string().optional(),
+  output_tree_dot: z.string().optional(),
+  output_selection: z.array(zTimetreeOutputSelection).optional(),
+  ladderize: zLadderizeArg.optional(),
+  topology_order: zTopologyOrderArg.optional(),
+  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
+  topology_order_target_file: z.string().optional(),
+  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
+  aa: z.boolean().optional(),
+  custom_gtr: z.string().optional(),
+  clock_filter_method: z.string().optional(),
+  gen_per_year: z.number().optional()
+});
+
+export const zOptimizeOutputSelection = z.enum([
+  'all',
+  'nwk',
+  'nexus',
+  'auspice',
+  'mat-pb',
+  'mat-json',
+  'graph-json',
+  'dot',
+  'augur-node-data',
+  'gtr'
+]);
+
+/**
+ * Controls whether marginal reconstruction estimates initial branch lengths
+ * from substitutions divided by effective alignment length. Preserving valid
+ * input lengths can provide a better Newton starting point.
+ */
+export const zInitialGuessMode = z.union([
+  z.literal('auto'),
+  z.literal('always'),
+  z.literal('never')
+]);
+
+/**
+ * Per-edge branch length optimization method.
+ *
+ * Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
+ * length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
+ * vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
+ */
+export const zBranchOptMethod = z.union([
+  z.literal('brent'),
+  z.literal('brent-sqrt'),
+  z.literal('brent-log'),
+  z.literal('newton'),
+  z.literal('newton-sqrt'),
+  z.literal('newton-log')
+]);
+
+/**
+ * Reroot methods available in the optimize command.
+ *
+ * Only date-free methods are valid here because optimize has no sampling dates.
+ * Date-dependent methods (least-squares, oldest, clock-filter) are available
+ * in the timetree and clock commands.
+ */
+export const zOptimizeRerootMethod = z.enum(['min-dev']);
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export const zOptimizeConfig = z.strictObject({
+  alignment: z.array(z.string()).optional(),
+  tree: z.string().optional(),
+  alphabet: zAlphabetName.optional(),
+  model: zGtrModelName.optional(),
+  model_params: z.array(z.string()).optional(),
+  dense: z.boolean().optional(),
+  output_all: z.string().optional(),
+  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  output_tree_nwk: z.string().optional(),
+  output_tree_nexus: z.string().optional(),
+  output_tree_auspice: z.string().optional(),
+  output_tree_mat_pb: z.string().optional(),
+  output_tree_mat_json: z.string().optional(),
+  output_tree_graph_json: z.string().optional(),
+  output_tree_dot: z.string().optional(),
+  divergence_units: zDivergenceUnits.optional(),
+  output_augur_node_data: z.string().optional(),
+  output_gtr: z.string().optional(),
+  output_selection: z.array(zOptimizeOutputSelection).optional(),
+  ladderize: zLadderizeArg.optional(),
+  topology_order: zTopologyOrderArg.optional(),
+  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
+  topology_order_target_file: z.string().optional(),
+  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
+  max_iter: z.int().gte(0).optional(),
+  dp: z.number().optional(),
+  damping: z.number().optional(),
+  branch_length_initial_guess: zInitialGuessMode.optional(),
+  opt_method: zBranchOptMethod.optional(),
+  no_indels: z.boolean().optional(),
+  reroot: zOptimizeRerootMethod.optional(),
+  reroot_tips: z.array(z.string()).optional(),
+  keep_root: z.boolean().optional(),
+  no_collapse_short_branches: z.boolean().optional(),
+  no_merge_siblings: z.boolean().optional(),
+  no_flip_parent_child: z.boolean().optional(),
+  gap_fill: zGapFill.optional(),
+  keep_overhangs: z.boolean().optional()
+});
+
+export const zPruneOutputSelection = z.enum([
+  'all',
+  'nwk',
+  'nexus',
+  'auspice',
+  'mat-pb',
+  'mat-json',
+  'graph-json',
+  'dot',
+  'gtr'
+]);
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export const zPruneConfig = z.strictObject({
+  alignment: z.array(z.string()).optional(),
+  tree: z.string().optional(),
+  alphabet: zAlphabetName.optional(),
+  output_all: z.string().optional(),
+  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  output_tree_nwk: z.string().optional(),
+  output_tree_nexus: z.string().optional(),
+  output_tree_auspice: z.string().optional(),
+  output_tree_mat_pb: z.string().optional(),
+  output_tree_mat_json: z.string().optional(),
+  output_tree_graph_json: z.string().optional(),
+  output_tree_dot: z.string().optional(),
+  output_gtr: z.string().optional(),
+  output_selection: z.array(zPruneOutputSelection).optional(),
+  ladderize: zLadderizeArg.optional(),
+  topology_order: zTopologyOrderArg.optional(),
+  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
+  topology_order_target_file: z.string().optional(),
+  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
+  prune_short: z.number().optional(),
+  prune_empty: z.boolean().optional(),
+  merge_shared_mutations: z.boolean().optional(),
+  prune_nodes_list: z.string().optional(),
+  prune_nodes_list_delimiter: z.string().length(1).optional(),
+  prune_nodes_list_file: z.string().optional(),
+  prune_nodes_list_file_delimiter: z.string().length(1).optional()
+});
+
+/**
+ * Amino-acid substitution model, mirroring the nucleotide `--model` but restricted to the values
+ * that are sound over an amino-acid alphabet.
+ *
+ * The default `infer` matches augur, which reconstructs amino acids with a JC69-seeded inferred
+ * GTR over the stop-inclusive alphabet (`augur ancestral` calls `TreeAnc(..., gtr='JC69',
+ * alphabet='aa')` with `infer_gtr=True`). Empirical matrices are opt-in.
+ */
+export const zAaModelName = z.union([
+  z.literal('infer'),
+  z.literal('jtt92')
+]);
+
+export const zAncestralOutputSelection = z.enum([
+  'all',
+  'nwk',
+  'nexus',
+  'auspice',
+  'mat-pb',
+  'mat-json',
+  'graph-json',
+  'dot',
+  'augur-node-data',
+  'gtr',
+  'reconstructed-nuc-fasta',
+  'reconstructed-aa-fasta'
+]);
+
+export const zSampleMode = z.enum([
+  'argmax',
+  'root',
+  'all'
+]);
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export const zAncestralConfig = z.strictObject({
+  alignment: z.array(z.string()).optional(),
+  vcf_reference: z.string().optional(),
+  tree: z.string().optional(),
+  alphabet: zAlphabetName.optional(),
+  model: zGtrModelName.optional(),
+  model_params: z.array(z.string()).optional(),
+  method_anc: zMethodAncestral.optional(),
+  dense: z.boolean().optional(),
+  gap_fill: zGapFill.optional(),
+  keep_overhangs: z.boolean().optional(),
+  zero_based: z.boolean().optional(),
+  include_leaves: z.boolean().optional(),
+  impute_missing_data: z.boolean().optional(),
+  reconstruct_tip_states: z.boolean().optional(),
+  report_ambiguous: z.boolean().optional(),
+  ignore_missing_alns: z.boolean().optional(),
+  output_augur_node_data: z.string().optional(),
+  output_gtr: z.string().optional(),
+  output_reconstructed_nuc_fasta: z.string().optional(),
+  translations: z.string().optional(),
+  cdses: z.array(z.string()).optional(),
+  annotation: z.string().optional(),
+  aa_root_sequence: z.string().optional(),
+  aa_model: zAaModelName.optional(),
+  output_reconstructed_aa_fasta: z.string().optional(),
+  output_all: z.string().optional(),
+  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  output_tree_nwk: z.string().optional(),
+  output_tree_nexus: z.string().optional(),
+  output_tree_auspice: z.string().optional(),
+  output_tree_mat_pb: z.string().optional(),
+  output_tree_mat_json: z.string().optional(),
+  output_tree_graph_json: z.string().optional(),
+  output_tree_dot: z.string().optional(),
+  output_selection: z.array(zAncestralOutputSelection).optional(),
+  ladderize: zLadderizeArg.optional(),
+  topology_order: zTopologyOrderArg.optional(),
+  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
+  topology_order_target_file: z.string().optional(),
+  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
+  gtr_iterations: z.int().gte(0).optional(),
+  site_specific_gtr: z.boolean().optional(),
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
+  aa: z.boolean().optional(),
+  marginal: z.boolean().optional(),
+  custom_gtr: z.string().optional(),
+  sample_from_profile: zSampleMode.optional()
+});
+
+export const zClockOutputSelection = z.enum([
+  'all',
+  'nwk',
+  'nexus',
+  'auspice',
+  'mat-pb',
+  'mat-json',
+  'graph-json',
+  'dot',
+  'clock-model',
+  'clock-csv',
+  'clock-chart-svg',
+  'clock-chart-png'
+]);
+
+/**
+ * Optimization method selection
+ */
+export const zOptimizationMethod = z.union([
+  z.literal('grid'),
+  z.literal('brent'),
+  z.literal('golden-section')
+]);
+
+/**
+ * Branch split optimization parameters
+ */
+export const zBranchSplitArgs = z.strictObject({
+  method: zOptimizationMethod.optional(),
+  n_points: z.int().gte(0).optional(),
+  brent_max_iters: z.int().gte(0).optional(),
+  brent_tolerance: z.number().optional(),
+  golden_max_iters: z.int().gte(0).optional(),
+  golden_tolerance: z.number().optional()
+});
+
+/**
+ * Clock regression model parameters
+ */
+export const zClockRegressionArgs = z.strictObject({
+  variance_factor: z.number().optional(),
+  variance_offset: z.number().optional(),
+  variance_offset_leaf: z.number().optional()
+});
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export const zClockConfig = z.strictObject({
+  alignment: z.array(z.string()).optional(),
+  tree: z.string().optional(),
+  vcf_reference: z.string().optional(),
+  metadata: z.string().optional(),
+  metadata_id_columns: z.array(z.string()).optional(),
+  metadata_delimiters: z.array(z.string().length(1)).optional(),
+  date_column: z.string().optional(),
+  date_format: z.string().optional(),
+  sequence_length: z.int().gte(0).optional(),
+  model: zGtrModelName.optional(),
+  model_params: z.array(z.string()).optional(),
+  branch_length_mode: zBranchLengthMode.optional(),
+  method_anc: zMethodAncestral.optional(),
+  clock_filter: z.number().optional(),
+  reroot: zRerootMethod.optional(),
+  reroot_tips: z.array(z.string()).optional(),
+  keep_root: z.boolean().optional(),
+  prune_short: z.boolean().optional(),
+  tip_slack: z.number().optional(),
+  covariation: z.boolean().optional(),
+  allow_negative_rate: z.boolean().optional(),
+  output_all: z.string().optional(),
+  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  output_tree_nwk: z.string().optional(),
+  output_tree_nexus: z.string().optional(),
+  output_tree_auspice: z.string().optional(),
+  output_tree_mat_pb: z.string().optional(),
+  output_tree_mat_json: z.string().optional(),
+  output_tree_graph_json: z.string().optional(),
+  output_tree_dot: z.string().optional(),
+  output_clock_model: z.string().optional(),
+  output_clock_csv: z.string().optional(),
+  output_clock_chart_svg: z.string().optional(),
+  output_clock_chart_png: z.string().optional(),
+  output_selection: z.array(zClockOutputSelection).optional(),
+  ladderize: zLadderizeArg.optional(),
+  topology_order: zTopologyOrderArg.optional(),
+  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
+  topology_order_target_file: z.string().optional(),
+  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
+  clock_filter_method: z.string().optional(),
+  plot_rtt: z.string().optional(),
+  prune_outliers: z.boolean().optional(),
+  branch_split: zBranchSplitArgs.optional(),
+  clock_regression: zClockRegressionArgs.optional()
+});
+
+export const zMugrationOutputSelection = z.enum([
+  'all',
+  'nwk',
+  'nexus',
+  'auspice',
+  'mat-pb',
+  'mat-json',
+  'graph-json',
+  'dot',
+  'augur-node-data',
+  'gtr',
+  'confidence-csv',
+  'traits-csv'
+]);
+
+/**
+ * Metadata identity and delimiter options shared by every command that reads a metadata table
+ * (`timetree`, `clock`, `mugration`).
+ *
+ * `--metadata-id-columns` (alias `--name-column`) lists the candidate columns holding the taxon
+ * identifier that links a metadata row to a tree tip; the first column present in the header wins.
+ * Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
+ * candidate field separators; the delimiter actually present in the file is used.
+ */
+export const zMugrationConfig = z.strictObject({
+  tree: z.string().optional(),
+  attribute: z.string().optional(),
+  metadata: z.string().optional(),
+  weights: z.string().optional(),
+  metadata_id_columns: z.array(z.string()).optional(),
+  metadata_delimiters: z.array(z.string().length(1)).optional(),
+  output_confidence_csv: z.string().optional(),
+  pc: z.number().optional(),
+  missing_data: z.string().optional(),
+  missing_weights_threshold: z.number().optional(),
+  iterations: z.int().gte(0).optional(),
+  sampling_bias_correction: z.number().optional(),
+  smooth_initial_pi: z.boolean().optional(),
+  filter_uninformative_root: z.boolean().optional(),
+  output_augur_node_data: z.string().optional(),
+  output_gtr: z.string().optional(),
+  output_traits_csv: z.string().optional(),
+  output_all: z.string().optional(),
+  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  output_tree_nwk: z.string().optional(),
+  output_tree_nexus: z.string().optional(),
+  output_tree_auspice: z.string().optional(),
+  output_tree_mat_pb: z.string().optional(),
+  output_tree_mat_json: z.string().optional(),
+  output_tree_graph_json: z.string().optional(),
+  output_tree_dot: z.string().optional(),
+  output_selection: z.array(zMugrationOutputSelection).optional(),
+  ladderize: zLadderizeArg.optional(),
+  topology_order: zTopologyOrderArg.optional(),
+  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
+  topology_order_target_file: z.string().optional(),
+  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional()
+});
+
 /**
  * The configuration is accepted.
  */
 export const zCheckConfigResponseValid = z.object({
   command: zAppCommand,
-  config: z.record(z.string(), z.unknown()),
+  config: zSparseConfig,
   code: zConfigCode,
   checks: z.array(zRunCheck),
   status: z.literal('valid')
@@ -1709,7 +1661,7 @@ export const zCheckConfigResponseInvalid = z.object({
   message: z.string(),
   causes: z.array(z.string()),
   problems: z.array(zConfigProblem),
-  rendered: z.string().nullish(),
+  rendered: z.string().optional(),
   messages: z.array(z.string()),
   checks: z.array(zRunCheck),
   status: z.literal('invalid')
@@ -1727,10 +1679,10 @@ export const zCheckConfigResponse = z.discriminatedUnion('status', [
  * The configuration is accepted.
  */
 export const zRunConfigResponseValid = z.object({
-  config: z.record(z.string(), z.unknown()),
+  config: zSparseConfig,
   code: zConfigCode,
-  config_hash: z.string().nullish(),
-  config_hash_error: z.string().nullish(),
+  config_hash: z.string().optional(),
+  config_hash_error: z.string().optional(),
   status: z.literal('valid')
 });
 
@@ -1750,6 +1702,138 @@ export const zRunConfigResponseInvalid = z.object({
 export const zRunConfigResponse = z.discriminatedUnion('status', [
   zRunConfigResponseValid,
   zRunConfigResponseInvalid
+]);
+
+export const zRunRecordTimetree = z.object({
+  id: zJobId,
+  title: z.string(),
+  status: zRunStatus,
+  pinned: z.boolean(),
+  created_at: z.string(),
+  started_at: z.string().optional(),
+  finished_at: z.string().optional(),
+  duration_seconds: z.number().optional(),
+  treetime_version: z.string(),
+  inputs: z.array(zRunInput),
+  config_hash: z.string().optional(),
+  changed_settings: z.array(z.string()),
+  headline: zRunHeadline,
+  output_files: z.array(zOutputFile),
+  error: zRunError.optional(),
+  command: z.literal('timetree'),
+  config: zTimetreeConfig
+});
+
+export const zRunRecordOptimize = z.object({
+  id: zJobId,
+  title: z.string(),
+  status: zRunStatus,
+  pinned: z.boolean(),
+  created_at: z.string(),
+  started_at: z.string().optional(),
+  finished_at: z.string().optional(),
+  duration_seconds: z.number().optional(),
+  treetime_version: z.string(),
+  inputs: z.array(zRunInput),
+  config_hash: z.string().optional(),
+  changed_settings: z.array(z.string()),
+  headline: zRunHeadline,
+  output_files: z.array(zOutputFile),
+  error: zRunError.optional(),
+  command: z.literal('optimize'),
+  config: zOptimizeConfig
+});
+
+export const zRunRecordPrune = z.object({
+  id: zJobId,
+  title: z.string(),
+  status: zRunStatus,
+  pinned: z.boolean(),
+  created_at: z.string(),
+  started_at: z.string().optional(),
+  finished_at: z.string().optional(),
+  duration_seconds: z.number().optional(),
+  treetime_version: z.string(),
+  inputs: z.array(zRunInput),
+  config_hash: z.string().optional(),
+  changed_settings: z.array(z.string()),
+  headline: zRunHeadline,
+  output_files: z.array(zOutputFile),
+  error: zRunError.optional(),
+  command: z.literal('prune'),
+  config: zPruneConfig
+});
+
+export const zRunRecordAncestral = z.object({
+  id: zJobId,
+  title: z.string(),
+  status: zRunStatus,
+  pinned: z.boolean(),
+  created_at: z.string(),
+  started_at: z.string().optional(),
+  finished_at: z.string().optional(),
+  duration_seconds: z.number().optional(),
+  treetime_version: z.string(),
+  inputs: z.array(zRunInput),
+  config_hash: z.string().optional(),
+  changed_settings: z.array(z.string()),
+  headline: zRunHeadline,
+  output_files: z.array(zOutputFile),
+  error: zRunError.optional(),
+  command: z.literal('ancestral'),
+  config: zAncestralConfig
+});
+
+export const zRunRecordClock = z.object({
+  id: zJobId,
+  title: z.string(),
+  status: zRunStatus,
+  pinned: z.boolean(),
+  created_at: z.string(),
+  started_at: z.string().optional(),
+  finished_at: z.string().optional(),
+  duration_seconds: z.number().optional(),
+  treetime_version: z.string(),
+  inputs: z.array(zRunInput),
+  config_hash: z.string().optional(),
+  changed_settings: z.array(z.string()),
+  headline: zRunHeadline,
+  output_files: z.array(zOutputFile),
+  error: zRunError.optional(),
+  command: z.literal('clock'),
+  config: zClockConfig
+});
+
+export const zRunRecordMugration = z.object({
+  id: zJobId,
+  title: z.string(),
+  status: zRunStatus,
+  pinned: z.boolean(),
+  created_at: z.string(),
+  started_at: z.string().optional(),
+  finished_at: z.string().optional(),
+  duration_seconds: z.number().optional(),
+  treetime_version: z.string(),
+  inputs: z.array(zRunInput),
+  config_hash: z.string().optional(),
+  changed_settings: z.array(z.string()),
+  headline: zRunHeadline,
+  output_files: z.array(zOutputFile),
+  error: zRunError.optional(),
+  command: z.literal('mugration'),
+  config: zMugrationConfig
+});
+
+/**
+ * Durable record of one command run, stored as `run.json` in the run's folder.
+ */
+export const zRunRecord = z.discriminatedUnion('command', [
+  zRunRecordTimetree,
+  zRunRecordOptimize,
+  zRunRecordPrune,
+  zRunRecordAncestral,
+  zRunRecordClock,
+  zRunRecordMugration
 ]);
 
 export const zCommandResultsClock = z.object({
@@ -1822,19 +1906,19 @@ export const zCoalescentPrior = z.discriminatedUnion('kind', [
  * Estimates of a `timetree` run.
  */
 export const zTimetreeEstimates = z.object({
-  root_date: zYearDate.nullish(),
-  root_interval: zDateInterval.nullish(),
+  root_date: zYearDate.optional(),
+  root_interval: zDateInterval.optional(),
   root_near_interval_edge: z.boolean(),
-  clock_rate: z.number().nullish(),
-  clock_rate_std: z.number().nullish(),
+  clock_rate: z.number().optional(),
+  clock_rate_std: z.number().optional(),
   clock_rate_fixed: z.boolean(),
-  r: z.number().nullish(),
-  r_squared: z.number().nullish(),
+  r: z.number().optional(),
+  r_squared: z.number().optional(),
   samples: z.int().gte(0),
   excluded_samples: z.int().gte(0),
   coalescent_prior: zCoalescentPrior,
-  relaxed_clock: zRelaxedClock.nullish(),
-  log_likelihood: zJsonFloat.nullish(),
+  relaxed_clock: zRelaxedClock.optional(),
+  log_likelihood: zJsonFloat.optional(),
   iterations: z.int().gte(0)
 });
 
@@ -1842,8 +1926,8 @@ export const zTimetreeEstimates = z.object({
  * Results of a `timetree` run.
  */
 export const zTimetreeResults = z.object({
-  estimates: zTimetreeEstimates.nullish(),
-  root_to_tip: zRootToTip.nullish(),
+  estimates: zTimetreeEstimates.optional(),
+  root_to_tip: zRootToTip.optional(),
   iterations: z.array(zIterationRow),
   skyline: z.array(zSkylineSegment)
 });
@@ -1854,11 +1938,11 @@ export const zTimetreeResults = z.object({
 export const zEstimateComparison = z.object({
   first: zTimetreeEstimates,
   second: zTimetreeEstimates,
-  root_shift_days: z.number().nullish(),
-  root_interval_change_days: z.number().nullish(),
-  clock_rate_change_percent: z.number().nullish(),
+  root_shift_days: z.number().optional(),
+  root_interval_change_days: z.number().optional(),
+  clock_rate_change_percent: z.number().optional(),
   excluded_samples_change: z.int().min(-9007199254740991, { error: 'Invalid value: Expected int64 to be >= -9007199254740991, the smallest exact JSON integer' }).max(9007199254740991, { error: 'Invalid value: Expected int64 to be <= 9007199254740991, the largest exact JSON integer' }),
-  log_likelihood_change: z.number().nullish()
+  log_likelihood_change: z.number().optional()
 });
 
 export const zCommandResultsTimetree = z.object({
@@ -1882,7 +1966,7 @@ export const zCommandResults = z.discriminatedUnion('command', [
  * Results of a finished run, read from its output files.
  */
 export const zRunResults = z.object({
-  tree: zResultTree.nullish(),
+  tree: zResultTree.optional(),
   results: zCommandResults,
   citation: zCitation,
   problems: z.array(zOutputProblem)
@@ -1893,8 +1977,8 @@ export const zRunResults = z.object({
  */
 export const zSettingDifferenceSetting = z.object({
   key: z.string(),
-  first: z.unknown(),
-  second: z.unknown(),
+  first: zJsonValue.optional(),
+  second: zJsonValue.optional(),
   kind: z.literal('setting')
 });
 
@@ -1930,9 +2014,9 @@ export const zSettingsComparison = z.object({
  * Comparison of two runs: their settings and their results.
  */
 export const zRunComparison = z.object({
-  settings: zSettingsComparison.nullish(),
-  estimates: zEstimateComparison.nullish(),
-  ancestors: zAncestorComparison.nullish()
+  settings: zSettingsComparison.optional(),
+  estimates: zEstimateComparison.optional(),
+  ancestors: zAncestorComparison.optional()
 });
 
 /**
@@ -2087,7 +2171,7 @@ export const zExamplesDownloadIdle = z.object({
  */
 export const zExamplesDownloadRunning = z.object({
   received: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
-  total: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).nullish(),
+  total: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   state: z.literal('running')
 });
 
@@ -2122,7 +2206,7 @@ export const zExamplesDownload = z.discriminatedUnion('state', [
  */
 export const zExamplesDownloadStatus = z.object({
   download: zExamplesDownload,
-  seq: z.int().gte(0).nullish()
+  seq: z.int().gte(0).optional()
 });
 
 /**
@@ -2144,57 +2228,6 @@ export const zAppEvent = z.discriminatedUnion('kind', [
   zAppEventRunUpdated,
   zAppEventExamplesDownload,
   zAppEventResync
-]);
-
-/**
- * The job was accepted; always the first event.
- */
-export const zJobEventStarted = z.object({
-  type: z.literal('started'),
-  data: zJobStarted
-});
-
-/**
- * A stage of the computation began or advanced.
- */
-export const zJobEventProgress = z.object({
-  type: z.literal('progress'),
-  data: zProgressEvent
-});
-
-/**
- * A diagnostic message of the computation.
- */
-export const zJobEventLog = z.object({
-  type: z.literal('log'),
-  data: zLogEvent
-});
-
-/**
- * Convergence values of one timetree optimization iteration.
- */
-export const zJobEventIteration = z.object({
-  type: z.literal('iteration'),
-  data: zIterationEvent
-});
-
-/**
- * The job ended; always the last event, exactly once per job.
- */
-export const zJobEventTerminal = z.object({
-  type: z.literal('terminal'),
-  data: zTerminalEvent
-});
-
-/**
- * Event of a running job, in the order the job emits them.
- */
-export const zJobEvent = z.discriminatedUnion('type', [
-  zJobEventStarted,
-  zJobEventProgress,
-  zJobEventLog,
-  zJobEventIteration,
-  zJobEventTerminal
 ]);
 
 /**

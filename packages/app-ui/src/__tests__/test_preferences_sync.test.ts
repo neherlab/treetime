@@ -9,8 +9,8 @@ import { usePreferencesStore } from "../store/preferences";
 
 describe("sync preferences", () => {
   beforeEach(() => {
-    usePreferencesStore.setState({ theme: undefined, sidebarWidth: undefined });
-    useDraftStore.setState({ ...freshDraft("timetree"), epoch: 0 });
+    usePreferencesStore.setState({ preferences: {} });
+    useDraftStore.setState({ draft: freshDraft("timetree"), epoch: 0 });
   });
 
   test("loaded preferences reach the stores and the theme", () => {
@@ -35,18 +35,15 @@ describe("sync preferences", () => {
       themes.push(theme);
     });
 
-    expect([themes, currentPreferences()]).toStrictEqual([
-      [],
-      { theme: null, sidebar_width: null, draft: freshDraft("timetree") },
-    ]);
+    expect([themes, currentPreferences()]).toStrictEqual([[], { draft: freshDraft("timetree") }]);
   });
 });
 
 describe("sync saver", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    usePreferencesStore.setState({ theme: undefined, sidebarWidth: undefined });
-    useDraftStore.setState({ ...freshDraft("timetree"), epoch: 0 });
+    usePreferencesStore.setState({ preferences: {} });
+    useDraftStore.setState({ draft: freshDraft("timetree"), epoch: 0 });
   });
 
   afterEach(() => {
@@ -64,7 +61,7 @@ describe("sync saver", () => {
     saver.dispose();
 
     expect(storage.saved).toStrictEqual([
-      { theme: null, sidebar_width: 310, draft: { ...freshDraft("timetree"), search: "clock" } },
+      { sidebar_width: 310, draft: { ...freshDraft("timetree"), search: "clock" } },
     ]);
   });
 

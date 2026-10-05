@@ -1,15 +1,14 @@
-import type { AppCommand } from "@neherlab/app-contracts";
+import type { SparseConfig, AppCommand } from "@neherlab/app-contracts";
 import { useCallback } from "react";
 
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { APP_COMMANDS, COMMAND_INFO } from "../settings/commands";
 import { carryOverConfig } from "../settings/config";
-import type { JsonObject } from "../settings/json";
 import { useDraftStore } from "../store/draft";
 import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "../ui/field";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 
-export function CommandCards({ command, config }: { command: AppCommand; config: JsonObject }) {
+export function CommandCards({ command, config }: { command: AppCommand; config: SparseConfig }) {
   const select = useCallback(
     (value: string) => {
       const target = APP_COMMANDS.find((candidate) => candidate === value);
@@ -18,14 +17,15 @@ export function CommandCards({ command, config }: { command: AppCommand; config:
         return;
       }
 
-      const targetSpecs = COMMAND_SETTINGS[target].specs;
+      const targetSpecs = COMMAND_SETTINGS[target].settings;
       const keys = new Set(targetSpecs.map((spec) => spec.key));
-      const { sources, load } = useDraftStore.getState();
+      const { draft, load } = useDraftStore.getState();
 
       load({
+        ...draft,
         command: target,
-        config: carryOverConfig(targetSpecs, COMMAND_SETTINGS[command].specs, config),
-        sources: Object.fromEntries(Object.entries(sources).filter(([key]) => keys.has(key))),
+        config: carryOverConfig(targetSpecs, COMMAND_SETTINGS[command].settings, config),
+        sources: Object.fromEntries(Object.entries(draft.sources).filter(([key]) => keys.has(key))),
       });
     },
     [command, config],

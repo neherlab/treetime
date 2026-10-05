@@ -16,6 +16,7 @@ use clap::ValueHint;
 use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
 use treetime::ancestral::params::MethodAncestral;
@@ -213,9 +214,11 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
   }
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
+#[schemars(rename = "TimetreeConfig")]
 pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]

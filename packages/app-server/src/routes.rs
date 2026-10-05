@@ -433,7 +433,9 @@ async fn runs_create(
   State(state): State<Arc<AppState>>,
   ApiJson(request): ApiJson<CreateRunRequest>,
 ) -> Result<Json<RunRecord>, AppError> {
-  call(&state, move |service| service.create_run(request)).await.map(Json)
+  call(&state, move |service| service.create_run(&request))
+    .await
+    .map(Json)
 }
 
 async fn runs_get(
@@ -448,7 +450,7 @@ async fn runs_start(
   ApiPath(RunPath { id }): ApiPath<RunPath>,
   ApiJson(request): ApiJson<StartRunRequest>,
 ) -> Result<Json<RunRecord>, AppError> {
-  call(&state, move |service| service.start_run(&id, request))
+  call(&state, move |service| service.start_run(&id, &request))
     .await
     .map(Json)
 }

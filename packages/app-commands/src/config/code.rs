@@ -26,7 +26,7 @@ pub fn config_code(command: AppCommand, config: &Map<String, Value>) -> Result<C
     .settings
     .iter()
     .filter(|spec| matches!(spec.role, SettingRole::Input | SettingRole::InputTemplate))
-    .map(|spec| (spec, setting_value(config, spec)))
+    .filter_map(|spec| Some((spec, setting_ref(config, &spec.path)?.clone())))
     .filter(|(_, value)| has_path(value))
     .collect_vec();
   let changed = changed_settings(&settings, config);
@@ -54,7 +54,7 @@ pub fn setting_tokens(arg: &Arg, flag: &str, value: &Value) -> Option<Vec<String
   match value {
     Value::Null => None,
     Value::Array(items) => list_tokens(arg, flag, items),
-    _ => Some(vec![flag.to_owned(), cli_value(arg, value)]),
+    _ => Some(vec![flag.to_owned(), cli_value(value)]),
   }
 }
 
@@ -109,15 +109,11 @@ fn changed_settings<'a>(settings: &'a CommandSettings, config: &Map<String, Valu
     .settings
     .iter()
     .filter(|spec| spec.role == SettingRole::Setting)
-    .map(|spec| (spec, setting_value(config, spec)))
-    .filter(|(spec, value)| *value != spec.default_value)
+    .filter_map(|spec| {
+      let value = setting_ref(config, &spec.path)?;
+      (Some(value) != spec.default_value.as_deref()).then(|| (spec, value.clone()))
+    })
     .collect()
-}
-
-fn setting_value(config: &Map<String, Value>, spec: &SettingSpec) -> Value {
-  setting_ref(config, &spec.path)
-    .cloned()
-    .unwrap_or_else(|| spec.default_value.clone())
 }
 
 fn command_line(
@@ -242,7 +238,7 @@ fn list_tokens(arg: &Arg, flag: &str, items: &[Value]) -> Option<Vec<String>> {
   if items.is_empty() {
     return None;
   }
-  let values = items.iter().map(|item| cli_value(arg, item)).collect_vec();
+  let values = items.iter().map(cli_value).collect_vec();
   if let Some(delimiter) = arg.get_value_delimiter() {
     return Some(vec![flag.to_owned(), values.join(&delimiter.to_string())]);
   }
@@ -263,24 +259,11 @@ fn list_tokens(arg: &Arg, flag: &str, items: &[Value]) -> Option<Vec<String>> {
   )
 }
 
-fn cli_value(arg: &Arg, value: &Value) -> String {
-  let text = match value {
+fn cli_value(value: &Value) -> String {
+  match value {
     Value::String(text) => text.clone(),
     Value::Array(_) | Value::Object(_) | Value::Number(_) | Value::Bool(_) | Value::Null => value.to_string(),
-  };
-  arg
-    .get_possible_values()
-    .into_iter()
-    .find(|possible| spelling_key(possible.get_name()) == spelling_key(&text))
-    .map_or(text, |possible| possible.get_name().to_owned())
-}
-
-fn spelling_key(value: &str) -> String {
-  value
-    .chars()
-    .filter(|c| *c != '-' && *c != '_')
-    .flat_map(char::to_lowercase)
-    .collect()
+  }
 }
 
 fn quote_tokens(tokens: &[String]) -> Result<String, Report> {

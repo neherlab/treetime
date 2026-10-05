@@ -1,24 +1,28 @@
 use crate::config::catalog::{SettingRole, SettingSpec, command_settings};
 use crate::config::settings::setting_ref;
+use crate::json_value::JsonValue;
 use crate::runs::record::{RunInput, RunRecord};
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
+use serde_with::skip_serializing_none;
 use std::path::PathBuf;
 
 pub fn setting_differences(first: &RunRecord, second: &RunRecord) -> Result<Vec<SettingDifference>, Report> {
+  let first_settings = first.config.settings()?;
+  let second_settings = second.config.settings()?;
   Ok(
-    command_settings(first.command)?
+    command_settings(first.config.command())?
       .settings
       .iter()
       .filter_map(|spec| match spec.role {
         SettingRole::Output => None,
         SettingRole::Input | SettingRole::InputTemplate => input_difference(spec, first, second),
         SettingRole::Setting => {
-          let first_value = setting_value(first, spec);
-          let second_value = setting_value(second, spec);
+          let first_value = setting_value(&first_settings, spec);
+          let second_value = setting_value(&second_settings, spec);
           (first_value != second_value).then(|| SettingDifference::Setting {
             key: spec.key.clone(),
             first: first_value,
@@ -31,6 +35,7 @@ pub fn setting_differences(first: &RunRecord, second: &RunRecord) -> Result<Vec<
 }
 
 /// A setting whose value differs between two runs.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum SettingDifference {
@@ -38,10 +43,10 @@ pub enum SettingDifference {
   Setting {
     /// Key path of the setting joined with `.`.
     key: String,
-    /// Value in the first run.
-    first: Value,
-    /// Value in the second run.
-    second: Value,
+    /// Value in the first run; absent when the first run does not set the setting.
+    first: Option<JsonValue>,
+    /// Value in the second run; absent when the second run does not set the setting.
+    second: Option<JsonValue>,
   },
   /// Input files, which differ in their paths, their contents, or both.
   Input {
@@ -56,10 +61,8 @@ pub enum SettingDifference {
   },
 }
 
-fn setting_value(record: &RunRecord, spec: &SettingSpec) -> Value {
-  setting_ref(&record.config, &spec.path)
-    .cloned()
-    .unwrap_or_else(|| spec.default_value.clone())
+fn setting_value(settings: &Map<String, Value>, spec: &SettingSpec) -> Option<JsonValue> {
+  setting_ref(settings, &spec.path).cloned().map(JsonValue)
 }
 
 fn input_difference(spec: &SettingSpec, first: &RunRecord, second: &RunRecord) -> Option<SettingDifference> {

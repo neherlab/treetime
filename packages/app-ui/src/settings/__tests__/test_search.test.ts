@@ -5,7 +5,7 @@ import { defaultConfig } from "../config";
 import { setAt } from "../json";
 import { matchingSpecs } from "../search";
 
-const specs = COMMAND_SETTINGS.clock.specs;
+const specs = COMMAND_SETTINGS.clock.settings;
 
 describe("setting search", () => {
   test("matches the flag of a nested setting", () => {

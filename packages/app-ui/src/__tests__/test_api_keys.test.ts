@@ -21,7 +21,7 @@ import { FakeServer, json, RECORD } from "./api_server";
 
 const CLIENT = new FakeServer({}).client();
 
-const BODY = { command: "clock" as const, text: "tree: t.nwk", input_facts: null };
+const BODY = { command: "clock" as const, text: "tree: t.nwk" };
 
 function key(request: ApiRequest): readonly unknown[] {
   return requestKey(CLIENT, request);

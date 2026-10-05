@@ -3,13 +3,16 @@ use crate::command::AppCommand;
 use crate::config::labels::setting_label;
 use crate::config::properties::{DEFS_PREFIX, LeafProperty, PathRole, def_pointer, leaf_properties};
 use crate::config::settings::setting_ref;
+use crate::json_value::JsonValue;
 use clap::{Arg, Command};
 use eyre::Report;
 use itertools::{Itertools, izip};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 use strum::IntoEnumIterator;
+use treetime_schema::UNSET_KEY;
 use treetime_utils::{make_error, make_report};
 
 pub fn setting_catalog() -> Result<SettingCatalog, Report> {
@@ -116,6 +119,7 @@ pub struct CommandSettings {
 }
 
 /// One setting of a command.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SettingSpec {
   /// Key path of the setting joined with `.`, for example `branch_split.method`.
@@ -138,13 +142,13 @@ pub struct SettingSpec {
   pub options: Vec<SettingOption>,
   /// Type of the items of a `list` setting.
   pub item_kind: ListItemKind,
-  /// Value of the setting when the configuration does not set it.
-  pub default_value: Value,
+  /// Value of the setting when the configuration does not set it; absent when the setting has no default.
+  pub default_value: Option<JsonValue>,
   /// Smallest allowed value of a number, when there is one.
   pub minimum: Option<f64>,
   /// Typical values of the setting, as the configuration spells them; the first one is the value the form fills in
   /// when the setting is turned on.
-  pub examples: Vec<Value>,
+  pub examples: Vec<JsonValue>,
   /// Names of the values the command-line flag takes, in order, for example `SLACK` and `COUPLING`.
   pub value_names: Vec<String>,
   /// Keys of the settings this setting cannot be used together with, as the command line rejects them.
@@ -239,7 +243,7 @@ fn setting_spec(
     .ok_or_else(|| make_report!("config key `{key}` has no help heading"))?;
   let description = Description::parse(property.get("description").and_then(Value::as_str).unwrap_or(""));
   let nullable = is_nullable(property);
-  let base = non_null_branch(schema, property)?;
+  let base = deref(schema, property)?;
   let options = enum_options(schema, base)?;
   let types = type_list(base);
 
@@ -292,12 +296,12 @@ fn setting_spec(
       &leaf.key_path,
     )
     .cloned()
-    .unwrap_or(Value::Null),
+    .map(JsonValue),
     minimum: base.get("minimum").and_then(Value::as_f64),
     examples: property
       .get("examples")
       .and_then(Value::as_array)
-      .cloned()
+      .map(|examples| examples.iter().cloned().map(JsonValue).collect())
       .unwrap_or_default(),
     value_names: arg
       .get_value_names()
@@ -324,20 +328,7 @@ fn list_item_kind(types: &[&str], key: &str) -> Result<ListItemKind, Report> {
 }
 
 fn is_nullable(property: &Value) -> bool {
-  type_list(property).contains(&"null") || alternatives(property).any(|branch| type_list(branch).contains(&"null"))
-}
-
-fn non_null_branch<'a>(schema: &'a Value, property: &'a Value) -> Result<&'a Value, Report> {
-  let branches = property.get("anyOf").and_then(Value::as_array).map(|branches| {
-    branches
-      .iter()
-      .filter(|branch| !type_list(branch).contains(&"null"))
-      .collect_vec()
-  });
-  match branches.as_deref() {
-    Some([branch]) => deref(schema, branch),
-    _ => deref(schema, property),
-  }
+  property.get(UNSET_KEY) == Some(&Value::Bool(true))
 }
 
 fn enum_options(schema: &Value, node: &Value) -> Result<Vec<SettingOption>, Report> {
@@ -383,13 +374,6 @@ fn type_list(node: &Value) -> Vec<&str> {
     Some(Value::Array(types)) => types.iter().filter_map(Value::as_str).collect(),
     _ => vec![],
   }
-}
-
-fn alternatives(node: &Value) -> impl Iterator<Item = &Value> {
-  ["anyOf", "oneOf"]
-    .into_iter()
-    .filter_map(|key| node.get(key).and_then(Value::as_array))
-    .flatten()
 }
 
 struct Description {

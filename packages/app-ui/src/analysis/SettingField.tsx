@@ -1,11 +1,10 @@
-import type { AppCommand } from "@neherlab/app-contracts";
+import type { AppCommand, JsonValue, SettingSpec, SparseConfig } from "@neherlab/app-contracts";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 import RotateCcw from "~icons/lucide/rotate-ccw";
 
-import type { SettingSpec } from "../settings/catalog";
 import { isChanged, resetValue } from "../settings/config";
-import { isJsonObject, type JsonObject, type JsonValue } from "../settings/json";
+import { isJsonObject } from "../settings/json";
 import { formatList } from "../settings/lists";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
@@ -22,7 +21,7 @@ export function SettingField({
 }: {
   command: AppCommand;
   spec: SettingSpec;
-  config: JsonObject;
+  config: SparseConfig;
 }) {
   const { setValue, getFieldState } = useFormContext<FormConfig>();
   const formState = useFormState<FormConfig>({ name: spec.key });
@@ -87,8 +86,8 @@ export function SettingHelp({ spec }: { spec: SettingSpec }) {
   );
 }
 
-export function defaultText(value: JsonValue): string {
-  if (value === null) {
+export function defaultText(value: JsonValue | undefined): string {
+  if (value === undefined) {
     return "not set";
   }
 

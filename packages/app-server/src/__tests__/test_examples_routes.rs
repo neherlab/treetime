@@ -30,7 +30,7 @@ mod tests {
     assert_eq!(
       (
         202,
-        json!({ "state": "running", "received": 0, "total": null }),
+        json!({ "state": "running", "received": 0 }),
         json!("done"),
         json!("done"),
         json!(["zika/20"])
@@ -103,7 +103,7 @@ mod tests {
           "the folder '{}' is not empty; the example datasets go into an empty or missing folder",
           examples.display()
         )),
-        json!({ "download": { "state": "idle" }, "seq": null })
+        json!({ "download": { "state": "idle" } })
       ),
       (status, error["message"].clone(), state)
     );

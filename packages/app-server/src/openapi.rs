@@ -1,33 +1,16 @@
 use aide::openapi::{Components, OpenApi, SchemaObject};
-use app_commands::bridge::error::ErrorResponse;
-use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse};
-use app_commands::check_inputs::{CheckInputsRequest, InputFacts};
-use app_commands::command::{AppCommand, CommandOutcome};
+use app_commands::command::AppCommand;
 use app_commands::config::catalog::{SettingCatalog, setting_catalog};
 use app_commands::config::cli_flags::annotated_config_schema;
-use app_commands::config::schema::draft2020_generator;
-use app_commands::datasets::DatasetCatalog;
-use app_commands::job::{IterationEvent, JobEvent, TerminalEvent};
-use app_commands::results::auspice::AuspiceDocument;
-use app_commands::results::clades::{CladeInRuns, CladeRequest};
-use app_commands::results::compare::RunComparison;
-use app_commands::results::run_results::RunResults;
-use app_commands::run_config::{RunConfigRequest, RunConfigResponse};
-use app_commands::runs::events::RunEvent;
-use app_commands::runs::files::RunFile;
-use app_commands::runs::manager::UploadedInput;
-use app_commands::runs::record::{
-  CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
-};
-use app_commands::runs::setting_differences::SettingDifference;
+use app_commands::config::schema::{SCHEMA_KEY, draft2020_generator};
 use eyre::Report;
 use heck::ToUpperCamelCase;
+use indexmap::IndexMap;
 use itertools::{Itertools, izip};
 use schemars::{JsonSchema, Schema};
 use serde_json::{Map, Value, json};
+use std::collections::BTreeSet;
 use strum::IntoEnumIterator;
-use treetime::progress::LogEvent;
-use treetime_schema::{ProgressEvent, VersionInfo};
 use treetime_utils::make_error;
 
 const DEFS_PREFIX: &str = "#/$defs/";
@@ -36,54 +19,18 @@ const SETTING_CATALOG_KEY: &str = "x-setting-catalog";
 
 const UNION_ROOT_KEYS: &[&str] = &["description", "oneOf", "type", "properties", "required"];
 
-pub(crate) fn config_component(command: AppCommand) -> String {
-  let name: &str = command.into();
-  format!("{}Config", name.to_upper_camel_case())
-}
+const SCHEMA_MAPS: &[&str] = &["properties", "$defs", "patternProperties"];
+
+const SCHEMA_LISTS: &[&str] = &["anyOf", "oneOf", "allOf", "prefixItems"];
+
+const SCHEMA_SINGLES: &[&str] = &["items", "additionalProperties", "not", "if", "then", "else"];
 
 pub(crate) fn add_components(api: &mut OpenApi) -> Result<(), Report> {
   let mut components = Map::new();
-  for command in AppCommand::iter() {
-    add_root(
-      &mut components,
-      &config_component(command),
-      annotated_config_schema(command)?,
-    )?;
-  }
-  add_type::<CheckConfigRequest>(&mut components)?;
-  add_type::<CheckConfigResponse>(&mut components)?;
-  add_type::<RunConfigRequest>(&mut components)?;
-  add_type::<RunConfigResponse>(&mut components)?;
-  add_type::<CommandOutcome>(&mut components)?;
-  add_type::<JobEvent>(&mut components)?;
-  add_type::<TerminalEvent>(&mut components)?;
-  add_type::<ProgressEvent>(&mut components)?;
-  add_type::<LogEvent>(&mut components)?;
-  add_type::<VersionInfo>(&mut components)?;
-  add_type::<IterationEvent>(&mut components)?;
-  add_type::<CheckInputsRequest>(&mut components)?;
-  add_type::<InputFacts>(&mut components)?;
-  add_type::<DatasetCatalog>(&mut components)?;
-  add_type::<CreateRunRequest>(&mut components)?;
-  add_type::<StartRunRequest>(&mut components)?;
-  add_type::<UpdateRunRequest>(&mut components)?;
-  add_type::<RunRecord>(&mut components)?;
-  add_type::<RunSummary>(&mut components)?;
-  add_type::<RunList>(&mut components)?;
-  add_type::<RunEvent>(&mut components)?;
-  add_type::<RunFile>(&mut components)?;
-  add_type::<UploadedInput>(&mut components)?;
   add_type::<SettingCatalog>(&mut components)?;
-  add_type::<SettingDifference>(&mut components)?;
-  add_type::<RunResults>(&mut components)?;
-  add_type::<AuspiceDocument>(&mut components)?;
-  add_type::<RunComparison>(&mut components)?;
-  add_type::<CladeRequest>(&mut components)?;
-  add_type::<CladeInRuns>(&mut components)?;
-  add_type::<ErrorResponse>(&mut components)?;
-  add_type::<CancelRunResponse>(&mut components)?;
 
   let schemas = &mut api.components.get_or_insert_with(Components::default).schemas;
+  replace_config_components(schemas, &mut components)?;
   for (name, schema) in components {
     let schema = Schema::try_from(schema)?;
     match schemas.get(&name) {
@@ -296,6 +243,97 @@ fn with_shared_fields(
   variant.insert("properties".to_owned(), Value::Object(properties));
   variant.insert("required".to_owned(), Value::Array(required));
   Ok(variant)
+}
+
+fn replace_config_components(
+  schemas: &mut IndexMap<String, SchemaObject>,
+  components: &mut Map<String, Value>,
+) -> Result<(), Report> {
+  let configs = AppCommand::iter()
+    .map(|command| (command, command.config_schema_name()))
+    .filter(|(_, name)| schemas.contains_key(name))
+    .collect_vec();
+  let config_names = configs.iter().map(|(_, name)| name.clone()).collect::<BTreeSet<_>>();
+  let below_configs = reachable(schemas, &config_names, &BTreeSet::new());
+  let others = schemas
+    .keys()
+    .filter(|name| !below_configs.contains(*name))
+    .cloned()
+    .collect::<BTreeSet<_>>();
+  let below_others = reachable(schemas, &others, &config_names);
+  for name in below_configs.difference(&below_others) {
+    schemas.shift_remove(name);
+  }
+  for (command, name) in configs {
+    let mut schema = annotated_config_schema(command)?.to_value();
+    if let Some(Value::Object(properties)) = schema.get_mut("properties") {
+      properties.remove(SCHEMA_KEY);
+    }
+    strip_defaults(&mut schema);
+    add_root(components, &name, Schema::try_from(schema)?)?;
+  }
+  Ok(())
+}
+
+fn reachable(
+  schemas: &IndexMap<String, SchemaObject>,
+  roots: &BTreeSet<String>,
+  stop: &BTreeSet<String>,
+) -> BTreeSet<String> {
+  let mut seen = BTreeSet::new();
+  let mut pending = roots.iter().cloned().collect_vec();
+  while let Some(name) = pending.pop() {
+    if !seen.insert(name.clone()) {
+      continue;
+    }
+    if let Some(schema) = schemas.get(&name) {
+      let mut refs = vec![];
+      component_refs(schema.json_schema.as_value(), &mut refs);
+      pending.extend(refs.into_iter().filter(|reference| !stop.contains(reference)));
+    }
+  }
+  seen
+}
+
+fn component_refs(value: &Value, refs: &mut Vec<String>) {
+  match value {
+    Value::Object(object) => {
+      for (key, child) in object {
+        match child {
+          Value::String(reference) if key == "$ref" => {
+            if let Some(name) = reference.strip_prefix(COMPONENTS_PREFIX) {
+              refs.push(name.to_owned());
+            }
+          },
+          _ => component_refs(child, refs),
+        }
+      }
+    },
+    Value::Array(items) => items.iter().for_each(|item| component_refs(item, refs)),
+    _ => {},
+  }
+}
+
+fn strip_defaults(schema: &mut Value) {
+  let Value::Object(object) = schema else {
+    return;
+  };
+  object.remove("default");
+  for key in SCHEMA_MAPS {
+    if let Some(Value::Object(children)) = object.get_mut(*key) {
+      children.values_mut().for_each(strip_defaults);
+    }
+  }
+  for key in SCHEMA_LISTS {
+    if let Some(Value::Array(children)) = object.get_mut(*key) {
+      children.iter_mut().for_each(strip_defaults);
+    }
+  }
+  for key in SCHEMA_SINGLES {
+    if let Some(child) = object.get_mut(*key) {
+      strip_defaults(child);
+    }
+  }
 }
 
 fn add_type<T: JsonSchema>(components: &mut Map<String, Value>) -> Result<(), Report> {

@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::sparse;
   use crate::command::AppCommand;
   use crate::json_float::JsonFloat;
+  use crate::json_value::JsonValue;
   use crate::results::auspice::run_auspice;
   use crate::results::clades::{CladeRequest, clade_in_runs};
   use crate::results::clock::{ClockLine, RootToTip};
@@ -181,9 +183,9 @@ mod tests {
   fn test_run_results_refuse_a_run_that_did_not_finish() -> Result<(), Report> {
     let root = tempdir()?;
     let runs = RunManager::open(root.path())?;
-    let created = runs.create(CreateRunRequest {
+    let created = runs.create(&CreateRunRequest {
       command: AppCommand::Clock,
-      config: json!({ "tree": zika("tree.nwk") }),
+      config: sparse(json!({ "tree": zika("tree.nwk") })),
       defer_start: true,
     })?;
 
@@ -284,9 +286,9 @@ mod tests {
   fn test_run_auspice_refuses_a_run_that_did_not_finish() -> Result<(), Report> {
     let root = tempdir()?;
     let runs = RunManager::open(root.path())?;
-    let created = runs.create(CreateRunRequest {
+    let created = runs.create(&CreateRunRequest {
       command: AppCommand::Clock,
-      config: json!({ "tree": zika("tree.nwk") }),
+      config: sparse(json!({ "tree": zika("tree.nwk") })),
       defer_start: true,
     })?;
 
@@ -340,8 +342,8 @@ mod tests {
       (
         vec![SettingDifference::Setting {
           key: o!("clock_rate"),
-          first: Value::Null,
-          second: json!(1e-3),
+          first: None,
+          second: Some(JsonValue(json!(1e-3))),
         }],
         false,
         true,
@@ -411,6 +413,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_support::tests::sparse;
     use crate::command::AppCommand;
     use crate::job::JobId;
     use crate::runs::manager::RunManager;
@@ -424,14 +427,17 @@ mod tests {
     use treetime_utils::io::json::json_read_file;
 
     pub(super) fn timetree_config(clock_rate: Option<f64>) -> Value {
-      json!({
+      let mut config = json!({
         "tree": zika("tree.nwk"),
         "metadata": zika("metadata.tsv"),
         "alignment": [zika("aln.fasta.xz")],
         "max_iter": 2,
         "seed": 7,
-        "clock_rate": clock_rate,
-      })
+      });
+      if let Some(clock_rate) = clock_rate {
+        config["clock_rate"] = json!(clock_rate);
+      }
+      config
     }
 
     pub(super) fn clock_model(runs: &Arc<RunManager>, id: &JobId) -> Result<ClockModel, Report> {
@@ -446,16 +452,16 @@ mod tests {
 
     pub(super) fn finished_run(runs: &Arc<RunManager>, command: AppCommand, config: Value) -> JobId {
       let created = runs
-        .create(CreateRunRequest {
+        .create(&CreateRunRequest {
           command,
-          config,
+          config: sparse(config),
           defer_start: true,
         })
         .unwrap();
       runs
         .start(
           &created.id,
-          StartRunRequest::default(),
+          &StartRunRequest::default(),
           Box::new(|_config: &mut Value| Ok(())),
         )
         .unwrap()

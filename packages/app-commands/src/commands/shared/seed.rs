@@ -1,9 +1,11 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use treetime::progress::LogSink;
 use treetime::progress_info;
 
 /// Seed of the random number generator, shared by every command that has a random step.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]

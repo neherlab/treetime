@@ -1,12 +1,13 @@
+import type { SettingSpec } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
 
-import { COMMAND_SETTINGS, type SettingSpec } from "../catalog";
+import { COMMAND_SETTINGS } from "../catalog";
 import { carryOverConfig, changedSpecs, defaultConfig, isChanged, normalizeConfig, resetValue } from "../config";
 import { setAt } from "../json";
 
-const clock = COMMAND_SETTINGS.clock.specs;
+const clock = COMMAND_SETTINGS.clock.settings;
 
-const timetree = COMMAND_SETTINGS.timetree.specs;
+const timetree = COMMAND_SETTINGS.timetree.settings;
 
 function spec(specs: readonly SettingSpec[], key: string): SettingSpec {
   const found = specs.find((candidate) => candidate.key === key);
@@ -65,6 +66,20 @@ describe("form config", () => {
     expect(changedSpecs(timetree, reset).map((found) => found.key)).toStrictEqual(["max_iter"]);
   });
 
+  test("a fresh config, a reset, and an unset setting hold no null", () => {
+    const fresh = defaultConfig(timetree);
+    const clockRate = spec(timetree, "clock_rate");
+    const unset = setAt(setAt(fresh, ["clock_rate"], 0.003), ["clock_rate"], resetValue(clockRate));
+
+    expect({
+      fresh: JSON.stringify(fresh).includes("null"),
+      unset: JSON.stringify(unset).includes("null"),
+      hasClockRate: Object.hasOwn(unset, "clock_rate"),
+      clockRateDefault: resetValue(clockRate),
+      nullable: clockRate.nullable,
+    }).toStrictEqual({ fresh: false, unset: false, hasClockRate: false, clockRateDefault: undefined, nullable: true });
+  });
+
   test("normalizing drops output paths and unknown keys", () => {
     const config = normalizeConfig(clock, {
       tree: "t.nwk",
@@ -80,7 +95,13 @@ describe("form config", () => {
       outputTree: config["output_tree_nwk"],
       unknown: config["not_a_setting"],
       clockFilter: config["clock_filter"],
-    }).toStrictEqual({ tree: "t.nwk", outputAll: null, outputTree: null, unknown: undefined, clockFilter: 2 });
+    }).toStrictEqual({
+      tree: "t.nwk",
+      outputAll: undefined,
+      outputTree: undefined,
+      unknown: undefined,
+      clockFilter: 2,
+    });
   });
 
   test("switching the command keeps inputs and changed shared settings", () => {

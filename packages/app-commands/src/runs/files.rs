@@ -5,6 +5,7 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::{self, Seek, Write};
@@ -14,6 +15,7 @@ use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
 /// One file in a run's `out/` folder.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RunFile {
   /// Path relative to the run's `out/` folder, with `/` separators.

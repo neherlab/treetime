@@ -8,16 +8,16 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::timetree_defaults( AppCommand::Timetree,  json!(null),             json!(["Nwk", "Nexus", "Auspice", "AugurNodeData", "Gtr", "ReconstructedNucFasta", "ClockModel", "CoalescentTsv", "Tracelog", "ClockCsv"]))]
-  #[case::clock_defaults(    AppCommand::Clock,     json!(null),             json!(["Nwk", "Nexus", "ClockModel", "ClockCsv", "ClockChartSvg", "ClockChartPng", "Auspice"]))]
-  #[case::ancestral_defaults(AppCommand::Ancestral, json!(null),             json!(["Nwk", "Nexus", "AugurNodeData", "Gtr", "ReconstructedNucFasta", "Auspice"]))]
-  #[case::mugration_defaults(AppCommand::Mugration, json!(null),             json!(["Nwk", "Nexus", "AugurNodeData", "Gtr", "TraitsCsv", "Auspice"]))]
-  #[case::optimize_defaults( AppCommand::Optimize,  json!(null),             json!(["Nwk", "Nexus", "AugurNodeData", "Gtr", "Auspice"]))]
-  #[case::prune_defaults(    AppCommand::Prune,     json!(null),             json!(["Nwk", "Nexus", "Gtr", "Auspice"]))]
-  #[case::prune_chosen(      AppCommand::Prune,     json!(["MatPb"]),        json!(["MatPb", "Auspice"]))]
-  #[case::timetree_chosen(   AppCommand::Timetree,  json!(["Nwk"]),          json!(["Nwk", "Auspice", "Tracelog", "ClockCsv"]))]
-  #[case::timetree_has_one(  AppCommand::Timetree,  json!(["Tracelog"]),     json!(["Tracelog", "Auspice", "ClockCsv"]))]
-  #[case::clock_all(         AppCommand::Clock,     json!(["All"]),          json!(["All"]))]
+  #[case::timetree_defaults( AppCommand::Timetree,  json!(null),             json!(["nwk", "nexus", "auspice", "augur-node-data", "gtr", "reconstructed-nuc-fasta", "clock-model", "coalescent-tsv", "tracelog", "clock-csv"]))]
+  #[case::clock_defaults(    AppCommand::Clock,     json!(null),             json!(["nwk", "nexus", "clock-model", "clock-csv", "clock-chart-svg", "clock-chart-png", "auspice"]))]
+  #[case::ancestral_defaults(AppCommand::Ancestral, json!(null),             json!(["nwk", "nexus", "augur-node-data", "gtr", "reconstructed-nuc-fasta", "auspice"]))]
+  #[case::mugration_defaults(AppCommand::Mugration, json!(null),             json!(["nwk", "nexus", "augur-node-data", "gtr", "traits-csv", "auspice"]))]
+  #[case::optimize_defaults( AppCommand::Optimize,  json!(null),             json!(["nwk", "nexus", "augur-node-data", "gtr", "auspice"]))]
+  #[case::prune_defaults(    AppCommand::Prune,     json!(null),             json!(["nwk", "nexus", "gtr", "auspice"]))]
+  #[case::prune_chosen(      AppCommand::Prune,     json!(["mat-pb"]),        json!(["mat-pb", "auspice"]))]
+  #[case::timetree_chosen(   AppCommand::Timetree,  json!(["nwk"]),          json!(["nwk", "auspice", "tracelog", "clock-csv"]))]
+  #[case::timetree_has_one(  AppCommand::Timetree,  json!(["tracelog"]),     json!(["tracelog", "auspice", "clock-csv"]))]
+  #[case::clock_all(         AppCommand::Clock,     json!(["all"]),          json!(["all"]))]
   #[trace]
   fn test_prepare_run_adds_the_outputs_the_views_need(
     #[case] command: AppCommand,
@@ -53,12 +53,12 @@ mod tests {
       .prepare_run(&config, Path::new("/runs/r/out"))
       .unwrap();
     assert_eq!(
-      (json!("/runs/r/out"), json!(null), json!(null), json!(["beast"])),
+      (Some(json!("/runs/r/out")), None, None, Some(json!(["beast"]))),
       (
-        prepared.config["output_all"].clone(),
-        prepared.config["output_tree_nwk"].clone(),
-        prepared.config["output_clock_model"].clone(),
-        prepared.config["output_nwk_style"].clone()
+        prepared.config.get("output_all").cloned(),
+        prepared.config.get("output_tree_nwk").cloned(),
+        prepared.config.get("output_clock_model").cloned(),
+        prepared.config.get("output_nwk_style").cloned()
       )
     );
   }

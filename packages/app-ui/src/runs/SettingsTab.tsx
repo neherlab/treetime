@@ -1,4 +1,4 @@
-import type { RunRecord, UiCodeFormat } from "@neherlab/app-contracts";
+import type { RunRecord, SparseConfig, UiCodeFormat } from "@neherlab/app-contracts";
 import { configCheck } from "@neherlab/app-contracts/client";
 import { keepPreviousData } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
@@ -12,7 +12,6 @@ import { OptionToggle } from "../components/OptionToggle";
 import { Panel } from "../components/Panel";
 import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
 import { settingValue } from "../settings/config";
-import { zJsonObject } from "../settings/json";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Label } from "../ui/label";
@@ -27,8 +26,8 @@ const CODE_FORMATS: ReadonlyArray<{ value: UiCodeFormat; label: string }> = [
 
 export function SettingsTab({ record }: { record: RunRecord }) {
   const settings = COMMAND_SETTINGS[record.command];
-  const specs = settings.specs;
-  const config = useMemo(() => zJsonObject.parse(record.config), [record.config]);
+  const specs = settings.settings;
+  const config: SparseConfig = record.config;
   const [changedOnly, setChangedOnly] = useState(true);
   const [format, setFormat] = useState<UiCodeFormat>("cli");
   const rerun = useRerun(record);
@@ -52,7 +51,7 @@ export function SettingsTab({ record }: { record: RunRecord }) {
     (context) =>
       configCheck({
         ...context,
-        body: { command: record.command, text: JSON.stringify(config), input_facts: null },
+        body: { command: record.command, text: JSON.stringify(config) },
       }),
     { placeholderData: keepPreviousData, staleTime: Infinity },
   );

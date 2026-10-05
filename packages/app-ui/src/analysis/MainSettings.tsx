@@ -1,12 +1,12 @@
-import type { AppCommand, InputFacts, RunCheck } from "@neherlab/app-contracts";
+import type { AppCommand, InputFacts, JsonValue, RunCheck, SettingSpec, SparseConfig } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { OptionToggle, type ToggleOption } from "../components/OptionToggle";
-import { COMMAND_SETTINGS, type SettingSpec } from "../settings/catalog";
+import { COMMAND_SETTINGS } from "../settings/catalog";
 import { MAIN_SETTING_KEYS, type SettingKey } from "../settings/commands";
 import { isChanged, resetValue, settingValue } from "../settings/config";
-import { isNumber, isString, sameJson, type JsonObject, type JsonValue } from "../settings/json";
+import { isNumber, isString, sameJson } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
 import { Badge } from "../ui/badge";
 import { cn } from "../ui/cn";
@@ -80,13 +80,13 @@ const NO_COLUMNS: readonly string[] = [];
 
 interface RowContext {
   command: AppCommand;
-  config: JsonObject;
+  config: SparseConfig;
   checks: readonly RunCheck[];
   specs: ReadonlyMap<string, SettingSpec>;
-  set: (key: string, value: JsonValue) => void;
+  set: (key: string, value: JsonValue | undefined) => void;
   reset: (keys: readonly string[]) => void;
-  get: (key: string) => JsonValue;
-  example: (key: string) => JsonValue;
+  get: (key: string) => JsonValue | undefined;
+  example: (key: string) => JsonValue | undefined;
 }
 
 export function MainSettings({
@@ -96,16 +96,16 @@ export function MainSettings({
   checks,
 }: {
   command: AppCommand;
-  config: JsonObject;
+  config: SparseConfig;
   facts: InputFacts | undefined;
   checks: readonly RunCheck[] | undefined;
 }) {
   const { setValue } = useFormContext<FormConfig>();
 
   const context = useMemo((): RowContext => {
-    const specs = new Map(COMMAND_SETTINGS[command].specs.map((spec) => [spec.key, spec]));
+    const specs = new Map(COMMAND_SETTINGS[command].settings.map((spec) => [spec.key, spec]));
 
-    const write = (key: string, value: JsonValue) =>
+    const write = (key: string, value: JsonValue | undefined) =>
       setValue(key, toFormValue(value), { shouldDirty: true, shouldValidate: true });
 
     const reset = (keys: readonly string[]) => {
@@ -136,9 +136,9 @@ export function MainSettings({
       get: (key) => {
         const spec = specs.get(key);
 
-        return spec === undefined ? null : settingValue(config, spec);
+        return spec === undefined ? undefined : settingValue(config, spec);
       },
-      example: (key) => specs.get(key)?.examples[0] ?? null,
+      example: (key) => specs.get(key)?.examples[0],
     };
   }, [checks, command, config, setValue]);
 
@@ -185,7 +185,7 @@ function TimetreeSettings({ context }: { context: RowContext }) {
 
 function ClockRateRow({ context }: { context: RowContext }) {
   const { get, set, reset, example } = context;
-  const fixed = get("clock_rate") !== null;
+  const fixed = get("clock_rate") !== undefined;
 
   const onMode = useCallback(
     (mode: RateMode) => {
@@ -282,7 +282,7 @@ function coalescentMode(context: RowContext): CoalescentMode {
     return "optimized";
   }
 
-  return context.get("coalescent") === null ? "none" : "fixed";
+  return context.get("coalescent") === undefined ? "none" : "fixed";
 }
 
 function RootRow({ context }: { context: RowContext }) {
@@ -413,7 +413,7 @@ function AttributeRow({ context, columns }: { context: RowContext; columns: read
 
   const onColumn = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) =>
-      set("attribute", event.target.value === "" ? null : event.target.value),
+      set("attribute", event.target.value === "" ? undefined : event.target.value),
     [set],
   );
 
@@ -535,7 +535,7 @@ function NumberPairInput({
   onChange,
   label,
 }: {
-  value: JsonValue;
+  value: JsonValue | undefined;
   index: number;
   onChange: (value: JsonValue) => void;
   label: string;
@@ -543,18 +543,12 @@ function NumberPairInput({
   const pair = useMemo(() => (Array.isArray(value) ? value : []), [value]);
 
   const onInput = useCallback(
-    (next: JsonValue) => onChange(pair.map((current, position) => (position === index ? next : current))),
+    (next: number | string | undefined) =>
+      onChange(pair.map((current, position) => (position === index ? (next ?? "") : current))),
     [index, onChange, pair],
   );
 
-  return (
-    <NumberInput
-      aria-label={label}
-      value={pair[index] ?? null}
-      onValueChange={onInput}
-      className="h-8 w-24 font-mono"
-    />
-  );
+  return <NumberInput aria-label={label} value={pair[index]} onValueChange={onInput} className="h-8 w-24 font-mono" />;
 }
 
 function valueNameLabel(name: string): string {

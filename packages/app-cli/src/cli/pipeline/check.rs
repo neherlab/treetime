@@ -53,7 +53,7 @@ fn write_pipeline_plan(
   writeln!(out, "steps ({}):", steps.len())?;
 
   for (step, inputs) in izip!(steps, step_inputs) {
-    writeln!(out, "  - {} ({})", step.name, step.command.tag())?;
+    writeln!(out, "  - {} ({})", step.name, step.command.command())?;
     write_inputs(out, step, inputs, producers)?;
     write_outputs(out, step)?;
   }

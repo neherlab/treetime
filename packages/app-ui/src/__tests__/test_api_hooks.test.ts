@@ -1,3 +1,4 @@
+import type { SparseConfig } from "@neherlab/app-contracts";
 import { ApiError, runsCancel, runsGet, runsStart } from "@neherlab/app-contracts/client";
 import { MutationObserver, QueryClient } from "@tanstack/react-query";
 import { describe, expect, test } from "vitest";
@@ -19,7 +20,7 @@ describe("api mutations", () => {
       apiMutationOptions(
         client,
         queryClient,
-        (context, { id, config }: { id: string; config: unknown }) =>
+        (context, { id, config }: { id: string; config: SparseConfig }) =>
           runsStart({ ...context, path: { id }, body: { config } }),
         {
           seed:

@@ -1,8 +1,8 @@
 import type { RunRecord } from "@neherlab/app-contracts";
 import { ApiError, runsGet, type ApiClient } from "@neherlab/app-contracts/client";
 
-export async function pendingUploadRun(client: ApiClient, id: string | null): Promise<RunRecord | undefined> {
-  if (id === null) {
+export async function pendingUploadRun(client: ApiClient, id: string | undefined): Promise<RunRecord | undefined> {
+  if (id === undefined) {
     return undefined;
   }
 

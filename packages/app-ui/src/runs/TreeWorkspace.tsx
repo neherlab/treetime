@@ -1,4 +1,4 @@
-import { errorMessage } from "@neherlab/app-contracts";
+import { errorMessage, type ResultNode, type ResultTree } from "@neherlab/app-contracts";
 import { useCallback, useMemo, type ReactNode } from "react";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 
@@ -6,7 +6,6 @@ import { AuspiceTree } from "../auspice/AuspiceTree";
 import type { AuspiceState } from "../auspice/state";
 import type { AuspiceStore } from "../auspice/store";
 import { focusNode, showWholeTree, useAuspiceSelector, useAuspiceStore } from "../auspice/store-hooks";
-import type { ResultNode, ResultTree } from "../results/types";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import type { TreeData } from "./TreeView";
 

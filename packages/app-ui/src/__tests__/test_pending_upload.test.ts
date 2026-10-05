@@ -4,7 +4,9 @@ import { describe, expect, test } from "vitest";
 import { pendingUploadRun } from "../analysis/pendingUpload";
 import { FakeServer, json, RECORD } from "./api_server";
 
-const CREATED = { ...RECORD, title: "Uploaded inputs", config: {}, status: "created", started_at: null };
+const { started_at: _startedAt, ...RUNNING } = RECORD;
+
+const CREATED = { ...RUNNING, title: "Uploaded inputs", config: {}, status: "created" };
 
 describe("pending upload run", () => {
   test("a created run is the pending upload run", async () => {
@@ -18,7 +20,11 @@ describe("pending upload run", () => {
     const client = server.client();
 
     await expect(
-      Promise.all([pendingUploadRun(client, "r2"), pendingUploadRun(client, "r9"), pendingUploadRun(client, null)]),
+      Promise.all([
+        pendingUploadRun(client, "r2"),
+        pendingUploadRun(client, "r9"),
+        pendingUploadRun(client, undefined),
+      ]),
     ).resolves.toStrictEqual([undefined, undefined, undefined]);
     expect(server.keys().toSorted()).toStrictEqual(["GET /api/runs/r2", "GET /api/runs/r9"]);
   });

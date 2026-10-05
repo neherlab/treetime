@@ -24,7 +24,7 @@ mod tests {
     use crate::run::run_command;
     use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
     use app_commands::command::AppCommand;
-    use serde_json::Map;
+    use app_commands::json_value::SparseConfig;
     use std::fs;
     use tempfile::tempdir;
     use treetime::progress::NoopProgress;
@@ -52,7 +52,7 @@ mod tests {
       let response = check_config(&CheckConfigRequest {
         command,
         text: text.to_owned(),
-        inputs: Map::new(),
+        inputs: SparseConfig::default(),
         input_facts: None,
         folder: None,
       });

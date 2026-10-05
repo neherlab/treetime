@@ -1,5 +1,5 @@
 import { type AxisFrame, clamp, niceAxis } from "./palette";
-import type { RttPoint } from "./RootToTipPlot";
+import type { PointPayload, RttPoint } from "./RootToTipPlot";
 
 export function plotFrame(points: readonly RttPoint[], fitToModel: boolean): PlotFrame {
   const inModel = points.filter((point) => !point.excluded);
@@ -24,8 +24,7 @@ export interface PlotFrame {
   y: AxisFrame;
 }
 
-export interface PlacedPoint extends RttPoint {
+export interface PlacedPoint extends PointPayload {
   x: number;
   y: number;
-  offAxes: boolean;
 }

@@ -3,6 +3,7 @@ use crate::check_inputs::{CheckInputsRequest, InputFacts, check_inputs};
 use crate::command::AppCommand;
 use crate::datasets::{DatasetCatalog, dataset_catalog};
 use crate::job::JobId;
+use crate::json_value::SparseConfig;
 use crate::results::auspice::{AuspiceDocument, run_auspice};
 use crate::results::clades::{CladeInRuns, CladeRequest, clade_in_runs};
 use crate::results::compare::{RunComparison, compare_runs};
@@ -72,7 +73,7 @@ impl AppService {
   }
 
   pub fn check_inputs(&self, request: CheckInputsRequest) -> Result<InputFacts, Report> {
-    let mut config = Value::Object(request.config);
+    let mut config = Value::Object(request.config.0);
     self
       .policy
       .confine(request.command, &mut config)
@@ -82,7 +83,7 @@ impl AppService {
     };
     check_inputs(&CheckInputsRequest {
       command: request.command,
-      config,
+      config: SparseConfig(config),
     })
   }
 
@@ -90,13 +91,13 @@ impl AppService {
     self.runs.list()
   }
 
-  pub fn create_run(&self, request: CreateRunRequest) -> Result<RunRecord, Report> {
+  pub fn create_run(&self, request: &CreateRunRequest) -> Result<RunRecord, Report> {
     let defer_start = request.defer_start;
     let record = self.runs.create(request)?;
     if defer_start {
       Ok(record)
     } else {
-      self.start(&record.id, StartRunRequest::default())
+      self.start(&record.id, &StartRunRequest::default())
     }
   }
 
@@ -104,7 +105,7 @@ impl AppService {
     self.runs.get(id)
   }
 
-  pub fn start_run(&self, id: &JobId, request: StartRunRequest) -> Result<RunRecord, Report> {
+  pub fn start_run(&self, id: &JobId, request: &StartRunRequest) -> Result<RunRecord, Report> {
     self.start(id, request)
   }
 
@@ -143,10 +144,10 @@ impl AppService {
     Box::new(move |config: &mut Value| policy.confine(command, config))
   }
 
-  fn start(&self, id: &JobId, request: StartRunRequest) -> Result<RunRecord, Report> {
+  fn start(&self, id: &JobId, request: &StartRunRequest) -> Result<RunRecord, Report> {
     let command = match request.command {
       Some(command) => command,
-      None => self.runs.get(id)?.command,
+      None => self.runs.get(id)?.config.command(),
     };
     let started = self.runs.start(id, request, self.hook(command))?;
     let record = started.record().clone();

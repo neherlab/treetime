@@ -1,20 +1,19 @@
-import type { RunRecord } from "@neherlab/app-contracts";
+import type { RunRecord, SparseConfig } from "@neherlab/app-contracts";
 
 import { COMMAND_SETTINGS } from "./catalog";
 import { normalizeConfig } from "./config";
 import { runInputAssignments } from "./inputs";
-import { zJsonObject, type JsonObject } from "./json";
 
 interface RerunDraft {
-  config: JsonObject;
+  config: SparseConfig;
   inputLabels: Record<string, string>;
 }
 
 export function rerunDraft(record: RunRecord): RerunDraft {
-  const specs = COMMAND_SETTINGS[record.command].specs;
+  const specs = COMMAND_SETTINGS[record.command].settings;
 
   return {
-    config: normalizeConfig(specs, zJsonObject.parse(record.config)),
+    config: normalizeConfig(specs, record.config),
     inputLabels: Object.fromEntries(
       runInputAssignments(record.command, record.inputs).map((input) => [input.key, input.label]),
     ),

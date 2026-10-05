@@ -5,6 +5,7 @@ mod tests {
   use crate::config::catalog::{
     ListItemKind, SettingKind, SettingOption, SettingRole, SettingSpec, command_settings, setting_catalog,
   };
+  use crate::json_value::JsonValue;
   use helpers::spec;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
@@ -88,9 +89,9 @@ mod tests {
         nullable: true,
         options: vec![],
         item_kind: ListItemKind::String,
-        default_value: Value::Null,
+        default_value: None,
         minimum: None,
-        examples: vec![json!(0.001)],
+        examples: vec![JsonValue(json!(0.001))],
         value_names: vec_of_owned!["CLOCK_RATE"],
         conflicts: vec![],
         help: o!("If specified, the rate of the molecular clock won't be optimized."),
@@ -120,7 +121,7 @@ mod tests {
   fn test_setting_catalog_relax_names_its_values_and_suggests_a_weak_prior() {
     let relax = spec(AppCommand::Timetree, "relax");
     assert_eq!(
-      (vec_of_owned!["SLACK", "COUPLING"], vec![json!([1.0, 0.0])]),
+      (vec_of_owned!["SLACK", "COUPLING"], vec![JsonValue(json!([1.0, 0.0]))]),
       (relax.value_names, relax.examples)
     );
   }
@@ -139,26 +140,29 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::switch(         AppCommand::Timetree,  "confidence",          SettingKind::Switch,   false, json!(false))]
-  #[case::tristate(       AppCommand::Ancestral, "dense",               SettingKind::Tristate, true,  Value::Null)]
-  #[case::integer(        AppCommand::Timetree,  "max_iter",            SettingKind::Integer,  false, json!(2))]
-  #[case::optional_int(   AppCommand::Timetree,  "seed",                SettingKind::Integer,  true,  Value::Null)]
-  #[case::text(           AppCommand::Mugration, "missing_data",        SettingKind::Text,     false, json!("?"))]
-  #[case::number_list(    AppCommand::Timetree,  "relax",               SettingKind::List,     false, json!([]))]
-  #[case::string_list(    AppCommand::Clock,     "metadata_id_columns", SettingKind::List,     false, json!(["strain", "name", "accession"]))]
-  #[case::enum_list(      AppCommand::Clock,     "output_selection",    SettingKind::EnumList, false, json!([]))]
-  #[case::nested_enum(    AppCommand::Clock,     "branch_split.method", SettingKind::Enum,     false, json!("grid"))]
-  #[case::nested_integer( AppCommand::Clock,     "branch_split.n_points", SettingKind::Integer, false, json!(11))]
+  #[case::switch(         AppCommand::Timetree,  "confidence",          SettingKind::Switch,   false, Some(json!(false)))]
+  #[case::tristate(       AppCommand::Ancestral, "dense",               SettingKind::Tristate, true,  None)]
+  #[case::integer(        AppCommand::Timetree,  "max_iter",            SettingKind::Integer,  false, Some(json!(2)))]
+  #[case::optional_int(   AppCommand::Timetree,  "seed",                SettingKind::Integer,  true,  None)]
+  #[case::text(           AppCommand::Mugration, "missing_data",        SettingKind::Text,     false, Some(json!("?")))]
+  #[case::number_list(    AppCommand::Timetree,  "relax",               SettingKind::List,     false, Some(json!([])))]
+  #[case::string_list(    AppCommand::Clock,     "metadata_id_columns", SettingKind::List,     false, Some(json!(["strain", "name", "accession"])))]
+  #[case::enum_list(      AppCommand::Clock,     "output_selection",    SettingKind::EnumList, false, Some(json!([])))]
+  #[case::nested_enum(    AppCommand::Clock,     "branch_split.method", SettingKind::Enum,     false, Some(json!("grid")))]
+  #[case::nested_integer( AppCommand::Clock,     "branch_split.n_points", SettingKind::Integer, false, Some(json!(11)))]
   #[trace]
   fn test_setting_catalog_kind_and_default(
     #[case] command: AppCommand,
     #[case] key: &str,
     #[case] kind: SettingKind,
     #[case] nullable: bool,
-    #[case] default_value: Value,
+    #[case] default_value: Option<Value>,
   ) {
     let spec = spec(command, key);
-    assert_eq!((kind, nullable, default_value), (spec.kind, spec.nullable, spec.default_value));
+    assert_eq!(
+      (kind, nullable, default_value),
+      (spec.kind, spec.nullable, spec.default_value.map(Value::from))
+    );
   }
 
   #[rustfmt::skip]

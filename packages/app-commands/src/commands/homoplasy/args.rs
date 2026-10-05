@@ -4,6 +4,7 @@ use clap::ValueHint;
 use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
 
@@ -36,9 +37,11 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
   }
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
+#[schemars(rename = "HomoplasyConfig")]
 pub struct TreetimeHomoplasyArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   pub ancestral_args: TreetimeAncestralArgsRaw,

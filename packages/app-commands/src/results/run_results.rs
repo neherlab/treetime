@@ -1,6 +1,4 @@
-use crate::command::AppCommand;
-use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
-use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use crate::command_config::CommandConfig;
 use crate::job::JobId;
 use crate::results::citation::{Citation, citation};
 use crate::results::clock::{ClockResults, clock_results};
@@ -12,17 +10,17 @@ use crate::results::tree::ResultTree;
 use crate::runs::errors::conflict;
 use crate::runs::manager::RunManager;
 use crate::runs::record::{RunRecord, RunStatus};
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use schemars::JsonSchema;
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_with::skip_serializing_none;
 use std::path::Path;
 use treetime::gtr::get_gtr::GtrOutput;
 use treetime_utils::make_report;
 use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
 /// Results of a finished run, read from its output files.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct RunResults {
   /// Tree of the run's Auspice file; absent when the run wrote none.
@@ -48,6 +46,7 @@ pub enum CommandResults {
 }
 
 /// Summary of a tree an `optimize` or `prune` run wrote.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct TreeSummary {
   /// Number of samples.
@@ -99,37 +98,36 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
     trace,
     coalescent,
     problems,
-  } = RunOutputs::read(record.command, out_dir, &record.output_files);
-  let results = match record.command {
-    AppCommand::Timetree => {
-      let config: TreetimeTimetreeArgsRaw = run_config(record)?;
-      CommandResults::Timetree(Box::new(timetree_results(
-        &TimetreeOutputs {
-          tree: tree.as_ref(),
-          clock_model: clock_model.as_ref(),
-          clock_rows: clock_rows.as_deref(),
-          node_data_clock: node_data.as_ref().and_then(|data| data.metadata.clock.as_ref()),
-          trace: trace.as_deref().unwrap_or_default(),
-          coalescent: coalescent.as_deref().unwrap_or_default(),
-        },
-        &config,
-      )))
-    },
-    AppCommand::Clock => CommandResults::Clock(clock_results(
+  } = RunOutputs::read(record.config.command(), out_dir, &record.output_files);
+  let results = match &record.config {
+    CommandConfig::Timetree(config) => CommandResults::Timetree(Box::new(timetree_results(
+      &TimetreeOutputs {
+        tree: tree.as_ref(),
+        clock_model: clock_model.as_ref(),
+        clock_rows: clock_rows.as_deref(),
+        node_data_clock: node_data.as_ref().and_then(|data| data.metadata.clock.as_ref()),
+        trace: trace.as_deref().unwrap_or_default(),
+        coalescent: coalescent.as_deref().unwrap_or_default(),
+      },
+      config,
+    ))),
+    CommandConfig::Clock(_) => CommandResults::Clock(clock_results(
       tree.as_ref(),
       clock_model.as_ref(),
       clock_rows.as_deref(),
     )),
-    AppCommand::Ancestral => CommandResults::Ancestral(ancestral_results(tree.as_ref())?),
-    AppCommand::Mugration => {
-      let config: TreetimeMugrationArgsRaw = run_config(record)?;
+    CommandConfig::Ancestral(_) => CommandResults::Ancestral(ancestral_results(tree.as_ref())?),
+    CommandConfig::Mugration(config) => {
       let attribute = config
         .attribute
+        .clone()
         .ok_or_else(|| make_report!("mugration run `{}` names no attribute", record.id.as_str()))?;
       CommandResults::Mugration(mugration_results(auspice.as_ref(), tree.as_ref(), &attribute)?)
     },
-    AppCommand::Optimize => CommandResults::Optimize(tree_summary(tree.as_ref(), node_data.as_ref(), gtr.as_ref())),
-    AppCommand::Prune => CommandResults::Prune(tree_summary(tree.as_ref(), None, None)),
+    CommandConfig::Optimize(_) => {
+      CommandResults::Optimize(tree_summary(tree.as_ref(), node_data.as_ref(), gtr.as_ref()))
+    },
+    CommandConfig::Prune(_) => CommandResults::Prune(tree_summary(tree.as_ref(), None, None)),
   };
   Ok(RunResults {
     tree,
@@ -137,11 +135,6 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
     citation: citation(),
     problems,
   })
-}
-
-fn run_config<T: DeserializeOwned>(record: &RunRecord) -> Result<T, Report> {
-  serde_json::from_value(Value::Object(record.config.clone()))
-    .wrap_err_with(|| format!("When reading the configuration of run `{}`", record.id.as_str()))
 }
 
 fn tree_summary(

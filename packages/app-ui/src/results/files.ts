@@ -1,8 +1,6 @@
 import type { RunFile } from "@neherlab/app-contracts";
 
-export type RunFileEntry = RunFile;
-
-export function totalSize(files: readonly RunFileEntry[]): number {
+export function totalSize(files: readonly RunFile[]): number {
   return files.reduce((sum, file) => sum + file.size, 0);
 }
 

@@ -1,4 +1,4 @@
-use crate::cli::pipeline::types::PipelineStepCommand;
+use app_commands::command_config::CommandConfig;
 use eyre::Report;
 use serde_json::Value;
 
@@ -10,7 +10,7 @@ const INPUT_FIELDS: [(&str, &[&str]); 5] = [
   ("vcf-reference", &["vcf_reference"]),
 ];
 
-pub(crate) fn input_paths(command: &PipelineStepCommand) -> Result<Vec<String>, Report> {
+pub(crate) fn input_paths(command: &CommandConfig) -> Result<Vec<String>, Report> {
   Ok(
     labeled_input_paths(command)?
       .into_iter()
@@ -19,8 +19,8 @@ pub(crate) fn input_paths(command: &PipelineStepCommand) -> Result<Vec<String>, 
   )
 }
 
-pub(crate) fn labeled_input_paths(command: &PipelineStepCommand) -> Result<Vec<(&'static str, String)>, Report> {
-  let args = command.args_value()?;
+pub(crate) fn labeled_input_paths(command: &CommandConfig) -> Result<Vec<(&'static str, String)>, Report> {
+  let args = Value::Object(command.settings()?);
   Ok(
     INPUT_FIELDS
       .iter()

@@ -1,11 +1,11 @@
-import type { ListItemKind } from "@neherlab/app-contracts";
+import type { JsonValue, ListItemKind } from "@neherlab/app-contracts";
 
-import { isJsonObject, type JsonValue } from "./json";
+import { isJsonObject } from "./json";
 import { parseNumber } from "./numbers";
 
 const TAB_ESCAPE = "\\t";
 
-export function formatList(value: JsonValue): string {
+export function formatList(value: JsonValue | undefined): string {
   return Array.isArray(value) ? value.map((item) => itemText(item).replaceAll("\t", TAB_ESCAPE)).join(" ") : "";
 }
 

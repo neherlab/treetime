@@ -18,14 +18,9 @@ import { Switch } from "../ui/switch";
 import { CHART, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
 import { type PlacedPoint, type PlotFrame, placePoints, plotFrame } from "./rttFrame";
 
-export interface RttPoint {
-  name: string;
-  date: number;
-  dateText: string;
-  div: number;
-  excluded: boolean;
-  inferred: boolean;
-}
+export type RttPoint = z.infer<typeof zRttPoint>;
+
+export type PointPayload = z.infer<typeof zPointPayload>;
 
 export interface RttLine {
   slope: number;
@@ -50,15 +45,16 @@ const SERIES_LOOK: readonly SeriesLook[] = [
   { key: "excluded", fill: CHART.fault, opacity: 1 },
 ];
 
-const zPointPayload = z.object({
+const zRttPoint = z.object({
   name: z.string(),
   date: z.number(),
   dateText: z.string(),
   div: z.number(),
   excluded: z.boolean(),
   inferred: z.boolean(),
-  offAxes: z.boolean(),
 });
+
+const zPointPayload = zRttPoint.extend({ offAxes: z.boolean() });
 
 export function RootToTipPlot({
   points,

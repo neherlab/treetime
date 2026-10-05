@@ -1,9 +1,8 @@
-import { zAncestorShift } from "@neherlab/app-contracts";
+import { zAncestorShift, type AncestorShift } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 import { CartesianGrid, Label, ReferenceLine, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from "recharts";
 
 import { formatSignedDays } from "../format";
-import type { AncestorShift } from "../results/types";
 import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { CHART, niceAxis, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
 

@@ -133,7 +133,7 @@ function usePaletteItems(): PaletteItem[] {
   const navigate = useNavigate();
   const { data: runList } = useApi((context) => runsList(context));
   const { data: catalog } = useApi((context) => datasets(context), { staleTime: Infinity });
-  const command = useDraftStore((state) => state.command);
+  const command = useDraftStore((state) => state.draft.command);
   const compareIds = useShellStore((state) => state.compareIds);
   const setWorkspaceOpen = useShellStore((state) => state.setWorkspaceOpen);
   const host = useHost();
@@ -196,7 +196,7 @@ function usePaletteItems(): PaletteItem[] {
       );
     }
 
-    for (const spec of COMMAND_SETTINGS[command].specs) {
+    for (const spec of COMMAND_SETTINGS[command].settings) {
       if (spec.role !== "output") {
         items.push(
           paletteItem(

@@ -23,6 +23,7 @@ eyre = { workspace = true }
 log = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 

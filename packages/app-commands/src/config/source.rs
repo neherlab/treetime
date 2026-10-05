@@ -8,6 +8,7 @@ use saphyr::{LoadableYamlNode, MarkedYaml, Scalar, YamlData};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 use std::collections::BTreeMap;
 use std::fmt::Display;
 use treetime_utils::make_report;
@@ -73,6 +74,7 @@ impl InvalidConfig {
 }
 
 /// One problem found in a configuration.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ConfigProblem {
   /// Stable diagnostic code, for example `config::unknown-field`.

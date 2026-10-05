@@ -55,8 +55,7 @@ mod tests {
     let local = local_app();
     let runs = local.app.runs_dir.path().to_path_buf();
     let actual = request(&local.app, "GET", "/api/workspace", None).await;
-    let expected =
-      json!({ "path": runs, "default_path": local.dir.path().join("runs"), "fixed_by": null, "error": null });
+    let expected = json!({ "path": runs, "default_path": local.dir.path().join("runs") });
     assert_eq!((200, expected), actual);
   }
 
@@ -76,7 +75,7 @@ mod tests {
     let local = local_app();
     let folder = local.dir.path().join("elsewhere");
     request(&local.app, "PUT", "/api/workspace", Some(json!({ "path": folder }))).await;
-    let actual = request(&local.app, "PUT", "/api/workspace", Some(json!({ "path": null }))).await;
+    let actual = request(&local.app, "PUT", "/api/workspace", Some(json!({}))).await;
     assert_eq!((200, json!({})), actual);
   }
 

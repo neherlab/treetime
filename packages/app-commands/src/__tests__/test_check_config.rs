@@ -1,12 +1,15 @@
 #[cfg(test)]
 mod tests {
   use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
-  use crate::check_inputs::{InputFacts, TreeFacts};
+  use crate::check_inputs::{InputFacts, InputKind, InputNeed, TreeFacts};
   use crate::command::AppCommand;
+  use crate::config::catalog::command_settings;
   use crate::config::source::{ConfigProblem, ConfigSpan};
+  use crate::json_value::SparseConfig;
   use crate::run_checks::CheckLevel;
   use app_datasets::schema_directive;
   use eyre::Report;
+  use helpers::set_at;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -25,7 +28,7 @@ mod tests {
         max_iter: 4
       "#}
       .to_owned(),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -53,7 +56,7 @@ mod tests {
         output_tree_nwk: /home/user/tree.nwk
       "#}
       .to_owned(),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -75,7 +78,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: r#"{ "tree": "t.nwk", "method_anc": "parsimony" }"#.to_owned(),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -91,7 +94,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: text.to_owned(),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -133,7 +136,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: format!("tree: t.nwk\nmethod_anc: {value}\n"),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -159,7 +162,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: "tree: tree.nwk\noutput_all: out\n".to_owned(),
-      inputs: Map::from_iter([(o!("alignment"), json!(["inputs/aln.fasta"]))]),
+      inputs: SparseConfig(Map::from_iter([(o!("alignment"), json!(["inputs/aln.fasta"]))])),
       input_facts: None,
       folder: Some(PathBuf::from("/data/zika/20")),
     });
@@ -181,7 +184,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: "tree: tree.nwk\n".to_owned(),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -191,12 +194,74 @@ mod tests {
     assert_eq!(json!("tree.nwk"), config["tree"]);
   }
 
+  #[rstest]
+  #[trace]
+  fn test_check_config_accepts_the_fresh_draft_of_each_command(
+    #[values(
+      AppCommand::Timetree,
+      AppCommand::Optimize,
+      AppCommand::Prune,
+      AppCommand::Ancestral,
+      AppCommand::Clock,
+      AppCommand::Mugration
+    )]
+    command: AppCommand,
+  ) {
+    let mut draft = Map::new();
+    for spec in command_settings(command).unwrap().settings {
+      if let Some(default) = spec.default_value {
+        set_at(&mut draft, &spec.path, default.0);
+      }
+    }
+    for input in command
+      .inputs()
+      .iter()
+      .filter(|input| input.need == InputNeed::Required)
+    {
+      let (key, value) = match input.kind {
+        InputKind::Tree => ("tree", json!("t.nwk")),
+        InputKind::Metadata => ("metadata", json!("m.tsv")),
+        InputKind::Alignment => ("alignment", json!(["a.fasta"])),
+      };
+      draft.insert(o!(key), value);
+    }
+    if command == AppCommand::Mugration {
+      draft.insert(o!("attribute"), json!("country"));
+    }
+    let response = check_config(&CheckConfigRequest {
+      command,
+      text: serde_json::to_string(&draft).unwrap(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+    });
+    assert!(
+      matches!(response, CheckConfigResponse::Valid { .. }),
+      "{command}: {response:?}"
+    );
+  }
+
+  #[test]
+  fn test_check_config_rejects_a_null_value() {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Timetree,
+      text: "tree: t.nwk\nclock_rate: null\n".to_owned(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+    });
+    let CheckConfigResponse::Invalid { message, .. } = response else {
+      panic!("expected an invalid config, got {response:?}");
+    };
+    assert_eq!("invalid configuration: null is not of type \"number\"", message);
+  }
+
   #[test]
   fn test_check_config_missing_required_input_uses_cli_wording() {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Mugration,
       text: "tree: t.nwk\n".to_owned(),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -224,7 +289,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Clock,
       text: "tree: t.nwk\ntree: other.nwk\n".to_owned(),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -248,7 +313,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Prune,
       text: "tree: t.nwk\n".to_owned(),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -275,7 +340,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Timetree,
       text,
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -294,7 +359,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Prune,
       text,
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -310,7 +375,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: "alignment: [\"text.fasta\"]\ndense: true".to_owned(),
-      inputs: inputs.as_object().unwrap().clone(),
+      inputs: SparseConfig(inputs.as_object().unwrap().clone()),
       input_facts: None,
       folder: None,
     });
@@ -333,7 +398,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Prune,
       text: text.to_owned(),
-      inputs: json!({ "tree": "draft.nwk" }).as_object().unwrap().clone(),
+      inputs: SparseConfig(json!({ "tree": "draft.nwk" }).as_object().unwrap().clone()),
       input_facts: None,
       folder: None,
     });
@@ -354,7 +419,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: "tree: t.nwk\nmethod_anc: margnal\n".to_owned(),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
     });
@@ -395,7 +460,7 @@ mod tests {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
       text: "tree: t.nwk\nalignment: [a.fasta]\n".to_owned(),
-      inputs: Map::new(),
+      inputs: SparseConfig::default(),
       input_facts: Some(facts),
       folder: None,
     });
@@ -412,5 +477,23 @@ mod tests {
         code.command_line_text
       )
     );
+  }
+
+  mod helpers {
+    use serde_json::{Map, Value, json};
+
+    pub(super) fn set_at(config: &mut Map<String, Value>, path: &[String], value: Value) {
+      let Some((last, parents)) = path.split_last() else {
+        return;
+      };
+      let parent = parents.iter().fold(config, |map, key| {
+        map
+          .entry(key.clone())
+          .or_insert_with(|| json!({}))
+          .as_object_mut()
+          .expect("a setting group is a mapping")
+      });
+      parent.insert(last.clone(), value);
+    }
   }
 }

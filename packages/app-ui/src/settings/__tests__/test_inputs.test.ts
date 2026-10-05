@@ -57,13 +57,13 @@ describe("inputs", () => {
   });
 
   test("the input check sends the command and its configuration", () => {
-    const config = setAt(defaultConfig(COMMAND_SETTINGS.mugration.specs), ["tree"], "t.nwk");
+    const config = setAt(defaultConfig(COMMAND_SETTINGS.mugration.settings), ["tree"], "t.nwk");
 
     expect(inputFactsRequest("mugration", config)).toStrictEqual({ command: "mugration", config });
   });
 
   test("a path setting lists its non-empty paths", () => {
-    expect([pathList("t.nwk"), pathList(["a.fasta", ""]), pathList(null), pathList("")]).toStrictEqual([
+    expect([pathList("t.nwk"), pathList(["a.fasta", ""]), pathList(undefined), pathList("")]).toStrictEqual([
       ["t.nwk"],
       ["a.fasta"],
       [],
@@ -72,7 +72,7 @@ describe("inputs", () => {
   });
 
   test("no input means no input check", () => {
-    expect(inputFactsRequest("prune", defaultConfig(COMMAND_SETTINGS.prune.specs))).toStrictEqual(null);
+    expect(inputFactsRequest("prune", defaultConfig(COMMAND_SETTINGS.prune.settings))).toStrictEqual(null);
   });
 });
 

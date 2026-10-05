@@ -1,12 +1,18 @@
-import type { AppCommand, InputFacts, RunCheck, UiSettingsView } from "@neherlab/app-contracts";
+import type {
+  SparseConfig,
+  AppCommand,
+  InputFacts,
+  RunCheck,
+  UiSettingsView,
+  SettingSpec,
+} from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import ChevronRight from "~icons/lucide/chevron-right";
 import Search from "~icons/lucide/search";
 
 import { OptionToggle } from "../components/OptionToggle";
-import { COMMAND_SETTINGS, groupedSpecs, type SettingSpec } from "../settings/catalog";
+import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
 import { isChanged } from "../settings/config";
-import type { JsonObject } from "../settings/json";
 import { matchingSpecs } from "../settings/search";
 import { useDraftStore } from "../store/draft";
 import { Badge } from "../ui/badge";
@@ -26,15 +32,15 @@ export function SettingsPanel({
   checks,
 }: {
   command: AppCommand;
-  config: JsonObject;
+  config: SparseConfig;
   facts: InputFacts | undefined;
   checks: readonly RunCheck[] | undefined;
 }) {
-  const view = useDraftStore((state) => state.view);
-  const search = useDraftStore((state) => state.search);
-  const changedOnly = useDraftStore((state) => state.changed_only);
+  const view = useDraftStore((state) => state.draft.view);
+  const search = useDraftStore((state) => state.draft.search);
+  const changedOnly = useDraftStore((state) => state.draft.changed_only);
   const update = useDraftStore((state) => state.update);
-  const total = COMMAND_SETTINGS[command].specs.filter((spec) => spec.role !== "output").length;
+  const total = COMMAND_SETTINGS[command].settings.filter((spec) => spec.role !== "output").length;
 
   const views = useMemo(
     () => [
@@ -98,12 +104,12 @@ function AllSettings({
   changedOnly,
 }: {
   command: AppCommand;
-  config: JsonObject;
+  config: SparseConfig;
   search: string;
   changedOnly: boolean;
 }) {
   const settings = COMMAND_SETTINGS[command];
-  const specs = settings.specs;
+  const specs = settings.settings;
   const groups = groupedSpecs(settings, matchingSpecs(specs, config, search, changedOnly));
   const allGroups = groupedSpecs(settings, specs);
   const filtering = search.trim() !== "" || changedOnly;
@@ -167,7 +173,7 @@ function SettingGroup({
   filtering,
 }: {
   command: AppCommand;
-  config: JsonObject;
+  config: SparseConfig;
   group: string;
   members: readonly SettingSpec[];
   filtering: boolean;

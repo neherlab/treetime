@@ -11,9 +11,11 @@ use crate::runs::setting_differences::{SettingDifference, setting_differences};
 use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
 /// Comparison of two runs: their settings and their results.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct RunComparison {
   /// Settings and inputs that differ; absent when the runs execute different commands.
@@ -36,6 +38,7 @@ pub struct SettingsComparison {
 }
 
 /// Estimates of two time-tree runs and their differences, second minus first.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct EstimateComparison {
   /// Estimates of the first run.
@@ -55,6 +58,7 @@ pub struct EstimateComparison {
 }
 
 /// Date shifts of the ancestors two trees share, matched by their set of samples.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct AncestorComparison {
   /// Ancestors dated in both trees, with the shift of their date.
@@ -98,10 +102,10 @@ pub fn compare_runs(manager: &RunManager, first: &JobId, second: &JobId) -> Resu
 }
 
 fn compare_settings(first: &RunRecord, second: &RunRecord) -> Result<Option<SettingsComparison>, Report> {
-  if first.command != second.command {
+  if first.config.command() != second.config.command() {
     return Ok(None);
   }
-  let compared = command_settings(first.command)?
+  let compared = command_settings(first.config.command())?
     .settings
     .iter()
     .filter(|spec| spec.role != SettingRole::Output)

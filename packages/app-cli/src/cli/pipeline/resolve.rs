@@ -1,6 +1,7 @@
 use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve_vars, template_context};
-use crate::cli::pipeline::types::{PipelineStepCommand, RawStep};
+use crate::cli::pipeline::types::{RawStep, step_config};
 use app_commands::command::AppCommand;
+use app_commands::command_config::CommandConfig;
 use app_commands::commands::ancestral::aa_node_data::is_cds_output_template;
 use app_commands::config::resolve_paths::resolve_config_paths;
 use app_commands::config::suggest::{suggestion_suffix, valid_values};
@@ -50,8 +51,7 @@ pub(crate) fn resolve_pipeline(
       set_output_all_if_absent(&mut payload, &dir.join(&raw.name));
     }
 
-    let command =
-      PipelineStepCommand::from_tag_and_value(&raw.tag, payload).map_err(|err| step_error(&raw.name, &err))?;
+    let command = step_config(&raw.tag, &payload).map_err(|err| step_error(&raw.name, &err))?;
     let resolved = command
       .resolve_outputs()
       .map_err(|err| step_error(&raw.name, &missing_outputs_error(err)))?;
@@ -276,7 +276,7 @@ fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) 
 
 pub(crate) struct ResolvedStep {
   pub name: String,
-  pub command: PipelineStepCommand,
+  pub command: CommandConfig,
   pub outputs: StepOutputs,
 }
 
@@ -329,7 +329,7 @@ mod tests {
 
   fn tree_of(step: &ResolvedStep) -> String {
     match &step.command {
-      PipelineStepCommand::Ancestral(args) => args
+      CommandConfig::Ancestral(args) => args
         .tree
         .as_deref()
         .expect("ancestral step has a tree")

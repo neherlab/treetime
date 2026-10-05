@@ -1,11 +1,11 @@
+import type { SparseConfig, SettingSpec } from "@neherlab/app-contracts";
+
 import { fuzzyFilter } from "../fuzzy";
-import type { SettingSpec } from "./catalog";
 import { isChanged } from "./config";
-import type { JsonObject } from "./json";
 
 export function matchingSpecs(
   specs: readonly SettingSpec[],
-  config: JsonObject,
+  config: SparseConfig,
   search: string,
   changedOnly: boolean,
 ): SettingSpec[] {

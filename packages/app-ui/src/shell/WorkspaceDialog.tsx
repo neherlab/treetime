@@ -90,7 +90,7 @@ function WorkspaceForm({ host, onChanged }: { host: Host; onChanged: () => void 
   const [busy, setBusy] = useState(false);
 
   const apply = useCallback(
-    async (path: string | null) => {
+    async (path: string | undefined) => {
       setBusy(true);
       await change(path);
       setBusy(false);
@@ -107,7 +107,7 @@ function WorkspaceForm({ host, onChanged }: { host: Host; onChanged: () => void 
   }, [apply, host]);
 
   const onChoose = useCallback(() => void choose(), [choose]);
-  const onResetToDefault = useCallback(() => void apply(null), [apply]);
+  const onResetToDefault = useCallback(() => void apply(undefined), [apply]);
   const computing = runList?.active_runs ?? 0;
   const fixedBy = workspace?.fixed_by ?? undefined;
   const locked = busy || fixedBy !== undefined;
@@ -122,7 +122,7 @@ function WorkspaceForm({ host, onChanged }: { host: Host; onChanged: () => void 
         </DialogDescription>
       </DialogHeader>
       <WorkspacePath workspace={workspace} />
-      {workspace?.error != null && (
+      {workspace?.error !== undefined && (
         <Alert variant="destructive">
           <AlertDescription>{workspace.error}</AlertDescription>
         </Alert>
@@ -185,9 +185,9 @@ function useWorkspaceChange(host: Host, onChanged: () => void) {
   const toasts = useToastManager();
 
   return useCallback(
-    async (path: string | null) => {
+    async (path: string | undefined) => {
       try {
-        await workspaceUpdate({ client, body: { path }, throwOnError: true });
+        await workspaceUpdate({ client, body: path === undefined ? {} : { path }, throwOnError: true });
         await host.restartBackend();
         await resetApiQueries(queryClient);
         onChanged();

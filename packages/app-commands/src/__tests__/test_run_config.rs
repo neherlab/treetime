@@ -10,12 +10,12 @@ mod tests {
   fn test_run_config_adds_the_run_outputs_to_the_chosen_selection() {
     let response = resolve(
       AppCommand::Timetree,
-      json!({ "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["Nwk"], "output_all": "/elsewhere" }),
+      json!({ "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["nwk"], "output_all": "/elsewhere" }),
     );
     assert_eq!(
       (
         json!("valid"),
-        json!(["Nwk", "Auspice", "Tracelog", "ClockCsv"]),
+        json!(["nwk", "auspice", "tracelog", "clock-csv"]),
         json!("out")
       ),
       (
@@ -89,7 +89,7 @@ mod tests {
   fn test_run_config_command_line_includes_the_run_outputs() {
     let response = resolve(
       AppCommand::Timetree,
-      json!({ "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["Nwk"] }),
+      json!({ "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["nwk"] }),
     );
     assert_eq!(
       json!(
@@ -100,6 +100,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_support::tests::sparse;
     use crate::command::AppCommand;
     use crate::run_config::{RunConfigRequest, run_config};
     use serde_json::Value;
@@ -110,7 +111,10 @@ mod tests {
 
     pub(super) fn resolve(command: AppCommand, config: Value) -> Value {
       let response = run_config(
-        &RunConfigRequest { command, config },
+        &RunConfigRequest {
+          command,
+          config: sparse(config),
+        },
         Box::new(|_config: &mut Value| Ok(())),
       );
       serde_json::to_value(response).unwrap()

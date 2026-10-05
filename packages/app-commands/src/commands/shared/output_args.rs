@@ -4,6 +4,7 @@ use clap::ValueHint;
 use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -12,6 +13,7 @@ use treetime_io::nwk::NwkStyle;
 macro_rules! per_command_output_selection {
   ($name:ident { $($extra:ident),* $(,)? }) => {
     #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, schemars::JsonSchema, strum_macros::EnumIter)]
+    #[serde(rename_all = "kebab-case")]
     #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
     pub enum $name {
       All,
@@ -79,6 +81,7 @@ per_command_output_selection!(PruneOutputSelection { Gtr });
 /// Output selection shared by every tree-writing command. `--output-all`
 /// chooses the directory, `--output-selection` restricts generated files, and
 /// per-file flags override or add paths. Style and topology order are separate.
+#[skip_serializing_none]
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]

@@ -263,6 +263,7 @@ mod tests {
   mod helpers {
     use crate::check_inputs::CheckInputsRequest;
     use crate::command::AppCommand;
+    use crate::json_value::SparseConfig;
     use serde_json::Value;
     use std::path::{Path, PathBuf};
 
@@ -274,7 +275,10 @@ mod tests {
       let Value::Object(config) = config else {
         panic!("a test configuration must be a mapping");
       };
-      CheckInputsRequest { command, config }
+      CheckInputsRequest {
+        command,
+        config: SparseConfig(config),
+      }
     }
   }
 }

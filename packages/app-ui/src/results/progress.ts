@@ -233,5 +233,5 @@ function iterationPoint(event: IterationEvent): IterationPoint {
 }
 
 function optionalFloat(value: IterationEvent["log_lh_total"]): number | undefined {
-  return value === null || value === undefined ? undefined : fromJsonFloat(value);
+  return value === undefined ? undefined : fromJsonFloat(value);
 }

@@ -6,6 +6,7 @@ pub(crate) mod tests {
     next_event, open_app_events, read_events, request, take_events, timetree_config, wait_for_status,
   };
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use serde_json::{Value, json};
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -42,16 +43,16 @@ pub(crate) mod tests {
         json!("ok"),
         json!(run_dir.join("out")),
         json!([
-          "Nwk",
-          "Nexus",
-          "Auspice",
-          "AugurNodeData",
-          "Gtr",
-          "ReconstructedNucFasta",
-          "ClockModel",
-          "CoalescentTsv",
-          "Tracelog",
-          "ClockCsv"
+          "nwk",
+          "nexus",
+          "auspice",
+          "augur-node-data",
+          "gtr",
+          "reconstructed-nuc-fasta",
+          "clock-model",
+          "coalescent-tsv",
+          "tracelog",
+          "clock-csv"
         ])
       ),
       (
@@ -107,27 +108,45 @@ pub(crate) mod tests {
     assert_eq!(seqs(&all[5..]), seqs(&read_events(response).await));
   }
 
-  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_rejected_configuration_ends_with_an_error_run() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::unknown_key(  json!({ "tree": "zika/20/tree.nwk", "bogus": 1 }),      "invalid configuration: unknown field `bogus`")]
+  #[case::null_value(   json!({ "tree": null }),                                 "invalid configuration: null is not of type \"string\"")]
+  #[case::wrong_type(   json!({ "tree": 7 }),                                    "invalid configuration: 7 is not of type \"string\"")]
+  #[trace]
+  #[tokio::test]
+  async fn test_routes_rejected_configuration_answers_an_invalid_request(
+    #[case] config: Value,
+    #[case] message: &str,
+  ) {
     let test = app();
-    let (_, record) = request(
+    let (status, error) = request(&test, "POST", "/api/runs", Some(json!({ "command": "clock", "config": config }))).await;
+    let (_, list) = request(&test, "GET", "/api/runs", None).await;
+    assert_eq!(
+      (400, json!("invalid_request"), json!(message), json!([])),
+      (status, error["code"].clone(), error["message"].clone(), list["runs"].clone())
+    );
+  }
+
+  #[tokio::test]
+  async fn test_routes_start_rejects_a_configuration_that_does_not_parse() {
+    let test = app();
+    let id = create_deferred(&test).await;
+    let (status, error) = request(
       &test,
       "POST",
-      "/api/runs",
-      Some(json!({ "command": "clock", "config": { "tree": "zika/20/tree.nwk", "bogus": 1 } })),
+      &format!("/api/runs/{id}/start"),
+      Some(json!({ "config": { "tree": "zika/20/tree.nwk", "bogus": 1 } })),
     )
     .await;
-    let id = record["id"].as_str().unwrap().to_owned();
-    let events = events_of(&test, &id, "").await;
-    let terminal = &events.last().unwrap().data;
+    let (_, record) = request(&test, "GET", &format!("/api/runs/{id}"), None).await;
     assert_eq!(
-      (json!("error"), json!("invalid configuration: unknown field `bogus`")),
-      (terminal["data"]["status"].clone(), terminal["data"]["message"].clone())
-    );
-    let record = wait_for_status(&test, &id, "error").await;
-    assert_eq!(
-      json!("invalid configuration: unknown field `bogus`"),
-      record["error"]["message"]
+      (
+        400,
+        json!("invalid configuration: unknown field `bogus`"),
+        json!("created")
+      ),
+      (status, error["message"].clone(), record["status"].clone())
     );
   }
 
@@ -442,7 +461,7 @@ pub(crate) mod tests {
     assert_eq!(
       (
         json!("invalid"),
-        json!("invalid configuration: \"fast\" is not of types \"null\", \"number\"")
+        json!("invalid configuration: \"fast\" is not of type \"number\"")
       ),
       (response["status"].clone(), response["message"].clone())
     );
@@ -456,12 +475,12 @@ pub(crate) mod tests {
       "POST",
       "/api/run-config",
       Some(
-        json!({ "command": "clock", "config": { "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["Nwk"] } }),
+        json!({ "command": "clock", "config": { "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["nwk"] } }),
       ),
     )
     .await;
     assert_eq!(
-      (json!("valid"), json!(["Nwk", "Auspice"]), json!("out")),
+      (json!("valid"), json!(["nwk", "auspice"]), json!("out")),
       (
         response["status"].clone(),
         response["config"]["output_selection"].clone(),
@@ -693,6 +712,8 @@ pub(crate) mod tests {
           json!([
             { "path": "/api/runs", "scope": "subtree" },
             { "path": "/api/clade-in-runs", "scope": "exact" },
+            { "path": "/api/datasets", "scope": "exact" },
+            { "path": "/api/examples/download", "scope": "exact" },
           ])
         ),
         (

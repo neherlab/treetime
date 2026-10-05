@@ -37,7 +37,7 @@ mod tests {
   #[rstest]
   #[case::one_coalescent_prior(     AppCommand::Timetree, "tree: t.nwk\ncoalescent: 1.0\n")]
   #[case::keep_root_alone(          AppCommand::Timetree, "tree: t.nwk\nkeep_root: true\n")]
-  #[case::keep_root_with_unset_root(AppCommand::Clock,    "tree: t.nwk\nmetadata: m.tsv\nkeep_root: true\nreroot: null\n")]
+  #[case::keep_root_with_default_root(AppCommand::Clock,  "tree: t.nwk\nmetadata: m.tsv\nkeep_root: true\n")]
   #[case::relax_with_two_values(    AppCommand::Timetree, "tree: t.nwk\nrelax: [1.0, 0.0]\n")]
   #[case::relax_twice(              AppCommand::Timetree, "tree: t.nwk\nrelax: [1.0, 0.0, 2.0, 0.5]\n")]
   #[case::empty_relax(              AppCommand::Timetree, "tree: t.nwk\nrelax: []\n")]

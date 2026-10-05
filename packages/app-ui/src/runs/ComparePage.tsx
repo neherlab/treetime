@@ -1,4 +1,11 @@
-import type { RunComparison, RunRecord } from "@neherlab/app-contracts";
+import type {
+  RunComparison,
+  RunRecord,
+  SettingDifference,
+  SettingsComparison,
+  TimetreeEstimates,
+  YearDate,
+} from "@neherlab/app-contracts";
 import { runsCompare, runsGet, runsList } from "@neherlab/app-contracts/client";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
@@ -11,11 +18,9 @@ import { LoadingState, PageShell } from "../components/PageShell";
 import { Panel } from "../components/Panel";
 import { formatLevel, formatRate, formatSignedDays } from "../format";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
-import type { SettingDifference, SettingsComparison, TimetreeEstimates, YearDate } from "../results/types";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
 import { baseName } from "../settings/inputs";
-import { zJsonValue } from "../settings/json";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
 import { NativeSelect, NativeSelectOption } from "../ui/native-select";
@@ -173,7 +178,7 @@ function SettingsDifferences({
 }
 
 function DifferenceRow({ record, difference }: { record: RunRecord; difference: SettingDifference }) {
-  const spec = COMMAND_SETTINGS[record.command].specs.find((candidate) => candidate.key === difference.key);
+  const spec = COMMAND_SETTINGS[record.command].settings.find((candidate) => candidate.key === difference.key);
 
   return (
     <TableRow>
@@ -186,14 +191,10 @@ function DifferenceRow({ record, difference }: { record: RunRecord; difference: 
         )}
       </TableCell>
       <TableCell className="font-mono text-xs break-all whitespace-normal">
-        {difference.kind === "input"
-          ? difference.first.map(baseName).join(", ")
-          : defaultText(zJsonValue.parse(difference.first))}
+        {difference.kind === "input" ? difference.first.map(baseName).join(", ") : defaultText(difference.first)}
       </TableCell>
       <TableCell className="font-mono text-xs break-all whitespace-normal">
-        {difference.kind === "input"
-          ? difference.second.map(baseName).join(", ")
-          : defaultText(zJsonValue.parse(difference.second))}
+        {difference.kind === "input" ? difference.second.map(baseName).join(", ") : defaultText(difference.second)}
       </TableCell>
     </TableRow>
   );
@@ -227,7 +228,7 @@ function TimetreeEstimatesComparison({
     const a = estimates?.first;
     const b = estimates?.second;
 
-    return a?.root_date === null || a?.root_date === undefined || b?.root_date === null || b?.root_date === undefined
+    return a?.root_date === undefined || b?.root_date === undefined
       ? undefined
       : [
           {
@@ -301,8 +302,8 @@ function TimetreeEstimatesComparison({
               />
               <EstimateRow
                 label="r"
-                first={a.r === null || a.r === undefined ? "-" : a.r.toFixed(3)}
-                second={b.r === null || b.r === undefined ? "-" : b.r.toFixed(3)}
+                first={a.r === undefined ? "-" : a.r.toFixed(3)}
+                second={b.r === undefined ? "-" : b.r.toFixed(3)}
                 difference=""
               />
               <EstimateRow
@@ -374,30 +375,28 @@ function EstimateRow({
   );
 }
 
-function dateText(date: YearDate | null | undefined): string {
-  return date === null || date === undefined ? "not dated" : date.date;
+function dateText(date: YearDate | undefined): string {
+  return date === undefined ? "not dated" : date.date;
 }
 
 function daysText(days: number | undefined): string {
   return days === undefined ? "no interval" : `${Math.round(days)} days`;
 }
 
-function daysDifference(days: number | null | undefined): string {
-  return days === null || days === undefined ? "-" : formatSignedDays(days);
+function daysDifference(days: number | undefined): string {
+  return days === undefined ? "-" : formatSignedDays(days);
 }
 
 function rateText(estimates: TimetreeEstimates): string {
   const rate = estimates.clock_rate;
 
-  return rate === null || rate === undefined
-    ? "-"
-    : `${formatRate(rate)}${estimates.clock_rate_fixed ? " (fixed)" : ""}`;
+  return rate === undefined ? "-" : `${formatRate(rate)}${estimates.clock_rate_fixed ? " (fixed)" : ""}`;
 }
 
 function likelihoodText(estimates: TimetreeEstimates): string {
   const written = estimates.log_likelihood;
 
-  if (written === null || written === undefined) {
+  if (written === undefined) {
     return "not written";
   }
 

@@ -1,5 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
 
@@ -49,6 +50,7 @@ pub struct MetadataIdArgs {
 /// `--date-column` overrides auto-detection of the column holding sampling dates; when omitted, the
 /// leftmost column whose name contains `date` (case-insensitive) is used. `--date-format` controls
 /// parsing of string dates; numeric, ISO, and uncertain dates parse regardless.
+#[skip_serializing_none]
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]

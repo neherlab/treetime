@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "TreetimeClockArgsRaw",
+  "title": "ClockConfig",
   "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
   "type": "object",
   "properties": {
@@ -16,32 +16,23 @@
     },
     "tree": {
       "description": "Tree in Newick format.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--tree"
     },
     "vcf_reference": {
       "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--vcf-reference"
     },
     "metadata": {
       "description": "CSV/TSV file with metadata including sampling dates",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--metadata"
     },
     "metadata_id_columns": {
@@ -74,11 +65,8 @@
     },
     "date_column": {
       "description": "Label of the column to be used as sampling date (auto-detected when omitted)",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
+      "x-unset": true,
       "x-cli-flag": "--date-column"
     },
     "date_format": {
@@ -89,13 +77,10 @@
     },
     "sequence_length": {
       "description": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint",
       "minimum": 0,
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--sequence-length"
     },
     "model": {
@@ -134,15 +119,8 @@
     },
     "reroot": {
       "description": "Reroot the tree by temporal-signal optimization.\n\nDefaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/RerootMethod"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/RerootMethod",
+      "x-unset": true,
       "x-cli-flag": "--reroot"
     },
     "reroot_tips": {
@@ -167,12 +145,9 @@
     },
     "tip_slack": {
       "description": "excess variance associated with terminal nodes accounting for overdispersion of the molecular\nclock",
-      "type": [
-        "number",
-        "null"
-      ],
+      "type": "number",
       "format": "double",
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--tip-slack"
     },
     "covariation": {
@@ -189,12 +164,9 @@
     },
     "output_all": {
       "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-all"
     },
     "output_nwk_style": {
@@ -208,112 +180,79 @@
     },
     "output_tree_nwk": {
       "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-nwk"
     },
     "output_tree_nexus": {
       "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-nexus"
     },
     "output_tree_auspice": {
       "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-auspice"
     },
     "output_tree_mat_pb": {
       "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-mat-pb"
     },
     "output_tree_mat_json": {
       "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-mat-json"
     },
     "output_tree_graph_json": {
       "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-graph-json"
     },
     "output_tree_dot": {
       "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-dot"
     },
     "output_clock_model": {
       "description": "Path to output clock model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-clock-model"
     },
     "output_clock_csv": {
       "description": "Path to output clock regression CSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-clock-csv"
     },
     "output_clock_chart_svg": {
       "description": "Path to output root-to-tip regression chart in SVG format.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-clock-chart-svg"
     },
     "output_clock_chart_png": {
       "description": "Path to output root-to-tip regression chart in PNG format.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-clock-chart-png"
     },
     "output_selection": {
@@ -327,51 +266,27 @@
     },
     "ladderize": {
       "description": "Order tree topology before writing output files.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/LadderizeArg"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/LadderizeArg",
+      "x-unset": true,
       "x-cli-flag": "--ladderize"
     },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/TopologyOrderArg"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/TopologyOrderArg",
+      "x-unset": true,
       "x-cli-flag": "--topology-order"
     },
     "topology_order_target_source": {
       "description": "Source for target-order topology sorting.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/TopologyOrderTargetSourceArg"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/TopologyOrderTargetSourceArg",
+      "x-unset": true,
       "x-cli-flag": "--topology-order-target-source"
     },
     "topology_order_target_file": {
       "description": "File used by list or reference-topology target-order sources.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--topology-order-target-file"
     },
     "topology_order_target_aggregate": {
@@ -382,21 +297,15 @@
     },
     "clock_filter_method": {
       "description": "Method for clock filter outlier detection (not yet implemented)",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
+      "x-unset": true,
       "x-cli-flag": "--clock-filter-method"
     },
     "plot_rtt": {
       "description": "Filename to save root-to-tip regression plot (not yet implemented)",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--plot-rtt"
     },
     "prune_outliers": {
@@ -489,18 +398,18 @@
     "ClockOutputSelection": {
       "type": "string",
       "enum": [
-        "All",
-        "Nwk",
-        "Nexus",
-        "Auspice",
-        "MatPb",
-        "MatJson",
-        "GraphJson",
-        "Dot",
-        "ClockModel",
-        "ClockCsv",
-        "ClockChartSvg",
-        "ClockChartPng"
+        "all",
+        "nwk",
+        "nexus",
+        "auspice",
+        "mat-pb",
+        "mat-json",
+        "graph-json",
+        "dot",
+        "clock-model",
+        "clock-csv",
+        "clock-chart-svg",
+        "clock-chart-png"
       ]
     },
     "LadderizeArg": {

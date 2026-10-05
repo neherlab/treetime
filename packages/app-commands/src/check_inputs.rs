@@ -1,11 +1,13 @@
 use crate::command::AppCommand;
 use crate::commands::shared::alignment::read_alignment;
+use crate::json_value::SparseConfig;
 use chrono::Datelike;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use serde_with::skip_serializing_none;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use strum_macros::Display;
@@ -27,7 +29,7 @@ pub struct CheckInputsRequest {
   /// Command the configuration is for.
   pub command: AppCommand,
   /// Settings of the command; the input files and the metadata settings are read from it, the rest is ignored.
-  pub config: Map<String, Value>,
+  pub config: SparseConfig,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -60,6 +62,7 @@ impl InputSettings {
 }
 
 /// Facts about the input files of a run, read with the readers the commands use.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
 pub struct InputFacts {
   /// Facts about the tree, when it could be read.
@@ -105,6 +108,7 @@ pub struct AlignmentFacts {
 }
 
 /// Facts about a metadata table.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct MetadataFacts {
   /// Number of data rows.

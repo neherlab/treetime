@@ -1,47 +1,28 @@
-import { errorMessage, type UiDraft, type UiSettings } from "@neherlab/app-contracts";
+import { errorMessage, type UiSettings } from "@neherlab/app-contracts";
 import { Debouncer } from "@tanstack/react-pacer";
 
 import { useDraftStore } from "../store/draft";
-import { storedDraft } from "../store/draftSchema";
 import { usePreferencesStore } from "../store/preferences";
-import type { LoadedPreferences, PreferencesStorage } from "./storage";
+import type { PreferencesStorage } from "./storage";
 
 const SAVE_DELAY_MS = 300;
 
-export function applyPreferences(preferences: LoadedPreferences, setTheme: (theme: string) => void): void {
-  usePreferencesStore.setState({
-    theme: preferences.theme ?? undefined,
-    sidebarWidth: preferences.sidebar_width ?? undefined,
-  });
+export function applyPreferences(loaded: UiSettings, setTheme: (theme: string) => void): void {
+  const { draft, ...preferences } = loaded;
 
-  if (preferences.draft !== null && preferences.draft !== undefined) {
-    useDraftStore.getState().load(storedDraft(preferences.draft));
+  usePreferencesStore.getState().load(preferences);
+
+  if (draft !== undefined) {
+    useDraftStore.getState().load(draft);
   }
 
-  if (preferences.theme !== null && preferences.theme !== undefined) {
+  if (preferences.theme !== undefined) {
     setTheme(preferences.theme);
   }
 }
 
 export function currentPreferences(): UiSettings {
-  const { theme, sidebarWidth } = usePreferencesStore.getState();
-
-  const { command, config, sources, from_run_id, upload_run_id, view, search, changed_only, code_format } =
-    useDraftStore.getState();
-
-  const draft: UiDraft = {
-    command,
-    config,
-    sources,
-    from_run_id,
-    upload_run_id,
-    view,
-    search,
-    changed_only,
-    code_format,
-  };
-
-  return { theme: theme ?? null, sidebar_width: sidebarWidth ?? null, draft };
+  return { ...usePreferencesStore.getState().preferences, draft: useDraftStore.getState().draft };
 }
 
 export class PreferencesSaver {

@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::command::AppCommand;
+  use crate::command_config::CommandConfig;
+  use crate::json_value::JsonValue;
   use crate::runs::setting_differences::{SettingDifference, setting_differences};
   use helpers::{input, record};
   use pretty_assertions::assert_eq;
@@ -26,13 +28,13 @@ mod tests {
       vec![
         SettingDifference::Setting {
           key: o!("clock_rate"),
-          first: json!(0.001),
-          second: json!(0.002),
+          first: Some(JsonValue(json!(0.001))),
+          second: Some(JsonValue(json!(0.002))),
         },
         SettingDifference::Setting {
           key: o!("max_iter"),
-          first: json!(2),
-          second: json!(5),
+          first: Some(JsonValue(json!(2))),
+          second: Some(JsonValue(json!(5))),
         },
       ],
       setting_differences(&first, &second).unwrap()
@@ -42,15 +44,15 @@ mod tests {
   #[test]
   fn test_setting_differences_nested_setting_is_compared_by_its_key_path() {
     let mut first = record(&json!({}), vec![]);
-    first.command = AppCommand::Clock;
-    first.config = AppCommand::Clock.default_config().unwrap();
+    first.config = CommandConfig::from_settings(AppCommand::Clock, &json!({})).unwrap();
     let mut second = first.clone();
-    second.config["branch_split"]["method"] = json!("brent");
+    second.config =
+      CommandConfig::from_settings(AppCommand::Clock, &json!({ "branch_split": { "method": "brent" } })).unwrap();
     assert_eq!(
       vec![SettingDifference::Setting {
         key: o!("branch_split.method"),
-        first: json!("grid"),
-        second: json!("brent"),
+        first: Some(JsonValue(json!("grid"))),
+        second: Some(JsonValue(json!("brent"))),
       }],
       setting_differences(&first, &second).unwrap()
     );
@@ -131,6 +133,7 @@ mod tests {
 
   mod helpers {
     use crate::command::AppCommand;
+    use crate::command_config::CommandConfig;
     use crate::job::JobId;
     use crate::runs::headline::RunHeadline;
     use crate::runs::record::{RunInput, RunRecord, RunStatus};
@@ -142,8 +145,7 @@ mod tests {
       RunRecord {
         id: JobId::random(),
         title: "run".to_owned(),
-        command: AppCommand::Timetree,
-        config: AppCommand::Timetree.config_over_defaults(settings).unwrap(),
+        config: CommandConfig::from_settings(AppCommand::Timetree, settings).unwrap(),
         status: RunStatus::Ok,
         pinned: false,
         created_at: DateTime::UNIX_EPOCH,

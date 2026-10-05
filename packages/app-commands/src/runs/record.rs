@@ -1,25 +1,27 @@
 use crate::command::{AppCommand, OutputFile};
+use crate::command_config::CommandConfig;
 use crate::job::JobId;
+use crate::json_value::SparseConfig;
 use crate::runs::headline::RunHeadline;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_with::skip_serializing_none;
 use std::path::PathBuf;
 use strum_macros::Display;
 
 /// Durable record of one command run, stored as `run.json` in the run's folder.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct RunRecord {
   /// Identifier of the run, also the name of its folder.
   pub id: JobId,
   /// Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
   pub title: String,
-  /// Command the run executes.
-  pub command: AppCommand,
-  /// Configuration of the run. Before the run starts this is the submitted configuration; afterwards it is the full
-  /// resolved configuration, with every default filled in and the outputs the run layer adds.
-  pub config: Map<String, Value>,
+  /// Command of the run and its configuration, with every default filled in. After the run starts, the configuration
+  /// also holds the outputs the run layer adds.
+  #[serde(flatten)]
+  pub config: CommandConfig,
   /// State of the run.
   pub status: RunStatus,
   /// Whether the run is pinned in run lists.
@@ -57,7 +59,7 @@ impl RunRecord {
     RunSummary {
       id: self.id.clone(),
       title: self.title.clone(),
-      command: self.command,
+      command: self.config.command(),
       status: self.status,
       pinned: self.pinned,
       created_at: self.created_at,
@@ -81,7 +83,7 @@ pub enum RunStatus {
   Running,
   /// The command ran to completion.
   Ok,
-  /// The command failed or its configuration was rejected.
+  /// The command failed: its inputs could not be read, or the computation failed.
   Error,
   /// The run stopped because cancellation was requested.
   Cancelled,
@@ -112,6 +114,7 @@ pub struct RunError {
 }
 
 /// Entry of a run list.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct RunSummary {
   /// Identifier of the run.
@@ -155,14 +158,16 @@ pub struct RunList {
 pub struct CreateRunRequest {
   /// Command the run executes.
   pub command: AppCommand,
-  /// Configuration of the command, in the form `treetime <command> --config` reads.
-  pub config: Value,
+  /// Configuration of the command, in the form `treetime <command> --config` reads. A configuration that the command
+  /// rejects is answered with an `invalid_request` error.
+  pub config: SparseConfig,
   /// Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.
   #[serde(default)]
   pub defer_start: bool,
 }
 
 /// Request to start a created run.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct StartRunRequest {
@@ -172,7 +177,7 @@ pub struct StartRunRequest {
   pub command: Option<AppCommand>,
   /// Configuration that replaces the one given at creation, for example to point at uploaded inputs.
   #[serde(default)]
-  pub config: Option<Value>,
+  pub config: Option<SparseConfig>,
 }
 
 /// Answer to a cancellation request.
@@ -183,6 +188,7 @@ pub struct CancelRunResponse {
 }
 
 /// Where to save an output file of a run, or the archive of all its outputs.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SaveRunRequest {
@@ -194,6 +200,7 @@ pub struct SaveRunRequest {
 }
 
 /// Changes to the presentation of a run.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct UpdateRunRequest {

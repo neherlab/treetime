@@ -105,28 +105,22 @@ mod tests {
       "n_diff": 0,
       "n_resolved": 0,
       "max_time_change": 0.5,
-      "rms_time_change": null,
-      "log_lh_seq": null,
       "log_lh_pos": -10.5,
       "log_lh_coal": "inf",
       "log_lh_total": "inf",
       "clock_rate": 0.001,
-      "r_squared": null,
     }))
     .unwrap();
     assert_eq!(
       json!({
-        "iteration": 3,
-        "n_diff": 0,
-        "n_resolved": 0,
-        "max_time_change": 0.5,
-        "rms_time_change": null,
-        "log_lh_seq": null,
-        "log_lh_pos": -10.5,
-        "log_lh_coal": "inf",
-        "log_lh_total": "inf",
-        "clock_rate": 0.001,
-        "r_squared": null,
+      "iteration": 3,
+      "n_diff": 0,
+      "n_resolved": 0,
+      "max_time_change": 0.5,
+          "log_lh_pos": -10.5,
+      "log_lh_coal": "inf",
+      "log_lh_total": "inf",
+      "clock_rate": 0.001,
       }),
       serde_json::to_value(&event).unwrap()
     );
@@ -146,7 +140,7 @@ mod tests {
         "max_iter": 2,
         "seed": 7,
         "output_all": outdir,
-        "output_selection": ["Tracelog"],
+        "output_selection": ["tracelog"],
       })
     }
 

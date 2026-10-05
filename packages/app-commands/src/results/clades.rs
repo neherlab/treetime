@@ -9,6 +9,7 @@ use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime_utils::make_report;
@@ -35,6 +36,7 @@ pub struct CladeInRuns {
 }
 
 /// The node of another run with the same set of samples below it.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct CladeMatch {
   /// Id of the run.

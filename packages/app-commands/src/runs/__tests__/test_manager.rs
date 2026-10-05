@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::sparse;
   use crate::command::AppCommand;
+  use crate::command_config::CommandConfig;
   use crate::job::{JobEvent, JobId, TerminalEvent};
   use crate::runs::events::{RunEvent, read_events};
   use crate::runs::manager::RunManager;
@@ -11,7 +13,7 @@ mod tests {
   use maplit::btreeset;
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
-  use serde_json::json;
+  use serde_json::{Value, json};
   use std::collections::BTreeSet;
   use std::fs;
   use std::sync::Arc;
@@ -27,7 +29,7 @@ mod tests {
     assert_eq!(RunStatus::Created, created.status);
 
     let terminal = runs
-      .start(&created.id, StartRunRequest::default(), accept())
+      .start(&created.id, &StartRunRequest::default(), accept())
       .unwrap()
       .run();
     assert_eq!("ok", terminal_status(&terminal));
@@ -38,7 +40,7 @@ mod tests {
       (RunStatus::Ok, json!(out_dir), true, true, vec!["started", "terminal"],),
       (
         record.status,
-        record.config["output_all"].clone(),
+        Value::Object(record.config.settings().unwrap())["output_all"].clone(),
         record
           .output_files
           .iter()
@@ -59,12 +61,12 @@ mod tests {
     let root = tempdir().unwrap();
     let runs = RunManager::open(root.path()).unwrap();
     let mut config = clock_config();
-    config["output_selection"] = json!(["ClockModel"]);
+    config["output_selection"] = json!(["clock-model"]);
     config["output_all"] = json!("/elsewhere");
     config["output_clock_model"] = json!("/elsewhere/model.json");
     let created = create(&runs, AppCommand::Clock, config);
     runs
-      .start(&created.id, StartRunRequest::default(), accept())
+      .start(&created.id, &StartRunRequest::default(), accept())
       .unwrap()
       .run();
     let record = runs.get(&created.id).unwrap();
@@ -75,13 +77,13 @@ mod tests {
       .collect();
     assert_eq!(
       (
-        json!(["ClockModel", "Auspice"]),
+        json!(["clock-model", "auspice"]),
         json!(null),
         vec!["clock.auspice.json", "clock.clock-model.json"]
       ),
       (
-        record.config["output_selection"].clone(),
-        record.config["output_clock_model"].clone(),
+        Value::Object(record.config.settings().unwrap())["output_selection"].clone(),
+        Value::Object(record.config.settings().unwrap())["output_clock_model"].clone(),
         files
       )
     );
@@ -94,7 +96,7 @@ mod tests {
     let runs = RunManager::open(root.path()).unwrap();
     let first = create(&runs, AppCommand::Clock, clock_config());
     let second = create(&runs, AppCommand::Clock, clock_config());
-    let started = runs.start(&second.id, StartRunRequest::default(), accept()).unwrap();
+    let started = runs.start(&second.id, &StartRunRequest::default(), accept()).unwrap();
     let list = runs.list().unwrap();
     assert_eq!(
       (vec![second.id, first.id], 1),
@@ -123,7 +125,7 @@ mod tests {
       )
     );
     assert_error!(
-      runs.start(&created.id, StartRunRequest::default(), accept()),
+      runs.start(&created.id, &StartRunRequest::default(), accept()),
       format!("run `{}` has already started", created.id.as_str())
     );
   }
@@ -134,8 +136,8 @@ mod tests {
     let runs = RunManager::open(root.path()).unwrap();
     let first = create(&runs, AppCommand::Timetree, timetree_config());
     let second = create(&runs, AppCommand::Timetree, timetree_config());
-    let first_started = runs.start(&first.id, StartRunRequest::default(), accept()).unwrap();
-    let second_started = runs.start(&second.id, StartRunRequest::default(), accept()).unwrap();
+    let first_started = runs.start(&first.id, &StartRunRequest::default(), accept()).unwrap();
+    let second_started = runs.start(&second.id, &StartRunRequest::default(), accept()).unwrap();
 
     let cancelled = Arc::new(Mutex::new(false));
     let manager = Arc::clone(&runs);
@@ -188,7 +190,7 @@ mod tests {
     let id = {
       let runs = RunManager::open(root.path()).unwrap();
       let created = create(&runs, AppCommand::Clock, clock_config());
-      let started = runs.start(&created.id, StartRunRequest::default(), accept()).unwrap();
+      let started = runs.start(&created.id, &StartRunRequest::default(), accept()).unwrap();
       drop(started);
       created.id
     };
@@ -277,7 +279,7 @@ mod tests {
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, clock_config());
     runs
-      .start(&created.id, StartRunRequest::default(), accept())
+      .start(&created.id, &StartRunRequest::default(), accept())
       .unwrap()
       .run();
     fs::write(root.path().join("outside.txt"), "secret").unwrap();
@@ -295,7 +297,9 @@ mod tests {
   fn test_manager_store_writes_run_json_atomically() {
     let root = tempdir().unwrap();
     let store = RunStore::open(root.path()).unwrap();
-    let record = store.create(AppCommand::Prune, json!({ "tree": "t.nwk" })).unwrap();
+    let record = store
+      .create(CommandConfig::from_settings(AppCommand::Prune, &json!({ "tree": "t.nwk" })).unwrap())
+      .unwrap();
     let dir = store.run_dir(&record.id);
     let names: Vec<String> = fs::read_dir(&dir)
       .unwrap()
@@ -320,11 +324,14 @@ mod tests {
     let created = create(&runs, AppCommand::Timetree, json!({}));
     let request = StartRunRequest {
       command: Some(AppCommand::Clock),
-      config: Some(clock_config()),
+      config: Some(sparse(clock_config())),
     };
-    let terminal = runs.start(&created.id, request, accept()).unwrap().run();
+    let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
     let record = runs.get(&created.id).unwrap();
-    assert_eq!(("ok", AppCommand::Clock), (terminal_status(&terminal), record.command));
+    assert_eq!(
+      ("ok", AppCommand::Clock),
+      (terminal_status(&terminal), record.config.command())
+    );
   }
 
   #[test]
@@ -335,7 +342,7 @@ mod tests {
     let mut stale = create(&runs, AppCommand::Clock, clock_config());
     let mut finished = create(&runs, AppCommand::Clock, clock_config());
     runs
-      .start(&finished.id, StartRunRequest::default(), accept())
+      .start(&finished.id, &StartRunRequest::default(), accept())
       .unwrap()
       .run();
     finished = runs.get(&finished.id).unwrap();
@@ -355,6 +362,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_support::tests::sparse;
     use crate::command::AppCommand;
     use crate::job::TerminalEvent;
     use crate::runs::events::RunEvent;
@@ -369,9 +377,9 @@ mod tests {
 
     pub(super) fn create(runs: &RunManager, command: AppCommand, config: Value) -> RunRecord {
       runs
-        .create(CreateRunRequest {
+        .create(&CreateRunRequest {
           command,
-          config,
+          config: sparse(config),
           defer_start: true,
         })
         .unwrap()

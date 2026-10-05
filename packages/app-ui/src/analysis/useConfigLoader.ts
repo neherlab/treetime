@@ -1,4 +1,4 @@
-import type { AppCommand, UiDraftSource } from "@neherlab/app-contracts";
+import type { AppCommand, SparseConfig, UiDraftSource } from "@neherlab/app-contracts";
 import { configCheck } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
@@ -7,7 +7,7 @@ import { useApiContext } from "../api/context";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { normalizeConfig, settingValue } from "../settings/config";
 import { baseName, pathList } from "../settings/inputs";
-import { getAt, sameJson, zJsonObject, type JsonObject } from "../settings/json";
+import { getAt, sameJson } from "../settings/json";
 import { useDraftStore } from "../store/draft";
 
 type ConfigLoadResult = { loaded: true; command: AppCommand } | { loaded: false; messages: string[] };
@@ -23,7 +23,7 @@ export function useConfigLoader() {
       keepInputs: boolean,
       folder?: string,
     ): Promise<ConfigLoadResult> => {
-      const draft = useDraftStore.getState();
+      const { draft, load } = useDraftStore.getState();
       const inputs = keepInputs ? inputSettings(draft.command, draft.config) : {};
 
       const { data: result } = await configCheck({
@@ -40,8 +40,8 @@ export function useConfigLoader() {
       }
 
       const command = result.command;
-      const specs = COMMAND_SETTINGS[command].specs;
-      const config = normalizeConfig(specs, zJsonObject.parse(result.config));
+      const specs = COMMAND_SETTINGS[command].settings;
+      const config = normalizeConfig(specs, result.config);
       const sources: Record<string, UiDraftSource> = {};
 
       for (const spec of specs.filter((candidate) => candidate.role === "input")) {
@@ -53,16 +53,13 @@ export function useConfigLoader() {
           sources[spec.key] =
             previous !== undefined && sameJson(value, getAt(draft.config, spec.path))
               ? previous
-              : { label: paths.map(baseName).join(", "), origin: "config", size: null };
+              : { label: paths.map(baseName).join(", "), origin: "config" };
         }
       }
 
-      useDraftStore.getState().load({
-        command,
-        config,
-        sources,
-        from_run_id: null,
-      });
+      const { from_run_id: _fromRun, ...current } = draft;
+
+      load({ ...current, command, config, sources });
       await navigate({ to: "/new" });
 
       return { loaded: true, command };
@@ -71,10 +68,12 @@ export function useConfigLoader() {
   );
 }
 
-function inputSettings(command: AppCommand, config: JsonObject): JsonObject {
+function inputSettings(command: AppCommand, config: SparseConfig): SparseConfig {
   return Object.fromEntries(
-    COMMAND_SETTINGS[command].specs.flatMap((spec) =>
-      spec.role === "input" ? [[spec.key, getAt(config, spec.path) ?? null] as const] : [],
-    ),
+    COMMAND_SETTINGS[command].settings.flatMap((spec) => {
+      const value = getAt(config, spec.path);
+
+      return spec.role === "input" && value !== undefined ? [[spec.key, value] as const] : [];
+    }),
   );
 }

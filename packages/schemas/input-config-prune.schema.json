@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "TreetimePruneArgsRaw",
+  "title": "PruneConfig",
   "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
   "type": "object",
   "properties": {
@@ -16,35 +16,22 @@
     },
     "tree": {
       "description": "Tree in Newick format.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--tree"
     },
     "alphabet": {
       "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/AlphabetName"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/AlphabetName",
+      "x-unset": true,
       "x-cli-flag": "--alphabet"
     },
     "output_all": {
       "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-all"
     },
     "output_nwk_style": {
@@ -58,82 +45,58 @@
     },
     "output_tree_nwk": {
       "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-nwk"
     },
     "output_tree_nexus": {
       "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-nexus"
     },
     "output_tree_auspice": {
       "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-auspice"
     },
     "output_tree_mat_pb": {
       "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-mat-pb"
     },
     "output_tree_mat_json": {
       "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-mat-json"
     },
     "output_tree_graph_json": {
       "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-graph-json"
     },
     "output_tree_dot": {
       "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-dot"
     },
     "output_gtr": {
       "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-gtr"
     },
     "output_selection": {
@@ -147,51 +110,27 @@
     },
     "ladderize": {
       "description": "Order tree topology before writing output files.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/LadderizeArg"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/LadderizeArg",
+      "x-unset": true,
       "x-cli-flag": "--ladderize"
     },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/TopologyOrderArg"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/TopologyOrderArg",
+      "x-unset": true,
       "x-cli-flag": "--topology-order"
     },
     "topology_order_target_source": {
       "description": "Source for target-order topology sorting.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/TopologyOrderTargetSourceArg"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/TopologyOrderTargetSourceArg",
+      "x-unset": true,
       "x-cli-flag": "--topology-order-target-source"
     },
     "topology_order_target_file": {
       "description": "File used by list or reference-topology target-order sources.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--topology-order-target-file"
     },
     "topology_order_target_aggregate": {
@@ -202,12 +141,9 @@
     },
     "prune_short": {
       "description": "Threshold value for pruning of branches\n\nIf set, prune branches with a length below this value",
-      "type": [
-        "number",
-        "null"
-      ],
+      "type": "number",
       "format": "double",
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--prune-short"
     },
     "prune_empty": {
@@ -224,11 +160,8 @@
     },
     "prune_nodes_list": {
       "description": "List of node names to prune\n\nList of node names to remove from the tree, comma-separated (,)\n\nSurrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
+      "x-unset": true,
       "x-cli-flag": "--prune-nodes-list"
     },
     "prune_nodes_list_delimiter": {
@@ -241,12 +174,9 @@
     },
     "prune_nodes_list_file": {
       "description": "File containing list of node names to prune\n\nPath to a file containing node names to remove from the tree, newline-delimited (\\n). Surrounding whitespace is trimmed and empty names are ignored.\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--prune-nodes-list-file"
     },
     "prune_nodes_list_file_delimiter": {
@@ -284,15 +214,15 @@
     "PruneOutputSelection": {
       "type": "string",
       "enum": [
-        "All",
-        "Nwk",
-        "Nexus",
-        "Auspice",
-        "MatPb",
-        "MatJson",
-        "GraphJson",
-        "Dot",
-        "Gtr"
+        "all",
+        "nwk",
+        "nexus",
+        "auspice",
+        "mat-pb",
+        "mat-json",
+        "graph-json",
+        "dot",
+        "gtr"
       ]
     },
     "LadderizeArg": {

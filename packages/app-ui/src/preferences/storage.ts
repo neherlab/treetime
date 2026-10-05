@@ -1,6 +1,5 @@
 import { zUiSettings, type UiSettings } from "@neherlab/app-contracts";
 import { appSettings, appSettingsUi, type ApiClient } from "@neherlab/app-contracts/client";
-import type * as z from "zod";
 
 export const PREFERENCES_STORAGE_KEY = "treetime-preferences";
 
@@ -27,14 +26,12 @@ export function apiPreferencesStorage(client: ApiClient): PreferencesStorage {
   };
 }
 
-export type LoadedPreferences = z.output<typeof zUiSettings>;
-
 export interface PreferencesStorage {
-  load(): Promise<LoadedPreferences>;
+  load(): Promise<UiSettings>;
   save(preferences: UiSettings): Promise<void>;
 }
 
-function storedPreferences(text: string | null, reportInvalid: (message: string) => void): LoadedPreferences {
+function storedPreferences(text: string | null, reportInvalid: (message: string) => void): UiSettings {
   if (text === null) {
     return {};
   }
@@ -42,12 +39,18 @@ function storedPreferences(text: string | null, reportInvalid: (message: string)
   try {
     const value: unknown = JSON.parse(text);
 
-    return zUiSettings.parse(value);
+    assertUiSettings(value);
+
+    return value;
   } catch (error: unknown) {
     reportInvalid(`the preferences saved in this browser are not valid and are ignored: ${String(error)}`);
 
     return {};
   }
+}
+
+function assertUiSettings(value: unknown): asserts value is UiSettings {
+  zUiSettings.parse(value);
 }
 
 function reportToConsole(message: string): void {

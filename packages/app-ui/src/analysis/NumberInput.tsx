@@ -1,20 +1,21 @@
+import type { JsonValue } from "@neherlab/app-contracts";
 import { useCallback, useState } from "react";
 
-import { isNumber, isString, type JsonValue } from "../settings/json";
+import { isNumber, isString } from "../settings/json";
 import { parseNumber } from "../settings/numbers";
 import { Input } from "../ui/input";
 
-type NumberText = number | string | null;
+type NumberText = number | string | undefined;
 
 export function NumberInput({
   value,
   onValueChange,
   ...props
 }: Omit<React.ComponentProps<typeof Input>, "type" | "value" | "onChange"> & {
-  value: JsonValue;
+  value: JsonValue | undefined;
   onValueChange: (next: NumberText) => void;
 }) {
-  const current = isNumber(value) || isString(value) ? value : null;
+  const current = isNumber(value) || isString(value) ? value : undefined;
   const [text, setText] = useState(() => numberText(current));
   const shown = parse(text) === current ? text : numberText(current);
 
@@ -30,9 +31,9 @@ export function NumberInput({
 }
 
 function parse(text: string): NumberText {
-  return text.trim() === "" ? null : parseNumber(text);
+  return text.trim() === "" ? undefined : parseNumber(text);
 }
 
 function numberText(value: NumberText): string {
-  return value === null ? "" : `${value}`;
+  return value === undefined ? "" : `${value}`;
 }

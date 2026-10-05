@@ -1,10 +1,9 @@
-import type { AppCommand, SettingKind, SettingOption } from "@neherlab/app-contracts";
+import type { AppCommand, JsonValue, SettingKind, SettingOption, SettingSpec } from "@neherlab/app-contracts";
 import { useCallback, useMemo, useState } from "react";
-import { useController } from "react-hook-form";
+import { useController, useWatch } from "react-hook-form";
 
-import type { SettingSpec } from "../settings/catalog";
 import { baseName, pathList } from "../settings/inputs";
-import { isJsonObject, sameJson, type JsonValue } from "../settings/json";
+import { isJsonObject, sameJson } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
 import { cn } from "../ui/cn";
 import { Input } from "../ui/input";
@@ -12,7 +11,7 @@ import { NativeSelect, NativeSelectOption } from "../ui/native-select";
 import { Switch } from "../ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { settingFieldId } from "./fieldIds";
-import { toFormValue, type FormConfig } from "./formValues";
+import { fromFormValue, toFormValue, type FormConfig } from "./formValues";
 import { NumberInput } from "./NumberInput";
 import { PathPicker } from "./PathPicker";
 
@@ -111,12 +110,12 @@ function SwitchControl({ spec, label, className }: ControlProps) {
 }
 
 function TristateControl({ spec, label, className }: ControlProps) {
-  const { value, set } = useSetting(spec);
+  const { value, set, unset } = useSetting(spec);
 
   const onChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) =>
-      set(event.target.value === "" ? null : event.target.value === "true"),
-    [set],
+      event.target.value === "" ? unset() : set(event.target.value === "true"),
+    [set, unset],
   );
 
   return (
@@ -124,7 +123,7 @@ function TristateControl({ spec, label, className }: ControlProps) {
       id={settingFieldId(spec.key)}
       size="sm"
       aria-label={label}
-      value={value === null ? "" : scalarText(value)}
+      value={value === undefined ? "" : scalarText(value)}
       onChange={onChange}
       className={className}
     >
@@ -136,11 +135,11 @@ function TristateControl({ spec, label, className }: ControlProps) {
 }
 
 function EnumControl({ spec, label, className }: ControlProps) {
-  const { value, set, invalid } = useSetting(spec);
+  const { value, set, unset, invalid } = useSetting(spec);
 
   const onChange = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) => set(event.target.value === "" ? null : event.target.value),
-    [set],
+    (event: React.ChangeEvent<HTMLSelectElement>) => (event.target.value === "" ? unset() : set(event.target.value)),
+    [set, unset],
   );
 
   return (
@@ -149,7 +148,7 @@ function EnumControl({ spec, label, className }: ControlProps) {
       size="sm"
       aria-label={label}
       aria-invalid={invalid}
-      value={value === null ? "" : scalarText(value)}
+      value={value === undefined ? "" : scalarText(value)}
       onChange={onChange}
       className={className}
     >
@@ -164,7 +163,12 @@ function EnumControl({ spec, label, className }: ControlProps) {
 }
 
 function NumberControl({ spec, label, className }: ControlProps) {
-  const { value, set, onBlur, invalid } = useSetting(spec);
+  const { value, set, unset, onBlur, invalid } = useSetting(spec);
+
+  const onValueChange = useCallback(
+    (next: number | string | undefined) => (next === undefined ? unset() : set(next)),
+    [set, unset],
+  );
 
   return (
     <NumberInput
@@ -173,7 +177,7 @@ function NumberControl({ spec, label, className }: ControlProps) {
       aria-invalid={invalid}
       value={value}
       placeholder={spec.nullable ? "Not set" : ""}
-      onValueChange={set}
+      onValueChange={onValueChange}
       onBlur={onBlur}
       className={cn(CONTROL_HEIGHT, "font-mono", className)}
     />
@@ -181,12 +185,12 @@ function NumberControl({ spec, label, className }: ControlProps) {
 }
 
 function TextControl({ spec, label, className }: ControlProps) {
-  const { value, set, onBlur, invalid } = useSetting(spec);
+  const { value, set, unset, onBlur, invalid } = useSetting(spec);
 
   const onChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) =>
-      set(event.target.value === "" && spec.nullable ? null : event.target.value),
-    [set, spec.nullable],
+      event.target.value === "" && spec.nullable ? unset() : set(event.target.value),
+    [set, spec.nullable, unset],
   );
 
   return (
@@ -195,7 +199,7 @@ function TextControl({ spec, label, className }: ControlProps) {
       type="text"
       aria-label={label}
       aria-invalid={invalid}
-      value={value === null ? "" : scalarText(value)}
+      value={value === undefined ? "" : scalarText(value)}
       placeholder={spec.nullable ? "Not set" : ""}
       onChange={onChange}
       onBlur={onBlur}
@@ -273,9 +277,11 @@ function scalarText(value: JsonValue): string {
 
 function useSetting(spec: SettingSpec) {
   const { field, fieldState } = useController<FormConfig>({ name: spec.key });
-  const value: JsonValue = field.value ?? null;
+  const watched = useWatch<FormConfig>({ name: spec.key });
+  const value = watched === undefined ? undefined : fromFormValue(watched);
   const { onChange } = field;
   const set = useCallback((next: JsonValue) => onChange(toFormValue(next)), [onChange]);
+  const unset = useCallback(() => onChange(undefined), [onChange]);
 
-  return { value, set, onBlur: field.onBlur, invalid: fieldState.error !== undefined };
+  return { value, set, unset, onBlur: field.onBlur, invalid: fieldState.error !== undefined };
 }

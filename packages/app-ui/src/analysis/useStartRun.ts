@@ -1,11 +1,9 @@
-import { errorMessage } from "@neherlab/app-contracts";
-import type { AppCommand } from "@neherlab/app-contracts";
+import { type SparseConfig, errorMessage, type AppCommand } from "@neherlab/app-contracts";
 import { runsCreate, runsStart } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 
 import { useApiContext } from "../api/context";
-import type { JsonObject } from "../settings/json";
 import { useDraftStore } from "../store/draft";
 import { useToastManager } from "../ui/toast";
 import { pendingUploadRun } from "./pendingUpload";
@@ -16,8 +14,8 @@ export function useStartRun(command: AppCommand) {
   const toasts = useToastManager();
 
   return useCallback(
-    async (config: JsonObject) => {
-      const draft = useDraftStore.getState();
+    async (config: SparseConfig) => {
+      const { draft, clearRuns } = useDraftStore.getState();
 
       try {
         const upload = await pendingUploadRun(client, draft.upload_run_id);
@@ -27,7 +25,7 @@ export function useStartRun(command: AppCommand) {
             ? await runsCreate({ client, body: { command, config, defer_start: false }, throwOnError: true })
             : await runsStart({ client, path: { id: upload.id }, body: { command, config }, throwOnError: true });
 
-        draft.update({ from_run_id: null, upload_run_id: null });
+        clearRuns();
         await navigate({ to: "/runs/$id/results", params: { id: record.id } });
       } catch (error: unknown) {
         toasts.add({

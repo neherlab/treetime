@@ -204,7 +204,7 @@ mod tests {
     let pipeline = load_pipeline(&relative_config, Some(&output_all)).unwrap();
 
     let anc = pipeline.steps.iter().find(|step| step.name == "anc").unwrap();
-    let args = anc.command.args_value().unwrap();
+    let args = Value::Object(anc.command.settings().unwrap());
     let config_folder = cwd.join(&relative_config).parent().unwrap().to_path_buf();
     assert_eq!(
       (

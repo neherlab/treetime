@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "TreetimeTimetreeArgsRaw",
+  "title": "TimetreeConfig",
   "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
   "type": "object",
   "properties": {
@@ -16,32 +16,23 @@
     },
     "tree": {
       "description": "Tree in Newick format.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--tree"
     },
     "vcf_reference": {
       "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--vcf-reference"
     },
     "metadata": {
       "description": "CSV/TSV file with metadata including sampling dates",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--metadata"
     },
     "metadata_id_columns": {
@@ -74,11 +65,8 @@
     },
     "date_column": {
       "description": "Label of the column to be used as sampling date (auto-detected when omitted)",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
+      "x-unset": true,
       "x-cli-flag": "--date-column"
     },
     "date_format": {
@@ -89,36 +77,27 @@
     },
     "sequence_length": {
       "description": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint",
       "minimum": 0,
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--sequence-length"
     },
     "clock_rate": {
       "description": "If specified, the rate of the molecular clock won't be optimized.",
-      "type": [
-        "number",
-        "null"
-      ],
+      "type": "number",
       "format": "double",
       "examples": [
         0.001
       ],
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--clock-rate"
     },
     "clock_std_dev": {
       "description": "Standard deviation of the provided clock rate estimate",
-      "type": [
-        "number",
-        "null"
-      ],
+      "type": "number",
       "format": "double",
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--clock-std-dev"
     },
     "branch_length_mode": {
@@ -177,15 +156,12 @@
     },
     "coalescent": {
       "description": "Coalescent time scale in years.\n\nSensible values are on the order of the time from the root to the tips and are given in units of time.",
-      "type": [
-        "number",
-        "null"
-      ],
+      "type": "number",
       "format": "double",
       "examples": [
         1.0
       ],
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--coalescent"
     },
     "coalescent_opt": {
@@ -224,33 +200,24 @@
     },
     "n_branches_posterior": {
       "description": "add posterior LH to coalescent model: use the posterior probability distributions of\ndivergence times for estimating the number of branches when calculating the coalescent\nmergerrate or use inferred time before present (default).",
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint",
       "minimum": 0,
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--n-branches-posterior"
     },
     "plot_tree": {
       "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--plot-tree"
     },
     "plot_rtt": {
       "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--plot-rtt"
     },
     "tip_labels": {
@@ -274,25 +241,15 @@
     },
     "n_iqd": {
       "description": "Number of IQD (interquartile distance) for clock filter outlier detection",
-      "type": [
-        "number",
-        "null"
-      ],
+      "type": "number",
       "format": "double",
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--n-iqd"
     },
     "reroot": {
       "description": "Reroot the tree by temporal-signal optimization.\n\nDefaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/RerootMethod"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/RerootMethod",
+      "x-unset": true,
       "x-cli-flag": "--reroot"
     },
     "reroot_tips": {
@@ -318,12 +275,9 @@
     },
     "tip_slack": {
       "description": "excess variance associated with terminal nodes accounting for overdispersion of the molecular\nclock",
-      "type": [
-        "number",
-        "null"
-      ],
+      "type": "number",
       "format": "double",
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--tip-slack"
     },
     "covariation": {
@@ -355,24 +309,14 @@
     },
     "alphabet": {
       "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/AlphabetName"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/AlphabetName",
+      "x-unset": true,
       "x-cli-flag": "--alphabet"
     },
     "dense": {
       "description": "Use dense representation for sequences (store full probability distributions)",
-      "type": [
-        "boolean",
-        "null"
-      ],
-      "default": null,
+      "type": "boolean",
+      "x-unset": true,
       "x-cli-flag": "--dense"
     },
     "gap_fill": {
@@ -431,112 +375,79 @@
     },
     "output_augur_node_data": {
       "description": "Path to output augur-compatible node data JSON.\n\nContains per-node dates, branch lengths, clock model parameters, confidence\nintervals, and divergence metrics. The output is compatible with augur\nexport v2 --node-data for Nextstrain pipeline integration.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-augur-node-data"
     },
     "output_gtr": {
       "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-gtr"
     },
     "output_reconstructed_nuc_fasta": {
       "description": "Path to output reconstructed ancestral-sequence nucleotide FASTA.\n\nThe v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences\nreconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves`\n(or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-reconstructed-nuc-fasta"
     },
     "output_clock_model": {
       "description": "Path to output clock model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-clock-model"
     },
     "output_clock_csv": {
       "description": "Path to output clock regression CSV.\n\nOne row per sample as the final clock model saw it: the date the regression used, marked\n`input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts\nfrom that distance, and whether the clock filter excluded the sample. Not written by default.\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-clock-csv"
     },
     "output_confidence_tsv": {
       "description": "Path to output date-confidence-interval TSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-confidence-tsv"
     },
     "output_tracelog": {
       "description": "Path to output iteration-statistics tracelog CSV (monitors convergence).\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tracelog"
     },
     "output_coalescent_tsv": {
       "description": "Path to output the coalescent time scale as a flat TSV (one row per skyline segment).\n\nWritten when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or\n`--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree\nspan. Takes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-coalescent-tsv"
     },
     "output_coalescent_csv": {
       "description": "Path to output the coalescent time scale as a flat CSV (one row per skyline segment).\n\nWritten when a coalescent model is set. Takes precedence over paths configured with\n`--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-coalescent-csv"
     },
     "output_coalescent_json": {
       "description": "Path to output the coalescent time scale as a rich JSON document (inputs + segments).\n\nWritten when a coalescent model is set. Takes precedence over paths configured with\n`--output-all` and `--output-selection`.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-coalescent-json"
     },
     "output_all": {
       "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-all"
     },
     "output_nwk_style": {
@@ -550,72 +461,51 @@
     },
     "output_tree_nwk": {
       "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-nwk"
     },
     "output_tree_nexus": {
       "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-nexus"
     },
     "output_tree_auspice": {
       "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-auspice"
     },
     "output_tree_mat_pb": {
       "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-mat-pb"
     },
     "output_tree_mat_json": {
       "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-mat-json"
     },
     "output_tree_graph_json": {
       "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-graph-json"
     },
     "output_tree_dot": {
       "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "output",
+      "x-unset": true,
       "x-cli-flag": "--output-tree-dot"
     },
     "output_selection": {
@@ -629,51 +519,27 @@
     },
     "ladderize": {
       "description": "Order tree topology before writing output files.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/LadderizeArg"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/LadderizeArg",
+      "x-unset": true,
       "x-cli-flag": "--ladderize"
     },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/TopologyOrderArg"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/TopologyOrderArg",
+      "x-unset": true,
       "x-cli-flag": "--topology-order"
     },
     "topology_order_target_source": {
       "description": "Source for target-order topology sorting.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/TopologyOrderTargetSourceArg"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
+      "$ref": "#/$defs/TopologyOrderTargetSourceArg",
+      "x-unset": true,
       "x-cli-flag": "--topology-order-target-source"
     },
     "topology_order_target_file": {
       "description": "File used by list or reference-topology target-order sources.",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--topology-order-target-file"
     },
     "topology_order_target_aggregate": {
@@ -684,13 +550,10 @@
     },
     "seed": {
       "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint64",
       "minimum": 0,
-      "default": null,
+      "x-unset": true,
       "x-cli-flag": "--seed"
     },
     "aa": {
@@ -701,21 +564,15 @@
     },
     "custom_gtr": {
       "description": "Load a custom GTR model from file (not yet implemented)",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
       "x-path": "input",
+      "x-unset": true,
       "x-cli-flag": "--custom-gtr"
     },
     "clock_filter_method": {
       "description": "Method for clock filter outlier detection (not yet implemented)",
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
+      "type": "string",
+      "x-unset": true,
       "x-cli-flag": "--clock-filter-method"
     },
     "gen_per_year": {
@@ -819,24 +676,24 @@
     "TimetreeOutputSelection": {
       "type": "string",
       "enum": [
-        "All",
-        "Nwk",
-        "Nexus",
-        "Auspice",
-        "MatPb",
-        "MatJson",
-        "GraphJson",
-        "Dot",
-        "AugurNodeData",
-        "Gtr",
-        "ReconstructedNucFasta",
-        "ClockModel",
-        "ClockCsv",
-        "ConfidenceTsv",
-        "Tracelog",
-        "CoalescentTsv",
-        "CoalescentCsv",
-        "CoalescentJson"
+        "all",
+        "nwk",
+        "nexus",
+        "auspice",
+        "mat-pb",
+        "mat-json",
+        "graph-json",
+        "dot",
+        "augur-node-data",
+        "gtr",
+        "reconstructed-nuc-fasta",
+        "clock-model",
+        "clock-csv",
+        "confidence-tsv",
+        "tracelog",
+        "coalescent-tsv",
+        "coalescent-csv",
+        "coalescent-json"
       ]
     },
     "LadderizeArg": {

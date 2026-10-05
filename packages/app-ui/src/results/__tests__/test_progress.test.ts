@@ -53,7 +53,6 @@ const EVENTS: RunEvent[] = [
       log_lh_coal: "nan",
       log_lh_total: "inf",
       clock_rate: 0.001,
-      r_squared: null,
     },
   },
   { seq: 7, time: "2026-09-25T10:00:07.000Z", type: "terminal", data: { job_id: "run", status: "cancelled" } },

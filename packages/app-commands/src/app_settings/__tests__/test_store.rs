@@ -194,6 +194,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_support::tests::sparse;
     use crate::app_settings::settings::{
       AppPathSettings, UiCodeFormat, UiDraft, UiDraftOrigin, UiDraftSource, UiSettingsView,
     };
@@ -208,10 +209,9 @@ mod tests {
     pub(super) fn draft() -> UiDraft {
       UiDraft {
         command: AppCommand::Timetree,
-        config: json!({ "tree": "data/flu/h3n2/20/tree.nwk", "clock_rate": 0.003, "dates": { "column": "date" } })
-          .as_object()
-          .unwrap()
-          .clone(),
+        config: sparse(
+          json!({ "tree": "data/flu/h3n2/20/tree.nwk", "clock_rate": 0.003, "dates": { "column": "date" } }),
+        ),
         sources: btreemap! {
           o!("tree") => UiDraftSource { label: o!("tree.nwk"), origin: UiDraftOrigin::Dataset, size: Some(1234) },
           o!("alignment") => UiDraftSource { label: o!("aln: \"x\".fasta"), origin: UiDraftOrigin::Local, size: None },

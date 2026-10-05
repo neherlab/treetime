@@ -1,31 +1,28 @@
-use app_commands::command::{AppCommand, CommandArgs};
-use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
-use app_commands::commands::clock::args::TreetimeClockArgsRaw;
-use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
-use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
-use app_commands::commands::prune::args::TreetimePruneArgsRaw;
-use app_commands::commands::shared::resolve_outputs::ResolveOutputs;
-use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use app_commands::command::AppCommand;
+use app_commands::command_config::CommandConfig;
 use app_commands::config::schema::SCHEMA_KEY;
 use app_commands::config::suggest::suggestion_suffix;
-use app_output::output_plan::ResolvedOutputs;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use schemars::JsonSchema;
-use serde::Serialize;
-use serde_json::{Map, Value};
-use std::path::Path;
-use strum::VariantNames;
-use treetime_utils::make_error;
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
+use serde_json::{Map, Value, json};
+use std::borrow::Cow;
+use std::str::FromStr;
+use strum::{IntoEnumIterator, VariantNames};
+use treetime_utils::{make_error, make_report};
 
-/// The whole pipeline in typed form, used for schema generation and for dumping an example config.
+/// The whole pipeline in typed form, used for schema generation.
 ///
 /// The loader does not deserialize into this type directly: `vars`, `output_all`, and each step's
 /// outputs are resolved in a staged, backward-only pass (interpolation depends on earlier results),
 /// after which the typed steps are assembled. This type fixes the on-disk shape that the staged pass
 /// and the generated schema must agree on.
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[expect(
+  dead_code,
+  reason = "the type only describes the file shape for the generated schema; the loader reads files in a staged pass"
+)]
 pub(crate) struct Pipeline {
   #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
   schema_ref: Option<String>,
@@ -43,103 +40,52 @@ pub(crate) struct Pipeline {
 ///
 /// The `name` is explicit (not the command name) because `--steps=` selection and
 /// `{{ steps.<name>... }}` references need stable ids and must allow the same command twice.
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, JsonSchema)]
+#[expect(
+  dead_code,
+  reason = "the type only describes the file shape for the generated schema; the loader reads steps in a staged pass"
+)]
 pub(crate) struct PipelineStep {
   name: String,
   #[serde(flatten)]
   command: PipelineStepCommand,
 }
 
-/// A single analysis command invocation within a pipeline.
-///
-/// Externally tagged and kebab-cased so a step's payload is exactly the command's serialized args
-/// object (the same shape the per-command `--config` accepts, i.e. the raw args). `timetree` is boxed
-/// to match the CLI enum and keep the variant sizes balanced. The runner converts each raw command to
-/// its validated form before executing it, so a missing required input is a proper error rather than a
-/// panic.
-#[derive(Debug, Serialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum PipelineStepCommand {
-  Timetree(Box<TreetimeTimetreeArgsRaw>),
-  Optimize(TreetimeOptimizeArgsRaw),
-  Prune(TreetimePruneArgsRaw),
-  Ancestral(TreetimeAncestralArgsRaw),
-  Clock(TreetimeClockArgsRaw),
-  Mugration(TreetimeMugrationArgsRaw),
+/// A single analysis command invocation within a pipeline: the command name as the key, and the command's settings,
+/// in the shape the per-command `--config` accepts, as the value.
+#[derive(Debug)]
+pub(crate) struct PipelineStepCommand;
+
+impl JsonSchema for PipelineStepCommand {
+  fn schema_name() -> Cow<'static, str> {
+    Cow::Borrowed("PipelineStepCommand")
+  }
+
+  fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+    let variants = AppCommand::iter()
+      .map(|command| {
+        let name: &str = command.into();
+        json!({
+          "type": "object",
+          "properties": { name: command.config_subschema(generator) },
+          "required": [name],
+        })
+      })
+      .collect_vec();
+    json_schema!({ "oneOf": variants })
+  }
 }
 
-impl PipelineStepCommand {
-  pub(crate) fn args(&self) -> Result<CommandArgs, Report> {
-    match self {
-      Self::Timetree(args) => CommandArgs::try_from((**args).clone()),
-      Self::Optimize(args) => CommandArgs::try_from(args.clone()),
-      Self::Prune(args) => CommandArgs::try_from(args.clone()),
-      Self::Ancestral(args) => CommandArgs::try_from(args.clone()),
-      Self::Clock(args) => CommandArgs::try_from(args.clone()),
-      Self::Mugration(args) => CommandArgs::try_from(args.clone()),
-    }
-  }
-
-  pub(crate) fn tag(&self) -> &'static str {
-    match self {
-      Self::Timetree(_) => "timetree",
-      Self::Optimize(_) => "optimize",
-      Self::Prune(_) => "prune",
-      Self::Ancestral(_) => "ancestral",
-      Self::Clock(_) => "clock",
-      Self::Mugration(_) => "mugration",
-    }
-  }
-
-  pub(crate) fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-    match self {
-      Self::Timetree(args) => args.resolve_outputs(),
-      Self::Optimize(args) => args.resolve_outputs(),
-      Self::Prune(args) => args.resolve_outputs(),
-      Self::Ancestral(args) => args.resolve_outputs(),
-      Self::Clock(args) => args.resolve_outputs(),
-      Self::Mugration(args) => args.resolve_outputs(),
-    }
-  }
-
-  pub(crate) fn args_value(&self) -> Result<Value, Report> {
-    let value = match self {
-      Self::Timetree(args) => serde_json::to_value(args),
-      Self::Optimize(args) => serde_json::to_value(args),
-      Self::Prune(args) => serde_json::to_value(args),
-      Self::Ancestral(args) => serde_json::to_value(args),
-      Self::Clock(args) => serde_json::to_value(args),
-      Self::Mugration(args) => serde_json::to_value(args),
-    };
-    value.wrap_err_with(|| format!("When serializing the arguments of a `{}` step", self.tag()))
-  }
-
-  pub(crate) fn output_all(&self) -> Option<&Path> {
-    let output = match self {
-      Self::Timetree(args) => &args.output,
-      Self::Optimize(args) => &args.output,
-      Self::Prune(args) => &args.output,
-      Self::Ancestral(args) => &args.output,
-      Self::Clock(args) => &args.output,
-      Self::Mugration(args) => &args.output,
-    };
-    output.output_all.as_deref()
-  }
-
-  pub(crate) fn from_tag_and_value(tag: &str, payload: Value) -> Result<Self, Report> {
-    match tag {
-      "timetree" => Ok(Self::Timetree(serde_json::from_value(payload)?)),
-      "optimize" => Ok(Self::Optimize(serde_json::from_value(payload)?)),
-      "prune" => Ok(Self::Prune(serde_json::from_value(payload)?)),
-      "ancestral" => Ok(Self::Ancestral(serde_json::from_value(payload)?)),
-      "clock" => Ok(Self::Clock(serde_json::from_value(payload)?)),
-      "mugration" => Ok(Self::Mugration(serde_json::from_value(payload)?)),
-      other => make_error!(
-        "unknown command `{other}`; {}",
-        suggestion_suffix(other, AppCommand::VARIANTS)
-      ),
-    }
-  }
+pub(crate) fn step_config(tag: &str, payload: &Value) -> Result<CommandConfig, Report> {
+  let command = AppCommand::from_str(tag).map_err(|_unknown| {
+    make_report!(
+      "unknown command `{tag}`; {}",
+      suggestion_suffix(tag, AppCommand::VARIANTS)
+    )
+  })?;
+  command
+    .command_config(payload)
+    .wrap_err_with(|| format!("When reading the settings of a `{command}` step"))
 }
 
 pub(crate) struct RawStep {
@@ -192,7 +138,7 @@ mod tests {
   use helpers::{method_anc, parse_step};
   use pretty_assertions::assert_eq;
   use serde_json::json;
-  use treetime_utils::assert_error;
+  use treetime_utils::{assert_error, o};
 
   #[test]
   fn test_types_step_parses_ancestral_with_snake_case_fields() {
@@ -201,15 +147,16 @@ mod tests {
       "ancestral": { "tree": "t.nwk", "method_anc": "marginal", "dense": true }
     });
     let step = parse_step(value).unwrap();
-    assert_eq!("anc", step.name);
-    assert_eq!("ancestral", step.command.tag());
-    assert_eq!(Some("Marginal".to_owned()), method_anc(&step.command));
+    assert_eq!(
+      (o!("ancestral"), Some(o!("Marginal"))),
+      (step.command().to_string(), method_anc(&step))
+    );
   }
 
   #[test]
   fn test_types_step_parses_timetree_tag() {
     let step = parse_step(json!({ "name": "tt", "timetree": { "clock_rate": 0.003 } })).unwrap();
-    assert_eq!("timetree", step.command.tag());
+    assert_eq!("timetree", step.command().to_string());
   }
 
   #[test]
@@ -258,23 +205,21 @@ mod tests {
   fn test_types_step_ignores_schema_key() {
     let value = json!({ "$schema": "./input-config-pipeline.schema.json", "name": "tt", "timetree": {} });
     let step = parse_step(value).unwrap();
-    assert_eq!("timetree", step.command.tag());
+    assert_eq!("timetree", step.command().to_string());
   }
 
   mod helpers {
     use super::super::*;
     use treetime_utils::make_report;
 
-    pub(super) fn parse_step(value: Value) -> Result<PipelineStep, Report> {
+    pub(super) fn parse_step(value: Value) -> Result<CommandConfig, Report> {
       let RawStep { name, tag, payload } = RawStep::from_value(value)?;
-      let command = PipelineStepCommand::from_tag_and_value(&tag, payload)
-        .map_err(|err| make_report!("in pipeline step `{name}`: {err}"))?;
-      Ok(PipelineStep { name, command })
+      step_config(&tag, &payload).map_err(|err| make_report!("in pipeline step `{name}`: {err}"))
     }
 
-    pub(super) fn method_anc(command: &PipelineStepCommand) -> Option<String> {
+    pub(super) fn method_anc(command: &CommandConfig) -> Option<String> {
       match command {
-        PipelineStepCommand::Ancestral(args) => Some(format!("{:?}", args.method_anc)),
+        CommandConfig::Ancestral(args) => Some(format!("{:?}", args.method_anc)),
         _ => None,
       }
     }

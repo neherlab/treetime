@@ -1,33 +1,36 @@
-import type { SettingSpec } from "./catalog";
-import { cloneJson, getAt, sameJson, setAt, type JsonObject, type JsonValue } from "./json";
+import type { SparseConfig, JsonValue, SettingSpec } from "@neherlab/app-contracts";
 
-export function defaultConfig(specs: readonly SettingSpec[]): JsonObject {
-  let config: JsonObject = {};
+import { cloneJson, getAt, sameJson, setAt } from "./json";
+
+export function defaultConfig(specs: readonly SettingSpec[]): SparseConfig {
+  let config: SparseConfig = {};
 
   for (const spec of specs) {
-    config = setAt(config, spec.path, cloneJson(spec.default_value));
+    if (spec.default_value !== undefined) {
+      config = setAt(config, spec.path, cloneJson(spec.default_value));
+    }
   }
 
   return config;
 }
 
-export function settingValue(config: JsonObject, spec: SettingSpec): JsonValue {
+export function settingValue(config: SparseConfig, spec: SettingSpec): JsonValue | undefined {
   return getAt(config, spec.path) ?? spec.default_value;
 }
 
-export function isChanged(config: JsonObject, spec: SettingSpec): boolean {
+export function isChanged(config: SparseConfig, spec: SettingSpec): boolean {
   return spec.role === "setting" && !sameJson(settingValue(config, spec), spec.default_value);
 }
 
-export function changedSpecs(specs: readonly SettingSpec[], config: JsonObject): SettingSpec[] {
+export function changedSpecs(specs: readonly SettingSpec[], config: SparseConfig): SettingSpec[] {
   return specs.filter((spec) => isChanged(config, spec));
 }
 
-export function resetValue(spec: SettingSpec): JsonValue {
-  return cloneJson(spec.default_value);
+export function resetValue(spec: SettingSpec): JsonValue | undefined {
+  return spec.default_value === undefined ? undefined : cloneJson(spec.default_value);
 }
 
-export function normalizeConfig(specs: readonly SettingSpec[], config: JsonObject): JsonObject {
+export function normalizeConfig(specs: readonly SettingSpec[], config: SparseConfig): SparseConfig {
   let normalized = defaultConfig(specs);
 
   for (const spec of specs) {
@@ -44,8 +47,8 @@ export function normalizeConfig(specs: readonly SettingSpec[], config: JsonObjec
 export function carryOverConfig(
   specs: readonly SettingSpec[],
   previousSpecs: readonly SettingSpec[],
-  previous: JsonObject,
-): JsonObject {
+  previous: SparseConfig,
+): SparseConfig {
   const carried = new Set(
     previousSpecs.flatMap((spec) => (spec.role === "input" || isChanged(previous, spec) ? [spec.key] : [])),
   );

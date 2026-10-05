@@ -1,5 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use treetime::alphabet::alphabet::AlphabetName;
 
@@ -9,6 +10,7 @@ use treetime::alphabet::alphabet::AlphabetName;
 /// nucleotide alphabet when detection is ambiguous (see `detect_alphabet`).
 ///
 /// The flag has no short form: `-a` is reserved for `--alignment`.
+#[skip_serializing_none]
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]

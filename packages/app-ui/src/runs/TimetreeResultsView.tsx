@@ -1,10 +1,15 @@
-import type { RunRecord, RunResults } from "@neherlab/app-contracts";
+import type {
+  RunRecord,
+  RunResults,
+  CoalescentPrior,
+  TimetreeResults,
+  TimetreeEstimates,
+} from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
 import { Panel, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { formatDuration, formatLevel, formatRate, rSquaredText } from "../format";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
-import type { CoalescentPrior, TimetreeData, TimetreeEstimates } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
@@ -15,7 +20,7 @@ import type { TreeLink } from "./TreeWorkspace";
 
 const TIMETREE_COLORINGS = ["num_date"];
 
-export function TimetreeResults({
+export function TimetreeResultsView({
   record,
   results,
   data,
@@ -23,12 +28,12 @@ export function TimetreeResults({
 }: {
   record: RunRecord;
   results: RunResults;
-  data: TimetreeData;
+  data: TimetreeResults;
   tree: TreeData | undefined;
 }) {
   const estimates = data.estimates;
 
-  if (tree === undefined || estimates === null || estimates === undefined) {
+  if (tree === undefined || estimates === undefined) {
     return <MissingTree />;
   }
 
@@ -44,7 +49,7 @@ function TimetreeView({
 }: {
   record: RunRecord;
   results: RunResults;
-  data: TimetreeData;
+  data: TimetreeResults;
   estimates: TimetreeEstimates;
   tree: TreeData;
 }) {
@@ -72,7 +77,7 @@ function TimetreeAside({
 }: {
   record: RunRecord;
   tree: TreeData;
-  data: TimetreeData;
+  data: TimetreeResults;
   link: TreeLink;
 }) {
   const regression = data.root_to_tip;
@@ -134,10 +139,7 @@ function timetreeSummary(record: RunRecord, estimates: TimetreeEstimates): Summa
     {
       label: "Coalescent prior",
       value: coalescentPriorText(estimates.coalescent_prior),
-      detail:
-        relax === null || relax === undefined
-          ? "Strict clock"
-          : `Relaxed clock: slack ${relax.slack}, coupling ${relax.coupling}`,
+      detail: relax === undefined ? "Strict clock" : `Relaxed clock: slack ${relax.slack}, coupling ${relax.coupling}`,
     },
     likelihoodEntry(record, estimates),
   ];
@@ -162,7 +164,7 @@ function coalescentPriorText(prior: CoalescentPrior): string {
 function rootEntry(estimates: TimetreeEstimates): SummaryEntry {
   const date = estimates.root_date;
 
-  if (date === null || date === undefined) {
+  if (date === undefined) {
     return { label: "Root date", value: "not dated" };
   }
 
@@ -173,7 +175,7 @@ function rootEntry(estimates: TimetreeEstimates): SummaryEntry {
     label: "Root date",
     value: date.date,
     detail:
-      interval === null || interval === undefined
+      interval === undefined
         ? "No interval computed"
         : `${formatLevel(interval.level)}: ${interval.lower.date} to ${interval.upper.date}${edge ? "; the estimate lies at the interval edge" : ""}`,
     tone: edge ? "caution" : undefined,
@@ -183,7 +185,7 @@ function rootEntry(estimates: TimetreeEstimates): SummaryEntry {
 function rateEntry(estimates: TimetreeEstimates): SummaryEntry {
   const rate = estimates.clock_rate;
 
-  if (rate === null || rate === undefined) {
+  if (rate === undefined) {
     return { label: "Clock rate", value: "not written" };
   }
 
@@ -203,14 +205,11 @@ function rateEntry(estimates: TimetreeEstimates): SummaryEntry {
 function likelihoodEntry(record: RunRecord, estimates: TimetreeEstimates): SummaryEntry {
   const written = estimates.log_likelihood;
 
-  const runTime =
-    record.duration_seconds === null || record.duration_seconds === undefined
-      ? ""
-      : `, ${formatDuration(record.duration_seconds)}`;
+  const runTime = record.duration_seconds === undefined ? "" : `, ${formatDuration(record.duration_seconds)}`;
 
   const iterations = `${estimates.iterations} ${estimates.iterations === 1 ? "iteration" : "iterations"}${runTime}`;
 
-  if (written === null || written === undefined) {
+  if (written === undefined) {
     return { label: "Log likelihood", value: "not written", detail: iterations };
   }
 

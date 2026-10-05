@@ -1,8 +1,7 @@
-import type { RunRecord, RunResults } from "@neherlab/app-contracts";
+import type { RunRecord, RunResults, TreeSummary } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
 import { runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
-import type { TreeSummary } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
 

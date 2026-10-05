@@ -1,7 +1,7 @@
+import type { DateInterval, YearDate } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import { Bar, ComposedChart, Scatter, XAxis, YAxis } from "recharts";
 
-import type { DateInterval, YearDate } from "../results/types";
 import { ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { CHART, niceAxis, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
 

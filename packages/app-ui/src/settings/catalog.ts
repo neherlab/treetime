@@ -2,19 +2,10 @@ import {
   openApiDocument,
   zSettingCatalog,
   type AppCommand,
-  type zCommandSettings,
-  type zSettingSpec,
+  type CommandSettings,
+  type SettingCatalog,
+  type SettingSpec,
 } from "@neherlab/app-contracts";
-import type * as z from "zod";
-
-import { zJsonValue, type JsonValue } from "./json";
-
-export type SettingSpec = Omit<z.infer<typeof zSettingSpec>, "default_value" | "examples"> & {
-  default_value: JsonValue;
-  examples: JsonValue[];
-};
-
-export type CommandSettings = Omit<z.infer<typeof zCommandSettings>, "settings"> & { specs: SettingSpec[] };
 
 const SETTING_CATALOG_KEY = "x-setting-catalog";
 
@@ -36,22 +27,11 @@ export function groupedSpecs(settings: CommandSettings, specs: readonly SettingS
 }
 
 function commandSettingsByCommand(): Record<AppCommand, CommandSettings> {
-  const catalog = zSettingCatalog.parse(openApiDocument[SETTING_CATALOG_KEY]);
+  const catalog: unknown = openApiDocument[SETTING_CATALOG_KEY];
 
-  const entries = catalog.commands.map((command): [AppCommand, CommandSettings] => [
-    command.command,
-    {
-      command: command.command,
-      inputs: command.inputs,
-      uses_dates: command.uses_dates,
-      groups: command.groups,
-      specs: command.settings.map((spec) => ({
-        ...spec,
-        default_value: zJsonValue.parse(spec.default_value),
-        examples: spec.examples.map((example) => zJsonValue.parse(example)),
-      })),
-    },
-  ]);
+  assertSettingCatalog(catalog);
+
+  const entries = catalog.commands.map((command): [AppCommand, CommandSettings] => [command.command, command]);
 
   const byCommand = new Map(entries);
 
@@ -73,4 +53,8 @@ function commandSettingsByCommand(): Record<AppCommand, CommandSettings> {
     optimize: lookup("optimize"),
     prune: lookup("prune"),
   };
+}
+
+function assertSettingCatalog(value: unknown): asserts value is SettingCatalog {
+  zSettingCatalog.parse(value);
 }

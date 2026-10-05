@@ -5,6 +5,7 @@ use crate::results::tree::{DateInterval, ResultTree};
 use crate::results::year_date::YearDate;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime::timetree::coalescent::CoalescentSegmentRow;
@@ -14,6 +15,7 @@ use util_augur_node_data_json::AugurNodeDataJsonClock;
 const INTERVAL_EDGE_FRACTION: f64 = 0.05;
 
 /// Results of a `timetree` run.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct TimetreeResults {
   /// Estimates of the time tree; absent when the run wrote no Auspice tree.
@@ -27,6 +29,7 @@ pub struct TimetreeResults {
 }
 
 /// Estimates of a `timetree` run.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct TimetreeEstimates {
   /// Date of the root.
@@ -91,6 +94,7 @@ pub struct RelaxedClock {
 }
 
 /// Convergence values of one iteration.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct IterationRow {
   /// Iteration number, from 0.
@@ -123,6 +127,7 @@ pub struct SkylineSegment {
 }
 
 /// An estimate with an optional confidence band.
+#[skip_serializing_none]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Band {
   /// Point estimate.

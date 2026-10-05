@@ -1,23 +1,8 @@
-import type {
-  AncestralConfig,
-  AppCommand,
-  ClockConfig,
-  MugrationConfig,
-  OptimizeConfig,
-  PruneConfig,
-  TimetreeConfig,
-} from "@neherlab/app-contracts";
+import type { AppCommand, RunRecord } from "@neherlab/app-contracts";
 
-interface CommandConfigs {
-  timetree: TimetreeConfig;
-  clock: ClockConfig;
-  ancestral: AncestralConfig;
-  mugration: MugrationConfig;
-  optimize: OptimizeConfig;
-  prune: PruneConfig;
-}
+type ConfigOf<C extends AppCommand> = Extract<RunRecord, { command: C }>["config"];
 
-export type SettingKey<C extends AppCommand> = keyof CommandConfigs[C] & string;
+export type SettingKey<C extends AppCommand> = keyof ConfigOf<C> & string;
 
 interface CommandInfo {
   command: AppCommand;

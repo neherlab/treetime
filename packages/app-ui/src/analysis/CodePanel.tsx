@@ -1,5 +1,10 @@
-import { errorMessage } from "@neherlab/app-contracts";
-import type { AppCommand, CodeLine, ConfigCode, UiCodeFormat } from "@neherlab/app-contracts";
+import {
+  errorMessage,
+  type AppCommand,
+  type CodeLine,
+  type ConfigCode,
+  type UiCodeFormat,
+} from "@neherlab/app-contracts";
 import { useCallback, useMemo, useState } from "react";
 import FileUp from "~icons/lucide/file-up";
 
@@ -22,7 +27,7 @@ const CODE_FORMATS: ReadonlyArray<{ value: UiCodeFormat; label: string }> = [
 ];
 
 export function CodePanel({ command, code }: { command: AppCommand; code: ConfigCode | null }) {
-  const format = useDraftStore((state) => state.code_format);
+  const format = useDraftStore((state) => state.draft.code_format);
   const update = useDraftStore((state) => state.update);
   const [importing, setImporting] = useState(false);
 

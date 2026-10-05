@@ -11,15 +11,11 @@ export const RECORD = {
   pinned: false,
   created_at: "2026-09-25T10:00:00Z",
   started_at: "2026-09-25T10:00:01Z",
-  finished_at: null,
-  duration_seconds: null,
   treetime_version: "1.0.0",
   inputs: [],
-  config_hash: null,
   changed_settings: [],
   headline: {},
   output_files: [],
-  error: null,
 } as const;
 
 export interface Sent {

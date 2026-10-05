@@ -1,9 +1,8 @@
-import type { AuspiceDocument } from "@neherlab/app-contracts";
+import type { AuspiceDocument, ResultTree } from "@neherlab/app-contracts";
 import { lazy, Suspense, type ReactNode } from "react";
 import TreePine from "~icons/lucide/tree-pine";
 
 import { LoadingState } from "../components/PageShell";
-import type { ResultTree } from "../results/types";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import type { TreeLink } from "./TreeWorkspace";
 

@@ -1,6 +1,8 @@
 use crate::atomic_write::write_atomically;
 use crate::command::{CommandOutcome, OutputFile};
+use crate::command_config::CommandConfig;
 use crate::job::{CancelToken, JobEvent, JobId, JobProgress, JobStarted, TerminalEvent, run_job};
+use crate::json_value::SparseConfig;
 use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
 use crate::runs::errors::{UploadTooLarge, conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
@@ -91,8 +93,10 @@ impl RunManager {
     self.store.read(id)
   }
 
-  pub fn create(&self, request: CreateRunRequest) -> Result<RunRecord, Report> {
-    let record = self.store.create(request.command, request.config)?;
+  pub fn create(&self, request: &CreateRunRequest) -> Result<RunRecord, Report> {
+    let record = self
+      .store
+      .create(CommandConfig::from_request(request.command, &request.config)?)?;
     self.app_events.append(
       AppChange::RunCreated { run: record.summary() },
       run_stale_paths(&record.id),
@@ -100,20 +104,22 @@ impl RunManager {
     Ok(record)
   }
 
-  pub fn start(self: &Arc<Self>, id: &JobId, request: StartRunRequest, hook: ConfigHook) -> Result<StartedRun, Report> {
+  pub fn start(
+    self: &Arc<Self>,
+    id: &JobId,
+    request: &StartRunRequest,
+    hook: ConfigHook,
+  ) -> Result<StartedRun, Report> {
     let mut active = self.active.lock();
     let record = self.modify(id, |record| {
       if record.status != RunStatus::Created {
         return Err(conflict(format!("run `{}` has already started", id.as_str())));
       }
-      if let Some(command) = request.command {
-        record.command = command;
-      }
-      if let Some(config) = request.config {
-        let Value::Object(config) = config else {
-          return Err(invalid("a command configuration must be a mapping of settings"));
-        };
-        record.config = config;
+      let command = request.command.unwrap_or_else(|| record.config.command());
+      if let Some(config) = &request.config {
+        record.config = CommandConfig::from_request(command, config)?;
+      } else if command != record.config.command() {
+        record.config = CommandConfig::from_request(command, &SparseConfig(record.config.settings()?))?;
       }
       record.status = RunStatus::Running;
       record.started_at = Some(Utc::now());
@@ -352,7 +358,7 @@ impl StartedRun {
       hook,
     } = self;
     let id = record.id.clone();
-    let command = record.command;
+    let command = record.config.command();
     let out_dir = manager.store.out_dir(&id);
     let emit = |event: JobEvent| {
       if let Err(err) = run.events.append(event) {
@@ -367,12 +373,13 @@ impl StartedRun {
     let clock = Instant::now();
 
     let terminal = run_job(&id, &run.token, || {
-      let mut config = Value::Object(record.config.clone());
+      let mut config = Value::Object(record.config.settings()?);
       hook(&mut config)?;
       let prepared = command.prepare_run(&config, &out_dir)?;
       let hashed = hash_inputs(command, &prepared.config)?;
+      let resolved = CommandConfig::from_settings(command, &Value::Object(prepared.config.clone()))?;
       manager.modify(&id, |record| {
-        record.config = prepared.config.clone();
+        record.config = resolved;
         record.changed_settings = prepared.changed_settings.clone();
         record.inputs = hashed.inputs;
         record.config_hash = Some(hashed.config_hash);

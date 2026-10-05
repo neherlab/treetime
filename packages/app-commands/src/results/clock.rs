@@ -2,12 +2,14 @@ use crate::results::tree::ResultTree;
 use crate::results::year_date::YearDate;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::collections::BTreeSet;
 use treetime::clock::clock_model::{ClockModel, ClockModelStats};
 use treetime::clock::rtt::{ClockDateSource, ClockRegressionResult};
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
 /// Results of a `clock` run.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ClockResults {
   /// Estimates of the clock model.
@@ -17,6 +19,7 @@ pub struct ClockResults {
 }
 
 /// Estimates of a `clock` run.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ClockEstimates {
   /// Clock rate in substitutions per site per year; absent when the run wrote no clock model.
@@ -34,6 +37,7 @@ pub struct ClockEstimates {
 }
 
 /// The points and line of a root-to-tip regression, as TreeTime fitted it.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct RootToTip {
   /// Samples as the regression saw them.
@@ -52,6 +56,7 @@ pub struct ClockLine {
 }
 
 /// One sample of a root-to-tip regression.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct RootToTipPoint {
   /// Name of the sample.

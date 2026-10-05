@@ -3,6 +3,7 @@ use crate::json_float::JsonFloat;
 use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::any::Any;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -69,6 +70,7 @@ pub enum JobEvent {
 
 /// Convergence values of one timetree optimization iteration, as the tracelog records them, with the clock model the
 /// iteration used.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct IterationEvent {
   /// Iteration number, starting at 1.

@@ -1,10 +1,9 @@
-import type { RunRecord, RunResults } from "@neherlab/app-contracts";
+import type { RunRecord, RunResults, ClockResults, YearDate } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
 import { DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { formatRate, formatSignedDays, rSquaredText } from "../format";
-import type { ClockData, YearDate } from "../results/types";
 import { OutputFiles } from "./OutputFiles";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
@@ -47,7 +46,7 @@ const SAMPLE_COLUMNS = sampleColumn.columns([
 
 const SAMPLE_NUMERIC = new Set(["date", "predicted", "residual"]);
 
-export function ClockResults({
+export function ClockResultsView({
   record,
   results,
   data,
@@ -55,7 +54,7 @@ export function ClockResults({
 }: {
   record: RunRecord;
   results: RunResults;
-  data: ClockData;
+  data: ClockResults;
   tree: TreeData | undefined;
 }) {
   const regression = data.root_to_tip;
@@ -115,9 +114,9 @@ function sampleTone(row: SampleRow): string | undefined {
   return row.outlier ? "bg-warning/10" : undefined;
 }
 
-function sampleRows(data: ClockData): SampleRow[] {
+function sampleRows(data: ClockResults): SampleRow[] {
   return (data.root_to_tip?.points ?? []).flatMap((point) =>
-    point.date === null || point.date === undefined || point.residual_days === null || point.residual_days === undefined
+    point.date === undefined || point.residual_days === undefined
       ? []
       : [
           {
@@ -131,7 +130,7 @@ function sampleRows(data: ClockData): SampleRow[] {
   );
 }
 
-function clockSummary(record: RunRecord, data: ClockData): SummaryEntry[] {
+function clockSummary(record: RunRecord, data: ClockResults): SummaryEntry[] {
   const estimates = data.estimates;
   const rate = estimates.clock_rate ?? undefined;
   const r = estimates.r ?? undefined;

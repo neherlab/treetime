@@ -356,7 +356,10 @@ async function saveRun(
   }
 
   try {
-    await runsSave({ client, path: { id }, body: { path: file, destination: choice.filePath }, throwOnError: true });
+    const destination = choice.filePath;
+    const body = file === undefined ? { destination } : { path: file, destination };
+
+    await runsSave({ client, path: { id }, body, throwOnError: true });
 
     return { kind: "saved" };
   } catch (error: unknown) {

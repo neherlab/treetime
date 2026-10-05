@@ -12,7 +12,6 @@ import Play from "~icons/lucide/play";
 
 import { Panel } from "../components/Panel";
 import { RUN_HOTKEY } from "../hotkeys";
-import { zJsonValue } from "../settings/json";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Kbd } from "../ui/kbd";
@@ -108,7 +107,7 @@ export function CheckItem({ check }: { check: RunCheck }) {
 
   const apply = useCallback(() => {
     for (const setting of fix?.patch ?? []) {
-      setValue(setting.path.join("."), toFormValue(zJsonValue.parse(setting.value)), {
+      setValue(setting.path.join("."), toFormValue(setting.value), {
         shouldDirty: true,
         shouldValidate: true,
       });

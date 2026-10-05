@@ -12,7 +12,7 @@ import { useDraftStore } from "../store/draft";
 import { cn } from "../ui/cn";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { EXAMPLES_PANEL_KINDS, EXAMPLES_PANELS, ExamplesPanel, type ExamplesPanelKind } from "./ExamplesPanel";
-import type { FormConfig } from "./formValues";
+import { fromFormValue, type FormConfig } from "./formValues";
 import { PathPicker, useFileDrop } from "./PathPicker";
 
 export function InputsSection({ command, facts }: { command: AppCommand; facts: InputFacts | undefined }) {
@@ -69,10 +69,10 @@ function InputSlotRow({
   slot: InputSlot;
   facts: InputFacts | undefined;
 }) {
-  const value = useWatch<FormConfig>({ name: slot.kind });
-  const source = useDraftStore((state) => state.sources[slot.kind]);
+  const watched = useWatch<FormConfig>({ name: slot.kind });
+  const source = useDraftStore((state) => state.draft.sources[slot.kind]);
   const { getRootProps, getInputProps, isDragActive } = useFileDrop(command, slot.kind, slot.list);
-  const paths = pathList(value);
+  const paths = pathList(watched === undefined ? undefined : fromFormValue(watched));
   const factsText = slotFactsText(slot.kind, facts, COMMAND_SETTINGS[command].uses_dates);
   const problem = slotProblem(slot.kind, facts);
 
@@ -97,7 +97,7 @@ function InputSlotRow({
         <div className="grid min-w-0 gap-0.5">
           <div className="truncate font-mono text-xs" title={paths.join("\n")}>
             {source?.label ?? paths.map(baseName).join(", ")}
-            {source?.size !== null && source?.size !== undefined && (
+            {source?.size !== undefined && (
               <span className="text-muted-foreground ml-2">{formatBytes(source.size)}</span>
             )}
           </div>

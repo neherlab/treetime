@@ -1,3 +1,4 @@
+use crate::no_null::NoNull;
 use crate::{ErrorResponse, ProgressEvent, VersionInfo};
 use eyre::Report;
 use log::info;
@@ -62,7 +63,7 @@ impl TreetimeSchemaFormat {
 }
 
 fn generate_schema_for<T: JsonSchema>(output: &Path) -> Result<(), Report> {
-  let settings = SchemaSettings::draft07();
+  let settings = SchemaSettings::draft07().with_transform(NoNull);
   let schema = settings.into_generator().into_root_schema_for::<T>();
   json_write_file(output, &schema, JsonPretty(true))?;
   if !is_path_stdout(output) {

@@ -10,7 +10,7 @@ import {
   zCommandResults,
   zCreateRunRequest,
   zErrorResponse,
-  zJobEvent,
+  zExamplesDownload,
   zLogEvent,
   zLogLevel,
   zMugrationConfig,
@@ -18,6 +18,7 @@ import {
   zPruneConfig,
   zRunConfigResponse,
   zRunEvent,
+  zRunRecord,
   zSettingDifference,
   zTerminalEvent,
   zTimetreeConfig,
@@ -44,16 +45,19 @@ describe("zod_schemas command configs", () => {
   });
 
   test.each(CONFIG_CASES)("$name accepts the input and output settings", ({ schema }) => {
-    expect(schema.safeParse({ tree: "t.nwk", output_all: "out", output_selection: ["Nwk"] }).success).toBe(true);
+    expect(schema.safeParse({ tree: "t.nwk", output_all: "out", output_selection: ["nwk"] }).success).toBe(true);
   });
 
   test.each(CONFIG_CASES)("$name rejects an output selection outside its enum", ({ schema }) => {
     expect(schema.safeParse({ output_selection: ["NotAnOutput"] }).success).toBe(false);
   });
 
-  test("timetree config fills the clock filter default", () => {
-    const parsed = zTimetreeConfig.parse({});
-    expect(parsed.clock_filter).toBe(3);
+  test("timetree config leaves an unset setting out because the defaults come from the setting catalog", () => {
+    expect(zTimetreeConfig.parse({})).toStrictEqual({});
+  });
+
+  test("timetree config rejects null for a setting that can be unset", () => {
+    expect(zTimetreeConfig.safeParse({ clock_rate: null }).success).toBe(false);
   });
 
   test("timetree config accepts nested settings", () => {
@@ -131,9 +135,10 @@ describe("zod_schemas tagged unions", () => {
     { name: "CheckConfigResponse", schema: zCheckConfigResponse, tag: "status" },
     { name: "CoalescentPrior", schema: zCoalescentPrior, tag: "kind" },
     { name: "CommandResults", schema: zCommandResults, tag: "command" },
-    { name: "JobEvent", schema: zJobEvent, tag: "type" },
+    { name: "ExamplesDownload", schema: zExamplesDownload, tag: "state" },
     { name: "RunConfigResponse", schema: zRunConfigResponse, tag: "status" },
     { name: "RunEvent", schema: zRunEvent, tag: "type" },
+    { name: "RunRecord", schema: zRunRecord, tag: "command" },
     { name: "SettingDifference", schema: zSettingDifference, tag: "kind" },
     { name: "TerminalEvent", schema: zTerminalEvent, tag: "status" },
   ])("$name is a discriminated union on `$tag`", ({ schema, tag }) => {
@@ -171,7 +176,6 @@ describe("zod_schemas tagged unions", () => {
         n_resolved: 0,
         max_time_change: 0.1,
         rms_time_change: 0.01,
-        log_lh_seq: null,
         log_lh_pos: -12.5,
         log_lh_coal: "inf",
         log_lh_total: "inf",

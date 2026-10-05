@@ -50,13 +50,13 @@ export function dayLabel(timestamp: string, now: DateTime): string {
 export function headlineText(headline: RunHeadline): string {
   const rootDate = headline.root_date;
 
-  if (rootDate !== null && rootDate !== undefined) {
+  if (rootDate !== undefined) {
     return DateTime.fromISO(rootDate.date, { zone: "utc" }).toFormat("LLL yyyy");
   }
 
   const rate = headline.clock_rate;
 
-  if (rate !== null && rate !== undefined) {
+  if (rate !== undefined) {
     const value = fromJsonFloat(rate);
 
     return Number.isFinite(value) ? `rate ${formatRate(value)}` : `rate ${rate}`;
@@ -69,8 +69,8 @@ export function formatRate(rate: number): string {
   return rate.toExponential(SIGNIFICANT_DIGITS - 1);
 }
 
-export function rSquaredText(rSquared: number | null | undefined): string | undefined {
-  return rSquared === null || rSquared === undefined ? undefined : `R² = ${rSquared.toFixed(3)}`;
+export function rSquaredText(rSquared: number | undefined): string | undefined {
+  return rSquared === undefined ? undefined : `R² = ${rSquared.toFixed(3)}`;
 }
 
 export function formatLevel(level: number): string {

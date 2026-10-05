@@ -2,6 +2,7 @@
 mod tests {
   use crate::check_inputs::{InputFacts, InputKind, InputProblem};
   use crate::command::AppCommand;
+  use crate::json_value::JsonValue;
   use crate::run_checks::{
     CheckContext, CheckFix, CheckLevel, ConfigRejection, RunCheck, SettingPatch, rejection_messages, run_checks,
   };
@@ -250,7 +251,7 @@ mod tests {
       settings: vec_of_owned!["confidence", "covariation", "clock_std_dev"],
       fix: Some(CheckFix {
         label: o!("Use covariation"),
-        patch: vec![SettingPatch { path: vec_of_owned!["covariation"], value: json!(true) }],
+        patch: vec![SettingPatch { path: vec_of_owned!["covariation"], value: Some(JsonValue(json!(true))) }],
       }),
     });
     assert_eq!(expected.into_iter().collect::<Vec<_>>(), checks(command, Some(&config), None, None));

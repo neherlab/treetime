@@ -1,11 +1,17 @@
 #[cfg(test)]
 pub(crate) mod tests {
+  use crate::json_value::SparseConfig;
+  use serde_json::Value;
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_primitives::AsciiChar;
+
+  pub(crate) fn sparse(value: Value) -> SparseConfig {
+    serde_json::from_value(value).expect("a test config is a mapping of settings")
+  }
 
   pub(crate) fn project_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

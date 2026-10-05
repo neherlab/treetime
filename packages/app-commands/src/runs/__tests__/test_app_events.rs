@@ -68,6 +68,8 @@ mod tests {
           json!([
             { "path": "/api/runs", "scope": "subtree" },
             { "path": "/api/clade-in-runs", "scope": "exact" },
+            { "path": "/api/datasets", "scope": "exact" },
+            { "path": "/api/examples/download", "scope": "exact" },
           ])
         ),
         (6, json!("resync"), json!([])),
@@ -88,6 +90,8 @@ mod tests {
       json!([
         { "path": "/api/runs", "scope": "subtree" },
         { "path": "/api/clade-in-runs", "scope": "exact" },
+        { "path": "/api/datasets", "scope": "exact" },
+        { "path": "/api/examples/download", "scope": "exact" },
       ]),
       summarize(&received)[0].2
     );
@@ -177,7 +181,7 @@ mod tests {
     let created = create(&runs);
     let received = collect(runs.app_events(), None);
     runs
-      .start(&created.id, StartRunRequest::default(), unconfined())
+      .start(&created.id, &StartRunRequest::default(), unconfined())
       .unwrap()
       .run();
     let statuses = changes(&received)
@@ -222,6 +226,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_support::tests::sparse;
     use crate::command::AppCommand;
     use crate::runs::app_events::{AppEvent, AppEventLog, StalePath};
     use crate::runs::manager::RunManager;
@@ -278,14 +283,14 @@ mod tests {
     }
 
     pub(super) fn create(runs: &RunManager) -> RunRecord {
-      runs.create(request()).unwrap()
+      runs.create(&request()).unwrap()
     }
 
     fn request() -> CreateRunRequest {
       let zika = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
       CreateRunRequest {
         command: AppCommand::Clock,
-        config: json!({ "tree": zika.join("tree.nwk"), "metadata": zika.join("metadata.tsv") }),
+        config: sparse(json!({ "tree": zika.join("tree.nwk"), "metadata": zika.join("metadata.tsv") })),
         defer_start: true,
       }
     }

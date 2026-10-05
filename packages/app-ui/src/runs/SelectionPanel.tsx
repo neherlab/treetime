@@ -1,3 +1,4 @@
+import type { ResultTree } from "@neherlab/app-contracts";
 import { cladeInRuns } from "@neherlab/app-contracts/client";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -6,7 +7,6 @@ import { useCallback, useMemo } from "react";
 import { useApi } from "../api/hooks";
 import { Panel } from "../components/Panel";
 import { formatLevel } from "../format";
-import type { ResultTree } from "../results/types";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { DateIntervals, type DateRow } from "./DateIntervals";
@@ -36,14 +36,14 @@ export function SelectionPanel({
 
   const rows = useMemo(() => {
     const current: DateRow[] =
-      node?.date === null || node?.date === undefined
+      node?.date === undefined
         ? []
         : [{ id: runId, label: title, date: node.date, interval: node.date_interval ?? undefined, current: true }];
 
     return [
       ...current,
       ...(found?.matches ?? []).flatMap((match) =>
-        match.date === null || match.date === undefined
+        match.date === undefined
           ? []
           : [
               {
@@ -86,7 +86,7 @@ export function SelectionPanel({
     >
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-3.5 py-3 text-sm">
         <dt className="text-muted-foreground">{isTip ? "Date in tree" : "Date"}</dt>
-        <dd className="tabular-nums">{node.date === null || node.date === undefined ? "not dated" : node.date.date}</dd>
+        <dd className="tabular-nums">{node.date === undefined ? "not dated" : node.date.date}</dd>
         {interval !== undefined && (
           <>
             <dt className="text-muted-foreground">{formatLevel(interval.level)} interval</dt>

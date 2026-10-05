@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::command::AppCommand;
+  use crate::command_config::CommandConfig;
   use crate::runs::store::{RunStore, default_title};
   use chrono::{FixedOffset, TimeZone};
   use pretty_assertions::assert_eq;
@@ -32,7 +33,9 @@ mod tests {
     let store = RunStore::open(&runs_dir).unwrap();
     fs::remove_dir_all(root.path().join("app")).unwrap();
 
-    let record = store.create(AppCommand::Prune, json!({ "tree": "t.nwk" })).unwrap();
+    let record = store
+      .create(CommandConfig::from_settings(AppCommand::Prune, &json!({ "tree": "t.nwk" })).unwrap())
+      .unwrap();
 
     assert!(store.run_dir(&record.id).join("inputs").is_dir());
     assert_eq!(

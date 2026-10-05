@@ -1,4 +1,5 @@
 use crate::check_inputs::{CommandInput, InputKind, InputNeed};
+use crate::command_config::CommandConfig;
 use crate::commands::ancestral::aa_node_data::CDS_PLACEHOLDERS;
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
 use crate::commands::ancestral::run::run_ancestral_reconstruction;
@@ -31,7 +32,7 @@ use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use clap::{Command, CommandFactory};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use schemars::{JsonSchema, Schema};
+use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -76,25 +77,23 @@ pub enum AppCommand {
 
 impl AppCommand {
   pub fn config_schema(self) -> Schema {
-    match self {
-      Self::Timetree => command_schema::<TreetimeTimetreeArgsRaw>(),
-      Self::Optimize => command_schema::<TreetimeOptimizeArgsRaw>(),
-      Self::Prune => command_schema::<TreetimePruneArgsRaw>(),
-      Self::Ancestral => command_schema::<TreetimeAncestralArgsRaw>(),
-      Self::Clock => command_schema::<TreetimeClockArgsRaw>(),
-      Self::Mugration => command_schema::<TreetimeMugrationArgsRaw>(),
-    }
+    self.visit(SchemaOf)
+  }
+
+  pub fn config_subschema(self, generator: &mut SchemaGenerator) -> Schema {
+    self.visit(SubschemaOf { generator })
+  }
+
+  pub fn config_schema_name(self) -> String {
+    self.visit(SchemaNameOf)
   }
 
   pub fn default_config(self) -> Result<Map<String, Value>, Report> {
-    match self {
-      Self::Timetree => settings_map(&TreetimeTimetreeArgsRaw::default()),
-      Self::Optimize => settings_map(&TreetimeOptimizeArgsRaw::default()),
-      Self::Prune => settings_map(&TreetimePruneArgsRaw::default()),
-      Self::Ancestral => settings_map(&TreetimeAncestralArgsRaw::default()),
-      Self::Clock => settings_map(&TreetimeClockArgsRaw::default()),
-      Self::Mugration => settings_map(&TreetimeMugrationArgsRaw::default()),
-    }
+    self.visit(DefaultsOf)
+  }
+
+  pub fn command_config(self, settings: &Value) -> Result<CommandConfig, Report> {
+    self.visit(ConfigOf { settings })
   }
 
   pub fn config_over_defaults(self, settings: &Value) -> Result<Map<String, Value>, Report> {
@@ -129,14 +128,7 @@ impl AppCommand {
 
   #[cfg(feature = "clap")]
   pub fn cli_command(self) -> Command {
-    let mut command = match self {
-      Self::Timetree => TreetimeTimetreeArgsRaw::command(),
-      Self::Optimize => TreetimeOptimizeArgsRaw::command(),
-      Self::Prune => TreetimePruneArgsRaw::command(),
-      Self::Ancestral => TreetimeAncestralArgsRaw::command(),
-      Self::Clock => TreetimeClockArgsRaw::command(),
-      Self::Mugration => TreetimeMugrationArgsRaw::command(),
-    };
+    let mut command = self.visit(CliOf);
     command.build();
     command
   }
@@ -171,13 +163,22 @@ impl AppCommand {
 
   fn prepare_source(self, source_name: &str, text: &str, run_out: Option<&Path>) -> Result<PreparedCommand, Report> {
     let source = ConfigSource::new(source_name, text);
+    self.visit(Prepare {
+      command: self,
+      source: &source,
+      text,
+      run_out,
+    })
+  }
+
+  fn visit<V: RawConfigVisitor>(self, visitor: V) -> V::Output {
     match self {
-      Self::Timetree => prepare::<TreetimeTimetreeArgsRaw>(self, &source, text, run_out),
-      Self::Optimize => prepare::<TreetimeOptimizeArgsRaw>(self, &source, text, run_out),
-      Self::Prune => prepare::<TreetimePruneArgsRaw>(self, &source, text, run_out),
-      Self::Ancestral => prepare::<TreetimeAncestralArgsRaw>(self, &source, text, run_out),
-      Self::Clock => prepare::<TreetimeClockArgsRaw>(self, &source, text, run_out),
-      Self::Mugration => prepare::<TreetimeMugrationArgsRaw>(self, &source, text, run_out),
+      Self::Timetree => visitor.visit::<TreetimeTimetreeArgsRaw>(),
+      Self::Optimize => visitor.visit::<TreetimeOptimizeArgsRaw>(),
+      Self::Prune => visitor.visit::<TreetimePruneArgsRaw>(),
+      Self::Ancestral => visitor.visit::<TreetimeAncestralArgsRaw>(),
+      Self::Clock => visitor.visit::<TreetimeClockArgsRaw>(),
+      Self::Mugration => visitor.visit::<TreetimeMugrationArgsRaw>(),
     }
   }
 }
@@ -255,12 +256,113 @@ pub struct OutputFile {
   pub kind: OutputSelection,
 }
 
-trait RawConfig: Serialize + DeserializeOwned + Default + JsonSchema + Clone {
+trait RawConfig: Serialize + DeserializeOwned + Default + JsonSchema + Clone + RawCli {
   type Args: TryFrom<Self, Error = Report>;
 
   fn wrap(args: Self::Args) -> CommandArgs;
 
+  fn into_config(self) -> CommandConfig;
+
   fn set_run_outputs(&mut self, out_dir: &Path);
+}
+
+#[cfg(feature = "clap")]
+trait RawCli: CommandFactory {}
+
+#[cfg(feature = "clap")]
+impl<T: CommandFactory> RawCli for T {}
+
+#[cfg(not(feature = "clap"))]
+trait RawCli {}
+
+#[cfg(not(feature = "clap"))]
+impl<T> RawCli for T {}
+
+trait RawConfigVisitor {
+  type Output;
+
+  fn visit<R: RawConfig>(self) -> Self::Output;
+}
+
+struct SchemaOf;
+
+impl RawConfigVisitor for SchemaOf {
+  type Output = Schema;
+
+  fn visit<R: RawConfig>(self) -> Schema {
+    command_schema::<R>()
+  }
+}
+
+struct SubschemaOf<'a> {
+  generator: &'a mut SchemaGenerator,
+}
+
+impl RawConfigVisitor for SubschemaOf<'_> {
+  type Output = Schema;
+
+  fn visit<R: RawConfig>(self) -> Schema {
+    self.generator.subschema_for::<R>()
+  }
+}
+
+struct SchemaNameOf;
+
+impl RawConfigVisitor for SchemaNameOf {
+  type Output = String;
+
+  fn visit<R: RawConfig>(self) -> String {
+    R::schema_name().into_owned()
+  }
+}
+
+struct DefaultsOf;
+
+impl RawConfigVisitor for DefaultsOf {
+  type Output = Result<Map<String, Value>, Report>;
+
+  fn visit<R: RawConfig>(self) -> Self::Output {
+    settings_map(&R::default())
+  }
+}
+
+struct ConfigOf<'a> {
+  settings: &'a Value,
+}
+
+impl RawConfigVisitor for ConfigOf<'_> {
+  type Output = Result<CommandConfig, Report>;
+
+  fn visit<R: RawConfig>(self) -> Self::Output {
+    Ok(R::deserialize(self.settings)?.into_config())
+  }
+}
+
+#[cfg(feature = "clap")]
+struct CliOf;
+
+#[cfg(feature = "clap")]
+impl RawConfigVisitor for CliOf {
+  type Output = Command;
+
+  fn visit<R: RawConfig>(self) -> Command {
+    R::command()
+  }
+}
+
+struct Prepare<'a> {
+  command: AppCommand,
+  source: &'a ConfigSource,
+  text: &'a str,
+  run_out: Option<&'a Path>,
+}
+
+impl RawConfigVisitor for Prepare<'_> {
+  type Output = Result<PreparedCommand, Report>;
+
+  fn visit<R: RawConfig>(self) -> Self::Output {
+    prepare::<R>(self.command, self.source, self.text, self.run_out)
+  }
 }
 
 macro_rules! impl_raw_config {
@@ -270,6 +372,10 @@ macro_rules! impl_raw_config {
 
       fn wrap(args: Self::Args) -> CommandArgs {
         CommandArgs::$variant(Box::new(args))
+      }
+
+      fn into_config(self) -> CommandConfig {
+        CommandConfig::$variant(Box::new(self))
       }
 
       fn set_run_outputs(&mut self, out_dir: &Path) {

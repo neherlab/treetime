@@ -148,18 +148,30 @@ export type CheckConfigRequest = {
    * Input settings to add when the text does not set them, for example the inputs of a draft that the text is loaded
    * into.
    */
-  inputs?: {
-    [key: string]: unknown;
-  };
+  inputs?: SparseConfig;
   /**
    * Facts about the input files, from `check-inputs`, for the checks that depend on them.
    */
-  input_facts?: InputFacts | null;
+  input_facts?: InputFacts;
   /**
    * Absolute folder that relative paths in the text resolve from: the folder of the config file. Paths in `inputs`
    * stay as they are. Unset: relative paths resolve from the working directory of the back end.
    */
-  folder?: string | null;
+  folder?: string;
+};
+
+/**
+ * Settings of a command by key, as in a configuration file. Settings that are not listed take their defaults.
+ */
+export type SparseConfig = {
+  [key: string]: JsonValue;
+};
+
+/**
+ * A JSON value other than `null`: a boolean, a number, a string, a list, or a mapping of them.
+ */
+export type JsonValue = boolean | number | string | Array<JsonValue> | {
+  [key: string]: JsonValue;
 };
 
 /**
@@ -169,23 +181,23 @@ export type InputFacts = {
   /**
    * Facts about the tree, when it could be read.
    */
-  tree?: TreeFacts | null;
+  tree?: TreeFacts;
   /**
    * Facts about the alignment, when it could be read.
    */
-  alignment?: AlignmentFacts | null;
+  alignment?: AlignmentFacts;
   /**
    * Facts about the metadata table, when it could be read.
    */
-  metadata?: MetadataFacts | null;
+  metadata?: MetadataFacts;
   /**
    * Tree tips without a metadata row; present when both the tree and the metadata could be read.
    */
-  tips_without_metadata?: Array<string> | null;
+  tips_without_metadata?: Array<string>;
   /**
    * Tree tips without a sequence; present when both the tree and the alignment could be read.
    */
-  tips_without_sequence?: Array<string> | null;
+  tips_without_sequence?: Array<string>;
   /**
    * Inputs that could not be read, with the reason.
    */
@@ -259,11 +271,11 @@ export type MetadataFacts = {
   /**
    * Column that holds the sampling dates, when one was found.
    */
-  date_column?: string | null;
+  date_column?: string;
   /**
    * Facts about the sampling dates, when the date column could be read.
    */
-  dates?: DateFacts | null;
+  dates?: DateFacts;
 };
 
 /**
@@ -383,7 +395,7 @@ export type RunCheck = {
   /**
    * Change of settings that resolves the finding, when there is one.
    */
-  fix?: CheckFix | null;
+  fix?: CheckFix;
 };
 
 /**
@@ -414,9 +426,9 @@ export type SettingPatch = {
    */
   path: Array<string>;
   /**
-   * The value to set.
+   * The value to set; absent: the setting is removed and takes its default.
    */
-  value: unknown;
+  value?: JsonValue;
 };
 
 /**
@@ -434,11 +446,11 @@ export type ConfigProblem = {
   /**
    * Byte offset and length of the offending text in the config, when known.
    */
-  span?: ConfigSpan | null;
+  span?: ConfigSpan;
   /**
    * Suggestion for fixing the problem.
    */
-  help?: string | null;
+  help?: string;
 };
 
 /**
@@ -466,7 +478,7 @@ export type RunConfigRequest = {
   /**
    * Configuration of the command, in the form `treetime <command> --config` reads.
    */
-  config: unknown;
+  config: SparseConfig;
 };
 
 /**
@@ -489,9 +501,7 @@ export type CheckInputsRequest = {
   /**
    * Settings of the command; the input files and the metadata settings are read from it, the rest is ignored.
    */
-  config: {
-    [key: string]: unknown;
-  };
+  config: SparseConfig;
 };
 
 /**
@@ -539,15 +549,15 @@ export type RunSummary = {
   /**
    * Time the run ended.
    */
-  finished_at?: string | null;
+  finished_at?: string;
   /**
    * Duration of the computation, in seconds.
    */
-  duration_seconds?: number | null;
+  duration_seconds?: number;
   /**
    * Hash that identifies runs with the same settings and input contents.
    */
-  config_hash?: string | null;
+  config_hash?: string;
   /**
    * Setting keys whose values differ from the command defaults.
    */
@@ -575,15 +585,15 @@ export type RunHeadline = {
   /**
    * Date of the root of a time tree.
    */
-  root_date?: YearDate | null;
+  root_date?: YearDate;
   /**
    * Clock rate in substitutions per site per year.
    */
-  clock_rate?: JsonFloat | null;
+  clock_rate?: JsonFloat;
   /**
    * Coefficient of determination of the clock model.
    */
-  r_squared?: JsonFloat | null;
+  r_squared?: JsonFloat;
 };
 
 /**
@@ -614,9 +624,10 @@ export type CreateRunRequest = {
    */
   command: AppCommand;
   /**
-   * Configuration of the command, in the form `treetime <command> --config` reads.
+   * Configuration of the command, in the form `treetime <command> --config` reads. A configuration that the command
+   * rejects is answered with an `invalid_request` error.
    */
-  config: unknown;
+  config: SparseConfig;
   /**
    * Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.
    */
@@ -626,80 +637,19 @@ export type CreateRunRequest = {
 /**
  * Durable record of one command run, stored as `run.json` in the run's folder.
  */
-export type RunRecord = {
-  /**
-   * Identifier of the run, also the name of its folder.
-   */
-  id: JobId;
-  /**
-   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
-   */
-  title: string;
-  /**
-   * Command the run executes.
-   */
-  command: AppCommand;
-  /**
-   * Configuration of the run. Before the run starts this is the submitted configuration; afterwards it is the full
-   * resolved configuration, with every default filled in and the outputs the run layer adds.
-   */
-  config: {
-    [key: string]: unknown;
-  };
-  /**
-   * State of the run.
-   */
-  status: RunStatus;
-  /**
-   * Whether the run is pinned in run lists.
-   */
-  pinned: boolean;
-  /**
-   * Time the run was created.
-   */
-  created_at: string;
-  /**
-   * Time the computation started.
-   */
-  started_at?: string | null;
-  /**
-   * Time the run ended.
-   */
-  finished_at?: string | null;
-  /**
-   * Duration of the computation, in seconds.
-   */
-  duration_seconds?: number | null;
-  /**
-   * Version of TreeTime that ran the command.
-   */
-  treetime_version: string;
-  /**
-   * Input files the run read.
-   */
-  inputs: Array<RunInput>;
-  /**
-   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
-   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
-   */
-  config_hash?: string | null;
-  /**
-   * Setting keys whose values differ from the command defaults, as dot-separated key paths.
-   */
-  changed_settings: Array<string>;
-  /**
-   * Key results of a finished run, for run lists.
-   */
-  headline: RunHeadline;
-  /**
-   * Files the run wrote, with paths relative to the run's `out/` folder.
-   */
-  output_files: Array<OutputFile>;
-  /**
-   * The error of a failed run.
-   */
-  error?: RunError | null;
-};
+export type RunRecord = ({
+  command: 'timetree';
+} & RunRecordTimetree) | ({
+  command: 'optimize';
+} & RunRecordOptimize) | ({
+  command: 'prune';
+} & RunRecordPrune) | ({
+  command: 'ancestral';
+} & RunRecordAncestral) | ({
+  command: 'clock';
+} & RunRecordClock) | ({
+  command: 'mugration';
+} & RunRecordMugration);
 
 /**
  * One input file of a run.
@@ -765,11 +715,11 @@ export type UpdateRunRequest = {
   /**
    * New title.
    */
-  title?: string | null;
+  title?: string;
   /**
    * New pinned state.
    */
-  pinned?: boolean | null;
+  pinned?: boolean;
 };
 
 /**
@@ -780,11 +730,11 @@ export type StartRunRequest = {
    * Command that replaces the one given at creation, for example when the user chose another analysis after
    * uploading its inputs.
    */
-  command?: AppCommand | null;
+  command?: AppCommand;
   /**
    * Configuration that replaces the one given at creation, for example to point at uploaded inputs.
    */
-  config?: unknown;
+  config?: SparseConfig;
 };
 
 /**
@@ -812,7 +762,7 @@ export type RunFile = {
   /**
    * Output selection that produced the file; absent for files the output plan does not name.
    */
-  kind?: OutputSelection | null;
+  kind?: OutputSelection;
   /**
    * What the file holds; empty for files the output plan does not name.
    */
@@ -826,7 +776,7 @@ export type RunResults = {
   /**
    * Tree of the run's Auspice file; absent when the run wrote none.
    */
-  tree?: ResultTree | null;
+  tree?: ResultTree;
   /**
    * Results specific to the command of the run.
    */
@@ -856,7 +806,7 @@ export type ResultTree = {
   /**
    * Coloring the Auspice file selects by default.
    */
-  default_color_by?: string | null;
+  default_color_by?: string;
 };
 
 /**
@@ -870,7 +820,7 @@ export type ResultNode = {
   /**
    * Index of the parent node; absent for the root.
    */
-  parent?: number | null;
+  parent?: number;
   /**
    * Indices of the child nodes.
    */
@@ -882,19 +832,19 @@ export type ResultNode = {
   /**
    * Divergence from the root.
    */
-  div?: number | null;
+  div?: number;
   /**
    * Date of the node.
    */
-  date?: YearDate | null;
+  date?: YearDate;
   /**
    * Confidence interval of the date; absent when the run computed none or the interval is empty.
    */
-  date_interval?: DateInterval | null;
+  date_interval?: DateInterval;
   /**
    * Whether the clock model left the sample out, because it had no usable date or was a clock outlier.
    */
-  excluded?: boolean | null;
+  excluded?: boolean;
   /**
    * Nucleotide mutations on the branch above the node.
    */
@@ -987,11 +937,11 @@ export type TimetreeResults = {
   /**
    * Estimates of the time tree; absent when the run wrote no Auspice tree.
    */
-  estimates?: TimetreeEstimates | null;
+  estimates?: TimetreeEstimates;
   /**
    * Samples and line of the final clock model; absent when the run wrote no clock regression table.
    */
-  root_to_tip?: RootToTip | null;
+  root_to_tip?: RootToTip;
   /**
    * Convergence values of every iteration, from the tracelog.
    */
@@ -1009,11 +959,11 @@ export type TimetreeEstimates = {
   /**
    * Date of the root.
    */
-  root_date?: YearDate | null;
+  root_date?: YearDate;
   /**
    * Confidence interval of the root date.
    */
-  root_interval?: DateInterval | null;
+  root_interval?: DateInterval;
   /**
    * Whether the root date lies within 5% of the interval width from a bound of its interval.
    */
@@ -1021,11 +971,11 @@ export type TimetreeEstimates = {
   /**
    * Clock rate in substitutions per site per year.
    */
-  clock_rate?: number | null;
+  clock_rate?: number;
   /**
    * Standard deviation of the clock rate: the estimate's, or the one given with a fixed rate.
    */
-  clock_rate_std?: number | null;
+  clock_rate_std?: number;
   /**
    * Whether the clock rate was fixed by the user instead of estimated.
    */
@@ -1033,11 +983,11 @@ export type TimetreeEstimates = {
   /**
    * Correlation coefficient of the final clock model; absent for a fixed rate.
    */
-  r?: number | null;
+  r?: number;
   /**
    * Coefficient of determination of the final clock model.
    */
-  r_squared?: number | null;
+  r_squared?: number;
   /**
    * Number of samples in the tree.
    */
@@ -1053,11 +1003,11 @@ export type TimetreeEstimates = {
   /**
    * Relaxed clock the run used.
    */
-  relaxed_clock?: RelaxedClock | null;
+  relaxed_clock?: RelaxedClock;
   /**
    * Total log likelihood of the last iteration.
    */
-  log_likelihood?: JsonFloat | null;
+  log_likelihood?: JsonFloat;
   /**
    * Number of iterations the tracelog records.
    */
@@ -1102,7 +1052,7 @@ export type RootToTip = {
   /**
    * Line of the clock model; absent when the run wrote no clock model.
    */
-  line?: ClockLine | null;
+  line?: ClockLine;
 };
 
 /**
@@ -1116,11 +1066,11 @@ export type RootToTipPoint = {
   /**
    * Date the regression used.
    */
-  date?: YearDate | null;
+  date?: YearDate;
   /**
    * Where the date came from; absent when the table does not say.
    */
-  date_source?: ClockDateSource | null;
+  date_source?: ClockDateSource;
   /**
    * Root-to-tip divergence the regression used.
    */
@@ -1132,7 +1082,7 @@ export type RootToTipPoint = {
   /**
    * Sampling date minus the predicted date, in days.
    */
-  residual_days?: number | null;
+  residual_days?: number;
   /**
    * Whether the clock filter flagged the sample as an outlier.
    */
@@ -1169,27 +1119,27 @@ export type IterationRow = {
   /**
    * Largest change of a node time, in years.
    */
-  max_time_change?: JsonFloat | null;
+  max_time_change?: JsonFloat;
   /**
    * Root-mean-square change of the node times, in years.
    */
-  rms_time_change?: JsonFloat | null;
+  rms_time_change?: JsonFloat;
   /**
    * Log likelihood of the sequences.
    */
-  log_lh_seq?: JsonFloat | null;
+  log_lh_seq?: JsonFloat;
   /**
    * Log likelihood of the node positions.
    */
-  log_lh_pos?: JsonFloat | null;
+  log_lh_pos?: JsonFloat;
   /**
    * Log likelihood of the coalescent prior.
    */
-  log_lh_coal?: JsonFloat | null;
+  log_lh_coal?: JsonFloat;
   /**
    * Total log likelihood.
    */
-  log_lh_total?: JsonFloat | null;
+  log_lh_total?: JsonFloat;
 };
 
 /**
@@ -1225,11 +1175,11 @@ export type Band = {
   /**
    * Lower bound of the band.
    */
-  lower?: number | null;
+  lower?: number;
   /**
    * Upper bound of the band.
    */
-  upper?: number | null;
+  upper?: number;
 };
 
 /**
@@ -1243,7 +1193,7 @@ export type ClockResults = {
   /**
    * Samples and line of the root-to-tip regression; absent when the run wrote no clock regression table.
    */
-  root_to_tip?: RootToTip | null;
+  root_to_tip?: RootToTip;
 };
 
 /**
@@ -1253,7 +1203,7 @@ export type ClockEstimates = {
   /**
    * Clock rate in substitutions per site per year; absent when the run wrote no clock model.
    */
-  clock_rate?: number | null;
+  clock_rate?: number;
   /**
    * Whether the clock rate was fixed by the user instead of estimated.
    */
@@ -1261,11 +1211,11 @@ export type ClockEstimates = {
   /**
    * Correlation coefficient of the root-to-tip regression; absent for a fixed rate.
    */
-  r?: number | null;
+  r?: number;
   /**
    * Coefficient of determination of the root-to-tip regression.
    */
-  r_squared?: number | null;
+  r_squared?: number;
   /**
    * Number of samples with a date.
    */
@@ -1357,7 +1307,7 @@ export type MugrationResults = {
   /**
    * Most probable state of the root.
    */
-  root?: AncestorState | null;
+  root?: AncestorState;
 };
 
 /**
@@ -1419,11 +1369,11 @@ export type TreeSummary = {
   /**
    * Sum of the branch lengths in the node data file.
    */
-  total_branch_length?: number | null;
+  total_branch_length?: number;
   /**
    * Substitution model the run fitted.
    */
-  substitution_model?: SubstitutionModel | null;
+  substitution_model?: SubstitutionModel;
 };
 
 /**
@@ -1486,15 +1436,15 @@ export type RunComparison = {
   /**
    * Settings and inputs that differ; absent when the runs execute different commands.
    */
-  settings?: SettingsComparison | null;
+  settings?: SettingsComparison;
   /**
    * Estimates side by side; present when both runs are finished time-tree runs with a tree.
    */
-  estimates?: EstimateComparison | null;
+  estimates?: EstimateComparison;
   /**
    * Date shifts of the ancestors both trees share; present when both runs are finished time-tree runs with a tree.
    */
-  ancestors?: AncestorComparison | null;
+  ancestors?: AncestorComparison;
 };
 
 /**
@@ -1539,15 +1489,15 @@ export type EstimateComparison = {
   /**
    * Shift of the root date, in days.
    */
-  root_shift_days?: number | null;
+  root_shift_days?: number;
   /**
    * Change of the width of the root-date interval, in days.
    */
-  root_interval_change_days?: number | null;
+  root_interval_change_days?: number;
   /**
    * Change of the clock rate, in percent of the first rate.
    */
-  clock_rate_change_percent?: number | null;
+  clock_rate_change_percent?: number;
   /**
    * Change of the number of samples the clock model left out.
    */
@@ -1555,7 +1505,7 @@ export type EstimateComparison = {
   /**
    * Change of the total log likelihood; absent when either value is missing or not finite.
    */
-  log_likelihood_change?: number | null;
+  log_likelihood_change?: number;
 };
 
 /**
@@ -1573,7 +1523,7 @@ export type AncestorComparison = {
   /**
    * Mean absolute shift, in days.
    */
-  mean_absolute_shift_days?: number | null;
+  mean_absolute_shift_days?: number;
 };
 
 /**
@@ -1649,11 +1599,11 @@ export type CladeMatch = {
   /**
    * Date of the node.
    */
-  date?: YearDate | null;
+  date?: YearDate;
   /**
    * Confidence interval of the date.
    */
-  date_interval?: DateInterval | null;
+  date_interval?: DateInterval;
 };
 
 /**
@@ -1726,27 +1676,27 @@ export type IterationEvent = {
   /**
    * Largest change of a node time, in years.
    */
-  max_time_change?: JsonFloat | null;
+  max_time_change?: JsonFloat;
   /**
    * Root-mean-square change of the node times, in years.
    */
-  rms_time_change?: JsonFloat | null;
+  rms_time_change?: JsonFloat;
   /**
    * Log likelihood of the sequences.
    */
-  log_lh_seq?: JsonFloat | null;
+  log_lh_seq?: JsonFloat;
   /**
    * Log likelihood of the node positions under the clock model.
    */
-  log_lh_pos?: JsonFloat | null;
+  log_lh_pos?: JsonFloat;
   /**
    * Log likelihood of the coalescent prior.
    */
-  log_lh_coal?: JsonFloat | null;
+  log_lh_coal?: JsonFloat;
   /**
    * Sum of the available log likelihoods.
    */
-  log_lh_total?: JsonFloat | null;
+  log_lh_total?: JsonFloat;
   /**
    * Clock rate of the clock model the iteration used, in substitutions per site per year.
    */
@@ -1754,7 +1704,7 @@ export type IterationEvent = {
   /**
    * Squared correlation coefficient of the root-to-tip regression of that clock model; absent for a fixed rate.
    */
-  r_squared?: JsonFloat | null;
+  r_squared?: JsonFloat;
 };
 
 /**
@@ -1874,19 +1824,19 @@ export type AppPathSettings = {
   /**
    * Browser profile of the desktop app: cache, local storage, and crash reports. Default: `profile`.
    */
-  profile?: string | null;
+  profile?: string;
   /**
    * Runs, each in its own folder. Default: `runs`.
    */
-  runs?: string | null;
+  runs?: string;
   /**
    * Logs and crash diagnostics. Default: `logs`.
    */
-  logs?: string | null;
+  logs?: string;
   /**
    * Example datasets and configurations that the app lists. Default: `examples`.
    */
-  examples?: string | null;
+  examples?: string;
 };
 
 /**
@@ -1896,15 +1846,15 @@ export type UiSettings = {
   /**
    * Color theme.
    */
-  theme?: UiTheme | null;
+  theme?: UiTheme;
   /**
    * Width of the sidebar in pixels.
    */
-  sidebar_width?: number | null;
+  sidebar_width?: number;
   /**
    * The unfinished analysis form.
    */
-  draft?: UiDraft | null;
+  draft?: UiDraft;
 };
 
 /**
@@ -1920,9 +1870,7 @@ export type UiDraft = {
   /**
    * Settings of the command, as in a configuration file.
    */
-  config: {
-    [key: string]: unknown;
-  };
+  config: SparseConfig;
   /**
    * Where each input file came from, by setting key.
    */
@@ -1932,11 +1880,11 @@ export type UiDraft = {
   /**
    * The run whose settings the form was loaded from.
    */
-  from_run_id?: JobId | null;
+  from_run_id?: JobId;
   /**
    * The run that holds the uploaded input files of the form.
    */
-  upload_run_id?: JobId | null;
+  upload_run_id?: JobId;
   view: UiSettingsView;
   /**
    * Text of the settings search field.
@@ -1961,7 +1909,7 @@ export type UiDraftSource = {
   /**
    * Size of the file in bytes, when known.
    */
-  size?: number | null;
+  size?: number;
 };
 
 /**
@@ -1988,7 +1936,7 @@ export type ExamplesDownloadStatus = {
    * Sequence number of the last app event about the download. A client keeps whichever of this answer and the
    * events it received has the higher number.
    */
-  seq?: number | null;
+  seq?: number;
 };
 
 /**
@@ -2006,11 +1954,11 @@ export type Workspace = {
   /**
    * The environment variable that sets the runs folder; the app cannot change the folder then.
    */
-  fixed_by?: string | null;
+  fixed_by?: string;
   /**
    * Why the runs folder named in the settings could not be opened. The default runs folder is in use then.
    */
-  error?: string | null;
+  error?: string;
 };
 
 /**
@@ -2020,7 +1968,7 @@ export type WorkspaceUpdate = {
   /**
    * Absolute path of the folder. Unset: `runs` in the app folder.
    */
-  path?: string | null;
+  path?: string;
 };
 
 /**
@@ -2030,2095 +1978,12 @@ export type SaveRunRequest = {
   /**
    * Path of the file relative to the run's `out/` folder. Unset: a zip archive of the whole `out/` folder.
    */
-  path?: string | null;
+  path?: string;
   /**
    * Absolute path of the file to write.
    */
   destination: string;
 };
-
-export type BranchLengthMode = 'input' | 'marginal';
-
-export type TimeMarginalMode = 'never' | 'always' | 'only-final';
-
-export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest' | 'clock-filter';
-
-export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | 'jtt92' | 'infer';
-
-export type MethodAncestral = 'marginal' | 'parsimony';
-
-export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
-
-export type GapFill = 'only-terminal' | 'all' | 'none';
-
-export type DivergenceUnits = 'mutations-per-site' | 'mutations';
-
-/**
- * CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
- */
-export type NwkStyleArg = 'plain' | 'beast' | 'nhx';
-
-export type TimetreeOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb' | 'MatJson' | 'GraphJson' | 'Dot' | 'AugurNodeData' | 'Gtr' | 'ReconstructedNucFasta' | 'ClockModel' | 'ClockCsv' | 'ConfidenceTsv' | 'Tracelog' | 'CoalescentTsv' | 'CoalescentCsv' | 'CoalescentJson';
-
-export type LadderizeArg = 'none' | 'ascending' | 'descending';
-
-export type TopologyOrderArg = 'keep' | 'descendant-count' | 'descendant-count-reverse' | 'height' | 'height-reverse' | 'divergence' | 'divergence-reverse' | 'label' | 'label-reverse' | 'target-order' | 'target-order-reverse';
-
-export type TopologyOrderTargetSourceArg = 'input' | 'reference-topology' | 'list';
-
-export type TopologyOrderTargetAggregateArg = 'mean' | 'median';
-
-/**
- * Sequence alignment input shared by all commands that read sequences.
- *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
- */
-export type TimetreeConfig = {
-  /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
-   */
-  alignment?: Array<string>;
-  /**
-   * Tree in Newick format.
-   */
-  tree?: string | null;
-  /**
-   * Only for vcf input: fasta file of the sequence the VCF was mapped to.
-   */
-  vcf_reference?: string | null;
-  /**
-   * CSV/TSV file with metadata including sampling dates
-   */
-  metadata?: string | null;
-  /**
-   * Candidate column name(s) holding the taxon identifier that links metadata to tree tips
-   *
-   * The first listed column that is present in the header is used. Matching is case-insensitive.
-   */
-  metadata_id_columns?: Array<string>;
-  /**
-   * Candidate field delimiter(s) for the metadata table
-   *
-   * The delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.
-   */
-  metadata_delimiters?: Array<string>;
-  /**
-   * Label of the column to be used as sampling date (auto-detected when omitted)
-   */
-  date_column?: string | null;
-  /**
-   * Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
-   */
-  date_format?: string;
-  /**
-   * Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
-   */
-  sequence_length?: number | null;
-  /**
-   * If specified, the rate of the molecular clock won't be optimized.
-   */
-  clock_rate?: number | null;
-  /**
-   * Standard deviation of the provided clock rate estimate
-   */
-  clock_std_dev?: number | null;
-  /**
-   * If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
-   */
-  branch_length_mode?: BranchLengthMode;
-  /**
-   * Control when marginal time distributions are used for output.
-   *
-   * All modes use marginal inference during optimization. The mode controls whether
-   * confidence intervals are extracted from the resulting distributions:
-   *
-   * - `never`: no confidence interval output (default)
-   * - `always`: write confidence intervals from distributions computed during optimization
-   * - `only-final`: run one extra inference pass after optimization, then write confidence intervals
-   */
-  time_marginal?: TimeMarginalMode;
-  /**
-   * Add rate-uncertainty to confidence intervals.
-   *
-   * `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.
-   * This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined
-   * via quadrature sum. Requires `--covariation` or `--clock-std-dev`.
-   * When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
-   */
-  confidence?: boolean;
-  /**
-   * Don't resolve polytomies using temporal information.
-   */
-  keep_polytomies?: boolean;
-  /**
-   * Resolve polytomies using temporal information
-   */
-  resolve_polytomies?: boolean;
-  /**
-   * use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate
-   * deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0
-   * 0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more
-   * strongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.
-   */
-  relax?: Array<number>;
-  /**
-   * maximal number of iterations the inference cycle is run. For polytomy resolution and
-   * coalescence models max_iter should be at least 2
-   */
-  max_iter?: number;
-  /**
-   * Coalescent time scale in years.
-   *
-   * Sensible values are on the order of the time from the root to the tips and are given in units of time.
-   */
-  coalescent?: number | null;
-  /**
-   * Optimize coalescent time scale Tc to maximize coalescent likelihood.
-   *
-   * When set, TreeTime finds the optimal constant Tc analytically (closed-form maximum
-   * of the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`,
-   * which used a numerical search.
-   */
-  coalescent_opt?: boolean;
-  /**
-   * Use skyline coalescent model instead of constant Tc.
-   *
-   * Estimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify
-   * the number of grid points.
-   */
-  coalescent_skyline?: boolean;
-  /**
-   * Number of grid points in skyline coalescent model.
-   *
-   * Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
-   * are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
-   */
-  skyline_n_points?: number;
-  /**
-   * Smoothing stiffness for the skyline coalescent.
-   *
-   * Penalizes log-fold-changes of the coalescent time scale Tc between adjacent
-   * skyline segments: with z = ln Tc, the objective adds
-   * `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the
-   * stiffness is dimensionless and scale-independent. Larger values enforce a
-   * smoother Tc(t). Only used when --coalescent-skyline is set.
-   */
-  skyline_stiffness?: number;
-  /**
-   * Confidence level for coalescent time scale (Tc) bands, in standard deviations.
-   *
-   * Applies to every inferred coalescent mode (constant, --coalescent-opt, and
-   * --coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is
-   * the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed
-   * --coalescent value is not inferred and therefore has no band.
-   */
-  coalescent_confidence?: number;
-  /**
-   * add posterior LH to coalescent model: use the posterior probability distributions of
-   * divergence times for estimating the number of branches when calculating the coalescent
-   * mergerrate or use inferred time before present (default).
-   */
-  n_branches_posterior?: number | null;
-  /**
-   * filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
-   * default=pdf)
-   */
-  plot_tree?: string | null;
-  /**
-   * filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
-   * default=pdf)
-   */
-  plot_rtt?: string | null;
-  /**
-   * add tip labels (default for small trees with <30 leaves)
-   */
-  tip_labels?: boolean;
-  /**
-   * don't show tip labels (default for trees with >=30 leaves)
-   */
-  no_tip_labels?: boolean;
-  /**
-   * ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from
-   * regression'. Default=3.0, set to 0 to switch off.
-   */
-  clock_filter?: number;
-  /**
-   * Number of IQD (interquartile distance) for clock filter outlier detection
-   */
-  n_iqd?: number | null;
-  /**
-   * Reroot the tree by temporal-signal optimization.
-   *
-   * Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
-   */
-  reroot?: RerootMethod | null;
-  /**
-   * Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
-   */
-  reroot_tips?: Array<string>;
-  /**
-   * don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
-   * root-to-tip distance and sampling time
-   */
-  keep_root?: boolean;
-  /**
-   * By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
-   */
-  allow_negative_rate?: boolean;
-  /**
-   * excess variance associated with terminal nodes accounting for overdispersion of the molecular
-   * clock
-   */
-  tip_slack?: number | null;
-  /**
-   * Account for covariation when estimating rates or rerooting using root-to-tip regression
-   */
-  covariation?: boolean;
-  /**
-   * Substitution model to use
-   *
-   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
-   * specified model requires additional options, use `--model-params` to specify those.
-   */
-  model?: GtrModelName;
-  /**
-   * Parameters for the model selected by `--model`, given as a `key=value` list
-   *
-   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-   */
-  model_params?: Array<string>;
-  /**
-   * Method used for reconstructing ancestral sequences
-   */
-  method_anc?: MethodAncestral;
-  /**
-   * Sequence alphabet
-   *
-   * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
-   * detection is ambiguous.
-   */
-  alphabet?: AlphabetName | null;
-  /**
-   * Use dense representation for sequences (store full probability distributions)
-   */
-  dense?: boolean | null;
-  /**
-   * How to handle gap characters in input sequences
-   *
-   * 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
-   * 'all': replace all gap characters with the ambiguous character.
-   * 'none': leave all gap characters unchanged.
-   */
-  gap_fill?: GapFill;
-  /**
-   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
-   */
-  keep_overhangs?: boolean;
-  /**
-   * Zero-based mutation indexing
-   */
-  zero_based?: boolean;
-  /**
-   * Emit reconstructed leaf (tip) sequences in addition to internal nodes.
-   */
-  include_leaves?: boolean;
-  /**
-   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
-   * inferred state. Gaps are left as deletions.
-   */
-  impute_missing_data?: boolean;
-  /**
-   * v0-compatible alias for `--include-leaves --impute-missing-data`.
-   */
-  reconstruct_tip_states?: boolean;
-  /**
-   * Include branch mutations from or to the fully ambiguous nucleotide state `N`.
-   *
-   * By default these mutations are omitted from the branch mutations of the Newick and Nexus
-   * annotations and the Auspice JSON. Other ambiguity codes, such as `K` or `R`, are always
-   * reported. The MAT outputs store `N` as missing data and never contain these mutations.
-   */
-  report_ambiguous?: boolean;
-  /**
-   * Disable indel (insertion/deletion) contributions to branch-length
-   * optimization and branch-length distributions.
-   *
-   * When set, branch-length optimization uses substitution-only likelihood
-   * and timetree branch distributions exclude the Poisson indel term.
-   * Matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST)
-   * and enables v0 parity testing. Default: indels enabled.
-   */
-  no_indels?: boolean;
-  /**
-   * Units for divergence values in augur node data JSON and auspice output.
-   *
-   * `mutations-per-site` (default): branch divergence as substitutions per site.
-   * `mutations`: count of reconstructed substitutions per branch that change the state:
-   * gaps, `N`, and ambiguity codes compatible with the parent state do not count.
-   * Requires ancestral reconstruction (incompatible with `--branch-length-mode=input`).
-   */
-  divergence_units?: DivergenceUnits;
-  /**
-   * Path to output augur-compatible node data JSON.
-   *
-   * Contains per-node dates, branch lengths, clock model parameters, confidence
-   * intervals, and divergence metrics. The output is compatible with augur
-   * export v2 --node-data for Nextstrain pipeline integration.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_augur_node_data?: string | null;
-  /**
-   * Path to output GTR model JSON.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_gtr?: string | null;
-  /**
-   * Path to output reconstructed ancestral-sequence nucleotide FASTA.
-   *
-   * The v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences
-   * reconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves`
-   * (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_reconstructed_nuc_fasta?: string | null;
-  /**
-   * Path to output clock model JSON.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_clock_model?: string | null;
-  /**
-   * Path to output clock regression CSV.
-   *
-   * One row per sample as the final clock model saw it: the date the regression used, marked
-   * `input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts
-   * from that distance, and whether the clock filter excluded the sample. Not written by default.
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_clock_csv?: string | null;
-  /**
-   * Path to output date-confidence-interval TSV.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_confidence_tsv?: string | null;
-  /**
-   * Path to output iteration-statistics tracelog CSV (monitors convergence).
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_tracelog?: string | null;
-  /**
-   * Path to output the coalescent time scale as a flat TSV (one row per skyline segment).
-   *
-   * Written when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or
-   * `--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree
-   * span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_coalescent_tsv?: string | null;
-  /**
-   * Path to output the coalescent time scale as a flat CSV (one row per skyline segment).
-   *
-   * Written when a coalescent model is set. Takes precedence over paths configured with
-   * `--output-all` and `--output-selection`.
-   */
-  output_coalescent_csv?: string | null;
-  /**
-   * Path to output the coalescent time scale as a rich JSON document (inputs + segments).
-   *
-   * Written when a coalescent model is set. Takes precedence over paths configured with
-   * `--output-all` and `--output-selection`.
-   */
-  output_coalescent_json?: string | null;
-  /**
-   * Write all default output files into this directory.
-   *
-   * Produces the default set of tree and non-tree outputs for the command, using
-   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
-   * outputs are written.
-   *
-   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
-   * supplement the files produced by `--output-all`.
-   *
-   * An output that the run has no data for is skipped without a message, for example the
-   * substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_all?: string | null;
-  /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
-   *
-   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
-   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
-   */
-  output_nwk_style?: Array<NwkStyleArg>;
-  /**
-   * Path to output Newick tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nwk?: string | null;
-  /**
-   * Path to output Nexus tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nexus?: string | null;
-  /**
-   * Path to output Auspice v2 JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_auspice?: string | null;
-  /**
-   * Path to output UShER MAT protobuf tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_pb?: string | null;
-  /**
-   * Path to output UShER MAT JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_json?: string | null;
-  /**
-   * Path to output internal graph JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_graph_json?: string | null;
-  /**
-   * Path to output Graphviz DOT tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_dot?: string | null;
-  /**
-   * Comma-separated list of outputs to produce with `--output-all`.
-   *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
-   *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_selection?: Array<TimetreeOutputSelection>;
-  /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg | null;
-  /**
-   * Canonical topology ordering preset.
-   */
-  topology_order?: TopologyOrderArg | null;
-  /**
-   * Source for target-order topology sorting.
-   */
-  topology_order_target_source?: TopologyOrderTargetSourceArg | null;
-  /**
-   * File used by list or reference-topology target-order sources.
-   */
-  topology_order_target_file?: string | null;
-  /**
-   * Aggregate used to map a subtree to a target-order position.
-   */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
-  /**
-   * Random seed
-   *
-   * Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
-   */
-  seed?: number | null;
-  /**
-   * Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
-   */
-  aa?: boolean;
-  /**
-   * Load a custom GTR model from file (not yet implemented)
-   */
-  custom_gtr?: string | null;
-  /**
-   * Method for clock filter outlier detection (not yet implemented)
-   */
-  clock_filter_method?: string | null;
-  /**
-   * Generations per year for converting the coalescent time scale Tc into an effective
-   * population size.
-   *
-   * The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is
-   * already in calendar years, so this factor rescales it into generation units, the standard
-   * axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.
-   */
-  gen_per_year?: number;
-  /**
-   * Path or URL of the JSON schema for this config; used by editors and ignored by the loader.
-   */
-  $schema?: string;
-};
-
-export type OptimizeOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb' | 'MatJson' | 'GraphJson' | 'Dot' | 'AugurNodeData' | 'Gtr';
-
-/**
- * Controls whether marginal reconstruction estimates initial branch lengths
- * from substitutions divided by effective alignment length. Preserving valid
- * input lengths can provide a better Newton starting point.
- */
-export type InitialGuessMode = 'auto' | 'always' | 'never';
-
-/**
- * Per-edge branch length optimization method.
- *
- * Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
- * length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
- * vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
- */
-export type BranchOptMethod = 'brent' | 'brent-sqrt' | 'brent-log' | 'newton' | 'newton-sqrt' | 'newton-log';
-
-/**
- * Reroot methods available in the optimize command.
- *
- * Only date-free methods are valid here because optimize has no sampling dates.
- * Date-dependent methods (least-squares, oldest, clock-filter) are available
- * in the timetree and clock commands.
- */
-export type OptimizeRerootMethod = 'min-dev';
-
-/**
- * Sequence alignment input shared by all commands that read sequences.
- *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
- */
-export type OptimizeConfig = {
-  /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
-   */
-  alignment?: Array<string>;
-  /**
-   * Tree in Newick format.
-   */
-  tree?: string | null;
-  /**
-   * Sequence alphabet
-   *
-   * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
-   * detection is ambiguous.
-   */
-  alphabet?: AlphabetName | null;
-  /**
-   * Substitution model to use
-   *
-   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
-   * specified model requires additional options, use `--model-params` to specify those.
-   */
-  model?: GtrModelName;
-  /**
-   * Parameters for the model selected by `--model`, given as a `key=value` list
-   *
-   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-   */
-  model_params?: Array<string>;
-  /**
-   * Use dense representation of sequences on the tree
-   *
-   * Dense mode stores full probability vectors at every alignment position for each
-   * node. Sparse mode stores only variable positions. Dense is more accurate when
-   * branches are long and many sites change, but uses more memory.
-   */
-  dense?: boolean | null;
-  /**
-   * Write all default output files into this directory.
-   *
-   * Produces the default set of tree and non-tree outputs for the command, using
-   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
-   * outputs are written.
-   *
-   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
-   * supplement the files produced by `--output-all`.
-   *
-   * An output that the run has no data for is skipped without a message, for example the
-   * substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_all?: string | null;
-  /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
-   *
-   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
-   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
-   */
-  output_nwk_style?: Array<NwkStyleArg>;
-  /**
-   * Path to output Newick tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nwk?: string | null;
-  /**
-   * Path to output Nexus tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nexus?: string | null;
-  /**
-   * Path to output Auspice v2 JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_auspice?: string | null;
-  /**
-   * Path to output UShER MAT protobuf tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_pb?: string | null;
-  /**
-   * Path to output UShER MAT JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_json?: string | null;
-  /**
-   * Path to output internal graph JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_graph_json?: string | null;
-  /**
-   * Path to output Graphviz DOT tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_dot?: string | null;
-  /**
-   * Units for divergence values in augur node data JSON output.
-   *
-   * `mutations-per-site` (default): branch divergence as substitutions per site.
-   * `mutations`: count of reconstructed substitutions per branch that change the state:
-   * gaps, `N`, and ambiguity codes compatible with the parent state do not count.
-   */
-  divergence_units?: DivergenceUnits;
-  /**
-   * Path to output augur-compatible node data JSON.
-   *
-   * Contains per-node optimized branch lengths (divergence, substitutions per
-   * site) and the input alignment and tree paths. The output is compatible with
-   * augur export v2 --node-data.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_augur_node_data?: string | null;
-  /**
-   * Path to output GTR model JSON.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_gtr?: string | null;
-  /**
-   * Comma-separated list of outputs to produce with `--output-all`.
-   *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
-   *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_selection?: Array<OptimizeOutputSelection>;
-  /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg | null;
-  /**
-   * Canonical topology ordering preset.
-   */
-  topology_order?: TopologyOrderArg | null;
-  /**
-   * Source for target-order topology sorting.
-   */
-  topology_order_target_source?: TopologyOrderTargetSourceArg | null;
-  /**
-   * File used by list or reference-topology target-order sources.
-   */
-  topology_order_target_file?: string | null;
-  /**
-   * Aggregate used to map a subtree to a target-order position.
-   */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
-  /**
-   * Maximum number of iterations
-   */
-  max_iter?: number;
-  /**
-   * Likelihood convergence threshold. The loop stops when successive
-   * likelihoods differ by less than this value, or when a 2-cycle with
-   * amplitude below this value is detected.
-   */
-  dp?: number;
-  /**
-   * Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,
-   * where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;
-   * zero disables damping. Must be in $[0,1)$.
-   */
-  damping?: number;
-  /**
-   * Initial branch length estimate before Newton optimization.
-   *
-   * - auto: estimate only edges with missing or invalid branch lengths,
-   *   preserve valid input values (default)
-   * - always: estimate all edges, overwriting input branch lengths
-   * - never: use input branch lengths as-is; fails if any are missing
-   */
-  branch_length_initial_guess?: InitialGuessMode;
-  /**
-   * Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt`
-   * (default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and
-   * `newton-log`; suffixes select $\sqrt{t}$ or $\ln(t)$.
-   */
-  opt_method?: BranchOptMethod;
-  /**
-   * Disable indel (insertion/deletion) contributions to branch-length
-   * optimization.
-   *
-   * When set, the optimizer uses substitution-only likelihood, matching
-   * standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and
-   * enabling v0 parity testing. Default: indels enabled.
-   */
-  no_indels?: boolean;
-  /**
-   * Reroot the tree by minimizing root-to-tip divergence variance.
-   *
-   * By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev
-   * to enable divergence-based rerooting. Date-dependent methods (least-squares,
-   * oldest, clock-filter) are available in the timetree and clock commands.
-   */
-  reroot?: OptimizeRerootMethod | null;
-  /**
-   * Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
-   */
-  reroot_tips?: Array<string>;
-  /**
-   * Keep the input tree root instead of rerooting.
-   *
-   * Optimize keeps the input root by default; this flag is the explicit form and
-   * is mutually exclusive with the reroot options.
-   */
-  keep_root?: boolean;
-  /**
-   * Disable collapsing of internal branches whose optimized length is zero.
-   *
-   * By default the optimize loop contracts internal edges the per-edge optimizer drove to
-   * exactly zero that carry no substitutions or indels, turning the resulting binary nodes into
-   * polytomies. When set, such edges are kept in the output tree with length zero.
-   */
-  no_collapse_short_branches?: boolean;
-  /**
-   * Disable merging of polytomy siblings that share substitutions.
-   *
-   * By default, sibling branches in a polytomy that carry identical substitutions are grouped
-   * under a new internal node. Requires the sparse sequence representation, so this step has no
-   * effect under `--dense` and the flag is then a no-op.
-   */
-  no_merge_siblings?: boolean;
-  /**
-   * Disable the flip-parent-child step (reversion hoist) in polytomies.
-   *
-   * By default, when a child branch carries the exact reversion of a substitution on the node's
-   * parent branch, a new node is inserted that groups the node with that child, removing one
-   * mutation per reverted position. When set, those reversions are left in place. Requires the
-   * sparse sequence representation, so this step has no effect under `--dense` and the flag is
-   * then a no-op.
-   */
-  no_flip_parent_child?: boolean;
-  /**
-   * How to handle gap characters in input sequences
-   *
-   * 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
-   * 'all': replace all gap characters with the ambiguous character.
-   * 'none': leave all gap characters unchanged.
-   */
-  gap_fill?: GapFill;
-  /**
-   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
-   */
-  keep_overhangs?: boolean;
-  /**
-   * Path or URL of the JSON schema for this config; used by editors and ignored by the loader.
-   */
-  $schema?: string;
-};
-
-export type PruneOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb' | 'MatJson' | 'GraphJson' | 'Dot' | 'Gtr';
-
-/**
- * Sequence alignment input shared by all commands that read sequences.
- *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
- */
-export type PruneConfig = {
-  /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
-   */
-  alignment?: Array<string>;
-  /**
-   * Tree in Newick format.
-   */
-  tree?: string | null;
-  /**
-   * Sequence alphabet
-   *
-   * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
-   * detection is ambiguous.
-   */
-  alphabet?: AlphabetName | null;
-  /**
-   * Write all default output files into this directory.
-   *
-   * Produces the default set of tree and non-tree outputs for the command, using
-   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
-   * outputs are written.
-   *
-   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
-   * supplement the files produced by `--output-all`.
-   *
-   * An output that the run has no data for is skipped without a message, for example the
-   * substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_all?: string | null;
-  /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
-   *
-   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
-   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
-   */
-  output_nwk_style?: Array<NwkStyleArg>;
-  /**
-   * Path to output Newick tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nwk?: string | null;
-  /**
-   * Path to output Nexus tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nexus?: string | null;
-  /**
-   * Path to output Auspice v2 JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_auspice?: string | null;
-  /**
-   * Path to output UShER MAT protobuf tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_pb?: string | null;
-  /**
-   * Path to output UShER MAT JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_json?: string | null;
-  /**
-   * Path to output internal graph JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_graph_json?: string | null;
-  /**
-   * Path to output Graphviz DOT tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_dot?: string | null;
-  /**
-   * Path to output GTR model JSON.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_gtr?: string | null;
-  /**
-   * Comma-separated list of outputs to produce with `--output-all`.
-   *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
-   *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_selection?: Array<PruneOutputSelection>;
-  /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg | null;
-  /**
-   * Canonical topology ordering preset.
-   */
-  topology_order?: TopologyOrderArg | null;
-  /**
-   * Source for target-order topology sorting.
-   */
-  topology_order_target_source?: TopologyOrderTargetSourceArg | null;
-  /**
-   * File used by list or reference-topology target-order sources.
-   */
-  topology_order_target_file?: string | null;
-  /**
-   * Aggregate used to map a subtree to a target-order position.
-   */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
-  /**
-   * Threshold value for pruning of branches
-   *
-   * If set, prune branches with a length below this value
-   */
-  prune_short?: number | null;
-  /**
-   * Prune empty branches
-   *
-   * If set, prune any branch that does not have a mutation or other state transition mapped to it.
-   *
-   * Requires --alignment
-   */
-  prune_empty?: boolean;
-  /**
-   * Merge branches in polytomies that share identical mutations
-   *
-   * When sibling branches in a polytomy (node with >2 children) carry identical substitutions,
-   * they are grouped under a new internal node. The shared mutations move to the new branch
-   * (parent to new node), and only unique mutations remain on children's edges.
-   * Reduces tree builder artifacts from arbitrary binary resolution of polytomies.
-   *
-   * Requires --alignment
-   */
-  merge_shared_mutations?: boolean;
-  /**
-   * List of node names to prune
-   *
-   * List of node names to remove from the tree, comma-separated (,)
-   *
-   * Surrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.
-   */
-  prune_nodes_list?: string | null;
-  /**
-   * Name separator for `--prune-nodes-list`
-   *
-   * String used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.
-   */
-  prune_nodes_list_delimiter?: string;
-  /**
-   * File containing list of node names to prune
-   *
-   * Path to a file containing node names to remove from the tree, newline-delimited (\n). Surrounding whitespace is trimmed and empty names are ignored.
-   *
-   * Use '-' to read from standard input (stdin).
-   *
-   * Use --prune-nodes-list-file-delimiter to specify a different delimiter.
-   */
-  prune_nodes_list_file?: string | null;
-  /**
-   * Separator for node names in the list file
-   *
-   * Character or string used to separate node names in the list file.
-   */
-  prune_nodes_list_file_delimiter?: string;
-  /**
-   * Path or URL of the JSON schema for this config; used by editors and ignored by the loader.
-   */
-  $schema?: string;
-};
-
-/**
- * Amino-acid substitution model, mirroring the nucleotide `--model` but restricted to the values
- * that are sound over an amino-acid alphabet.
- *
- * The default `infer` matches augur, which reconstructs amino acids with a JC69-seeded inferred
- * GTR over the stop-inclusive alphabet (`augur ancestral` calls `TreeAnc(..., gtr='JC69',
- * alphabet='aa')` with `infer_gtr=True`). Empirical matrices are opt-in.
- */
-export type AaModelName = 'infer' | 'jtt92';
-
-export type AncestralOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb' | 'MatJson' | 'GraphJson' | 'Dot' | 'AugurNodeData' | 'Gtr' | 'ReconstructedNucFasta' | 'ReconstructedAaFasta';
-
-export type SampleMode = 'argmax' | 'root' | 'all';
-
-/**
- * Sequence alignment input shared by all commands that read sequences.
- *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
- */
-export type AncestralConfig = {
-  /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
-   */
-  alignment?: Array<string>;
-  /**
-   * FASTA file of the sequence the VCF was mapped to (only for vcf input)
-   */
-  vcf_reference?: string | null;
-  /**
-   * Tree in Newick format.
-   */
-  tree?: string | null;
-  /**
-   * Sequence alphabet
-   *
-   * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
-   * detection is ambiguous.
-   */
-  alphabet?: AlphabetName | null;
-  /**
-   * Substitution model to use
-   *
-   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
-   * specified model requires additional options, use `--model-params` to specify those.
-   */
-  model?: GtrModelName;
-  /**
-   * Parameters for the model selected by `--model`, given as a `key=value` list
-   *
-   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-   */
-  model_params?: Array<string>;
-  /**
-   * Method used for reconstructing ancestral sequences
-   */
-  method_anc?: MethodAncestral;
-  /**
-   * Use dense representation (stores full probability vectors at each position)
-   *
-   * When combined with `--model infer`, marginal reconstruction runs twice: once to populate
-   * profiles for GTR inference, and again with the inferred GTR.
-   */
-  dense?: boolean | null;
-  /**
-   * How to handle gap characters in input sequences
-   *
-   * 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
-   * 'all': replace all gap characters with the ambiguous character.
-   * 'none': leave all gap characters unchanged.
-   */
-  gap_fill?: GapFill;
-  /**
-   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
-   */
-  keep_overhangs?: boolean;
-  /**
-   * Zero-based mutation indexing
-   */
-  zero_based?: boolean;
-  /**
-   * Emit reconstructed leaf (tip) sequences in addition to internal nodes.
-   */
-  include_leaves?: boolean;
-  /**
-   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
-   * inferred state.
-   *
-   * Gaps are left as deletions (inferred structure, not missing data). Only defined for marginal
-   * reconstruction; a no-op with a warning under `--method-anc=parsimony`.
-   */
-  impute_missing_data?: boolean;
-  /**
-   * v0-compatible alias for `--include-leaves --impute-missing-data`.
-   *
-   * Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
-   */
-  reconstruct_tip_states?: boolean;
-  /**
-   * Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for
-   * amino acids).
-   *
-   * By default these mutations are omitted from the branch mutations of the Newick and Nexus
-   * annotations, the Auspice JSON, and the `muts` and `aa_muts` lists of augur node data. Other
-   * ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT
-   * outputs, which store `N` as missing data and never contain these mutations, or the root
-   * `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence`
-   * reference and the inferred root and always omit `X` and gaps.
-   */
-  report_ambiguous?: boolean;
-  /**
-   * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)
-   * instead of aborting.
-   *
-   * Without this flag the run aborts when more than one third of the tips lack a sequence, matching
-   * TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a
-   * given CDS.
-   */
-  ignore_missing_alns?: boolean;
-  /**
-   * Path to output augur-compatible node data JSON.
-   *
-   * Contains per-node nucleotide mutations, reconstructed sequences, the alignment
-   * mask, genome annotations, and the reference (root) sequence. The output is
-   * compatible with augur export v2 --node-data for Nextstrain pipeline integration.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_augur_node_data?: string | null;
-  /**
-   * Path to output GTR model JSON.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_gtr?: string | null;
-  /**
-   * Path to output reconstructed nucleotide FASTA.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_reconstructed_nuc_fasta?: string | null;
-  /**
-   * Path template for per-CDS amino-acid FASTA alignments.
-   *
-   * The template must contain a CDS placeholder, replaced with each value from `--cdses` (or each
-   * CDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade
-   * `--output-translations`) and `%GENE` (augur) placeholders are accepted.
-   */
-  translations?: string | null;
-  /**
-   * Comma-separated CDS names to reconstruct from `--translations`.
-   *
-   * When omitted, the CDS set is derived from `--annotation`.
-   */
-  cdses?: Array<string>;
-  /**
-   * GFF3 file with CDS coordinates for Augur node data annotations.
-   *
-   * Also supplies the CDS set when `--cdses` is omitted.
-   */
-  annotation?: string | null;
-  /**
-   * FASTA file with one amino-acid root/reference sequence per CDS.
-   */
-  aa_root_sequence?: string | null;
-  /**
-   * Amino-acid substitution model. Mirrors the nucleotide `--model`; default `infer` matches augur.
-   */
-  aa_model?: AaModelName;
-  /**
-   * Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).
-   *
-   * Off by default. When set, the reconstructed sequence of every node is written per CDS. The
-   * file name accepts the `{cds}`/`%GENE` placeholders of `--translations`, and needs one when
-   * more than one CDS is reconstructed; folder names are used as given.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_reconstructed_aa_fasta?: string | null;
-  /**
-   * Write all default output files into this directory.
-   *
-   * Produces the default set of tree and non-tree outputs for the command, using
-   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
-   * outputs are written.
-   *
-   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
-   * supplement the files produced by `--output-all`.
-   *
-   * An output that the run has no data for is skipped without a message, for example the
-   * substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_all?: string | null;
-  /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
-   *
-   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
-   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
-   */
-  output_nwk_style?: Array<NwkStyleArg>;
-  /**
-   * Path to output Newick tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nwk?: string | null;
-  /**
-   * Path to output Nexus tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nexus?: string | null;
-  /**
-   * Path to output Auspice v2 JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_auspice?: string | null;
-  /**
-   * Path to output UShER MAT protobuf tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_pb?: string | null;
-  /**
-   * Path to output UShER MAT JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_json?: string | null;
-  /**
-   * Path to output internal graph JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_graph_json?: string | null;
-  /**
-   * Path to output Graphviz DOT tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_dot?: string | null;
-  /**
-   * Comma-separated list of outputs to produce with `--output-all`.
-   *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
-   *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_selection?: Array<AncestralOutputSelection>;
-  /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg | null;
-  /**
-   * Canonical topology ordering preset.
-   */
-  topology_order?: TopologyOrderArg | null;
-  /**
-   * Source for target-order topology sorting.
-   */
-  topology_order_target_source?: TopologyOrderTargetSourceArg | null;
-  /**
-   * File used by list or reference-topology target-order sources.
-   */
-  topology_order_target_file?: string | null;
-  /**
-   * Aggregate used to map a subtree to a target-order position.
-   */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
-  /**
-   * Number of outer GTR refinement iterations.
-   *
-   * Re-estimates the rate matrix from marginal posterior profiles after each
-   * reconstruction pass. Only effective with `--model infer`. Default 0 preserves
-   * the current single-pass behavior. Mugration uses 5 by default.
-   */
-  gtr_iterations?: number;
-  /**
-   * Use site-specific GTR model with per-site equilibrium frequencies.
-   *
-   * Requires `--model infer` and `--dense true`. Incompatible with sequence compression
-   * (sparse representation). When enabled, each alignment position gets its own
-   * eigendecomposition based on position-specific base composition.
-   */
-  site_specific_gtr?: boolean;
-  /**
-   * Random seed
-   *
-   * Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
-   */
-  seed?: number | null;
-  /**
-   * Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
-   */
-  aa?: boolean;
-  /**
-   * Shortcut for `--method-anc=marginal` (v0 compat)
-   */
-  marginal?: boolean;
-  /**
-   * Load a custom GTR model from file (not yet implemented)
-   */
-  custom_gtr?: string | null;
-  /**
-   * How to pick ancestral states from the marginal posterior profile.
-   *
-   * 'argmax': most likely state at every node (deterministic, default).
-   * 'root': sample from the posterior at the root only, argmax elsewhere (matches augur's
-   * `sample_from_profile='root'`). Use `--seed` for reproducible draws.
-   * 'all': sample from the posterior at every node.
-   *
-   * Only affects marginal reconstruction (`--method-anc=marginal`).
-   */
-  sample_from_profile?: SampleMode;
-  /**
-   * Path or URL of the JSON schema for this config; used by editors and ignored by the loader.
-   */
-  $schema?: string;
-};
-
-export type ClockOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb' | 'MatJson' | 'GraphJson' | 'Dot' | 'ClockModel' | 'ClockCsv' | 'ClockChartSvg' | 'ClockChartPng';
-
-/**
- * Branch split optimization parameters
- */
-export type BranchSplitArgs = {
-  /**
-   * Optimization method to use for finding the best root position
-   */
-  method?: OptimizationMethod;
-  /**
-   * Number of equally-spaced points to evaluate (grid method only)
-   */
-  n_points?: number;
-  /**
-   * Maximum number of iterations for Brent's method
-   */
-  brent_max_iters?: number;
-  /**
-   * Convergence tolerance for Brent's method
-   */
-  brent_tolerance?: number;
-  /**
-   * Maximum number of iterations for golden section search
-   */
-  golden_max_iters?: number;
-  /**
-   * Convergence tolerance for golden section search
-   */
-  golden_tolerance?: number;
-};
-
-/**
- * Optimization method selection
- */
-export type OptimizationMethod = 'grid' | 'brent' | 'golden-section';
-
-/**
- * Clock regression model parameters
- */
-export type ClockRegressionArgs = {
-  /**
-   * Variance scaling factor proportional to branch length
-   */
-  variance_factor?: number;
-  /**
-   * Constant variance offset for all branches
-   */
-  variance_offset?: number;
-  /**
-   * Additional variance offset for leaf (terminal) nodes
-   */
-  variance_offset_leaf?: number;
-};
-
-/**
- * Sequence alignment input shared by all commands that read sequences.
- *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
- */
-export type ClockConfig = {
-  /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
-   */
-  alignment?: Array<string>;
-  /**
-   * Tree in Newick format.
-   */
-  tree?: string | null;
-  /**
-   * Only for vcf input: fasta file of the sequence the VCF was mapped to.
-   */
-  vcf_reference?: string | null;
-  /**
-   * CSV/TSV file with metadata including sampling dates
-   */
-  metadata?: string | null;
-  /**
-   * Candidate column name(s) holding the taxon identifier that links metadata to tree tips
-   *
-   * The first listed column that is present in the header is used. Matching is case-insensitive.
-   */
-  metadata_id_columns?: Array<string>;
-  /**
-   * Candidate field delimiter(s) for the metadata table
-   *
-   * The delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.
-   */
-  metadata_delimiters?: Array<string>;
-  /**
-   * Label of the column to be used as sampling date (auto-detected when omitted)
-   */
-  date_column?: string | null;
-  /**
-   * Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
-   */
-  date_format?: string;
-  /**
-   * Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
-   */
-  sequence_length?: number | null;
-  /**
-   * Substitution model to use
-   *
-   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
-   * specified model requires additional options, use `--model-params` to specify those.
-   */
-  model?: GtrModelName;
-  /**
-   * Parameters for the model selected by `--model`, given as a `key=value` list
-   *
-   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-   */
-  model_params?: Array<string>;
-  /**
-   * If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
-   */
-  branch_length_mode?: BranchLengthMode;
-  /**
-   * Method used for reconstructing ancestral sequences
-   */
-  method_anc?: MethodAncestral;
-  /**
-   * ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.
-   */
-  clock_filter?: number;
-  /**
-   * Reroot the tree by temporal-signal optimization.
-   *
-   * Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
-   */
-  reroot?: RerootMethod | null;
-  /**
-   * Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
-   */
-  reroot_tips?: Array<string>;
-  /**
-   * don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
-   * root-to-tip distance and sampling time
-   */
-  keep_root?: boolean;
-  prune_short?: boolean;
-  /**
-   * excess variance associated with terminal nodes accounting for overdispersion of the molecular
-   * clock
-   */
-  tip_slack?: number | null;
-  /**
-   * Account for covariation when estimating rates or rerooting using root-to-tip regression
-   */
-  covariation?: boolean;
-  /**
-   * By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
-   */
-  allow_negative_rate?: boolean;
-  /**
-   * Write all default output files into this directory.
-   *
-   * Produces the default set of tree and non-tree outputs for the command, using
-   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
-   * outputs are written.
-   *
-   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
-   * supplement the files produced by `--output-all`.
-   *
-   * An output that the run has no data for is skipped without a message, for example the
-   * substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_all?: string | null;
-  /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
-   *
-   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
-   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
-   */
-  output_nwk_style?: Array<NwkStyleArg>;
-  /**
-   * Path to output Newick tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nwk?: string | null;
-  /**
-   * Path to output Nexus tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nexus?: string | null;
-  /**
-   * Path to output Auspice v2 JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_auspice?: string | null;
-  /**
-   * Path to output UShER MAT protobuf tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_pb?: string | null;
-  /**
-   * Path to output UShER MAT JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_json?: string | null;
-  /**
-   * Path to output internal graph JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_graph_json?: string | null;
-  /**
-   * Path to output Graphviz DOT tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_dot?: string | null;
-  /**
-   * Path to output clock model JSON.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_clock_model?: string | null;
-  /**
-   * Path to output clock regression CSV.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_clock_csv?: string | null;
-  /**
-   * Path to output root-to-tip regression chart in SVG format.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_clock_chart_svg?: string | null;
-  /**
-   * Path to output root-to-tip regression chart in PNG format.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_clock_chart_png?: string | null;
-  /**
-   * Comma-separated list of outputs to produce with `--output-all`.
-   *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
-   *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_selection?: Array<ClockOutputSelection>;
-  /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg | null;
-  /**
-   * Canonical topology ordering preset.
-   */
-  topology_order?: TopologyOrderArg | null;
-  /**
-   * Source for target-order topology sorting.
-   */
-  topology_order_target_source?: TopologyOrderTargetSourceArg | null;
-  /**
-   * File used by list or reference-topology target-order sources.
-   */
-  topology_order_target_file?: string | null;
-  /**
-   * Aggregate used to map a subtree to a target-order position.
-   */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
-  /**
-   * Method for clock filter outlier detection (not yet implemented)
-   */
-  clock_filter_method?: string | null;
-  /**
-   * Filename to save root-to-tip regression plot (not yet implemented)
-   */
-  plot_rtt?: string | null;
-  /**
-   * Prune clock outlier tips from the tree (not yet implemented)
-   */
-  prune_outliers?: boolean;
-  /**
-   * Branch split optimization parameters
-   */
-  branch_split?: BranchSplitArgs;
-  /**
-   * Clock regression model parameters
-   */
-  clock_regression?: ClockRegressionArgs;
-  /**
-   * Path or URL of the JSON schema for this config; used by editors and ignored by the loader.
-   */
-  $schema?: string;
-};
-
-export type MugrationOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb' | 'MatJson' | 'GraphJson' | 'Dot' | 'AugurNodeData' | 'Gtr' | 'ConfidenceCsv' | 'TraitsCsv';
-
-/**
- * Metadata identity and delimiter options shared by every command that reads a metadata table
- * (`timetree`, `clock`, `mugration`).
- *
- * `--metadata-id-columns` (alias `--name-column`) lists the candidate columns holding the taxon
- * identifier that links a metadata row to a tree tip; the first column present in the header wins.
- * Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
- * candidate field separators; the delimiter actually present in the file is used.
- */
-export type MugrationConfig = {
-  /**
-   * Tree in Newick format.
-   */
-  tree?: string | null;
-  /**
-   * Attribute to reconstruct, e.g. country
-   */
-  attribute?: string | null;
-  /**
-   * CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...
-   */
-  metadata?: string | null;
-  /**
-   * CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...
-   */
-  weights?: string | null;
-  /**
-   * Candidate column name(s) holding the taxon identifier that links metadata to tree tips
-   *
-   * The first listed column that is present in the header is used. Matching is case-insensitive.
-   */
-  metadata_id_columns?: Array<string>;
-  /**
-   * Candidate field delimiter(s) for the metadata table
-   *
-   * The delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.
-   */
-  metadata_delimiters?: Array<string>;
-  /**
-   * Path to output state-probability-profile CSV.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_confidence_csv?: string | null;
-  /**
-   * Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.
-   */
-  pc?: number | null;
-  /**
-   * String indicating missing data
-   */
-  missing_data?: string;
-  /**
-   * Portion of attribute values that is allowed to not have weights in the weights file
-   */
-  missing_weights_threshold?: number;
-  /**
-   * Number of iterations for GTR model refinement from data.
-   */
-  iterations?: number;
-  /**
-   * Rough estimate of how many more events would have been observed if sequences represented an
-   * even sample.
-   */
-  sampling_bias_correction?: number | null;
-  /**
-   * Smooth the initial equilibrium frequencies with the pseudo-count before the first
-   * reconstruction pass.
-   *
-   * Off by default (TreeTime v0 builds the initial model from raw frequencies and applies the
-   * pseudo-count only as infer_gtr regularization). Enabling this flattens the prior for the first
-   * pass; it only affects weighted models.
-   */
-  smooth_initial_pi?: boolean;
-  /**
-   * Exclude near-uniform root positions from the equilibrium-frequency prior.
-   *
-   * Off by default (TreeTime v0 always folds the root's most-likely state into the prior). Enabling
-   * this drops root positions whose posterior carries no phylogenetic signal, removing a
-   * state-order-dependent bias at ambiguous roots.
-   */
-  filter_uninformative_root?: boolean;
-  /**
-   * Path to output augur-compatible node data JSON.
-   *
-   * Contains per-node discrete trait assignments, confidence profiles, entropy,
-   * the inferred substitution model, and branch state-change labels. The output
-   * is compatible with augur export v2 --node-data for Nextstrain pipeline
-   * integration.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_augur_node_data?: string | null;
-  /**
-   * Path to output GTR model JSON.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_gtr?: string | null;
-  /**
-   * Path to output traits CSV.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   */
-  output_traits_csv?: string | null;
-  /**
-   * Write all default output files into this directory.
-   *
-   * Produces the default set of tree and non-tree outputs for the command, using
-   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
-   * outputs are written.
-   *
-   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
-   * supplement the files produced by `--output-all`.
-   *
-   * An output that the run has no data for is skipped without a message, for example the
-   * substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_all?: string | null;
-  /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
-   *
-   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
-   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
-   */
-  output_nwk_style?: Array<NwkStyleArg>;
-  /**
-   * Path to output Newick tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nwk?: string | null;
-  /**
-   * Path to output Nexus tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_nexus?: string | null;
-  /**
-   * Path to output Auspice v2 JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_auspice?: string | null;
-  /**
-   * Path to output UShER MAT protobuf tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_pb?: string | null;
-  /**
-   * Path to output UShER MAT JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_mat_json?: string | null;
-  /**
-   * Path to output internal graph JSON tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_graph_json?: string | null;
-  /**
-   * Path to output Graphviz DOT tree file.
-   *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-   * Use `-` to write uncompressed to stdout.
-   *
-   * Parent directories are created if missing.
-   */
-  output_tree_dot?: string | null;
-  /**
-   * Comma-separated list of outputs to produce with `--output-all`.
-   *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
-   *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
-   */
-  output_selection?: Array<MugrationOutputSelection>;
-  /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg | null;
-  /**
-   * Canonical topology ordering preset.
-   */
-  topology_order?: TopologyOrderArg | null;
-  /**
-   * Source for target-order topology sorting.
-   */
-  topology_order_target_source?: TopologyOrderTargetSourceArg | null;
-  /**
-   * File used by list or reference-topology target-order sources.
-   */
-  topology_order_target_file?: string | null;
-  /**
-   * Aggregate used to map a subtree to a target-order position.
-   */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
-  /**
-   * Path or URL of the JSON schema for this config; used by editors and ignored by the loader.
-   */
-  $schema?: string;
-};
-
-/**
- * Event of a running job, in the order the job emits them.
- */
-export type JobEvent = ({
-  type: 'started';
-} & JobEventStarted) | ({
-  type: 'progress';
-} & JobEventProgress) | ({
-  type: 'log';
-} & JobEventLog) | ({
-  type: 'iteration';
-} & JobEventIteration) | ({
-  type: 'terminal';
-} & JobEventTerminal);
 
 /**
  * Settings of one command.
@@ -4226,18 +2091,18 @@ export type SettingSpec = {
    */
   item_kind: ListItemKind;
   /**
-   * Value of the setting when the configuration does not set it.
+   * Value of the setting when the configuration does not set it; absent when the setting has no default.
    */
-  default_value: unknown;
+  default_value?: JsonValue;
   /**
    * Smallest allowed value of a number, when there is one.
    */
-  minimum?: number | null;
+  minimum?: number;
   /**
    * Typical values of the setting, as the configuration spells them; the first one is the value the form fills in
    * when the setting is turned on.
    */
-  examples: Array<unknown>;
+  examples: Array<JsonValue>;
   /**
    * Names of the values the command-line flag takes, in order, for example `SLACK` and `COUPLING`.
    */
@@ -4295,6 +2160,2050 @@ export type SettingCatalog = {
   commands: Array<CommandSettings>;
 };
 
+export type BranchLengthMode = 'input' | 'marginal';
+
+export type TimeMarginalMode = 'never' | 'always' | 'only-final';
+
+export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest' | 'clock-filter';
+
+export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | 'jtt92' | 'infer';
+
+export type MethodAncestral = 'marginal' | 'parsimony';
+
+export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
+
+export type GapFill = 'only-terminal' | 'all' | 'none';
+
+export type DivergenceUnits = 'mutations-per-site' | 'mutations';
+
+/**
+ * CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
+ */
+export type NwkStyleArg = 'plain' | 'beast' | 'nhx';
+
+export type TimetreeOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'reconstructed-nuc-fasta' | 'clock-model' | 'clock-csv' | 'confidence-tsv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json';
+
+export type LadderizeArg = 'none' | 'ascending' | 'descending';
+
+export type TopologyOrderArg = 'keep' | 'descendant-count' | 'descendant-count-reverse' | 'height' | 'height-reverse' | 'divergence' | 'divergence-reverse' | 'label' | 'label-reverse' | 'target-order' | 'target-order-reverse';
+
+export type TopologyOrderTargetSourceArg = 'input' | 'reference-topology' | 'list';
+
+export type TopologyOrderTargetAggregateArg = 'mean' | 'median';
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export type TimetreeConfig = {
+  /**
+   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
+   * `xz`, `zstd`) files and detects compression by extension. The records of all
+   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   */
+  alignment?: Array<string>;
+  /**
+   * Tree in Newick format.
+   */
+  tree?: string;
+  /**
+   * Only for vcf input: fasta file of the sequence the VCF was mapped to.
+   */
+  vcf_reference?: string;
+  /**
+   * CSV/TSV file with metadata including sampling dates
+   */
+  metadata?: string;
+  /**
+   * Candidate column name(s) holding the taxon identifier that links metadata to tree tips
+   *
+   * The first listed column that is present in the header is used. Matching is case-insensitive.
+   */
+  metadata_id_columns?: Array<string>;
+  /**
+   * Candidate field delimiter(s) for the metadata table
+   *
+   * The delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.
+   */
+  metadata_delimiters?: Array<string>;
+  /**
+   * Label of the column to be used as sampling date (auto-detected when omitted)
+   */
+  date_column?: string;
+  /**
+   * Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
+   */
+  date_format?: string;
+  /**
+   * Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
+   */
+  sequence_length?: number;
+  /**
+   * If specified, the rate of the molecular clock won't be optimized.
+   */
+  clock_rate?: number;
+  /**
+   * Standard deviation of the provided clock rate estimate
+   */
+  clock_std_dev?: number;
+  /**
+   * If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
+   */
+  branch_length_mode?: BranchLengthMode;
+  /**
+   * Control when marginal time distributions are used for output.
+   *
+   * All modes use marginal inference during optimization. The mode controls whether
+   * confidence intervals are extracted from the resulting distributions:
+   *
+   * - `never`: no confidence interval output (default)
+   * - `always`: write confidence intervals from distributions computed during optimization
+   * - `only-final`: run one extra inference pass after optimization, then write confidence intervals
+   */
+  time_marginal?: TimeMarginalMode;
+  /**
+   * Add rate-uncertainty to confidence intervals.
+   *
+   * `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.
+   * This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined
+   * via quadrature sum. Requires `--covariation` or `--clock-std-dev`.
+   * When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
+   */
+  confidence?: boolean;
+  /**
+   * Don't resolve polytomies using temporal information.
+   */
+  keep_polytomies?: boolean;
+  /**
+   * Resolve polytomies using temporal information
+   */
+  resolve_polytomies?: boolean;
+  /**
+   * use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate
+   * deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0
+   * 0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more
+   * strongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.
+   */
+  relax?: Array<number>;
+  /**
+   * maximal number of iterations the inference cycle is run. For polytomy resolution and
+   * coalescence models max_iter should be at least 2
+   */
+  max_iter?: number;
+  /**
+   * Coalescent time scale in years.
+   *
+   * Sensible values are on the order of the time from the root to the tips and are given in units of time.
+   */
+  coalescent?: number;
+  /**
+   * Optimize coalescent time scale Tc to maximize coalescent likelihood.
+   *
+   * When set, TreeTime finds the optimal constant Tc analytically (closed-form maximum
+   * of the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`,
+   * which used a numerical search.
+   */
+  coalescent_opt?: boolean;
+  /**
+   * Use skyline coalescent model instead of constant Tc.
+   *
+   * Estimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify
+   * the number of grid points.
+   */
+  coalescent_skyline?: boolean;
+  /**
+   * Number of grid points in skyline coalescent model.
+   *
+   * Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
+   * are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
+   */
+  skyline_n_points?: number;
+  /**
+   * Smoothing stiffness for the skyline coalescent.
+   *
+   * Penalizes log-fold-changes of the coalescent time scale Tc between adjacent
+   * skyline segments: with z = ln Tc, the objective adds
+   * `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the
+   * stiffness is dimensionless and scale-independent. Larger values enforce a
+   * smoother Tc(t). Only used when --coalescent-skyline is set.
+   */
+  skyline_stiffness?: number;
+  /**
+   * Confidence level for coalescent time scale (Tc) bands, in standard deviations.
+   *
+   * Applies to every inferred coalescent mode (constant, --coalescent-opt, and
+   * --coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is
+   * the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed
+   * --coalescent value is not inferred and therefore has no band.
+   */
+  coalescent_confidence?: number;
+  /**
+   * add posterior LH to coalescent model: use the posterior probability distributions of
+   * divergence times for estimating the number of branches when calculating the coalescent
+   * mergerrate or use inferred time before present (default).
+   */
+  n_branches_posterior?: number;
+  /**
+   * filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
+   * default=pdf)
+   */
+  plot_tree?: string;
+  /**
+   * filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
+   * default=pdf)
+   */
+  plot_rtt?: string;
+  /**
+   * add tip labels (default for small trees with <30 leaves)
+   */
+  tip_labels?: boolean;
+  /**
+   * don't show tip labels (default for trees with >=30 leaves)
+   */
+  no_tip_labels?: boolean;
+  /**
+   * ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from
+   * regression'. Default=3.0, set to 0 to switch off.
+   */
+  clock_filter?: number;
+  /**
+   * Number of IQD (interquartile distance) for clock filter outlier detection
+   */
+  n_iqd?: number;
+  /**
+   * Reroot the tree by temporal-signal optimization.
+   *
+   * Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
+   */
+  reroot?: RerootMethod;
+  /**
+   * Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
+   */
+  reroot_tips?: Array<string>;
+  /**
+   * don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
+   * root-to-tip distance and sampling time
+   */
+  keep_root?: boolean;
+  /**
+   * By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
+   */
+  allow_negative_rate?: boolean;
+  /**
+   * excess variance associated with terminal nodes accounting for overdispersion of the molecular
+   * clock
+   */
+  tip_slack?: number;
+  /**
+   * Account for covariation when estimating rates or rerooting using root-to-tip regression
+   */
+  covariation?: boolean;
+  /**
+   * Substitution model to use
+   *
+   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
+   * specified model requires additional options, use `--model-params` to specify those.
+   */
+  model?: GtrModelName;
+  /**
+   * Parameters for the model selected by `--model`, given as a `key=value` list
+   *
+   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   */
+  model_params?: Array<string>;
+  /**
+   * Method used for reconstructing ancestral sequences
+   */
+  method_anc?: MethodAncestral;
+  /**
+   * Sequence alphabet
+   *
+   * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
+   * detection is ambiguous.
+   */
+  alphabet?: AlphabetName;
+  /**
+   * Use dense representation for sequences (store full probability distributions)
+   */
+  dense?: boolean;
+  /**
+   * How to handle gap characters in input sequences
+   *
+   * 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
+   * 'all': replace all gap characters with the ambiguous character.
+   * 'none': leave all gap characters unchanged.
+   */
+  gap_fill?: GapFill;
+  /**
+   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
+   */
+  keep_overhangs?: boolean;
+  /**
+   * Zero-based mutation indexing
+   */
+  zero_based?: boolean;
+  /**
+   * Emit reconstructed leaf (tip) sequences in addition to internal nodes.
+   */
+  include_leaves?: boolean;
+  /**
+   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
+   * inferred state. Gaps are left as deletions.
+   */
+  impute_missing_data?: boolean;
+  /**
+   * v0-compatible alias for `--include-leaves --impute-missing-data`.
+   */
+  reconstruct_tip_states?: boolean;
+  /**
+   * Include branch mutations from or to the fully ambiguous nucleotide state `N`.
+   *
+   * By default these mutations are omitted from the branch mutations of the Newick and Nexus
+   * annotations and the Auspice JSON. Other ambiguity codes, such as `K` or `R`, are always
+   * reported. The MAT outputs store `N` as missing data and never contain these mutations.
+   */
+  report_ambiguous?: boolean;
+  /**
+   * Disable indel (insertion/deletion) contributions to branch-length
+   * optimization and branch-length distributions.
+   *
+   * When set, branch-length optimization uses substitution-only likelihood
+   * and timetree branch distributions exclude the Poisson indel term.
+   * Matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST)
+   * and enables v0 parity testing. Default: indels enabled.
+   */
+  no_indels?: boolean;
+  /**
+   * Units for divergence values in augur node data JSON and auspice output.
+   *
+   * `mutations-per-site` (default): branch divergence as substitutions per site.
+   * `mutations`: count of reconstructed substitutions per branch that change the state:
+   * gaps, `N`, and ambiguity codes compatible with the parent state do not count.
+   * Requires ancestral reconstruction (incompatible with `--branch-length-mode=input`).
+   */
+  divergence_units?: DivergenceUnits;
+  /**
+   * Path to output augur-compatible node data JSON.
+   *
+   * Contains per-node dates, branch lengths, clock model parameters, confidence
+   * intervals, and divergence metrics. The output is compatible with augur
+   * export v2 --node-data for Nextstrain pipeline integration.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_augur_node_data?: string;
+  /**
+   * Path to output GTR model JSON.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_gtr?: string;
+  /**
+   * Path to output reconstructed ancestral-sequence nucleotide FASTA.
+   *
+   * The v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences
+   * reconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves`
+   * (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_reconstructed_nuc_fasta?: string;
+  /**
+   * Path to output clock model JSON.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_clock_model?: string;
+  /**
+   * Path to output clock regression CSV.
+   *
+   * One row per sample as the final clock model saw it: the date the regression used, marked
+   * `input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts
+   * from that distance, and whether the clock filter excluded the sample. Not written by default.
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_clock_csv?: string;
+  /**
+   * Path to output date-confidence-interval TSV.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_confidence_tsv?: string;
+  /**
+   * Path to output iteration-statistics tracelog CSV (monitors convergence).
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_tracelog?: string;
+  /**
+   * Path to output the coalescent time scale as a flat TSV (one row per skyline segment).
+   *
+   * Written when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or
+   * `--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree
+   * span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_coalescent_tsv?: string;
+  /**
+   * Path to output the coalescent time scale as a flat CSV (one row per skyline segment).
+   *
+   * Written when a coalescent model is set. Takes precedence over paths configured with
+   * `--output-all` and `--output-selection`.
+   */
+  output_coalescent_csv?: string;
+  /**
+   * Path to output the coalescent time scale as a rich JSON document (inputs + segments).
+   *
+   * Written when a coalescent model is set. Takes precedence over paths configured with
+   * `--output-all` and `--output-selection`.
+   */
+  output_coalescent_json?: string;
+  /**
+   * Write all default output files into this directory.
+   *
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_all?: string;
+  /**
+   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   *
+   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
+   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   */
+  output_nwk_style?: Array<NwkStyleArg>;
+  /**
+   * Path to output Newick tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nwk?: string;
+  /**
+   * Path to output Nexus tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nexus?: string;
+  /**
+   * Path to output Auspice v2 JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_auspice?: string;
+  /**
+   * Path to output UShER MAT protobuf tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_pb?: string;
+  /**
+   * Path to output UShER MAT JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_json?: string;
+  /**
+   * Path to output internal graph JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_graph_json?: string;
+  /**
+   * Path to output Graphviz DOT tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_dot?: string;
+  /**
+   * Comma-separated list of outputs to produce with `--output-all`.
+   *
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+   * available for this command. Requires `--output-all`. Per-file flags are always honored
+   * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_selection?: Array<TimetreeOutputSelection>;
+  /**
+   * Order tree topology before writing output files.
+   */
+  ladderize?: LadderizeArg;
+  /**
+   * Canonical topology ordering preset.
+   */
+  topology_order?: TopologyOrderArg;
+  /**
+   * Source for target-order topology sorting.
+   */
+  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  /**
+   * File used by list or reference-topology target-order sources.
+   */
+  topology_order_target_file?: string;
+  /**
+   * Aggregate used to map a subtree to a target-order position.
+   */
+  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  /**
+   * Random seed
+   *
+   * Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
+   */
+  seed?: number;
+  /**
+   * Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
+   */
+  aa?: boolean;
+  /**
+   * Load a custom GTR model from file (not yet implemented)
+   */
+  custom_gtr?: string;
+  /**
+   * Method for clock filter outlier detection (not yet implemented)
+   */
+  clock_filter_method?: string;
+  /**
+   * Generations per year for converting the coalescent time scale Tc into an effective
+   * population size.
+   *
+   * The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is
+   * already in calendar years, so this factor rescales it into generation units, the standard
+   * axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.
+   */
+  gen_per_year?: number;
+};
+
+export type OptimizeOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr';
+
+/**
+ * Controls whether marginal reconstruction estimates initial branch lengths
+ * from substitutions divided by effective alignment length. Preserving valid
+ * input lengths can provide a better Newton starting point.
+ */
+export type InitialGuessMode = 'auto' | 'always' | 'never';
+
+/**
+ * Per-edge branch length optimization method.
+ *
+ * Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
+ * length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
+ * vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
+ */
+export type BranchOptMethod = 'brent' | 'brent-sqrt' | 'brent-log' | 'newton' | 'newton-sqrt' | 'newton-log';
+
+/**
+ * Reroot methods available in the optimize command.
+ *
+ * Only date-free methods are valid here because optimize has no sampling dates.
+ * Date-dependent methods (least-squares, oldest, clock-filter) are available
+ * in the timetree and clock commands.
+ */
+export type OptimizeRerootMethod = 'min-dev';
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export type OptimizeConfig = {
+  /**
+   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
+   * `xz`, `zstd`) files and detects compression by extension. The records of all
+   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   */
+  alignment?: Array<string>;
+  /**
+   * Tree in Newick format.
+   */
+  tree?: string;
+  /**
+   * Sequence alphabet
+   *
+   * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
+   * detection is ambiguous.
+   */
+  alphabet?: AlphabetName;
+  /**
+   * Substitution model to use
+   *
+   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
+   * specified model requires additional options, use `--model-params` to specify those.
+   */
+  model?: GtrModelName;
+  /**
+   * Parameters for the model selected by `--model`, given as a `key=value` list
+   *
+   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   */
+  model_params?: Array<string>;
+  /**
+   * Use dense representation of sequences on the tree
+   *
+   * Dense mode stores full probability vectors at every alignment position for each
+   * node. Sparse mode stores only variable positions. Dense is more accurate when
+   * branches are long and many sites change, but uses more memory.
+   */
+  dense?: boolean;
+  /**
+   * Write all default output files into this directory.
+   *
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_all?: string;
+  /**
+   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   *
+   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
+   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   */
+  output_nwk_style?: Array<NwkStyleArg>;
+  /**
+   * Path to output Newick tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nwk?: string;
+  /**
+   * Path to output Nexus tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nexus?: string;
+  /**
+   * Path to output Auspice v2 JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_auspice?: string;
+  /**
+   * Path to output UShER MAT protobuf tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_pb?: string;
+  /**
+   * Path to output UShER MAT JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_json?: string;
+  /**
+   * Path to output internal graph JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_graph_json?: string;
+  /**
+   * Path to output Graphviz DOT tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_dot?: string;
+  /**
+   * Units for divergence values in augur node data JSON output.
+   *
+   * `mutations-per-site` (default): branch divergence as substitutions per site.
+   * `mutations`: count of reconstructed substitutions per branch that change the state:
+   * gaps, `N`, and ambiguity codes compatible with the parent state do not count.
+   */
+  divergence_units?: DivergenceUnits;
+  /**
+   * Path to output augur-compatible node data JSON.
+   *
+   * Contains per-node optimized branch lengths (divergence, substitutions per
+   * site) and the input alignment and tree paths. The output is compatible with
+   * augur export v2 --node-data.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_augur_node_data?: string;
+  /**
+   * Path to output GTR model JSON.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_gtr?: string;
+  /**
+   * Comma-separated list of outputs to produce with `--output-all`.
+   *
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+   * available for this command. Requires `--output-all`. Per-file flags are always honored
+   * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_selection?: Array<OptimizeOutputSelection>;
+  /**
+   * Order tree topology before writing output files.
+   */
+  ladderize?: LadderizeArg;
+  /**
+   * Canonical topology ordering preset.
+   */
+  topology_order?: TopologyOrderArg;
+  /**
+   * Source for target-order topology sorting.
+   */
+  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  /**
+   * File used by list or reference-topology target-order sources.
+   */
+  topology_order_target_file?: string;
+  /**
+   * Aggregate used to map a subtree to a target-order position.
+   */
+  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  /**
+   * Maximum number of iterations
+   */
+  max_iter?: number;
+  /**
+   * Likelihood convergence threshold. The loop stops when successive
+   * likelihoods differ by less than this value, or when a 2-cycle with
+   * amplitude below this value is detected.
+   */
+  dp?: number;
+  /**
+   * Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,
+   * where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;
+   * zero disables damping. Must be in $[0,1)$.
+   */
+  damping?: number;
+  /**
+   * Initial branch length estimate before Newton optimization.
+   *
+   * - auto: estimate only edges with missing or invalid branch lengths,
+   *   preserve valid input values (default)
+   * - always: estimate all edges, overwriting input branch lengths
+   * - never: use input branch lengths as-is; fails if any are missing
+   */
+  branch_length_initial_guess?: InitialGuessMode;
+  /**
+   * Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt`
+   * (default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and
+   * `newton-log`; suffixes select $\sqrt{t}$ or $\ln(t)$.
+   */
+  opt_method?: BranchOptMethod;
+  /**
+   * Disable indel (insertion/deletion) contributions to branch-length
+   * optimization.
+   *
+   * When set, the optimizer uses substitution-only likelihood, matching
+   * standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and
+   * enabling v0 parity testing. Default: indels enabled.
+   */
+  no_indels?: boolean;
+  /**
+   * Reroot the tree by minimizing root-to-tip divergence variance.
+   *
+   * By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev
+   * to enable divergence-based rerooting. Date-dependent methods (least-squares,
+   * oldest, clock-filter) are available in the timetree and clock commands.
+   */
+  reroot?: OptimizeRerootMethod;
+  /**
+   * Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
+   */
+  reroot_tips?: Array<string>;
+  /**
+   * Keep the input tree root instead of rerooting.
+   *
+   * Optimize keeps the input root by default; this flag is the explicit form and
+   * is mutually exclusive with the reroot options.
+   */
+  keep_root?: boolean;
+  /**
+   * Disable collapsing of internal branches whose optimized length is zero.
+   *
+   * By default the optimize loop contracts internal edges the per-edge optimizer drove to
+   * exactly zero that carry no substitutions or indels, turning the resulting binary nodes into
+   * polytomies. When set, such edges are kept in the output tree with length zero.
+   */
+  no_collapse_short_branches?: boolean;
+  /**
+   * Disable merging of polytomy siblings that share substitutions.
+   *
+   * By default, sibling branches in a polytomy that carry identical substitutions are grouped
+   * under a new internal node. Requires the sparse sequence representation, so this step has no
+   * effect under `--dense` and the flag is then a no-op.
+   */
+  no_merge_siblings?: boolean;
+  /**
+   * Disable the flip-parent-child step (reversion hoist) in polytomies.
+   *
+   * By default, when a child branch carries the exact reversion of a substitution on the node's
+   * parent branch, a new node is inserted that groups the node with that child, removing one
+   * mutation per reverted position. When set, those reversions are left in place. Requires the
+   * sparse sequence representation, so this step has no effect under `--dense` and the flag is
+   * then a no-op.
+   */
+  no_flip_parent_child?: boolean;
+  /**
+   * How to handle gap characters in input sequences
+   *
+   * 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
+   * 'all': replace all gap characters with the ambiguous character.
+   * 'none': leave all gap characters unchanged.
+   */
+  gap_fill?: GapFill;
+  /**
+   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
+   */
+  keep_overhangs?: boolean;
+};
+
+export type PruneOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'gtr';
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export type PruneConfig = {
+  /**
+   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
+   * `xz`, `zstd`) files and detects compression by extension. The records of all
+   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   */
+  alignment?: Array<string>;
+  /**
+   * Tree in Newick format.
+   */
+  tree?: string;
+  /**
+   * Sequence alphabet
+   *
+   * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
+   * detection is ambiguous.
+   */
+  alphabet?: AlphabetName;
+  /**
+   * Write all default output files into this directory.
+   *
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_all?: string;
+  /**
+   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   *
+   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
+   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   */
+  output_nwk_style?: Array<NwkStyleArg>;
+  /**
+   * Path to output Newick tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nwk?: string;
+  /**
+   * Path to output Nexus tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nexus?: string;
+  /**
+   * Path to output Auspice v2 JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_auspice?: string;
+  /**
+   * Path to output UShER MAT protobuf tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_pb?: string;
+  /**
+   * Path to output UShER MAT JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_json?: string;
+  /**
+   * Path to output internal graph JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_graph_json?: string;
+  /**
+   * Path to output Graphviz DOT tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_dot?: string;
+  /**
+   * Path to output GTR model JSON.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_gtr?: string;
+  /**
+   * Comma-separated list of outputs to produce with `--output-all`.
+   *
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+   * available for this command. Requires `--output-all`. Per-file flags are always honored
+   * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_selection?: Array<PruneOutputSelection>;
+  /**
+   * Order tree topology before writing output files.
+   */
+  ladderize?: LadderizeArg;
+  /**
+   * Canonical topology ordering preset.
+   */
+  topology_order?: TopologyOrderArg;
+  /**
+   * Source for target-order topology sorting.
+   */
+  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  /**
+   * File used by list or reference-topology target-order sources.
+   */
+  topology_order_target_file?: string;
+  /**
+   * Aggregate used to map a subtree to a target-order position.
+   */
+  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  /**
+   * Threshold value for pruning of branches
+   *
+   * If set, prune branches with a length below this value
+   */
+  prune_short?: number;
+  /**
+   * Prune empty branches
+   *
+   * If set, prune any branch that does not have a mutation or other state transition mapped to it.
+   *
+   * Requires --alignment
+   */
+  prune_empty?: boolean;
+  /**
+   * Merge branches in polytomies that share identical mutations
+   *
+   * When sibling branches in a polytomy (node with >2 children) carry identical substitutions,
+   * they are grouped under a new internal node. The shared mutations move to the new branch
+   * (parent to new node), and only unique mutations remain on children's edges.
+   * Reduces tree builder artifacts from arbitrary binary resolution of polytomies.
+   *
+   * Requires --alignment
+   */
+  merge_shared_mutations?: boolean;
+  /**
+   * List of node names to prune
+   *
+   * List of node names to remove from the tree, comma-separated (,)
+   *
+   * Surrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.
+   */
+  prune_nodes_list?: string;
+  /**
+   * Name separator for `--prune-nodes-list`
+   *
+   * String used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.
+   */
+  prune_nodes_list_delimiter?: string;
+  /**
+   * File containing list of node names to prune
+   *
+   * Path to a file containing node names to remove from the tree, newline-delimited (\n). Surrounding whitespace is trimmed and empty names are ignored.
+   *
+   * Use '-' to read from standard input (stdin).
+   *
+   * Use --prune-nodes-list-file-delimiter to specify a different delimiter.
+   */
+  prune_nodes_list_file?: string;
+  /**
+   * Separator for node names in the list file
+   *
+   * Character or string used to separate node names in the list file.
+   */
+  prune_nodes_list_file_delimiter?: string;
+};
+
+/**
+ * Amino-acid substitution model, mirroring the nucleotide `--model` but restricted to the values
+ * that are sound over an amino-acid alphabet.
+ *
+ * The default `infer` matches augur, which reconstructs amino acids with a JC69-seeded inferred
+ * GTR over the stop-inclusive alphabet (`augur ancestral` calls `TreeAnc(..., gtr='JC69',
+ * alphabet='aa')` with `infer_gtr=True`). Empirical matrices are opt-in.
+ */
+export type AaModelName = 'infer' | 'jtt92';
+
+export type AncestralOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta';
+
+export type SampleMode = 'argmax' | 'root' | 'all';
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export type AncestralConfig = {
+  /**
+   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
+   * `xz`, `zstd`) files and detects compression by extension. The records of all
+   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   */
+  alignment?: Array<string>;
+  /**
+   * FASTA file of the sequence the VCF was mapped to (only for vcf input)
+   */
+  vcf_reference?: string;
+  /**
+   * Tree in Newick format.
+   */
+  tree?: string;
+  /**
+   * Sequence alphabet
+   *
+   * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
+   * detection is ambiguous.
+   */
+  alphabet?: AlphabetName;
+  /**
+   * Substitution model to use
+   *
+   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
+   * specified model requires additional options, use `--model-params` to specify those.
+   */
+  model?: GtrModelName;
+  /**
+   * Parameters for the model selected by `--model`, given as a `key=value` list
+   *
+   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   */
+  model_params?: Array<string>;
+  /**
+   * Method used for reconstructing ancestral sequences
+   */
+  method_anc?: MethodAncestral;
+  /**
+   * Use dense representation (stores full probability vectors at each position)
+   *
+   * When combined with `--model infer`, marginal reconstruction runs twice: once to populate
+   * profiles for GTR inference, and again with the inferred GTR.
+   */
+  dense?: boolean;
+  /**
+   * How to handle gap characters in input sequences
+   *
+   * 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
+   * 'all': replace all gap characters with the ambiguous character.
+   * 'none': leave all gap characters unchanged.
+   */
+  gap_fill?: GapFill;
+  /**
+   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
+   */
+  keep_overhangs?: boolean;
+  /**
+   * Zero-based mutation indexing
+   */
+  zero_based?: boolean;
+  /**
+   * Emit reconstructed leaf (tip) sequences in addition to internal nodes.
+   */
+  include_leaves?: boolean;
+  /**
+   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
+   * inferred state.
+   *
+   * Gaps are left as deletions (inferred structure, not missing data). Only defined for marginal
+   * reconstruction; a no-op with a warning under `--method-anc=parsimony`.
+   */
+  impute_missing_data?: boolean;
+  /**
+   * v0-compatible alias for `--include-leaves --impute-missing-data`.
+   *
+   * Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
+   */
+  reconstruct_tip_states?: boolean;
+  /**
+   * Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for
+   * amino acids).
+   *
+   * By default these mutations are omitted from the branch mutations of the Newick and Nexus
+   * annotations, the Auspice JSON, and the `muts` and `aa_muts` lists of augur node data. Other
+   * ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT
+   * outputs, which store `N` as missing data and never contain these mutations, or the root
+   * `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence`
+   * reference and the inferred root and always omit `X` and gaps.
+   */
+  report_ambiguous?: boolean;
+  /**
+   * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)
+   * instead of aborting.
+   *
+   * Without this flag the run aborts when more than one third of the tips lack a sequence, matching
+   * TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a
+   * given CDS.
+   */
+  ignore_missing_alns?: boolean;
+  /**
+   * Path to output augur-compatible node data JSON.
+   *
+   * Contains per-node nucleotide mutations, reconstructed sequences, the alignment
+   * mask, genome annotations, and the reference (root) sequence. The output is
+   * compatible with augur export v2 --node-data for Nextstrain pipeline integration.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_augur_node_data?: string;
+  /**
+   * Path to output GTR model JSON.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_gtr?: string;
+  /**
+   * Path to output reconstructed nucleotide FASTA.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_reconstructed_nuc_fasta?: string;
+  /**
+   * Path template for per-CDS amino-acid FASTA alignments.
+   *
+   * The template must contain a CDS placeholder, replaced with each value from `--cdses` (or each
+   * CDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade
+   * `--output-translations`) and `%GENE` (augur) placeholders are accepted.
+   */
+  translations?: string;
+  /**
+   * Comma-separated CDS names to reconstruct from `--translations`.
+   *
+   * When omitted, the CDS set is derived from `--annotation`.
+   */
+  cdses?: Array<string>;
+  /**
+   * GFF3 file with CDS coordinates for Augur node data annotations.
+   *
+   * Also supplies the CDS set when `--cdses` is omitted.
+   */
+  annotation?: string;
+  /**
+   * FASTA file with one amino-acid root/reference sequence per CDS.
+   */
+  aa_root_sequence?: string;
+  /**
+   * Amino-acid substitution model. Mirrors the nucleotide `--model`; default `infer` matches augur.
+   */
+  aa_model?: AaModelName;
+  /**
+   * Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).
+   *
+   * Off by default. When set, the reconstructed sequence of every node is written per CDS. The
+   * file name accepts the `{cds}`/`%GENE` placeholders of `--translations`, and needs one when
+   * more than one CDS is reconstructed; folder names are used as given.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_reconstructed_aa_fasta?: string;
+  /**
+   * Write all default output files into this directory.
+   *
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_all?: string;
+  /**
+   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   *
+   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
+   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   */
+  output_nwk_style?: Array<NwkStyleArg>;
+  /**
+   * Path to output Newick tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nwk?: string;
+  /**
+   * Path to output Nexus tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nexus?: string;
+  /**
+   * Path to output Auspice v2 JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_auspice?: string;
+  /**
+   * Path to output UShER MAT protobuf tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_pb?: string;
+  /**
+   * Path to output UShER MAT JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_json?: string;
+  /**
+   * Path to output internal graph JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_graph_json?: string;
+  /**
+   * Path to output Graphviz DOT tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_dot?: string;
+  /**
+   * Comma-separated list of outputs to produce with `--output-all`.
+   *
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+   * available for this command. Requires `--output-all`. Per-file flags are always honored
+   * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_selection?: Array<AncestralOutputSelection>;
+  /**
+   * Order tree topology before writing output files.
+   */
+  ladderize?: LadderizeArg;
+  /**
+   * Canonical topology ordering preset.
+   */
+  topology_order?: TopologyOrderArg;
+  /**
+   * Source for target-order topology sorting.
+   */
+  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  /**
+   * File used by list or reference-topology target-order sources.
+   */
+  topology_order_target_file?: string;
+  /**
+   * Aggregate used to map a subtree to a target-order position.
+   */
+  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  /**
+   * Number of outer GTR refinement iterations.
+   *
+   * Re-estimates the rate matrix from marginal posterior profiles after each
+   * reconstruction pass. Only effective with `--model infer`. Default 0 preserves
+   * the current single-pass behavior. Mugration uses 5 by default.
+   */
+  gtr_iterations?: number;
+  /**
+   * Use site-specific GTR model with per-site equilibrium frequencies.
+   *
+   * Requires `--model infer` and `--dense true`. Incompatible with sequence compression
+   * (sparse representation). When enabled, each alignment position gets its own
+   * eigendecomposition based on position-specific base composition.
+   */
+  site_specific_gtr?: boolean;
+  /**
+   * Random seed
+   *
+   * Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
+   */
+  seed?: number;
+  /**
+   * Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
+   */
+  aa?: boolean;
+  /**
+   * Shortcut for `--method-anc=marginal` (v0 compat)
+   */
+  marginal?: boolean;
+  /**
+   * Load a custom GTR model from file (not yet implemented)
+   */
+  custom_gtr?: string;
+  /**
+   * How to pick ancestral states from the marginal posterior profile.
+   *
+   * 'argmax': most likely state at every node (deterministic, default).
+   * 'root': sample from the posterior at the root only, argmax elsewhere (matches augur's
+   * `sample_from_profile='root'`). Use `--seed` for reproducible draws.
+   * 'all': sample from the posterior at every node.
+   *
+   * Only affects marginal reconstruction (`--method-anc=marginal`).
+   */
+  sample_from_profile?: SampleMode;
+};
+
+export type ClockOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'clock-model' | 'clock-csv' | 'clock-chart-svg' | 'clock-chart-png';
+
+/**
+ * Branch split optimization parameters
+ */
+export type BranchSplitArgs = {
+  /**
+   * Optimization method to use for finding the best root position
+   */
+  method?: OptimizationMethod;
+  /**
+   * Number of equally-spaced points to evaluate (grid method only)
+   */
+  n_points?: number;
+  /**
+   * Maximum number of iterations for Brent's method
+   */
+  brent_max_iters?: number;
+  /**
+   * Convergence tolerance for Brent's method
+   */
+  brent_tolerance?: number;
+  /**
+   * Maximum number of iterations for golden section search
+   */
+  golden_max_iters?: number;
+  /**
+   * Convergence tolerance for golden section search
+   */
+  golden_tolerance?: number;
+};
+
+/**
+ * Optimization method selection
+ */
+export type OptimizationMethod = 'grid' | 'brent' | 'golden-section';
+
+/**
+ * Clock regression model parameters
+ */
+export type ClockRegressionArgs = {
+  /**
+   * Variance scaling factor proportional to branch length
+   */
+  variance_factor?: number;
+  /**
+   * Constant variance offset for all branches
+   */
+  variance_offset?: number;
+  /**
+   * Additional variance offset for leaf (terminal) nodes
+   */
+  variance_offset_leaf?: number;
+};
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export type ClockConfig = {
+  /**
+   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
+   * `xz`, `zstd`) files and detects compression by extension. The records of all
+   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   */
+  alignment?: Array<string>;
+  /**
+   * Tree in Newick format.
+   */
+  tree?: string;
+  /**
+   * Only for vcf input: fasta file of the sequence the VCF was mapped to.
+   */
+  vcf_reference?: string;
+  /**
+   * CSV/TSV file with metadata including sampling dates
+   */
+  metadata?: string;
+  /**
+   * Candidate column name(s) holding the taxon identifier that links metadata to tree tips
+   *
+   * The first listed column that is present in the header is used. Matching is case-insensitive.
+   */
+  metadata_id_columns?: Array<string>;
+  /**
+   * Candidate field delimiter(s) for the metadata table
+   *
+   * The delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.
+   */
+  metadata_delimiters?: Array<string>;
+  /**
+   * Label of the column to be used as sampling date (auto-detected when omitted)
+   */
+  date_column?: string;
+  /**
+   * Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
+   */
+  date_format?: string;
+  /**
+   * Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
+   */
+  sequence_length?: number;
+  /**
+   * Substitution model to use
+   *
+   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
+   * specified model requires additional options, use `--model-params` to specify those.
+   */
+  model?: GtrModelName;
+  /**
+   * Parameters for the model selected by `--model`, given as a `key=value` list
+   *
+   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   */
+  model_params?: Array<string>;
+  /**
+   * If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
+   */
+  branch_length_mode?: BranchLengthMode;
+  /**
+   * Method used for reconstructing ancestral sequences
+   */
+  method_anc?: MethodAncestral;
+  /**
+   * ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.
+   */
+  clock_filter?: number;
+  /**
+   * Reroot the tree by temporal-signal optimization.
+   *
+   * Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
+   */
+  reroot?: RerootMethod;
+  /**
+   * Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
+   */
+  reroot_tips?: Array<string>;
+  /**
+   * don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
+   * root-to-tip distance and sampling time
+   */
+  keep_root?: boolean;
+  prune_short?: boolean;
+  /**
+   * excess variance associated with terminal nodes accounting for overdispersion of the molecular
+   * clock
+   */
+  tip_slack?: number;
+  /**
+   * Account for covariation when estimating rates or rerooting using root-to-tip regression
+   */
+  covariation?: boolean;
+  /**
+   * By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
+   */
+  allow_negative_rate?: boolean;
+  /**
+   * Write all default output files into this directory.
+   *
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_all?: string;
+  /**
+   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   *
+   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
+   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   */
+  output_nwk_style?: Array<NwkStyleArg>;
+  /**
+   * Path to output Newick tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nwk?: string;
+  /**
+   * Path to output Nexus tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nexus?: string;
+  /**
+   * Path to output Auspice v2 JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_auspice?: string;
+  /**
+   * Path to output UShER MAT protobuf tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_pb?: string;
+  /**
+   * Path to output UShER MAT JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_json?: string;
+  /**
+   * Path to output internal graph JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_graph_json?: string;
+  /**
+   * Path to output Graphviz DOT tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_dot?: string;
+  /**
+   * Path to output clock model JSON.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_clock_model?: string;
+  /**
+   * Path to output clock regression CSV.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_clock_csv?: string;
+  /**
+   * Path to output root-to-tip regression chart in SVG format.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_clock_chart_svg?: string;
+  /**
+   * Path to output root-to-tip regression chart in PNG format.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_clock_chart_png?: string;
+  /**
+   * Comma-separated list of outputs to produce with `--output-all`.
+   *
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+   * available for this command. Requires `--output-all`. Per-file flags are always honored
+   * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_selection?: Array<ClockOutputSelection>;
+  /**
+   * Order tree topology before writing output files.
+   */
+  ladderize?: LadderizeArg;
+  /**
+   * Canonical topology ordering preset.
+   */
+  topology_order?: TopologyOrderArg;
+  /**
+   * Source for target-order topology sorting.
+   */
+  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  /**
+   * File used by list or reference-topology target-order sources.
+   */
+  topology_order_target_file?: string;
+  /**
+   * Aggregate used to map a subtree to a target-order position.
+   */
+  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  /**
+   * Method for clock filter outlier detection (not yet implemented)
+   */
+  clock_filter_method?: string;
+  /**
+   * Filename to save root-to-tip regression plot (not yet implemented)
+   */
+  plot_rtt?: string;
+  /**
+   * Prune clock outlier tips from the tree (not yet implemented)
+   */
+  prune_outliers?: boolean;
+  /**
+   * Branch split optimization parameters
+   */
+  branch_split?: BranchSplitArgs;
+  /**
+   * Clock regression model parameters
+   */
+  clock_regression?: ClockRegressionArgs;
+};
+
+export type MugrationOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'confidence-csv' | 'traits-csv';
+
+/**
+ * Metadata identity and delimiter options shared by every command that reads a metadata table
+ * (`timetree`, `clock`, `mugration`).
+ *
+ * `--metadata-id-columns` (alias `--name-column`) lists the candidate columns holding the taxon
+ * identifier that links a metadata row to a tree tip; the first column present in the header wins.
+ * Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
+ * candidate field separators; the delimiter actually present in the file is used.
+ */
+export type MugrationConfig = {
+  /**
+   * Tree in Newick format.
+   */
+  tree?: string;
+  /**
+   * Attribute to reconstruct, e.g. country
+   */
+  attribute?: string;
+  /**
+   * CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...
+   */
+  metadata?: string;
+  /**
+   * CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...
+   */
+  weights?: string;
+  /**
+   * Candidate column name(s) holding the taxon identifier that links metadata to tree tips
+   *
+   * The first listed column that is present in the header is used. Matching is case-insensitive.
+   */
+  metadata_id_columns?: Array<string>;
+  /**
+   * Candidate field delimiter(s) for the metadata table
+   *
+   * The delimiter actually present in the file is used. Defaults to comma, tab, and semicolon.
+   */
+  metadata_delimiters?: Array<string>;
+  /**
+   * Path to output state-probability-profile CSV.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_confidence_csv?: string;
+  /**
+   * Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.
+   */
+  pc?: number;
+  /**
+   * String indicating missing data
+   */
+  missing_data?: string;
+  /**
+   * Portion of attribute values that is allowed to not have weights in the weights file
+   */
+  missing_weights_threshold?: number;
+  /**
+   * Number of iterations for GTR model refinement from data.
+   */
+  iterations?: number;
+  /**
+   * Rough estimate of how many more events would have been observed if sequences represented an
+   * even sample.
+   */
+  sampling_bias_correction?: number;
+  /**
+   * Smooth the initial equilibrium frequencies with the pseudo-count before the first
+   * reconstruction pass.
+   *
+   * Off by default (TreeTime v0 builds the initial model from raw frequencies and applies the
+   * pseudo-count only as infer_gtr regularization). Enabling this flattens the prior for the first
+   * pass; it only affects weighted models.
+   */
+  smooth_initial_pi?: boolean;
+  /**
+   * Exclude near-uniform root positions from the equilibrium-frequency prior.
+   *
+   * Off by default (TreeTime v0 always folds the root's most-likely state into the prior). Enabling
+   * this drops root positions whose posterior carries no phylogenetic signal, removing a
+   * state-order-dependent bias at ambiguous roots.
+   */
+  filter_uninformative_root?: boolean;
+  /**
+   * Path to output augur-compatible node data JSON.
+   *
+   * Contains per-node discrete trait assignments, confidence profiles, entropy,
+   * the inferred substitution model, and branch state-change labels. The output
+   * is compatible with augur export v2 --node-data for Nextstrain pipeline
+   * integration.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_augur_node_data?: string;
+  /**
+   * Path to output GTR model JSON.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_gtr?: string;
+  /**
+   * Path to output traits CSV.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_traits_csv?: string;
+  /**
+   * Write all default output files into this directory.
+   *
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_all?: string;
+  /**
+   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   *
+   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
+   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   */
+  output_nwk_style?: Array<NwkStyleArg>;
+  /**
+   * Path to output Newick tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nwk?: string;
+  /**
+   * Path to output Nexus tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nexus?: string;
+  /**
+   * Path to output Auspice v2 JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_auspice?: string;
+  /**
+   * Path to output UShER MAT protobuf tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_pb?: string;
+  /**
+   * Path to output UShER MAT JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_json?: string;
+  /**
+   * Path to output internal graph JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_graph_json?: string;
+  /**
+   * Path to output Graphviz DOT tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_dot?: string;
+  /**
+   * Comma-separated list of outputs to produce with `--output-all`.
+   *
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+   * available for this command. Requires `--output-all`. Per-file flags are always honored
+   * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_selection?: Array<MugrationOutputSelection>;
+  /**
+   * Order tree topology before writing output files.
+   */
+  ladderize?: LadderizeArg;
+  /**
+   * Canonical topology ordering preset.
+   */
+  topology_order?: TopologyOrderArg;
+  /**
+   * Source for target-order topology sorting.
+   */
+  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  /**
+   * File used by list or reference-topology target-order sources.
+   */
+  topology_order_target_file?: string;
+  /**
+   * Aggregate used to map a subtree to a target-order position.
+   */
+  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+};
+
 /**
  * The configuration is accepted.
  */
@@ -4306,9 +4215,7 @@ export type CheckConfigResponseValid = {
   /**
    * The configuration with every default filled in and without output paths, which the app sets for each run.
    */
-  config: {
-    [key: string]: unknown;
-  };
+  config: SparseConfig;
   /**
    * The command line and the YAML config that reproduce the configuration.
    */
@@ -4343,7 +4250,7 @@ export type CheckConfigResponseInvalid = {
   /**
    * The problems drawn against the configuration text, when the text could be parsed.
    */
-  rendered?: string | null;
+  rendered?: string;
   /**
    * The problems as a user reads them: each parse and schema problem with its help, or the error and its causes.
    */
@@ -4363,9 +4270,7 @@ export type RunConfigResponseValid = {
    * The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
    * `output_all` set to `out`.
    */
-  config: {
-    [key: string]: unknown;
-  };
+  config: SparseConfig;
   /**
    * The command line and the YAML config that reproduce the run.
    */
@@ -4374,11 +4279,11 @@ export type RunConfigResponseValid = {
    * Hash that a run of this configuration records, to find finished runs with the same settings and input
    * contents; absent when an input cannot be read.
    */
-  config_hash?: string | null;
+  config_hash?: string;
   /**
    * Why `config_hash` is absent.
    */
-  config_hash_error?: string | null;
+  config_hash_error?: string;
   status: 'valid';
 };
 
@@ -4399,6 +4304,402 @@ export type RunConfigResponseInvalid = {
    */
   problems: Array<ConfigProblem>;
   status: 'invalid';
+};
+
+export type RunRecordTimetree = {
+  /**
+   * Identifier of the run, also the name of its folder.
+   */
+  id: JobId;
+  /**
+   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   */
+  title: string;
+  /**
+   * State of the run.
+   */
+  status: RunStatus;
+  /**
+   * Whether the run is pinned in run lists.
+   */
+  pinned: boolean;
+  /**
+   * Time the run was created.
+   */
+  created_at: string;
+  /**
+   * Time the computation started.
+   */
+  started_at?: string;
+  /**
+   * Time the run ended.
+   */
+  finished_at?: string;
+  /**
+   * Duration of the computation, in seconds.
+   */
+  duration_seconds?: number;
+  /**
+   * Version of TreeTime that ran the command.
+   */
+  treetime_version: string;
+  /**
+   * Input files the run read.
+   */
+  inputs: Array<RunInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
+   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   */
+  config_hash?: string;
+  /**
+   * Setting keys whose values differ from the command defaults, as dot-separated key paths.
+   */
+  changed_settings: Array<string>;
+  /**
+   * Key results of a finished run, for run lists.
+   */
+  headline: RunHeadline;
+  /**
+   * Files the run wrote, with paths relative to the run's `out/` folder.
+   */
+  output_files: Array<OutputFile>;
+  /**
+   * The error of a failed run.
+   */
+  error?: RunError;
+  command: 'timetree';
+  config: TimetreeConfig;
+};
+
+export type RunRecordOptimize = {
+  /**
+   * Identifier of the run, also the name of its folder.
+   */
+  id: JobId;
+  /**
+   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   */
+  title: string;
+  /**
+   * State of the run.
+   */
+  status: RunStatus;
+  /**
+   * Whether the run is pinned in run lists.
+   */
+  pinned: boolean;
+  /**
+   * Time the run was created.
+   */
+  created_at: string;
+  /**
+   * Time the computation started.
+   */
+  started_at?: string;
+  /**
+   * Time the run ended.
+   */
+  finished_at?: string;
+  /**
+   * Duration of the computation, in seconds.
+   */
+  duration_seconds?: number;
+  /**
+   * Version of TreeTime that ran the command.
+   */
+  treetime_version: string;
+  /**
+   * Input files the run read.
+   */
+  inputs: Array<RunInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
+   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   */
+  config_hash?: string;
+  /**
+   * Setting keys whose values differ from the command defaults, as dot-separated key paths.
+   */
+  changed_settings: Array<string>;
+  /**
+   * Key results of a finished run, for run lists.
+   */
+  headline: RunHeadline;
+  /**
+   * Files the run wrote, with paths relative to the run's `out/` folder.
+   */
+  output_files: Array<OutputFile>;
+  /**
+   * The error of a failed run.
+   */
+  error?: RunError;
+  command: 'optimize';
+  config: OptimizeConfig;
+};
+
+export type RunRecordPrune = {
+  /**
+   * Identifier of the run, also the name of its folder.
+   */
+  id: JobId;
+  /**
+   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   */
+  title: string;
+  /**
+   * State of the run.
+   */
+  status: RunStatus;
+  /**
+   * Whether the run is pinned in run lists.
+   */
+  pinned: boolean;
+  /**
+   * Time the run was created.
+   */
+  created_at: string;
+  /**
+   * Time the computation started.
+   */
+  started_at?: string;
+  /**
+   * Time the run ended.
+   */
+  finished_at?: string;
+  /**
+   * Duration of the computation, in seconds.
+   */
+  duration_seconds?: number;
+  /**
+   * Version of TreeTime that ran the command.
+   */
+  treetime_version: string;
+  /**
+   * Input files the run read.
+   */
+  inputs: Array<RunInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
+   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   */
+  config_hash?: string;
+  /**
+   * Setting keys whose values differ from the command defaults, as dot-separated key paths.
+   */
+  changed_settings: Array<string>;
+  /**
+   * Key results of a finished run, for run lists.
+   */
+  headline: RunHeadline;
+  /**
+   * Files the run wrote, with paths relative to the run's `out/` folder.
+   */
+  output_files: Array<OutputFile>;
+  /**
+   * The error of a failed run.
+   */
+  error?: RunError;
+  command: 'prune';
+  config: PruneConfig;
+};
+
+export type RunRecordAncestral = {
+  /**
+   * Identifier of the run, also the name of its folder.
+   */
+  id: JobId;
+  /**
+   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   */
+  title: string;
+  /**
+   * State of the run.
+   */
+  status: RunStatus;
+  /**
+   * Whether the run is pinned in run lists.
+   */
+  pinned: boolean;
+  /**
+   * Time the run was created.
+   */
+  created_at: string;
+  /**
+   * Time the computation started.
+   */
+  started_at?: string;
+  /**
+   * Time the run ended.
+   */
+  finished_at?: string;
+  /**
+   * Duration of the computation, in seconds.
+   */
+  duration_seconds?: number;
+  /**
+   * Version of TreeTime that ran the command.
+   */
+  treetime_version: string;
+  /**
+   * Input files the run read.
+   */
+  inputs: Array<RunInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
+   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   */
+  config_hash?: string;
+  /**
+   * Setting keys whose values differ from the command defaults, as dot-separated key paths.
+   */
+  changed_settings: Array<string>;
+  /**
+   * Key results of a finished run, for run lists.
+   */
+  headline: RunHeadline;
+  /**
+   * Files the run wrote, with paths relative to the run's `out/` folder.
+   */
+  output_files: Array<OutputFile>;
+  /**
+   * The error of a failed run.
+   */
+  error?: RunError;
+  command: 'ancestral';
+  config: AncestralConfig;
+};
+
+export type RunRecordClock = {
+  /**
+   * Identifier of the run, also the name of its folder.
+   */
+  id: JobId;
+  /**
+   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   */
+  title: string;
+  /**
+   * State of the run.
+   */
+  status: RunStatus;
+  /**
+   * Whether the run is pinned in run lists.
+   */
+  pinned: boolean;
+  /**
+   * Time the run was created.
+   */
+  created_at: string;
+  /**
+   * Time the computation started.
+   */
+  started_at?: string;
+  /**
+   * Time the run ended.
+   */
+  finished_at?: string;
+  /**
+   * Duration of the computation, in seconds.
+   */
+  duration_seconds?: number;
+  /**
+   * Version of TreeTime that ran the command.
+   */
+  treetime_version: string;
+  /**
+   * Input files the run read.
+   */
+  inputs: Array<RunInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
+   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   */
+  config_hash?: string;
+  /**
+   * Setting keys whose values differ from the command defaults, as dot-separated key paths.
+   */
+  changed_settings: Array<string>;
+  /**
+   * Key results of a finished run, for run lists.
+   */
+  headline: RunHeadline;
+  /**
+   * Files the run wrote, with paths relative to the run's `out/` folder.
+   */
+  output_files: Array<OutputFile>;
+  /**
+   * The error of a failed run.
+   */
+  error?: RunError;
+  command: 'clock';
+  config: ClockConfig;
+};
+
+export type RunRecordMugration = {
+  /**
+   * Identifier of the run, also the name of its folder.
+   */
+  id: JobId;
+  /**
+   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   */
+  title: string;
+  /**
+   * State of the run.
+   */
+  status: RunStatus;
+  /**
+   * Whether the run is pinned in run lists.
+   */
+  pinned: boolean;
+  /**
+   * Time the run was created.
+   */
+  created_at: string;
+  /**
+   * Time the computation started.
+   */
+  started_at?: string;
+  /**
+   * Time the run ended.
+   */
+  finished_at?: string;
+  /**
+   * Duration of the computation, in seconds.
+   */
+  duration_seconds?: number;
+  /**
+   * Version of TreeTime that ran the command.
+   */
+  treetime_version: string;
+  /**
+   * Input files the run read.
+   */
+  inputs: Array<RunInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
+   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   */
+  config_hash?: string;
+  /**
+   * Setting keys whose values differ from the command defaults, as dot-separated key paths.
+   */
+  changed_settings: Array<string>;
+  /**
+   * Key results of a finished run, for run lists.
+   */
+  headline: RunHeadline;
+  /**
+   * Files the run wrote, with paths relative to the run's `out/` folder.
+   */
+  output_files: Array<OutputFile>;
+  /**
+   * The error of a failed run.
+   */
+  error?: RunError;
+  command: 'mugration';
+  config: MugrationConfig;
 };
 
 export type CommandResultsTimetree = {
@@ -4480,13 +4781,13 @@ export type SettingDifferenceSetting = {
    */
   key: string;
   /**
-   * Value in the first run.
+   * Value in the first run; absent when the first run does not set the setting.
    */
-  first: unknown;
+  first?: JsonValue;
   /**
-   * Value in the second run.
+   * Value in the second run; absent when the second run does not set the setting.
    */
-  second: unknown;
+  second?: JsonValue;
   kind: 'setting';
 };
 
@@ -4750,7 +5051,7 @@ export type ExamplesDownloadRunning = {
   /**
    * Size of the archive in bytes, when the server sends it.
    */
-  total?: number | null;
+  total?: number;
   state: 'running';
 };
 
@@ -4774,46 +5075,6 @@ export type ExamplesDownloadFailed = {
    */
   message: string;
   state: 'failed';
-};
-
-/**
- * The job was accepted; always the first event.
- */
-export type JobEventStarted = {
-  type: 'started';
-  data: JobStarted;
-};
-
-/**
- * A stage of the computation began or advanced.
- */
-export type JobEventProgress = {
-  type: 'progress';
-  data: ProgressEvent;
-};
-
-/**
- * A diagnostic message of the computation.
- */
-export type JobEventLog = {
-  type: 'log';
-  data: LogEvent;
-};
-
-/**
- * Convergence values of one timetree optimization iteration.
- */
-export type JobEventIteration = {
-  type: 'iteration';
-  data: IterationEvent;
-};
-
-/**
- * The job ended; always the last event, exactly once per job.
- */
-export type JobEventTerminal = {
-  type: 'terminal';
-  data: TerminalEvent;
 };
 
 export type HealthData = {

@@ -11,14 +11,17 @@ export function useRerun(record: RunRecord): () => void {
   return useCallback(() => {
     const draft = rerunDraft(record);
 
-    useDraftStore.getState().load({
+    const { draft: current, load } = useDraftStore.getState();
+    const { upload_run_id: _uploadRun, ...kept } = current;
+
+    load({
+      ...kept,
       command: record.command,
       config: draft.config,
       sources: Object.fromEntries(
-        Object.entries(draft.inputLabels).map(([key, label]) => [key, { label, origin: "run" as const, size: null }]),
+        Object.entries(draft.inputLabels).map(([key, label]) => [key, { label, origin: "run" as const }]),
       ),
       from_run_id: record.id,
-      upload_run_id: null,
     });
     void navigate({ to: "/new" });
   }, [navigate, record]);

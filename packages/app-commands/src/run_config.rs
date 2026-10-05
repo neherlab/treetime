@@ -1,12 +1,14 @@
 use crate::command::AppCommand;
 use crate::config::code::{ConfigCode, config_code};
 use crate::config::source::{ConfigProblem, InvalidConfig};
+use crate::json_value::SparseConfig;
 use crate::runs::inputs::hash_inputs;
 use crate::runs::manager::ConfigHook;
 use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use serde_with::skip_serializing_none;
 use std::path::Path;
 use treetime_utils::error::ReportChain;
 use treetime_utils::make_error;
@@ -16,7 +18,10 @@ pub const RUN_CONFIG_OUTPUT_DIR: &str = "out";
 pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigResponse {
   let resolved = request
     .command
-    .prepare_run(&request.config, Path::new(RUN_CONFIG_OUTPUT_DIR))
+    .prepare_run(
+      &Value::Object(request.config.0.clone()),
+      Path::new(RUN_CONFIG_OUTPUT_DIR),
+    )
     .and_then(|prepared| Ok((config_code(request.command, &prepared.config)?, prepared.config)));
   match resolved {
     Ok((code, config)) => {
@@ -25,7 +30,7 @@ pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigR
         Err(report) => (None, Some(format!("{report:#}"))),
       };
       RunConfigResponse::Valid {
-        config,
+        config: SparseConfig(config),
         code,
         config_hash,
         config_hash_error,
@@ -49,10 +54,11 @@ pub struct RunConfigRequest {
   /// Command the configuration is for.
   pub command: AppCommand,
   /// Configuration of the command, in the form `treetime <command> --config` reads.
-  pub config: Value,
+  pub config: SparseConfig,
 }
 
 /// Outcome of resolving a configuration as a run resolves it.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "status", rename_all = "kebab-case")]
 pub enum RunConfigResponse {
@@ -60,7 +66,7 @@ pub enum RunConfigResponse {
   Valid {
     /// The configuration as the run records it, with every default filled in, the outputs the run layer adds, and
     /// `output_all` set to `out`.
-    config: Map<String, Value>,
+    config: SparseConfig,
     /// The command line and the YAML config that reproduce the run.
     code: ConfigCode,
     /// Hash that a run of this configuration records, to find finished runs with the same settings and input

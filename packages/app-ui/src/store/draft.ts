@@ -1,41 +1,49 @@
-import type { AppCommand, UiDraftSource } from "@neherlab/app-contracts";
+import type { AppCommand, JobId, SparseConfig, UiDraft, UiDraftSource } from "@neherlab/app-contracts";
 import { create } from "zustand";
 
-import type { JsonObject } from "../settings/json";
-import { freshDraft, type Draft } from "./draftSchema";
+import { freshDraft } from "./draftSchema";
 
-interface DraftState extends Draft {
+interface DraftState {
+  draft: UiDraft;
   epoch: number;
 }
 
 interface DraftActions {
-  load: (draft: Partial<Draft>) => void;
-  update: (draft: Partial<Omit<Draft, "command" | "config">>) => void;
-  setConfig: (config: JsonObject) => void;
-  setSource: (key: string, source: UiDraftSource | null) => void;
+  load: (draft: UiDraft) => void;
+  update: (changes: Partial<Pick<UiDraft, "view" | "search" | "changed_only" | "code_format">>) => void;
+  setConfig: (config: SparseConfig) => void;
+  setSource: (key: string, source: UiDraftSource | undefined) => void;
+  setUploadRun: (id: JobId) => void;
+  clearRuns: () => void;
   reset: (command: AppCommand) => void;
 }
 
 export const useDraftStore = create<DraftState & DraftActions>()((set) => ({
-  ...freshDraft("timetree"),
+  draft: freshDraft("timetree"),
   epoch: 0,
   load: (draft) => {
-    set((state) => ({ ...draft, epoch: state.epoch + 1 }));
+    set((state) => ({ draft, epoch: state.epoch + 1 }));
   },
-  update: (draft) => {
-    set(draft);
+  update: (changes) => {
+    set(({ draft }) => ({ draft: { ...draft, ...changes } }));
   },
   setConfig: (config) => {
-    set({ config });
+    set(({ draft }) => ({ draft: { ...draft, config } }));
   },
   setSource: (key, source) => {
-    set((state) => {
-      const sources = Object.fromEntries(Object.entries(state.sources).filter(([name]) => name !== key));
+    set(({ draft }) => {
+      const sources = Object.fromEntries(Object.entries(draft.sources).filter(([name]) => name !== key));
 
-      return { sources: source === null ? sources : { ...sources, [key]: source } };
+      return { draft: { ...draft, sources: source === undefined ? sources : { ...sources, [key]: source } } };
     });
   },
+  setUploadRun: (id) => {
+    set(({ draft }) => ({ draft: { ...draft, upload_run_id: id } }));
+  },
+  clearRuns: () => {
+    set(({ draft: { from_run_id: _fromRun, upload_run_id: _uploadRun, ...draft } }) => ({ draft }));
+  },
   reset: (command) => {
-    set((state) => ({ ...freshDraft(command), epoch: state.epoch + 1 }));
+    set((state) => ({ draft: freshDraft(command), epoch: state.epoch + 1 }));
   },
 }));

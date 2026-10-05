@@ -1,5 +1,4 @@
-import { errorMessage } from "@neherlab/app-contracts";
-import type { RunRecord, RunResults } from "@neherlab/app-contracts";
+import { errorMessage, type RunRecord, type RunResults } from "@neherlab/app-contracts";
 import { runsAuspice, runsGet, runsList, runsResults, runsUpdate } from "@neherlab/app-contracts/client";
 import { Link, Outlet, useChildMatches, useNavigate } from "@tanstack/react-router";
 import { DateTime } from "luxon";
@@ -21,14 +20,14 @@ import { Button } from "../ui/button";
 import { NativeSelect, NativeSelectOption } from "../ui/native-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { useToastManager } from "../ui/toast";
-import { AncestralResults } from "./AncestralResults";
-import { ClockResults } from "./ClockResults";
+import { AncestralResultsView } from "./AncestralResultsView";
+import { ClockResultsView } from "./ClockResultsView";
 import { LogTab } from "./LogTab";
-import { MugrationResults } from "./MugrationResults";
+import { MugrationResultsView } from "./MugrationResultsView";
 import { RunningView } from "./RunningView";
 import { RunTitle } from "./RunTitle";
 import { SettingsTab } from "./SettingsTab";
-import { TimetreeResults } from "./TimetreeResults";
+import { TimetreeResultsView } from "./TimetreeResultsView";
 import { TreeOnlyResults } from "./TreeOnlyResults";
 import type { TreeData } from "./TreeView";
 import { useRerun } from "./useRerun";
@@ -151,7 +150,7 @@ function FinishedResults({ record }: { record: RunRecord }) {
     staleTime: Infinity,
   });
 
-  const hasTree = results?.tree !== null && results?.tree !== undefined;
+  const hasTree = results?.tree !== undefined;
 
   const { data: document, error: treeError } = useApi(
     (context) => runsAuspice({ ...context, path: { id: record.id } }),
@@ -159,10 +158,7 @@ function FinishedResults({ record }: { record: RunRecord }) {
   );
 
   const tree = useMemo<TreeData | undefined>(
-    () =>
-      results?.tree === null || results?.tree === undefined || document === undefined
-        ? undefined
-        : { document, tree: results.tree },
+    () => (results?.tree === undefined || document === undefined ? undefined : { document, tree: results.tree }),
     [document, results],
   );
 
@@ -214,19 +210,19 @@ function CommandResults({
   const view = results.results;
 
   if (view.command === "timetree") {
-    return <TimetreeResults record={record} results={results} data={view.data} tree={tree} />;
+    return <TimetreeResultsView record={record} results={results} data={view.data} tree={tree} />;
   }
 
   if (view.command === "clock") {
-    return <ClockResults record={record} results={results} data={view.data} tree={tree} />;
+    return <ClockResultsView record={record} results={results} data={view.data} tree={tree} />;
   }
 
   if (view.command === "ancestral") {
-    return <AncestralResults record={record} results={results} data={view.data} tree={tree} />;
+    return <AncestralResultsView record={record} results={results} data={view.data} tree={tree} />;
   }
 
   if (view.command === "mugration") {
-    return <MugrationResults record={record} results={results} data={view.data} tree={tree} />;
+    return <MugrationResultsView record={record} results={results} data={view.data} tree={tree} />;
   }
 
   return <TreeOnlyResults record={record} results={results} data={view.data} tree={tree} />;
@@ -241,7 +237,7 @@ function EndedRun({ record, progress }: { record: RunRecord; progress: RunProgre
       <Alert variant="destructive">
         <AlertTitle>{ENDED_TITLES[record.status]}</AlertTitle>
         <AlertDescription className="grid gap-2">
-          {error !== null && error !== undefined && (
+          {error !== undefined && (
             <>
               <p>{error.message}</p>
               {error.causes.length > 0 && (
@@ -325,9 +321,7 @@ function RunHeader({ record }: { record: RunRecord }) {
           </span>
           <span>{COMMAND_INFO[record.command].label}</span>
           <span>{created.isValid ? created.toFormat("d LLL yyyy, HH:mm") : record.created_at}</span>
-          {record.duration_seconds !== null && record.duration_seconds !== undefined && (
-            <span>{formatDuration(record.duration_seconds)}</span>
-          )}
+          {record.duration_seconds !== undefined && <span>{formatDuration(record.duration_seconds)}</span>}
           <span>TreeTime {record.treetime_version}</span>
         </p>
       </div>

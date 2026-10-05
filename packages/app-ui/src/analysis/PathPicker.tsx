@@ -1,9 +1,7 @@
-import { errorMessage } from "@neherlab/app-contracts";
-import type { AppCommand } from "@neherlab/app-contracts";
+import { type JsonValue, errorMessage, type AppCommand } from "@neherlab/app-contracts";
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 
-import type { JsonValue } from "../settings/json";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { useToastManager } from "../ui/toast";
@@ -129,8 +127,8 @@ export function useFileDrop(command: AppCommand, settingKey: string, list: boole
   });
 }
 
-function emptyValue(list: boolean): JsonValue {
-  return list ? [] : null;
+function emptyValue(list: boolean): JsonValue | undefined {
+  return list ? [] : undefined;
 }
 
 function buttonText(busy: boolean, filled: boolean): string {

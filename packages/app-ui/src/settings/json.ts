@@ -1,30 +1,22 @@
-import * as z from "zod";
+import type { JsonValue, SparseConfig } from "@neherlab/app-contracts";
 
-export type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
-
-export interface JsonObject {
-  [key: string]: JsonValue;
-}
-
-export const zJsonValue: z.ZodType<JsonValue> = z.lazy(() =>
-  z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(zJsonValue), zJsonObject]),
-);
-
-export const zJsonObject: z.ZodType<JsonObject> = z.lazy(() => z.record(z.string(), zJsonValue));
-
-export function isJsonObject(value: JsonValue | undefined): value is JsonObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+export function isJsonObject(value: JsonValue | undefined): value is SparseConfig {
+  return typeof value === "object" && !Array.isArray(value);
 }
 
 export function sameJson(left: JsonValue | undefined, right: JsonValue | undefined): boolean {
-  return canonicalJson(left ?? null) === canonicalJson(right ?? null);
+  if (left === undefined || right === undefined) {
+    return left === right;
+  }
+
+  return canonicalJson(left) === canonicalJson(right);
 }
 
 function canonicalJson(value: JsonValue): string {
   return JSON.stringify(sortKeys(value));
 }
 
-export function getAt(object: JsonObject, path: readonly string[]): JsonValue | undefined {
+export function getAt(object: SparseConfig, path: readonly string[]): JsonValue | undefined {
   let current: JsonValue | undefined = object;
 
   for (const key of path) {
@@ -38,7 +30,7 @@ export function getAt(object: JsonObject, path: readonly string[]): JsonValue | 
   return current;
 }
 
-export function setAt(object: JsonObject, path: readonly string[], value: JsonValue): JsonObject {
+export function setAt(object: SparseConfig, path: readonly string[], value: JsonValue | undefined): SparseConfig {
   const [head, ...rest] = path;
 
   if (head === undefined) {
@@ -46,6 +38,12 @@ export function setAt(object: JsonObject, path: readonly string[], value: JsonVa
   }
 
   if (rest.length === 0) {
+    if (value === undefined) {
+      const { [head]: _removed, ...kept } = object;
+
+      return kept;
+    }
+
     return { ...object, [head]: value };
   }
 
@@ -65,9 +63,9 @@ function sortKeys(value: JsonValue): JsonValue {
 
   if (isJsonObject(value)) {
     return Object.fromEntries(
-      Object.keys(value)
-        .toSorted()
-        .map((key) => [key, sortKeys(value[key] ?? null)]),
+      Object.entries(value)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, sortKeys(child)]),
     );
   }
 

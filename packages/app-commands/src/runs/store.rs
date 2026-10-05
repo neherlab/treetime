@@ -1,20 +1,21 @@
 use crate::atomic_write::write_atomically;
-use crate::command::AppCommand;
+use crate::command_config::CommandConfig;
 use crate::job::{JobEvent, JobId, TerminalEvent};
-use crate::runs::errors::{invalid, not_found};
+use crate::runs::errors::not_found;
 use crate::runs::events::EventLog;
 use crate::runs::headline::RunHeadline;
 use crate::runs::record::{RunRecord, RunStatus};
 use chrono::{DateTime, Local, TimeZone, Utc};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use serde_json::Value;
+use log::warn;
 use std::cmp::Reverse;
 use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use treetime_schema::version_info;
+use treetime_utils::error::report_to_string;
 use treetime_utils::io::fs::read_file_to_string_if_exists;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
@@ -61,10 +62,7 @@ impl RunStore {
     self.run_dir(id).join(EVENTS_FILE)
   }
 
-  pub fn create(&self, command: AppCommand, config: Value) -> Result<RunRecord, Report> {
-    let Value::Object(config) = config else {
-      return Err(invalid("a command configuration must be a mapping of settings"));
-    };
+  pub fn create(&self, config: CommandConfig) -> Result<RunRecord, Report> {
     let id = JobId::random();
     fs::create_dir_all(&self.root)
       .wrap_err_with(|| format!("When creating the runs directory '{}'", self.root.display()))?;
@@ -78,7 +76,6 @@ impl RunStore {
     let record = RunRecord {
       id,
       title: default_title(&created_at.with_timezone(&Local)),
-      command,
       config,
       status: RunStatus::Created,
       pinned: false,
@@ -110,7 +107,21 @@ impl RunStore {
   }
 
   pub fn list(&self) -> Result<Vec<RunRecord>, Report> {
-    let records: Vec<RunRecord> = self.run_ids()?.iter().map(|id| self.read(id)).try_collect()?;
+    let mut records = vec![];
+    for id in self.run_ids()? {
+      let path = self.run_dir(&id).join(RUN_FILE);
+      let Some(text) = read_file_to_string_if_exists(&path)? else {
+        continue;
+      };
+      match json_read_str::<RunRecord>(&text) {
+        Ok(record) => records.push(record),
+        Err(report) => warn!(
+          "Skipping the run folder '{}', whose record cannot be read: {}",
+          path.parent().unwrap_or(&path).display(),
+          report_to_string(&report)
+        ),
+      }
+    }
     Ok(
       records
         .into_iter()

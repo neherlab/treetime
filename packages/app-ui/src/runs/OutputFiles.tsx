@@ -1,5 +1,4 @@
-import { errorMessage } from "@neherlab/app-contracts";
-import type { RunRecord } from "@neherlab/app-contracts";
+import { type RunFile, errorMessage, type RunRecord, type Citation } from "@neherlab/app-contracts";
 import { runsFiles } from "@neherlab/app-contracts/client";
 import { useCallback, useState } from "react";
 import Download from "~icons/lucide/download";
@@ -9,8 +8,7 @@ import { useApi } from "../api/hooks";
 import { Panel } from "../components/Panel";
 import { formatBytes } from "../format";
 import { useHost } from "../host-context";
-import { downloadName, totalSize, type RunFileEntry } from "../results/files";
-import type { Citation } from "../results/types";
+import { downloadName, totalSize } from "../results/files";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
@@ -85,7 +83,7 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
   );
 }
 
-function FileRow({ runId, file }: { runId: string; file: RunFileEntry }) {
+function FileRow({ runId, file }: { runId: string; file: RunFile }) {
   const save = useSaveRunOutput();
 
   const download = useCallback(async () => {

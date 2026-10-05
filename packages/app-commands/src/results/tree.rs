@@ -3,6 +3,7 @@ use eyre::Report;
 use itertools::{Itertools, izip};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::collections::BTreeSet;
 use treetime::timetree::confidence::CI_FRACTION;
 use treetime_io::auspice_types::{AuspiceColoring, AuspiceTree, AuspiceTreeNode};
@@ -34,6 +35,7 @@ pub fn preorder(root: &AuspiceTreeNode) -> Vec<(&AuspiceTreeNode, Option<usize>)
 }
 
 /// A tree a run wrote, read from its Auspice file.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ResultTree {
   /// Nodes in preorder; the root comes first and every parent precedes its children.
@@ -86,6 +88,7 @@ impl ResultTree {
 }
 
 /// One node of a result tree.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ResultNode {
   /// Name of the node.

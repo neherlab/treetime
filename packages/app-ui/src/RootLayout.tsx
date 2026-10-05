@@ -20,7 +20,7 @@ export function RootLayout() {
   useGlobalShortcuts();
   const { getRootProps, getInputProps } = useYamlDrop();
   const { width: viewportWidth } = useViewportSize();
-  const storedWidth = usePreferencesStore((state) => sidebarWidthOrDefault(state.sidebarWidth));
+  const storedWidth = usePreferencesStore((state) => sidebarWidthOrDefault(state.preferences.sidebar_width));
   const sidebarWidth = fitSidebarWidth(storedWidth, viewportWidth);
   const setSidebarWidth = usePreferencesStore((state) => state.setSidebarWidth);
 

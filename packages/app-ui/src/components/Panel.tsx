@@ -59,10 +59,7 @@ export interface SummaryEntry {
 export function runTimeEntry(record: RunRecord): SummaryEntry {
   return {
     label: "Run time",
-    value:
-      record.duration_seconds === null || record.duration_seconds === undefined
-        ? "-"
-        : formatDuration(record.duration_seconds),
+    value: record.duration_seconds === undefined ? "-" : formatDuration(record.duration_seconds),
   };
 }
 

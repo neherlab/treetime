@@ -423,7 +423,7 @@ mod tests {
     assert_eq!(
       (
         200,
-        json!({ "path": elsewhere, "default_path": root.path().join("runs"), "fixed_by": null, "error": null }),
+        json!({ "path": elsewhere, "default_path": root.path().join("runs") }),
         true
       ),
       (status, workspace, elsewhere.join(&id).join("run.json").is_file())
@@ -472,8 +472,7 @@ mod tests {
       json!({
         "path": scratch.path(),
         "default_path": root.path().join("runs"),
-        "fixed_by": "TREETIME_RUNS_DIR",
-        "error": null
+        "fixed_by": "TREETIME_RUNS_DIR"
       }),
       workspace
     );
@@ -498,7 +497,7 @@ mod tests {
     assert_eq!(
       (
         200,
-        json!({ "path": root.path().join("runs"), "default_path": root.path().join("runs"), "fixed_by": null, "error": error }),
+        json!({ "path": root.path().join("runs"), "default_path": root.path().join("runs"), "error": error }),
         true
       ),
       (status, workspace, root.path().join("runs").is_dir())

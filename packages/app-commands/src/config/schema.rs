@@ -1,6 +1,7 @@
 use schemars::generate::SchemaSettings;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde_json::json;
+use treetime_schema::NoNull;
 
 pub const SCHEMA_KEY: &str = "$schema";
 
@@ -15,7 +16,7 @@ pub fn draft2020_generator() -> SchemaGenerator {
 }
 
 pub fn draft2020_settings() -> SchemaSettings {
-  SchemaSettings::draft2020_12()
+  SchemaSettings::draft2020_12().with_transform(NoNull)
 }
 
 fn allow_schema_ref(schema: &mut Schema) {

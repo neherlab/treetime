@@ -9,6 +9,7 @@ use rustls::crypto::CryptoProvider;
 use rustls::crypto::ring::default_provider;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::fs::{self, File};
 use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -166,6 +167,7 @@ impl ExampleDownloads {
 }
 
 /// Stage of the download of the example datasets.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "state", rename_all = "kebab-case")]
 pub enum ExamplesDownload {
@@ -191,6 +193,7 @@ pub enum ExamplesDownload {
 }
 
 /// The download of the example datasets, with the app event that reported it last.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ExamplesDownloadStatus {
   pub download: ExamplesDownload,

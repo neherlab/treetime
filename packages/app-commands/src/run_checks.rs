@@ -2,10 +2,12 @@ use crate::check_inputs::{InputFacts, InputKind, InputNeed};
 use crate::command::AppCommand;
 use crate::config::settings::{has_path, setting_ref};
 use crate::config::source::ConfigProblem;
+use crate::json_value::JsonValue;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use serde_with::skip_serializing_none;
 use std::iter;
 use treetime_utils::vec_of_owned;
 
@@ -62,6 +64,7 @@ pub struct ConfigRejection<'a> {
 }
 
 /// A finding about a configuration and its input files, before a run.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RunCheck {
   /// Identifier of the check, stable across calls for the same finding.
@@ -98,12 +101,13 @@ pub struct CheckFix {
 }
 
 /// New value of one setting.
+#[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SettingPatch {
   /// Key path of the setting.
   pub path: Vec<String>,
-  /// The value to set.
-  pub value: Value,
+  /// The value to set; absent: the setting is removed and takes its default.
+  pub value: Option<JsonValue>,
 }
 
 fn missing_inputs(context: &CheckContext<'_>) -> Vec<RunCheck> {
@@ -256,7 +260,7 @@ fn confidence_without_rate_uncertainty(context: &CheckContext<'_>) -> Vec<RunChe
       label: "Use covariation".to_owned(),
       patch: vec![SettingPatch {
         path: vec!["covariation".to_owned()],
-        value: Value::Bool(true),
+        value: Some(JsonValue(Value::Bool(true))),
       }],
     }),
   }]

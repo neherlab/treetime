@@ -46,7 +46,7 @@ export function groupRuns(runs: readonly RunSummary[], now: DateTime): RunGroup[
 }
 
 export function changedFlags(run: RunSummary): string[] {
-  const flags = new Map(COMMAND_SETTINGS[run.command].specs.map((spec) => [spec.key, spec.flag]));
+  const flags = new Map(COMMAND_SETTINGS[run.command].settings.map((spec) => [spec.key, spec.flag]));
 
   return run.changed_settings.map((key) => flags.get(key) ?? key);
 }

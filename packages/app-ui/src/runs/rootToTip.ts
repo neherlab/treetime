@@ -1,16 +1,16 @@
+import type { RootToTip } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
 import { formatRate } from "../format";
-import type { RootToTip } from "../results/types";
 import type { RttLine, RttPoint } from "./RootToTipPlot";
 
-export function useRootToTip(regression: RootToTip | null | undefined): {
+export function useRootToTip(regression: RootToTip | undefined): {
   points: RttPoint[];
   line: RttLine | undefined;
 } {
   return useMemo(
     () =>
-      regression === null || regression === undefined
+      regression === undefined
         ? { points: [], line: undefined }
         : { points: rttPoints(regression), line: rttLine(regression) },
     [regression],
@@ -19,7 +19,7 @@ export function useRootToTip(regression: RootToTip | null | undefined): {
 
 function rttPoints(regression: RootToTip): RttPoint[] {
   return regression.points.flatMap((point) =>
-    point.date === null || point.date === undefined
+    point.date === undefined
       ? []
       : [
           {
@@ -37,7 +37,7 @@ function rttPoints(regression: RootToTip): RttPoint[] {
 function rttLine(regression: RootToTip): RttLine | undefined {
   const line = regression.line;
 
-  return line === null || line === undefined
+  return line === undefined
     ? undefined
     : {
         slope: line.rate,

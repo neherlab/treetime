@@ -9,7 +9,7 @@ describe("preferences storage browser", () => {
 
   test("saved preferences load back", async () => {
     const storage = browserPreferencesStorage(memoryStorage());
-    const preferences = { theme: "dark", sidebar_width: 420, draft: null } as const;
+    const preferences = { theme: "dark", sidebar_width: 420 } as const;
 
     await storage.save(preferences);
 

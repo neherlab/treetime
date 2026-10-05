@@ -5,6 +5,7 @@ use crate::config::code::{ConfigCode, config_code};
 use crate::config::resolve_paths::resolve_config_paths_where;
 use crate::config::settings::has_path;
 use crate::config::source::{ConfigProblem, ConfigSource, InvalidConfig, parse_config_document};
+use crate::json_value::SparseConfig;
 use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, rejection_messages, run_checks};
 use crate::yaml::yaml_text;
 use app_datasets::text_schema_command;
@@ -12,6 +13,7 @@ use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use serde_with::skip_serializing_none;
 use std::collections::BTreeSet;
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -52,7 +54,7 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
         rejection: None,
         facts,
       }),
-      config,
+      config: SparseConfig(config),
       code,
     },
     Err(report) => invalid(command, &report, Some(&config), facts),
@@ -60,6 +62,7 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
 }
 
 /// Outcome of checking a configuration without running it.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "status", rename_all = "kebab-case")]
 pub enum CheckConfigResponse {
@@ -68,7 +71,7 @@ pub enum CheckConfigResponse {
     /// Command the configuration is for.
     command: AppCommand,
     /// The configuration with every default filled in and without output paths, which the app sets for each run.
-    config: Map<String, Value>,
+    config: SparseConfig,
     /// The command line and the YAML config that reproduce the configuration.
     code: ConfigCode,
     /// Findings about the configuration and its input files.
@@ -94,6 +97,7 @@ pub enum CheckConfigResponse {
 }
 
 /// Request to check a configuration.
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CheckConfigRequest {
@@ -105,7 +109,7 @@ pub struct CheckConfigRequest {
   /// Input settings to add when the text does not set them, for example the inputs of a draft that the text is loaded
   /// into.
   #[serde(default)]
-  pub inputs: Map<String, Value>,
+  pub inputs: SparseConfig,
   /// Facts about the input files, from `check-inputs`, for the checks that depend on them.
   #[serde(default)]
   pub input_facts: Option<InputFacts>,
