@@ -2,37 +2,31 @@ use crate::commands::ancestral::aa_node_data::{
   cds_output_paths, read_aa_root_sequences, read_gff3_annotations, selected_cdses, translation_path, validate_aa_args,
 };
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
-use crate::commands::shared::alignment::{read_alignment, sequence_descriptions};
+use crate::commands::shared::ancestral_trees::{AncestralOutputMaps, AncestralTrees, write_ancestral_trees};
 use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
-use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeAminoAcids, TreeSequences};
-use app_output::augur_node_data_ancestral::{AncestralNodeSequences, write_augur_node_data_ancestral};
+use crate::commands::shared::sequence_inputs::{AncestralReadInputs, SequenceInputArgs, read_nwk_fasta};
+use app_output::augur_node_data_ancestral::AncestralNodeSequences;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, output_unavailable};
-use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::aa::{AaNodeData, AaParams, CdsInput, reconstruct_aa};
-use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
-use treetime::ancestral::mask::create_mask;
+use treetime::ancestral::attach::sanitize_to_alphabet;
 use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
-use treetime::make_error;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::{LogSink, StageSink};
-use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
+use treetime::progress_warn;
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
-use treetime::seq::mutation::Mutation;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
-use treetime::{progress_info, progress_warn};
 use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::{FastaWriter, fasta_read_file};
-use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::make_internal_error;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
@@ -50,7 +44,14 @@ pub fn run_ancestral_reconstruction(
     args.aa_root_sequence.as_deref(),
   )?;
 
-  let AncestralReadInputs { input, descs } = read_nwk_fasta(args, cancel, stages, log)?;
+  let sequence_args = SequenceInputArgs {
+    alignment: &args.alignment,
+    tree: args.tree(),
+    alphabet_args: &args.alphabet_args,
+    gap_fill_args: &args.gap_fill_args,
+    ignore_missing_alns: args.ignore_missing_alns,
+  };
+  let AncestralReadInputs { input, descs } = read_nwk_fasta(&sequence_args, cancel, stages, log)?;
   let names = input.names();
   let branch_lengths = input.branch_lengths();
 
@@ -64,7 +65,7 @@ pub fn run_ancestral_reconstruction(
   let seed = args.seed_args.resolve(random_step, log);
   let params = ancestral_params(args, seed);
 
-  let output = pipeline::run(&params, input, &mut seq_sink, cancel, stages, log).map_err(|err| err.into_report())?;
+  let output = pipeline::run(&params, input, Some(&mut seq_sink), cancel, stages, log).map_err(|err| err.into_report())?;
   let mut graph = output.graph;
   let AncestralSeqSink {
     fasta, node_sequences, ..
@@ -112,7 +113,7 @@ pub fn run_ancestral_reconstruction(
     ambiguous_char: output.ambiguous_char,
     mask: &output.mask,
   });
-  write_ancestral_trees(&trees, node_sequences, &resolved, log)?;
+  write_ancestral_trees(&trees, node_sequences, &resolved, CommandKind::Ancestral, log)?;
 
   stages.report("Done", 1.0, "");
   Ok(())
@@ -219,111 +220,6 @@ impl SeqSink for AncestralSeqSink {
     }
     Ok(())
   }
-}
-
-fn read_nwk_fasta(
-  args: &TreetimeAncestralArgs,
-  cancel: &dyn Cancel,
-  stages: &dyn StageSink,
-  log: &dyn LogSink,
-) -> Result<AncestralReadInputs, Report> {
-  let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
-  let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
-
-  cancel.check()?;
-  stages.report("Reading input", 0.0, "");
-
-  if args.alignment.alignment.is_empty() {
-    return make_error!("--alignment is required: pass one or more FASTA files, or '-' to read standard input");
-  }
-  let mut aln = read_alignment(&args.alignment.alignment, &alphabet)?;
-
-  for record in &mut aln {
-    apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
-  }
-
-  let descs = sequence_descriptions(&aln);
-
-  cancel.check()?;
-  stages.report("Parsing tree", 0.1, "");
-  let parse = nwk_read_file(args.tree())?;
-
-  let names = parse.names();
-  let aln = aln.into_iter().map(AlignmentRecord::from).collect();
-  let aln = complete_alignment_for_leaves(&parse.graph, aln, &alphabet, args.ignore_missing_alns, &names, log)?;
-  let alignment_length = get_common_length(&aln)?;
-  let mask = create_mask(&aln, alignment_length, &alphabet);
-
-  let graph = parse.graph;
-  let nodes = node_seq_inputs(&graph, &names, aln);
-  let edges = parse
-    .branch_lengths
-    .into_iter()
-    .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
-    .collect();
-  let input = AncestralInput {
-    graph,
-    nodes,
-    edges,
-    alphabet,
-    mask,
-  };
-  Ok(AncestralReadInputs { input, descs })
-}
-
-struct AncestralReadInputs {
-  input: AncestralInput,
-  descs: BTreeMap<String, Option<String>>,
-}
-
-struct AncestralTrees<'a> {
-  graph: &'a Graph,
-  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &'a AncestralOutputMaps,
-  amino_acids: Option<&'a (AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>,
-}
-
-fn write_ancestral_trees(
-  trees: &AncestralTrees<'_>,
-  node_sequences: Option<AncestralNodeSequences<'_>>,
-  resolved: &ResolvedOutputs,
-  log: &dyn LogSink,
-) -> Result<(), Report> {
-  let annotated = AnnotatedGraph {
-    graph: trees.graph,
-    names: trees.names,
-    divergence_branch_lengths: trees.branch_lengths,
-    time_branch_lengths: None,
-    divergence: Divergence::CumulativeBranchLength,
-    sequences: Some(TreeSequences {
-      root_sequence: &trees.maps.root_sequence,
-      edge_mutations: &trees.maps.edge_mutations,
-      mutation_counts: None,
-      amino_acids: trees
-        .amino_acids
-        .map(|(node_data, cdses)| TreeAminoAcids { node_data, cdses }),
-    }),
-    dates: None,
-    traits: None,
-  };
-  let tree = tree_view_for_outputs(&annotated, resolved);
-  if let (Ok(Some(tree)), Some(path), Some(node_sequences)) =
-    (&tree, resolved.path(OutputSelection::AugurNodeData), node_sequences)
-  {
-    write_augur_node_data_ancestral(tree, node_sequences, path)?;
-    progress_info!(log, "Wrote augur node data JSON to {}", path.display());
-  }
-  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
-  let Some(tree) = tree? else {
-    return Ok(());
-  };
-  write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Ancestral, log)
-}
-
-struct AncestralOutputMaps {
-  root_sequence: Seq,
-  edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }
 
 fn run_aa_reconstructions(

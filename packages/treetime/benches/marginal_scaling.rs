@@ -61,7 +61,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
               run(
                 &params,
                 black_box(input),
-                &mut DiscardSequences,
+                Some(&mut DiscardSequences),
                 &NoopCancel,
                 &NoopProgress,
                 &NoopProgress,

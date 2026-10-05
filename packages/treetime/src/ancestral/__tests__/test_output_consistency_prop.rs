@@ -106,7 +106,7 @@ mod tests {
       let output = run(
         params,
         ancestral_input,
-        &mut sink,
+        Some(&mut sink),
         &NoopCancel,
         &NoopProgress,
         &NoopProgress,

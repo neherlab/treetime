@@ -81,7 +81,7 @@ mod tests {
     let result = pipeline::run(
       &params,
       input,
-      &mut RecordingSeqSink::default(),
+      None,
       &NoopCancel,
       &NoopProgress,
       &NoopProgress,
@@ -146,7 +146,7 @@ mod tests {
       };
 
       let mut sink = RecordingSeqSink::default();
-      pipeline::run(&params, input, &mut sink, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      pipeline::run(&params, input, Some(&mut sink), &NoopCancel, &NoopProgress, &NoopProgress)?;
       let captured = sink
         .items
         .into_iter()

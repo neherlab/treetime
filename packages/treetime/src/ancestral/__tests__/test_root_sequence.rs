@@ -116,7 +116,7 @@ mod tests {
         sample_from_profile: SampleMode::Argmax,
       };
       let mut sink = RecordingSeqSink::default();
-      let output = run(&params, input, &mut sink, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      let output = run(&params, input, Some(&mut sink), &NoopCancel, &NoopProgress, &NoopProgress)?;
       let emitted = sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
       Ok((output, emitted))
     }

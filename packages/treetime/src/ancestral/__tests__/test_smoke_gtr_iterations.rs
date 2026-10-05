@@ -52,7 +52,6 @@ mod tests {
     use crate::partition::marginal::sample::SampleMode;
     use crate::progress::NoopProgress;
     use crate::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
-    use crate::test_utils::RecordingSeqSink;
     use eyre::{OptionExt, Report};
     use std::path::PathBuf;
     use std::sync::LazyLock;
@@ -108,7 +107,7 @@ mod tests {
       let result = crate::ancestral::pipeline::run(
         &params,
         input,
-        &mut RecordingSeqSink::default(),
+        None,
         &NoopCancel,
         &NoopProgress,
         &NoopProgress,

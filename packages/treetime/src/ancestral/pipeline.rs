@@ -18,7 +18,7 @@ use treetime_utils::sync::random::get_random_number_generator;
 pub fn run(
   params: &AncestralParams,
   input: AncestralInput,
-  seq_sink: &mut dyn SeqSink,
+  mut seq_sink: Option<&mut dyn SeqSink>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
@@ -49,7 +49,9 @@ pub fn run(
     log,
   )
   .map_err(OperationError::classify)?;
-  seq_sink.on_topology(&graph).map_err(OperationError::SinkFailed)?;
+  if let Some(sink) = seq_sink.as_deref_mut() {
+    sink.on_topology(&graph).map_err(OperationError::SinkFailed)?;
+  }
   let SequenceMutations {
     root_sequence,
     edge_mutations,
@@ -58,7 +60,7 @@ pub fn run(
     &MutationTrack::Nucleotide,
     params.include_leaves,
     params.report_ambiguous,
-    Some(seq_sink),
+    seq_sink,
   )?;
   Ok(AncestralOutput {
     gtr: partition.gtr().cloned(),
