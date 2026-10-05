@@ -331,21 +331,20 @@ fn ensure_unique_output_paths(
   tree_outputs: &BTreeMap<TreeWriteKind, PathBuf>,
   non_tree_outputs: &BTreeMap<OutputSelection, PathBuf>,
 ) -> Result<(), Report> {
-  let mut destinations: BTreeMap<&Path, String> = BTreeMap::new();
-  for (kind, path) in tree_outputs {
-    if let Some(previous) = destinations.insert(path, format!("{kind:?}")) {
+  let flags_and_paths = tree_outputs
+    .iter()
+    .map(|(kind, path)| (tree_write_kind_selection(*kind).flag_name(), path))
+    .chain(
+      non_tree_outputs
+        .iter()
+        .map(|(selection, path)| (selection.flag_name(), path)),
+    );
+  let mut destinations: BTreeMap<&Path, &str> = BTreeMap::new();
+  for (flag, path) in flags_and_paths {
+    if let Some(previous) = destinations.insert(path, flag) {
       return make_error!(
-        "Output destination '{}' is selected more than once ({previous} and {kind:?})",
+        "Output destination '{}' is selected more than once ({previous} and {flag})",
         path.display()
-      );
-    }
-  }
-  for (selection, path) in non_tree_outputs {
-    if let Some(previous) = destinations.insert(path, selection.flag_name().to_owned()) {
-      return make_error!(
-        "Output destination '{}' is selected more than once ({previous} and {})",
-        path.display(),
-        selection.flag_name()
       );
     }
   }

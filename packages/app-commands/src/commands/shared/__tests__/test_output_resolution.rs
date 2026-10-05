@@ -89,7 +89,24 @@ mod tests {
 
     assert_error!(
       result,
-      "Output destination 'same-output' is selected more than once (Nwk(Plain) and --output-gtr)"
+      "Output destination 'same-output' is selected more than once (--output-tree-nwk and --output-gtr)"
+    );
+  }
+
+  #[test]
+  fn test_resolve_rejects_two_tree_outputs_with_one_destination() {
+    let path = PathBuf::from("same-output");
+    let args = OutputCoreArgs {
+      output_tree_nwk: Some(path.clone()),
+      output_tree_nexus: Some(path),
+      ..OutputCoreArgs::default()
+    };
+
+    let result = args.resolve(CommandKind::Ancestral, &[], &[]);
+
+    assert_error!(
+      result,
+      "Output destination 'same-output' is selected more than once (--output-tree-nwk and --output-tree-nexus)"
     );
   }
 
