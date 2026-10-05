@@ -57,6 +57,7 @@ skip = [
   { crate = "bitflags:<2", reason = "plotters 0.3.7 requires font-kit 0.14.3, whose macOS backend requires core-graphics 0.23, which requires bitflags 1" },
   { crate = "block-buffer:<0.12", reason = "headers 0.4 requires sha1 0.10 and its digest 0.10 stack; sha2 0.11 requires digest 0.11" },
   { crate = "convert_case:<0.11", reason = "derive_more 2 requires convert_case 0.7 or 0.10; napi-derive 3.5.2 and later require 0.11 or newer" },
+  { crate = "core-foundation:<0.10", reason = "plotters 0.3.7 requires font-kit 0.14.3, whose macOS backend requires core-graphics 0.23 and core-foundation 0.9; rustls-platform-verifier requires 0.10" },
   { crate = "cpufeatures:<0.3", reason = "headers 0.4 requires sha1 0.10 and its digest 0.10 stack; sha2 0.11 requires digest 0.11" },
   { crate = "crypto-common:<0.2", reason = "headers 0.4 requires sha1 0.10 and its digest 0.10 stack; sha2 0.11 requires digest 0.11" },
   { crate = "digest:<0.11", reason = "headers 0.4 requires sha1 0.10 and its digest 0.10 stack; sha2 0.11 requires digest 0.11" },
@@ -68,6 +69,7 @@ skip = [
   { crate = "syn:<3", reason = "most proc-macro crates, including serde_derive at the pinned serde version, require syn 2; saphyr 0.0.12 requires thiserror 2.0.20, whose derive requires syn 3" },
   { crate = "thiserror:<2", reason = "bio-types (every release) and the pinned argmin revision require thiserror 1" },
   { crate = "thiserror-impl:<2", reason = "thiserror 1, required by bio-types and the pinned argmin revision" },
+  { crate = "tower-http:<0.7", reason = "reqwest 0.13.4 requires tower-http 0.6; axum and the server use 0.7" },
   { crate = "unicode-width:<0.2", reason = "miette 7.6 requires unicode-width 0.1; comfy-table, console, indicatif, and textwrap require 0.2" },
   { crate = "windows-sys:<0.61", reason = "textplots 0.8.7 requires drawille 0.3, which requires colored 2, which requires windows-sys 0.59" },
 ]

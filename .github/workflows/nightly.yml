@@ -113,6 +113,12 @@ jobs:
           merge-multiple: true
           path: ".out"
 
+      # The example datasets of data/, one entry per dataset folder (zika/20/tree.nwk), without the smoke
+      # fixtures and the development scripts. Deflate entries, which the zip reader of treetime supports.
+      - name: "Archive example datasets"
+        run: |
+          (cd data && zip -r -X -D -q ../.out/examples.zip . -x 'smoke/*' 'subsample' 'translate' 'usher-download-examples')
+
       - name: "Publish nightly release"
         env:
           GITHUB_TOKEN: ${{ secrets.NEHERLAB_BOT_GITHUB_TOKEN }}

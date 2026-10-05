@@ -25,6 +25,8 @@ trap "exit" INT
 # long gap between nightlies.
 MAX_LISTED_COMMITS=300
 
+EXAMPLES_ASSET="examples.zip"
+
 # Resolve the source commit of the most recent published nightly, used as the
 # lower bound of the changelog. Always succeeds: on any lookup or resolution
 # failure it prints nothing so the caller falls back to notes without a
@@ -140,6 +142,12 @@ generate_install_table() {
   printf "\n### Installation and usage\n\n<table>\n"
   generate_install_subtable "🖥️ <b>Desktop app</b>" "treetime-desktop-" "${DESKTOP_ROWS[@]}"
   generate_install_subtable "⌨️ <b>CLI</b>" "treetime-" "${CLI_ROWS[@]}"
+
+  if [[ -n "${unlisted[${EXAMPLES_ASSET}]:-}" ]]; then
+    printf "<tr><td>🧬 <b>Example datasets</b></td><td><a href=\"%s/%s\">%s</a> (%s): <code>treetime examples get --output-dir &lt;dir&gt;</code> downloads and unpacks it</td></tr>\n" \
+      "${base_url}" "${EXAMPLES_ASSET}" "${EXAMPLES_ASSET}" "$(format_size "$(wc -c <"${unlisted[${EXAMPLES_ASSET}]}")")"
+    unset "unlisted[${EXAMPLES_ASSET}]"
+  fi
 
   local other="" name
   while IFS= read -r name; do
@@ -337,6 +345,16 @@ main() {
   done
   ((${#artifacts[@]} > 0)) || {
     printf "No artifacts found in: %s\n" "${artifacts_dir}" >&2
+    exit 1
+  }
+  # A release becomes the latest release, which the apps download the example
+  # datasets from, so it must carry more than the example datasets.
+  local binaries=0
+  for artifact in "${artifacts[@]}"; do
+    [[ "${artifact##*/}" == "${EXAMPLES_ASSET}" ]] || binaries=$((binaries + 1))
+  done
+  ((binaries > 0)) || {
+    printf "Only %s found in: %s; a release needs at least one binary\n" "${EXAMPLES_ASSET}" "${artifacts_dir}" >&2
     exit 1
   }
 
