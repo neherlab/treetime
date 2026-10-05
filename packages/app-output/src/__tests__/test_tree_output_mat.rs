@@ -235,8 +235,7 @@ mod tests {
       let setup = ancestral_setup(mutations)?;
       let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
       let path = dir.path().join("tree.mat.json");
-      let support = btreemap! {};
-      let graph = ancestral_graph(&setup, &support);
+      let graph = ancestral_graph(&setup);
       write_tree_outputs(
         &AnnotatedTreeView::new(&graph)?,
         &btreemap! { TreeWriteKind::MatJson => path.clone() },

@@ -28,7 +28,6 @@ pub fn run_mugration(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
   let parse = nwk_read_file(&mugration_args.tree)?;
-  let confidences = parse.confidences();
   let names = parse.names();
   let graph: Graph = parse.graph;
   let branch_lengths = parse.branch_lengths;
@@ -100,7 +99,6 @@ pub fn run_mugration(
     &output,
     &names,
     &branch_lengths,
-    &confidences,
     mugration_args.attribute(),
     &resolved,
     log,
@@ -114,7 +112,6 @@ fn write_mugration_trees(
   output: &MugrationOutput,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  branch_support: &BTreeMap<GraphNodeKey, Option<f64>>,
   attribute: &str,
   resolved: &ResolvedOutputs,
   log: &dyn LogSink,
@@ -125,7 +122,6 @@ fn write_mugration_trees(
     divergence_branch_lengths: branch_lengths,
     time_branch_lengths: None,
     divergence: Divergence::CumulativeBranchLength,
-    branch_support: Some(branch_support),
     sequences: None,
     dates: None,
     traits: Some(TreeTraits {

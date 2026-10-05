@@ -45,7 +45,6 @@ mod tests {
       divergence_branch_lengths: &time_lengths,
       time_branch_lengths: Some(&time_lengths),
       divergence: Divergence::Values(&divergences),
-      branch_support: None,
       sequences: Some(TreeSequences {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,

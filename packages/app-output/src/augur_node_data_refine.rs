@@ -38,9 +38,6 @@ pub fn build_augur_node_data_refine(tree: &AnnotatedTreeView<'_>, run: &RefineRu
         .unwrap_or_default();
       let node = AugurNodeDataJsonRefineNode {
         branch_length: lengths.branch_length,
-        confidence: run
-          .branch_support
-          .and_then(|support| support.get(&key).copied().flatten()),
         numdate: dates.numdate,
         clock_length: lengths.clock_length,
         mutation_length: lengths.mutation_length,
@@ -73,7 +70,6 @@ pub struct RefineRun<'a> {
   pub alignment: Option<&'a Path>,
   pub input_tree: Option<&'a Path>,
   pub clock_model: Option<&'a ClockModel>,
-  pub branch_support: Option<&'a BTreeMap<GraphNodeKey, Option<f64>>>,
 }
 
 fn refine_lengths(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey) -> RefineLengths {

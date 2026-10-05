@@ -191,7 +191,6 @@ mod tests {
           divergence_branch_lengths: &self.branch_lengths,
           time_branch_lengths: Some(&time_lengths),
           divergence: Divergence::CumulativeBranchLength,
-          branch_support: None,
           sequences: mutation_counts.map(|mutation_counts| TreeSequences {
             root_sequence: &root_sequence,
             edge_mutations: &edge_mutations,
@@ -210,7 +209,6 @@ mod tests {
           alignment: Some(Path::new("aln.fasta")),
           input_tree: Some(Path::new("tree.nwk")),
           clock_model: Some(&self.clock_model),
-          branch_support: None,
         };
         build_augur_node_data_refine(&AnnotatedTreeView::new(&annotated).unwrap(), &run)
       }

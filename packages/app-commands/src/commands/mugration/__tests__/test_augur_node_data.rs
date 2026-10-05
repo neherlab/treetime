@@ -136,7 +136,6 @@ mod tests {
         divergence_branch_lengths: &branch_lengths,
         time_branch_lengths: None,
         divergence: Divergence::CumulativeBranchLength,
-        branch_support: None,
         sequences: None,
         dates: None,
         traits: Some(TreeTraits {

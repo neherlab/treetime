@@ -3,6 +3,7 @@ mod tests {
   use crate::__tests__::test_support::tests::project_root;
   use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
+  use serde_json::json;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::io::json::json_read_str;
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
@@ -21,7 +22,6 @@ mod tests {
     let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
 
     for (name, node) in &data.nodes {
-      assert!(node.confidence.is_none(), "{name}: confidence must be omitted");
       assert!(node.numdate.is_none(), "{name}: numdate must be omitted");
       assert!(node.clock_length.is_none(), "{name}: clock_length must be omitted");
       assert!(
@@ -67,32 +67,11 @@ mod tests {
   }
 
   #[test]
-  fn test_augur_node_data_optimize_confidence_from_float_label() {
-    let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)0.999:0.003;");
+  fn test_augur_node_data_optimize_drops_input_support_label() {
+    let json_str = helpers::write_json("((leaf_a:0.005,leaf_b:0.010)0.999:0.003,leaf_c:0.02)root;");
+    let data: serde_json::Value = json_read_str(&json_str).unwrap();
 
-    assert_eq!(
-      data.nodes["NODE_0000000"].confidence,
-      Some(0.999),
-      "Internal node with float label should emit confidence"
-    );
-    assert!(
-      data.nodes["leaf_a"].confidence.is_none(),
-      "Leaf nodes should not have confidence from float labels"
-    );
-    assert!(
-      data.nodes["leaf_b"].confidence.is_none(),
-      "Leaf nodes should not have confidence from float labels"
-    );
-  }
-
-  #[test]
-  fn test_augur_node_data_optimize_no_confidence_for_text_label() {
-    let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
-
-    assert!(
-      data.nodes["root"].confidence.is_none(),
-      "Text-labeled internal node should not have confidence"
-    );
+    assert_eq!(json!({ "branch_length": 0.003 }), data["nodes"]["NODE_0000000"]);
   }
 
   #[test]
@@ -127,7 +106,6 @@ mod tests {
     let root = project_root();
     let alphabet = Alphabet::default();
     let nwk_parsed = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
-    let confidences = nwk_parsed.confidences();
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
@@ -160,7 +138,6 @@ mod tests {
 
     let data = helpers::build_augur_node_data_json_from_output(
       &output,
-      &confidences,
       Some(std::path::Path::new("aln.fasta")),
       Some(std::path::Path::new("tree.nwk")),
     );
@@ -196,7 +173,6 @@ mod tests {
         &parse.graph,
         &parse.names(),
         &parse.branch_lengths,
-        &parse.confidences(),
         None,
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
@@ -219,7 +195,6 @@ mod tests {
         &parse.graph,
         &parse.names(),
         &parse.branch_lengths,
-        &parse.confidences(),
         Some(&counts),
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
@@ -229,7 +204,6 @@ mod tests {
 
     pub(super) fn build_augur_node_data_json_from_output(
       output: &OptimizeOutput,
-      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
       alignment: Option<&Path>,
       input_tree: Option<&Path>,
     ) -> AugurNodeDataJsonRefine {
@@ -237,7 +211,6 @@ mod tests {
         &output.graph,
         &output.names,
         &output.branch_lengths,
-        confidences,
         None,
         alignment,
         input_tree,
@@ -249,7 +222,6 @@ mod tests {
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
       mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
       alignment: Option<&Path>,
       input_tree: Option<&Path>,
@@ -263,7 +235,6 @@ mod tests {
         divergence_branch_lengths: branch_lengths,
         time_branch_lengths: None,
         divergence: Divergence::CumulativeBranchLength,
-        branch_support: Some(confidences),
         sequences: mutation_counts.map(|mutation_counts| TreeSequences {
           root_sequence: &root_sequence,
           edge_mutations: &edge_mutations,
@@ -277,7 +248,6 @@ mod tests {
         alignment,
         input_tree,
         clock_model: None,
-        branch_support: Some(confidences),
       };
       build_augur_node_data_refine(&AnnotatedTreeView::new(&annotated).unwrap(), &run)
     }

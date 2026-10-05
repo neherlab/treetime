@@ -283,7 +283,6 @@ mod tests {
         divergence_branch_lengths: &branch_lengths,
         time_branch_lengths: None,
         divergence: Divergence::CumulativeBranchLength,
-        branch_support: None,
         sequences: Some(TreeSequences {
           root_sequence: &maps.root_sequence,
           edge_mutations: &maps.edge_mutations,

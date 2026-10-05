@@ -18,7 +18,6 @@ pub struct AnnotatedGraph<'a> {
   pub divergence_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   pub time_branch_lengths: Option<&'a BTreeMap<GraphEdgeKey, Option<f64>>>,
   pub divergence: Divergence<'a>,
-  pub branch_support: Option<&'a BTreeMap<GraphNodeKey, Option<f64>>>,
   pub sequences: Option<TreeSequences<'a>>,
   pub dates: Option<TreeDates<'a>>,
   pub traits: Option<TreeTraits<'a>>,

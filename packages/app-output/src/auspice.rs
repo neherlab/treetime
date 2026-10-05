@@ -235,10 +235,6 @@ fn auspice_node(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey, div: Option<f64
     ),
     None => (None, None),
   };
-  let branch_support = graph
-    .branch_support
-    .and_then(|support| support.get(&key).copied().flatten());
-
   Ok(AuspiceTreeNode {
     branch_attrs: AuspiceTreeBranchAttrs {
       mutations: node_mutations(tree, key)?,
@@ -259,7 +255,7 @@ fn auspice_node(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey, div: Option<f64
       region: None,
       country: None,
       division: None,
-      other: node_attrs_other(traits, branch_support, &name)?,
+      other: Value::Object(traits.into_iter().collect()),
     },
     name,
     children: vec![],
@@ -332,28 +328,6 @@ fn node_transition(tree: &AnnotatedTreeView<'_>, traits: &TreeTraits<'_>, key: G
     (Some(parent), Some(child)) if parent != child => Some(format!("{parent} \u{2192} {child}")),
     _ => None,
   }
-}
-
-fn node_attrs_other(
-  traits: Option<(String, Value)>,
-  branch_support: Option<f64>,
-  node_name: &str,
-) -> Result<Value, Report> {
-  let mut attrs = Map::new();
-  if let Some((attribute, value)) = traits {
-    attrs.insert(attribute, value);
-  }
-  if let Some(branch_support) = branch_support {
-    ensure_finite(branch_support, node_name, "input branch support")?;
-    if attrs.contains_key("confidence") {
-      return make_error!(
-        "Node '{node_name}' has a trait named 'confidence', which Auspice JSON also uses for the input branch support. \
-         Rename the metadata column of the trait."
-      );
-    }
-    attrs.insert("confidence".to_owned(), json!({ "value": branch_support }));
-  }
-  Ok(Value::Object(attrs))
 }
 
 fn finite_number(value: Option<f64>, precision: i32, node_name: &str, field: &str) -> Result<Option<f64>, Report> {

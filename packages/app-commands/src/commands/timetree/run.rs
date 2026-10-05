@@ -46,7 +46,6 @@ pub fn run_timetree_estimation(
 
   let input_data = load_input_data(args, log)?;
   let input_leaf_order = input_data.input_leaf_order.clone();
-  let confidences = input_data.confidences;
   let parse_names = input_data.names;
 
   let resolved = args.resolve_outputs()?;
@@ -114,7 +113,6 @@ pub fn run_timetree_estimation(
   progress_info!(log, "### TreeTime: writing outputs");
   write_model_outputs(&resolved, &output, log)?;
   let tree_inputs = TreeOutputInputs {
-    confidences,
     input_leaf_order,
     filter: UnknownMutationFilter::new(unknown, args.report_ambiguous),
     mutation_units,
@@ -245,7 +243,6 @@ pub(crate) fn reconstructed_nuc_fasta_path(
 }
 
 struct TreeOutputInputs {
-  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
   input_leaf_order: Vec<String>,
   filter: UnknownMutationFilter,
   mutation_units: bool,
@@ -298,7 +295,6 @@ fn write_result_outputs(
     alignment: args.alignment.alignment.first().map(PathBuf::as_path),
     input_tree: Some(args.tree.as_path()),
     clock_model: Some(&clock_model),
-    branch_support: Some(&inputs.confidences),
   };
   write_timetree_trees(&trees, &run, resolved, log)
 }
@@ -346,7 +342,6 @@ fn write_timetree_trees(
     divergence_branch_lengths: trees.branch_lengths,
     time_branch_lengths: Some(trees.date_branch_lengths),
     divergence: Divergence::Values(mutation_divergences.as_ref().unwrap_or(trees.divergences)),
-    branch_support: None,
     sequences: trees.maps.root_sequence.as_ref().map(|root_sequence| TreeSequences {
       root_sequence,
       edge_mutations: &trees.maps.edge_mutations,

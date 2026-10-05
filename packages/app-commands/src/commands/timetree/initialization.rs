@@ -18,7 +18,6 @@ use treetime_io::nwk::nwk_read_file;
 
 pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) -> Result<InputData, Report> {
   let nwk_parsed = nwk_read_file(&args.tree).wrap_err("Failed to load tree from file")?;
-  let confidences = nwk_parsed.confidences();
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
@@ -60,7 +59,6 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
 
   Ok(InputData {
     graph,
-    confidences,
     names,
     branch_lengths,
     input_leaf_order,
@@ -72,7 +70,6 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
 
 pub(crate) struct InputData {
   pub graph: Graph,
-  pub confidences: BTreeMap<GraphNodeKey, Option<f64>>,
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub input_leaf_order: Vec<String>,

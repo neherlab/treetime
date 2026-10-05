@@ -156,7 +156,6 @@ fn write_clock_trees(
     divergence_branch_lengths: branch_lengths,
     time_branch_lengths: None,
     divergence: Divergence::Values(divergences),
-    branch_support: None,
     sequences: None,
     dates: Some(TreeDates {
       num_date: &dates.num_date,

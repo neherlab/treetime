@@ -53,7 +53,6 @@ fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
       key,
       NwkNodeMeta {
         name: name.map(ToOwned::to_owned),
-        confidence: nwk_node.confidence,
       },
     );
     node_keys.push(key);
@@ -106,16 +105,11 @@ impl NwkParse {
   pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
     self.nodes.iter().map(|(key, meta)| (*key, meta.name.clone())).collect()
   }
-
-  pub fn confidences(&self) -> BTreeMap<GraphNodeKey, Option<f64>> {
-    self.nodes.iter().map(|(key, meta)| (*key, meta.confidence)).collect()
-  }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NwkNodeMeta {
   name: Option<String>,
-  confidence: Option<f64>,
 }
 
 pub fn nwk_write_file(

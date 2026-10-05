@@ -33,8 +33,7 @@ mod tests {
     let root = node_key(&setup.topology, "root");
     setup.topology.names.insert(leaf, Some(o!(node)));
     setup.values = btreemap! { leaf => Some(o!(value)), root => None };
-    let support = btreemap! {};
-    let graph = mugration_graph(&setup, attribute, &support);
+    let graph = mugration_graph(&setup, attribute);
 
     let mut buf = Vec::new();
     let mut csv = CsvWriter::new(&mut buf, TableFormat::Csv);
@@ -58,8 +57,7 @@ mod tests {
     setup.states = DiscreteStates::from_values(["Congo, DR", "usa"].into_iter(), "?");
     setup.values = btreemap! { a => Some(o!("usa")), b => Some(o!("Congo, DR")), root => None };
     setup.profiles = btreemap! { a => Some(array![0.25, 0.75]), b => Some(array![1.0, 0.0]), root => None };
-    let support = btreemap! {};
-    let graph = mugration_graph(&setup, "country", &support);
+    let graph = mugration_graph(&setup, "country");
 
     let mut buf = Vec::new();
     let mut csv = CsvWriter::new(&mut buf, TableFormat::Csv);
@@ -80,8 +78,7 @@ mod tests {
     let mut setup = mugration_setup()?;
     let a = node_key(&setup.topology, "A");
     setup.profiles.insert(a, Some(array![f64::NAN, 1.0]));
-    let support = btreemap! {};
-    let graph = mugration_graph(&setup, "country", &support);
+    let graph = mugration_graph(&setup, "country");
     let model = GTR::builder().n_states(2).mu(1.0).pi(array![0.5, 0.5]).build()?;
 
     assert_error!(

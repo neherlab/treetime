@@ -50,11 +50,7 @@ pub fn run_ancestral_reconstruction(
     args.aa_root_sequence.as_deref(),
   )?;
 
-  let AncestralReadInputs {
-    input,
-    descs,
-    confidences,
-  } = read_nwk_fasta(args, cancel, stages, log)?;
+  let AncestralReadInputs { input, descs } = read_nwk_fasta(args, cancel, stages, log)?;
   let names = input.names();
   let branch_lengths = input.branch_lengths();
 
@@ -107,7 +103,6 @@ pub fn run_ancestral_reconstruction(
     graph: &graph,
     names: &names,
     branch_lengths: &branch_lengths,
-    branch_support: &confidences,
     maps: &maps,
     amino_acids: aa_result.as_ref(),
   };
@@ -253,8 +248,6 @@ fn read_nwk_fasta(
   stages.report("Parsing tree", 0.1, "");
   let parse = nwk_read_file(args.tree())?;
 
-  let confidences = parse.confidences();
-
   let names = parse.names();
   let aln = aln.into_iter().map(AlignmentRecord::from).collect();
   let aln = complete_alignment_for_leaves(&parse.graph, aln, &alphabet, args.ignore_missing_alns, &names, log)?;
@@ -275,24 +268,18 @@ fn read_nwk_fasta(
     alphabet,
     mask,
   };
-  Ok(AncestralReadInputs {
-    input,
-    descs,
-    confidences,
-  })
+  Ok(AncestralReadInputs { input, descs })
 }
 
 struct AncestralReadInputs {
   input: AncestralInput,
   descs: BTreeMap<String, Option<String>>,
-  confidences: BTreeMap<GraphNodeKey, Option<f64>>,
 }
 
 struct AncestralTrees<'a> {
   graph: &'a Graph,
   names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  branch_support: &'a BTreeMap<GraphNodeKey, Option<f64>>,
   maps: &'a AncestralOutputMaps,
   amino_acids: Option<&'a (AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>,
 }
@@ -309,7 +296,6 @@ fn write_ancestral_trees(
     divergence_branch_lengths: trees.branch_lengths,
     time_branch_lengths: None,
     divergence: Divergence::CumulativeBranchLength,
-    branch_support: Some(trees.branch_support),
     sequences: Some(TreeSequences {
       root_sequence: &trees.maps.root_sequence,
       edge_mutations: &trees.maps.edge_mutations,

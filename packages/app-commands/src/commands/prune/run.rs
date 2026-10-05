@@ -38,7 +38,6 @@ pub fn run_prune(
   stages.report("Reading input", 0.0, "");
 
   let parse = nwk_read_file(args.tree())?;
-  let confidences = parse.confidences();
   let names = parse.names();
   let graph: Graph = parse.graph;
   let branch_lengths_input = parse.branch_lengths;
@@ -112,7 +111,7 @@ pub fn run_prune(
     log,
   )?;
 
-  write_prune_trees(&graph, &names, &branch_lengths, &confidences, &maps, &resolved, log)?;
+  write_prune_trees(&graph, &names, &branch_lengths, &maps, &resolved, log)?;
 
   stages.report("Done", 1.0, "");
   Ok(())
@@ -122,7 +121,6 @@ fn write_prune_trees(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  branch_support: &BTreeMap<GraphNodeKey, Option<f64>>,
   maps: &PruneOutputMaps,
   resolved: &ResolvedOutputs,
   log: &dyn LogSink,
@@ -133,7 +131,6 @@ fn write_prune_trees(
     divergence_branch_lengths: branch_lengths,
     time_branch_lengths: None,
     divergence: Divergence::CumulativeBranchLength,
-    branch_support: Some(branch_support),
     sequences: maps.root_sequence.as_ref().map(|root_sequence| TreeSequences {
       root_sequence,
       edge_mutations: &maps.edge_mutations,

@@ -42,7 +42,6 @@ pub fn run_optimize(
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
   }
   let nwk_parsed = nwk_read_file(args.tree())?;
-  let confidences = nwk_parsed.confidences();
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
@@ -95,7 +94,6 @@ pub fn run_optimize(
     graph: &graph,
     names: &names,
     branch_lengths: &branch_lengths,
-    branch_support: &confidences,
     maps: &maps,
     mutation_units: matches!(args.divergence_units, DivergenceUnits::Mutations),
     alignment: args.alignment.alignment.first().map(PathBuf::as_path),
@@ -112,7 +110,6 @@ struct OptimizeTrees<'a> {
   graph: &'a Graph,
   names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  branch_support: &'a BTreeMap<GraphNodeKey, Option<f64>>,
   maps: &'a OptimizeOutputMaps,
   mutation_units: bool,
   alignment: Option<&'a Path>,
@@ -130,7 +127,6 @@ fn write_optimize_trees(
     divergence_branch_lengths: trees.branch_lengths,
     time_branch_lengths: None,
     divergence: Divergence::CumulativeBranchLength,
-    branch_support: Some(trees.branch_support),
     sequences: Some(TreeSequences {
       root_sequence: &trees.maps.root_sequence,
       edge_mutations: &trees.maps.edge_mutations,
@@ -150,7 +146,6 @@ fn write_optimize_trees(
       alignment: trees.alignment,
       input_tree: Some(trees.input_tree),
       clock_model: None,
-      branch_support: Some(trees.branch_support),
     };
     write_augur_node_data_refine(&tree, &run, path)?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());

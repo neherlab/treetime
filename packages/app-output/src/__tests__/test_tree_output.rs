@@ -33,9 +33,7 @@ pub(super) mod tests {
   #[test]
   fn test_tree_output_ancestral_models_preserve_semantics() -> Result<(), Report> {
     let setup = helpers::ancestral_setup(helpers::Mutations::NucleotideSubstitution)?;
-    let support = helpers::support_on(&setup.topology, "A", 0.9);
-
-    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup, &support), CommandKind::Ancestral)?;
+    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup), CommandKind::Ancestral)?;
     let child = helpers::auspice_child(&auspice, "A");
     assert_eq!(Some(helpers::UPDATED), auspice.data.meta.updated.as_deref());
     assert_eq!(vec![o!("tree"), o!("entropy")], auspice.data.meta.panels);
@@ -52,7 +50,7 @@ pub(super) mod tests {
     assert_eq!(Some(0.5), child.node_attrs.div);
     assert_eq!(vec![o!("A1T")], child.branch_attrs.mutations["nuc"]);
 
-    let mat = helpers::mat(&helpers::ancestral_graph(&setup, &support))?;
+    let mat = helpers::mat(&helpers::ancestral_graph(&setup))?;
     let mutation = mat
       .node_mutations
       .iter()
@@ -70,12 +68,12 @@ pub(super) mod tests {
   #[test]
   fn test_tree_output_auspice_drops_nucleotide_indel_and_encodes_amino_acid() -> Result<(), Report> {
     let setup = helpers::ancestral_setup(helpers::Mutations::Indel)?;
-    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup, &btreemap! {}), CommandKind::Ancestral)?;
+    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup), CommandKind::Ancestral)?;
     let child = helpers::auspice_child(&auspice, "A");
     assert!(!child.branch_attrs.mutations.contains_key("nuc"));
 
     let setup = helpers::ancestral_setup(helpers::Mutations::AminoAcid)?;
-    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup, &btreemap! {}), CommandKind::Ancestral)?;
+    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup), CommandKind::Ancestral)?;
     let child = helpers::auspice_child(&auspice, "A");
     assert_eq!(vec![o!("A2T")], child.branch_attrs.mutations["S"]);
     let annotations = auspice
@@ -103,7 +101,7 @@ pub(super) mod tests {
       .expect("AA fixture must have mutations on A")
       .insert(o!("E"), vec![]);
 
-    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup, &btreemap! {}), CommandKind::Ancestral)?;
+    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup), CommandKind::Ancestral)?;
 
     let expected = btreemap! { o!("S") => vec![o!("A2T")] };
     assert_eq!(expected, helpers::auspice_child(&auspice, "A").branch_attrs.mutations);
@@ -123,7 +121,7 @@ pub(super) mod tests {
   ) -> Result<(), Report> {
     let setup = helpers::ancestral_setup(mutations)?;
 
-    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup, &btreemap! {}), CommandKind::Ancestral)?;
+    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup), CommandKind::Ancestral)?;
 
     let actual = auspice.data.meta.colorings.iter().any(|coloring| coloring.key == "gt");
     assert_eq!(expected, actual);
@@ -239,8 +237,7 @@ pub(super) mod tests {
       TreeWriteKind::Nwk(NwkStyle::Plain) => nwk_path.clone(),
       TreeWriteKind::MatJson => mat_path.clone(),
     };
-    let support = btreemap! {};
-    let graph = helpers::ancestral_graph(&setup, &support);
+    let graph = helpers::ancestral_graph(&setup);
 
     assert_error!(
       write_tree_outputs(
@@ -263,9 +260,8 @@ pub(super) mod tests {
     let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
     let path = dir.path().join("graph.json");
     let outputs = btreemap! { TreeWriteKind::GraphJson => path.clone() };
-    let support = btreemap! {};
 
-    write_graph_outputs(&helpers::ancestral_graph(&setup, &support), &outputs)?;
+    write_graph_outputs(&helpers::ancestral_graph(&setup), &outputs)?;
 
     let actual: Value = json_read_file(&path)?;
     let nodes = actual["nodes"]
@@ -348,7 +344,7 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_all_auspice_models_match_augur_v2_schema() -> Result<(), Report> {
-    let documents = helpers::all_auspice_documents(helpers::InputBranchSupport::Absent)?;
+    let documents = helpers::all_auspice_documents()?;
     let validator = helpers::auspice_validator()?;
 
     for (command, document) in &documents {
@@ -370,62 +366,25 @@ pub(super) mod tests {
     Ok(())
   }
 
-  #[rstest]
-  #[case::ancestral("ancestral")]
-  #[case::optimize("optimize")]
-  #[case::prune("prune")]
-  #[case::mugration("mugration")]
-  #[trace]
-  fn test_tree_output_auspice_writes_input_branch_support(#[case] command: &str) -> Result<(), Report> {
-    let document = &helpers::all_auspice_documents(helpers::InputBranchSupport::OnLeafA)?[command];
-    let support: Vec<&Value> = document["tree"]["children"]
-      .as_array()
-      .expect("fixture root must have children")
-      .iter()
-      .filter(|child| child["name"] == "A")
-      .map(|child| &child["node_attrs"]["confidence"])
-      .collect();
-    assert_eq!(vec![&json!({ "value": 0.9 })], support);
-    Ok(())
-  }
-
   #[test]
-  fn test_tree_output_branch_support_rejects_a_trait_named_confidence() -> Result<(), Report> {
+  fn test_tree_output_auspice_writes_a_trait_named_confidence_like_any_trait() -> Result<(), Report> {
     let setup = helpers::mugration_setup()?;
-    let support = helpers::support_on(&setup.topology, "A", 0.9);
-    assert_error!(
-      helpers::auspice(
-        &helpers::mugration_graph(&setup, "confidence", &support),
-        CommandKind::Mugration
-      ),
-      "Node 'A' has a trait named 'confidence', which Auspice JSON also uses for the input branch support. Rename the metadata column of the trait."
-    );
-    Ok(())
-  }
+    let country = helpers::auspice(&helpers::mugration_graph(&setup, "country"), CommandKind::Mugration)?;
+    let confidence = helpers::auspice(&helpers::mugration_graph(&setup, "confidence"), CommandKind::Mugration)?;
 
-  #[test]
-  fn test_tree_output_branch_support_rejects_non_finite_value() -> Result<(), Report> {
-    let topology = helpers::topology()?;
-    let support = helpers::support_on(&topology, "A", f64::NAN);
-    let root_sequence = Seq::try_from_str("ACGT")?;
-    let edge_mutations = helpers::no_mutations(&topology);
-    assert_error!(
-      helpers::auspice(
-        &helpers::optimize_graph(&topology, &support, &root_sequence, &edge_mutations),
-        CommandKind::Optimize
-      ),
-      "Node 'A' has non-finite input branch support=NaN"
-    );
+    let expected = json!({ "confidence": helpers::auspice_child(&country, "A").node_attrs.other["country"] });
+    let actual = &helpers::auspice_child(&confidence, "A").node_attrs.other;
+    assert_eq!(&expected, actual);
     Ok(())
   }
 
   #[test]
   fn test_tree_output_errors_name_the_command() -> Result<(), Report> {
-    let topology = helpers::topology()?;
-    let support = helpers::support_on(&topology, "A", f64::NAN);
+    let mut topology = helpers::topology()?;
+    helpers::set_branch_length(&mut topology, "A", Some(f64::NAN))?;
     let root_sequence = Seq::try_from_str("ACGT")?;
     let edge_mutations = helpers::no_mutations(&topology);
-    let graph = helpers::optimize_graph(&topology, &support, &root_sequence, &edge_mutations);
+    let graph = helpers::optimize_graph(&topology, &root_sequence, &edge_mutations);
     let outputs = btreemap! { TreeWriteKind::Auspice => PathBuf::from("tree.auspice.json") };
 
     assert_error!(
@@ -435,7 +394,7 @@ pub(super) mod tests {
         CommandKind::Optimize,
         &NoopProgress
       ),
-      "When writing the tree outputs of optimize: Node 'A' has non-finite input branch support=NaN"
+      "When writing the tree outputs of optimize: Node 'A' has non-finite div=NaN"
     );
     Ok(())
   }
@@ -484,7 +443,7 @@ pub(super) mod tests {
   #[case::mugration("mugration")]
   #[trace]
   fn test_tree_output_auspice_without_sequences_has_tree_panel_only(#[case] command: &str) -> Result<(), Report> {
-    let document = &helpers::all_auspice_documents(helpers::InputBranchSupport::Absent)?[command];
+    let document = &helpers::all_auspice_documents()?[command];
 
     assert_eq!(json!(["tree"]), document["meta"]["panels"]);
     assert_eq!(None, document["meta"].get("genome_annotations"));
@@ -500,7 +459,7 @@ pub(super) mod tests {
     let edge_mutations = helpers::no_mutations(&topology);
     assert_error!(
       helpers::auspice(
-        &helpers::optimize_graph(&topology, &btreemap! {}, &root_sequence, &edge_mutations),
+        &helpers::optimize_graph(&topology, &root_sequence, &edge_mutations),
         CommandKind::Optimize
       ),
       "Auspice v2 node 'A' requires divergence or numerical date data"
@@ -528,7 +487,7 @@ pub(super) mod tests {
   fn test_tree_output_auspice_rejects_invalid_amino_acid_track_name() -> Result<(), Report> {
     let setup = helpers::ancestral_setup(helpers::Mutations::IndelAndAminoAcid)?;
     assert_error!(
-      helpers::auspice(&helpers::ancestral_graph(&setup, &btreemap! {}), CommandKind::Ancestral),
+      helpers::auspice(&helpers::ancestral_graph(&setup), CommandKind::Ancestral),
       "Auspice v2 cannot represent amino-acid mutation track 'S/1:weird'"
     );
     Ok(())
@@ -638,12 +597,6 @@ pub(super) mod tests {
       IndelAndAminoAcid,
     }
 
-    #[derive(Clone, Copy)]
-    pub(crate) enum InputBranchSupport {
-      Absent,
-      OnLeafA,
-    }
-
     pub(crate) struct Topology {
       pub(crate) graph: Graph,
       pub(crate) names: BTreeMap<GraphNodeKey, Option<String>>,
@@ -693,7 +646,6 @@ pub(super) mod tests {
         divergence_branch_lengths: &topology.branch_lengths,
         time_branch_lengths: None,
         divergence: Divergence::CumulativeBranchLength,
-        branch_support: None,
         sequences: None,
         dates: None,
         traits: None,
@@ -781,12 +733,8 @@ pub(super) mod tests {
       })
     }
 
-    pub(crate) fn ancestral_graph<'a>(
-      setup: &'a AncestralSetup,
-      support: &'a BTreeMap<GraphNodeKey, Option<f64>>,
-    ) -> AnnotatedGraph<'a> {
+    pub(crate) fn ancestral_graph(setup: &AncestralSetup) -> AnnotatedGraph<'_> {
       AnnotatedGraph {
-        branch_support: Some(support),
         sequences: Some(TreeSequences {
           root_sequence: &setup.root_sequence,
           edge_mutations: &setup.edge_mutations,
@@ -802,12 +750,10 @@ pub(super) mod tests {
 
     pub(crate) fn optimize_graph<'a>(
       topology: &'a Topology,
-      support: &'a BTreeMap<GraphNodeKey, Option<f64>>,
       root_sequence: &'a Seq,
       edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
     ) -> AnnotatedGraph<'a> {
       AnnotatedGraph {
-        branch_support: Some(support),
         sequences: Some(TreeSequences {
           root_sequence,
           edge_mutations,
@@ -842,13 +788,8 @@ pub(super) mod tests {
       })
     }
 
-    pub(crate) fn mugration_graph<'a>(
-      setup: &'a MugrationSetup,
-      attribute: &'a str,
-      support: &'a BTreeMap<GraphNodeKey, Option<f64>>,
-    ) -> AnnotatedGraph<'a> {
+    pub(crate) fn mugration_graph<'a>(setup: &'a MugrationSetup, attribute: &'a str) -> AnnotatedGraph<'a> {
       AnnotatedGraph {
-        branch_support: Some(support),
         traits: Some(TreeTraits {
           attribute,
           states: &setup.states,
@@ -902,39 +843,26 @@ pub(super) mod tests {
       }
     }
 
-    pub(crate) fn all_auspice_documents(support: InputBranchSupport) -> Result<BTreeMap<&'static str, Value>, Report> {
+    pub(crate) fn all_auspice_documents() -> Result<BTreeMap<&'static str, Value>, Report> {
       let ancestral = ancestral_setup(Mutations::NucleotideSubstitution)?;
-      let ancestral_support = branch_support(&ancestral.topology, support);
-      let ancestral = auspice(&ancestral_graph(&ancestral, &ancestral_support), CommandKind::Ancestral)?;
+      let ancestral = auspice(&ancestral_graph(&ancestral), CommandKind::Ancestral)?;
 
       let optimize = topology()?;
-      let optimize_support = branch_support(&optimize, support);
       let optimize_reference = Seq::try_from_str("ACGT")?;
       let optimize_mutations = no_mutations(&optimize);
       let optimize = auspice(
-        &optimize_graph(&optimize, &optimize_support, &optimize_reference, &optimize_mutations),
+        &optimize_graph(&optimize, &optimize_reference, &optimize_mutations),
         CommandKind::Optimize,
       )?;
 
       let prune = topology()?;
-      let prune_support = branch_support(&prune, support);
-      let prune = auspice(
-        &AnnotatedGraph {
-          branch_support: Some(&prune_support),
-          ..annotated(&prune)
-        },
-        CommandKind::Prune,
-      )?;
+      let prune = auspice(&annotated(&prune), CommandKind::Prune)?;
 
       let clock = dated_setup()?;
       let clock = auspice(&dated_graph(&clock, None), CommandKind::Clock)?;
 
       let mugration = mugration_setup()?;
-      let mugration_support = branch_support(&mugration.topology, support);
-      let mugration = auspice(
-        &mugration_graph(&mugration, "country", &mugration_support),
-        CommandKind::Mugration,
-      )?;
+      let mugration = auspice(&mugration_graph(&mugration, "country"), CommandKind::Mugration)?;
 
       let timetree = dated_setup()?;
       let timetree = auspice(&dated_graph(&timetree, None), CommandKind::Timetree)?;
@@ -998,10 +926,6 @@ pub(super) mod tests {
         .expect("fixture child must exist")
     }
 
-    pub(crate) fn support_on(topology: &Topology, name: &str, value: f64) -> BTreeMap<GraphNodeKey, Option<f64>> {
-      btreemap! { node_key(topology, name) => Some(value) }
-    }
-
     pub(crate) fn branch_length(topology: &Topology, target_name: &str) -> Result<Option<f64>, Report> {
       Ok(topology.branch_lengths[&parent_edge(topology, target_name)?])
     }
@@ -1053,13 +977,6 @@ pub(super) mod tests {
 
     pub(crate) fn json_value(value: &impl Serialize) -> Result<Value, Report> {
       json_write_str(value, JsonPretty(false)).and_then(|json| json_read_str(&json))
-    }
-
-    fn branch_support(topology: &Topology, support: InputBranchSupport) -> BTreeMap<GraphNodeKey, Option<f64>> {
-      match support {
-        InputBranchSupport::Absent => BTreeMap::new(),
-        InputBranchSupport::OnLeafA => support_on(topology, "A", 0.9),
-      }
     }
 
     struct AuspiceSchemaRetriever {

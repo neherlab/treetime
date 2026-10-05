@@ -142,8 +142,7 @@ mod tests {
   #[test]
   fn test_nwk_comments_traits_give_trait_comments() -> Result<(), Report> {
     let setup = mugration_setup()?;
-    let support = btreemap! {};
-    let graph = mugration_graph(&setup, "country", &support);
+    let graph = mugration_graph(&setup, "country");
 
     let comments = nwk_node_comments(&AnnotatedTreeView::new(&graph)?)?;
 
@@ -174,8 +173,7 @@ mod tests {
     let mut setup = mugration_setup()?;
     let a_key = node_key(&setup.topology, "A");
     setup.values.insert(a_key, Some(o!(value)));
-    let support = btreemap! {};
-    let graph = mugration_graph(&setup, "country", &support);
+    let graph = mugration_graph(&setup, "country");
     let dir = TempDir::new()?;
     let path = dir.path().join("mugration.nwk");
 
