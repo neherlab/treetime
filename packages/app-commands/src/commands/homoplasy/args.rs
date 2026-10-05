@@ -219,10 +219,7 @@ pub struct TreetimeHomoplasyArgsRaw {
   /// Use it when the tree is not in substitutions per site, for example `--rescale=0.001` for a
   /// tree in substitutions per thousand sites. Scales the reconstruction, the tree outputs, and the
   /// reported tree lengths.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, default_value_t = 1.0, help_heading = "Homoplasy")
-  )]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = 1.0, help_heading = "Homoplasy"))]
   #[default = 1.0]
   pub rescale: f64,
 

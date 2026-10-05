@@ -36,8 +36,14 @@ mod tests {
   #[test]
   fn test_classify_insertion_and_deletion() -> Result<(), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let inserted = Mutation::indel(MutationTrack::Nucleotide, &insertion((3, 5), Seq::try_from_slice(b"AC")?))?;
-    let deleted = Mutation::indel(MutationTrack::Nucleotide, &deletion((3, 5), Seq::try_from_slice(b"AC")?))?;
+    let inserted = Mutation::indel(
+      MutationTrack::Nucleotide,
+      &insertion((3, 5), Seq::try_from_slice(b"AC")?),
+    )?;
+    let deleted = Mutation::indel(
+      MutationTrack::Nucleotide,
+      &deletion((3, 5), Seq::try_from_slice(b"AC")?),
+    )?;
     assert_eq!(
       (MutationClass::Indel, MutationClass::Indel),
       (

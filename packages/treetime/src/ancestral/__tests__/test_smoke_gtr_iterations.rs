@@ -104,14 +104,7 @@ mod tests {
         mask,
       };
 
-      let result = crate::ancestral::pipeline::run(
-        &params,
-        input,
-        None,
-        &NoopCancel,
-        &NoopProgress,
-        &NoopProgress,
-      )?;
+      let result = crate::ancestral::pipeline::run(&params, input, None, &NoopCancel, &NoopProgress, &NoopProgress)?;
       result.gtr.ok_or_eyre("GTR should be fitted with --model=infer")
     }
   }

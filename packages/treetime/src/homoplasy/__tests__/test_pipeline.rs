@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
-  use helpers::{Scenario, sub};
   use crate::homoplasy::pipeline::{IndelKey, SiteBranches};
   use crate::homoplasy::recurrence::Recurrence;
   use crate::seq::indel::InDelKind;
   use crate::test_utils::deletion;
   use eyre::Report;
+  use helpers::{Scenario, sub};
   use maplit::btreemap;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
@@ -62,7 +62,11 @@ mod tests {
     let terminal = &output.substitutions.terminal;
     assert_eq!(4, terminal.count);
     assert_eq!(btreemap! {1 => 4}, terminal.histogram);
-    let ranked: Vec<_> = terminal.ranked.iter().map(|recurrence| recurrence.mutation.clone()).collect();
+    let ranked: Vec<_> = terminal
+      .ranked
+      .iter()
+      .map(|recurrence| recurrence.mutation.clone())
+      .collect();
     assert_eq!(vec![sub("A10G"), sub("C20T"), sub("G30A"), sub("T40C")], ranked);
     Ok(())
   }
@@ -78,13 +82,20 @@ mod tests {
     let sites = scenario.run(0)?.substitutions.sites;
 
     assert_eq!(50, sites.genome_length);
-    assert_eq!(vec![46, 2, 2], sites.rows.iter().map(|row| row.sites).collect::<Vec<_>>());
+    assert_eq!(
+      vec![46, 2, 2],
+      sites.rows.iter().map(|row| row.sites).collect::<Vec<_>>()
+    );
     pretty_assert_abs_diff_eq!(
       array![44.346_021_835_857_876, 5.321_522_620_302_945, 0.319_291_357_218_176_7],
       sites.rows.iter().map(|row| row.expected).collect::<Array1<f64>>(),
       epsilon = 1e-10
     );
-    pretty_assert_abs_diff_eq!(-1.140_831_793_246_832_1, sites.log_likelihood_difference, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(
+      -1.140_831_793_246_832_1,
+      sites.log_likelihood_difference,
+      epsilon = 1e-10
+    );
     Ok(())
   }
 
@@ -99,13 +110,20 @@ mod tests {
     let sites = scenario.run(10)?.substitutions.sites;
 
     assert_eq!(60, sites.genome_length);
-    assert_eq!(vec![56, 2, 2], sites.rows.iter().map(|row| row.sites).collect::<Vec<_>>());
+    assert_eq!(
+      vec![56, 2, 2],
+      sites.rows.iter().map(|row| row.sites).collect::<Vec<_>>()
+    );
     pretty_assert_abs_diff_eq!(
       array![54.290_245_082_157_57, 5.429_024_508_215_757_5, 0.271_451_225_410_787_9],
       sites.rows.iter().map(|row| row.expected).collect::<Array1<f64>>(),
       epsilon = 1e-10
     );
-    pretty_assert_abs_diff_eq!(-1.181_185_129_015_297_3, sites.log_likelihood_difference, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(
+      -1.181_185_129_015_297_3,
+      sites.log_likelihood_difference,
+      epsilon = 1e-10
+    );
     Ok(())
   }
 
@@ -126,7 +144,11 @@ mod tests {
       sites.rows.iter().map(|row| row.expected).collect::<Array1<f64>>(),
       epsilon = 1e-10
     );
-    pretty_assert_abs_diff_eq!(0.809_018_614_972_192_3, sites.log_likelihood_difference, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(
+      0.809_018_614_972_192_3,
+      sites.log_likelihood_difference,
+      epsilon = 1e-10
+    );
     Ok(())
   }
 
@@ -138,7 +160,11 @@ mod tests {
     assert_eq!(1, output.substitutions.sites.rows.len());
     assert_eq!(55, output.substitutions.sites.rows[0].sites);
     pretty_assert_abs_diff_eq!(55.0, output.substitutions.sites.rows[0].expected, epsilon = 1e-10);
-    pretty_assert_abs_diff_eq!(0.0, output.substitutions.sites.log_likelihood_difference, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(
+      0.0,
+      output.substitutions.sites.log_likelihood_difference,
+      epsilon = 1e-10
+    );
     Ok(())
   }
 
@@ -189,7 +215,10 @@ mod tests {
     let scenario = Scenario::new()?.with_substitutions(&[("root", "AB", &["A10G"]), ("AB", "A", &["G10A"])])?;
     let output = scenario.run(0)?;
 
-    assert_eq!(btreemap! {scenario.node("A") => vec![sub("G10A")]}, output.substitutions.leaves);
+    assert_eq!(
+      btreemap! {scenario.node("A") => vec![sub("G10A")]},
+      output.substitutions.leaves
+    );
     assert_eq!(btreemap! {1 => 2}, output.substitutions.all.histogram);
     Ok(())
   }

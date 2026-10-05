@@ -153,9 +153,9 @@ fn substitution_stats(
   let class = MutationClass::Substitution;
   let mutations = input.bridged_mutations;
   let events = || {
-    branches.iter().flat_map(move |branch| {
-      substitutions(input, mutations, branch, class).map(move |sub| (sub.clone(), branch))
-    })
+    branches
+      .iter()
+      .flat_map(move |branch| substitutions(input, mutations, branch, class).map(move |sub| (sub.clone(), branch)))
   };
   let all = RecurrenceTable::new(events().map(|(sub, branch)| (sub, branch.node)), substitution_order);
   let terminal = RecurrenceTable::new(
@@ -201,9 +201,9 @@ fn ambiguous_stats(input: &HomoplasyInput<'_>, branches: &[Branch]) -> Ambiguous
   let class = MutationClass::Ambiguous;
   let mutations = input.raw_mutations;
   let events = || {
-    branches.iter().flat_map(move |branch| {
-      substitutions(input, mutations, branch, class).map(move |sub| (sub.clone(), branch))
-    })
+    branches
+      .iter()
+      .flat_map(move |branch| substitutions(input, mutations, branch, class).map(move |sub| (sub.clone(), branch)))
   };
   let all = RecurrenceTable::new(events().map(|(sub, branch)| (sub, branch.node)), substitution_order);
 

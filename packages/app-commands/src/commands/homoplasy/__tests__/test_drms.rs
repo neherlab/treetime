@@ -24,7 +24,10 @@ mod tests {
   #[test]
   fn test_drms_annotate_second_alt_base_of_a_position() -> Result<(), Report> {
     let table = helpers::table()?;
-    assert_eq!(Some(o!("M41I")), table.annotate(2, "C").and_then(|drm| drm.substitution));
+    assert_eq!(
+      Some(o!("M41I")),
+      table.annotate(2, "C").and_then(|drm| drm.substitution)
+    );
     Ok(())
   }
 

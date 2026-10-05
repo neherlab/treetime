@@ -101,10 +101,7 @@ fn site_hits_block(result: &HomoplasyResult) -> String {
       )
     })
     .join("");
-  format!(
-    "Of the {} positions in the genome,{rows}",
-    substitutions.genome_length
-  )
+  format!("Of the {} positions in the genome,{rows}", substitutions.genome_length)
 }
 
 fn top_mutations_block(header: &str, label: &str, table: &MutationTable, n: usize, drms: bool) -> String {
@@ -127,10 +124,14 @@ fn top_mutations_block(header: &str, label: &str, table: &MutationTable, n: usiz
 }
 
 fn drm_details(drm: &DrmAnnotation) -> String {
-  [Some(drm.gene.as_str()), Some(drm.drug.as_str()), drm.substitution.as_deref()]
-    .into_iter()
-    .flatten()
-    .join(" ")
+  [
+    Some(drm.gene.as_str()),
+    Some(drm.drug.as_str()),
+    drm.substitution.as_deref(),
+  ]
+  .into_iter()
+  .flatten()
+  .join(" ")
 }
 
 fn taxa_block(taxa: &[TaxonResult], n: usize, drms: bool) -> String {

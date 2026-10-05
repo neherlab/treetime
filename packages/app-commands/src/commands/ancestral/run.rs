@@ -65,7 +65,8 @@ pub fn run_ancestral_reconstruction(
   let seed = args.seed_args.resolve(random_step, log);
   let params = ancestral_params(args, seed);
 
-  let output = pipeline::run(&params, input, Some(&mut seq_sink), cancel, stages, log).map_err(|err| err.into_report())?;
+  let output =
+    pipeline::run(&params, input, Some(&mut seq_sink), cancel, stages, log).map_err(|err| err.into_report())?;
   let mut graph = output.graph;
   let AncestralSeqSink {
     fasta, node_sequences, ..

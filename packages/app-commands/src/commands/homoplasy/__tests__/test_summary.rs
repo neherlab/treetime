@@ -153,8 +153,14 @@ mod tests {
         substitutions: SubstitutionStats {
           total_branch_length: 1.0,
           terminal_branch_length: 0.5,
-          all: table(vec![(Sub::from_str("G10A")?, vec![A, UNNAMED]), (Sub::from_str("C20T")?, vec![B])]),
-          terminal: table(vec![(Sub::from_str("G10A")?, vec![A]), (Sub::from_str("C20T")?, vec![B])]),
+          all: table(vec![
+            (Sub::from_str("G10A")?, vec![A, UNNAMED]),
+            (Sub::from_str("C20T")?, vec![B]),
+          ]),
+          terminal: table(vec![
+            (Sub::from_str("G10A")?, vec![A]),
+            (Sub::from_str("C20T")?, vec![B]),
+          ]),
           sites: SiteHistogram {
             genome_length: 30,
             rows: vec![SiteHits {

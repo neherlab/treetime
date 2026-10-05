@@ -59,8 +59,8 @@ pub fn run_homoplasy(
   let output = ancestral::pipeline::run(&params, input, None, cancel, stages, log).map_err(|err| err.into_report())?;
   let mut graph = output.graph;
   let raw_mutations = output.edge_mutations;
-  let bridged_mutations =
-    UnknownMutationFilter::hiding_unknown(output.ambiguous_char).reported_edge_mutations(&graph, raw_mutations.clone())?;
+  let bridged_mutations = UnknownMutationFilter::hiding_unknown(output.ambiguous_char)
+    .reported_edge_mutations(&graph, raw_mutations.clone())?;
 
   cancel.check()?;
   stages.report("Counting recurrent mutations", 0.8, "");

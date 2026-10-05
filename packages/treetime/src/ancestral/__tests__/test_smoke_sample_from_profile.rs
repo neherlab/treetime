@@ -78,14 +78,7 @@ mod tests {
       mask,
     };
 
-    let result = pipeline::run(
-      &params,
-      input,
-      None,
-      &NoopCancel,
-      &NoopProgress,
-      &NoopProgress,
-    );
+    let result = pipeline::run(&params, input, None, &NoopCancel, &NoopProgress, &NoopProgress);
     assert!(result.is_err(), "parsimony with posterior sampling must be rejected");
     let err = result.err().unwrap().to_string();
     assert!(
@@ -146,7 +139,14 @@ mod tests {
       };
 
       let mut sink = RecordingSeqSink::default();
-      pipeline::run(&params, input, Some(&mut sink), &NoopCancel, &NoopProgress, &NoopProgress)?;
+      pipeline::run(
+        &params,
+        input,
+        Some(&mut sink),
+        &NoopCancel,
+        &NoopProgress,
+        &NoopProgress,
+      )?;
       let captured = sink
         .items
         .into_iter()

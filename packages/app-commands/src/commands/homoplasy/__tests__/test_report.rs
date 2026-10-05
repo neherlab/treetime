@@ -162,7 +162,11 @@ mod tests {
           genome_length: 100,
           total_branch_length: 0.066_17,
           terminal_branch_length: 0.039_62,
-          all: table(7, &[(1, 2), (2, 1), (3, 1)], &[("G10A", 3), ("T20C", 2), ("A30G", 1), ("C40T", 1)]),
+          all: table(
+            7,
+            &[(1, 2), (2, 1), (3, 1)],
+            &[("G10A", 3), ("T20C", 2), ("A30G", 1), ("C40T", 1)],
+          ),
           terminal: table(3, &[(1, 1), (2, 1)], &[("G10A", 2), ("C40T", 1)]),
           site_hits: vec![
             site_hits(0, 96, 93.244),

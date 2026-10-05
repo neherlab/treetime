@@ -120,7 +120,10 @@ mod tests {
     pub(super) fn load_case(name: &str) -> Result<(GmInputs, V0Report), Report> {
       let mut inputs: BTreeMap<String, GmInputs> = json_read_file(fixtures().join("gm_homoplasy_inputs.json"))?;
       let mut outputs: BTreeMap<String, V0Report> = json_read_file(fixtures().join("gm_homoplasy_outputs.json"))?;
-      Ok((inputs.remove(name).unwrap(), outputs.remove(name).unwrap().with_v1_tie_order()?))
+      Ok((
+        inputs.remove(name).unwrap(),
+        outputs.remove(name).unwrap().with_v1_tie_order()?,
+      ))
     }
 
     pub(super) fn run_v1(inputs: &GmInputs) -> Result<HomoplasyResult, Report> {
