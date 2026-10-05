@@ -15,6 +15,7 @@ pixi.lock linguist-generated=true
 # Generated sources (`just gen`): mark as generated and hide from diffs.
 packages/app-contracts/src/generated/** linguist-generated=true -diff
 packages/app-contracts/openapi.json linguist-generated=true -diff
+packages/app-contracts/setting-catalog.json linguist-generated=true -diff
 packages/app-napi/index.d.ts linguist-generated=true -diff
 packages/schemas/*.schema.json linguist-generated=true -diff
 docs/docs/reference.md linguist-generated=true -diff

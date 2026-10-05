@@ -6,7 +6,7 @@ import Upload from "~icons/lucide/upload";
 import { pressedChoice } from "../components/toggleChoice";
 import { formatBytes } from "../format";
 import { useHost } from "../host-context";
-import { COMMAND_SETTINGS } from "../settings/catalog";
+import { commandSettings } from "../settings/catalog";
 import { baseName, pathList, slotFactsText, slotProblem } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import { cn } from "../ui/cn";
@@ -53,7 +53,7 @@ export function InputsSection({ command, facts }: { command: AppCommand; facts: 
         </ToggleGroup>
       </div>
       {panel !== null && <ExamplesPanel kind={panel} command={command} close={closePanel} />}
-      {COMMAND_SETTINGS[command].inputs.map((input) => (
+      {commandSettings(command).inputs.map((input) => (
         <InputSlotRow key={input.kind} command={command} slot={input} facts={facts} />
       ))}
     </div>
@@ -73,7 +73,7 @@ function InputSlotRow({
   const source = useDraftStore((state) => state.draft.sources[slot.kind]);
   const { getRootProps, getInputProps, isDragActive } = useFileDrop(command, slot.kind, slot.list);
   const paths = pathList(watched === undefined ? undefined : fromFormValue(watched));
-  const factsText = slotFactsText(slot.kind, facts, COMMAND_SETTINGS[command].uses_dates);
+  const factsText = slotFactsText(slot.kind, facts, commandSettings(command).uses_dates);
   const problem = slotProblem(slot.kind, facts);
 
   return (

@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 
 import { useApiContext } from "../api/context";
-import { COMMAND_SETTINGS } from "../settings/catalog";
+import { commandSettings } from "../settings/catalog";
 import { normalizeConfig, settingValue } from "../settings/config";
 import { baseName, pathList } from "../settings/inputs";
 import { getAt, sameJson } from "../settings/json";
@@ -40,7 +40,7 @@ export function useConfigLoader() {
       }
 
       const command = result.command;
-      const specs = COMMAND_SETTINGS[command].settings;
+      const specs = commandSettings(command).settings;
       const config = normalizeConfig(specs, result.config);
       const sources: Record<string, UiDraftSource> = {};
 
@@ -70,7 +70,7 @@ export function useConfigLoader() {
 
 function inputSettings(command: AppCommand, config: SparseConfig): SparseConfig {
   return Object.fromEntries(
-    COMMAND_SETTINGS[command].settings.flatMap((spec) => {
+    commandSettings(command).settings.flatMap((spec) => {
       const value = getAt(config, spec.path);
 
       return spec.role === "input" && value !== undefined ? [[spec.key, value] as const] : [];

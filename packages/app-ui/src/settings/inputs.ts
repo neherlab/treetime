@@ -10,7 +10,7 @@ import type {
 } from "@neherlab/app-contracts";
 import * as z from "zod";
 
-import { COMMAND_SETTINGS } from "./catalog";
+import { commandSettings } from "./catalog";
 import { getAt } from "./json";
 
 export interface InputAssignment {
@@ -22,7 +22,7 @@ export interface InputAssignment {
 const zPath = z.string().min(1);
 
 export function datasetInputs(dataset: Dataset, command: AppCommand): InputAssignment[] {
-  return COMMAND_SETTINGS[command].inputs.flatMap((slot) => {
+  return commandSettings(command).inputs.flatMap((slot) => {
     const input = dataset.inputs.find((candidate) => candidate.kind === slot.kind);
 
     return input === undefined
@@ -54,7 +54,7 @@ export function runInputAssignments(command: AppCommand, inputs: readonly RunInp
 }
 
 export function inputFactsRequest(command: AppCommand, config: SparseConfig): CheckInputsRequest | null {
-  const given = COMMAND_SETTINGS[command].inputs.some((slot) => pathList(getAt(config, [slot.kind])).length > 0);
+  const given = commandSettings(command).inputs.some((slot) => pathList(getAt(config, [slot.kind])).length > 0);
 
   return given ? { command, config } : null;
 }
@@ -88,7 +88,7 @@ function lastSeparator(path: string): number {
 }
 
 function isListInput(command: AppCommand, key: string): boolean {
-  return COMMAND_SETTINGS[command].inputs.some((slot) => slot.kind === key && slot.list);
+  return commandSettings(command).inputs.some((slot) => slot.kind === key && slot.list);
 }
 
 function stringOrNull(value: JsonValue | undefined): string | null {

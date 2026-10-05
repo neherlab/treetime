@@ -9,7 +9,7 @@ import Search from "~icons/lucide/search";
 import { useApi } from "../api/hooks";
 import { toggledChoice } from "../components/toggleChoice";
 import { headlineText } from "../format";
-import { APP_COMMANDS, COMMAND_INFO } from "../settings/commands";
+import { COMMANDS, commandSettings } from "../settings/catalog";
 import { useShellStore } from "../store/shell";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -45,7 +45,7 @@ export function AppSidebar() {
   const groups = useMemo(() => groupRuns(runs, DateTime.now()), [runs]);
 
   const commands = useMemo(
-    () => APP_COMMANDS.filter((command) => allRuns.some((run) => run.command === command)),
+    () => COMMANDS.flatMap(({ command }) => (allRuns.some((run) => run.command === command) ? [command] : [])),
     [allRuns],
   );
 
@@ -160,7 +160,7 @@ function CommandFilter({ commands }: { commands: readonly AppCommand[] }) {
       </ToggleGroupItem>
       {commands.map((command) => (
         <ToggleGroupItem key={command} value={command} className="h-6 px-2 text-xs">
-          {COMMAND_INFO[command].label}
+          {commandSettings(command).title}
         </ToggleGroupItem>
       ))}
     </ToggleGroup>

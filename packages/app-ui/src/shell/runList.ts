@@ -3,8 +3,7 @@ import type { DateTime } from "luxon";
 
 import { dayLabel } from "../format";
 import { fuzzyFilter } from "../fuzzy";
-import { COMMAND_SETTINGS } from "../settings/catalog";
-import { COMMAND_INFO } from "../settings/commands";
+import { commandSettings } from "../settings/catalog";
 
 interface RunGroup {
   label: string;
@@ -15,7 +14,7 @@ export function listedRuns(runs: readonly RunSummary[], filter: string, command:
   const candidates = runs.filter((run) => run.status !== "created" && (command === null || run.command === command));
 
   return fuzzyFilter(candidates, filter, (run) =>
-    [run.title, run.command, COMMAND_INFO[run.command].label, ...changedFlags(run)].join(" "),
+    [run.title, run.command, commandSettings(run.command).title, ...changedFlags(run)].join(" "),
   );
 }
 
@@ -46,7 +45,7 @@ export function groupRuns(runs: readonly RunSummary[], now: DateTime): RunGroup[
 }
 
 export function changedFlags(run: RunSummary): string[] {
-  const flags = new Map(COMMAND_SETTINGS[run.command].settings.map((spec) => [spec.key, spec.flag]));
+  const flags = new Map(commandSettings(run.command).settings.map((spec) => [spec.key, spec.flag]));
 
   return run.changed_settings.map((key) => flags.get(key) ?? key);
 }

@@ -4,6 +4,8 @@ mod __tests__;
 #[cfg(feature = "clap")]
 pub mod catalog;
 #[cfg(feature = "clap")]
+pub mod choices;
+#[cfg(feature = "clap")]
 pub mod cli_flags;
 #[cfg(feature = "clap")]
 pub mod cli_rules;

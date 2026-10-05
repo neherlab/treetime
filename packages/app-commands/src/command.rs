@@ -68,11 +68,11 @@ use treetime_utils::make_error;
 #[strum(serialize_all = "kebab-case")]
 pub enum AppCommand {
   Timetree,
+  Clock,
+  Ancestral,
+  Mugration,
   Optimize,
   Prune,
-  Ancestral,
-  Clock,
-  Mugration,
 }
 
 impl AppCommand {
@@ -124,6 +124,75 @@ impl AppCommand {
 
   pub const fn uses_dates(self) -> bool {
     matches!(self, Self::Timetree | Self::Clock)
+  }
+
+  pub const fn title(self) -> &'static str {
+    match self {
+      Self::Timetree => "Time tree",
+      Self::Clock => "Clock signal",
+      Self::Ancestral => "Ancestral sequences",
+      Self::Mugration => "Discrete traits",
+      Self::Optimize => "Branch lengths",
+      Self::Prune => "Prune tree",
+    }
+  }
+
+  pub const fn description(self) -> &'static str {
+    match self {
+      Self::Timetree => "Date the ancestors and estimate the clock rate from sampling dates.",
+      Self::Clock => "Root-to-tip regression: clock rate, temporal signal and outliers.",
+      Self::Ancestral => "Infer ancestral sequences and the mutations on each branch.",
+      Self::Mugration => "Ancestral states of a metadata column, such as country or host.",
+      Self::Optimize => "Maximum-likelihood branch lengths on a fixed topology.",
+      Self::Prune => "Collapse short or empty branches and remove listed samples.",
+    }
+  }
+
+  pub const fn main_settings(self) -> &'static [&'static str] {
+    match self {
+      Self::Timetree => &[
+        "clock_rate",
+        "clock_std_dev",
+        "confidence",
+        "covariation",
+        "coalescent",
+        "coalescent_opt",
+        "coalescent_skyline",
+        "skyline_n_points",
+        "skyline_stiffness",
+        "reroot",
+        "keep_root",
+        "clock_filter",
+        "relax",
+        "keep_polytomies",
+        "model",
+        "model_params",
+        "max_iter",
+      ],
+      Self::Clock => &[
+        "reroot",
+        "keep_root",
+        "clock_filter",
+        "covariation",
+        "allow_negative_rate",
+        "metadata_id_columns",
+      ],
+      Self::Ancestral => &[
+        "method_anc",
+        "model",
+        "model_params",
+        "gap_fill",
+        "reconstruct_tip_states",
+      ],
+      Self::Mugration => &["attribute", "weights", "pc", "missing_data", "sampling_bias_correction"],
+      Self::Optimize => &["opt_method", "reroot", "divergence_units", "no_indels", "max_iter"],
+      Self::Prune => &[
+        "prune_short",
+        "prune_empty",
+        "merge_shared_mutations",
+        "prune_nodes_list",
+      ],
+    }
   }
 
   #[cfg(feature = "clap")]

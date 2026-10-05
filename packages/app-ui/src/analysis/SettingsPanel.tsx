@@ -1,17 +1,18 @@
 import type {
-  SparseConfig,
+  ActiveChoice,
   AppCommand,
   InputFacts,
   RunCheck,
-  UiSettingsView,
   SettingSpec,
+  SparseConfig,
+  UiSettingsView,
 } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import ChevronRight from "~icons/lucide/chevron-right";
 import Search from "~icons/lucide/search";
 
 import { OptionToggle } from "../components/OptionToggle";
-import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
+import { commandSettings, groupedSpecs } from "../settings/catalog";
 import { isChanged } from "../settings/config";
 import { matchingSpecs } from "../settings/search";
 import { useDraftStore } from "../store/draft";
@@ -30,17 +31,21 @@ export function SettingsPanel({
   config,
   facts,
   checks,
+  reported,
+  checked,
 }: {
   command: AppCommand;
   config: SparseConfig;
   facts: InputFacts | undefined;
   checks: readonly RunCheck[] | undefined;
+  reported: readonly ActiveChoice[] | undefined;
+  checked: SparseConfig | undefined;
 }) {
   const view = useDraftStore((state) => state.draft.view);
   const search = useDraftStore((state) => state.draft.search);
   const changedOnly = useDraftStore((state) => state.draft.changed_only);
   const update = useDraftStore((state) => state.update);
-  const total = COMMAND_SETTINGS[command].settings.filter((spec) => spec.role !== "output").length;
+  const total = commandSettings(command).settings.filter((spec) => spec.role !== "output").length;
 
   const views = useMemo(
     () => [
@@ -89,7 +94,14 @@ export function SettingsPanel({
         )}
       </div>
       {view === "main" ? (
-        <MainSettings command={command} config={config} facts={facts} checks={checks} />
+        <MainSettings
+          command={command}
+          config={config}
+          facts={facts}
+          checks={checks}
+          reported={reported}
+          checked={checked}
+        />
       ) : (
         <AllSettings command={command} config={config} search={search} changedOnly={changedOnly} />
       )}
@@ -108,7 +120,7 @@ function AllSettings({
   search: string;
   changedOnly: boolean;
 }) {
-  const settings = COMMAND_SETTINGS[command];
+  const settings = commandSettings(command);
   const specs = settings.settings;
   const groups = groupedSpecs(settings, matchingSpecs(specs, config, search, changedOnly));
   const allGroups = groupedSpecs(settings, specs);

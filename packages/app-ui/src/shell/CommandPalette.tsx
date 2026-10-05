@@ -10,8 +10,7 @@ import { useConfigLoader } from "../analysis/useConfigLoader";
 import { useApi } from "../api/hooks";
 import { useHost } from "../host-context";
 import { useThemeChoice } from "../preferences/useThemeChoice";
-import { COMMAND_SETTINGS } from "../settings/catalog";
-import { COMMAND_INFO } from "../settings/commands";
+import { commandSettings } from "../settings/catalog";
 import { useDraftStore } from "../store/draft";
 import { useShellStore } from "../store/shell";
 import {
@@ -190,13 +189,13 @@ function usePaletteItems(): PaletteItem[] {
           "Run",
           `run-${run.id}`,
           run.title,
-          [COMMAND_INFO[run.command].label, ...changedFlags(run)].join("  "),
+          [commandSettings(run.command).title, ...changedFlags(run)].join("  "),
           () => navigate({ to: "/runs/$id/results", params: { id: run.id } }),
         ),
       );
     }
 
-    for (const spec of COMMAND_SETTINGS[command].settings) {
+    for (const spec of commandSettings(command).settings) {
       if (spec.role !== "output") {
         items.push(
           paletteItem(

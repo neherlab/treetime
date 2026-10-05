@@ -1,6 +1,6 @@
 pub(crate) mod branch_model;
 pub mod coalescent;
-pub(crate) mod coalescent_timescale;
+pub mod coalescent_timescale;
 pub mod confidence;
 pub mod convergence;
 pub mod inference;

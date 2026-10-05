@@ -2,6 +2,8 @@
 mod tests {
   use crate::openapi::add_discriminators;
   use crate::routes::api_doc;
+  use app_commands::command::AppCommand;
+  use app_commands::config::catalog::{SettingCatalog, setting_catalog};
   use helpers::{
     discriminated, keyword_locations, response_components, schemas_after, tagged_unions_without_discriminator,
   };
@@ -353,6 +355,132 @@ mod tests {
         },
       })),
       "the tagged union `Event` has fields next to a variant that allows no other fields"
+    );
+  }
+
+  #[test]
+  fn test_openapi_documents_the_app_event_stream() {
+    let doc = api_doc().unwrap();
+    let operation = &doc["paths"]["/api/events"]["get"];
+    assert_eq!(
+      (
+        json!("events"),
+        json!("#/components/schemas/AppEvent"),
+        json!(["from"]),
+        json!("kind"),
+      ),
+      (
+        operation["operationId"].clone(),
+        operation["responses"]["200"]["content"]["text/event-stream"]["schema"]["$ref"].clone(),
+        json!(
+          operation["parameters"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|parameter| parameter["name"].clone())
+            .collect::<Vec<_>>()
+        ),
+        doc["components"]["schemas"]["AppEvent"]["discriminator"]["propertyName"].clone(),
+      )
+    );
+  }
+
+  #[test]
+  fn test_openapi_operations_have_ids_descriptions_and_error_responses() {
+    let doc = api_doc().unwrap();
+    let incomplete = doc["paths"]
+      .as_object()
+      .unwrap()
+      .iter()
+      .flat_map(|(path, item)| {
+        item
+          .as_object()
+          .unwrap()
+          .iter()
+          .map(move |(method, operation)| (format!("{method} {path}"), operation))
+      })
+      .filter(|(_, operation)| {
+        !operation["operationId"].is_string()
+          || operation["description"].as_str().is_none_or(str::is_empty)
+          || operation["responses"]["default"]["content"]["application/json"]["schema"]["$ref"]
+            != json!("#/components/schemas/ErrorResponse")
+      })
+      .map(|(operation, _)| operation)
+      .collect::<Vec<_>>();
+    assert_eq!(Vec::<String>::new(), incomplete);
+  }
+
+  #[test]
+  fn test_openapi_describes_operations_and_their_bodies() {
+    let doc = api_doc().unwrap();
+    assert_eq!(
+      (
+        json!("runsCreate"),
+        json!("#/components/schemas/CreateRunRequest"),
+        json!("#/components/schemas/ErrorResponse"),
+        json!("#/components/schemas/RunEvent"),
+      ),
+      (
+        doc["paths"]["/api/runs"]["post"]["operationId"].clone(),
+        doc["paths"]["/api/runs"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].clone(),
+        doc["paths"]["/api/runs/{id}"]["get"]["responses"]["default"]["content"]["application/json"]["schema"]["$ref"]
+          .clone(),
+        doc["paths"]["/api/runs/{id}/events"]["get"]["responses"]["200"]["content"]["text/event-stream"]["schema"]
+          ["$ref"]
+          .clone(),
+      )
+    );
+    let config = &doc["components"]["schemas"]["ClockConfig"];
+    assert_eq!(
+      (json!(false), json!("#/components/schemas/BranchSplitArgs")),
+      (
+        config["additionalProperties"].clone(),
+        config["properties"]["branch_split"]["$ref"].clone()
+      )
+    );
+  }
+
+  #[test]
+  fn test_openapi_config_components_carry_the_cli_annotations() {
+    let doc = api_doc().unwrap();
+    let schemas = &doc["components"]["schemas"];
+    assert_eq!(
+      (json!("--relax"), json!("--branch-split-grid-n-points"), json!("input"),),
+      (
+        schemas["TimetreeConfig"]["properties"]["relax"]["x-cli-flag"].clone(),
+        schemas["BranchSplitArgs"]["properties"]["n_points"]["x-cli-flag"].clone(),
+        schemas["ClockConfig"]["properties"]["tree"]["x-path"].clone(),
+      )
+    );
+  }
+
+  #[test]
+  fn test_openapi_setting_catalog_is_a_component_and_lists_every_command_in_display_order() {
+    let doc = api_doc().unwrap();
+    let catalog = setting_catalog().unwrap();
+    let parsed: SettingCatalog = serde_json::from_value(serde_json::to_value(&catalog).unwrap()).unwrap();
+    assert_eq!(
+      (
+        true,
+        vec![
+          AppCommand::Timetree,
+          AppCommand::Clock,
+          AppCommand::Ancestral,
+          AppCommand::Mugration,
+          AppCommand::Optimize,
+          AppCommand::Prune
+        ],
+        &catalog
+      ),
+      (
+        doc["components"]["schemas"]["SettingCatalog"].is_object(),
+        catalog
+          .commands
+          .iter()
+          .map(|command| command.command)
+          .collect::<Vec<_>>(),
+        &parsed
+      )
     );
   }
 

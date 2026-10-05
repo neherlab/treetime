@@ -10,7 +10,7 @@ import { useApi } from "../api/hooks";
 import { CopyButton } from "../components/CopyButton";
 import { OptionToggle } from "../components/OptionToggle";
 import { Panel } from "../components/Panel";
-import { COMMAND_SETTINGS, groupedSpecs } from "../settings/catalog";
+import { commandSettings, groupedSpecs } from "../settings/catalog";
 import { settingValue } from "../settings/config";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
@@ -25,7 +25,7 @@ const CODE_FORMATS: ReadonlyArray<{ value: UiCodeFormat; label: string }> = [
 ];
 
 export function SettingsTab({ record }: { record: RunRecord }) {
-  const settings = COMMAND_SETTINGS[record.command];
+  const settings = commandSettings(record.command);
   const specs = settings.settings;
   const config: SparseConfig = record.config;
   const [changedOnly, setChangedOnly] = useState(true);

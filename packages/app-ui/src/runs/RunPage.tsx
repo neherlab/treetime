@@ -12,7 +12,7 @@ import { useApi, useApiMutation } from "../api/hooks";
 import { LoadingState, PageShell } from "../components/PageShell";
 import { formatDuration } from "../format";
 import { countWarnings, EMPTY_PROGRESS, type RunProgress } from "../results/progress";
-import { COMMAND_INFO } from "../settings/commands";
+import { commandSettings } from "../settings/catalog";
 import { StatusIcon, statusLabel } from "../shell/StatusIcon";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Badge } from "../ui/badge";
@@ -319,7 +319,7 @@ function RunHeader({ record }: { record: RunRecord }) {
             <StatusIcon status={record.status} />
             {statusLabel(record.status)}
           </span>
-          <span>{COMMAND_INFO[record.command].label}</span>
+          <span>{commandSettings(record.command).title}</span>
           <span>{created.isValid ? created.toFormat("d LLL yyyy, HH:mm") : record.created_at}</span>
           {record.duration_seconds !== undefined && <span>{formatDuration(record.duration_seconds)}</span>}
           <span>TreeTime {record.treetime_version}</span>

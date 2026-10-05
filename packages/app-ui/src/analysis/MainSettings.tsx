@@ -1,10 +1,23 @@
-import type { AppCommand, InputFacts, JsonValue, RunCheck, SettingSpec, SparseConfig } from "@neherlab/app-contracts";
-import { useCallback, useMemo } from "react";
+import type {
+  ActiveChoice,
+  AppCommand,
+  ChoiceName,
+  ChoiceOptionName,
+  InputFacts,
+  JsonValue,
+  RunCheck,
+  SettingChoice,
+  SettingPatch,
+  SettingSpec,
+  SparseConfig,
+} from "@neherlab/app-contracts";
+import { useCallback, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { OptionToggle, type ToggleOption } from "../components/OptionToggle";
-import { COMMAND_SETTINGS } from "../settings/catalog";
-import { MAIN_SETTING_KEYS, type SettingKey } from "../settings/commands";
+import { OptionToggle } from "../components/OptionToggle";
+import { commandSettings } from "../settings/catalog";
+import { choiceRow } from "../settings/choices";
+import type { SettingKey } from "../settings/commands";
 import { isChanged, resetValue, settingValue } from "../settings/config";
 import { isNumber, isString, sameJson } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
@@ -29,42 +42,7 @@ const CLOCK_FILTER_STEP = 0.5;
 
 const NO_CHECKS: readonly RunCheck[] = [];
 
-type RateMode = "estimate" | "fixed";
-
-type CoalescentMode = "none" | "fixed" | "optimized" | "skyline";
-
-type RootMode = "optimize" | "keep";
-
-const RATE_MODES: ReadonlyArray<ToggleOption<RateMode>> = [
-  { value: "estimate", label: "Estimate from data" },
-  { value: "fixed", label: "Fixed rate" },
-];
-
-const COALESCENT_MODES: ReadonlyArray<ToggleOption<CoalescentMode>> = [
-  { value: "none", label: "None" },
-  { value: "fixed", label: "Fixed Tc" },
-  { value: "optimized", label: "Optimize Tc" },
-  { value: "skyline", label: "Skyline" },
-];
-
-const ROOT_MODES: ReadonlyArray<ToggleOption<RootMode>> = [
-  { value: "optimize", label: "Optimize root" },
-  { value: "keep", label: "Keep input root" },
-];
-
-const CLOCK_RATE_KEYS = ["clock_rate", "clock_std_dev"] as const satisfies readonly TimetreeKey[];
-
 const INTERVAL_KEYS = ["confidence", "covariation"] as const satisfies readonly TimetreeKey[];
-
-const COALESCENT_KEYS = [
-  "coalescent",
-  "coalescent_opt",
-  "coalescent_skyline",
-  "skyline_n_points",
-  "skyline_stiffness",
-] as const satisfies readonly TimetreeKey[];
-
-const ROOT_KEYS = ["reroot", "keep_root"] as const satisfies readonly TimetreeKey[];
 
 const CLOCK_FILTER_KEYS = ["clock_filter"] as const satisfies readonly TimetreeKey[];
 
@@ -76,6 +54,44 @@ const MODEL_KEYS = ["model", "model_params"] as const satisfies readonly Timetre
 
 const ATTRIBUTE_KEYS = ["attribute"] as const satisfies readonly SettingKey<"mugration">[];
 
+const CHOICE_TEXT: Record<ChoiceName, ChoiceText> = {
+  "clock-rate": {
+    label: "Clock rate",
+    sub: "Substitutions per site per year",
+    options: {
+      estimate: {
+        label: "Estimate from data",
+        note: "Estimated by root-to-tip regression, then refined during dating.",
+      },
+      fixed: { label: "Fixed rate" },
+    },
+    settings: { clock_rate: "Rate", clock_std_dev: "Std. dev." },
+  },
+  "coalescent-prior": {
+    label: "Coalescent prior",
+    sub: "Prior on node times",
+    options: {
+      none: { label: "None", note: "Node times are set by the sequences and sampling dates only." },
+      fixed: { label: "Fixed Tc" },
+      optimized: { label: "Optimize Tc", note: "One constant Tc, fitted to the tree." },
+      skyline: { label: "Skyline" },
+    },
+    settings: { coalescent: "Tc in years", skyline_n_points: "Grid points", skyline_stiffness: "Stiffness" },
+  },
+  root: {
+    label: "Root",
+    sub: "Where the tree is rooted",
+    options: {
+      reroot: { label: "Optimize root", note: "Not set uses the command default." },
+      keep: {
+        label: "Keep input root",
+        note: "The input root is kept; use this when the tree is rooted with an outgroup.",
+      },
+    },
+    settings: { reroot: "Method" },
+  },
+};
+
 const NO_COLUMNS: readonly string[] = [];
 
 interface RowContext {
@@ -83,6 +99,10 @@ interface RowContext {
   config: SparseConfig;
   checks: readonly RunCheck[];
   specs: ReadonlyMap<string, SettingSpec>;
+  choices: readonly SettingChoice[];
+  reported: readonly ActiveChoice[] | undefined;
+  checked: SparseConfig | undefined;
+  patch: (patches: readonly SettingPatch[]) => void;
   set: (key: string, value: JsonValue | undefined) => void;
   reset: (keys: readonly string[]) => void;
   get: (key: string) => JsonValue | undefined;
@@ -94,16 +114,21 @@ export function MainSettings({
   config,
   facts,
   checks,
+  reported,
+  checked,
 }: {
   command: AppCommand;
   config: SparseConfig;
   facts: InputFacts | undefined;
   checks: readonly RunCheck[] | undefined;
+  reported: readonly ActiveChoice[] | undefined;
+  checked: SparseConfig | undefined;
 }) {
   const { setValue } = useFormContext<FormConfig>();
+  const settings = commandSettings(command);
 
   const context = useMemo((): RowContext => {
-    const specs = new Map(COMMAND_SETTINGS[command].settings.map((spec) => [spec.key, spec]));
+    const specs = new Map(settings.settings.map((spec) => [spec.key, spec]));
 
     const write = (key: string, value: JsonValue | undefined) =>
       setValue(key, toFormValue(value), { shouldDirty: true, shouldValidate: true });
@@ -123,6 +148,14 @@ export function MainSettings({
       config,
       checks: checks ?? NO_CHECKS,
       specs,
+      choices: settings.choices,
+      reported,
+      checked,
+      patch: (patches) => {
+        for (const { path, value } of patches) {
+          write(path.join("."), value);
+        }
+      },
       reset,
       set: (key, value) => {
         const spec = specs.get(key);
@@ -140,27 +173,29 @@ export function MainSettings({
       },
       example: (key) => specs.get(key)?.examples[0],
     };
-  }, [checks, command, config, setValue]);
+  }, [checked, checks, command, config, reported, setValue, settings]);
 
   if (command === "timetree") {
     return <TimetreeSettings context={context} />;
   }
 
-  const keys: readonly string[] = MAIN_SETTING_KEYS[command];
-  const rootKeys: readonly string[] = ROOT_KEYS;
-  const hasRoot = keys.includes("reroot") && context.specs.has("keep_root");
-  const rest = keys.filter((key) => !(hasRoot && rootKeys.includes(key)));
-
   return (
     <div className="py-1">
-      {hasRoot && <RootRow context={context} />}
-      {rest.map((key) =>
-        key === "attribute" ? (
+      {settings.main_settings.map((key) => {
+        const choice = settings.choices.find((candidate) => candidate.keys.includes(key));
+
+        if (choice !== undefined) {
+          return settings.main_settings.find((first) => choice.keys.includes(first)) === key ? (
+            <ChoiceRow key={key} context={context} choice={choice.choice} />
+          ) : null;
+        }
+
+        return key === "attribute" ? (
           <AttributeRow key={key} context={context} columns={facts?.metadata?.columns ?? NO_COLUMNS} />
         ) : (
           <SimpleRow key={key} context={context} settingKey={key} />
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -168,10 +203,10 @@ export function MainSettings({
 function TimetreeSettings({ context }: { context: RowContext }) {
   return (
     <div className="py-1">
-      <ClockRateRow context={context} />
+      <ChoiceRow context={context} choice="clock-rate" />
       <IntervalsRow context={context} />
-      <CoalescentRow context={context} />
-      <RootRow context={context} />
+      <ChoiceRow context={context} choice="coalescent-prior" />
+      <ChoiceRow context={context} choice="root" />
       <ClockFilterRow context={context} />
       <RelaxRow context={context} />
       <MainRow context={context} label="Polytomies" sub="Nodes with more than two children" keys={POLYTOMY_KEYS}>
@@ -180,40 +215,6 @@ function TimetreeSettings({ context }: { context: RowContext }) {
       <ModelRow context={context} />
       <SimpleRow context={context} settingKey="max_iter" />
     </div>
-  );
-}
-
-function ClockRateRow({ context }: { context: RowContext }) {
-  const { get, set, reset, example } = context;
-  const fixed = get("clock_rate") !== undefined;
-
-  const onMode = useCallback(
-    (mode: RateMode) => {
-      reset(CLOCK_RATE_KEYS);
-
-      if (mode === "fixed") {
-        set("clock_rate", example("clock_rate"));
-      }
-    },
-    [example, reset, set],
-  );
-
-  return (
-    <MainRow context={context} label="Clock rate" sub="Substitutions per site per year" keys={CLOCK_RATE_KEYS}>
-      <OptionToggle label="Clock rate" value={fixed ? "fixed" : "estimate"} onChange={onMode} options={RATE_MODES} />
-      {fixed ? (
-        <Inline>
-          <Labeled text="Rate">
-            <Control context={context} settingKey="clock_rate" />
-          </Labeled>
-          <Labeled text="Std. dev.">
-            <Control context={context} settingKey="clock_std_dev" />
-          </Labeled>
-        </Inline>
-      ) : (
-        <Note>Estimated by root-to-tip regression, then refined during dating.</Note>
-      )}
-    </MainRow>
   );
 }
 
@@ -228,82 +229,49 @@ function IntervalsRow({ context }: { context: RowContext }) {
   );
 }
 
-function CoalescentRow({ context }: { context: RowContext }) {
-  const { set, reset, example } = context;
-  const mode = coalescentMode(context);
+function ChoiceRow({ context, choice: name }: { context: RowContext; choice: ChoiceName }) {
+  const { choices, reported, checked, config, patch } = context;
+  const choice = choices.find((candidate) => candidate.choice === name);
+  const text = CHOICE_TEXT[name];
+  const [picked, setPicked] = useState<ChoiceOptionName>();
 
-  const onMode = useCallback(
-    (next: CoalescentMode) => {
-      reset(COALESCENT_KEYS);
+  const row = useMemo(
+    () => (choice === undefined ? undefined : choiceRow(choice, { reported, picked, checked, config })),
+    [checked, choice, config, picked, reported],
+  );
 
-      if (next === "fixed") {
-        set("coalescent", example("coalescent"));
-      } else if (next === "optimized") {
-        set("coalescent_opt", true);
-      } else if (next === "skyline") {
-        set("coalescent_skyline", true);
-      }
+  const options = useMemo(
+    () => (row?.options ?? []).map((option) => ({ value: option, label: text.options[option]?.label ?? option })),
+    [row, text],
+  );
+
+  const onPick = useCallback(
+    (option: ChoiceOptionName) => {
+      setPicked(option);
+      patch(choice?.options.find((candidate) => candidate.option === option)?.patch ?? []);
     },
-    [example, reset, set],
+    [choice, patch],
   );
 
-  return (
-    <MainRow context={context} label="Coalescent prior" sub="Prior on node times" keys={COALESCENT_KEYS}>
-      <OptionToggle label="Coalescent prior" value={mode} onChange={onMode} options={COALESCENT_MODES} />
-      {mode === "fixed" && (
-        <Inline>
-          <Labeled text="Tc in years">
-            <Control context={context} settingKey="coalescent" />
-          </Labeled>
-        </Inline>
-      )}
-      {mode === "skyline" && (
-        <Inline>
-          <Labeled text="Grid points">
-            <Control context={context} settingKey="skyline_n_points" />
-          </Labeled>
-          <Labeled text="Stiffness">
-            <Control context={context} settingKey="skyline_stiffness" />
-          </Labeled>
-        </Inline>
-      )}
-      {mode === "optimized" && <Note>One constant Tc, fitted to the tree.</Note>}
-      {mode === "none" && <Note>Node times are set by the sequences and sampling dates only.</Note>}
-    </MainRow>
-  );
-}
-
-function coalescentMode(context: RowContext): CoalescentMode {
-  if (context.get("coalescent_skyline") === true) {
-    return "skyline";
+  if (choice === undefined || row?.selected === undefined) {
+    return null;
   }
 
-  if (context.get("coalescent_opt") === true) {
-    return "optimized";
-  }
-
-  return context.get("coalescent") === undefined ? "none" : "fixed";
-}
-
-function RootRow({ context }: { context: RowContext }) {
-  const { get, set } = context;
-  const keep = get("keep_root") === true;
-
-  const onMode = useCallback((mode: RootMode) => set("keep_root", mode === "keep"), [set]);
+  const note = text.options[row.selected]?.note;
 
   return (
-    <MainRow context={context} label="Root" sub="Where the tree is rooted" keys={ROOT_KEYS}>
-      <OptionToggle label="Root" value={keep ? "keep" : "optimize"} onChange={onMode} options={ROOT_MODES} />
-      {keep ? (
-        <Note>The input root is kept; use this when the tree is rooted with an outgroup.</Note>
-      ) : (
+    <MainRow context={context} label={text.label} sub={text.sub} keys={choice.keys}>
+      <OptionToggle label={text.label} value={row.selected} onChange={onPick} options={options} />
+      {row.shown.length > 0 && (
         <Inline>
-          <Labeled text="Method">
-            <Control context={context} settingKey="reroot" />
-          </Labeled>
-          <Note>Not set uses the command default.</Note>
+          {row.shown.map((key) => (
+            <Labeled key={key} text={text.settings[key] ?? context.specs.get(key)?.label ?? key}>
+              <Control context={context} settingKey={key} />
+            </Labeled>
+          ))}
         </Inline>
       )}
+      {note !== undefined && <Note>{note}</Note>}
     </MainRow>
   );
 }
@@ -549,6 +517,13 @@ function NumberPairInput({
   );
 
   return <NumberInput aria-label={label} value={pair[index]} onValueChange={onInput} className="h-8 w-24 font-mono" />;
+}
+
+interface ChoiceText {
+  label: string;
+  sub: string;
+  options: Partial<Record<ChoiceOptionName, { label: string; note?: string }>>;
+  settings: Partial<Record<string, string>>;
 }
 
 function valueNameLabel(name: string): string {

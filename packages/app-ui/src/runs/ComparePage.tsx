@@ -18,8 +18,7 @@ import { LoadingState, PageShell } from "../components/PageShell";
 import { Panel } from "../components/Panel";
 import { formatLevel, formatRate, formatSignedDays } from "../format";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
-import { COMMAND_SETTINGS } from "../settings/catalog";
-import { COMMAND_INFO } from "../settings/commands";
+import { commandSettings } from "../settings/catalog";
 import { baseName } from "../settings/inputs";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -122,7 +121,7 @@ function RunPicker({ current, other, side }: { current: RunRecord; other: RunRec
     >
       {runs.map((run) => (
         <NativeSelectOption key={run.id} value={run.id}>
-          {run.title} ({COMMAND_INFO[run.command].label})
+          {run.title} ({commandSettings(run.command).title})
         </NativeSelectOption>
       ))}
     </NativeSelect>
@@ -178,7 +177,7 @@ function SettingsDifferences({
 }
 
 function DifferenceRow({ record, difference }: { record: RunRecord; difference: SettingDifference }) {
-  const spec = COMMAND_SETTINGS[record.command].settings.find((candidate) => candidate.key === difference.key);
+  const spec = commandSettings(record.command).settings.find((candidate) => candidate.key === difference.key);
 
   return (
     <TableRow>

@@ -1,15 +1,14 @@
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
   use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
-  use crate::check_inputs::{InputFacts, InputKind, InputNeed, TreeFacts};
+  use crate::check_inputs::{InputFacts, TreeFacts};
   use crate::command::AppCommand;
-  use crate::config::catalog::command_settings;
   use crate::config::source::{ConfigProblem, ConfigSpan};
   use crate::json_value::SparseConfig;
   use crate::run_checks::CheckLevel;
   use app_datasets::schema_directive;
   use eyre::Report;
-  use helpers::set_at;
+  use helpers::fresh_draft;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -207,27 +206,7 @@ mod tests {
     )]
     command: AppCommand,
   ) {
-    let mut draft = Map::new();
-    for spec in command_settings(command).unwrap().settings {
-      if let Some(default) = spec.default_value {
-        set_at(&mut draft, &spec.path, default.0);
-      }
-    }
-    for input in command
-      .inputs()
-      .iter()
-      .filter(|input| input.need == InputNeed::Required)
-    {
-      let (key, value) = match input.kind {
-        InputKind::Tree => ("tree", json!("t.nwk")),
-        InputKind::Metadata => ("metadata", json!("m.tsv")),
-        InputKind::Alignment => ("alignment", json!(["a.fasta"])),
-      };
-      draft.insert(o!(key), value);
-    }
-    if command == AppCommand::Mugration {
-      draft.insert(o!("attribute"), json!("country"));
-    }
+    let draft = fresh_draft(command);
     let response = check_config(&CheckConfigRequest {
       command,
       text: serde_json::to_string(&draft).unwrap(),
@@ -330,7 +309,7 @@ mod tests {
       serde_json::from_value::<CheckConfigRequest>(json!({ "command": "homoplasy", "text": "" })).map_err(Report::from);
     assert_error!(
       result,
-      "unknown variant `homoplasy`, expected one of `timetree`, `optimize`, `prune`, `ancestral`, `clock`, `mugration`"
+      "unknown variant `homoplasy`, expected one of `timetree`, `clock`, `ancestral`, `mugration`, `optimize`, `prune`"
     );
   }
 
@@ -479,10 +458,39 @@ mod tests {
     );
   }
 
-  mod helpers {
+  pub(crate) mod helpers {
+    use crate::check_inputs::{InputKind, InputNeed};
+    use crate::command::AppCommand;
+    use crate::config::catalog::command_settings;
     use serde_json::{Map, Value, json};
+    use treetime_utils::o;
 
-    pub(super) fn set_at(config: &mut Map<String, Value>, path: &[String], value: Value) {
+    pub(crate) fn fresh_draft(command: AppCommand) -> Map<String, Value> {
+      let mut draft = Map::new();
+      for spec in command_settings(command).unwrap().settings {
+        if let Some(default) = spec.default_value {
+          set_at(&mut draft, &spec.path, default.0);
+        }
+      }
+      for input in command
+        .inputs()
+        .iter()
+        .filter(|input| input.need == InputNeed::Required)
+      {
+        let (key, value) = match input.kind {
+          InputKind::Tree => ("tree", json!("t.nwk")),
+          InputKind::Metadata => ("metadata", json!("m.tsv")),
+          InputKind::Alignment => ("alignment", json!(["a.fasta"])),
+        };
+        draft.insert(o!(key), value);
+      }
+      if command == AppCommand::Mugration {
+        draft.insert(o!("attribute"), json!("country"));
+      }
+      draft
+    }
+
+    pub(crate) fn set_at(config: &mut Map<String, Value>, path: &[String], value: Value) {
       let Some((last, parents)) = path.split_last() else {
         return;
       };

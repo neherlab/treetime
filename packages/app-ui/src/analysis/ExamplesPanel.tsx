@@ -1,5 +1,10 @@
-import { errorMessage } from "@neherlab/app-contracts";
-import type { AppCommand, Dataset, ExampleConfig, RunRecord } from "@neherlab/app-contracts";
+import {
+  errorMessage,
+  type AppCommand,
+  type Dataset,
+  type ExampleConfig,
+  type RunRecord,
+} from "@neherlab/app-contracts";
 import { datasets, runsGet, runsList } from "@neherlab/app-contracts/client";
 import { useCallback, useMemo, useState } from "react";
 import Database from "~icons/lucide/database";
@@ -7,7 +12,7 @@ import FileCog from "~icons/lucide/file-cog";
 
 import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";
-import { COMMAND_SETTINGS } from "../settings/catalog";
+import { commandSettings } from "../settings/catalog";
 import { datasetInputs, runInputAssignments, type InputAssignment } from "../settings/inputs";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -159,7 +164,7 @@ function EarlierInputs({ command, close }: { command: AppCommand; close: () => v
     .map((run) => run.id);
 
   const records = useApiQueries(ids.map((id) => (context: ApiCallContext) => runsGet({ ...context, path: { id } })));
-  const slots = new Set<string>(COMMAND_SETTINGS[command].inputs.map((input) => input.kind));
+  const slots = new Set<string>(commandSettings(command).inputs.map((input) => input.kind));
 
   const rows = records.flatMap((query) => {
     const record = query.data;

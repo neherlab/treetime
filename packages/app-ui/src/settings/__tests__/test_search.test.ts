@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import { COMMAND_SETTINGS } from "../catalog";
+import { commandSettings } from "../catalog";
 import { defaultConfig } from "../config";
 import { setAt } from "../json";
 import { matchingSpecs } from "../search";
 
-const specs = COMMAND_SETTINGS.clock.settings;
+const specs = commandSettings("clock").settings;
 
 describe("setting search", () => {
   test("matches the flag of a nested setting", () => {

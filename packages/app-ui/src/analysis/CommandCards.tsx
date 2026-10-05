@@ -1,8 +1,7 @@
-import type { SparseConfig, AppCommand } from "@neherlab/app-contracts";
+import type { AppCommand, CommandSettings, SparseConfig } from "@neherlab/app-contracts";
 import { useCallback } from "react";
 
-import { COMMAND_SETTINGS } from "../settings/catalog";
-import { APP_COMMANDS, COMMAND_INFO } from "../settings/commands";
+import { COMMANDS, commandSettings } from "../settings/catalog";
 import { carryOverConfig } from "../settings/config";
 import { useDraftStore } from "../store/draft";
 import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "../ui/field";
@@ -11,20 +10,20 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 export function CommandCards({ command, config }: { command: AppCommand; config: SparseConfig }) {
   const select = useCallback(
     (value: string) => {
-      const target = APP_COMMANDS.find((candidate) => candidate === value);
+      const target = COMMANDS.find((candidate) => candidate.command === value)?.command;
 
       if (target === undefined || target === command) {
         return;
       }
 
-      const targetSpecs = COMMAND_SETTINGS[target].settings;
+      const targetSpecs = commandSettings(target).settings;
       const keys = new Set(targetSpecs.map((spec) => spec.key));
       const { draft, load } = useDraftStore.getState();
 
       load({
         ...draft,
         command: target,
-        config: carryOverConfig(targetSpecs, COMMAND_SETTINGS[command].settings, config),
+        config: carryOverConfig(targetSpecs, commandSettings(command).settings, config),
         sources: Object.fromEntries(Object.entries(draft.sources).filter(([key]) => keys.has(key))),
       });
     },
@@ -38,18 +37,18 @@ export function CommandCards({ command, config }: { command: AppCommand; config:
       onValueChange={select}
       className="grid-cols-2 gap-2 @2xl:grid-cols-3"
     >
-      {APP_COMMANDS.map((candidate) => (
-        <CommandCard key={candidate} command={candidate} />
+      {COMMANDS.map((candidate) => (
+        <CommandCard key={candidate.command} settings={candidate} />
       ))}
     </RadioGroup>
   );
 }
 
-function CommandCard({ command }: { command: AppCommand }) {
-  const info = COMMAND_INFO[command];
+function CommandCard({ settings }: { settings: CommandSettings }) {
+  const { command } = settings;
   const id = `command-${command}`;
 
-  const needs = COMMAND_SETTINGS[command].inputs
+  const needs = settings.inputs
     .flatMap((input) => (input.need === "required" ? [input.label.toLowerCase()] : []))
     .join(" and ");
 
@@ -58,10 +57,10 @@ function CommandCard({ command }: { command: AppCommand }) {
       <Field orientation="horizontal" className="items-start">
         <FieldContent>
           <FieldTitle className="w-full justify-between">
-            {info.label}
+            {settings.title}
             <code className="text-muted-foreground font-mono text-xs font-normal">{command}</code>
           </FieldTitle>
-          <FieldDescription>{info.description}</FieldDescription>
+          <FieldDescription>{settings.description}</FieldDescription>
           <FieldDescription className="text-xs">Needs {needs}</FieldDescription>
         </FieldContent>
         <RadioGroupItem value={command} id={id} />

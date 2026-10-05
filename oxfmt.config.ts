@@ -10,6 +10,7 @@ export default defineConfig({
     "dev/lints/oxlint-anti-slop",
     "kb",
     "packages/app-contracts/openapi.json",
+    "packages/app-contracts/setting-catalog.json",
     "packages/app-contracts/src/generated",
     "packages/app-napi/index.d.ts",
     "packages/app-output/src/__tests__/schemas",

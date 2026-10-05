@@ -191,7 +191,7 @@ mod tests {
     let result = parse_step(json!({ "name": "x" }));
     assert_error!(
       result,
-      "pipeline step `x` has no command; expected one of `timetree`, `optimize`, `prune`, `ancestral`, `clock`, `mugration`"
+      "pipeline step `x` has no command; expected one of `timetree`, `clock`, `ancestral`, `mugration`, `optimize`, `prune`"
     );
   }
 

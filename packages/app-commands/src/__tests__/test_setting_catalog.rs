@@ -22,7 +22,17 @@ mod tests {
       .into_iter()
       .map(|settings| settings.command)
       .collect_vec();
-    assert_eq!(AppCommand::iter().collect_vec(), commands);
+    assert_eq!(
+      vec![
+        AppCommand::Timetree,
+        AppCommand::Clock,
+        AppCommand::Ancestral,
+        AppCommand::Mugration,
+        AppCommand::Optimize,
+        AppCommand::Prune
+      ],
+      commands
+    );
   }
 
   #[test]

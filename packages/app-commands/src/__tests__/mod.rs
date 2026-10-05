@@ -15,6 +15,7 @@ mod test_run_checks;
 mod test_run_config;
 mod test_schema_annotations;
 mod test_setting_catalog;
+mod test_setting_choices;
 mod test_setting_labels;
 pub(crate) mod test_support;
 mod test_yaml;

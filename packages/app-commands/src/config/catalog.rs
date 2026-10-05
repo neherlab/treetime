@@ -1,5 +1,6 @@
 use crate::check_inputs::InputSlot;
 use crate::command::AppCommand;
+use crate::config::choices::{SettingChoice, setting_choices};
 use crate::config::labels::setting_label;
 use crate::config::properties::{DEFS_PREFIX, LeafProperty, PathRole, def_pointer, leaf_properties};
 use crate::config::settings::setting_ref;
@@ -64,12 +65,17 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
       InputSlot::new(*input, list)
     })
     .collect();
+  let settings = settings.into_iter().map(|(_, _, spec)| spec).collect_vec();
   Ok(CommandSettings {
     command,
+    title: command.title().to_owned(),
+    description: command.description().to_owned(),
     inputs,
     uses_dates: command.uses_dates(),
     groups,
-    settings: settings.into_iter().map(|(_, _, spec)| spec).collect(),
+    main_settings: command.main_settings().iter().map(|key| (*key).to_owned()).collect(),
+    choices: setting_choices(&settings)?,
+    settings,
   })
 }
 
@@ -108,12 +114,20 @@ pub struct SettingCatalog {
 pub struct CommandSettings {
   /// The command.
   pub command: AppCommand,
+  /// Name of the analysis as the app shows it, for example `Time tree`.
+  pub title: String,
+  /// One sentence on what the analysis does.
+  pub description: String,
   /// Input files the command reads, in the order the form asks for them.
   pub inputs: Vec<InputSlot>,
   /// Whether the command reads sampling dates from the metadata.
   pub uses_dates: bool,
   /// Setting groups, in the order `treetime <command> --help` lists their headings.
   pub groups: Vec<String>,
+  /// Keys of the settings the form shows first, in the order it shows them.
+  pub main_settings: Vec<String>,
+  /// Settings that the form shows as one choice between options.
+  pub choices: Vec<SettingChoice>,
   /// Every setting of the command, by group, in the order `--help` lists them.
   pub settings: Vec<SettingSpec>,
 }

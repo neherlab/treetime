@@ -1,6 +1,6 @@
 use aide::openapi::{Components, OpenApi, SchemaObject};
 use app_commands::command::AppCommand;
-use app_commands::config::catalog::{SettingCatalog, setting_catalog};
+use app_commands::config::catalog::SettingCatalog;
 use app_commands::config::cli_flags::annotated_config_schema;
 use app_commands::config::schema::{SCHEMA_KEY, draft2020_generator};
 use eyre::Report;
@@ -15,7 +15,6 @@ use treetime_utils::make_error;
 
 const DEFS_PREFIX: &str = "#/$defs/";
 const COMPONENTS_PREFIX: &str = "#/components/schemas/";
-const SETTING_CATALOG_KEY: &str = "x-setting-catalog";
 
 const UNION_ROOT_KEYS: &[&str] = &["description", "oneOf", "type", "properties", "required"];
 
@@ -50,14 +49,6 @@ pub(crate) fn add_components(api: &mut OpenApi) -> Result<(), Report> {
       },
     }
   }
-  Ok(())
-}
-
-pub(crate) fn add_setting_catalog(api: &mut OpenApi) -> Result<(), Report> {
-  api.extensions.insert(
-    SETTING_CATALOG_KEY.to_owned(),
-    serde_json::to_value(setting_catalog()?)?,
-  );
   Ok(())
 }
 

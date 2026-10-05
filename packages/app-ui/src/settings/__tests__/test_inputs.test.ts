@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { COMMAND_SETTINGS } from "../catalog";
+import { commandSettings } from "../catalog";
 import { defaultConfig } from "../config";
 import {
   datasetInputs,
@@ -57,7 +57,7 @@ describe("inputs", () => {
   });
 
   test("the input check sends the command and its configuration", () => {
-    const config = setAt(defaultConfig(COMMAND_SETTINGS.mugration.settings), ["tree"], "t.nwk");
+    const config = setAt(defaultConfig(commandSettings("mugration").settings), ["tree"], "t.nwk");
 
     expect(inputFactsRequest("mugration", config)).toStrictEqual({ command: "mugration", config });
   });
@@ -72,7 +72,7 @@ describe("inputs", () => {
   });
 
   test("no input means no input check", () => {
-    expect(inputFactsRequest("prune", defaultConfig(COMMAND_SETTINGS.prune.settings))).toStrictEqual(null);
+    expect(inputFactsRequest("prune", defaultConfig(commandSettings("prune").settings))).toStrictEqual(null);
   });
 });
 

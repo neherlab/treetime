@@ -6,7 +6,7 @@ use crate::api::response::{FileContent, TypedSse, ZipAttachment};
 use crate::app_settings_routes::{app_settings_routes, host_routes};
 use crate::error::{AppError, panic_response, plain_error};
 use crate::events::{app_events_sse, run_events_sse};
-use crate::openapi::{add_components, add_discriminators, add_setting_catalog};
+use crate::openapi::{add_components, add_discriminators};
 use crate::state::{AppState, ServerConfig};
 use aide::axum::ApiRouter;
 use aide::axum::routing::{get_with, post_with, put_with};
@@ -154,7 +154,6 @@ fn build_api(scope: RouteScope) -> Result<(Router<Arc<AppState>>, OpenApi), Repo
   })?;
   add_components(&mut api)?;
   add_discriminators(&mut api)?;
-  add_setting_catalog(&mut api)?;
   Ok((router, api))
 }
 

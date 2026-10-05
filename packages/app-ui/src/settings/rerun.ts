@@ -1,6 +1,6 @@
 import type { RunRecord, SparseConfig } from "@neherlab/app-contracts";
 
-import { COMMAND_SETTINGS } from "./catalog";
+import { commandSettings } from "./catalog";
 import { normalizeConfig } from "./config";
 import { runInputAssignments } from "./inputs";
 
@@ -10,7 +10,7 @@ interface RerunDraft {
 }
 
 export function rerunDraft(record: RunRecord): RerunDraft {
-  const specs = COMMAND_SETTINGS[record.command].settings;
+  const specs = commandSettings(record.command).settings;
 
   return {
     config: normalizeConfig(specs, record.config),

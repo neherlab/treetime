@@ -9,6 +9,7 @@ use serde_with::skip_serializing_none;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime::timetree::coalescent::CoalescentSegmentRow;
+use treetime::timetree::coalescent_timescale::{CoalescentMode, coalescent_mode};
 use treetime::timetree::convergence::metrics::ConvergenceMetrics;
 use util_augur_node_data_json::AugurNodeDataJsonClock;
 
@@ -189,17 +190,14 @@ pub fn timetree_results(outputs: &TimetreeOutputs<'_>, config: &TreetimeTimetree
 }
 
 pub fn coalescent_prior(config: &TreetimeTimetreeArgsRaw) -> CoalescentPrior {
-  if config.coalescent_skyline {
-    CoalescentPrior::Skyline {
+  match coalescent_mode(config.coalescent, config.coalescent_opt, config.coalescent_skyline) {
+    CoalescentMode::Skyline => CoalescentPrior::Skyline {
       points: config.skyline_n_points,
       stiffness: config.skyline_stiffness,
-    }
-  } else if config.coalescent_opt {
-    CoalescentPrior::Optimized
-  } else {
-    config
-      .coalescent
-      .map_or(CoalescentPrior::None, |tc| CoalescentPrior::Fixed { tc })
+    },
+    CoalescentMode::Constant => CoalescentPrior::Optimized,
+    CoalescentMode::Fixed(tc) => CoalescentPrior::Fixed { tc },
+    CoalescentMode::Disabled => CoalescentPrior::None,
   }
 }
 

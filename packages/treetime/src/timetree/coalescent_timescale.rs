@@ -15,11 +15,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_report;
 
-pub(crate) fn coalescent_mode(
-  coalescent: Option<f64>,
-  coalescent_opt: bool,
-  coalescent_skyline: bool,
-) -> CoalescentMode {
+pub fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_skyline: bool) -> CoalescentMode {
   if coalescent_skyline {
     CoalescentMode::Skyline
   } else if coalescent_opt {
@@ -155,7 +151,7 @@ pub(crate) fn build_coalescent_output(
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum CoalescentMode {
+pub enum CoalescentMode {
   Disabled,
   Fixed(f64),
   Constant,

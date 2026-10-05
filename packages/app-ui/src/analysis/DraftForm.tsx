@@ -10,8 +10,8 @@ import RotateCcw from "~icons/lucide/rotate-ccw";
 import { useApi } from "../api/hooks";
 import { PageHeading, PageShell } from "../components/PageShell";
 import { RUN_HOTKEY } from "../hotkeys";
-import { COMMAND_SETTINGS } from "../settings/catalog";
-import { COMMAND_INFO } from "../settings/commands";
+import { commandSettings } from "../settings/catalog";
+import { COMMAND_VERBS } from "../settings/commands";
 import { changedSpecs, normalizeConfig } from "../settings/config";
 import { inputFactsRequest } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
@@ -28,7 +28,7 @@ import { useStartRun } from "./useStartRun";
 const CHECK_DEBOUNCE = { wait: 400 };
 
 export function DraftForm({ command }: { command: AppCommand }) {
-  const specs = COMMAND_SETTINGS[command].settings;
+  const specs = commandSettings(command).settings;
   const [initial] = useState(() => normalizeConfig(specs, useDraftStore.getState().draft.config));
 
   const form = useForm<FormConfig>({
@@ -50,7 +50,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
     { enabled: factsRequest !== null, placeholderData: keepPreviousData, staleTime: 30_000 },
   );
 
-  const { data: check } = useApi(
+  const { data: check, isPlaceholderData: checkPending } = useApi(
     (context) => {
       const text = JSON.stringify(settled);
 
@@ -80,6 +80,7 @@ export function DraftForm({ command }: { command: AppCommand }) {
   );
 
   const checks = check?.checks;
+  const checked = check === undefined || checkPending ? undefined : settled;
   const code = runConfig?.status === "valid" ? runConfig.code : null;
 
   const configHash = runConfig?.status === "valid" ? runConfig.config_hash : undefined;
@@ -117,19 +118,26 @@ export function DraftForm({ command }: { command: AppCommand }) {
               <CommandCards command={command} config={config} />
             </Step>
             <Step number={2} title="Data">
-              <InputsSection command={command} facts={facts ?? undefined} />
+              <InputsSection command={command} facts={facts} />
             </Step>
             <Step
               number={3}
               title="Settings"
               hint={changed.length === 0 ? "All defaults" : `${changed.length} changed`}
             >
-              <SettingsPanel command={command} config={config} facts={facts ?? undefined} checks={checks} />
+              <SettingsPanel
+                command={command}
+                config={config}
+                facts={facts}
+                checks={checks}
+                reported={check?.choices}
+                checked={checked}
+              />
             </Step>
           </div>
           <aside className="grid gap-4 @4xl:sticky @4xl:top-5">
             <CodePanel command={command} code={code} />
-            <ChecksPanel checks={checks} duplicate={duplicate} verb={COMMAND_INFO[command].verb} />
+            <ChecksPanel checks={checks} duplicate={duplicate} verb={COMMAND_VERBS[command]} />
           </aside>
         </form>
       </FormProvider>

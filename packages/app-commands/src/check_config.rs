@@ -1,6 +1,7 @@
 use crate::check_inputs::InputFacts;
 use crate::command::AppCommand;
-use crate::config::catalog::{SettingRole, command_settings};
+use crate::config::catalog::{SettingRole, SettingSpec, command_settings};
+use crate::config::choices::{ActiveChoice, active_choices};
 use crate::config::code::{ConfigCode, config_code};
 use crate::config::resolve_paths::resolve_config_paths_where;
 use crate::config::settings::has_path;
@@ -28,14 +29,18 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
     .unwrap_or(request.command);
   let facts = request.input_facts.as_ref();
   let source = ConfigSource::new(SOURCE_NAME, request.text.as_str());
+  let settings = match command_settings(command) {
+    Ok(settings) => settings.settings,
+    Err(report) => return invalid(command, &report, None, &[], facts),
+  };
   let prepared = parse_config_document(&source, &request.text).and_then(|document| {
     let text_keys = top_level_keys(&document);
-    let (text, document) = with_inputs(command, &request.text, document, &request.inputs)?;
+    let (text, document) = with_inputs(&settings, &request.text, document, &request.inputs)?;
     Ok((text, text_keys, command.config_over_defaults(&document)?))
   });
   let (text, text_keys, config) = match prepared {
     Ok(prepared) => prepared,
-    Err(report) => return invalid(command, &report, None, facts),
+    Err(report) => return invalid(command, &report, None, &settings, facts),
   };
   let resolved = command.prepare_text(SOURCE_NAME, &text).and_then(|prepared| {
     let mut config = prepared.config;
@@ -48,6 +53,7 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
   match resolved {
     Ok((code, config)) => CheckConfigResponse::Valid {
       command,
+      choices: active_choices(&settings, &config),
       checks: run_checks(&CheckContext {
         command,
         config: Some(&config),
@@ -57,7 +63,7 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
       config: SparseConfig(config),
       code,
     },
-    Err(report) => invalid(command, &report, Some(&config), facts),
+    Err(report) => invalid(command, &report, Some(&config), &settings, facts),
   }
 }
 
@@ -76,6 +82,8 @@ pub enum CheckConfigResponse {
     code: ConfigCode,
     /// Findings about the configuration and its input files.
     checks: Vec<RunCheck>,
+    /// The option of each choice of the command that the configuration selects.
+    choices: Vec<ActiveChoice>,
   },
   /// The configuration is rejected.
   Invalid {
@@ -93,6 +101,9 @@ pub enum CheckConfigResponse {
     messages: Vec<String>,
     /// Findings about the configuration and its input files; the rejection is among them.
     checks: Vec<RunCheck>,
+    /// The option of each choice of the command that the configuration selects, when the configuration could be
+    /// merged over the defaults.
+    choices: Vec<ActiveChoice>,
   },
 }
 
@@ -123,6 +134,7 @@ fn invalid(
   command: AppCommand,
   report: &Report,
   config: Option<&Map<String, Value>>,
+  settings: &[SettingSpec],
   facts: Option<&InputFacts>,
 ) -> CheckConfigResponse {
   let invalid = report.downcast_ref::<InvalidConfig>();
@@ -142,6 +154,9 @@ fn invalid(
   });
   CheckConfigResponse::Invalid {
     command,
+    choices: config
+      .map(|config| active_choices(settings, config))
+      .unwrap_or_default(),
     rendered: invalid.map(|invalid| invalid.rendered.clone()),
     messages,
     checks,
@@ -175,23 +190,23 @@ fn resolve_text_paths(
 }
 
 fn with_inputs(
-  command: AppCommand,
+  settings: &[SettingSpec],
   text: &str,
   mut document: Value,
   inputs: &Map<String, Value>,
 ) -> Result<(String, Value), Report> {
-  let Value::Object(settings) = &mut document else {
+  let Value::Object(document_settings) = &mut document else {
     return Ok((text.to_owned(), document));
   };
   let mut added = String::new();
-  for spec in command_settings(command)?.settings {
-    if spec.role != SettingRole::Input || settings.contains_key(&spec.key) {
+  for spec in settings {
+    if spec.role != SettingRole::Input || document_settings.contains_key(&spec.key) {
       continue;
     }
     if let Some(value) = inputs.get(&spec.key).filter(|value| has_path(value)) {
       added.push_str(&yaml_text(&spec.key, value)?);
       added.push('\n');
-      settings.insert(spec.key.clone(), value.clone());
+      document_settings.insert(spec.key.clone(), value.clone());
     }
   }
   if added.is_empty() {

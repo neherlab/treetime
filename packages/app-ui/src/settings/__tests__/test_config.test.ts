@@ -1,13 +1,13 @@
 import type { SettingSpec } from "@neherlab/app-contracts";
 import { describe, expect, test } from "vitest";
 
-import { COMMAND_SETTINGS } from "../catalog";
+import { commandSettings } from "../catalog";
 import { carryOverConfig, changedSpecs, defaultConfig, isChanged, normalizeConfig, resetValue } from "../config";
 import { setAt } from "../json";
 
-const clock = COMMAND_SETTINGS.clock.settings;
+const clock = commandSettings("clock").settings;
 
-const timetree = COMMAND_SETTINGS.timetree.settings;
+const timetree = commandSettings("timetree").settings;
 
 function spec(specs: readonly SettingSpec[], key: string): SettingSpec {
   const found = specs.find((candidate) => candidate.key === key);
