@@ -6,12 +6,19 @@ mod tests {
   };
   use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
   use crate::nwk_comments::nwk_node_comments;
+  use crate::output_plan::{CommandKind, TreeWriteKind};
+  use crate::tree_output::write_tree_outputs;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::BTreeMap;
+  use tempfile::TempDir;
+  use treetime::progress::NoopProgress;
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack};
+  use treetime_io::nwk::{NewickValue, NwkStyle};
   use treetime_primitives::Seq;
+  use treetime_utils::io::fs::read_file_to_string;
   use treetime_utils::o;
 
   #[test]
@@ -30,7 +37,10 @@ mod tests {
 
     let actual = helpers::leaf_comments(mutations)?;
 
-    assert_eq!(btreemap! { o!("mutations") => o!("A1T,C2-,G3-,G6C") }, actual);
+    assert_eq!(
+      vec![(o!("mutations"), NewickValue::String(o!("A1T,C2-,G3-,G6C")))],
+      actual
+    );
     Ok(())
   }
 
@@ -44,13 +54,16 @@ mod tests {
 
     let actual = helpers::leaf_comments(mutations)?;
 
-    assert_eq!(btreemap! { o!("mutations") => o!("A11T,G31C,C51G") }, actual);
+    assert_eq!(
+      vec![(o!("mutations"), NewickValue::String(o!("A11T,G31C,C51G")))],
+      actual
+    );
     Ok(())
   }
 
   #[test]
   fn test_nwk_comments_edge_without_mutations_has_none() -> Result<(), Report> {
-    assert_eq!(BTreeMap::new(), helpers::leaf_comments(vec![])?);
+    assert_eq!(Vec::<(String, NewickValue)>::new(), helpers::leaf_comments(vec![])?);
     Ok(())
   }
 
@@ -71,7 +84,10 @@ mod tests {
 
     let comments = nwk_node_comments(&AnnotatedTreeView::new(&graph)?)?;
 
-    assert_eq!(BTreeMap::new(), comments[&node_key(&topology, "root")]);
+    assert_eq!(
+      Vec::<(String, NewickValue)>::new(),
+      comments[&node_key(&topology, "root")]
+    );
     Ok(())
   }
 
@@ -82,15 +98,15 @@ mod tests {
 
     let comments = nwk_node_comments(&AnnotatedTreeView::new(&graph)?)?;
 
-    let actual: BTreeMap<String, BTreeMap<String, String>> = comments
+    let actual: BTreeMap<String, Vec<(String, NewickValue)>> = comments
       .into_iter()
       .map(|(key, comments)| (setup.topology.names[&key].clone().unwrap(), comments))
       .collect();
     let expected = btreemap! {
-      o!("A") => btreemap! { o!("date") => o!("2020.00") },
-      o!("B") => btreemap! { o!("date") => o!("2021.00") },
-      o!("C") => btreemap! { o!("date") => o!("2022.00") },
-      o!("root") => btreemap! { o!("date") => o!("2023.00") },
+      o!("A") => vec![(o!("date"), NewickValue::NumberText(o!("2020.00")))],
+      o!("B") => vec![(o!("date"), NewickValue::NumberText(o!("2021.00")))],
+      o!("C") => vec![(o!("date"), NewickValue::NumberText(o!("2022.00")))],
+      o!("root") => vec![(o!("date"), NewickValue::NumberText(o!("2023.00")))],
     };
     assert_eq!(expected, actual);
     Ok(())
@@ -113,7 +129,10 @@ mod tests {
 
     let comments = nwk_node_comments(&AnnotatedTreeView::new(&graph)?)?;
 
-    let expected = btreemap! { o!("date") => o!("2020.00"), o!("mutations") => o!("A1T") };
+    let expected = vec![
+      (o!("mutations"), NewickValue::String(o!("A1T"))),
+      (o!("date"), NewickValue::NumberText(o!("2020.00"))),
+    ];
     assert_eq!(expected, comments[&node_key(&setup.topology, "A")]);
     Ok(())
   }
@@ -126,16 +145,83 @@ mod tests {
 
     let comments = nwk_node_comments(&AnnotatedTreeView::new(&graph)?)?;
 
-    let actual: BTreeMap<String, BTreeMap<String, String>> = comments
+    let actual: BTreeMap<String, Vec<(String, NewickValue)>> = comments
       .into_iter()
       .map(|(key, comments)| (setup.topology.names[&key].clone().unwrap(), comments))
       .collect();
     let expected = btreemap! {
-      o!("A") => btreemap! { o!("country") => o!("CH") },
-      o!("B") => btreemap! { o!("country") => o!("US") },
-      o!("C") => btreemap! { o!("country") => o!("CH") },
-      o!("root") => btreemap! { o!("country") => o!("US") },
+      o!("A") => vec![(o!("country"), NewickValue::String(o!("CH")))],
+      o!("B") => vec![(o!("country"), NewickValue::String(o!("US")))],
+      o!("C") => vec![(o!("country"), NewickValue::String(o!("CH")))],
+      o!("root") => vec![(o!("country"), NewickValue::String(o!("US")))],
     };
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::leading_zero("01",        r#""01""#)]
+  #[case::nan_word(    "Nan",       r#""Nan""#)]
+  #[case::inf_word(    "Inf",       r#""Inf""#)]
+  #[case::exponent(    "1e3",       r#""1e3""#)]
+  #[case::boolean_word("true",      r#""true""#)]
+  #[case::comma(       "Congo, DR", r#""Congo, DR""#)]
+  #[trace]
+  fn test_nwk_comments_trait_values_keep_their_text(#[case] value: &str, #[case] expected: &str) -> Result<(), Report> {
+    let mut setup = mugration_setup()?;
+    let a_key = node_key(&setup.topology, "A");
+    setup.values.insert(a_key, Some(o!(value)));
+    let support = btreemap! {};
+    let graph = mugration_graph(&setup, "country", &support);
+    let dir = TempDir::new()?;
+    let path = dir.path().join("mugration.nwk");
+
+    write_tree_outputs(
+      &AnnotatedTreeView::new(&graph)?,
+      &btreemap! { TreeWriteKind::Nwk(NwkStyle::Beast) => path.clone() },
+      CommandKind::Mugration,
+      &NoopProgress,
+    )?;
+
+    let actual = read_file_to_string(&path)?;
+    let expected = format!(
+      "(A[&country={expected}]:0.1,B[&country=\"US\"]:0,C[&country=\"CH\"]:0.5)root[&country=\"US\"];\n"
+    );
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_nwk_comments_mutations_precede_date_as_in_v0() -> Result<(), Report> {
+    let setup = dated_setup()?;
+    let mut edge_mutations = no_mutations(&setup.topology);
+    edge_mutations.insert(
+      parent_edge(&setup.topology, "A")?,
+      vec![substitution(b'A', 54, b'G')?, substitution(b'T', 92, b'C')?],
+    );
+    let root_sequence = Seq::try_from_str("ACGT")?;
+    let graph = AnnotatedGraph {
+      sequences: Some(TreeSequences {
+        root_sequence: &root_sequence,
+        edge_mutations: &edge_mutations,
+        amino_acids: None,
+      }),
+      ..dated_graph(&setup, None)
+    };
+    let dir = TempDir::new()?;
+    let path = dir.path().join("timetree.nwk");
+
+    write_tree_outputs(
+      &AnnotatedTreeView::new(&graph)?,
+      &btreemap! { TreeWriteKind::Nwk(NwkStyle::Beast) => path.clone() },
+      CommandKind::Timetree,
+      &NoopProgress,
+    )?;
+
+    let actual = read_file_to_string(&path)?;
+    let expected =
+      "(A[&mutations=\"A55G,T93C\",date=2020.00]:0.1,B[&date=2021.00]:0,C[&date=2022.00]:0.5)root[&date=2023.00];\n";
     assert_eq!(expected, actual);
     Ok(())
   }
@@ -147,11 +233,11 @@ mod tests {
     use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
     use crate::nwk_comments::nwk_node_comments;
     use eyre::Report;
-    use std::collections::BTreeMap;
     use treetime::seq::mutation::Mutation;
+    use treetime_io::nwk::NewickValue;
     use treetime_primitives::Seq;
 
-    pub(super) fn leaf_comments(mutations: Vec<Mutation>) -> Result<BTreeMap<String, String>, Report> {
+    pub(super) fn leaf_comments(mutations: Vec<Mutation>) -> Result<Vec<(String, NewickValue)>, Report> {
       let topology = topology_from("(A:0.1)root;")?;
       let mut edge_mutations = no_mutations(&topology);
       edge_mutations.insert(parent_edge(&topology, "A")?, mutations);

@@ -2,8 +2,9 @@
 mod tests {
   use crate::parse::newick_from_string;
   use crate::types::{NewickEdgeData, NewickGraph, NewickNodeData, NewickValue, NewickWriteOptions, NwkStyle};
-  use crate::write::newick_to_string;
+  use crate::write::{newick_to_string, write_beast_attrs, write_nhx_attrs};
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::BTreeMap;
 
   fn opts(style: NwkStyle) -> NewickWriteOptions {
@@ -421,5 +422,78 @@ mod tests {
       result.is_err(),
       "newick_to_string should return Err for NHX reserved chars"
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::beast_string(     (NwkStyle::Beast, NewickValue::String("usa".to_owned())),             r#"A[&value="usa"];"#)]
+  #[case::beast_quote(      (NwkStyle::Beast, NewickValue::String(r#"a"b"#.to_owned())),          r#"A[&value="a""b"];"#)]
+  #[case::beast_number_text((NwkStyle::Beast, NewickValue::NumberText("2020.50".to_owned())),     "A[&value=2020.50];")]
+  #[case::nhx_string(       (NwkStyle::Nhx,   NewickValue::String("usa".to_owned())),             "A[&&NHX:value=usa];")]
+  #[case::nhx_number_text(  (NwkStyle::Nhx,   NewickValue::NumberText("2020.50".to_owned())),     "A[&&NHX:value=2020.50];")]
+  #[trace]
+  fn test_write_value_quoting_by_style(#[case] (style, value): (NwkStyle, NewickValue), #[case] expected: &str) {
+    let g = helpers::single_node_with_attr("value", value);
+
+    let actual = newick_to_string(&g, &opts(style)).unwrap();
+
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_write_number_text_parses_back_as_number() {
+    let g = helpers::single_node_with_attr("date", NewickValue::NumberText("2020.50".to_owned()));
+
+    let parsed = newick_from_string(&newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap()).unwrap();
+
+    assert_eq!(
+      Some(&NewickValue::Number(2020.5)),
+      parsed.nodes[0].node_attrs.get("date")
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::same_text(     (NewickValue::NumberText("2020.50".to_owned()), NewickValue::NumberText("2020.50".to_owned())), true)]
+  #[case::other_text(    (NewickValue::NumberText("2020.50".to_owned()), NewickValue::NumberText("2020.5".to_owned())),  false)]
+  #[case::number(        (NewickValue::NumberText("2020.5".to_owned()),  NewickValue::Number(2020.5)),                    false)]
+  #[case::string(        (NewickValue::NumberText("1".to_owned()),       NewickValue::String("1".to_owned())),            false)]
+  #[trace]
+  fn test_write_number_text_equality(#[case] (left, right): (NewickValue, NewickValue), #[case] expected: bool) {
+    assert_eq!(expected, left == right);
+  }
+
+  #[test]
+  fn test_write_beast_attrs_in_caller_order() {
+    let date = NewickValue::NumberText("2003.84".to_owned());
+    let mutations = NewickValue::String("A55G".to_owned());
+    let mut actual = String::new();
+
+    write_beast_attrs(&mut actual, [("mutations", &mutations), ("date", &date)]).unwrap();
+
+    assert_eq!(r#"[&mutations="A55G",date=2003.84]"#, actual);
+  }
+
+  #[test]
+  fn test_write_nhx_attrs_in_caller_order() {
+    let date = NewickValue::NumberText("2003.84".to_owned());
+    let mutations = NewickValue::String("A55G".to_owned());
+    let mut actual = String::new();
+
+    write_nhx_attrs(&mut actual, [("mutations", &mutations), ("date", &date)]).unwrap();
+
+    assert_eq!("[&&NHX:mutations=A55G:date=2003.84]", actual);
+  }
+
+  mod helpers {
+    use crate::types::{NewickGraph, NewickNodeData, NewickValue};
+
+    pub(super) fn single_node_with_attr(key: &str, value: NewickValue) -> NewickGraph {
+      let mut graph = NewickGraph::new();
+      let mut node = NewickNodeData::new().with_name("A");
+      node.node_attrs.insert(key.to_owned(), value);
+      graph.root = graph.add_node(node);
+      graph
+    }
   }
 }

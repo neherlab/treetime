@@ -280,6 +280,7 @@ impl Default for NewickEdgeData {
 pub enum NewickValue {
   Boolean(bool),
   Number(f64),
+  NumberText(String),
   String(String),
   Array(Vec<NewickValue>),
 }
@@ -289,7 +290,7 @@ impl PartialEq for NewickValue {
     match (self, other) {
       (Self::Boolean(a), Self::Boolean(b)) => a == b,
       (Self::Number(a), Self::Number(b)) => a.to_bits() == b.to_bits(),
-      (Self::String(a), Self::String(b)) => a == b,
+      (Self::NumberText(a), Self::NumberText(b)) | (Self::String(a), Self::String(b)) => a == b,
       (Self::Array(a), Self::Array(b)) => a == b,
       _ => false,
     }
@@ -304,7 +305,7 @@ impl Hash for NewickValue {
     match self {
       Self::Boolean(b) => b.hash(state),
       Self::Number(n) => n.to_bits().hash(state),
-      Self::String(s) => s.hash(state),
+      Self::NumberText(s) | Self::String(s) => s.hash(state),
       Self::Array(a) => a.hash(state),
     }
   }
@@ -322,7 +323,7 @@ impl fmt::Display for NewickValue {
     match self {
       Self::Boolean(b) => write!(f, "{b}"),
       Self::Number(n) => write!(f, "{n}"),
-      Self::String(s) => write!(f, "{s}"),
+      Self::NumberText(s) | Self::String(s) => write!(f, "{s}"),
       Self::Array(arr) => {
         write!(f, "{{")?;
         for (i, elem) in arr.iter().enumerate() {

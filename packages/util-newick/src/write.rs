@@ -143,11 +143,11 @@ fn write_node_annotations(
   match options.style {
     NwkStyle::Plain => {},
     NwkStyle::Beast => {
-      write_beast_attrs(writer, &node.node_attrs)?;
+      write_beast_attrs(writer, attrs_in_key_order(&node.node_attrs))?;
       write_raw_comments(writer, &node.raw_comments)?;
     },
     NwkStyle::Nhx => {
-      write_nhx_attrs(writer, &node.node_attrs)?;
+      write_nhx_attrs(writer, attrs_in_key_order(&node.node_attrs))?;
       write_raw_comments(writer, &node.raw_comments)?;
     },
   }
@@ -167,13 +167,13 @@ fn write_edge(writer: &mut impl Write, edge: &NewickEdgeData, options: &NewickWr
     write!(writer, ":")?;
 
     if options.style == NwkStyle::Beast {
-      write_beast_attrs(writer, &edge.branch_attrs)?;
+      write_beast_attrs(writer, attrs_in_key_order(&edge.branch_attrs))?;
     }
 
     write!(writer, "{}", format_float(edge.branch_length.unwrap_or(0.0), options))?;
 
     if options.style == NwkStyle::Nhx {
-      write_nhx_attrs(writer, &edge.branch_attrs)?;
+      write_nhx_attrs(writer, attrs_in_key_order(&edge.branch_attrs))?;
     }
 
     if options.style != NwkStyle::Plain {
@@ -181,8 +181,8 @@ fn write_edge(writer: &mut impl Write, edge: &NewickEdgeData, options: &NewickWr
     }
   } else if options.style != NwkStyle::Plain && (has_branch_attrs || has_raw) {
     match options.style {
-      NwkStyle::Beast => write_beast_attrs(writer, &edge.branch_attrs)?,
-      NwkStyle::Nhx => write_nhx_attrs(writer, &edge.branch_attrs)?,
+      NwkStyle::Beast => write_beast_attrs(writer, attrs_in_key_order(&edge.branch_attrs))?,
+      NwkStyle::Nhx => write_nhx_attrs(writer, attrs_in_key_order(&edge.branch_attrs))?,
       NwkStyle::Plain => {},
     }
     write_raw_comments(writer, &edge.raw_comments)?;
@@ -191,12 +191,16 @@ fn write_edge(writer: &mut impl Write, edge: &NewickEdgeData, options: &NewickWr
   Ok(())
 }
 
-pub fn write_beast_attrs(writer: &mut impl Write, attrs: &BTreeMap<String, NewickValue>) -> Result<(), Report> {
-  if attrs.is_empty() {
+pub fn write_beast_attrs<'a>(
+  writer: &mut impl Write,
+  attrs: impl IntoIterator<Item = (&'a str, &'a NewickValue)>,
+) -> Result<(), Report> {
+  let mut attrs = attrs.into_iter().peekable();
+  if attrs.peek().is_none() {
     return Ok(());
   }
   write!(writer, "[&")?;
-  for (i, (key, value)) in attrs.iter().enumerate() {
+  for (i, (key, value)) in attrs.enumerate() {
     if i > 0 {
       write!(writer, ",")?;
     }
@@ -224,13 +228,12 @@ fn write_beast_value(writer: &mut impl Write, value: &NewickValue) -> Result<(),
     NewickValue::Number(n) => {
       write!(writer, "{n}")?;
     },
+    NewickValue::NumberText(text) => {
+      write!(writer, "{text}")?;
+    },
     NewickValue::String(s) => {
-      if needs_beast_quoting(s) {
-        let escaped = s.replace('"', "\"\"");
-        write!(writer, "\"{escaped}\"")?;
-      } else {
-        write!(writer, "{s}")?;
-      }
+      let escaped = s.replace('"', "\"\"");
+      write!(writer, "\"{escaped}\"")?;
     },
     NewickValue::Array(arr) => {
       write!(writer, "{{")?;
@@ -259,8 +262,12 @@ fn needs_beast_quoting(s: &str) -> bool {
   false
 }
 
-pub fn write_nhx_attrs(writer: &mut impl Write, attrs: &BTreeMap<String, NewickValue>) -> Result<(), Report> {
-  if attrs.is_empty() {
+pub fn write_nhx_attrs<'a>(
+  writer: &mut impl Write,
+  attrs: impl IntoIterator<Item = (&'a str, &'a NewickValue)>,
+) -> Result<(), Report> {
+  let mut attrs = attrs.into_iter().peekable();
+  if attrs.peek().is_none() {
     return Ok(());
   }
   write!(writer, "[&&NHX")?;
@@ -276,6 +283,7 @@ fn write_nhx_value(writer: &mut impl Write, value: &NewickValue) -> Result<(), R
   match value {
     NewickValue::Boolean(b) => write!(writer, "{b}")?,
     NewickValue::Number(n) => write!(writer, "{n}")?,
+    NewickValue::NumberText(text) => write!(writer, "{text}")?,
     NewickValue::String(s) => {
       if s.contains([':', '=', ']']) {
         return Err(eyre::eyre!(
@@ -294,6 +302,10 @@ fn write_nhx_value(writer: &mut impl Write, value: &NewickValue) -> Result<(), R
     },
   }
   Ok(())
+}
+
+fn attrs_in_key_order(attrs: &BTreeMap<String, NewickValue>) -> impl Iterator<Item = (&str, &NewickValue)> {
+  attrs.iter().map(|(key, value)| (key.as_str(), value))
 }
 
 fn write_raw_comments(writer: &mut impl Write, comments: &[String]) -> Result<(), Report> {

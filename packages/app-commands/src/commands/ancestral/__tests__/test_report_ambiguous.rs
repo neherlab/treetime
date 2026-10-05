@@ -29,7 +29,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::default_drops_unknown(  false, vec!["T4K"],        "(A:0.1,B:0.1,C[&mutations=T4K]:0.1)root;")]
+  #[case::default_drops_unknown(  false, vec!["T4K"],        r#"(A:0.1,B:0.1,C[&mutations="T4K"]:0.1)root;"#)]
   #[case::report_ambiguous(       true,  vec!["C2N", "T4K"], r#"(A:0.1,B:0.1,C[&mutations="C2N,T4K"]:0.1)root;"#)]
   #[trace]
   fn test_report_ambiguous_reaches_mutation_writers(

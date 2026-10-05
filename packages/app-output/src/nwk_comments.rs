@@ -1,30 +1,29 @@
 use crate::annotated_graph::AnnotatedTreeView;
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::BTreeMap;
 use treetime::seq::mutation::{Mutation, MutationEvent, mutation_event_strings};
-use treetime_io::nwk::NwkNodeComments;
+use treetime_io::nwk::{NewickValue, NwkNodeComments};
 
 pub(crate) fn nwk_node_comments(tree: &AnnotatedTreeView<'_>) -> Result<NwkNodeComments, Report> {
   let graph = tree.graph();
   let mut comments = NwkNodeComments::new();
   for &key in tree.tree().preorder() {
-    let mut node_comments = BTreeMap::new();
+    let mut node_comments = vec![];
     if let Some(sequences) = &graph.sequences
       && let Some((_, edge_key)) = tree.tree().parent(key)
       && let Some(mutations) = mutation_comment(&sequences.edge_mutations[&edge_key])?
     {
-      node_comments.insert("mutations".to_owned(), mutations);
+      node_comments.push(("mutations".to_owned(), NewickValue::String(mutations)));
     }
     if let Some(dates) = &graph.dates
       && let Some(date) = dates.num_date[&key]
     {
-      node_comments.insert("date".to_owned(), format!("{date:.2}"));
+      node_comments.push(("date".to_owned(), NewickValue::NumberText(format!("{date:.2}"))));
     }
     if let Some(traits) = &graph.traits
-      && let Some(value) = &traits.values[&key]
+      && let Some(value) = traits.values[&key].as_ref().filter(|value| !value.is_empty())
     {
-      node_comments.insert(traits.attribute.to_owned(), value.clone());
+      node_comments.push((traits.attribute.to_owned(), NewickValue::String(value.clone())));
     }
     comments.insert(key, node_comments);
   }

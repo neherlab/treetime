@@ -15,8 +15,8 @@ use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::{read_file_with, write_file_with};
 use treetime_utils::make_error;
 use treetime_utils::make_report;
-pub use util_newick::NwkStyle;
-use util_newick::{NewickGraph, NewickValue, newick_from_reader, write_beast_attrs, write_label, write_nhx_attrs};
+use util_newick::{NewickGraph, newick_from_reader, write_beast_attrs, write_label, write_nhx_attrs};
+pub use util_newick::{NewickValue, NwkStyle};
 
 pub const NEWICK_EXTENSIONS: [&str; 4] = ["nwk", "newick", "tree", "tre"];
 
@@ -157,7 +157,7 @@ pub fn nwk_write(
   writer.write_all(text.as_bytes()).wrap_err("When writing Newick")
 }
 
-pub type NwkNodeComments = BTreeMap<GraphNodeKey, BTreeMap<String, String>>;
+pub type NwkNodeComments = BTreeMap<GraphNodeKey, Vec<(String, NewickValue)>>;
 
 fn write_nwk_text(
   writer: &mut impl fmt::Write,
@@ -195,10 +195,10 @@ fn write_nwk_text(
         && let Some(node_comments) = comments.get(&node_key)
         && !node_comments.is_empty()
       {
-        let attrs = str_comments_to_newick_values(node_comments);
+        let attrs = node_comments.iter().map(|(key, value)| (key.as_str(), value));
         match options.style {
-          NwkStyle::Beast => write_beast_attrs(writer, &attrs)?,
-          NwkStyle::Nhx => write_nhx_attrs(writer, &attrs)?,
+          NwkStyle::Beast => write_beast_attrs(writer, attrs)?,
+          NwkStyle::Nhx => write_nhx_attrs(writer, attrs)?,
           NwkStyle::Plain => {},
         }
       }
@@ -212,32 +212,6 @@ fn write_nwk_text(
   write!(writer, ";")?;
 
   Ok(())
-}
-
-#[cfg_attr(
-  dylint_lib = "treetime_lints",
-  expect(
-    error_dropped_by_pattern,
-    reason = "a comment value that is not a number is kept as a string"
-  )
-)]
-fn str_comments_to_newick_values(comments: &BTreeMap<String, String>) -> BTreeMap<String, NewickValue> {
-  comments
-    .iter()
-    .filter(|(_, val)| !val.is_empty())
-    .map(|(key, val)| {
-      let nwk_val = if val.eq_ignore_ascii_case("true") {
-        NewickValue::Boolean(true)
-      } else if val.eq_ignore_ascii_case("false") {
-        NewickValue::Boolean(false)
-      } else if let Ok(n) = val.parse::<f64>() {
-        NewickValue::Number(n)
-      } else {
-        NewickValue::String(val.clone())
-      };
-      (key.clone(), nwk_val)
-    })
-    .collect()
 }
 
 pub(crate) fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {

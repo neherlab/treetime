@@ -14,13 +14,13 @@ The Newick format is the lowest-fidelity output.
 
 ## v1 behavior
 
-v1 matches v0's Newick format exactly:
+v1 writes the annotations of a node in the same text as v0, for example `[&mutations="A55G,T93C",date=2003.84]`:
 
-```rust
-comments.insert("date".to_owned(), format!("{time:.2}"));
-```
+- **Key order**: `mutations`, then `date`, then the trait attribute of `mugration`, the order in which v0 builds the comment
+- **Quoting**: every string value is written in double quotes in BEAST style, with an embedded `"` doubled, as v0 writes `&mutations="..."` and `&<attribute>="<value>"` ([packages/legacy/treetime/treetime/wrappers.py#L903](../../packages/legacy/treetime/treetime/wrappers.py#L903)). NHX values stay unquoted
+- **Date**: two decimals, the text of v0's `%1.2f`, written unquoted
 
-At `packages/app-output/src/date_comment.rs#L21`.
+`fn nwk_node_comments()` in [packages/app-output/src/nwk_comments.rs](../../packages/app-output/src/nwk_comments.rs) builds this list with typed values, so the writer never guesses a value's type from its text: the date is `NewickValue::NumberText`, which keeps the trailing zero of `2020.50`, and trait values such as `01`, `Nan` or `true` stay strings.
 
 ## Rationale
 
