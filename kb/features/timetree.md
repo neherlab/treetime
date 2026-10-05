@@ -36,7 +36,7 @@
 
 ## Time Marginal Modes
 
-- [/] `never`: runs the same marginal time inference in every round as the other modes and skips confidence-interval extraction; v0 uses joint most-likely times, which v1 lacks ([kb/issues/H-timetree-joint-time-inference-missing.md](../issues/H-timetree-joint-time-inference-missing.md))
+- [/] `never`: runs the same marginal time inference in every round as the other modes and skips confidence-interval extraction; v0 uses joint most-likely times, which v1 does not implement ([kb/decisions/timetree-marginal-only-time-inference.md](../decisions/timetree-marginal-only-time-inference.md)). The meaning of the modes is open: [kb/issues/M-timetree-time-marginal-modes-undefined-for-marginal-only-inference.md](../issues/M-timetree-time-marginal-modes-undefined-for-marginal-only-inference.md)
 - [x] `always` (marginal every round): every round already uses marginal time inference, so the mode runs no extra pass and enables confidence-interval extraction in `fn gather_results` ([packages/treetime/src/timetree/pipeline.rs#L480-L491](../../packages/treetime/src/timetree/pipeline.rs#L480-L491))
 - [x] `only-final` (marginal last round for confidence)
   - [x] Final timetree pass after loop
