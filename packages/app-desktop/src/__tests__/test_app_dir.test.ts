@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { checkoutEnv } from "../app-dir";
+import { appFolderEnv, checkoutEnv } from "../app-dir";
 
 describe("app_dir checkout", () => {
   test.each([
@@ -44,5 +44,59 @@ describe("app_dir checkout", () => {
       TREETIME_APP_DIR: "/checkout/tmp/app/treetime-dev",
       TREETIME_EXAMPLES_DIR: "/checkout/data",
     });
+  });
+});
+
+describe("app_dir switch", () => {
+  test("the switch names the app folder relative to the launch folder of an installed app", () => {
+    expect(
+      appFolderEnv({ appDirSwitch: "check", env: {}, launchDir: "/home/user", checkout: undefined }),
+    ).toStrictEqual({ TREETIME_APP_DIR: "/home/user/check" });
+  });
+
+  test("an installed app without the switch keeps the environment", () => {
+    expect(
+      appFolderEnv({
+        appDirSwitch: "",
+        env: { TREETIME_APP_DIR: "/data" },
+        launchDir: "/home/user",
+        checkout: undefined,
+      }),
+    ).toStrictEqual({});
+  });
+
+  test("the switch wins over TREETIME_APP_DIR and over the folder of the checkout mode", () => {
+    const env = { TREETIME_APP_DIR: "/data/treetime", TREETIME_DESKTOP_DEV_DIR: "/elsewhere" };
+
+    expect(
+      appFolderEnv({
+        appDirSwitch: "/tmp/check",
+        env,
+        launchDir: "/home/user",
+        checkout: { mode: "dev", root: "/checkout" },
+      }),
+    ).toStrictEqual({ TREETIME_APP_DIR: "/tmp/check", TREETIME_EXAMPLES_DIR: "/checkout/data" });
+  });
+
+  test("a relative switch resolves from the launch folder, not from the checkout", () => {
+    expect(
+      appFolderEnv({
+        appDirSwitch: "check",
+        env: {},
+        launchDir: "/home/user",
+        checkout: { mode: "prod", root: "/checkout" },
+      })["TREETIME_APP_DIR"],
+    ).toBe("/home/user/check");
+  });
+
+  test("a checkout without the switch takes the folder of its mode", () => {
+    expect(
+      appFolderEnv({
+        appDirSwitch: "",
+        env: {},
+        launchDir: "/home/user",
+        checkout: { mode: "dev", root: "/checkout" },
+      }),
+    ).toStrictEqual({ TREETIME_APP_DIR: "/checkout/tmp/app/treetime-dev", TREETIME_EXAMPLES_DIR: "/checkout/data" });
   });
 });

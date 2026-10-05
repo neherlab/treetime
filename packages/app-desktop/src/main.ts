@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { zPickFilesRequest, zPickFolderRequest } from "@neherlab/app-contracts";
+import { zPickFilesRequest, zPickFolderRequest, type ErrorResponse } from "@neherlab/app-contracts";
 import { appPaths } from "@neherlab/app-napi";
 import {
   app,
@@ -23,10 +23,10 @@ import {
   type WebContents,
 } from "electron";
 
-import { checkoutEnv } from "./app-dir";
+import { appFolderEnv } from "./app-dir";
 import { APP_SCHEME, APP_SCHEME_PRIVILEGES, APP_URL, resolveAppAsset } from "./app-scheme";
-import { shouldRestart, stopReason } from "./backend-process";
-import type { ControlReply, SaveRequest } from "./backend-protocol";
+import { backendStop, type BackendStop } from "./backend-process";
+import type { ControlReply, SaveRequest, SaveResult } from "./backend-protocol";
 import {
   BACKEND_PORT_CHANNEL,
   BACKEND_PORT_REQUEST_CHANNEL,
@@ -42,6 +42,10 @@ import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
 import { confineNavigation, isTrustedSender } from "./security";
 import type { SaveReply, SaveRunArchiveDialog, SaveRunFileDialog } from "./shell-protocol";
 
+const launchDir = process.cwd();
+
+const appDirSwitch = app.commandLine.getSwitchValue("app-dir");
+
 const projectRoot = process.env["TREETIME_PROJECT_ROOT"];
 
 if (projectRoot !== undefined && projectRoot !== "") {
@@ -52,9 +56,15 @@ const devServerUrl = process.env["VITE_DEV_SERVER_URL"];
 
 const devServer = devServerUrl !== undefined && devServerUrl !== "";
 
-if (!app.isPackaged) {
-  Object.assign(process.env, checkoutEnv(process.env, devServer ? "dev" : "prod", process.cwd()));
-}
+Object.assign(
+  process.env,
+  appFolderEnv({
+    appDirSwitch,
+    env: process.env,
+    launchDir,
+    checkout: app.isPackaged ? undefined : { mode: devServer ? "dev" : "prod", root: process.cwd() },
+  }),
+);
 
 const paths = appPaths();
 
@@ -89,10 +99,11 @@ async function main(): Promise<void> {
 class BackendProcess {
   private child: UtilityProcess;
   private readonly exitTimes: number[] = [];
-  private readonly saves = new Map<number, (reply: ControlReply) => void>();
+  private readonly saves = new Map<number, (reply: SaveResult) => void>();
   private readonly restarted: Array<() => void> = [];
   private nextSave = 0;
-  private failure: string | undefined;
+  private failure: BackendStop | undefined;
+  private startError: ErrorResponse | undefined;
 
   constructor() {
     this.child = this.spawn();
@@ -100,7 +111,7 @@ class BackendProcess {
 
   connect(contents: WebContents): void {
     if (this.failure !== undefined) {
-      contents.send(BACKEND_STOPPED_CHANNEL, this.failure, false);
+      contents.send(BACKEND_STOPPED_CHANNEL, this.failure);
 
       return;
     }
@@ -110,12 +121,12 @@ class BackendProcess {
     contents.postMessage(BACKEND_PORT_CHANNEL, null, [channel.port2]);
   }
 
-  save(request: (seq: number) => SaveRequest): Promise<ControlReply> {
+  save(request: (seq: number) => SaveRequest): Promise<SaveResult> {
     const seq = this.nextSave;
     this.nextSave += 1;
 
     if (this.failure !== undefined) {
-      return Promise.resolve({ kind: "error", seq, error: this.failure });
+      return Promise.resolve({ kind: "error", seq, error: this.failure.reason });
     }
 
     return new Promise((resolve) => {
@@ -151,7 +162,15 @@ class BackendProcess {
       env: { ...process.env, [DIAGNOSTIC_DIR_ENV]: diagnosticDir },
     });
 
+    this.startError = undefined;
     child.on("message", (reply: ControlReply) => {
+      if (reply.kind === "failed") {
+        this.startError = reply.error;
+        child.kill();
+
+        return;
+      }
+
       this.saves.get(reply.seq)?.(reply);
       this.saves.delete(reply.seq);
     });
@@ -170,23 +189,22 @@ class BackendProcess {
       this.exitTimes.push(now);
     }
 
-    const restart = requested || shouldRestart(this.exitTimes, now);
-    const reason = stopReason(code, requested, restart);
+    const stop = backendStop({ code, requested, startError: this.startError, exitTimes: this.exitTimes, now });
 
-    console.error(`[TreeTime] ${reason}`);
+    console.error(`[TreeTime] ${stop.reason}`);
 
     for (const [seq, resolve] of this.saves) {
-      resolve({ kind: "error", seq, error: reason });
+      resolve({ kind: "error", seq, error: stop.reason });
     }
 
     this.saves.clear();
 
     for (const contents of appContents()) {
-      contents.send(BACKEND_STOPPED_CHANNEL, reason, restart);
+      contents.send(BACKEND_STOPPED_CHANNEL, stop);
     }
 
-    if (!restart) {
-      this.failure = reason;
+    if (!stop.restarts) {
+      this.failure = stop;
 
       return;
     }
@@ -305,7 +323,7 @@ async function pickFolder(event: IpcMainInvokeEvent, data: unknown): Promise<str
 async function saveTo(
   event: IpcMainInvokeEvent,
   name: string,
-  save: (destination: string) => Promise<ControlReply>,
+  save: (destination: string) => Promise<SaveResult>,
 ): Promise<SaveReply> {
   const window = BrowserWindow.fromWebContents(event.sender);
   const options = { defaultPath: name };
