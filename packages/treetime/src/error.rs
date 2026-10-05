@@ -28,16 +28,12 @@ pub enum OperationError {
 
   #[display("{_0}")]
   SinkFailed(Report),
-
-  #[display("The {_0} operation is not yet implemented in v1")]
-  NotImplemented(&'static str),
 }
 
 impl OperationError {
   pub fn into_report(self) -> Report {
     match self {
       Self::Cancelled => Report::new(CancelledError),
-      Self::NotImplemented(operation) => Report::msg(format!("The {operation} operation is not yet implemented in v1")),
       Self::InvalidParams(report)
       | Self::InvalidInput(report)
       | Self::InferenceFailed(report)
@@ -61,7 +57,7 @@ impl OperationError {
       | Self::InvalidInput(report)
       | Self::InferenceFailed(report)
       | Self::SinkFailed(report) => Some(report),
-      Self::Cancelled | Self::NotImplemented(_) => None,
+      Self::Cancelled => None,
     }
   }
 }

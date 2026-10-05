@@ -56,7 +56,7 @@ pub(crate) fn run_command(command: TreetimeCommands, stages: &dyn StageSink, log
     },
     TreetimeCommands::Homoplasy(homoplasy_args) => {
       let homoplasy_args = TreetimeHomoplasyArgs::try_from(homoplasy_args)?;
-      run_homoplasy(&homoplasy_args, &NoopCancel)?;
+      run_homoplasy(&homoplasy_args, &NoopCancel, stages, log)?;
     },
     TreetimeCommands::Mugration(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, stages, log)?,
     TreetimeCommands::Pipeline(pipeline_args) => {

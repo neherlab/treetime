@@ -77,6 +77,10 @@ per_command_output_selection!(MugrationOutputSelection {
 });
 per_command_output_selection!(OptimizeOutputSelection { AugurNodeData, Gtr });
 per_command_output_selection!(PruneOutputSelection { Gtr });
+per_command_output_selection!(HomoplasyOutputSelection {
+  HomoplasyStats,
+  HomoplasyReport,
+});
 
 /// Output selection shared by every tree-writing command. `--output-all`
 /// chooses the directory, `--output-selection` restricts generated files, and

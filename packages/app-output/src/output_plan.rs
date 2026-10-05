@@ -321,6 +321,7 @@ pub enum CommandKind {
   Mugration,
   Clock,
   Prune,
+  Homoplasy,
 }
 
 impl CommandKind {
@@ -395,6 +396,7 @@ impl CommandKind {
         OutputSelection::ClockChartPng
       ],
       Self::Prune => btreeset![OutputSelection::Gtr],
+      Self::Homoplasy => btreeset![OutputSelection::HomoplasyStats, OutputSelection::HomoplasyReport],
     }
   }
 
@@ -406,6 +408,7 @@ impl CommandKind {
       Self::Mugration => "mugration",
       Self::Clock => "clock",
       Self::Prune => "prune",
+      Self::Homoplasy => "homoplasy",
     }
   }
 
@@ -478,6 +481,8 @@ pub enum OutputSelection {
   CoalescentJson,
   ClockChartSvg,
   ClockChartPng,
+  HomoplasyStats,
+  HomoplasyReport,
 }
 
 impl OutputSelection {
@@ -505,6 +510,8 @@ impl OutputSelection {
       Self::CoalescentJson => "Coalescent model and its likelihood",
       Self::ClockChartSvg => "Root-to-tip regression chart (SVG)",
       Self::ClockChartPng => "Root-to-tip regression chart (PNG)",
+      Self::HomoplasyStats => "Recurrent mutations: counts, histograms and ranked lists (JSON)",
+      Self::HomoplasyReport => "Recurrent mutations: text report",
     }
   }
 
@@ -529,7 +536,9 @@ impl OutputSelection {
       | Self::ReconstructedAaFasta
       | Self::CoalescentJson
       | Self::ClockChartSvg
-      | Self::ClockChartPng => None,
+      | Self::ClockChartPng
+      | Self::HomoplasyStats
+      | Self::HomoplasyReport => None,
     }
   }
 
@@ -564,7 +573,9 @@ impl OutputSelection {
       | Self::CoalescentCsv
       | Self::CoalescentJson
       | Self::ClockChartSvg
-      | Self::ClockChartPng => false,
+      | Self::ClockChartPng
+      | Self::HomoplasyStats
+      | Self::HomoplasyReport => false,
     }
   }
 
@@ -601,6 +612,8 @@ impl OutputSelection {
       Self::CoalescentJson => ".coalescent.json",
       Self::ClockChartSvg => ".svg",
       Self::ClockChartPng => ".png",
+      Self::HomoplasyStats => ".stats.json",
+      Self::HomoplasyReport => ".report.txt",
     }
   }
 
@@ -640,6 +653,8 @@ impl OutputSelection {
       Self::CoalescentJson => "--output-coalescent-json",
       Self::ClockChartSvg => "--output-clock-chart-svg",
       Self::ClockChartPng => "--output-clock-chart-png",
+      Self::HomoplasyStats => "--output-homoplasy-stats",
+      Self::HomoplasyReport => "--output-homoplasy-report",
     }
   }
 }

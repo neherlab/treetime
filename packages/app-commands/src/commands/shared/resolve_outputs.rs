@@ -1,5 +1,6 @@
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
 use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
+use crate::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
 use crate::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
 use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
 use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
@@ -70,4 +71,9 @@ impl_resolve_outputs!(Optimize; TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw; |
 
 impl_resolve_outputs!(Prune; TreetimePruneArgs, TreetimePruneArgsRaw; |s| [
   (OutputSelection::Gtr, s.output_gtr.as_deref()),
+]);
+
+impl_resolve_outputs!(Homoplasy; TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw; |s| [
+  (OutputSelection::HomoplasyStats, s.output_homoplasy_stats.as_deref()),
+  (OutputSelection::HomoplasyReport, s.output_homoplasy_report.as_deref()),
 ]);
