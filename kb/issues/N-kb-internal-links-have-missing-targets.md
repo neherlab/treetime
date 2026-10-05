@@ -64,7 +64,6 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 
 ## Other removed source files
 
-- `kb/decisions/multi-format-tree-io.md`: `packages/treetime-cli/src/convert/` (`args.rs`, `auspice.rs`, `convert.rs`), `packages/phyloxml/src/types.rs`, `packages/treetime-io/src/auspice.rs`, `packages/treetime-io/src/phyloxml.rs`
 - `kb/decisions/coalescent-analytic-tc-optimization.md`, `kb/decisions/optimize-newton-raphson-per-edge.md`, `kb/reports/optimization-methods/7-audit.md`: `packages/treetime/src/coalescent/optimize_tc.rs`
 - `kb/decisions/mugration-pseudo-count-initial-pi.md`, `kb/issues/M-discrete-missing-zero-states-inf.md`, `kb/issues/M-mugration-analysis-interface-exposes-policy-wiring.md`: `packages/treetime/src/mugration/mugration.rs`
 - `kb/decisions/prune-merge-jukes-cantor-branch-length.md`: `packages/treetime/src/gtr/jc_distance/__tests__/test_jc_distance.rs`

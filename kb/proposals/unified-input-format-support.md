@@ -74,7 +74,7 @@ For workflows that only need mutations (not full probability distributions), ope
 ## Interaction with existing proposals
 
 - [config-file-multi-partition.md](config-file-multi-partition.md): the config file could specify input format per partition, mixing Newick+FASTA with unified formats
-- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md): documents the existing format adapters that this proposal would integrate
+- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md): formats that v1 reads and writes, and the parsers that no command uses yet
 
 ## Open questions
 
@@ -119,5 +119,5 @@ The graph payload question affects internal organization. This proposal affects 
 
 ## Related documentation
 
-- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) - existing format adapter implementations
+- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) - current format readers and writers
 - [kb/decisions/partition-system-architecture.md](../decisions/partition-system-architecture.md) - target internal representation

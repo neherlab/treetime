@@ -131,7 +131,7 @@ Transparent compression from output path extension (`.gz`, `.bz2`, `.xz`, `.zst`
 
 ## Related
 
-- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) -- format adapter architecture
+- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) -- output architecture and tree formats
 - [kb/reports/newick-annotation-dialects.md](../reports/newick-annotation-dialects.md) -- NWK dialect grammars and tool interop
 - [kb/proposals/unified-input-format-support.md](unified-input-format-support.md) -- input-side counterpart (analysis commands accept any format)
 - [kb/proposals/io-format-coverage.md](io-format-coverage.md) -- ranking of formats not supported yet, including Taxonium JSONL ([kb/issues/N-io-taxonium-jsonl-output-unsupported.md](../issues/N-io-taxonium-jsonl-output-unsupported.md))

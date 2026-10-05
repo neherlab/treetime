@@ -74,4 +74,4 @@ Adds external dependency and I/O overhead.
 
 ## Related documentation
 
-- [Multi-format tree I/O](../decisions/multi-format-tree-io.md) - UShER MAT format stores mutations, not full sequences
+- [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md) - UShER MAT format stores mutations, not full sequences

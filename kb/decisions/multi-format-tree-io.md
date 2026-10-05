@@ -1,15 +1,15 @@
 # Multi-format tree I/O
 
-v0 reads trees from Newick and Nexus (via `Bio.Phylo.read()` in [packages/legacy/treetime/treetime/treeanc.py#L328-L332](../../packages/legacy/treetime/treetime/treeanc.py#L328-L332)) and writes Newick, Nexus, and a basic Auspice JSON ([packages/legacy/treetime/treetime/CLI_io.py#L211-L226](../../packages/legacy/treetime/treetime/CLI_io.py#L211-L226)). v1 expands to eight formats with full read/write support and a common graph intermediate representation.
+v0 reads trees from Newick and Nexus (via `Bio.Phylo.read()` in [packages/legacy/treetime/treetime/treeanc.py#L328-L332](../../packages/legacy/treetime/treetime/treeanc.py#L328-L332)) and writes Newick, Nexus, and a basic Auspice JSON ([packages/legacy/treetime/treetime/CLI_io.py#L211-L226](../../packages/legacy/treetime/treetime/CLI_io.py#L211-L226)). v1 reads Newick and writes Newick in three comment styles, Nexus, Auspice v2 JSON, UShER MAT (protobuf and JSON), a graph JSON and Graphviz DOT. Every writer reads one struct of per-node facts. Parsers for Nexus, UShER MAT and PhyloXML exist as library crates, and no command reads these formats yet.
 
 The motivation is interoperability with the phylogenetics tool landscape. TreeTime sits at the center of multiple workflows: it receives trees from phylogenetic inference tools (IQ-TREE, RAxML, FastTree) and produces timed trees consumed by downstream visualization and surveillance systems. Each of these systems has its own format:
 
-- Pandemic surveillance (UShER, PANGOLIN, UCSC) operates on mutation-annotated trees in protobuf, storing millions of SARS-CoV-2 sequences. Reading MAT files lets TreeTime perform molecular clock inference on trees produced by UShER's parsimony placement.
-- Genomic epidemiology (Nextstrain, Auspice) uses a JSON format embedding visualization metadata alongside the tree. TreeTime is already the engine behind `augur refine`; bidirectional Auspice JSON support allows reading back previously exported datasets for re-analysis.
+- Pandemic surveillance (UShER, PANGOLIN, UCSC) operates on mutation-annotated trees in protobuf, storing millions of SARS-CoV-2 sequences. Writing MAT files lets UShER tools such as matUtils load TreeTime trees. Reading MAT files would let TreeTime date trees produced by UShER's parsimony placement.
+- Genomic epidemiology (Nextstrain, Auspice) uses a JSON format embedding visualization metadata alongside the tree. TreeTime is already the engine behind `augur refine`; v1 writes Auspice JSON and augur node data JSON directly, so its results load into Auspice and into later augur steps without conversion.
 - Comparative genomics (Archaeopteryx, Forester, ETE) uses PhyloXML for richly annotated trees carrying taxonomy, sequences, evolutionary events, geographic distributions, and protein domain architecture. Its structured annotation model carries data that Newick comment extensions cannot represent.
 - Bayesian phylogenetics (BEAST, MrBayes, FigTree) uses Nexus and Newick with tool-specific comment conventions. These remain the baseline formats.
 
-v0's format support was sufficient when TreeTime operated within the Nextstrain pipeline alone. v1 targets a broader set of workflows where trees arrive from and depart to different tools. The `convert` subcommand ([packages/treetime-cli/src/convert/convert.rs#L71-L97](../../packages/treetime-cli/src/convert/convert.rs#L71-L97)) is a byproduct: once the format adapters exist, exposing them as a standalone conversion tool costs nothing.
+v0's format support was sufficient when TreeTime operated within the Nextstrain pipeline alone. v1 targets a broader set of workflows where trees arrive from and depart to different tools. [kb/proposals/io-format-coverage.md](../proposals/io-format-coverage.md) ranks the formats that v1 does not read or write yet.
 
 ## The phylogenetic format landscape
 
@@ -42,9 +42,11 @@ These extensions all reuse the comment mechanism `[...]` with different internal
 
 ### v1 implementation
 
-v1 reads Newick via the `bio` crate's parser and writes via a custom serializer ([packages/treetime-io/src/nwk.rs](../../packages/treetime-io/src/nwk.rs)). The `NodeFromNwk`/`NodeToNwk` and `EdgeFromNwk`/`EdgeToNwk` traits define how graph nodes and edges map to Newick labels, comments, and branch lengths. A `CommentProviders` mechanism allows injecting external annotations (e.g. ancestral state metadata) into Newick comments during output.
+The `util-newick` crate parses Newick with a `pest` grammar (`fn newick_from_reader()` in [packages/util-newick/src/parse.rs](../../packages/util-newick/src/parse.rs)) and keeps BEAST and NHX comments as node attributes. `fn nwk_read()` in [packages/treetime-io/src/nwk.rs](../../packages/treetime-io/src/nwk.rs) builds the graph and the node names from the parse. A numeric label on an internal node is read as a branch support value, not as a name. An eNewick hybrid node fails with an error, because the commands need a tree.
 
-Newick is the primary tree input format for all v1 analysis commands (ancestral, clock, timetree, optimize, prune, mugration) and is produced as output by all of them. In the convert command, Newick serves as both input and output format with auto-detection from `.nwk`/`.newick` extensions.
+`fn nwk_write()` in the same file writes a checked rooted tree (`TreeView`), the node names, the branch lengths and an ordered list of `(key, value)` comments per node in one of three styles, selected with `--output-nwk-style`: `plain` (no comments, the default), `beast` (`[&key=value]`, strings in double quotes) and `nhx` (`[&&NHX:key=value]`). `fn nwk_node_comments()` in [packages/app-output/src/nwk_comments.rs](../../packages/app-output/src/nwk_comments.rs) builds the comments from the facts that the run has, in v0 order: branch mutations, then the date with two decimals, then the trait value. With more than one style, the files get the secondary extensions `.annotated` (beast) and `.nhx`.
+
+Newick is the tree input format of every command (ancestral, clock, timetree, optimize, prune, mugration, homoplasy) and a tree output of every command.
 
 ## Nexus
 
@@ -54,7 +56,9 @@ PAUP\*, MrBayes, Mesquite, MacClade, SplitsTree, BEAST, IQ-TREE all support Nexu
 
 ### v1 implementation
 
-v1 writes Nexus by wrapping the Newick writer with `#NEXUS`/`Begin Taxa`/`Begin Trees` envelope blocks ([packages/treetime-io/src/nex.rs](../../packages/treetime-io/src/nex.rs)). All analysis commands produce `.nexus` output alongside `.nwk`. Nexus reading is not implemented - the convert command panics with `unimplemented!()` for Nexus input. v0 supports Nexus reading as a fallback when Newick parsing fails and the file extension is `.nexus` or `.nex`.
+`fn nex_write()` in [packages/treetime-io/src/nex.rs](../../packages/treetime-io/src/nex.rs) wraps the Newick text, in the same comment style, in a `#NEXUS` header with a `Taxa` block and a `Trees` block. `TaxLabels` lists the named leaves, and `NTax` counts the labels written. Every command writes `.nexus` output alongside `.nwk`.
+
+`util-newick` has a Nexus tree parser (`fn nexus_from_reader()` in [packages/util-newick/src/nexus.rs](../../packages/util-newick/src/nexus.rs)), but no command reads Nexus. v0 reads Nexus as a fallback when Newick parsing fails and the file extension is `.nexus` or `.nex`.
 
 ## NeXML
 
@@ -93,11 +97,9 @@ Unlike NeXML and Nexus, PhyloXML does not support character matrices or alignmen
 
 ### v1 implementation
 
-The `phyloxml` crate ([packages/phyloxml/src/types.rs](../../packages/phyloxml/src/types.rs)) implements the full PhyloXML type model: `Phyloxml`, `PhyloxmlPhylogeny`, `PhyloxmlClade`, `PhyloxmlTaxonomy`, `PhyloxmlSequence`, `PhyloxmlEvents`, `PhyloxmlDistribution`, `PhyloxmlDate`, `PhyloxmlProperty`, `PhyloxmlBinaryCharacters`, `PhyloxmlDomainArchitecture`, and supporting types. Reading uses `quick-xml` with serde deserialization. Writing uses the `xml-rs` crate for pretty-printed output.
+The `util-phyloxml` crate ([packages/util-phyloxml/src/types.rs](../../packages/util-phyloxml/src/types.rs)) implements the full PhyloXML type model: `Phyloxml`, `PhyloxmlPhylogeny`, `PhyloxmlClade`, `PhyloxmlTaxonomy`, `PhyloxmlSequence`, `PhyloxmlEvents`, `PhyloxmlDistribution`, `PhyloxmlDate`, `PhyloxmlProperty`, `PhyloxmlBinaryCharacters`, `PhyloxmlDomainArchitecture`, and supporting types. `fn phyloxml_read()` and `fn phyloxml_write()` in [packages/util-phyloxml/src/lib.rs](../../packages/util-phyloxml/src/lib.rs) read and write XML through `quick-xml` with serde.
 
-The `treetime-io` crate ([packages/treetime-io/src/phyloxml.rs](../../packages/treetime-io/src/phyloxml.rs)) provides graph integration through `PhyloxmlToGraph` and `PhyloxmlFromGraph` traits, converting between the PhyloXML type model and the generic `Graph` structure.
-
-A **PhyloXML-JSON** variant serializes the same type model as JSON instead of XML, providing a more compact and JavaScript-friendly representation. The type model, reader, and writer remain a reusable library; no analysis command currently reads or writes PhyloXML.
+No package depends on the crate, and no converter between PhyloXML and the graph exists. [kb/issues/N-io-phyloxml-crate-unused.md](../issues/N-io-phyloxml-crate-unused.md) asks whether to wire it into the commands or remove it.
 
 ## Usher MAT protobuf
 
@@ -136,19 +138,17 @@ The MAT format is compact and fast for its intended use case (mutation-annotated
 
 ### v1 implementation
 
-The `usher-mat-utils` crate ([packages/treetime/src/lib.rs](../../packages/treetime/src/lib.rs)) handles protobuf encoding and decoding via the `prost` crate. Three protobuf schemas are compiled: `parsimony.proto`, `mutation_detailed.proto`, and `taxodium.proto`.
+The `util-usher-mat` crate ([packages/util-usher-mat/src/lib.rs](../../packages/util-usher-mat/src/lib.rs)) compiles the `parsimony.proto`, `mutation_detailed.proto` and `taxodium.proto` schemas with `prost` and provides `fn usher_mat_pb_read()` and `fn usher_mat_pb_write()`.
 
-The `treetime-io` crate ([packages/treetime-io/src/usher_mat.rs](../../packages/treetime-io/src/usher_mat.rs)) provides graph integration through `UsherRead` and `UsherWrite` traits. The `usher_to_graph()` function parses the embedded Newick string and attaches per-node mutations from the protobuf data. The `usher_from_graph()` function serializes the graph back to the `UsherTree` protobuf structure.
+`fn mat_tree()` in [packages/app-output/src/usher_mat.rs](../../packages/app-output/src/usher_mat.rs) builds the `UsherTree` from the checked tree: the Newick string and the per-node mutation lists in preorder. UShER has no gap state, so a deletion is written as missing data and an insertion is left out, with one warning per run ([kb/decisions/io-usher-mat-gaps-as-missing-data.md](io-usher-mat-gaps-as-missing-data.md)). The run writes the tree as protobuf (`.mat.pb`, through `fn usher_mat_pb_write_file()` in [packages/treetime-io/src/usher_mat.rs](../../packages/treetime-io/src/usher_mat.rs)) and as JSON of the same type model (`.mat.json`), which can be read without protobuf tooling.
 
-A **Usher MAT-JSON** variant serializes the same protobuf type model as JSON, useful for inspection and debugging of MAT files without protobuf tooling. Both protobuf and JSON variants are available for input and output.
+No command reads a MAT: the parser exists, but no converter from a MAT to the graph and its partitions does ([kb/issues/N-io-usher-mat-input-not-wired.md](../issues/N-io-usher-mat-input-not-wired.md)).
 
 ## Auspice v2 JSON
 
-### From output-only to bidirectional
+### v0 output
 
-v0 writes a basic Auspice JSON alongside Nexus output via `create_auspice_json()` ([packages/legacy/treetime/treetime/CLI_io.py#L277-L341](../../packages/legacy/treetime/treetime/CLI_io.py#L277-L341)). This output contains tree structure, mutations, dates, and divergence, but v0 cannot read Auspice JSON back. The output targets Nextstrain's Auspice viewer for pathogen evolution visualization.
-
-v1 implements full bidirectional Auspice v2 JSON support: both reading and writing through a complete type model that covers the Auspice v2 schema.
+v0 writes a basic Auspice JSON alongside Nexus output via `create_auspice_json()` ([packages/legacy/treetime/treetime/CLI_io.py#L277-L341](../../packages/legacy/treetime/treetime/CLI_io.py#L277-L341)). This output contains tree structure, mutations, dates, and divergence, and targets Nextstrain's Auspice viewer for pathogen evolution visualization. v0 cannot read Auspice JSON.
 
 ### The Auspice v2 schema
 
@@ -173,40 +173,49 @@ The format embeds rich visualization metadata directly in the data file, making 
 
 ### v1 implementation
 
-The type model in [packages/treetime-io/src/auspice_types.rs](../../packages/treetime-io/src/auspice_types.rs) covers the full Auspice v2 schema: `AuspiceTree`, `AuspiceTreeNode`, `AuspiceTreeNodeAttrs`, `AuspiceTreeBranchAttrs`, `AuspiceTreeMeta`, `AuspiceGenomeAnnotations`, colorings, geo resolutions, and display defaults. Tree traversal iterators (BFS, DFS pre/post) are provided on the node type.
+The type model in [packages/treetime-io/src/auspice_types.rs](../../packages/treetime-io/src/auspice_types.rs) covers the Auspice v2 schema: `AuspiceTree`, `AuspiceTreeNode`, `AuspiceTreeNodeAttrs`, `AuspiceTreeBranchAttrs`, `AuspiceTreeMeta`, `AuspiceGenomeAnnotations`, colorings, and display defaults. The types derive serde in both directions, but no command reads Auspice JSON.
 
-The `auspice_to_graph()` and `auspice_from_graph()` functions ([packages/treetime-io/src/auspice.rs](../../packages/treetime-io/src/auspice.rs)) convert between the Auspice tree model and the generic `Graph` structure. The converter adapter ([packages/treetime-cli/src/convert/auspice.rs](../../packages/treetime-cli/src/convert/auspice.rs)) handles divergence accumulation (Auspice stores cumulative divergence, the graph stores per-edge branch lengths) and mutation formatting.
+`fn auspice_tree()` in [packages/app-output/src/auspice.rs](../../packages/app-output/src/auspice.rs) builds the tree from the checked tree and the facts that the run has:
+
+- `div`: summed from the root down along the divergence branch lengths, in the order of augur and v0, or taken from the values the command computed
+- Dates: `num_date` with its confidence interval, plus the `Date` and `Excluded` (`bad_branch`) colorings, when the run inferred dates
+- Trait: the value, the confidence of each state above 0.001 and the entropy, plus a coloring and a filter for the attribute, when the run reconstructed a discrete trait
+- Mutations: nucleotide substitutions and amino-acid mutations per CDS in `branch_attrs`, the `Genotype` (`gt`) coloring when at least one branch shows a mutation ([kb/decisions/auspice-genotype-coloring-when-mutations-shown.md](auspice-genotype-coloring-when-mutations-shown.md)), the root sequences, and the genome annotations with the entropy panel
+
+Every number in the node attributes must be finite; otherwise the error names the node and the field.
 
 ## Supporting formats
 
-### PhyloGraph JSON
+### Graph JSON
 
-An internal graph serialization format that round-trips the full graph structure (nodes, edges, graph-level data) through serde JSON. No custom format logic - the graph type derives `Serialize`/`Deserialize` and uses the generic `json_read_file()`/`json_write_file()` helpers from `treetime-utils`. Useful for debugging and for lossless intermediate storage during multi-step format conversions. All tree-outputting commands produce this format as `{stem}.graph.json` via the shared graph writer in `treetime-io`.
+The graph type derives serde, and every command writes the graph (nodes, edges and graph-level data) as `{stem}.graph.json` through `json_write_file()` of `treetime-utils`, with no format-specific code. The file shows the graph as the run left it, also when it is not a tree. No command reads it.
 
 ### Graphviz DOT
 
-The `graphviz_write_file()` function ([packages/treetime-io/src/graphviz.rs](../../packages/treetime-io/src/graphviz.rs)) generates directed graph output with subgraphs for roots, internal nodes, and leaves. All tree-outputting commands produce this format as `{stem}.dot` via the shared graph writer in `treetime-io`. Output only, not available in the convert command.
+`fn graphviz_write_file()` in [packages/treetime-io/src/graphviz.rs](../../packages/treetime-io/src/graphviz.rs) writes a directed graph with subgraphs for the roots, the internal nodes and the leaves, and with an invisible edge for every ordered pair of leaves (and of roots), which keeps them in one row. Each root appears once, and labels are escaped. Every command writes it as `{stem}.dot`.
 
-## I/O architecture
+## Output architecture
 
-All format adapters convert through a common intermediate representation: `ConverterGraph`, a `Graph<ConverterNode, ConverterEdge, ConverterData>` ([packages/treetime-cli/src/convert/convert.rs#L25-L69](../../packages/treetime-cli/src/convert/convert.rs#L25-L69)) where nodes carry names, edges carry branch lengths and optional mutations, and graph-level data carries Auspice metadata and root sequence information. Format-specific traits (`AuspiceRead`/`AuspiceWrite`, `UsherRead`/`UsherWrite`, `PhyloxmlToGraph`/`PhyloxmlFromGraph`, `NodeFromNwk`/`NodeToNwk`) handle the conversion between each format's type model and the common graph. Adding a new format requires implementing only the format-specific traits, not N-to-N pairwise converters.
+Each command builds one `AnnotatedGraph` ([packages/app-output/src/annotated_graph.rs](../../packages/app-output/src/annotated_graph.rs)) after its last change to the graph. The struct borrows the graph, the node names, the divergence branch lengths, the time branch lengths (timetree only) and the divergence values. It has three optional fact groups: `sequences` (root sequence, branch mutations, amino acids), `dates` and `traits`. A command sets a group only when the run produced those facts, and a writer decides what to write from the facts that are present, never from the command.
 
-Transparent compression is supported on both input and output: gz, bz2, xz, and zst formats are auto-detected by file extension.
+`fn write_graph_outputs()` in [packages/app-output/src/tree_output.rs](../../packages/app-output/src/tree_output.rs) writes the graph JSON and DOT files. `AnnotatedTreeView::new()` then checks that the graph is one rooted tree with `TreeView` ([packages/treetime-graph/src/tree_view.rs](../../packages/treetime-graph/src/tree_view.rs)): exactly one root, at most one parent per node, no cycle. Newick, Nexus, Auspice JSON, UShER MAT, augur node data JSON and the per-node tables take only the checked view, so they cannot run on a graph that is not a tree. When the check fails, the graph files are already written, and the error lists the tree outputs that were not written.
 
-The `convert` subcommand exposes all eight format adapters as a standalone tool. The `TreeFormat` enum ([packages/treetime-cli/src/convert/args.rs#L8-L18](../../packages/treetime-cli/src/convert/args.rs#L8-L18)) defines `Auspice`, `MatJson`, `MatPb`, `Newick`, `Nexus`, `PhyloGraph`, `Phyloxml`, `PhyloxmlJson` with auto-detection from file extensions and explicit `--input-format`/`--output-format` overrides.
+Output paths come from one output plan ([packages/app-output/src/output_plan.rs](../../packages/app-output/src/output_plan.rs)): `--output-all <dir>` writes the default set of the command, `--output-selection` restricts that set, and a per-file flag such as `--output-nwk` sets one path. The plan rejects two outputs with the same destination. An output that `--output-all` selects but the run has no data for is skipped with a debug message; a per-file flag for such an output fails.
+
+The tree readers and writers open files through `read_file_with()` and `write_file_with()` of `treetime-utils`, so gz, bz2, xz and zst compression follows the file extension on input and output, and `-` means standard input or output.
 
 ### Current limitations
 
-- Analysis commands (ancestral, clock, timetree, optimize, prune) still read Newick only - the new format adapters for reading are not yet integrated into the analysis pipeline. Writing uses the shared graph writer producing Newick, Nexus, PhyloGraph JSON, and Graphviz DOT.
-- Nexus reading is not implemented (`convert_read_file` panics with `unimplemented!()` for `TreeFormat::Nexus`)
-- Graphviz DOT is not available as a convert command format
+- The commands read trees from Newick only. UShER MAT, Auspice JSON, Nexus and PhyloXML input need conversion to Newick (and FASTA for sequences) first
+- The Newick reader rejects eNewick hybrid nodes, although the graph can hold networks
+- Graphviz DOT output grows with the square of the number of leaves, because of the invisible edges ([kb/issues/M-io-output-layer-scaling-naming-and-duplication.md](../issues/M-io-output-layer-scaling-naming-and-duplication.md))
 
 ## Practical impact
 
-- Trees from UShER pandemic surveillance can be imported for molecular clock inference after conversion to Newick
-- Auspice JSON datasets can be read back for re-analysis, not just produced as one-way output
-- Users can convert between formats without external tools: `treetime convert input.mat.pb -o output.phylo.xml`
-- Future integration of the format adapters into analysis commands will allow direct input from any supported format
+- TreeTime results load into Auspice and into later augur steps without conversion
+- UShER tools such as matUtils can load TreeTime trees with their mutations
+- BEAST-style tools (FigTree) read the dates, mutations and traits from the annotated Newick and Nexus files
+- Trees from UShER, Auspice datasets and Nexus files need conversion to Newick before TreeTime can analyze them
 
 ## References
 

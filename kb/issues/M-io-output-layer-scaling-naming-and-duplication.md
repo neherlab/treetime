@@ -49,7 +49,6 @@ Required behavior: reimplement mugration on top of ancestral reconstruction. Mug
 
 ## KB entries describe removed code
 
-- `kb/decisions/multi-format-tree-io.md` describes format traits, `ConverterGraph` and a `convert` command that no longer exist
 - `kb/issues/H-graph-lock-topology-is-exposed-to-consumers.md` describes `Arc<RwLock<Node>>`; the graph has no locks now
 - `kb/issues/M-command-output-ownership-is-scattered.md` and `kb/issues/M-output-module-mixes-topology-ordering.md` cite paths under `packages/treetime/src/commands/`, which no longer exists
 
@@ -64,4 +63,3 @@ Each output file is written as soon as its data is ready. A run that fails late 
 - [N-clock-unnamed-root-after-reroot.md](N-clock-unnamed-root-after-reroot.md)
 - [N-io-confidence-tsv-unnamed-root-has-empty-name.md](N-io-confidence-tsv-unnamed-root-has-empty-name.md)
 - [N-mugration-confidence-rows-copied-for-output.md](N-mugration-confidence-rows-copied-for-output.md)
-- [N-kb-multi-format-tree-io-decision-describes-removed-converters.md](N-kb-multi-format-tree-io-decision-describes-removed-converters.md)
