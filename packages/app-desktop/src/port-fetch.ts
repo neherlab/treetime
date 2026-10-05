@@ -1,7 +1,6 @@
 import { ApiError } from "@neherlab/app-contracts/client";
-import type { PortError, PortHeader, PortMessage, PortReply, PortRequest } from "@neherlab/app-napi";
-
-import type { BackendStop } from "./backend-process";
+import type { PortHeader, PortMessage, PortReply, PortRequest } from "@neherlab/app-napi";
+import type { BackendStopped } from "@neherlab/app-ui/host";
 
 export interface FetchPort {
   postMessage(message: PortMessage): void;
@@ -11,7 +10,7 @@ export interface FetchPort {
 
 export interface FetchConnection {
   onPort(listener: (port: FetchPort) => void): void;
-  onStopped(listener: (stop: BackendStop) => void): void;
+  onStopped(listener: (stop: BackendStopped) => void): void;
 }
 
 export type PortFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -27,7 +26,7 @@ export function createPortFetch(connection: FetchConnection): PortFetch {
 
   return async (input, init) => {
     const request = new Request(input, init);
-    const body = request.body === null ? undefined : await request.text();
+    const body = request.body === null ? undefined : new Uint8Array(await request.arrayBuffer());
     const url = new URL(request.url);
 
     const portRequest: Omit<PortRequest, "seq"> = {
@@ -132,8 +131,8 @@ class PortClient {
               }
 
               break;
-            case "error":
-              fail(portError(reply.error));
+            case "reset":
+              fail(new TypeError(reply.message));
               break;
           }
         },
@@ -176,7 +175,7 @@ class PortClient {
     this.waiting.clear();
   }
 
-  private stop({ reason, restarts, error: startError }: BackendStop): void {
+  private stop({ reason, restarts, error: startError }: BackendStopped): void {
     this.port = undefined;
     const error = startError === undefined ? new TypeError(reason) : new ApiError(SERVER_ERROR_STATUS, startError);
 
@@ -212,8 +211,4 @@ function abortReason(signal: AbortSignal): Error {
   const reason: unknown = signal.reason;
 
   return reason instanceof Error ? reason : new DOMException(String(reason), "AbortError");
-}
-
-function portError(error: PortError): TypeError {
-  return new TypeError(error.message, { cause: error });
 }

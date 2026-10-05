@@ -8,6 +8,7 @@ import { useApiContext } from "../api/context";
 import { useApi } from "../api/hooks";
 import { Panel } from "../components/Panel";
 import { formatBytes } from "../format";
+import { useHost } from "../host-context";
 import { downloadName, totalSize, type RunFileEntry } from "../results/files";
 import type { Citation } from "../results/types";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -15,10 +16,10 @@ import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { useToastManager } from "../ui/toast";
+import { downloadUrl, saveRunOutput, type RunOutput } from "./saveRunOutput";
 
 export function OutputFiles({ record, citation }: { record: RunRecord; citation: Citation }) {
-  const { save } = useApiContext();
-  const toasts = useToastManager();
+  const save = useSaveRunOutput();
 
   const { data: files, error } = useApi((context) => runsFiles({ ...context, path: { id: record.id } }), {
     staleTime: Infinity,
@@ -28,15 +29,9 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
 
   const downloadArchive = useCallback(async () => {
     setBusy(true);
-
-    try {
-      await save.saveRunArchive(record.id, downloadName(record.title, ".zip"));
-    } catch (failure: unknown) {
-      toasts.add({ title: "The archive cannot be downloaded", description: errorMessage(failure) });
-    } finally {
-      setBusy(false);
-    }
-  }, [record.id, record.title, save, toasts]);
+    await save({ id: record.id, name: downloadName(record.title, ".zip") }, "The archive cannot be downloaded");
+    setBusy(false);
+  }, [record.id, record.title, save]);
 
   const onArchive = useCallback(() => void downloadArchive(), [downloadArchive]);
 
@@ -91,16 +86,14 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
 }
 
 function FileRow({ runId, file }: { runId: string; file: RunFileEntry }) {
-  const { save } = useApiContext();
-  const toasts = useToastManager();
+  const save = useSaveRunOutput();
 
   const download = useCallback(async () => {
-    try {
-      await save.saveRunFile(runId, file.path, file.path.split("/").at(-1) ?? file.path);
-    } catch (failure: unknown) {
-      toasts.add({ title: "The file cannot be downloaded", description: errorMessage(failure) });
-    }
-  }, [file.path, runId, save, toasts]);
+    await save(
+      { id: runId, path: file.path, name: file.path.split("/").at(-1) ?? file.path },
+      "The file cannot be downloaded",
+    );
+  }, [file.path, runId, save]);
 
   const onDownload = useCallback(() => void download(), [download]);
 
@@ -117,5 +110,26 @@ function FileRow({ runId, file }: { runId: string; file: RunFileEntry }) {
         </Button>
       </TableCell>
     </TableRow>
+  );
+}
+
+function useSaveRunOutput() {
+  const { client } = useApiContext();
+  const host = useHost();
+  const toasts = useToastManager();
+
+  return useCallback(
+    async (output: RunOutput, failureTitle: string) => {
+      try {
+        const reply = await saveRunOutput({ host, client, download: downloadUrl }, output);
+
+        if (reply.kind === "error") {
+          toasts.add({ title: failureTitle, description: [reply.error.message, ...reply.error.causes].join(": ") });
+        }
+      } catch (failure: unknown) {
+        toasts.add({ title: failureTitle, description: errorMessage(failure) });
+      }
+    },
+    [client, host, toasts],
   );
 }

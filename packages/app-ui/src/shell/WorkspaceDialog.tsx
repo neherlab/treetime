@@ -1,4 +1,4 @@
-import { errorMessage, type Workspace, type WorkspaceShell } from "@neherlab/app-contracts";
+import { errorMessage, type Workspace } from "@neherlab/app-contracts";
 import { runsList, workspace as getWorkspace, workspaceUpdate } from "@neherlab/app-contracts/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -6,7 +6,8 @@ import FolderOpen from "~icons/lucide/folder-open";
 
 import { useApiContext } from "../api/context";
 import { resetApiQueries, useApi } from "../api/hooks";
-import { useWorkspaceShell } from "../platform";
+import type { Host } from "../host";
+import { useHost } from "../host-context";
 import { useShellStore } from "../store/shell";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -17,11 +18,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 const RUNS_FOLDER = "Runs folder";
 
 export function WorkspaceButton() {
-  const shell = useWorkspaceShell();
+  const host = useHost();
   const setOpen = useShellStore((state) => state.setWorkspaceOpen);
   const openDialog = useCallback(() => setOpen(true), [setOpen]);
 
-  if (shell === null) {
+  if (host === null) {
     return null;
   }
 
@@ -40,19 +41,19 @@ export function WorkspaceButton() {
 }
 
 export function WorkspaceDialog() {
-  const shell = useWorkspaceShell();
+  const host = useHost();
   const open = useShellStore((state) => state.workspaceOpen);
   const setOpen = useShellStore((state) => state.setWorkspaceOpen);
   const close = useCallback(() => setOpen(false), [setOpen]);
 
-  if (shell === null) {
+  if (host === null) {
     return null;
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <WorkspaceErrorNotice />
-      <DialogContent>{open && <WorkspaceForm shell={shell} onChanged={close} />}</DialogContent>
+      <DialogContent>{open && <WorkspaceForm host={host} onChanged={close} />}</DialogContent>
     </Dialog>
   );
 }
@@ -82,10 +83,10 @@ function WorkspaceErrorNotice() {
   return null;
 }
 
-function WorkspaceForm({ shell, onChanged }: { shell: WorkspaceShell; onChanged: () => void }) {
+function WorkspaceForm({ host, onChanged }: { host: Host; onChanged: () => void }) {
   const { data: workspace } = useApi((context) => getWorkspace(context));
   const { data: runList } = useApi((context) => runsList(context));
-  const change = useWorkspaceChange(shell, onChanged);
+  const change = useWorkspaceChange(host, onChanged);
   const [busy, setBusy] = useState(false);
 
   const apply = useCallback(
@@ -98,12 +99,12 @@ function WorkspaceForm({ shell, onChanged }: { shell: WorkspaceShell; onChanged:
   );
 
   const choose = useCallback(async () => {
-    const path = await shell.pickFolder({ title: RUNS_FOLDER });
+    const path = await host.pickFolder({ title: RUNS_FOLDER });
 
-    if (path !== null) {
+    if (path !== undefined) {
       await apply(path);
     }
-  }, [apply, shell]);
+  }, [apply, host]);
 
   const onChoose = useCallback(() => void choose(), [choose]);
   const onResetToDefault = useCallback(() => void apply(null), [apply]);
@@ -178,7 +179,7 @@ function WorkspacePath({ workspace }: { workspace: Workspace | undefined }) {
   );
 }
 
-function useWorkspaceChange(shell: WorkspaceShell, onChanged: () => void) {
+function useWorkspaceChange(host: Host, onChanged: () => void) {
   const { client } = useApiContext();
   const queryClient = useQueryClient();
   const toasts = useToastManager();
@@ -187,7 +188,7 @@ function useWorkspaceChange(shell: WorkspaceShell, onChanged: () => void) {
     async (path: string | null) => {
       try {
         await workspaceUpdate({ client, body: { path }, throwOnError: true });
-        await shell.restartBackend();
+        await host.restartBackend();
         await resetApiQueries(queryClient);
         onChanged();
         toasts.add({ title: "The runs folder changed", description: path ?? "TreeTime uses its default folder." });
@@ -195,6 +196,6 @@ function useWorkspaceChange(shell: WorkspaceShell, onChanged: () => void) {
         toasts.add({ title: "The runs folder cannot be changed", description: errorMessage(error) });
       }
     },
-    [client, onChanged, queryClient, shell, toasts],
+    [client, onChanged, queryClient, host, toasts],
   );
 }

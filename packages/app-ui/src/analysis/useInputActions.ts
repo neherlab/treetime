@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { useApiContext } from "../api/context";
-import { useLocalFiles } from "../platform";
+import { useHost } from "../host-context";
 import { baseName, type InputAssignment } from "../settings/inputs";
 import type { JsonValue } from "../settings/json";
 import { useDraftStore } from "../store/draft";
@@ -22,7 +22,7 @@ interface InputActions {
 
 export function useInputActions(command: AppCommand): InputActions {
   const { client } = useApiContext();
-  const localFiles = useLocalFiles();
+  const host = useHost();
   const { setValue } = useFormContext<FormConfig>();
   const setSource = useDraftStore((state) => state.setSource);
 
@@ -71,8 +71,8 @@ export function useInputActions(command: AppCommand): InputActions {
 
   const addFile = useCallback(
     async (key: string, file: File, list: boolean) => {
-      if (localFiles !== null) {
-        const path = localFiles.pathForFile(file);
+      if (host !== null) {
+        const path = host.pathForFile(file);
         assign(key, list ? [path] : path, file.name, "local", file.size);
 
         return;
@@ -87,26 +87,26 @@ export function useInputActions(command: AppCommand): InputActions {
 
       assign(key, list ? [uploaded.path] : uploaded.path, file.name, "upload", uploaded.size);
     },
-    [assign, client, localFiles, uploadRun],
+    [assign, client, host, uploadRun],
   );
 
   const pick = useCallback(
     async (key: string, title: string, extensions: string[], list: boolean) => {
-      if (localFiles === null) {
+      if (host === null) {
         return;
       }
 
-      const paths = await localFiles.pickFiles({ title, extensions, multiple: list });
+      const paths = await host.pickFiles({ title, extensions, multiple: list });
 
       if (paths.length > 0) {
         assign(key, list ? paths : (paths[0] ?? null), paths.map(baseName).join(", "), "local", null);
       }
     },
-    [assign, localFiles],
+    [assign, host],
   );
 
   return useMemo(
-    () => ({ canPick: localFiles !== null, assign, assignAll, clear, addFile, pick }),
-    [addFile, assign, assignAll, clear, localFiles, pick],
+    () => ({ canPick: host !== null, assign, assignAll, clear, addFile, pick }),
+    [addFile, assign, assignAll, clear, host, pick],
   );
 }

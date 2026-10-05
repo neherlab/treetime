@@ -6,7 +6,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { settingFieldId } from "../analysis/fieldIds";
 import { useConfigLoader } from "../analysis/useConfigLoader";
 import { useApi } from "../api/hooks";
-import { useWorkspaceShell } from "../platform";
+import { useHost } from "../host-context";
 import { useThemeChoice } from "../preferences/useThemeChoice";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { COMMAND_INFO } from "../settings/commands";
@@ -134,7 +134,7 @@ function usePaletteItems(): PaletteItem[] {
   const command = useDraftStore((state) => state.command);
   const compareIds = useShellStore((state) => state.compareIds);
   const setWorkspaceOpen = useShellStore((state) => state.setWorkspaceOpen);
-  const workspaceShell = useWorkspaceShell();
+  const host = useHost();
   const { theme, chooseTheme } = useThemeChoice();
   const loadConfig = useConfigLoader();
   const toasts = useToastManager();
@@ -162,7 +162,7 @@ function usePaletteItems(): PaletteItem[] {
       ),
     ];
 
-    if (workspaceShell !== null) {
+    if (host !== null) {
       items.push(
         paletteItem("Action", "action-runs-folder", "Change runs folder", "Where TreeTime keeps the runs", () =>
           setWorkspaceOpen(true),
@@ -218,16 +218,5 @@ function usePaletteItems(): PaletteItem[] {
     }
 
     return items;
-  }, [
-    catalog,
-    chooseTheme,
-    command,
-    compareIds,
-    loadExample,
-    navigate,
-    runList,
-    setWorkspaceOpen,
-    theme,
-    workspaceShell,
-  ]);
+  }, [catalog, chooseTheme, command, compareIds, loadExample, navigate, runList, setWorkspaceOpen, theme, host]);
 }

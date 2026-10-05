@@ -1,14 +1,9 @@
-use app_commands::bridge::error::ErrorResponse;
 use app_commands::runs::errors::invalid;
 use axum::body::Body;
 use axum::http::{HeaderMap, Request};
 use eyre::Report;
 use napi::bindgen_prelude::Uint8Array;
 use napi_derive::napi;
-use serde_json::Value;
-use treetime_utils::make_internal_report;
-
-const INTERNAL_ERROR_CODE: &str = "internal_error";
 
 #[napi(object)]
 pub struct PortRequest {
@@ -16,7 +11,7 @@ pub struct PortRequest {
   pub method: String,
   pub url: String,
   pub headers: Vec<PortHeader>,
-  pub body: Option<String>,
+  pub body: Option<Uint8Array>,
 }
 
 impl PortRequest {
@@ -33,7 +28,7 @@ impl PortRequest {
       |builder, header| builder.header(header.name, header.value),
     );
     builder
-      .body(body.map_or_else(Body::empty, Body::from))
+      .body(body.map_or_else(Body::empty, |bytes| Body::from(bytes.to_vec())))
       .map_err(|err| invalid(format!("the request `{method} {url}` is malformed: {err}")))
   }
 }
@@ -76,43 +71,16 @@ pub enum PortReply {
   End {
     seq: u32,
   },
-  Error {
+  Reset {
     seq: u32,
-    error: PortError,
+    message: String,
   },
 }
 
 impl PortReply {
   pub fn seq(&self) -> u32 {
     match self {
-      Self::Head { seq, .. } | Self::Chunk { seq, .. } | Self::End { seq } | Self::Error { seq, .. } => *seq,
+      Self::Head { seq, .. } | Self::Chunk { seq, .. } | Self::End { seq } | Self::Reset { seq, .. } => *seq,
     }
-  }
-
-  pub(crate) fn error(seq: u32, response: ErrorResponse) -> Self {
-    let error = PortError::from_response(response).unwrap_or_else(|report| PortError {
-      code: INTERNAL_ERROR_CODE.to_owned(),
-      message: report.to_string(),
-      causes: vec![],
-    });
-    Self::Error { seq, error }
-  }
-}
-
-#[napi(object)]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PortError {
-  pub code: String,
-  pub message: String,
-  pub causes: Vec<String>,
-}
-
-impl PortError {
-  fn from_response(response: ErrorResponse) -> Result<Self, Report> {
-    let ErrorResponse { code, message, causes } = response;
-    let Value::String(code) = serde_json::to_value(code)? else {
-      return Err(make_internal_report!("an error code serializes to a JSON string"));
-    };
-    Ok(Self { code, message, causes })
   }
 }

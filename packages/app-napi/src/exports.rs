@@ -1,14 +1,12 @@
-use crate::backend::DesktopService;
+use crate::backend::{DesktopService, PortScope};
 use crate::guard::{guarded, to_napi};
 use crate::port::{PortReply, PortRequest};
 use app_commands::app_paths::{AppFolderEnv, AppPaths, app_root};
 use app_commands::app_settings::settings::UiTheme;
 use app_commands::app_settings::store::AppSettingsStore;
-use app_commands::job::JobId;
 use eyre::Report;
-use napi::bindgen_prelude::{AsyncTask, ToNapiValue, TypeName};
+use napi::Status;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
-use napi::{Env, Status, Task};
 use napi_derive::napi;
 use serde_json::Value;
 use std::path::Path;
@@ -36,34 +34,23 @@ impl Backend {
     })
   }
 
-  #[napi]
+  #[napi(ts_args_type = "request: PortRequest, scope: 'host' | 'renderer', onReply: ((arg: PortReply) => void)")]
   pub fn fetch(
     &self,
     request: PortRequest,
+    scope: String,
     on_reply: ThreadsafeFunction<PortReply, (), PortReply, Status, false>,
-  ) -> PortExchange {
-    let abort = self.service.fetch(request, move |reply| {
+  ) -> napi::Result<PortExchange> {
+    let scope = guarded(|| PortScope::parse(&scope)).map_err(|err| to_napi(&err))?;
+    let abort = self.service.fetch(request, scope, move |reply| {
       on_reply.call(reply, ThreadsafeFunctionCallMode::NonBlocking) == Status::Ok
     });
-    PortExchange { abort }
+    Ok(PortExchange { abort })
   }
 
-  #[napi(ts_return_type = "Promise<void>")]
-  pub fn save_run_file(&self, request: SaveRunFileRequest) -> AsyncTask<BlockingTask<()>> {
-    let service = Arc::clone(&self.service);
-    BlockingTask::spawn(move || {
-      let SaveRunFileRequest { id, path, destination } = request;
-      service.save_run_file(&JobId::parse(&id)?, &path, Path::new(&destination))
-    })
-  }
-
-  #[napi(ts_return_type = "Promise<void>")]
-  pub fn save_run_archive(&self, request: SaveRunArchiveRequest) -> AsyncTask<BlockingTask<()>> {
-    let service = Arc::clone(&self.service);
-    BlockingTask::spawn(move || {
-      let SaveRunArchiveRequest { id, destination } = request;
-      service.save_run_archive(&JobId::parse(&id)?, Path::new(&destination))
-    })
+  #[napi]
+  pub fn reject_request(&self, seq: u32, message: String) -> napi::Result<Vec<PortReply>> {
+    guarded(|| self.service.reject_request(seq, message)).map_err(|err| to_napi(&err))
   }
 }
 
@@ -92,19 +79,6 @@ pub struct AppStartup {
   pub theme: String,
 }
 
-#[napi(object)]
-pub struct SaveRunFileRequest {
-  pub id: String,
-  pub path: String,
-  pub destination: String,
-}
-
-#[napi(object)]
-pub struct SaveRunArchiveRequest {
-  pub id: String,
-  pub destination: String,
-}
-
 #[napi]
 pub struct PortExchange {
   abort: AbortHandle,
@@ -115,35 +89,6 @@ impl PortExchange {
   #[napi]
   pub fn abort(&self) {
     self.abort.abort();
-  }
-}
-
-type Job<T> = Box<dyn FnOnce() -> Result<T, Report> + Send>;
-
-pub struct BlockingTask<T> {
-  job: Option<Job<T>>,
-}
-
-impl<T: ToNapiValue + TypeName + Send + 'static> BlockingTask<T> {
-  fn spawn(job: impl FnOnce() -> Result<T, Report> + Send + 'static) -> AsyncTask<Self> {
-    AsyncTask::new(Self {
-      job: Some(Box::new(job)),
-    })
-  }
-}
-
-impl<T: ToNapiValue + TypeName + Send + 'static> Task for BlockingTask<T> {
-  type Output = T;
-  type JsValue = T;
-
-  fn compute(&mut self) -> napi::Result<Self::Output> {
-    let job = self.job.take();
-    guarded(|| job.map_or_else(|| Err(make_report!("the task has already run")), |job| job()))
-      .map_err(|err| to_napi(&err))
-  }
-
-  fn resolve(&mut self, _env: Env, output: T) -> napi::Result<T> {
-    Ok(output)
   }
 }
 

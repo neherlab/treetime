@@ -1,9 +1,9 @@
 import type { ErrorResponse } from "@neherlab/app-contracts";
 import { ApiError } from "@neherlab/app-contracts/client";
 import type { PortMessage, PortReply } from "@neherlab/app-napi";
+import type { BackendStopped } from "@neherlab/app-ui/host";
 import { describe, expect, test, vi } from "vitest";
 
-import type { BackendStop } from "../backend-process";
 import { createPortFetch, type FetchConnection, type FetchPort } from "../port-fetch";
 
 const ORIGIN = "http://treetime.desktop";
@@ -42,10 +42,20 @@ describe("port_fetch requests", () => {
           method: "POST",
           url: "/api/runs?from=2",
           headers: [{ name: "content-type", value: "application/json" }],
-          body: '{"command":"clock"}',
+          body: new TextEncoder().encode('{"command":"clock"}'),
         },
       },
     ]);
+  });
+
+  test("a binary body arrives byte for byte, also when it is not valid UTF-8", async () => {
+    const backend = fakeBackend({ connected: true });
+    const bytes = new Uint8Array([0xff, 0xfe, 0x00, 0xc3, 0x28, 0x80]);
+
+    void createPortFetch(backend.connection)(`${ORIGIN}/api/runs/r1/inputs/blob.bin`, { method: "PUT", body: bytes });
+    await sent(backend, 1);
+
+    expect(backend.posted.map((message) => message.kind === "request" && message.request.body)).toStrictEqual([bytes]);
   });
 
   test("a request without a body sends no body", async () => {
@@ -112,34 +122,27 @@ describe("port_fetch responses", () => {
     expect([resolved.status, resolved.body]).toStrictEqual([204, null]);
   });
 
-  test("an error reply before the head rejects with the message of the back end", async () => {
+  test("a reset before the head rejects with its message", async () => {
     const backend = fakeBackend({ connected: true });
     const response = createPortFetch(backend.connection)(`${ORIGIN}/api/version`);
     await sent(backend, 1);
 
-    backend.reply({
-      kind: "error",
-      seq: 0,
-      error: { code: "invalid_request", message: "the request `X /api/version` is malformed", causes: [] },
-    });
+    backend.reply({ kind: "reset", seq: 0, message: "the back end stopped the operation" });
 
-    await expect(response).rejects.toThrow(new TypeError("the request `X /api/version` is malformed"));
+    await expect(response).rejects.toThrow(new TypeError("the back end stopped the operation"));
   });
 
-  test("an error reply after the head errors the body", async () => {
+  test("a reset after the head errors the body, so a truncated body never looks complete", async () => {
     const backend = fakeBackend({ connected: true });
     const response = createPortFetch(backend.connection)(`${ORIGIN}/api/version`);
     await sent(backend, 1);
 
     backend.reply({ kind: "head", seq: 0, status: 200, headers: [] });
     const resolved = await response;
-    backend.reply({
-      kind: "error",
-      seq: 0,
-      error: { code: "internal_error", message: "When reading the response body", causes: [] },
-    });
+    backend.reply({ kind: "chunk", seq: 0, data: new Uint8Array([104]) });
+    backend.reply({ kind: "reset", seq: 0, message: "When reading the response body: disk gone" });
 
-    await expect(resolved.text()).rejects.toThrow("When reading the response body");
+    await expect(resolved.text()).rejects.toThrow("When reading the response body: disk gone");
   });
 });
 
@@ -287,12 +290,12 @@ interface FakeBackend {
   posted: PortMessage[];
   connect(): void;
   reply(reply: PortReply): void;
-  stop(stop: BackendStop): void;
+  stop(stop: BackendStopped): void;
 }
 
 function fakeBackend({ connected = false } = {}): FakeBackend {
   const portListeners: Array<(port: FetchPort) => void> = [];
-  const stoppedListeners: Array<(stop: BackendStop) => void> = [];
+  const stoppedListeners: Array<(stop: BackendStopped) => void> = [];
   let deliver: (reply: PortReply) => void = () => undefined;
 
   const backend: FakeBackend = {

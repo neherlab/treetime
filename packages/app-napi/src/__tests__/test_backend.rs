@@ -1,17 +1,22 @@
 #[cfg(test)]
 mod tests {
-  use crate::backend::DesktopService;
+  use crate::backend::{DesktopService, PortScope, stream_response};
   use crate::port::PortReply;
   use app_commands::app_paths::AppFolderEnv;
   use app_output::output_plan::OutputSelection;
+  use axum::body::{Body, Bytes};
+  use axum::response::Response;
   use helpers::{
-    Ended, ancestral_request, archive_contents, event_ids, fetch, fetch_bytes, fetch_json, header, open_fetch,
-    wait_for_terminal,
+    Ended, ancestral_request, archive_contents, event_ids, fetch, fetch_bytes, fetch_json, fetch_json_in, header,
+    open_fetch, wait_for_terminal,
   };
   use indoc::indoc;
+  use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
   use std::fs;
+  use std::io;
+  use std::sync::atomic::AtomicBool;
   use std::sync::mpsc::RecvTimeoutError;
   use std::time::Duration;
   use tempfile::tempdir;
@@ -81,7 +86,7 @@ mod tests {
   }
 
   #[test]
-  fn test_backend_saves_a_run_file_and_the_archive_to_chosen_paths() {
+  fn test_backend_host_port_saves_a_run_file_and_the_archive_to_chosen_paths() {
     let root = tempdir().unwrap();
     let target = tempdir().unwrap();
     let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
@@ -91,38 +96,66 @@ mod tests {
 
     let file = target.path().join("tree.nwk");
     let archive = target.path().join("run.zip");
-    let job = serde_json::from_value(record["id"].clone()).unwrap();
-    service.save_run_file(&job, "ancestral.nwk", &file).unwrap();
-    service.save_run_archive(&job, &archive).unwrap();
+    let save = format!("/api/runs/{id}/save");
+    let saved_file = fetch_json_in(
+      &service,
+      PortScope::Host,
+      "POST",
+      &save,
+      Some(&json!({ "path": "ancestral.nwk", "destination": file })),
+    );
+    let saved_archive = fetch_json_in(
+      &service,
+      PortScope::Host,
+      "POST",
+      &save,
+      Some(&json!({ "destination": archive })),
+    );
 
     assert_eq!(
       (
+        (200, Value::Null),
+        (200, Value::Null),
         fetch_bytes(&service, &format!("/api/runs/{id}/file?path=ancestral.nwk")),
         archive_contents(fetch_bytes(&service, &format!("/api/runs/{id}/archive")))
       ),
-      (fs::read(&file).unwrap(), archive_contents(fs::read(&archive).unwrap()))
+      (
+        saved_file,
+        saved_archive,
+        fs::read(&file).unwrap(),
+        archive_contents(fs::read(&archive).unwrap())
+      )
     );
   }
 
   #[test]
-  fn test_backend_refuses_to_save_a_file_outside_the_run_folder() {
+  fn test_backend_renderer_port_has_no_save_route() {
     let root = tempdir().unwrap();
     let target = tempdir().unwrap();
     let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
     let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(true)));
-    let job = serde_json::from_value(record["id"].clone()).unwrap();
-    assert_error!(
-      service.save_run_file(&job, "../run.json", &target.path().join("run.json")),
-      "file path `../run.json` must name a file inside the run's output folder"
+    let id = record["id"].as_str().unwrap().to_owned();
+    let (status, error) = fetch_json(
+      &service,
+      "POST",
+      &format!("/api/runs/{id}/save"),
+      Some(&json!({ "destination": target.path().join("run.zip") })),
     );
-    assert_eq!(0, fs::read_dir(target.path()).unwrap().count());
+    assert_eq!(
+      (404, json!("not_found"), 0),
+      (
+        status,
+        error["code"].clone(),
+        fs::read_dir(target.path()).unwrap().count()
+      )
+    );
   }
 
   #[test]
   fn test_backend_fetch_answers_a_json_response_through_the_router() {
     let root = tempdir().unwrap();
     let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
-    let exchange = fetch(&service, "GET", "/api/version", vec![], None);
+    let exchange = fetch(&service, PortScope::Renderer, "GET", "/api/version", vec![], None);
     let body: Value = serde_json::from_slice(&exchange.body).unwrap();
     assert_eq!(
       (
@@ -148,9 +181,17 @@ mod tests {
     assert_eq!(200, status);
     let id = record["id"].as_str().unwrap().to_owned();
 
-    let all = fetch(&service, "GET", &format!("/api/runs/{id}/events"), vec![], None);
+    let all = fetch(
+      &service,
+      PortScope::Renderer,
+      "GET",
+      &format!("/api/runs/{id}/events"),
+      vec![],
+      None,
+    );
     let resumed = fetch(
       &service,
+      PortScope::Renderer,
       "GET",
       &format!("/api/runs/{id}/events"),
       vec![(o!("last-event-id"), o!("1"))],
@@ -182,12 +223,19 @@ mod tests {
     let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(true)));
     let id = record["id"].as_str().unwrap().to_owned();
 
-    let (abort, replies) = open_fetch(&service, "GET", &format!("/api/runs/{id}/events"), vec![], None);
+    let (abort, replies) = open_fetch(
+      &service,
+      PortScope::Renderer,
+      "GET",
+      &format!("/api/runs/{id}/events"),
+      vec![],
+      None,
+    );
     let head = replies.recv_timeout(Duration::from_secs(60)).unwrap();
     abort.abort();
     let after_abort = loop {
       match replies.recv_timeout(Duration::from_secs(60)) {
-        Ok(PortReply::End { .. } | PortReply::Error { .. }) => break Err("the exchange ended with a reply"),
+        Ok(PortReply::End { .. } | PortReply::Reset { .. }) => break Err("the exchange ended with a reply"),
         Ok(_) => {},
         Err(RecvTimeoutError::Disconnected) => break Ok(()),
         Err(RecvTimeoutError::Timeout) => break Err("the exchange kept its reply callback after the abort"),
@@ -203,7 +251,7 @@ mod tests {
   fn test_backend_fetch_streams_app_events_of_run_changes() {
     let root = tempdir().unwrap();
     let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
-    let (abort, replies) = open_fetch(&service, "GET", "/api/events", vec![], None);
+    let (abort, replies) = open_fetch(&service, PortScope::Renderer, "GET", "/api/events", vec![], None);
     let head = replies.recv_timeout(Duration::from_secs(60)).unwrap();
     let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(true)));
 
@@ -241,20 +289,123 @@ mod tests {
   }
 
   #[test]
-  fn test_backend_fetch_reports_a_malformed_request_as_an_invalid_request_error() {
+  fn test_backend_fetch_answers_a_malformed_request_with_an_invalid_request_response() {
     let root = tempdir().unwrap();
     let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
-    let exchange = fetch(&service, "NOT A METHOD", "/api/version", vec![], None);
-    let Ended::Error(error) = exchange.ended else {
-      panic!("the exchange did not end with an error reply");
-    };
+    let exchange = fetch(
+      &service,
+      PortScope::Renderer,
+      "NOT A METHOD",
+      "/api/version",
+      vec![],
+      None,
+    );
+    let body: Value = serde_json::from_slice(&exchange.body).unwrap();
     assert_eq!(
       (
-        0,
-        o!("invalid_request"),
-        o!("the request `NOT A METHOD /api/version` is malformed: invalid HTTP method")
+        400,
+        json!({
+          "code": "invalid_request",
+          "message": "the request `NOT A METHOD /api/version` is malformed: invalid HTTP method",
+          "causes": []
+        }),
+        Ended::End
       ),
-      (exchange.status, error.code, error.message)
+      (exchange.status, body, exchange.ended)
+    );
+  }
+
+  #[test]
+  fn test_backend_fetch_passes_a_binary_body_unchanged() {
+    let root = tempdir().unwrap();
+    let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
+    let (_, record) = fetch_json(&service, "POST", "/api/runs", Some(&ancestral_request(true)));
+    let id = record["id"].as_str().unwrap().to_owned();
+    let bytes = vec![0xff, 0xfe, 0x00, 0xc3, 0x28, 0x80];
+    let upload = fetch(
+      &service,
+      PortScope::Renderer,
+      "PUT",
+      &format!("/api/runs/{id}/inputs/blob.bin"),
+      vec![(o!("content-type"), o!("application/octet-stream"))],
+      Some(bytes.clone()),
+    );
+    let uploaded: Value = serde_json::from_slice(&upload.body).unwrap();
+    let stored = fs::read(uploaded["path"].as_str().unwrap()).unwrap();
+    assert_eq!((200, bytes), (upload.status, stored));
+  }
+
+  #[test]
+  fn test_backend_reject_request_answers_a_complete_invalid_request_response() {
+    let root = tempdir().unwrap();
+    let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
+    let replies = service.reject_request(3, o!("the request has no method")).unwrap();
+    let summary = replies
+      .into_iter()
+      .map(|reply| match reply {
+        PortReply::Head { seq, status, headers } => json!({
+          "head": [seq, status, header(&headers.into_iter().map(|header| (header.name, header.value)).collect::<Vec<_>>(), "content-type")]
+        }),
+        PortReply::Chunk { seq, data } => json!({ "chunk": [seq, serde_json::from_slice::<Value>(&data).unwrap()] }),
+        PortReply::End { seq } => json!({ "end": seq }),
+        PortReply::Reset { seq, message } => json!({ "reset": [seq, message] }),
+      })
+      .collect::<Vec<_>>();
+    assert_eq!(
+      vec![
+        json!({ "head": [3, 400, "application/json"] }),
+        json!({ "chunk": [3, { "code": "invalid_request", "message": "the request has no method", "causes": [] }] }),
+        json!({ "end": 3 }),
+      ],
+      summary
+    );
+  }
+
+  #[tokio::test]
+  async fn test_backend_body_failure_after_the_head_resets_the_exchange() {
+    let chunks: Vec<Result<Bytes, io::Error>> =
+      vec![Ok(Bytes::from_static(b"partial")), Err(io::Error::other("disk gone"))];
+    let response = Response::new(Body::from_stream(tokio_stream::iter(chunks)));
+    let replies = Mutex::new(vec![]);
+    stream_response(5, response, &AtomicBool::new(false), &|reply| {
+      replies.lock().push(reply);
+      true
+    })
+    .await;
+    let summary = replies
+      .into_inner()
+      .into_iter()
+      .map(|reply| match reply {
+        PortReply::Head { status, .. } => json!({ "head": status }),
+        PortReply::Chunk { data, .. } => json!({ "chunk": String::from_utf8(data.to_vec()).unwrap() }),
+        PortReply::End { .. } => json!("end"),
+        PortReply::Reset { message, .. } => json!({ "reset": message }),
+      })
+      .collect::<Vec<_>>();
+    assert_eq!(
+      vec![
+        json!({ "head": 200 }),
+        json!({ "chunk": "partial" }),
+        json!({ "reset": "When reading the response body: disk gone" }),
+      ],
+      summary
+    );
+  }
+
+  #[test]
+  fn test_backend_scope_names_one_of_the_two_routers() {
+    assert_eq!(
+      (PortScope::Host, PortScope::Renderer),
+      (PortScope::parse("host").unwrap(), PortScope::parse("renderer").unwrap())
+    );
+  }
+
+  #[test]
+  fn test_backend_scope_rejects_an_unknown_name() {
+    assert_error!(
+      PortScope::parse("window"),
+      "unknown port scope 'window': Matching variant not found. This is an internal error. Please report it to \
+       developers."
     );
   }
 
@@ -414,7 +565,9 @@ mod tests {
 
   mod helpers {
     use crate::backend::DesktopService;
-    use crate::port::{PortError, PortHeader, PortReply, PortRequest};
+    use crate::backend::PortScope;
+    use crate::port::{PortHeader, PortReply, PortRequest};
+    use napi::bindgen_prelude::Uint8Array;
     use serde_json::{Value, json};
     use std::io::{Cursor, Read};
     use std::path::Path;
@@ -427,7 +580,7 @@ mod tests {
     #[derive(Debug, PartialEq, Eq)]
     pub(super) enum Ended {
       End,
-      Error(PortError),
+      Reset(String),
     }
 
     pub(super) struct Exchange {
@@ -439,10 +592,11 @@ mod tests {
 
     pub(super) fn open_fetch(
       service: &DesktopService,
+      scope: PortScope,
       method: &str,
       url: &str,
       headers: Vec<(String, String)>,
-      body: Option<String>,
+      body: Option<Vec<u8>>,
     ) -> (AbortHandle, mpsc::Receiver<PortReply>) {
       let (send, receive) = mpsc::sync_channel(1024);
       let request = PortRequest {
@@ -453,20 +607,21 @@ mod tests {
           .into_iter()
           .map(|(name, value)| PortHeader { name, value })
           .collect(),
-        body,
+        body: body.map(Uint8Array::new),
       };
-      let abort = service.fetch(request, move |reply| send.send(reply).is_ok());
+      let abort = service.fetch(request, scope, move |reply| send.send(reply).is_ok());
       (abort, receive)
     }
 
     pub(super) fn fetch(
       service: &DesktopService,
+      scope: PortScope,
       method: &str,
       url: &str,
       headers: Vec<(String, String)>,
-      body: Option<String>,
+      body: Option<Vec<u8>>,
     ) -> Exchange {
-      let (_abort, replies) = open_fetch(service, method, url, headers, body);
+      let (_abort, replies) = open_fetch(service, scope, method, url, headers, body);
       let mut exchange = Exchange {
         status: 0,
         headers: vec![],
@@ -483,8 +638,8 @@ mod tests {
           },
           PortReply::Chunk { data, .. } => exchange.body.extend_from_slice(&data),
           PortReply::End { .. } => return exchange,
-          PortReply::Error { error, .. } => {
-            exchange.ended = Ended::Error(error);
+          PortReply::Reset { message, .. } => {
+            exchange.ended = Ended::Reset(message);
             return exchange;
           },
         }
@@ -492,15 +647,31 @@ mod tests {
     }
 
     pub(super) fn fetch_json(service: &DesktopService, method: &str, url: &str, body: Option<&Value>) -> (u16, Value) {
+      fetch_json_in(service, PortScope::Renderer, method, url, body)
+    }
+
+    pub(super) fn fetch_json_in(
+      service: &DesktopService,
+      scope: PortScope,
+      method: &str,
+      url: &str,
+      body: Option<&Value>,
+    ) -> (u16, Value) {
       let exchange = fetch(
         service,
+        scope,
         method,
         url,
         vec![(o!("content-type"), o!("application/json"))],
-        body.map(Value::to_string),
+        body.map(|body| body.to_string().into_bytes()),
       );
       assert_eq!(Ended::End, exchange.ended);
-      (exchange.status, serde_json::from_slice(&exchange.body).unwrap())
+      let body = if exchange.body.is_empty() {
+        Value::Null
+      } else {
+        serde_json::from_slice(&exchange.body).unwrap()
+      };
+      (exchange.status, body)
     }
 
     pub(super) fn archive_contents(bytes: Vec<u8>) -> Vec<(String, Vec<u8>)> {
@@ -532,13 +703,20 @@ mod tests {
     }
 
     pub(super) fn fetch_bytes(service: &DesktopService, url: &str) -> Vec<u8> {
-      let exchange = fetch(service, "GET", url, vec![], None);
+      let exchange = fetch(service, PortScope::Renderer, "GET", url, vec![], None);
       assert_eq!((200, Ended::End), (exchange.status, exchange.ended));
       exchange.body
     }
 
     pub(super) fn wait_for_terminal(service: &DesktopService, id: &str) -> Value {
-      let exchange = fetch(service, "GET", &format!("/api/runs/{id}/events"), vec![], None);
+      let exchange = fetch(
+        service,
+        PortScope::Renderer,
+        "GET",
+        &format!("/api/runs/{id}/events"),
+        vec![],
+        None,
+      );
       String::from_utf8(exchange.body)
         .unwrap()
         .lines()

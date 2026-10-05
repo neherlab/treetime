@@ -497,17 +497,5 @@ export default defineConfig({
         "react-perf/jsx-no-new-object-as-prop": "off",
       },
     },
-    {
-      files: [
-        "packages/app-contracts/src/errors.ts",
-        "packages/app-desktop/src/desktop-shell.ts",
-        "packages/app-desktop/src/main.ts",
-      ],
-      rules: {
-        "anti-slop/no-runtime-typeof": "off",
-        "anti-slop/no-unknown-parameters": "off",
-        "anti-slop/no-unknown-returns": "off",
-      },
-    },
   ],
 });

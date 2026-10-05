@@ -24,7 +24,7 @@ impl<E: Into<Report>> From<E> for AppError {
   }
 }
 
-pub(crate) fn error_response(body: ErrorResponse) -> Response {
+pub fn error_response(body: ErrorResponse) -> Response {
   (http_status(body.code), Json(body)).into_response()
 }
 

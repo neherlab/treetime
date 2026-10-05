@@ -8,35 +8,26 @@ import {
   QueryProvider,
   ThemeProvider,
 } from "@neherlab/app-ui";
+import type { Host } from "@neherlab/app-ui/host";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import {
-  createDesktopSaveActions,
-  createLocalFiles,
-  createWorkspaceShell,
-  windowFetchConnection,
-  type DesktopShell,
-} from "../src/desktop-shell";
+import { windowFetchConnection } from "../src/ipc-renderer";
 import { createPortFetch } from "../src/port-fetch";
 
 import "./index.css";
 
 declare global {
   interface Window {
-    treetimeShell: DesktopShell;
+    treetimeHost: Host;
   }
 }
 
-const connection = windowFetchConnection(window, window.treetimeShell);
+const host = window.treetimeHost;
+
+const connection = windowFetchConnection(window, host);
 
 const client = createApiClient({ baseUrl: globalThis.location.origin, fetch: createPortFetch(connection) });
-
-const save = createDesktopSaveActions(window.treetimeShell);
-
-const localFiles = createLocalFiles(window.treetimeShell);
-
-const workspaceShell = createWorkspaceShell(window.treetimeShell);
 
 const preferences = apiPreferencesStorage(client);
 
@@ -48,9 +39,9 @@ if (root) {
       <ThemeProvider>
         <ErrorBoundary>
           <QueryProvider>
-            <ApiProvider client={client} save={save}>
+            <ApiProvider client={client}>
               <PreferencesProvider storage={preferences}>
-                <App localFiles={localFiles} workspaceShell={workspaceShell} />
+                <App host={host} />
               </PreferencesProvider>
             </ApiProvider>
           </QueryProvider>

@@ -1,104 +1,78 @@
+import type { PortReply } from "@neherlab/app-napi";
+import { BACKEND_PORT_CHANNEL, BACKEND_PORT_REQUEST_CHANNEL, type BackendStopped } from "@neherlab/app-ui/host";
 import { describe, expect, test } from "vitest";
 
-import type { BackendStop } from "../backend-process";
-import { BACKEND_PORT_CHANNEL } from "../channels";
 import {
-  SaveError,
-  createDesktopSaveActions,
-  createLocalFiles,
-  createWorkspaceShell,
+  createPreloadHost,
+  invoke,
   windowFetchConnection,
-  type DesktopShell,
+  type IpcRendererLike,
   type WindowLike,
-} from "../desktop-shell";
+} from "../ipc-renderer";
 import type { FetchPort } from "../port-fetch";
-import type { SaveReply } from "../shell-protocol";
 
-describe("desktop_shell files", () => {
-  test("saveRunFile asks the shell to save the file and reports whether it was saved", async () => {
-    const shell = fakeShell({ saved: { saved: true } });
+describe("ipc_renderer invoke", () => {
+  test("a request goes to the prefixed channel and the reply comes back typed", async () => {
+    const ipc = fakeIpc({ "treetime:pick-files": ["/data/tree.nwk"] });
 
-    await expect(createDesktopSaveActions(shell).saveRunFile("r1", "out/a.nwk", "a.nwk")).resolves.toBe(true);
-    expect(shell.saves).toStrictEqual([{ id: "r1", path: "out/a.nwk", name: "a.nwk" }]);
-  });
+    const reply = await invoke(ipc, "pick-files", { title: "Tree", extensions: ["nwk"], multiple: false });
 
-  test("saveRunArchive resolves false when the user cancels the save dialog", async () => {
-    const shell = fakeShell({ saved: { saved: false } });
-
-    await expect(createDesktopSaveActions(shell).saveRunArchive("r1", "run.zip")).resolves.toBe(false);
-    expect(shell.saves).toStrictEqual([{ id: "r1", name: "run.zip" }]);
-  });
-
-  test("a save the back end refuses rejects with its typed error", async () => {
-    const response = { code: "invalid_request", message: "file path `../x` must name a file", causes: [] };
-    const shell = fakeShell({ saved: { error: JSON.stringify(response) } });
-
-    const error: unknown = await createDesktopSaveActions(shell)
-      .saveRunFile("r1", "../x", "x")
-      .catch((failure: unknown) => failure);
-
-    expect(error).toBeInstanceOf(SaveError);
-    expect(error).toMatchObject({ response, message: "file path `../x` must name a file" });
-  });
-
-  test("an untyped save error rejects as an internal error with its message", async () => {
-    const shell = fakeShell({ saved: { error: "permission denied" } });
-
-    await expect(createDesktopSaveActions(shell).saveRunArchive("r1", "run.zip")).rejects.toMatchObject({
-      response: { code: "internal_error", message: "permission denied", causes: [] },
-    });
-  });
-
-  test("pickFiles validates the paths the shell returns", async () => {
-    const files = createLocalFiles(fakeShell({ picked: ["/data/tree.nwk"] }));
-
-    await expect(files.pickFiles({ title: "Tree", extensions: ["nwk"], multiple: false })).resolves.toStrictEqual([
-      "/data/tree.nwk",
+    expect([reply, ipc.invoked]).toStrictEqual([
+      ["/data/tree.nwk"],
+      [["treetime:pick-files", { title: "Tree", extensions: ["nwk"], multiple: false }]],
     ]);
   });
 
-  test("a malformed pick result rejects", async () => {
-    const files = createLocalFiles(fakeShell({ picked: [1] }));
+  test("a reply that fails its schema rejects", async () => {
+    const ipc = fakeIpc({ "treetime:pick-folder": 42 });
 
-    await expect(files.pickFiles({ title: "Tree", extensions: [], multiple: false })).rejects.toThrow(
-      "expected string",
-    );
+    await expect(invoke(ipc, "pick-folder", { title: "Runs" })).rejects.toThrow("expected string");
+  });
+
+  test("a save reply carries the error response of the back end", async () => {
+    const error = { code: "not_found", message: "run `r9` does not exist", causes: [] };
+    const ipc = fakeIpc({ "treetime:save-run": { kind: "error", error } });
+
+    await expect(invoke(ipc, "save-run", { id: "r9", name: "r9.zip" })).resolves.toStrictEqual({
+      kind: "error",
+      error,
+    });
   });
 });
 
-describe("desktop_shell workspace", () => {
-  test("pickFolder returns the folder the user chose", async () => {
-    const workspace = createWorkspaceShell(fakeShell({ folder: "/data/runs" }));
+describe("ipc_renderer preload host", () => {
+  test("the host asks for a port on the port request channel", () => {
+    const ipc = fakeIpc({});
 
-    await expect(workspace.pickFolder({ title: "Runs folder" })).resolves.toBe("/data/runs");
+    createPreloadHost(ipc, { getPathForFile: () => "" }).connectBackend();
+
+    expect(ipc.sent).toStrictEqual([BACKEND_PORT_REQUEST_CHANNEL]);
   });
 
-  test("pickFolder returns null when the user cancels the dialog", async () => {
-    const workspace = createWorkspaceShell(fakeShell({ folder: null }));
+  test("a stop event reaches the listener after its schema check", () => {
+    const ipc = fakeIpc({});
+    const stops: BackendStopped[] = [];
 
-    await expect(workspace.pickFolder({ title: "Runs folder" })).resolves.toBeNull();
+    createPreloadHost(ipc, { getPathForFile: () => "" }).onBackendStopped((stop) => {
+      stops.push(stop);
+    });
+    ipc.emit("treetime:backend-stopped", { reason: "crashed", restarts: true });
+
+    expect(stops).toStrictEqual([{ reason: "crashed", restarts: true }]);
   });
 
-  test("a malformed folder result rejects", async () => {
-    const workspace = createWorkspaceShell(fakeShell({ folder: ["/data/runs"] }));
+  test("the path of a dropped file comes from the file utilities of Electron", () => {
+    const host = createPreloadHost(fakeIpc({}), { getPathForFile: (file) => `/home/user/${file.name}` });
 
-    await expect(workspace.pickFolder({ title: "Runs folder" })).rejects.toThrow("expected string");
-  });
-
-  test("restartBackend asks the shell to restart the back end once", async () => {
-    const shell = fakeShell({});
-
-    await createWorkspaceShell(shell).restartBackend();
-
-    expect(shell.restarts).toBe(1);
+    expect(host.pathForFile(new File([], "tree.nwk"))).toBe("/home/user/tree.nwk");
   });
 });
 
-describe("desktop_shell window connection", () => {
+describe("ipc_renderer window connection", () => {
   test("the port the preload posts to the window serves the fetch transport, also to listeners added later", () => {
     const target = fakeWindow();
-    const shell = fakeShell({});
-    const connection = windowFetchConnection(target, shell);
+    const host = fakeHost();
+    const connection = windowFetchConnection(target, host);
     const port = fakeFetchPort();
     const received: FetchPort[] = [];
 
@@ -110,27 +84,27 @@ describe("desktop_shell window connection", () => {
       received.push(next);
     });
 
-    expect([shell.connections, received]).toStrictEqual([1, [port, port]]);
+    expect([host.connections, received]).toStrictEqual([1, [port, port]]);
   });
 
   test("a stopped back end drops its port until the preload posts a new one", () => {
     const target = fakeWindow();
-    const shell = fakeShell({});
-    const connection = windowFetchConnection(target, shell);
+    const host = fakeHost();
+    const connection = windowFetchConnection(target, host);
     const received: FetchPort[] = [];
 
     target.emit({ source: target, data: { channel: BACKEND_PORT_CHANNEL }, ports: [fakeFetchPort()] });
-    shell.stop({ reason: "crashed", restarts: true });
+    host.stop({ reason: "crashed", restarts: true });
     connection.onPort((next) => {
       received.push(next);
     });
 
-    expect([shell.connections, received]).toStrictEqual([1, []]);
+    expect([host.connections, received]).toStrictEqual([1, []]);
   });
 
   test("messages from another source, without a port or of another channel are ignored", () => {
     const target = fakeWindow();
-    const connection = windowFetchConnection(target, fakeShell({}));
+    const connection = windowFetchConnection(target, fakeHost());
     const received: FetchPort[] = [];
 
     connection.onPort((next) => {
@@ -145,43 +119,33 @@ describe("desktop_shell window connection", () => {
   });
 
   test("a stop of the back end reaches the listeners with its reason", () => {
-    const shell = fakeShell({});
-    const connection = windowFetchConnection(fakeWindow(), shell);
-    const stops: BackendStop[] = [];
+    const host = fakeHost();
+    const connection = windowFetchConnection(fakeWindow(), host);
+    const stops: BackendStopped[] = [];
 
     connection.onStopped((stop) => {
       stops.push(stop);
     });
-    shell.stop({ reason: "crashed", restarts: false });
+    host.stop({ reason: "crashed", restarts: false });
 
     expect(stops).toStrictEqual([{ reason: "crashed", restarts: false }]);
   });
 });
 
-interface FakeShell extends DesktopShell {
+interface FakeHost {
   connections: number;
-  restarts: number;
-  saves: unknown[];
-  stop(stop: BackendStop): void;
+  connectBackend(): void;
+  onBackendStopped(listener: (stop: BackendStopped) => void): void;
+  stop(stop: BackendStopped): void;
 }
 
-function fakeShell({
-  picked = [],
-  folder = null,
-  saved = { saved: false },
-}: {
-  picked?: unknown;
-  folder?: unknown;
-  saved?: SaveReply;
-}): FakeShell {
-  const stopListeners: Array<(stop: BackendStop) => void> = [];
+function fakeHost(): FakeHost {
+  const stopListeners: Array<(stop: BackendStopped) => void> = [];
 
-  const shell: FakeShell = {
+  const host: FakeHost = {
     connections: 0,
-    restarts: 0,
-    saves: [],
     connectBackend() {
-      shell.connections += 1;
+      host.connections += 1;
     },
     onBackendStopped(listener) {
       stopListeners.push(listener);
@@ -191,27 +155,42 @@ function fakeShell({
         listener(stop);
       });
     },
-    pickFiles: () => Promise.resolve(picked),
-    pickFolder: () => Promise.resolve(folder),
-    restartBackend: () => {
-      shell.restarts += 1;
+  };
 
-      return Promise.resolve();
+  return host;
+}
+
+interface FakeIpc extends IpcRendererLike<PortReply> {
+  invoked: unknown[][];
+  sent: string[];
+  emit(channel: string, payload: unknown): void;
+}
+
+function fakeIpc(replies: Record<string, unknown>): FakeIpc {
+  const listeners = new Map<string, Array<(event: { ports: PortReply[] }, ...args: unknown[]) => void>>();
+
+  const ipc: FakeIpc = {
+    invoked: [],
+    sent: [],
+    invoke(channel, ...args) {
+      ipc.invoked.push([channel, ...args]);
+
+      return Promise.resolve(replies[channel]);
     },
-    pathForFile: () => "",
-    saveRunFile: (request) => {
-      shell.saves.push(request);
-
-      return Promise.resolve(saved);
+    send(channel) {
+      ipc.sent.push(channel);
     },
-    saveRunArchive: (request) => {
-      shell.saves.push(request);
-
-      return Promise.resolve(saved);
+    on(channel, listener) {
+      listeners.set(channel, [...(listeners.get(channel) ?? []), listener]);
+    },
+    emit(channel, payload) {
+      listeners.get(channel)?.forEach((listener) => {
+        listener({ ports: [] }, payload);
+      });
     },
   };
 
-  return shell;
+  return ipc;
 }
 
 type WindowMessage = Parameters<Parameters<WindowLike["addEventListener"]>[1]>[0];

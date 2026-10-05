@@ -1,7 +1,7 @@
 import type { PortMessage, PortReply, PortRequest } from "@neherlab/app-napi";
 import { describe, expect, test } from "vitest";
 
-import { saveRunFiles, serveFetch, type AddonBackend } from "../backend-host";
+import { serveFetch, type AddonBackend } from "../backend-host";
 import type { FetchEndpoint } from "../backend-protocol";
 import { createPortFetch, type FetchPort } from "../port-fetch";
 
@@ -9,7 +9,7 @@ describe("backend_host fetch relay", () => {
   test("a request goes to the addon and every reply of the addon goes back to the port", () => {
     const received: PortRequest[] = [];
 
-    const host = fetchHostWith((request, onReply) => {
+    const host = fetchHostWith((request, _scope, onReply) => {
       received.push(request);
       onReply({
         kind: "head",
@@ -55,7 +55,7 @@ describe("backend_host fetch relay", () => {
   test("an ended exchange is not aborted by a late abort message or by closing the port", () => {
     const aborted: number[] = [];
 
-    const host = fetchHostWith((request, onReply) => {
+    const host = fetchHostWith((request, _scope, onReply) => {
       onReply({ kind: "end", seq: request.seq });
 
       return {
@@ -88,52 +88,62 @@ describe("backend_host fetch relay", () => {
     expect(aborted).toStrictEqual([1, 2]);
   });
 
-  test("a request the addon refuses answers with an invalid request error", () => {
-    const host = fetchHostWith(() => {
-      throw new Error("Failed to convert JavaScript value `Undefined` into rust type `String` on PortRequest.url");
+  test("a request the addon refuses answers with the error response of the addon", () => {
+    const rejected: Array<[number, string]> = [];
+
+    const host = fetchHostWith(
+      () => {
+        throw new Error("Failed to convert JavaScript value `Undefined` into rust type `String` on PortRequest.url");
+      },
+      (seq, message) => {
+        rejected.push([seq, message]);
+
+        return [{ kind: "end", seq }];
+      },
+    );
+
+    host.send({ kind: "request", request: REQUEST });
+
+    expect([rejected, host.replies]).toStrictEqual([
+      [[3, "Failed to convert JavaScript value `Undefined` into rust type `String` on PortRequest.url"]],
+      [{ kind: "end", seq: 3 }],
+    ]);
+  });
+
+  test("the scope of the port reaches the addon with every request", () => {
+    const scopes: string[] = [];
+
+    const host = fetchHostWith((_request, scope) => {
+      scopes.push(scope);
+
+      return { abort: () => undefined };
     });
 
     host.send({ kind: "request", request: REQUEST });
 
-    expect(host.replies).toStrictEqual([
-      {
-        kind: "error",
-        seq: 3,
-        error: {
-          code: "invalid_request",
-          message: "Failed to convert JavaScript value `Undefined` into rust type `String` on PortRequest.url",
-          causes: [],
+    expect(scopes).toStrictEqual(["renderer"]);
+  });
+
+  test("a reset reply ends the exchange, so a late abort does not reach the addon", () => {
+    const aborted: number[] = [];
+
+    const host = fetchHostWith((request, _scope, onReply) => {
+      onReply({ kind: "reset", seq: request.seq, message: "When reading the response body: disk gone" });
+
+      return {
+        abort: () => {
+          aborted.push(request.seq);
         },
-      },
+      };
+    });
+
+    host.send({ kind: "request", request: REQUEST });
+    host.send({ kind: "abort", seq: REQUEST.seq });
+
+    expect([aborted, host.replies]).toStrictEqual([
+      [],
+      [{ kind: "reset", seq: 3, message: "When reading the response body: disk gone" }],
     ]);
-  });
-});
-
-describe("backend_host saves", () => {
-  test("a file save writes through the addon and reports it", async () => {
-    const saves: string[][] = [];
-
-    const reply = await saveRunFiles(
-      addonWith({
-        saveRunFile: ({ id, path, destination }) => {
-          saves.push([id, path, destination]);
-
-          return Promise.resolve();
-        },
-      }),
-      { kind: "save-file", seq: 3, request: { id: "r1", path: "a.nwk", destination: "/home/user/a.nwk" } },
-    );
-
-    expect([reply, saves]).toStrictEqual([{ kind: "saved", seq: 3 }, [["r1", "a.nwk", "/home/user/a.nwk"]]]);
-  });
-
-  test("an archive save that fails reports the error of the addon", async () => {
-    const reply = await saveRunFiles(
-      addonWith({ saveRunArchive: () => Promise.reject(new Error("When saving '/ro/r1.zip': permission denied")) }),
-      { kind: "save-archive", seq: 4, request: { id: "r1", destination: "/ro/r1.zip" } },
-    );
-
-    expect(reply).toStrictEqual({ kind: "error", seq: 4, error: "When saving '/ro/r1.zip': permission denied" });
   });
 });
 
@@ -142,7 +152,7 @@ describe("backend_host with the renderer fetch over a message channel", () => {
     const channel = new MessageChannel();
     const encoder = new TextEncoder();
 
-    const fetch: AddonBackend["fetch"] = (request, onReply) => {
+    const fetch: AddonBackend["fetch"] = (request, _scope, onReply) => {
       const found = request.url === "/api/version";
       const body = found ? '{"version":"2.0.0"}' : '{"code":"not_found","message":"no run `r9`","causes":[]}';
 
@@ -158,7 +168,7 @@ describe("backend_host with the renderer fetch over a message channel", () => {
       return { abort: () => undefined };
     };
 
-    serveFetch(nodeEndpoint(channel.port1), { fetch });
+    serveFetch(nodeEndpoint(channel.port1), addonWith({ fetch }), "renderer");
 
     const portFetch = createPortFetch({
       onPort: (listener) => {
@@ -186,7 +196,7 @@ describe("backend_host with the renderer fetch over a message channel", () => {
 
 const REQUEST: PortRequest = { seq: 3, method: "GET", url: "/api/version", headers: [] };
 
-function fetchHostWith(fetch: AddonBackend["fetch"]) {
+function fetchHostWith(fetch: AddonBackend["fetch"], rejectRequest: AddonBackend["rejectRequest"] = rejectNothing) {
   const listeners: Array<(message: PortMessage) => void> = [];
   const closeListeners: Array<() => void> = [];
   const replies: PortReply[] = [];
@@ -203,7 +213,7 @@ function fetchHostWith(fetch: AddonBackend["fetch"]) {
     },
   };
 
-  serveFetch(endpoint, { fetch });
+  serveFetch(endpoint, addonWith({ fetch, rejectRequest }), "renderer");
 
   return {
     replies,
@@ -220,10 +230,15 @@ function fetchHostWith(fetch: AddonBackend["fetch"]) {
   };
 }
 
+function rejectNothing(): PortReply[] {
+  throw new Error("rejectRequest is not part of this test");
+}
+
 function addonWith(overrides: Partial<AddonBackend>): AddonBackend {
   return {
-    saveRunFile: () => Promise.reject(new Error("saveRunFile is not part of this test")),
-    saveRunArchive: () => Promise.reject(new Error("saveRunArchive is not part of this test")),
+    rejectRequest: () => {
+      throw new Error("rejectRequest is not part of this test");
+    },
     fetch: () => {
       throw new Error("fetch is not part of this test");
     },

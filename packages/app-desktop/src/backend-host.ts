@@ -1,17 +1,16 @@
-import { errorMessage, type ErrorCode } from "@neherlab/app-contracts";
+import { errorMessage } from "@neherlab/app-contracts";
 import type { Backend, PortExchange, PortRequest } from "@neherlab/app-napi";
 
-import type { FetchEndpoint, SaveRequest, SaveResult } from "./backend-protocol";
+import type { FetchEndpoint, PortScope } from "./backend-protocol";
 
 type Abort = Pick<PortExchange, "abort">;
 
-export interface AddonBackend extends Pick<Backend, "saveRunFile" | "saveRunArchive"> {
+export interface AddonBackend {
   fetch(...args: Parameters<Backend["fetch"]>): Abort;
+  rejectRequest: Backend["rejectRequest"];
 }
 
-const INVALID_REQUEST: ErrorCode = "invalid_request";
-
-export function serveFetch(endpoint: FetchEndpoint, backend: Pick<AddonBackend, "fetch">): void {
+export function serveFetch(endpoint: FetchEndpoint, backend: AddonBackend, scope: PortScope): void {
   const exchanges = new Map<number, Abort>();
 
   const open = (request: PortRequest) => {
@@ -21,8 +20,8 @@ export function serveFetch(endpoint: FetchEndpoint, backend: Pick<AddonBackend, 
       let ended = false;
 
       // oxlint-disable-next-line treetime/require-io-timeout -- the addon runs the request in process; the renderer's signal ends it with an abort message
-      const exchange = backend.fetch(request, (reply) => {
-        if (reply.kind === "end" || reply.kind === "error") {
+      const exchange = backend.fetch(request, scope, (reply) => {
+        if (reply.kind === "end" || reply.kind === "reset") {
           ended = true;
           exchanges.delete(seq);
         }
@@ -34,7 +33,9 @@ export function serveFetch(endpoint: FetchEndpoint, backend: Pick<AddonBackend, 
         exchanges.set(seq, exchange);
       }
     } catch (error: unknown) {
-      endpoint.post({ kind: "error", seq, error: { code: INVALID_REQUEST, message: errorMessage(error), causes: [] } });
+      backend.rejectRequest(seq, errorMessage(error)).forEach((reply) => {
+        endpoint.post(reply);
+      });
     }
   };
 
@@ -54,16 +55,4 @@ export function serveFetch(endpoint: FetchEndpoint, backend: Pick<AddonBackend, 
 
     exchanges.clear();
   });
-}
-
-export async function saveRunFiles(backend: AddonBackend, request: SaveRequest): Promise<SaveResult> {
-  try {
-    await (request.kind === "save-file"
-      ? backend.saveRunFile(request.request)
-      : backend.saveRunArchive(request.request));
-
-    return { kind: "saved", seq: request.seq };
-  } catch (error: unknown) {
-    return { kind: "error", seq: request.seq, error: errorMessage(error) };
-  }
 }

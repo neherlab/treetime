@@ -5,7 +5,7 @@ import Upload from "~icons/lucide/upload";
 
 import { pressedChoice } from "../components/toggleChoice";
 import { formatBytes } from "../format";
-import { useLocalFiles } from "../platform";
+import { useHost } from "../host-context";
 import { COMMAND_SETTINGS } from "../settings/catalog";
 import { baseName, pathList, slotFactsText, slotProblem } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
@@ -17,7 +17,7 @@ import { PathPicker, useFileDrop } from "./PathPicker";
 
 export function InputsSection({ command, facts }: { command: AppCommand; facts: InputFacts | undefined }) {
   const [panel, setPanel] = useState<ExamplesPanelKind | null>(null);
-  const localFiles = useLocalFiles();
+  const host = useHost();
   const pressed = useMemo(() => (panel === null ? [] : [panel]), [panel]);
   const closePanel = useCallback(() => setPanel(null), []);
 
@@ -30,9 +30,7 @@ export function InputsSection({ command, facts }: { command: AppCommand; facts: 
     <div className="grid grid-cols-1 gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground text-sm">
-          {localFiles === null
-            ? "Files are uploaded into the run folder on the server"
-            : "Files are read from this computer"}
+          {host === null ? "Files are uploaded into the run folder on the server" : "Files are read from this computer"}
         </span>
         <ToggleGroup
           aria-label="Examples"

@@ -26,6 +26,8 @@ eyre = { workspace = true }
 napi = { workspace = true }
 napi-derive = { workspace = true }
 serde_json = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
@@ -38,6 +40,7 @@ napi-build = { workspace = true }
 app-output = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
+parking_lot = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 tempfile = { workspace = true }

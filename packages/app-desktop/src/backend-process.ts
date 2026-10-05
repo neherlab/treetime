@@ -1,14 +1,9 @@
 import type { ErrorResponse } from "@neherlab/app-contracts";
+import type { BackendStopped } from "@neherlab/app-ui/host";
 
 const CRASH_WINDOW_MS = 60_000;
 
 const MAX_CRASHES_IN_WINDOW = 5;
-
-export interface BackendStop {
-  reason: string;
-  restarts: boolean;
-  error?: ErrorResponse;
-}
 
 export interface BackendExit {
   code: number;
@@ -18,7 +13,7 @@ export interface BackendExit {
   now: number;
 }
 
-export function backendStop({ code, requested, startError, exitTimes, now }: BackendExit): BackendStop {
+export function backendStop({ code, requested, startError, exitTimes, now }: BackendExit): BackendStopped {
   if (startError !== undefined && !requested) {
     return { reason: startFailureReason(startError), restarts: false, error: startError };
   }

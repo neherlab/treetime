@@ -1,8 +1,8 @@
 import { Backend, type PortMessage, type PortReply } from "@neherlab/app-napi";
 import type { MessagePortMain } from "electron";
 
-import { saveRunFiles, serveFetch } from "./backend-host";
-import type { ControlReply, ControlRequest, FetchEndpoint, SaveRequest } from "./backend-protocol";
+import { serveFetch } from "./backend-host";
+import type { ControlReply, ControlRequest, FetchEndpoint } from "./backend-protocol";
 import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
 import { napiErrorResponse } from "./napi-error";
 
@@ -21,17 +21,11 @@ process.parentPort.on("message", (message: { data: ControlRequest; ports: Messag
     return;
   }
 
-  if (control.kind === "port") {
-    const [port] = message.ports;
+  const [port] = message.ports;
 
-    if (port !== undefined) {
-      serveFetch(fetchEndpoint(port), backend);
-    }
-
-    return;
+  if (port !== undefined) {
+    serveFetch(fetchEndpoint(port), backend, control.scope);
   }
-
-  void save(backend, control);
 });
 
 function startBackend(): Backend | undefined {
@@ -43,12 +37,6 @@ function startBackend(): Backend | undefined {
 
     return undefined;
   }
-}
-
-async function save(backend: Backend, request: SaveRequest): Promise<void> {
-  const reply = await saveRunFiles(backend, request);
-  // oxlint-disable-next-line unicorn/require-post-message-target-origin -- the parent port of a utility process takes no target origin
-  process.parentPort.postMessage(reply);
 }
 
 function fetchEndpoint(port: MessagePortMain): FetchEndpoint {

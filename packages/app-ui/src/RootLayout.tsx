@@ -1,7 +1,7 @@
 import { useViewportSize } from "@mantine/hooks";
 import { Outlet } from "@tanstack/react-router";
 
-import { useElectronThemeSync } from "./hooks/useElectronThemeSync";
+import { useNativeThemeSync } from "./hooks/useNativeThemeSync";
 import { AppSidebar } from "./shell/AppSidebar";
 import { CommandPalette } from "./shell/CommandPalette";
 import { SiteHeader } from "./shell/SiteHeader";
@@ -16,7 +16,7 @@ import { TooltipProvider } from "./ui/tooltip";
 export const MAIN_SCROLL_ID = "main-scroll";
 
 export function RootLayout() {
-  useElectronThemeSync();
+  useNativeThemeSync();
   useGlobalShortcuts();
   const { getRootProps, getInputProps } = useYamlDrop();
   const { width: viewportWidth } = useViewportSize();

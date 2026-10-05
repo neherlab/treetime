@@ -11,7 +11,8 @@
     "./build/icons-vite": "./build/icons-vite.ts",
     "./build/public-dir": "./build/public-dir.ts",
     "./icons": "./src/icons.d.ts",
-    "./window": "./src/window.ts"
+    "./window": "./src/window.ts",
+    "./host": "./src/host.ts"
   },
   "scripts": {
     "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit && tsc -p tsconfig.node.json --noEmit"

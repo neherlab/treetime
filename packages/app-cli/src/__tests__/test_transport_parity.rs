@@ -40,13 +40,14 @@ mod tests {
     use crate::run::run_command;
     use app_commands::app_paths::AppFolderEnv;
     use app_commands::command::AppCommand;
-    use app_napi::backend::DesktopService;
+    use app_napi::backend::{DesktopService, PortScope};
     use app_napi::port::{PortHeader, PortReply, PortRequest};
     use app_server::create_router;
     use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
     use app_server::web::WebOptions;
     use axum::body::Body;
     use axum::http::Request;
+    use napi::bindgen_prelude::Uint8Array;
     use serde_json::{Value, json};
     use std::collections::BTreeMap;
     use std::fs;
@@ -189,9 +190,9 @@ mod tests {
           name: "content-type".to_owned(),
           value: "application/json".to_owned(),
         }],
-        body,
+        body: body.map(|body| Uint8Array::new(body.into_bytes())),
       };
-      let _exchange = service.fetch(request, move |reply| send.send(reply).is_ok());
+      let _exchange = service.fetch(request, PortScope::Renderer, move |reply| send.send(reply).is_ok());
       let mut status = 0;
       let mut body = vec![];
       loop {
@@ -199,7 +200,7 @@ mod tests {
           PortReply::Head { status: head, .. } => status = head,
           PortReply::Chunk { data, .. } => body.extend_from_slice(&data),
           PortReply::End { .. } => return (status, String::from_utf8(body).unwrap()),
-          PortReply::Error { error, .. } => panic!("the N-API exchange failed: {}", error.message),
+          PortReply::Reset { message, .. } => panic!("the N-API exchange failed: {message}"),
         }
       }
     }

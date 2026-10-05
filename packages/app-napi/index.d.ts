@@ -1,8 +1,7 @@
 export declare class Backend {
   constructor()
-  fetch(request: PortRequest, onReply: ((arg: PortReply) => void)): PortExchange
-  saveRunFile(request: SaveRunFileRequest): Promise<void>
-  saveRunArchive(request: SaveRunArchiveRequest): Promise<void>
+  fetch(request: PortRequest, scope: 'host' | 'renderer', onReply: ((arg: PortReply) => void)): PortExchange
+  rejectRequest(seq: number, message: string): Array<PortReply>
 }
 
 export declare class PortExchange {
@@ -15,12 +14,6 @@ export interface AppStartup {
   profileDir: string
   logsDir: string
   theme: string
-}
-
-export interface PortError {
-  code: string
-  message: string
-  causes: Array<string>
 }
 
 export interface PortHeader {
@@ -36,23 +29,12 @@ export type PortReply =
   | { kind: 'head'; seq: number; status: number; headers: Array<PortHeader> }
   | { kind: 'chunk'; seq: number; data: Uint8Array }
   | { kind: 'end'; seq: number }
-  | { kind: 'error'; seq: number; error: PortError }
+  | { kind: 'reset'; seq: number; message: string }
 
 export interface PortRequest {
   seq: number
   method: string
   url: string
   headers: Array<PortHeader>
-  body?: string
-}
-
-export interface SaveRunArchiveRequest {
-  id: string
-  destination: string
-}
-
-export interface SaveRunFileRequest {
-  id: string
-  path: string
-  destination: string
+  body?: Uint8Array
 }

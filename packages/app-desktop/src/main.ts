@@ -2,14 +2,10 @@ import { mkdirSync } from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import {
-  zPickFilesRequest,
-  zPickFolderRequest,
-  zUiTheme,
-  type ErrorResponse,
-  type UiTheme,
-} from "@neherlab/app-contracts";
+import { errorMessage, zUiTheme, type ErrorResponse, type UiTheme } from "@neherlab/app-contracts";
+import { ApiError, createApiClient, runsSave, type ApiClient } from "@neherlab/app-contracts/client";
 import { appStartup } from "@neherlab/app-napi";
+import type { BackendStopped, HostHandlerReply, HostHandlerRequest } from "@neherlab/app-ui/host";
 import { windowBackground, WINDOW_MIN_SIZE } from "@neherlab/app-ui/window";
 import {
   app,
@@ -24,35 +20,28 @@ import {
   shell,
   utilityProcess,
   webContents,
-  type IpcMainEvent,
-  type IpcMainInvokeEvent,
+  type MessagePortMain,
   type OpenDialogOptions,
+  type OpenDialogReturnValue,
   type UtilityProcess,
   type WebContents,
 } from "electron";
 
 import { appFolderEnv } from "./app-dir";
 import { APP_SCHEME, APP_SCHEME_PRIVILEGES, APP_URL, resolveAppAsset } from "./app-scheme";
-import { backendStop, type BackendStop } from "./backend-process";
-import type { ControlReply, SaveRequest, SaveResult } from "./backend-protocol";
-import {
-  BACKEND_PORT_CHANNEL,
-  BACKEND_PORT_REQUEST_CHANNEL,
-  BACKEND_STOPPED_CHANNEL,
-  PICK_FILES_CHANNEL,
-  PICK_FOLDER_CHANNEL,
-  RESTART_BACKEND_CHANNEL,
-  SAVE_RUN_ARCHIVE_CHANNEL,
-  SAVE_RUN_FILE_CHANNEL,
-  THEME_CHANNEL,
-} from "./channels";
+import { backendStop } from "./backend-process";
+import type { ControlReply, ControlRequest, PortScope } from "./backend-protocol";
 import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
+import { HostConnection, mainFetchPort } from "./host-port";
+import { emit, handle, listenForPortRequests, sendPort } from "./ipc-main";
 import { napiErrorResponse } from "./napi-error";
+import { createPortFetch } from "./port-fetch";
 import { confineNavigation, isTrustedSender } from "./security";
-import type { SaveReply, SaveRunArchiveDialog, SaveRunFileDialog } from "./shell-protocol";
 import { firstWindowBounds } from "./window-bounds";
 
 const MAIN_WINDOW_NAME = "main";
+
+const HOST_BASE_URL = "http://treetime.host";
 
 const launchDir = process.cwd();
 
@@ -115,6 +104,7 @@ function launch({ logsDir, theme }: Startup): void {
       app.quit();
     }
   });
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a failed start rejects with an untyped error, logged before the app quits
   main(mainWindow, theme, diagnosticDir).catch((error: unknown) => {
     console.error(error);
     app.quit();
@@ -131,7 +121,7 @@ async function main(mainWindow: MainWindow, theme: UiTheme, diagnosticDir: strin
     }
   });
   const backend = new BackendProcess(diagnosticDir);
-  registerIpcHandlers(backend);
+  registerIpcHandlers(backend, createApiClient({ baseUrl: HOST_BASE_URL, fetch: createPortFetch(backend.host) }));
   await mainWindow.show();
   app.on("activate", () => {
     void mainWindow.show();
@@ -166,44 +156,28 @@ class MainWindow {
 }
 
 class BackendProcess {
+  readonly host = new HostConnection();
   private child: UtilityProcess;
   private readonly exitTimes: number[] = [];
-  private readonly saves = new Map<number, (reply: SaveResult) => void>();
   private readonly restarted: Array<() => void> = [];
-  private nextSave = 0;
-  private failure: BackendStop | undefined;
+  private failure: BackendStopped | undefined;
   private startError: ErrorResponse | undefined;
   private readonly diagnosticDir: string;
 
   constructor(diagnosticDir: string) {
     this.diagnosticDir = diagnosticDir;
     this.child = this.spawn();
+    this.connectHost();
   }
 
   connect(contents: WebContents): void {
     if (this.failure !== undefined) {
-      contents.send(BACKEND_STOPPED_CHANNEL, this.failure);
+      emit(contents, "backend-stopped", this.failure);
 
       return;
     }
 
-    const channel = new MessageChannelMain();
-    this.child.postMessage({ kind: "port" }, [channel.port1]);
-    contents.postMessage(BACKEND_PORT_CHANNEL, null, [channel.port2]);
-  }
-
-  save(request: (seq: number) => SaveRequest): Promise<SaveResult> {
-    const seq = this.nextSave;
-    this.nextSave += 1;
-
-    if (this.failure !== undefined) {
-      return Promise.resolve({ kind: "error", seq, error: this.failure.reason });
-    }
-
-    return new Promise((resolve) => {
-      this.saves.set(seq, resolve);
-      this.child.postMessage(request(seq), []);
-    });
+    sendPort(contents, this.openPort("renderer"));
   }
 
   restart(): Promise<void> {
@@ -225,6 +199,17 @@ class BackendProcess {
     return promise;
   }
 
+  private connectHost(): void {
+    this.host.connect(mainFetchPort(this.openPort("host")));
+  }
+
+  private openPort(scope: PortScope): MessagePortMain {
+    const channel = new MessageChannelMain();
+    this.child.postMessage({ kind: "port", scope } satisfies ControlRequest, [channel.port1]);
+
+    return channel.port2;
+  }
+
   private spawn(): UtilityProcess {
     const child = utilityProcess.fork(path.join(__dirname, "backend.js"), [], {
       serviceName: "TreeTime back end",
@@ -235,15 +220,8 @@ class BackendProcess {
 
     this.startError = undefined;
     child.on("message", (reply: ControlReply) => {
-      if (reply.kind === "failed") {
-        this.startError = reply.error;
-        child.kill();
-
-        return;
-      }
-
-      this.saves.get(reply.seq)?.(reply);
-      this.saves.delete(reply.seq);
+      this.startError = reply.error;
+      child.kill();
     });
     child.once("exit", (code) => {
       this.exited(code);
@@ -263,15 +241,10 @@ class BackendProcess {
     const stop = backendStop({ code, requested, startError: this.startError, exitTimes: this.exitTimes, now });
 
     console.error(`[TreeTime] ${stop.reason}`);
-
-    for (const [seq, resolve] of this.saves) {
-      resolve({ kind: "error", seq, error: stop.reason });
-    }
-
-    this.saves.clear();
+    this.host.stop(stop);
 
     for (const contents of appContents()) {
-      contents.send(BACKEND_STOPPED_CHANNEL, stop);
+      emit(contents, "backend-stopped", stop);
     }
 
     if (!stop.restarts) {
@@ -286,6 +259,7 @@ class BackendProcess {
   private respawn(): void {
     setImmediate(() => {
       this.child = this.spawn();
+      this.connectHost();
 
       for (const contents of appContents()) {
         this.connect(contents);
@@ -298,49 +272,22 @@ class BackendProcess {
   }
 }
 
-function registerIpcHandlers(backend: BackendProcess): void {
-  handle(PICK_FILES_CHANNEL, (event, request) => pickFiles(event, request));
-  handle(PICK_FOLDER_CHANNEL, (event, request) => pickFolder(event, request));
-  handle(RESTART_BACKEND_CHANNEL, async () => backend.restart());
-  handle(SAVE_RUN_FILE_CHANNEL, async (event, { id, path, name }: SaveRunFileDialog) =>
-    saveTo(event, name, (destination) =>
-      backend.save((seq) => ({ kind: "save-file", seq, request: { id, path, destination } })),
-    ),
-  );
-  handle(SAVE_RUN_ARCHIVE_CHANNEL, async (event, { id, name }: SaveRunArchiveDialog) =>
-    saveTo(event, name, (destination) =>
-      backend.save((seq) => ({ kind: "save-archive", seq, request: { id, destination } })),
-    ),
-  );
-  listen(BACKEND_PORT_REQUEST_CHANNEL, (event) => {
-    backend.connect(event.sender);
-  });
-  listen(THEME_CHANNEL, (_event, theme) => {
-    if (isThemeSource(theme)) {
-      nativeTheme.themeSource = theme;
-    }
-  });
-}
+function registerIpcHandlers(backend: BackendProcess, hostClient: ApiClient): void {
+  handle(ipcMain, appUrl, "pick-files", async (sender, request) => pickFiles(sender, request));
+  handle(ipcMain, appUrl, "pick-folder", async (sender, request) => pickFolder(sender, request));
+  handle(ipcMain, appUrl, "save-run", async (sender, request) => saveRun(sender, request, hostClient));
+  handle(ipcMain, appUrl, "restart-backend", async () => {
+    await backend.restart();
 
-// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- Args types the arguments of each handler, which Electron passes untyped
-function handle<Args extends unknown[]>(
-  channel: string,
-  handler: (event: IpcMainInvokeEvent, ...args: Args) => unknown,
-): void {
-  ipcMain.handle(channel, (event, ...args: Args) => {
-    if (!isTrustedSender(event.senderFrame, appUrl)) {
-      throw new Error(`${channel} refused a message from a frame outside the application`);
-    }
-
-    return handler(event, ...args);
+    return undefined;
   });
-}
+  handle(ipcMain, appUrl, "set-native-theme", (_sender, theme) => {
+    nativeTheme.themeSource = theme;
 
-function listen(channel: string, listener: (event: IpcMainEvent, ...args: unknown[]) => void): void {
-  ipcMain.on(channel, (event, ...args: unknown[]) => {
-    if (isTrustedSender(event.senderFrame, appUrl)) {
-      listener(event, ...args);
-    }
+    return undefined;
+  });
+  listenForPortRequests(ipcMain, appUrl, (sender) => {
+    backend.connect(sender);
   });
 }
 
@@ -358,55 +305,70 @@ async function serveAppAsset(request: Request): Promise<Response> {
   }
 }
 
-function isThemeSource(value: unknown): value is "system" | "light" | "dark" {
-  return value === "system" || value === "light" || value === "dark";
-}
-
 function appContents(): WebContents[] {
   return webContents.getAllWebContents().filter((contents) => isTrustedSender(contents.mainFrame, appUrl));
 }
 
-async function pickFiles(event: IpcMainInvokeEvent, data: unknown): Promise<string[]> {
-  const request = zPickFilesRequest.parse(data);
-
+async function pickFiles(
+  sender: WebContents,
+  request: HostHandlerRequest<"pick-files">,
+): Promise<HostHandlerReply<"pick-files">> {
   const options: OpenDialogOptions = {
     title: request.title,
     properties: request.multiple ? ["openFile", "multiSelections"] : ["openFile"],
     filters: request.extensions.length > 0 ? [{ name: request.title, extensions: request.extensions }] : [],
   };
 
-  const window = BrowserWindow.fromWebContents(event.sender);
-  const result = window === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(window, options);
+  const result = await showOpenDialog(sender, options);
 
   return result.canceled ? [] : result.filePaths;
 }
 
-async function pickFolder(event: IpcMainInvokeEvent, data: unknown): Promise<string | null> {
-  const request = zPickFolderRequest.parse(data);
-  const options: OpenDialogOptions = { title: request.title, properties: ["openDirectory", "createDirectory"] };
+async function pickFolder(
+  sender: WebContents,
+  request: HostHandlerRequest<"pick-folder">,
+): Promise<HostHandlerReply<"pick-folder">> {
+  const result = await showOpenDialog(sender, {
+    title: request.title,
+    properties: ["openDirectory", "createDirectory"],
+  });
 
-  const window = BrowserWindow.fromWebContents(event.sender);
-  const result = window === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(window, options);
-
-  return result.canceled ? null : (result.filePaths[0] ?? null);
+  return result.canceled ? undefined : result.filePaths[0];
 }
 
-async function saveTo(
-  event: IpcMainInvokeEvent,
-  name: string,
-  save: (destination: string) => Promise<SaveResult>,
-): Promise<SaveReply> {
-  const window = BrowserWindow.fromWebContents(event.sender);
+async function showOpenDialog(sender: WebContents, options: OpenDialogOptions): Promise<OpenDialogReturnValue> {
+  const window = BrowserWindow.fromWebContents(sender);
+
+  return window === null ? dialog.showOpenDialog(options) : dialog.showOpenDialog(window, options);
+}
+
+async function saveRun(
+  sender: WebContents,
+  { id, path: file, name }: HostHandlerRequest<"save-run">,
+  client: ApiClient,
+): Promise<HostHandlerReply<"save-run">> {
+  const window = BrowserWindow.fromWebContents(sender);
   const options = { defaultPath: name };
   const choice = window === null ? await dialog.showSaveDialog(options) : await dialog.showSaveDialog(window, options);
 
   if (choice.canceled || choice.filePath === "") {
-    return { saved: false };
+    return { kind: "canceled" };
   }
 
-  const reply = await save(choice.filePath);
+  try {
+    await runsSave({ client, path: { id }, body: { path: file, destination: choice.filePath }, throwOnError: true });
 
-  return reply.kind === "saved" ? { saved: true } : { error: reply.error };
+    return { kind: "saved" };
+  } catch (error: unknown) {
+    return { kind: "error", error: errorResponse(error) };
+  }
+}
+
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- a rejected request throws an ApiError or a transport error, sorted here
+function errorResponse(error: unknown): ErrorResponse {
+  return error instanceof ApiError
+    ? error.response
+    : { code: "internal_error", message: errorMessage(error), causes: [] };
 }
 
 function createWindow(): BrowserWindow {

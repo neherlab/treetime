@@ -2,10 +2,6 @@ export { App, type AppProps } from "./App";
 
 export { ApiProvider } from "./api/ApiProvider";
 
-export type { SaveActions } from "./api/context";
-
-export { requestUrl } from "./api/keys";
-
 export { reloadOnChunkError } from "./chunk-reload";
 
 export { ErrorBoundary } from "./ErrorBoundary";

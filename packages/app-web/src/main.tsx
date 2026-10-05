@@ -12,15 +12,12 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { createWebApiClient } from "./api-client";
-import { createWebSaveActions } from "./save-web";
 
 import "./index.css";
 
 reloadOnChunkError(globalThis.window);
 
 const client = createWebApiClient();
-
-const save = createWebSaveActions(client);
 
 const preferences = browserPreferencesStorage(globalThis.localStorage);
 
@@ -32,9 +29,9 @@ if (root) {
       <ThemeProvider>
         <ErrorBoundary>
           <QueryProvider>
-            <ApiProvider client={client} save={save}>
+            <ApiProvider client={client}>
               <PreferencesProvider storage={preferences}>
-                <App />
+                <App host={null} />
               </PreferencesProvider>
             </ApiProvider>
           </QueryProvider>
