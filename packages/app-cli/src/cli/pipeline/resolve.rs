@@ -1,6 +1,6 @@
 use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve_vars, template_context};
 use crate::cli::pipeline::types::{PipelineStepCommand, RawStep};
-use app_commands::commands::ancestral::aa_node_data::template_has_cds_placeholder;
+use app_commands::commands::ancestral::aa_node_data::is_cds_output_template;
 use app_commands::config::suggest::{suggestion_suffix, valid_values};
 use app_output::output_plan::OutputSelection;
 use eyre::Report;
@@ -244,7 +244,7 @@ fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) 
       producer.name,
       valid_values(&produced_tags)
     ),
-    Some([path]) if is_template_path(path) => make_error!(
+    Some([path]) if is_cds_output_template(path) => make_error!(
       "step `{step}` references `{selection}` from step `{}`, which resolves to a per-CDS template (`{}`); \
        reference a specific CDS output path instead",
       producer.name,
@@ -282,10 +282,6 @@ fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
       Value::String(dir.to_string_lossy().into_owned()),
     );
   }
-}
-
-pub(crate) fn is_template_path(path: &Path) -> bool {
-  template_has_cds_placeholder(&path.to_string_lossy())
 }
 
 fn step_error(step: &str, err: &Report) -> Report {

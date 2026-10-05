@@ -6,7 +6,6 @@ use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use eyre::Report;
-use std::path::Path;
 
 pub trait ResolveOutputs {
   fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report>;
@@ -34,7 +33,7 @@ impl_resolve_outputs!(Ancestral; TreetimeAncestralArgs, TreetimeAncestralArgsRaw
   (OutputSelection::AugurNodeData, s.output_augur_node_data.as_deref()),
   (OutputSelection::Gtr, s.output_gtr.as_deref()),
   (OutputSelection::ReconstructedNucFasta, s.output_reconstructed_nuc_fasta.as_deref()),
-  (OutputSelection::ReconstructedAaFasta, s.output_reconstructed_aa_fasta.as_deref().map(Path::new)),
+  (OutputSelection::ReconstructedAaFasta, s.output_reconstructed_aa_fasta.as_deref()),
 ]);
 
 impl_resolve_outputs!(Timetree; TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw; |s| [

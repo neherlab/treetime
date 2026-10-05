@@ -3283,8 +3283,9 @@ export type AncestralConfig = {
   /**
    * Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).
    *
-   * Off by default. When set, the reconstructed sequence of every node is written per CDS. Accepts
-   * the same `{cds}`/`%GENE` placeholders as `--translations`.
+   * Off by default. When set, the reconstructed sequence of every node is written per CDS. The
+   * file name accepts the `{cds}`/`%GENE` placeholders of `--translations`, and needs one when
+   * more than one CDS is reconstructed; folder names are used as given.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    */

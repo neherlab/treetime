@@ -866,7 +866,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
 * `--output-reconstructed-aa-fasta <OUTPUT_RECONSTRUCTED_AA_FASTA>` — Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).
 
-   Off by default. When set, the reconstructed sequence of every node is written per CDS. Accepts the same `{cds}`/`%GENE` placeholders as `--translations`.
+   Off by default. When set, the reconstructed sequence of every node is written per CDS. The file name accepts the `{cds}`/`%GENE` placeholders of `--translations`, and needs one when more than one CDS is reconstructed; folder names are used as given.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.
@@ -1299,7 +1299,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
 * `--output-reconstructed-aa-fasta <OUTPUT_RECONSTRUCTED_AA_FASTA>` — Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).
 
-   Off by default. When set, the reconstructed sequence of every node is written per CDS. Accepts the same `{cds}`/`%GENE` placeholders as `--translations`.
+   Off by default. When set, the reconstructed sequence of every node is written per CDS. The file name accepts the `{cds}`/`%GENE` placeholders of `--translations`, and needs one when more than one CDS is reconstructed; folder names are used as given.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.

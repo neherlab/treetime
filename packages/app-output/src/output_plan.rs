@@ -2,6 +2,7 @@ use eyre::Report;
 use maplit::btreeset;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -93,12 +94,16 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
     );
   }
 
-  ensure_unique_output_paths(&tree_outputs, &non_tree_outputs)?;
-
-  Ok(ResolvedOutputs {
+  let resolved = ResolvedOutputs {
     tree_outputs,
     non_tree_outputs,
-  })
+  };
+  ensure_unique_destinations(
+    resolved
+      .planned_paths()
+      .map(|(selection, path)| (Cow::Borrowed(selection.flag_name()), path)),
+  )?;
+  Ok(resolved)
 }
 
 fn styled_tree_write_kind(variant: OutputSelection, style: NwkStyle) -> TreeWriteKind {
@@ -188,14 +193,8 @@ pub struct ResolvedOutputs {
 impl ResolvedOutputs {
   pub fn paths_by_selection(&self) -> BTreeMap<OutputSelection, Vec<PathBuf>> {
     let mut by_selection: BTreeMap<OutputSelection, Vec<PathBuf>> = BTreeMap::new();
-    for (kind, path) in &self.tree_outputs {
-      by_selection
-        .entry(tree_write_kind_selection(*kind))
-        .or_default()
-        .push(path.clone());
-    }
-    for (selection, file) in &self.non_tree_outputs {
-      by_selection.entry(*selection).or_default().push(file.path.clone());
+    for (selection, path) in self.planned_paths() {
+      by_selection.entry(selection).or_default().push(path.to_path_buf());
     }
     for paths in by_selection.values_mut() {
       paths.sort();
@@ -209,18 +208,36 @@ impl ResolvedOutputs {
 
   pub fn tree_based_paths(&self) -> Vec<&Path> {
     self
+      .planned_paths()
+      .filter(|(selection, _)| selection.reads_tree())
+      .map(|(_, path)| path)
+      .collect()
+  }
+
+  pub fn ensure_unique_with_expansion<'a>(
+    &'a self,
+    selection: OutputSelection,
+    expanded: impl IntoIterator<Item = (String, &'a Path)>,
+  ) -> Result<(), Report> {
+    let planned = self
+      .planned_paths()
+      .filter(|(planned, _)| *planned != selection)
+      .map(|(planned, path)| (Cow::Borrowed(planned.flag_name()), path));
+    let expanded = expanded.into_iter().map(|(label, path)| (Cow::Owned(label), path));
+    ensure_unique_destinations(planned.chain(expanded))
+  }
+
+  fn planned_paths(&self) -> impl Iterator<Item = (OutputSelection, &Path)> {
+    self
       .tree_outputs
       .iter()
-      .filter(|(kind, _)| tree_write_kind_selection(**kind).reads_tree())
-      .map(|(_, path)| path.as_path())
+      .map(|(kind, path)| (tree_write_kind_selection(*kind), path.as_path()))
       .chain(
         self
           .non_tree_outputs
           .iter()
-          .filter(|(selection, _)| selection.reads_tree())
-          .map(|(_, file)| file.path.as_path()),
+          .map(|(selection, file)| (*selection, file.path.as_path())),
       )
-      .collect()
   }
 }
 
@@ -389,31 +406,19 @@ impl CommandKind {
   }
 }
 
-fn ensure_unique_output_paths(
-  tree_outputs: &BTreeMap<TreeWriteKind, PathBuf>,
-  non_tree_outputs: &BTreeMap<OutputSelection, PlannedFile>,
+fn ensure_unique_destinations<'a>(
+  outputs: impl IntoIterator<Item = (Cow<'static, str>, &'a Path)>,
 ) -> Result<(), Report> {
-  let flags_and_paths = tree_outputs
-    .iter()
-    .map(|(kind, path)| (tree_write_kind_selection(*kind).flag_name(), path))
-    .chain(
-      non_tree_outputs
-        .iter()
-        .map(|(selection, file)| (selection.flag_name(), &file.path)),
-    );
-  let mut destinations: BTreeMap<&Path, &str> = BTreeMap::new();
-  for (flag, path) in flags_and_paths {
-    let destination = if is_path_stdout(path) {
-      Path::new("-")
-    } else {
-      path.as_path()
-    };
-    if let Some(previous) = destinations.insert(destination, flag) {
+  let mut destinations: BTreeMap<&Path, Cow<'static, str>> = BTreeMap::new();
+  for (label, path) in outputs {
+    let destination = if is_path_stdout(path) { Path::new("-") } else { path };
+    if let Some(previous) = destinations.get(destination) {
       return make_error!(
-        "Output destination '{}' is selected more than once ({previous} and {flag})",
+        "Output destination '{}' is selected more than once ({previous} and {label})",
         path.display()
       );
     }
+    destinations.insert(destination, label);
   }
   Ok(())
 }

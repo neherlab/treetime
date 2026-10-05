@@ -6,7 +6,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::path::PathBuf;
+  use std::path::{Path, PathBuf};
   use std::str::FromStr;
   use strum::IntoEnumIterator;
   use treetime::progress::LogLevel;
@@ -108,6 +108,47 @@ mod tests {
     )];
     assert_eq!(expected, messages.iter().collect_vec());
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::two_parts(       ("out/aa.fasta",     "out/aa.fasta"), "Output destination 'out/aa.fasta' is selected more than once (part S and part M)")]
+  #[case::stdout_spellings(("-",                "/dev/stdout"),  "Output destination '/dev/stdout' is selected more than once (part S and part M)")]
+  #[case::planned_output(  ("out/gtr.json",     "out/M.fasta"),  "Output destination 'out/gtr.json' is selected more than once (--output-gtr and part S)")]
+  #[trace]
+  fn test_output_plan_expansion_rejects_shared_destination(
+    #[case] (path_s, path_m): (&str, &str),
+    #[case] expected: &str,
+  ) -> Result<(), Report> {
+    let resolved = plan(&helpers::request(
+      vec![OutputSelection::Gtr],
+      btreemap! {
+        OutputSelection::Gtr => PathBuf::from("out/gtr.json"),
+        OutputSelection::ReconstructedAaFasta => PathBuf::from("out/aa.fasta"),
+      },
+    ))?;
+
+    assert_error!(
+      resolved.ensure_unique_with_expansion(
+        OutputSelection::ReconstructedAaFasta,
+        [(o!("part S"), Path::new(path_s)), (o!("part M"), Path::new(path_m))],
+      ),
+      expected
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_expansion_replaces_the_expanded_output() -> Result<(), Report> {
+    let resolved = plan(&helpers::request(
+      vec![OutputSelection::Gtr],
+      btreemap! { OutputSelection::ReconstructedAaFasta => PathBuf::from("out/aa.fasta") },
+    ))?;
+
+    resolved.ensure_unique_with_expansion(
+      OutputSelection::ReconstructedAaFasta,
+      [(o!("part S"), Path::new("out/aa.fasta"))],
+    )
   }
 
   mod helpers {

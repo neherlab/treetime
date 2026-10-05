@@ -66,7 +66,7 @@ pub struct TreetimeAncestralArgs {
   pub(crate) annotation: Option<PathBuf>,
   pub(crate) aa_root_sequence: Option<PathBuf>,
   pub(crate) aa_model: AaModelName,
-  pub(crate) output_reconstructed_aa_fasta: Option<String>,
+  pub(crate) output_reconstructed_aa_fasta: Option<PathBuf>,
   pub(crate) output: OutputCoreArgs,
   pub(crate) output_selection: Vec<AncestralOutputSelection>,
   pub(crate) topology_order: TopologyOrderArgs,
@@ -302,13 +302,14 @@ pub struct TreetimeAncestralArgsRaw {
 
   /// Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).
   ///
-  /// Off by default. When set, the reconstructed sequence of every node is written per CDS. Accepts
-  /// the same `{cds}`/`%GENE` placeholders as `--translations`.
+  /// Off by default. When set, the reconstructed sequence of every node is written per CDS. The
+  /// file name accepts the `{cds}`/`%GENE` placeholders of `--translations`, and needs one when
+  /// more than one CDS is reconstructed; folder names are used as given.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_reconstructed_aa_fasta: Option<String>,
+  pub output_reconstructed_aa_fasta: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]

@@ -1,6 +1,5 @@
 use crate::commands::ancestral::aa_node_data::{
-  read_aa_root_sequences, read_gff3_annotations, selected_cdses, template_has_cds_placeholder, translation_path,
-  validate_aa_args,
+  cds_output_paths, read_aa_root_sequences, read_gff3_annotations, selected_cdses, translation_path, validate_aa_args,
 };
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::shared::alignment::{read_alignment, sequence_descriptions};
@@ -12,6 +11,7 @@ use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, out
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::aa::{AaNodeData, AaParams, CdsInput, reconstruct_aa};
 use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
@@ -28,6 +28,7 @@ use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
 use treetime::seq::mutation::Mutation;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::{progress_info, progress_warn};
+use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -35,6 +36,7 @@ use treetime_io::fasta::{FastaWriter, fasta_read_file};
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
+use treetime_utils::make_internal_error;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 pub fn run_ancestral_reconstruction(
@@ -61,6 +63,7 @@ pub fn run_ancestral_reconstruction(
   let topology_order = args.topology_order.resolve_topology_order(&input.graph, &names, None)?;
 
   let resolved = args.resolve_outputs()?;
+  let aa_plan = plan_aa_reconstructions(args, &resolved, log)?;
   let mut seq_sink = AncestralSeqSink::new(&resolved, names.clone(), descs)?;
 
   let random_step = (args.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile");
@@ -82,7 +85,9 @@ pub fn run_ancestral_reconstruction(
     branch_lengths: &branch_lengths,
     seed,
   };
-  let aa_result = optional_aa_reconstructions(args, &resolved, &aa_inputs, cancel, stages, log)?;
+  let aa_result = aa_plan
+    .map(|plan| run_aa_reconstructions(args, plan, &aa_inputs, cancel, stages, log))
+    .transpose()?;
 
   let maps = AncestralOutputMaps {
     root_sequence: output.root_sequence,
@@ -122,14 +127,11 @@ struct AaRunInputs<'a> {
   seed: u64,
 }
 
-fn optional_aa_reconstructions(
-  args: &TreetimeAncestralArgs,
+fn plan_aa_reconstructions<'a>(
+  args: &'a TreetimeAncestralArgs,
   resolved: &ResolvedOutputs,
-  inputs: &AaRunInputs<'_>,
-  cancel: &dyn Cancel,
-  stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<Option<(AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>, Report> {
+) -> Result<Option<AaPlan<'a>>, Report> {
   let aa_fasta = resolved.non_tree_outputs.get(&OutputSelection::ReconstructedAaFasta);
   let Some(translations) = &args.translations else {
     if let Some(file) = aa_fasta {
@@ -142,17 +144,40 @@ fn optional_aa_reconstructions(
     }
     return Ok(None);
   };
-  let aa_fasta_template = aa_fasta.map(|file| file.path.to_string_lossy().into_owned());
-  run_aa_reconstructions(
-    args,
+  let annotations = read_gff3_annotations(args.annotation.as_deref(), &args.cdses)?;
+  let cdses = selected_cdses(&args.cdses, &annotations);
+  let fasta_paths = aa_fasta
+    .map(|file| planned_aa_fasta_paths(resolved, &file.path, &cdses))
+    .transpose()?;
+  Ok(Some(AaPlan {
     translations,
-    aa_fasta_template.as_deref(),
-    inputs,
-    cancel,
-    stages,
-    log,
-  )
-  .map(Some)
+    annotations,
+    cdses,
+    fasta_paths,
+  }))
+}
+
+fn planned_aa_fasta_paths(
+  resolved: &ResolvedOutputs,
+  template: &Path,
+  cdses: &[String],
+) -> Result<BTreeMap<String, PathBuf>, Report> {
+  let paths = cds_output_paths(template, cdses)?;
+  let flag = OutputSelection::ReconstructedAaFasta.flag_name();
+  resolved.ensure_unique_with_expansion(
+    OutputSelection::ReconstructedAaFasta,
+    paths
+      .iter()
+      .map(|(cds, path)| (format!("{flag} for CDS '{cds}'"), path.as_path())),
+  )?;
+  Ok(paths)
+}
+
+struct AaPlan<'a> {
+  translations: &'a str,
+  annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
+  cdses: Vec<String>,
+  fasta_paths: Option<BTreeMap<String, PathBuf>>,
 }
 
 fn write_ancestral_gtr(
@@ -335,30 +360,22 @@ struct AncestralOutputMaps {
 
 fn run_aa_reconstructions(
   ancestral_args: &TreetimeAncestralArgs,
-  translations: &str,
-  aa_fasta_template: Option<&str>,
+  plan: AaPlan<'_>,
   inputs: &AaRunInputs<'_>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<(AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>), Report> {
+  let AaPlan {
+    translations,
+    annotations,
+    cdses,
+    fasta_paths,
+  } = plan;
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
   let aa_model = ancestral_args.aa_model.resolve();
   let recon_alphabet = Alphabet::new(aa_model.alphabet)?;
   let gap_fill_mode = ancestral_args.gap_fill_args.effective_gap_fill();
-
-  let annotations = read_gff3_annotations(ancestral_args.annotation.as_deref(), &ancestral_args.cdses)?;
-
-  let cdses = selected_cdses(&ancestral_args.cdses, &annotations);
-
-  if let Some(aa_seq_template) = aa_fasta_template {
-    if cdses.len() > 1 && !template_has_cds_placeholder(aa_seq_template) {
-      return make_error!(
-        "--output-reconstructed-aa-fasta template needs a CDS placeholder when reconstructing multiple CDSes, \
-         otherwise each CDS overwrites the same output file"
-      );
-    }
-  }
 
   let aa_root_sequences = read_aa_root_sequences(ancestral_args.aa_root_sequence.as_deref(), &cdses, &recon_alphabet)?;
 
@@ -388,7 +405,7 @@ fn run_aa_reconstructions(
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  let mut seq_sink = aa_fasta_template.map(|template| AaFastaSink::new(template.to_owned(), inputs.names.clone()));
+  let mut seq_sink = fasta_paths.map(|paths| AaFastaSink::new(paths, inputs.names.clone()));
 
   let cds_annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry> = cdses
     .iter()
@@ -446,15 +463,15 @@ fn read_cds_translations(
 }
 
 struct AaFastaSink {
-  template: String,
+  paths: BTreeMap<String, PathBuf>,
   names: BTreeMap<GraphNodeKey, Option<String>>,
   pending: Option<(String, BTreeMap<GraphNodeKey, Seq>)>,
 }
 
 impl AaFastaSink {
-  fn new(template: String, names: BTreeMap<GraphNodeKey, Option<String>>) -> Self {
+  fn new(paths: BTreeMap<String, PathBuf>, names: BTreeMap<GraphNodeKey, Option<String>>) -> Self {
     Self {
-      template,
+      paths,
       names,
       pending: None,
     }
@@ -468,12 +485,12 @@ impl AaFastaSink {
     let Some((cds, sequences)) = self.pending.take() else {
       return Ok(());
     };
-    let mut writer = FastaWriter::create(translation_path(&self.template, &cds))?;
+    let Some(path) = self.paths.get(&cds) else {
+      return make_internal_error!("No amino-acid FASTA path was planned for CDS '{cds}'");
+    };
+    let mut writer = FastaWriter::create(path)?;
     for (key, seq) in &sequences {
-      let name = self.names[key]
-        .as_deref()
-        .map_or_else(|| format!("node_{}", key.0), str::to_owned);
-      writer.write(&name, None, seq)?;
+      writer.write(&node_name_or_key(*key, self.names[key].as_deref()), None, seq)?;
     }
     writer.finish()
   }
@@ -482,7 +499,7 @@ impl AaFastaSink {
 impl SeqSink for AaFastaSink {
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     let SeqTrack::Aa(cds) = item.track else {
-      return treetime_utils::make_internal_error!("Amino-acid reconstructed FASTA sink received a nucleotide track");
+      return make_internal_error!("Amino-acid reconstructed FASTA sink received a nucleotide track");
     };
     if self.pending.as_ref().is_some_and(|(pending, _)| pending != cds) {
       self.write_pending()?;

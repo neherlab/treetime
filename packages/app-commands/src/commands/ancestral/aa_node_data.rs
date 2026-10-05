@@ -1,7 +1,9 @@
+use app_output::output_plan::OutputSelection;
 use eyre::Report;
 use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf, is_separator};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::attach::sanitize_to_alphabet;
 use treetime::make_error;
@@ -88,18 +90,55 @@ pub(crate) fn selected_cdses(
   }
 }
 
-pub fn template_has_cds_placeholder(template: &str) -> bool {
+pub fn is_cds_output_template(path: &Path) -> bool {
+  cds_output_template_name(path).is_some()
+}
+
+pub(crate) fn cds_output_paths(template: &Path, cdses: &[String]) -> Result<BTreeMap<String, PathBuf>, Report> {
+  let flag = OutputSelection::ReconstructedAaFasta.flag_name();
+  let Some(name) = cds_output_template_name(template) else {
+    if cdses.len() > 1 {
+      return make_error!(
+        "{flag} template needs a CDS placeholder in its file name when reconstructing multiple CDSes, \
+         otherwise each CDS overwrites the same output file"
+      );
+    }
+    return Ok(cdses.iter().map(|cds| (cds.clone(), template.to_path_buf())).collect());
+  };
+  cdses
+    .iter()
+    .map(|cds| {
+      if cds.chars().any(is_separator) {
+        return make_error!("CDS '{cds}' contains a path separator and cannot be part of the file name of {flag}");
+      }
+      Ok((cds.clone(), template.with_file_name(expand_cds_placeholders(name, cds))))
+    })
+    .collect()
+}
+
+pub(crate) fn translation_path(template: &str, cds: &str) -> PathBuf {
+  PathBuf::from(expand_cds_placeholders(template, cds))
+}
+
+fn template_has_cds_placeholder(template: &str) -> bool {
   CDS_PLACEHOLDERS
     .iter()
     .any(|placeholder| template.contains(placeholder))
 }
 
-pub(crate) fn translation_path(template: &str, cds: &str) -> PathBuf {
-  let mut path = template.to_owned();
-  for placeholder in CDS_PLACEHOLDERS {
-    path = path.replace(placeholder, cds);
-  }
-  PathBuf::from(path)
+fn cds_output_template_name(path: &Path) -> Option<&str> {
+  path
+    .file_name()
+    .and_then(OsStr::to_str)
+    .filter(|name| template_has_cds_placeholder(name))
+}
+
+fn expand_cds_placeholders(template: &str, cds: &str) -> String {
+  CDS_PLACEHOLDERS
+    .iter()
+    .fold(template.to_owned(), |expanded, placeholder| {
+      expanded.replace(placeholder, cds)
+    })
 }
 
 pub(crate) fn read_aa_root_sequences(

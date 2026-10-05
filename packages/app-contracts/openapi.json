@@ -6405,7 +6405,7 @@
             "x-cli-flag": "--aa-model"
           },
           "output_reconstructed_aa_fasta": {
-            "description": "Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).\n\nOff by default. When set, the reconstructed sequence of every node is written per CDS. Accepts\nthe same `{cds}`/`%GENE` placeholders as `--translations`.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+            "description": "Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).\n\nOff by default. When set, the reconstructed sequence of every node is written per CDS. The\nfile name accepts the `{cds}`/`%GENE` placeholders of `--translations`, and needs one when\nmore than one CDS is reconstructed; folder names are used as given.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
             "type": [
               "string",
               "null"
@@ -13824,7 +13824,7 @@
             ],
             "conflicts": [],
             "help": "Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).",
-            "more": "Off by default. When set, the reconstructed sequence of every node is written per CDS. Accepts the same `{cds}`/`%GENE` placeholders as `--translations`.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`."
+            "more": "Off by default. When set, the reconstructed sequence of every node is written per CDS. The file name accepts the `{cds}`/`%GENE` placeholders of `--translations`, and needs one when more than one CDS is reconstructed; folder names are used as given.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`."
           },
           {
             "key": "output_all",

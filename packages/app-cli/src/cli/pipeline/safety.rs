@@ -1,5 +1,6 @@
 use crate::cli::pipeline::inputs::input_paths;
-use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep, is_template_path};
+use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep};
+use app_commands::commands::ancestral::aa_node_data::is_cds_output_template;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -102,7 +103,7 @@ fn output_paths(step: &ResolvedStep) -> Vec<String> {
     .by_selection
     .values()
     .flatten()
-    .filter(|path| !is_template_path(path))
+    .filter(|path| !is_cds_output_template(path))
     .map(|path| path.to_string_lossy().into_owned())
     .collect()
 }
