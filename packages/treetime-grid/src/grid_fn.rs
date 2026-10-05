@@ -105,6 +105,7 @@ impl<T: InterpElem> GridFn<T> {
     Self::from_grid_array(grid, y)
   }
 
+  // TODO: inefficient. Try to remove this method
   pub fn x(&self) -> Array1<T>
   where
     T: Float,

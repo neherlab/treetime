@@ -13,6 +13,11 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+// TODO: keep an eye on alternative crates that don't rely on C, and replace when they are stable enough.
+// TODO: keep an eye on efforts of bringing (pieces of) libc to `wasm32-unknown-unknown`, and enable `bzip2`, `xz2`
+// and `zstd` crates for wasm builds when it's compatible enough: https://github.com/rustwasm/team/issues/291
+// Crates `bzip2`, `xz2` and `zstd` depend on corresponding C libraries and require libc in order to build.
+// libc is not present for `wasm32-unknown-unknown` target, so we disable these crates.
 #[cfg(not(target_arch = "wasm32"))]
 use bzip2::read::MultiBzDecoder;
 #[cfg(not(target_arch = "wasm32"))]

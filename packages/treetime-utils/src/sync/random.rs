@@ -28,6 +28,8 @@ pub fn random_choice_maybe<T>(iter: impl IntoIterator<Item = T>, rng: &mut impl 
 }
 
 pub fn random_pop<T: Clone + Ord>(s: &mut BTreeSet<T>, rng: &mut impl Rng) -> T {
+  // TODO: inefficient. Try to avoid copying. Sets have no indexed access, so removing random element is tricky.
+  // Might be possible with IndexSet?
   let mut v = s.iter().cloned().collect_vec();
   let item = random_remove(&mut v, rng);
   *s = BTreeSet::new();
