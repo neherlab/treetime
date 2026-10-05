@@ -3,6 +3,8 @@ import { describe, expect, test } from "vitest";
 
 import {
   clampSidebarWidth,
+  fitSidebarWidth,
+  MAIN_PANEL_MIN_WIDTH,
   sidebarWidthOrDefault,
   SIDEBAR_WIDTH_DEFAULT,
   SIDEBAR_WIDTH_MAX,
@@ -101,5 +103,23 @@ describe("sidebar width keys", () => {
         expect(sidebarWidthForKey(wider, "ArrowLeft")).toBe(width);
       }),
     );
+  });
+});
+
+describe("sidebar width fit to the window", () => {
+  test("a sidebar that leaves the main panel its minimum width is kept", () => {
+    expect(fitSidebarWidth(340, 340 + MAIN_PANEL_MIN_WIDTH)).toBe(340);
+  });
+
+  test("a sidebar in a narrow window shrinks so the main panel keeps its minimum width", () => {
+    expect(fitSidebarWidth(340, 300 + MAIN_PANEL_MIN_WIDTH)).toBe(300);
+  });
+
+  test("the sidebar never shrinks below its minimum width", () => {
+    expect(fitSidebarWidth(340, 600)).toBe(SIDEBAR_WIDTH_MIN);
+  });
+
+  test("an unmeasured window keeps the width", () => {
+    expect(fitSidebarWidth(500, 0)).toBe(500);
   });
 });

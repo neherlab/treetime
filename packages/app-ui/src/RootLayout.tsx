@@ -1,3 +1,4 @@
+import { useViewportSize } from "@mantine/hooks";
 import { Outlet } from "@tanstack/react-router";
 
 import { useElectronThemeSync } from "./hooks/useElectronThemeSync";
@@ -9,7 +10,7 @@ import { useYamlDrop } from "./shell/useYamlDrop";
 import { WorkspaceDialog } from "./shell/WorkspaceDialog";
 import { usePreferencesStore } from "./store/preferences";
 import { SidebarInset, SidebarProvider } from "./ui/sidebar";
-import { sidebarWidthOrDefault } from "./ui/sidebar-width";
+import { fitSidebarWidth, sidebarWidthOrDefault } from "./ui/sidebar-width";
 import { TooltipProvider } from "./ui/tooltip";
 
 export const MAIN_SCROLL_ID = "main-scroll";
@@ -18,7 +19,9 @@ export function RootLayout() {
   useElectronThemeSync();
   useGlobalShortcuts();
   const { getRootProps, getInputProps } = useYamlDrop();
-  const sidebarWidth = usePreferencesStore((state) => sidebarWidthOrDefault(state.sidebarWidth));
+  const { width: viewportWidth } = useViewportSize();
+  const storedWidth = usePreferencesStore((state) => sidebarWidthOrDefault(state.sidebarWidth));
+  const sidebarWidth = fitSidebarWidth(storedWidth, viewportWidth);
   const setSidebarWidth = usePreferencesStore((state) => state.setSidebarWidth);
 
   return (
