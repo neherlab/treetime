@@ -107,8 +107,14 @@ check_tests = false
 # field or variant from that surface. A doc comment is kept when at least one
 # render source still shows it. A rendered doc comment stays within the size
 # limits below.
+#
+# Comments that start with an allowed prefix are kept: license headers and the
+# markers SAFETY (the invariants an unsafe block relies on), TODO, FIXME, and
+# HACK (known gaps, defects, and workarounds, including disabled code kept as a
+# comment). Line comments that directly follow a kept line comment, with no
+# blank line or code between them, belong to the same note and are kept too.
 [no_comments]
-allowed_comment_prefixes = ["SPDX-License-Identifier"]
+allowed_comment_prefixes = ["SPDX-License-Identifier", "SAFETY:", "TODO", "FIXME", "HACK"]
 max_chars = 500
 max_lines = 6
 max_paragraphs = 2

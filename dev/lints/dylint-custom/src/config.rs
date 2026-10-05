@@ -101,7 +101,8 @@ pub struct NoCommentsConfig {
     /// Render sources: each names a tool surface and the doc comments it keeps.
     pub rendered: Vec<RenderSource>,
     /// Non-doc comment prefixes that are kept, matched against trimmed comment
-    /// text, e.g. `"SPDX-License-Identifier"`.
+    /// text, e.g. `"SPDX-License-Identifier"`. A line comment on the line right
+    /// after a kept line comment is kept too, so a marker heads a multi-line note.
     pub allowed_comment_prefixes: Vec<String>,
     pub max_chars: usize,
     pub max_lines: usize,

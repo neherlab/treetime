@@ -193,34 +193,17 @@ impl NoComments {
         let Some(src) = file.src.as_deref() else {
             return;
         };
-        let mut offset = strip_shebang(src).unwrap_or(0);
-        for token in tokenize(&src[offset..], FrontmatterAllowed::No) {
-            let start = offset;
-            offset += token.len as usize;
-            let doc = match token.kind {
-                TokenKind::LineComment { doc_style } | TokenKind::BlockComment { doc_style, .. } => {
-                    doc_style.is_some()
-                },
-                _ => continue,
-            };
-            let lo = file.start_pos + BytePos(start as u32);
-            let hi = file.start_pos + BytePos(offset as u32);
-            if doc && self.help_docs.lock().contains(&(lo, hi)) {
+        for comment in scan_comments(src, &self.config.allowed_comment_prefixes) {
+            if comment.kept {
                 continue;
             }
-            if !doc && self.is_allowed_comment(&src[start..offset]) {
+            let lo = file.start_pos + BytePos(comment.start as u32);
+            let hi = file.start_pos + BytePos(comment.end as u32);
+            if comment.doc && self.help_docs.lock().contains(&(lo, hi)) {
                 continue;
             }
-            report(cx, deletion_span(file, src, start, offset), doc);
+            report(cx, deletion_span(file, src, comment.start, comment.end), comment.doc);
         }
-    }
-
-    fn is_allowed_comment(&self, text: &str) -> bool {
-        let inner = comment_inner_text(text);
-        self.config
-            .allowed_comment_prefixes
-            .iter()
-            .any(|prefix| inner.starts_with(prefix.as_str()))
     }
 }
 
@@ -271,6 +254,48 @@ impl EarlyLintPass for NoComments {
             report(cx, deletion_span(&file, src, start, end), true);
         }
     }
+}
+
+fn scan_comments(src: &str, allowed_prefixes: &[String]) -> Vec<ScannedComment> {
+    let mut offset = strip_shebang(src).unwrap_or(0);
+    let mut kept_line_end = None;
+    let mut comments = Vec::new();
+    for token in tokenize(&src[offset..], FrontmatterAllowed::No) {
+        let start = offset;
+        offset += token.len as usize;
+        let (doc, line) = match token.kind {
+            TokenKind::LineComment { doc_style } => (doc_style.is_some(), true),
+            TokenKind::BlockComment { doc_style, .. } => (doc_style.is_some(), false),
+            TokenKind::Whitespace => continue,
+            _ => {
+                kept_line_end = None;
+                continue;
+            },
+        };
+        let continues_kept =
+            kept_line_end.is_some_and(|end: usize| src[end..start].matches('\n').count() == 1);
+        let kept = !doc && (continues_kept || has_allowed_prefix(&src[start..offset], allowed_prefixes));
+        kept_line_end = (kept && line).then_some(offset);
+        comments.push(ScannedComment {
+            start,
+            end: offset,
+            doc,
+            kept,
+        });
+    }
+    comments
+}
+
+fn has_allowed_prefix(text: &str, allowed_prefixes: &[String]) -> bool {
+    let inner = comment_inner_text(text);
+    allowed_prefixes.iter().any(|prefix| inner.starts_with(prefix.as_str()))
+}
+
+struct ScannedComment {
+    start: usize,
+    end: usize,
+    doc: bool,
+    kept: bool,
 }
 
 fn is_generated_path(path: &Path, cargo_out_dir: Option<&Path>) -> bool {
@@ -392,4 +417,85 @@ fn attr_list_has_word(attr: &Attribute, word: &str) -> bool {
             MetaItemInner::Lit(_) => false,
         })
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::scan_comments;
+
+    fn kept(src: &str) -> Vec<(String, bool)> {
+        let prefixes = ["SAFETY:", "TODO", "HACK"].map(str::to_owned);
+        scan_comments(src, &prefixes)
+            .into_iter()
+            .map(|comment| (src[comment.start..comment.end].to_owned(), comment.kept))
+            .collect()
+    }
+
+    #[test]
+    fn test_scan_comments_keeps_marker_line() {
+        assert_eq!(
+            vec![("// SAFETY: ascii only".to_owned(), true)],
+            kept("let x = 1;\n// SAFETY: ascii only\nunsafe {}\n")
+        );
+    }
+
+    #[test]
+    fn test_scan_comments_rejects_plain_line() {
+        assert_eq!(vec![("// explains x".to_owned(), false)], kept("// explains x\nlet x = 1;\n"));
+    }
+
+    #[test]
+    fn test_scan_comments_keeps_continuation_lines() {
+        let src = "  // TODO: enable when fixed\n  // #[case::a(\"a\")] // slow\n  // #[case::b(\"b\")]\nfn f() {}\n";
+        assert_eq!(
+            vec![
+                ("// TODO: enable when fixed".to_owned(), true),
+                ("// #[case::a(\"a\")] // slow".to_owned(), true),
+                ("// #[case::b(\"b\")]".to_owned(), true),
+            ],
+            kept(src)
+        );
+    }
+
+    #[test]
+    fn test_scan_comments_blank_line_ends_group() {
+        assert_eq!(
+            vec![("// HACK: guess".to_owned(), true), ("// unrelated".to_owned(), false)],
+            kept("// HACK: guess\n\n// unrelated\n")
+        );
+    }
+
+    #[test]
+    fn test_scan_comments_code_ends_group() {
+        assert_eq!(
+            vec![("// TODO: x".to_owned(), true), ("// unrelated".to_owned(), false)],
+            kept("// TODO: x\nlet y = 2;\n// unrelated\n")
+        );
+    }
+
+    #[test]
+    fn test_scan_comments_trailing_marker_after_code() {
+        assert_eq!(vec![("// TODO: slow".to_owned(), true)], kept("let z = 3; // TODO: slow\n"));
+    }
+
+    #[test]
+    fn test_scan_comments_marker_block_comment() {
+        assert_eq!(vec![("/* TODO: x\n y */".to_owned(), true)], kept("/* TODO: x\n y */\n"));
+    }
+
+    #[test]
+    fn test_scan_comments_doc_comment_not_kept() {
+        assert_eq!(
+            vec![("/// TODO: x".to_owned(), false), ("// next".to_owned(), false)],
+            kept("/// TODO: x\n// next\nfn f() {}\n")
+        );
+    }
+
+    #[test]
+    fn test_scan_comments_doc_after_marker_not_kept() {
+        assert_eq!(
+            vec![("// TODO: x".to_owned(), true), ("/// doc".to_owned(), false)],
+            kept("// TODO: x\n/// doc\nfn f() {}\n")
+        );
+    }
 }
