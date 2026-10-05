@@ -6,6 +6,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use strum_macros::{AsRefStr, EnumIter, EnumString};
+use treetime::progress::LogSink;
+use treetime::progress_debug;
 use treetime_io::csv::TableFormat;
 use treetime_io::nwk::NwkStyle;
 use treetime_utils::make_error;
@@ -20,7 +22,7 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   let styles = effective_nwk_styles(command, &request.nwk_styles);
 
   let mut tree_outputs: BTreeMap<TreeWriteKind, PathBuf> = BTreeMap::new();
-  let mut non_tree_outputs: BTreeMap<OutputSelection, PathBuf> = BTreeMap::new();
+  let mut non_tree_outputs: BTreeMap<OutputSelection, PlannedFile> = BTreeMap::new();
 
   let mut overridden_tree: BTreeSet<OutputSelection> = BTreeSet::new();
   for (&variant, path) in &request.tree_overrides {
@@ -36,7 +38,13 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   }
 
   for (&sel, path) in &request.non_tree_overrides {
-    non_tree_outputs.insert(sel, path.clone());
+    non_tree_outputs.insert(
+      sel,
+      PlannedFile {
+        path: path.clone(),
+        requested: Requested::Named,
+      },
+    );
   }
 
   if let Some(dir) = &request.output_all {
@@ -67,9 +75,10 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
             .or_insert_with(|| dir.join(format!("{stem}{}", variant.extension())));
         }
       } else {
-        non_tree_outputs
-          .entry(variant)
-          .or_insert_with(|| dir.join(format!("{stem}{}", variant.extension())));
+        non_tree_outputs.entry(variant).or_insert_with(|| PlannedFile {
+          path: dir.join(format!("{stem}{}", variant.extension())),
+          requested: Requested::All,
+        });
       }
     }
   } else if !request.selection.is_empty() {
@@ -172,7 +181,7 @@ pub struct OutputPlanRequest {
 
 pub struct ResolvedOutputs {
   pub tree_outputs: BTreeMap<TreeWriteKind, PathBuf>,
-  pub non_tree_outputs: BTreeMap<OutputSelection, PathBuf>,
+  pub non_tree_outputs: BTreeMap<OutputSelection, PlannedFile>,
 }
 
 impl ResolvedOutputs {
@@ -184,13 +193,17 @@ impl ResolvedOutputs {
         .or_default()
         .push(path.clone());
     }
-    for (selection, path) in &self.non_tree_outputs {
-      by_selection.entry(*selection).or_default().push(path.clone());
+    for (selection, file) in &self.non_tree_outputs {
+      by_selection.entry(*selection).or_default().push(file.path.clone());
     }
     for paths in by_selection.values_mut() {
       paths.sort();
     }
     by_selection
+  }
+
+  pub fn path(&self, selection: OutputSelection) -> Option<&Path> {
+    self.non_tree_outputs.get(&selection).map(|file| file.path.as_path())
   }
 
   pub fn tree_based_paths(&self) -> Vec<&Path> {
@@ -204,9 +217,36 @@ impl ResolvedOutputs {
           .non_tree_outputs
           .iter()
           .filter(|(selection, _)| selection.reads_tree())
-          .map(|(_, path)| path.as_path()),
+          .map(|(_, file)| file.path.as_path()),
       )
       .collect()
+  }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PlannedFile {
+  pub path: PathBuf,
+  pub requested: Requested,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Requested {
+  Named,
+  All,
+}
+
+pub fn output_unavailable(
+  selection: OutputSelection,
+  file: &PlannedFile,
+  reason: &str,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  match file.requested {
+    Requested::Named => make_error!("{} was requested, but {reason}", selection.flag_name()),
+    Requested::All => {
+      progress_debug!(log, "Not writing '{}': {reason}", file.path.display());
+      Ok(())
+    },
   }
 }
 
@@ -345,7 +385,7 @@ impl CommandKind {
 
 fn ensure_unique_output_paths(
   tree_outputs: &BTreeMap<TreeWriteKind, PathBuf>,
-  non_tree_outputs: &BTreeMap<OutputSelection, PathBuf>,
+  non_tree_outputs: &BTreeMap<OutputSelection, PlannedFile>,
 ) -> Result<(), Report> {
   let flags_and_paths = tree_outputs
     .iter()
@@ -353,7 +393,7 @@ fn ensure_unique_output_paths(
     .chain(
       non_tree_outputs
         .iter()
-        .map(|(selection, path)| (selection.flag_name(), path)),
+        .map(|(selection, file)| (selection.flag_name(), &file.path)),
     );
   let mut destinations: BTreeMap<&Path, &str> = BTreeMap::new();
   for (flag, path) in flags_and_paths {
@@ -541,7 +581,7 @@ impl OutputSelection {
     }
   }
 
-  fn flag_name(self) -> &'static str {
+  pub fn flag_name(self) -> &'static str {
     match self {
       Self::All => "--output-selection=all",
       Self::Nwk => "--output-tree-nwk",

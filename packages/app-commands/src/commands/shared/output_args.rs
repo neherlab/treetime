@@ -86,6 +86,9 @@ pub struct OutputCoreArgs {
   ///
   /// Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
   /// supplement the files produced by `--output-all`.
+  ///
+  /// An output that the run has no data for is skipped without a message, for example the
+  /// substitution model of a run that fits none. A per-file flag for such an output fails.
   #[cfg_attr(feature = "clap", clap(long, short = 'O', value_hint = ValueHint::DirPath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_all: Option<PathBuf>,

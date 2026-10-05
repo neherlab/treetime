@@ -17,14 +17,14 @@ treetime timetree --tree=data/flu/h3n2/20/tree.nwk --dates=data/flu/h3n2/20/meta
   --output-selection=nwk,nexus,auspice,augur-node-data,clock-model
 ```
 
-The selection leaves out the reconstructed FASTA, which input mode rejects before inference ([M-timetree-input-branch-lengths-reject-default-outputs.md](M-timetree-input-branch-lengths-reject-default-outputs.md)).
+Input mode reconstructs no ancestral sequences, so `--output-all` skips the reconstructed FASTA, and `--output-reconstructed-nuc-fasta` fails before inference.
 
-The same abort occurs on `data/ebola/20` and on `data/ebola/362` with `--keep-root` added. These are the three `--branch-length-mode=input` cases of `dev/smoke` (`timetree/flu/h3n2/20/branch-input`, `timetree/ebola/20/branch-input`, `timetree/ebola/362/input-keeproot`), and all three fail.
+The same abort occurs on `data/ebola/20` and on `data/ebola/362` with `--keep-root` added. These are the `--branch-length-mode=input` cases of `dev/smoke` (the `branch-input`, `branch-input-all-outputs` and `input-keeproot` variants of `timetree`), and all of them fail.
 
 ## Impact and scope
 
 - `--branch-length-mode=input` is unusable for `timetree`: the command produces no output at all. The alternative mode (`marginal`, the default) completes on the same datasets.
-- The three cases are excluded from every before/after output comparison, so this region of the timetree pipeline carries no regression coverage.
+- These cases are excluded from every before/after output comparison, so this region of the timetree pipeline carries no regression coverage.
 
 ## Mechanism
 

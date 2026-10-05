@@ -103,11 +103,11 @@ pub fn run_clock(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
+  if let Some(path) = resolved.path(OutputSelection::ClockModel) {
     json_write_file(path, &clock_model, JsonPretty(true))?;
   }
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockCsv) {
+  if let Some(path) = resolved.path(OutputSelection::ClockCsv) {
     table_write_file(OutputSelection::ClockCsv, path, &regression_results)?;
   }
 

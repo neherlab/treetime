@@ -717,8 +717,7 @@ variant = "fixed-clock"
 datasets = ["flu/h3n2/200", "ebola/20"]
 args = "--clock-rate=0.003"
 
-# Input branch lengths, without the sequence outputs that input mode rejects before inference, so that the case
-# reaches the time inference
+# Input branch lengths with a selection of outputs
 [[timetree]]
 variant = "branch-input"
 datasets = ["flu/h3n2/20", "ebola/20"]
@@ -726,12 +725,13 @@ args = "--branch-length-mode=input"
 selection = "nwk,nexus,auspice,augur-node-data,clock-model"
 fail = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
 
-# Input branch lengths with the default outputs
+# Input branch lengths with the default outputs: input mode reconstructs no sequences, so `--output-all` skips the
+# reconstructed FASTA
 [[timetree]]
 variant = "branch-input-all-outputs"
 datasets = ["flu/h3n2/20", "ebola/20"]
 args = "--branch-length-mode=input"
-fail = "kb/issues/M-timetree-input-branch-lengths-reject-default-outputs.md"
+fail = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
 
 [[timetree]]
 variant = "input-keeproot"

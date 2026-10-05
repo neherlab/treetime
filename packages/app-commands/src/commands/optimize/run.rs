@@ -86,7 +86,7 @@ pub fn run_optimize(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
+  if let Some(path) = resolved.path(OutputSelection::Gtr) {
     let gtr_output = GtrOutput::builder().gtr(&gtr).model_name(model_name).build();
     json_write_file(path, &gtr_output, JsonPretty(true))?;
   }
@@ -145,7 +145,7 @@ fn write_optimize_trees(
     return Ok(());
   };
   write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Optimize, log)?;
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
+  if let Some(path) = resolved.path(OutputSelection::AugurNodeData) {
     let run = RefineRun {
       alignment: trees.alignment,
       input_tree: Some(trees.input_tree),

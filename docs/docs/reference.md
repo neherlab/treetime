@@ -296,6 +296,8 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
 
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
+
+   An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -354,6 +356,8 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--output-selection <OUTPUT_SELECTION>` — Comma-separated list of outputs to produce with `--output-all`.
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
+
+   A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `clock-model`, `clock-csv`, `confidence-tsv`, `tracelog`, `coalescent-tsv`, `coalescent-csv`, `coalescent-json`
 
@@ -435,6 +439,8 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
 
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
+
+   An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -509,6 +515,8 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 * `--output-selection <OUTPUT_SELECTION>` — Comma-separated list of outputs to produce with `--output-all`.
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
+
+   A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`
 
@@ -627,6 +635,8 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
 
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
+
+   An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -688,6 +698,8 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 * `--output-selection <OUTPUT_SELECTION>` — Comma-separated list of outputs to produce with `--output-all`.
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
+
+   A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `gtr`
 
@@ -862,6 +874,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
 
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
+
+   An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -920,6 +934,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 * `--output-selection <OUTPUT_SELECTION>` — Comma-separated list of outputs to produce with `--output-all`.
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
+
+   A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `reconstructed-aa-fasta`
 
@@ -1043,6 +1059,8 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
 
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
+
+   An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -1107,6 +1125,8 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 * `--output-selection <OUTPUT_SELECTION>` — Comma-separated list of outputs to produce with `--output-all`.
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
+
+   A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `clock-model`, `clock-csv`
 
@@ -1281,6 +1301,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
 
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
+
+   An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -1339,6 +1361,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 * `--output-selection <OUTPUT_SELECTION>` — Comma-separated list of outputs to produce with `--output-all`.
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
+
+   A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `reconstructed-aa-fasta`
 
@@ -1448,6 +1472,8 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
 
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
+
+   An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -1506,6 +1532,8 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 * `--output-selection <OUTPUT_SELECTION>` — Comma-separated list of outputs to produce with `--output-all`.
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
+
+   A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `confidence-csv`, `traits-csv`
 

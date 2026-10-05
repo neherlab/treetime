@@ -86,7 +86,7 @@ pub fn run_mugration(
   topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
+  if let Some(path) = resolved.path(OutputSelection::Gtr) {
     let gtr_output = GtrOutput::builder()
       .gtr(&output.gtr)
       .model_name(GtrModelName::Infer)
@@ -140,13 +140,13 @@ fn write_mugration_trees(
     return Ok(());
   };
   write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Mugration, log)?;
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::TraitsCsv) {
+  if let Some(path) = resolved.path(OutputSelection::TraitsCsv) {
     write_traits_csv(&tree, path)?;
   }
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceCsv) {
+  if let Some(path) = resolved.path(OutputSelection::ConfidenceCsv) {
     write_trait_confidence_csv(&tree, path)?;
   }
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
+  if let Some(path) = resolved.path(OutputSelection::AugurNodeData) {
     write_augur_node_data_traits(&tree, &output.gtr, path)?;
     progress_info!(log, "Wrote augur node data JSON to {}", path.display());
   }

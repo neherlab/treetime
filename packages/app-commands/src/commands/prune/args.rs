@@ -101,6 +101,9 @@ pub struct TreetimePruneArgsRaw {
   /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
   /// available for this command. Requires `--output-all`. Per-file flags are always honored
   /// regardless of this selection.
+  ///
+  /// A selected output that the run has no data for is skipped without a message, for example
+  /// the substitution model of a run that fits none. A per-file flag for such an output fails.
   #[cfg_attr(
     feature = "clap",
     clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")

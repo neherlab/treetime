@@ -1,10 +1,16 @@
 #[cfg(test)]
 mod tests {
-  use crate::output_plan::OutputSelection;
+  use crate::output_plan::{OutputSelection, PlannedFile, Requested, output_unavailable, plan};
+  use eyre::Report;
   use itertools::Itertools;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use std::path::PathBuf;
   use std::str::FromStr;
   use strum::IntoEnumIterator;
+  use treetime::progress::LogLevel;
+  use treetime_utils::{assert_error, o};
 
   #[test]
   fn test_output_plan_selection_tag_matches_serde_name() {
@@ -32,5 +38,119 @@ mod tests {
       Err(strum::ParseError::VariantNotFound),
       OutputSelection::from_str("mat_pb")
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::default_set(  vec![],                                                    Requested::All)]
+  #[case::listed_value( vec![OutputSelection::Gtr],                                Requested::All)]
+  #[case::all_value(    vec![OutputSelection::All],                                Requested::All)]
+  #[trace]
+  fn test_output_plan_output_all_entries_are_requested_by_output_all(
+    #[case] selection: Vec<OutputSelection>,
+    #[case] expected: Requested,
+  ) -> Result<(), Report> {
+    let request = helpers::request(selection, btreemap! {});
+
+    let resolved = plan(&request)?;
+
+    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Gtr].requested);
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_per_file_flag_is_named_even_with_output_all() -> Result<(), Report> {
+    let request = helpers::request(
+      vec![],
+      btreemap! { OutputSelection::Gtr => PathBuf::from("my.gtr.json") },
+    );
+
+    let resolved = plan(&request)?;
+
+    let expected = PlannedFile {
+      path: PathBuf::from("my.gtr.json"),
+      requested: Requested::Named,
+    };
+    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Gtr]);
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_unavailable_named_output_fails_with_flag_and_reason() {
+    let file = PlannedFile {
+      path: PathBuf::from("my.gtr.json"),
+      requested: Requested::Named,
+    };
+    let (log, messages) = helpers::recording_log();
+
+    assert_error!(
+      output_unavailable(OutputSelection::Gtr, &file, "no GTR model was fitted", &log),
+      "--output-gtr was requested, but no GTR model was fitted"
+    );
+    drop(log);
+    assert_eq!(Vec::<(LogLevel, String)>::new(), messages.iter().collect_vec());
+  }
+
+  #[test]
+  fn test_output_plan_unavailable_output_from_output_all_is_skipped_with_debug_message() -> Result<(), Report> {
+    let file = PlannedFile {
+      path: PathBuf::from("out/ancestral.gtr.json"),
+      requested: Requested::All,
+    };
+    let (log, messages) = helpers::recording_log();
+
+    output_unavailable(OutputSelection::Gtr, &file, "no GTR model was fitted", &log)?;
+
+    drop(log);
+    let expected = vec![(
+      LogLevel::Debug,
+      o!("Not writing 'out/ancestral.gtr.json': no GTR model was fitted"),
+    )];
+    assert_eq!(expected, messages.iter().collect_vec());
+    Ok(())
+  }
+
+  mod helpers {
+    use crate::output_plan::{CommandKind, OutputPlanRequest, OutputSelection};
+    use std::collections::BTreeMap;
+    use std::path::PathBuf;
+    use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
+    use treetime::progress::{LogLevel, LogSink};
+
+    pub(super) fn request(
+      selection: Vec<OutputSelection>,
+      non_tree_overrides: BTreeMap<OutputSelection, PathBuf>,
+    ) -> OutputPlanRequest {
+      OutputPlanRequest {
+        command: CommandKind::Ancestral,
+        output_all: Some(PathBuf::from("out")),
+        nwk_styles: vec![],
+        selection,
+        tree_overrides: BTreeMap::new(),
+        non_tree_overrides,
+      }
+    }
+
+    pub(super) fn recording_log() -> (RecordingLog, Receiver<(LogLevel, String)>) {
+      let (sender, receiver) = sync_channel(8);
+      (RecordingLog { sender }, receiver)
+    }
+
+    pub(super) struct RecordingLog {
+      sender: SyncSender<(LogLevel, String)>,
+    }
+
+    impl LogSink for RecordingLog {
+      fn log(&self, level: LogLevel, message: &str) {
+        self
+          .sender
+          .send((level, message.to_owned()))
+          .expect("the test keeps the receiver alive");
+      }
+
+      fn log_enabled(&self, _level: LogLevel) -> bool {
+        true
+      }
+    }
   }
 }

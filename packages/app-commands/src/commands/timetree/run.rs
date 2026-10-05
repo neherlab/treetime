@@ -7,11 +7,10 @@ use crate::commands::timetree::trace::TimetreeTraceSink;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates, TreeSequences};
 use app_output::augur_node_data_refine::{RefineRun, write_augur_node_data_refine};
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, TreeWriteKind};
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, TreeWriteKind, output_unavailable};
 use app_output::table_output::table_write_file;
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::{Report, WrapErr};
-use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime::cancel::Cancel;
@@ -19,6 +18,7 @@ use treetime::clock::divergence::root_to_node_divergences;
 use treetime::gtr::get_gtr::GtrOutput;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::{LogSink, StageSink};
+use treetime::progress_info;
 use treetime::seq::mutation::Mutation;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
@@ -26,7 +26,6 @@ use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime::timetree::params::TimetreeParams;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput, TimetreeSequences};
 use treetime::{make_error, make_internal_error};
-use treetime::{progress_info, progress_warn};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -51,10 +50,7 @@ pub fn run_timetree_estimation(
   let parse_names = input_data.names;
 
   let resolved = args.resolve_outputs()?;
-  let reconstructed_nuc_fasta = resolved
-    .non_tree_outputs
-    .get(&OutputSelection::ReconstructedNucFasta)
-    .cloned();
+  let reconstructed_nuc_fasta = reconstructed_nuc_fasta_path(&resolved, args.branch_length_mode, log)?;
   let mutation_units = matches!(args.divergence_units, DivergenceUnits::Mutations);
   if mutation_units && args.branch_length_mode == BranchLengthMode::Input {
     return make_error!(
@@ -62,14 +58,9 @@ pub fn run_timetree_estimation(
        incompatible with --branch-length-mode=input"
     );
   }
-  let sequence_outputs_requested = sequence_outputs_requested(&resolved, mutation_units);
-  let mut trace_sink = TimetreeTraceSink::new(
-    resolved
-      .non_tree_outputs
-      .get(&OutputSelection::Tracelog)
-      .map(PathBuf::as_path),
-    stages,
-  )?;
+  let sequence_outputs_requested =
+    sequence_outputs_requested(&resolved, mutation_units, reconstructed_nuc_fasta.is_some());
+  let mut trace_sink = TimetreeTraceSink::new(resolved.path(OutputSelection::Tracelog), stages)?;
   let seed = args
     .seed_args
     .resolve(args.resolve_polytomies.then_some("Polytomy resolution"), log);
@@ -121,7 +112,7 @@ pub fn run_timetree_estimation(
 
   stages.report("Writing output", 0.95, "");
   progress_info!(log, "### TreeTime: writing outputs");
-  write_model_outputs(args, &resolved.non_tree_outputs, &output, log)?;
+  write_model_outputs(&resolved, &output, log)?;
   let tree_inputs = TreeOutputInputs {
     confidences,
     input_leaf_order,
@@ -170,74 +161,96 @@ fn timetree_params(args: &TreetimeTimetreeArgs, sequence_outputs_requested: bool
   }
 }
 
-fn write_model_outputs(
-  args: &TreetimeTimetreeArgs,
-  outputs: &BTreeMap<OutputSelection, PathBuf>,
-  output: &TimetreeOutput,
-  log: &dyn LogSink,
-) -> Result<(), Report> {
-  if let Some(path) = outputs.get(&OutputSelection::ConfidenceTsv) {
+fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log: &dyn LogSink) -> Result<(), Report> {
+  if let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
     match output.confidence_intervals.as_ref() {
       Some(intervals) => {
-        table_write_file(OutputSelection::ConfidenceTsv, path, intervals)
+        table_write_file(OutputSelection::ConfidenceTsv, &file.path, intervals)
           .wrap_err("Failed to write confidence intervals")?;
-        progress_info!(log, "Wrote confidence intervals to {path}", path = path.display());
+        progress_info!(log, "Wrote confidence intervals to {}", file.path.display());
       },
-      None if args.output_confidence_tsv.is_some() => {
-        return make_error!(
-          "Confidence output requested but no confidence intervals were computed. \
-           Use --time-marginal to enable confidence interval computation."
-        );
-      },
-      None => progress_warn!(
+      None => output_unavailable(
+        OutputSelection::ConfidenceTsv,
+        file,
+        "no confidence intervals were computed (use --time-marginal)",
         log,
-        "Skipping confidence-interval output: no confidence intervals were computed (use --time-marginal)"
-      ),
+      )?,
     }
   }
 
-  let coalescent = output.coalescent.as_ref();
-  if let Some(path) = outputs.get(&OutputSelection::CoalescentTsv) {
-    let explicit = args.output_coalescent_tsv.is_some();
-    let write =
-      |output: &CoalescentOutput, path: &Path| table_write_file(OutputSelection::CoalescentTsv, path, output.rows());
-    write_coalescent_output(coalescent, path, explicit, write, log)?;
-  }
-  if let Some(path) = outputs.get(&OutputSelection::CoalescentCsv) {
-    let explicit = args.output_coalescent_csv.is_some();
-    let write =
-      |output: &CoalescentOutput, path: &Path| table_write_file(OutputSelection::CoalescentCsv, path, output.rows());
-    write_coalescent_output(coalescent, path, explicit, write, log)?;
-  }
-  if let Some(path) = outputs.get(&OutputSelection::CoalescentJson) {
-    let explicit = args.output_coalescent_json.is_some();
-    let write = |output: &CoalescentOutput, path: &Path| json_write_file(path, output, JsonPretty(true));
-    write_coalescent_output(coalescent, path, explicit, write, log)?;
+  for selection in [
+    OutputSelection::CoalescentTsv,
+    OutputSelection::CoalescentCsv,
+    OutputSelection::CoalescentJson,
+  ] {
+    let Some(file) = resolved.non_tree_outputs.get(&selection) else {
+      continue;
+    };
+    match output.coalescent.as_ref() {
+      Some(coalescent) => {
+        write_coalescent(selection, coalescent, &file.path)?;
+        progress_info!(log, "Wrote coalescent output to {}", file.path.display());
+      },
+      None => output_unavailable(
+        selection,
+        file,
+        "no coalescent model was set (use --coalescent, --coalescent-opt, or --coalescent-skyline)",
+        log,
+      )?,
+    }
   }
 
-  if let Some(path) = outputs.get(&OutputSelection::ClockModel) {
+  if let Some(path) = resolved.path(OutputSelection::ClockModel) {
     json_write_file(path, &output.clock_model, JsonPretty(true))?;
   }
-  if let Some(path) = outputs.get(&OutputSelection::ClockCsv) {
+  if let Some(path) = resolved.path(OutputSelection::ClockCsv) {
     table_write_file(OutputSelection::ClockCsv, path, &output.clock_regression)?;
   }
 
-  if let Some(path) = outputs.get(&OutputSelection::Gtr) {
+  if let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     match (output.gtr.as_ref(), output.model_name) {
       (Some(gtr), Some(model_name)) => {
         let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
-        json_write_file(path, &gtr_output, JsonPretty(true))?;
+        json_write_file(&file.path, &gtr_output, JsonPretty(true))?;
       },
-      _ if args.output_gtr.is_some() => {
-        return make_error!("GTR output requested but no GTR model was fitted. Provide sequence alignment input.");
-      },
-      _ => progress_warn!(
+      _ => output_unavailable(
+        OutputSelection::Gtr,
+        file,
+        "no GTR model was fitted (provide an alignment with --alignment)",
         log,
-        "Skipping GTR output: no GTR model was fitted (provide sequence alignment input)"
-      ),
+      )?,
     }
   }
   Ok(())
+}
+
+fn write_coalescent(selection: OutputSelection, coalescent: &CoalescentOutput, path: &Path) -> Result<(), Report> {
+  match selection.table_format() {
+    Some(_) => table_write_file(selection, path, coalescent.rows()),
+    None => json_write_file(path, coalescent, JsonPretty(true)),
+  }
+}
+
+pub(crate) fn reconstructed_nuc_fasta_path(
+  resolved: &ResolvedOutputs,
+  branch_length_mode: BranchLengthMode,
+  log: &dyn LogSink,
+) -> Result<Option<PathBuf>, Report> {
+  let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::ReconstructedNucFasta) else {
+    return Ok(None);
+  };
+  match branch_length_mode {
+    BranchLengthMode::Marginal => Ok(Some(file.path.clone())),
+    BranchLengthMode::Input => {
+      output_unavailable(
+        OutputSelection::ReconstructedNucFasta,
+        file,
+        "--branch-length-mode=input reconstructs no ancestral sequences",
+        log,
+      )?;
+      Ok(None)
+    },
+  }
 }
 
 struct TreeOutputInputs {
@@ -362,7 +375,7 @@ fn write_timetree_trees(
     return Ok(());
   };
   write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Timetree, log)?;
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
+  if let Some(path) = resolved.path(OutputSelection::AugurNodeData) {
     write_augur_node_data_refine(&tree, run, path)?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
@@ -438,32 +451,6 @@ impl SeqSink for ReconstructedNucSink {
   }
 }
 
-fn write_coalescent_output(
-  coalescent: Option<&CoalescentOutput>,
-  path: &Path,
-  explicit: bool,
-  write: impl FnOnce(&CoalescentOutput, &Path) -> Result<(), Report>,
-  log: &dyn LogSink,
-) -> Result<(), Report> {
-  match coalescent {
-    Some(output) => {
-      write(output, path)?;
-      progress_info!(log, "Wrote coalescent output to {path}", path = path.display());
-    },
-    None if explicit => {
-      return make_error!(
-        "Coalescent output requested but no coalescent model was set. \
-         Use --coalescent, --coalescent-opt, or --coalescent-skyline."
-      );
-    },
-    None => debug!(
-      "Skipping coalescent output: no coalescent model was set \
-       (use --coalescent, --coalescent-opt, or --coalescent-skyline)"
-    ),
-  }
-  Ok(())
-}
-
 fn timetree_output_maps(
   graph: &Graph,
   sequences: Option<TimetreeSequences>,
@@ -492,11 +479,9 @@ fn timetree_output_maps(
   Ok((maps, mutation_units.then_some(edge_mutation_counts)))
 }
 
-fn sequence_outputs_requested(resolved: &ResolvedOutputs, mutation_units: bool) -> bool {
+fn sequence_outputs_requested(resolved: &ResolvedOutputs, mutation_units: bool, writes_fasta: bool) -> bool {
   mutation_units
-    || resolved
-      .non_tree_outputs
-      .contains_key(&OutputSelection::ReconstructedNucFasta)
+    || writes_fasta
     || resolved
       .tree_outputs
       .keys()

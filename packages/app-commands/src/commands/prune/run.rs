@@ -4,7 +4,7 @@ use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, TreeWriteKind};
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, TreeWriteKind, output_unavailable};
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use maplit::btreeset;
@@ -15,7 +15,6 @@ use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput};
 use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use treetime::progress::{LogSink, StageSink};
-use treetime::progress_warn;
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
 use treetime::seq::mutation::{Mutation, MutationTrack};
 use treetime::{make_error, make_report};
@@ -106,21 +105,18 @@ pub fn run_prune(
     .map(|edge| (edge.key(), branch_lengths_opt[&edge.key()]))
     .collect();
 
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
+  if let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     match gtr.as_ref() {
       Some(gtr) => {
         let gtr_output = GtrOutput::builder().gtr(gtr).model_name(GtrModelName::JC69).build();
-        json_write_file(path, &gtr_output, JsonPretty(true))?;
+        json_write_file(&file.path, &gtr_output, JsonPretty(true))?;
       },
-      None if args.output_gtr.is_some() => {
-        return make_error!(
-          "GTR output requested but no GTR model was fitted. Prune fits the model from the alignment only for --prune-empty or --merge-shared-mutations."
-        );
-      },
-      None => progress_warn!(
+      None => output_unavailable(
+        OutputSelection::Gtr,
+        file,
+        "no GTR model was fitted (prune fits it from the alignment only for --prune-empty or --merge-shared-mutations)",
         log,
-        "Skipping GTR output: no GTR model was fitted (prune fits it from the alignment only for --prune-empty or --merge-shared-mutations)"
-      ),
+      )?,
     }
   }
 

@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs};
   use app_output::output_plan::TreeWriteKind;
-  use app_output::output_plan::{CommandKind, OutputSelection};
+  use app_output::output_plan::{CommandKind, OutputSelection, PlannedFile, Requested};
   use helpers::{nexus, nwk};
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
@@ -126,7 +126,11 @@ mod tests {
       )
       .unwrap();
 
-    assert_eq!(&resolved.non_tree_outputs[&OutputSelection::Gtr], &gtr_path);
+    let expected = PlannedFile {
+      path: gtr_path,
+      requested: Requested::Named,
+    };
+    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Gtr]);
   }
 
   #[test]
@@ -140,10 +144,11 @@ mod tests {
       .resolve(CommandKind::Ancestral, &[], &[(OutputSelection::Gtr, None)])
       .unwrap();
 
-    assert_eq!(
-      &resolved.non_tree_outputs[&OutputSelection::Gtr],
-      &dir.path().join("ancestral.gtr.json")
-    );
+    let expected = PlannedFile {
+      path: dir.path().join("ancestral.gtr.json"),
+      requested: Requested::All,
+    };
+    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Gtr]);
   }
 
   #[test]
@@ -384,8 +389,8 @@ mod tests {
     let resolved = args.resolve(CommandKind::Timetree, &[], &[]).unwrap();
 
     assert_eq!(
-      Some(&dir.path().join("timetree.coalescent.tsv")),
-      resolved.non_tree_outputs.get(&OutputSelection::CoalescentTsv)
+      Some(dir.path().join("timetree.coalescent.tsv").as_path()),
+      resolved.path(OutputSelection::CoalescentTsv)
     );
     assert!(
       !resolved.non_tree_outputs.contains_key(&OutputSelection::CoalescentCsv),
@@ -412,14 +417,17 @@ mod tests {
       )
       .unwrap();
 
-    assert_eq!(
-      Some(&dir.path().join("timetree.coalescent.csv")),
-      resolved.non_tree_outputs.get(&OutputSelection::CoalescentCsv)
-    );
-    assert_eq!(
-      Some(&dir.path().join("timetree.coalescent.json")),
-      resolved.non_tree_outputs.get(&OutputSelection::CoalescentJson)
-    );
+    let expected = btreemap! {
+      OutputSelection::CoalescentCsv => PlannedFile {
+        path: dir.path().join("timetree.coalescent.csv"),
+        requested: Requested::All,
+      },
+      OutputSelection::CoalescentJson => PlannedFile {
+        path: dir.path().join("timetree.coalescent.json"),
+        requested: Requested::All,
+      },
+    };
+    assert_eq!(expected, resolved.non_tree_outputs);
   }
 
   #[test]

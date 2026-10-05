@@ -2397,6 +2397,9 @@ export type TimetreeConfig = {
    *
    * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
    * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string | null;
   /**
@@ -2491,6 +2494,9 @@ export type TimetreeConfig = {
    * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
    * available for this command. Requires `--output-all`. Per-file flags are always honored
    * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<TimetreeOutputSelection>;
   /**
@@ -2628,6 +2634,9 @@ export type OptimizeConfig = {
    *
    * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
    * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string | null;
   /**
@@ -2746,6 +2755,9 @@ export type OptimizeConfig = {
    * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
    * available for this command. Requires `--output-all`. Per-file flags are always honored
    * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<OptimizeOutputSelection>;
   /**
@@ -2907,6 +2919,9 @@ export type PruneConfig = {
    *
    * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
    * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string | null;
   /**
@@ -3007,6 +3022,9 @@ export type PruneConfig = {
    * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
    * available for this command. Requires `--output-all`. Per-file flags are always honored
    * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<PruneOutputSelection>;
   /**
@@ -3280,6 +3298,9 @@ export type AncestralConfig = {
    *
    * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
    * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string | null;
   /**
@@ -3374,6 +3395,9 @@ export type AncestralConfig = {
    * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
    * available for this command. Requires `--output-all`. Per-file flags are always honored
    * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<AncestralOutputSelection>;
   /**
@@ -3615,6 +3639,9 @@ export type ClockConfig = {
    *
    * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
    * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string | null;
   /**
@@ -3721,6 +3748,9 @@ export type ClockConfig = {
    * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
    * available for this command. Requires `--output-all`. Per-file flags are always honored
    * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<ClockOutputSelection>;
   /**
@@ -3885,6 +3915,9 @@ export type MugrationConfig = {
    *
    * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
    * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string | null;
   /**
@@ -3979,6 +4012,9 @@ export type MugrationConfig = {
    * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
    * available for this command. Requires `--output-all`. Per-file flags are always honored
    * regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example
+   * the substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<MugrationOutputSelection>;
   /**

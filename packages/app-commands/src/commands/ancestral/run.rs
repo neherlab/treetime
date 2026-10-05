@@ -8,7 +8,7 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeAminoAcids, TreeSequences};
 use app_output::augur_node_data_ancestral::{AncestralNodeSequences, write_augur_node_data_ancestral};
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, output_unavailable};
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -93,7 +93,7 @@ pub fn run_ancestral_reconstruction(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  write_ancestral_gtr(args, &resolved, output.gtr.as_ref(), output.model_name, log)?;
+  write_ancestral_gtr(&resolved, output.gtr.as_ref(), output.model_name, log)?;
 
   let trees = AncestralTrees {
     graph: &graph,
@@ -130,22 +130,19 @@ fn optional_aa_reconstructions(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<Option<(AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>, Report> {
-  let aa_fasta_template: Option<String> = resolved
-    .non_tree_outputs
-    .get(&OutputSelection::ReconstructedAaFasta)
-    .map(|path| path.to_string_lossy().into_owned());
+  let aa_fasta = resolved.non_tree_outputs.get(&OutputSelection::ReconstructedAaFasta);
   let Some(translations) = &args.translations else {
-    if aa_fasta_template.is_some() {
-      if args.output_reconstructed_aa_fasta.is_some() {
-        return make_error!("--output-reconstructed-aa-fasta requires --translations");
-      }
-      progress_warn!(
+    if let Some(file) = aa_fasta {
+      output_unavailable(
+        OutputSelection::ReconstructedAaFasta,
+        file,
+        "no amino-acid translations were given (use --translations)",
         log,
-        "Skipping reconstructed amino-acid FASTA output: --translations not provided"
-      );
+      )?;
     }
     return Ok(None);
   };
+  let aa_fasta_template = aa_fasta.map(|file| file.path.to_string_lossy().into_owned());
   run_aa_reconstructions(
     args,
     translations,
@@ -159,30 +156,25 @@ fn optional_aa_reconstructions(
 }
 
 fn write_ancestral_gtr(
-  args: &TreetimeAncestralArgs,
   resolved: &ResolvedOutputs,
   gtr: Option<&GTR>,
   model_name: GtrModelName,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) else {
+  let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) else {
     return Ok(());
   };
   match gtr {
     Some(gtr) => {
       let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
-      json_write_file(path, &gtr_output, JsonPretty(true))
+      json_write_file(&file.path, &gtr_output, JsonPretty(true))
     },
-    None if args.output_gtr.is_some() => {
-      make_error!("GTR output requested but no GTR model was fitted. Use --model=infer or --gtr-iterations.")
-    },
-    None => {
-      progress_warn!(
-        log,
-        "Skipping GTR output: no GTR model was fitted (use --model=infer or --gtr-iterations)"
-      );
-      Ok(())
-    },
+    None => output_unavailable(
+      OutputSelection::Gtr,
+      file,
+      "no GTR model was fitted (use --model=infer or --gtr-iterations)",
+      log,
+    ),
   }
 }
 
@@ -200,8 +192,7 @@ impl AncestralSeqSink {
     descs: BTreeMap<String, Option<String>>,
   ) -> Result<Self, Report> {
     let fasta = resolved
-      .non_tree_outputs
-      .get(&OutputSelection::ReconstructedNucFasta)
+      .path(OutputSelection::ReconstructedNucFasta)
       .map(FastaWriter::create)
       .transpose()?;
     Ok(Self {
@@ -209,8 +200,8 @@ impl AncestralSeqSink {
       names,
       descs,
       node_sequences: resolved
-        .non_tree_outputs
-        .contains_key(&OutputSelection::AugurNodeData)
+        .path(OutputSelection::AugurNodeData)
+        .is_some()
         .then(BTreeMap::new),
     })
   }
@@ -330,10 +321,7 @@ fn write_ancestral_trees(
     return Ok(());
   };
   write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Ancestral, log)?;
-  if let (Some(path), Some(node_sequences)) = (
-    resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData),
-    node_sequences,
-  ) {
+  if let (Some(path), Some(node_sequences)) = (resolved.path(OutputSelection::AugurNodeData), node_sequences) {
     write_augur_node_data_ancestral(&tree, node_sequences, path)?;
     progress_info!(log, "Wrote augur node data JSON to {}", path.display());
   }

@@ -1,10 +1,15 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::timetree::run::reconstructed_nuc_fasta_path;
+  use app_output::output_plan::Requested;
   use eyre::Report;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::BTreeSet;
+  use std::path::PathBuf;
   use treetime::alphabet::alphabet::Alphabet;
   use treetime::optimize::params::BranchLengthMode;
+  use treetime::progress::NoopProgress;
   use treetime_primitives::AsciiChar;
   use treetime_utils::assert_error;
 
@@ -15,7 +20,7 @@ mod tests {
     });
     assert_error!(
       result,
-      "Reconstructed sequence output requires ancestral reconstruction; incompatible with --branch-length-mode=input"
+      "--output-reconstructed-nuc-fasta was requested, but --branch-length-mode=input reconstructs no ancestral sequences"
     );
   }
 
@@ -110,13 +115,44 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::marginal_named(  (BranchLengthMode::Marginal, Requested::Named), Some("out.fasta"))]
+  #[case::marginal_all(    (BranchLengthMode::Marginal, Requested::All),   Some("out.fasta"))]
+  #[case::input_all(       (BranchLengthMode::Input,    Requested::All),   None)]
+  #[trace]
+  fn test_timetree_reconstructed_fasta_path_follows_reconstruction(
+    #[case] (mode, requested): (BranchLengthMode, Requested),
+    #[case] expected: Option<&str>,
+  ) -> Result<(), Report> {
+    let resolved = helpers::fasta_outputs(requested);
+
+    let actual = reconstructed_nuc_fasta_path(&resolved, mode, &NoopProgress)?;
+
+    assert_eq!(expected.map(PathBuf::from), actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_timetree_reconstructed_fasta_named_in_input_mode_fails() {
+    let resolved = helpers::fasta_outputs(Requested::Named);
+
+    assert_error!(
+      reconstructed_nuc_fasta_path(&resolved, BranchLengthMode::Input, &NoopProgress),
+      "--output-reconstructed-nuc-fasta was requested, but --branch-length-mode=input reconstructs no ancestral sequences"
+    );
+  }
+
   mod helpers {
     use crate::__tests__::test_support::tests::project_root;
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use crate::commands::timetree::run::run_timetree_estimation;
+    use app_output::output_plan::{OutputSelection, PlannedFile, Requested, ResolvedOutputs};
     use eyre::{Report, WrapErr};
+    use maplit::btreemap;
     use std::collections::BTreeMap;
+    use std::path::PathBuf;
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::cancel::NoopCancel;
     use treetime::progress::NoopProgress;
@@ -158,6 +194,18 @@ mod tests {
 
       run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
       fasta_read_file(fasta, &Alphabet::default())
+    }
+
+    pub(super) fn fasta_outputs(requested: Requested) -> ResolvedOutputs {
+      ResolvedOutputs {
+        tree_outputs: btreemap! {},
+        non_tree_outputs: btreemap! {
+          OutputSelection::ReconstructedNucFasta => PlannedFile {
+            path: PathBuf::from("out.fasta"),
+            requested,
+          },
+        },
+      }
     }
   }
 }
