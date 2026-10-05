@@ -159,7 +159,6 @@ mod tests {
     let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();
 
     let data = helpers::build_augur_node_data_json_from_output(
-      &names,
       &output,
       &confidences,
       Some(std::path::Path::new("aln.fasta")),
@@ -177,52 +176,31 @@ mod tests {
   }
 
   mod helpers {
-    use app_output::augur_node_data_optimize::build_augur_node_data_json;
-    use app_output::optimize_result::OptimizeNodeOut;
+    use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeSequences};
+    use app_output::augur_node_data_refine::{RefineRun, build_augur_node_data_refine};
     use std::collections::BTreeMap;
     use std::path::Path;
+    use treetime::optimize::pipeline::OptimizeOutput;
+    use treetime::seq::mutation::Mutation;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read;
+    use treetime_primitives::Seq;
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
-    fn node_outputs(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
-    ) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
-      graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (
-            key,
-            OptimizeNodeOut {
-              name: names.get(&node.key()).cloned().flatten(),
-              branch_support: confidences.get(&key).copied().flatten(),
-            },
-          )
-        })
-        .collect()
-    }
-
     pub(super) fn write_json(nwk: &str) -> String {
       let parse = nwk_read(nwk.as_bytes()).unwrap();
-      let names = parse.names();
-      let confidences = parse.confidences();
-      let graph: Graph = parse.graph;
-      let branch_lengths = parse.branch_lengths;
-      let data = build_augur_node_data_json(
-        &graph,
-        &node_outputs(&names, &graph, &confidences),
-        &branch_lengths,
+      let data = build(
+        &parse.graph,
+        &parse.names(),
+        &parse.branch_lengths,
+        &parse.confidences(),
+        None,
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
-        None,
-      )
-      .unwrap();
+      );
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
@@ -232,58 +210,76 @@ mod tests {
 
     pub(super) fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
       let parse = nwk_read(nwk.as_bytes()).unwrap();
-      let names = parse.names();
-      let confidences = parse.confidences();
-      let graph: Graph = parse.graph;
-      let branch_lengths = parse.branch_lengths;
-      let edges = graph.get_edges().collect::<Vec<_>>();
+      let edges = parse.graph.get_edges().collect::<Vec<_>>();
       let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
         .iter()
         .map(|&(idx, count)| (edges[idx].key(), count))
         .collect();
-      let data = build_augur_node_data_json(
-        &graph,
-        &node_outputs(&names, &graph, &confidences),
-        &branch_lengths,
+      let data = build(
+        &parse.graph,
+        &parse.names(),
+        &parse.branch_lengths,
+        &parse.confidences(),
+        Some(&counts),
         Some(Path::new("aln.fasta")),
         Some(Path::new("tree.nwk")),
-        Some(&counts),
-      )
-      .unwrap();
+      );
       json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
     }
 
     pub(super) fn build_augur_node_data_json_from_output(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      output: &treetime::optimize::pipeline::OptimizeOutput,
+      output: &OptimizeOutput,
       confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
       alignment: Option<&Path>,
       input_tree: Option<&Path>,
     ) -> AugurNodeDataJsonRefine {
-      let node_outputs: BTreeMap<GraphNodeKey, OptimizeNodeOut> = output
-        .graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (
-            key,
-            OptimizeNodeOut {
-              name: output.names[&key].clone(),
-              branch_support: confidences.get(&key).copied().flatten(),
-            },
-          )
-        })
-        .collect();
-      let data = build_augur_node_data_json(
+      let data = build(
         &output.graph,
-        &node_outputs,
+        &output.names,
         &output.branch_lengths,
+        confidences,
+        None,
         alignment,
         input_tree,
-        None,
-      )
-      .unwrap();
+      );
       json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
+    }
+
+    fn build(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
+      mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
+      alignment: Option<&Path>,
+      input_tree: Option<&Path>,
+    ) -> AugurNodeDataJsonRefine {
+      let root_sequence = Seq::try_from_str("A").unwrap();
+      let edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>> =
+        graph.get_edges().map(|edge| (edge.key(), vec![])).collect();
+      let annotated = AnnotatedGraph {
+        graph,
+        names,
+        divergence_branch_lengths: branch_lengths,
+        time_branch_lengths: None,
+        divergence: Divergence::CumulativeBranchLength,
+        branch_support: Some(confidences),
+        sequences: mutation_counts.map(|mutation_counts| TreeSequences {
+          root_sequence: &root_sequence,
+          edge_mutations: &edge_mutations,
+          mutation_counts: Some(mutation_counts),
+          amino_acids: None,
+        }),
+        dates: None,
+        traits: None,
+      };
+      let run = RefineRun {
+        alignment,
+        input_tree,
+        clock_model: None,
+        branch_support: Some(confidences),
+      };
+      build_augur_node_data_refine(&AnnotatedTreeView::new(&annotated).unwrap(), &run)
     }
   }
 }

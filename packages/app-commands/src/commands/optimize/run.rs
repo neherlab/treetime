@@ -3,14 +3,13 @@ use crate::commands::shared::alignment::read_alignment;
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
-use app_output::augur_node_data_optimize::write_augur_node_data_json;
+use app_output::augur_node_data_refine::{RefineRun, write_augur_node_data_refine};
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::GtrOutput;
@@ -19,12 +18,12 @@ use treetime::partition::marginal::reconstruction::MarginalReconstruction;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::gap_fill::apply_gap_fill;
-use treetime::seq::mutation::{MutationTrack, edge_state_change_counts};
+use treetime::seq::mutation::{Mutation, MutationTrack, edge_state_change_counts};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::nwk::nwk_read_file;
-use treetime_primitives::AlignmentRecord;
+use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_optimize(
@@ -87,78 +86,74 @@ pub fn run_optimize(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  let nodes: BTreeMap<GraphNodeKey, OptimizeNodeOut> = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      (
-        key,
-        OptimizeNodeOut {
-          name: names[&key].clone(),
-          branch_support: confidences.get(&key).copied().flatten(),
-        },
-      )
-    })
-    .collect();
-
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     let gtr_output = GtrOutput::builder().gtr(&gtr).model_name(model_name).build();
     json_write_file(path, &gtr_output, JsonPretty(true))?;
   }
 
-  write_optimize_trees(&graph, &names, &branch_lengths, &confidences, &maps, &resolved, log)?;
-
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
-    let mutation_counts = match args.divergence_units {
-      DivergenceUnits::Mutations => Some(&maps.edge_mutation_counts),
-      DivergenceUnits::MutationsPerSite => None,
-    };
-
-    let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
-    write_augur_node_data_json(
-      &graph,
-      &nodes,
-      &branch_lengths,
-      alignment,
-      Some(args.tree()),
-      mutation_counts,
-      path,
-    )?;
-    progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
-  }
+  let trees = OptimizeTrees {
+    graph: &graph,
+    names: &names,
+    branch_lengths: &branch_lengths,
+    branch_support: &confidences,
+    maps: &maps,
+    mutation_units: matches!(args.divergence_units, DivergenceUnits::Mutations),
+    alignment: args.alignment.alignment.first().map(PathBuf::as_path),
+    input_tree: args.tree(),
+  };
+  write_optimize_trees(&trees, &resolved, log)?;
 
   stages.report("Done", 1.0, "");
 
   Ok(())
 }
 
+struct OptimizeTrees<'a> {
+  graph: &'a Graph,
+  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_support: &'a BTreeMap<GraphNodeKey, Option<f64>>,
+  maps: &'a OptimizeOutputMaps,
+  mutation_units: bool,
+  alignment: Option<&'a Path>,
+  input_tree: &'a Path,
+}
+
 fn write_optimize_trees(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  branch_support: &BTreeMap<GraphNodeKey, Option<f64>>,
-  maps: &OptimizeOutputMaps,
+  trees: &OptimizeTrees<'_>,
   resolved: &ResolvedOutputs,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   let annotated = AnnotatedGraph {
-    graph,
-    names,
-    divergence_branch_lengths: branch_lengths,
+    graph: trees.graph,
+    names: trees.names,
+    divergence_branch_lengths: trees.branch_lengths,
     time_branch_lengths: None,
     divergence: Divergence::CumulativeBranchLength,
-    branch_support: Some(branch_support),
+    branch_support: Some(trees.branch_support),
     sequences: Some(TreeSequences {
-      root_sequence: &maps.root_sequence,
-      edge_mutations: &maps.edge_mutations,
+      root_sequence: &trees.maps.root_sequence,
+      edge_mutations: &trees.maps.edge_mutations,
+      mutation_counts: trees.mutation_units.then_some(&trees.maps.edge_mutation_counts),
       amino_acids: None,
     }),
     dates: None,
     traits: None,
   };
   write_graph_outputs(&annotated, &resolved.tree_outputs)?;
-  if let Some(tree) = tree_view_for_outputs(&annotated, resolved)? {
-    write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Optimize, log)?;
+  let Some(tree) = tree_view_for_outputs(&annotated, resolved)? else {
+    return Ok(());
+  };
+  write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Optimize, log)?;
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
+    let run = RefineRun {
+      alignment: trees.alignment,
+      input_tree: Some(trees.input_tree),
+      clock_model: None,
+      branch_support: Some(trees.branch_support),
+    };
+    write_augur_node_data_refine(&tree, &run, path)?;
+    progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
   Ok(())
 }
@@ -184,4 +179,10 @@ fn gather_optimize_output_maps(
     edge_mutations: filter.reported_edge_mutations(graph, edge_mutations)?,
     edge_mutation_counts,
   })
+}
+
+struct OptimizeOutputMaps {
+  root_sequence: Seq,
+  edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
 }

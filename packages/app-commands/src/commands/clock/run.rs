@@ -152,6 +152,7 @@ fn write_clock_trees(
       num_date: &dates.num_date,
       confidence: None,
       excluded: &dates.excluded,
+      input_dates: None,
     }),
     traits: None,
   };

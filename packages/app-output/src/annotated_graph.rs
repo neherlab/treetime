@@ -9,6 +9,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::tree_view::TreeView;
 use treetime_primitives::Seq;
+use treetime_primitives::date::DatesMap;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 pub struct AnnotatedGraph<'a> {
@@ -59,6 +60,7 @@ pub enum Divergence<'a> {
 pub struct TreeSequences<'a> {
   pub root_sequence: &'a Seq,
   pub edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  pub mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
   pub amino_acids: Option<TreeAminoAcids<'a>>,
 }
 
@@ -71,6 +73,7 @@ pub struct TreeDates<'a> {
   pub num_date: &'a BTreeMap<GraphNodeKey, Option<f64>>,
   pub confidence: Option<&'a BTreeMap<GraphNodeKey, [f64; 2]>>,
   pub excluded: &'a BTreeSet<GraphNodeKey>,
+  pub input_dates: Option<&'a DatesMap>,
 }
 
 pub struct TreeTraits<'a> {

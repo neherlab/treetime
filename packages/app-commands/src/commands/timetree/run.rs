@@ -5,12 +5,11 @@ use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::trace::TimetreeTraceSink;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates, TreeSequences};
-use app_output::augur_node_data::write_augur_node_data_json;
+use app_output::augur_node_data_refine::{RefineRun, write_augur_node_data_refine};
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, TreeWriteKind};
 use app_output::table_output::table_write_file;
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
-use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use eyre::{Report, WrapErr};
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
@@ -20,6 +19,7 @@ use treetime::clock::divergence::root_to_node_divergences;
 use treetime::gtr::get_gtr::GtrOutput;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::{LogSink, StageSink};
+use treetime::seq::mutation::Mutation;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::confidence::NodeConfidenceInterval;
@@ -31,8 +31,9 @@ use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_io::dates_csv::DatesMap;
 use treetime_io::fasta::FastaWriter;
-use treetime_primitives::AlignmentRecord;
+use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_timetree_estimation(
@@ -275,17 +276,6 @@ fn write_result_outputs(
     .resolve_topology_order(&graph, &names, Some(inputs.input_leaf_order))?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
 
-  let nodes = timetree_node_outputs(
-    &graph,
-    &names,
-    &inputs.confidences,
-    &node_dates,
-    &divergences,
-    &outliers,
-    &bad_branches,
-  );
-  let edges = timetree_edge_outputs(&branch_lengths, &date_branch_lengths);
-
   let trees = TimetreeTrees {
     graph: &graph,
     names: &names,
@@ -298,26 +288,15 @@ fn write_result_outputs(
     confidence_intervals: confidence_intervals.as_deref(),
     outliers: &outliers,
     bad_branches: &bad_branches,
+    input_dates: dates.as_ref(),
   };
-  write_timetree_trees(&trees, resolved, log)?;
-
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
-    let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
-    write_augur_node_data_json(
-      &graph,
-      &nodes,
-      &edges,
-      &clock_model,
-      confidence_intervals.as_deref(),
-      dates.as_ref(),
-      alignment,
-      Some(args.tree.as_path()),
-      mutation_counts.as_ref(),
-      path,
-    )?;
-    progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
-  }
-  Ok(())
+  let run = RefineRun {
+    alignment: args.alignment.alignment.first().map(PathBuf::as_path),
+    input_tree: Some(args.tree.as_path()),
+    clock_model: Some(&clock_model),
+    branch_support: Some(&inputs.confidences),
+  };
+  write_timetree_trees(&trees, &run, resolved, log)
 }
 
 struct TimetreeTrees<'a> {
@@ -332,10 +311,12 @@ struct TimetreeTrees<'a> {
   confidence_intervals: Option<&'a [NodeConfidenceInterval]>,
   outliers: &'a BTreeSet<GraphNodeKey>,
   bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
+  input_dates: Option<&'a DatesMap>,
 }
 
 fn write_timetree_trees(
   trees: &TimetreeTrees<'_>,
+  run: &RefineRun<'_>,
   resolved: &ResolvedOutputs,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
@@ -365,18 +346,25 @@ fn write_timetree_trees(
     sequences: trees.maps.root_sequence.as_ref().map(|root_sequence| TreeSequences {
       root_sequence,
       edge_mutations: &trees.maps.edge_mutations,
+      mutation_counts: trees.mutation_counts,
       amino_acids: None,
     }),
     dates: Some(TreeDates {
       num_date: trees.node_dates,
       confidence: date_confidence.as_ref(),
       excluded: &excluded,
+      input_dates: trees.input_dates,
     }),
     traits: None,
   };
   write_graph_outputs(&annotated, &resolved.tree_outputs)?;
-  if let Some(tree) = tree_view_for_outputs(&annotated, resolved)? {
-    write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Timetree, log)?;
+  let Some(tree) = tree_view_for_outputs(&annotated, resolved)? else {
+    return Ok(());
+  };
+  write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Timetree, log)?;
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
+    write_augur_node_data_refine(&tree, run, path)?;
+    progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
   Ok(())
 }
@@ -450,48 +438,6 @@ impl SeqSink for ReconstructedNucSink {
   }
 }
 
-fn timetree_node_outputs(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
-  node_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
-  divergences: &BTreeMap<GraphNodeKey, f64>,
-  outliers: &BTreeSet<GraphNodeKey>,
-  bad_branches: &BTreeMap<GraphNodeKey, bool>,
-) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
-  graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      let out = TimetreeNodeOut {
-        name: names[&key].clone(),
-        branch_support: confidences.get(&key).copied().flatten(),
-        time: node_dates[&key],
-        div: divergences[&key],
-        is_outlier: outliers.contains(&key),
-        bad_branch: bad_branches[&key],
-      };
-      (key, out)
-    })
-    .collect()
-}
-
-fn timetree_edge_outputs(
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  date_branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
-  date_branch_lengths
-    .iter()
-    .map(|(&key, &date_branch_length)| {
-      let out = TimetreeEdgeOut {
-        branch_length: branch_lengths[&key],
-        date_branch_length,
-      };
-      (key, out)
-    })
-    .collect()
-}
-
 fn write_coalescent_output(
   coalescent: Option<&CoalescentOutput>,
   path: &Path,
@@ -555,4 +501,9 @@ fn sequence_outputs_requested(resolved: &ResolvedOutputs, mutation_units: bool) 
       .tree_outputs
       .keys()
       .any(|kind| !matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot))
+}
+
+struct TimetreeOutputMaps {
+  root_sequence: Option<Seq>,
+  edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }

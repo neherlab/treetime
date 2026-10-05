@@ -49,12 +49,14 @@ mod tests {
       sequences: Some(TreeSequences {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
+        mutation_counts: None,
         amino_acids: None,
       }),
       dates: Some(TreeDates {
         num_date: &num_date,
         confidence: None,
         excluded: &excluded,
+        input_dates: None,
       }),
       traits: None,
     };

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use app_output::augur_node_data_mugration::build_augur_node_data_json;
-  use app_output::mugration_result::MugrationResult;
+  use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeTraits};
+  use app_output::augur_node_data_traits::build_augur_node_data_traits;
   use helpers::run_and_serialize;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -129,8 +129,24 @@ mod tests {
         branch_lengths,
       };
       let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).unwrap();
-      let result = MugrationResult::new(&output, &names, "country");
-      let data = build_augur_node_data_json(&result, &output).unwrap();
+      let branch_lengths = output.graph.get_edges().map(|edge| (edge.key(), None)).collect();
+      let annotated = AnnotatedGraph {
+        graph: &output.graph,
+        names: &names,
+        divergence_branch_lengths: &branch_lengths,
+        time_branch_lengths: None,
+        divergence: Divergence::CumulativeBranchLength,
+        branch_support: None,
+        sequences: None,
+        dates: None,
+        traits: Some(TreeTraits {
+          attribute: "country",
+          states: &output.states,
+          values: &output.reconstructed_traits,
+          profiles: &output.confidences,
+        }),
+      };
+      let data = build_augur_node_data_traits(&AnnotatedTreeView::new(&annotated).unwrap(), &output.gtr).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
   }

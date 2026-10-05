@@ -140,6 +140,7 @@ pub(super) mod tests {
       sequences: Some(TreeSequences {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
+        mutation_counts: None,
         amino_acids: None,
       }),
       traits: Some(TreeTraits {
@@ -188,6 +189,7 @@ pub(super) mod tests {
       sequences: with_sequences.then_some(TreeSequences {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
+        mutation_counts: None,
         amino_acids: None,
       }),
       dates: if with_dates { dates } else { None },
@@ -788,6 +790,7 @@ pub(super) mod tests {
         sequences: Some(TreeSequences {
           root_sequence: &setup.root_sequence,
           edge_mutations: &setup.edge_mutations,
+          mutation_counts: None,
           amino_acids: setup.aa_node_data.as_ref().map(|node_data| TreeAminoAcids {
             node_data,
             cdses: &setup.aa_annotations,
@@ -808,6 +811,7 @@ pub(super) mod tests {
         sequences: Some(TreeSequences {
           root_sequence,
           edge_mutations,
+          mutation_counts: None,
           amino_acids: None,
         }),
         ..annotated(topology)
@@ -885,12 +889,14 @@ pub(super) mod tests {
         sequences: root_sequence.map(|root_sequence| TreeSequences {
           root_sequence,
           edge_mutations: &setup.edge_mutations,
+          mutation_counts: None,
           amino_acids: None,
         }),
         dates: Some(TreeDates {
           num_date: &setup.num_date,
           confidence: None,
           excluded: &setup.excluded,
+          input_dates: None,
         }),
         ..annotated(&setup.topology)
       }
@@ -965,6 +971,7 @@ pub(super) mod tests {
           sequences: root_sequence.map(|root_sequence| TreeSequences {
             root_sequence,
             edge_mutations: &no_mutations,
+            mutation_counts: None,
             amino_acids: None,
           }),
           ..annotated(&topology)

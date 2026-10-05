@@ -130,17 +130,19 @@ mod tests {
   }
 
   mod helpers {
-    use app_output::augur_node_data::build_augur_node_data_json;
-    use app_output::{TimetreeEdgeOut, TimetreeNodeOut};
+    use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeDates, TreeSequences};
+    use app_output::augur_node_data_refine::{RefineRun, build_augur_node_data_refine};
     use indoc::indoc;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::path::Path;
     use treetime::clock::clock_model::{ClockModel, ClockRegression};
+    use treetime::seq::mutation::Mutation;
     use treetime::timetree::confidence::NodeConfidenceInterval;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
+    use treetime_primitives::Seq;
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
@@ -156,19 +158,7 @@ mod tests {
 
     impl SampleCase {
       pub(crate) fn write_json(&self) -> String {
-        let data = build_augur_node_data_json(
-          &self.graph,
-          &timetree_nodes(&self.graph, &self.names, &self.times),
-          &timetree_edges(&self.graph, &self.branch_lengths, &self.times),
-          &self.clock_model,
-          Some(&self.intervals),
-          Some(&self.dates),
-          Some(Path::new("aln.fasta")),
-          Some(Path::new("tree.nwk")),
-          None,
-        )
-        .unwrap();
-        json_write_str(&data, JsonPretty(true)).unwrap()
+        json_write_str(&self.build(None), JsonPretty(true)).unwrap()
       }
 
       pub(crate) fn write_and_read(&self) -> AugurNodeDataJsonRefine {
@@ -181,19 +171,48 @@ mod tests {
           .iter()
           .map(|&(idx, count)| (edges[idx].key(), count))
           .collect();
-        let data = build_augur_node_data_json(
-          &self.graph,
-          &timetree_nodes(&self.graph, &self.names, &self.times),
-          &timetree_edges(&self.graph, &self.branch_lengths, &self.times),
-          &self.clock_model,
-          Some(&self.intervals),
-          Some(&self.dates),
-          Some(Path::new("aln.fasta")),
-          Some(Path::new("tree.nwk")),
-          Some(&counts),
-        )
-        .unwrap();
-        json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
+        json_read_str(json_write_str(&self.build(Some(&counts)), JsonPretty(true)).unwrap()).unwrap()
+      }
+
+      fn build(&self, mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>) -> AugurNodeDataJsonRefine {
+        let time_lengths = time_lengths(&self.graph, &self.times);
+        let confidence: BTreeMap<GraphNodeKey, [f64; 2]> = self
+          .intervals
+          .iter()
+          .map(|interval| (interval.key, [interval.lower, interval.upper]))
+          .collect();
+        let excluded = BTreeSet::new();
+        let root_sequence = Seq::try_from_str("A").unwrap();
+        let edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>> =
+          self.graph.get_edges().map(|edge| (edge.key(), vec![])).collect();
+        let annotated = AnnotatedGraph {
+          graph: &self.graph,
+          names: &self.names,
+          divergence_branch_lengths: &self.branch_lengths,
+          time_branch_lengths: Some(&time_lengths),
+          divergence: Divergence::CumulativeBranchLength,
+          branch_support: None,
+          sequences: mutation_counts.map(|mutation_counts| TreeSequences {
+            root_sequence: &root_sequence,
+            edge_mutations: &edge_mutations,
+            mutation_counts: Some(mutation_counts),
+            amino_acids: None,
+          }),
+          dates: Some(TreeDates {
+            num_date: &self.times,
+            confidence: Some(&confidence),
+            excluded: &excluded,
+            input_dates: Some(&self.dates),
+          }),
+          traits: None,
+        };
+        let run = RefineRun {
+          alignment: Some(Path::new("aln.fasta")),
+          input_tree: Some(Path::new("tree.nwk")),
+          clock_model: Some(&self.clock_model),
+          branch_support: None,
+        };
+        build_augur_node_data_refine(&AnnotatedTreeView::new(&annotated).unwrap(), &run)
       }
     }
 
@@ -270,48 +289,13 @@ mod tests {
       ClockModel::from_regression(&regression).unwrap()
     }
 
-    fn timetree_nodes(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      times: &BTreeMap<GraphNodeKey, Option<f64>>,
-    ) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
-      graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (
-            key,
-            TimetreeNodeOut {
-              name: names.get(&key).cloned().flatten(),
-              branch_support: None,
-              time: times.get(&key).copied().flatten(),
-              div: 0.0,
-              is_outlier: false,
-              bad_branch: false,
-            },
-          )
-        })
-        .collect()
-    }
-
-    fn timetree_edges(
-      graph: &Graph,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-      times: &BTreeMap<GraphNodeKey, Option<f64>>,
-    ) -> BTreeMap<GraphEdgeKey, TimetreeEdgeOut> {
+    fn time_lengths(graph: &Graph, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
       graph
         .get_edges()
         .map(|edge| {
-          let key = edge.key();
           let parent = times.get(&edge.source()).copied().flatten();
           let child = times.get(&edge.target()).copied().flatten();
-          (
-            key,
-            TimetreeEdgeOut {
-              branch_length: branch_lengths[&key],
-              date_branch_length: parent.zip(child).map(|(parent, child)| child - parent),
-            },
-          )
+          (edge.key(), parent.zip(child).map(|(parent, child)| child - parent))
         })
         .collect()
     }

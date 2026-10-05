@@ -1,15 +1,13 @@
 # Mugration confidence rows are copied for output
 
-`PartitionMarginalDiscrete::get_confidence()` copies `node.profile.dis.row(0)` into a new `Array1<f64>`. Mugration node-data and tree-output projection call it independently, and `MugrationConfidenceOutput::new()` eagerly copies every row into a second output structure retained beside the partition.
+`PartitionMarginalDiscrete::get_confidence()` copies `node.profile.dis.row(0)` into a new `Array1<f64>`. The mugration pipeline calls it for every node and keeps the copies in `MugrationOutput::confidences`, beside the posterior matrix that already owns these rows for the lifetime of `MugrationGraphData`. Read-only output should borrow them.
 
-The posterior matrix already owns these rows for the lifetime of `MugrationGraphData`. Read-only output should borrow them.
+The output layer reads the copies once: Auspice JSON, augur node data and the confidence CSV take each node's profile from `TreeTraits::profiles` of the struct of facts, and compute the confidence map and the entropy from it without a further copy.
 
 ## Required behavior
 
 - Return `Option<ArrayView1<'_, f64>>` from `get_confidence()`.
-- Accept `ArrayView1<'_, f64>` in confidence-map and entropy calculations.
-- Derive both values from one borrowed row per node.
-- Remove the eagerly duplicated `MugrationConfidenceOutput` profile matrix. Render confidence CSV directly from graph node names and partition row views at write time.
+- Accept `ArrayView1<'_, f64>` in `build_confidence_map()` and `compute_entropy()` and in `TreeTraits::profiles`.
 - Update every `get_confidence()` caller without adding ownership adapters.
 - Keep owned arrays only when an output value must outlive the partition.
 
@@ -22,8 +20,9 @@ The posterior matrix already owns these rows for the lifetime of `MugrationGraph
 ## Locations
 
 - `fn PartitionMarginalDiscrete::get_confidence()` [packages/treetime/src/partition/marginal/discrete/partition.rs#L78-L85](../../packages/treetime/src/partition/marginal/discrete/partition.rs#L78-L85)
-- `MugrationConfidenceOutput::new()` call [packages/app-output/src/mugration_result.rs#L44](../../packages/app-output/src/mugration_result.rs#L44), `struct MugrationConfidenceOutput` [packages/app-output/src/mugration_result.rs#L55](../../packages/app-output/src/mugration_result.rs#L55)
-- `fn build_confidence_map()` and `fn compute_entropy()` [packages/app-output/src/mugration_tree_output.rs#L167-L180](../../packages/app-output/src/mugration_tree_output.rs#L167-L180)
+- `MugrationOutput::confidences` filled in [packages/treetime/src/mugration/pipeline.rs#L193](../../packages/treetime/src/mugration/pipeline.rs#L193)
+- `struct TreeTraits` in [packages/app-output/src/annotated_graph.rs](../../packages/app-output/src/annotated_graph.rs)
+- `fn build_confidence_map()` and `fn compute_entropy()` in [packages/app-output/src/trait_profile.rs](../../packages/app-output/src/trait_profile.rs)
 
 ## Related issues
 

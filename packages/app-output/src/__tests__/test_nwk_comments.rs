@@ -77,6 +77,7 @@ mod tests {
       sequences: Some(TreeSequences {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
+        mutation_counts: None,
         amino_acids: None,
       }),
       ..annotated(&topology)
@@ -122,6 +123,7 @@ mod tests {
       sequences: Some(TreeSequences {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
+        mutation_counts: None,
         amino_acids: None,
       }),
       ..dated_graph(&setup, None)
@@ -205,6 +207,7 @@ mod tests {
       sequences: Some(TreeSequences {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
+        mutation_counts: None,
         amino_acids: None,
       }),
       ..dated_graph(&setup, None)
@@ -246,6 +249,7 @@ mod tests {
         sequences: Some(TreeSequences {
           root_sequence: &root_sequence,
           edge_mutations: &edge_mutations,
+          mutation_counts: None,
           amino_acids: None,
         }),
         ..annotated(&topology)

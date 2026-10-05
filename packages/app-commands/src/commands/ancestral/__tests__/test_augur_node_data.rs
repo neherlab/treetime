@@ -172,8 +172,8 @@ mod tests {
     use crate::commands::shared::model::GtrModelNameCli;
     use crate::commands::shared::model::ModelArgs;
     use crate::commands::shared::output_args::OutputCoreArgs;
-    use app_output::ancestral_result::{AncestralOutputMaps, AugurOutputMaps};
-    use app_output::augur_node_data_ancestral::build_augur_node_data_json;
+    use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeAminoAcids, TreeSequences};
+    use app_output::augur_node_data_ancestral::{AncestralNodeSequences, build_augur_node_data_ancestral};
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use tempfile::tempdir;
@@ -182,6 +182,7 @@ mod tests {
     use treetime::cancel::NoopCancel;
     use treetime::progress::NoopProgress;
     use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
+    use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read;
@@ -227,7 +228,12 @@ mod tests {
         .collect()
     }
 
-    pub(super) type OutputMaps = (AncestralOutputMaps, AugurOutputMaps);
+    pub(super) struct OutputMaps {
+      root_sequence: Seq,
+      edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+      node_sequences: BTreeMap<GraphNodeKey, Seq>,
+      length: usize,
+    }
 
     fn build_output_maps(
       graph: &Graph,
@@ -255,17 +261,45 @@ mod tests {
           (edge.key(), mutations)
         })
         .collect();
-      (
-        AncestralOutputMaps {
-          root_sequence: Seq::try_from_str(&seqs["root"]).unwrap(),
-          edge_mutations,
-        },
-        AugurOutputMaps {
-          node_sequences,
-          sequence_length: length,
-          ambiguous_char: Alphabet::default().unknown(),
-        },
-      )
+      OutputMaps {
+        root_sequence: Seq::try_from_str(&seqs["root"]).unwrap(),
+        edge_mutations,
+        node_sequences,
+        length,
+      }
+    }
+
+    fn build_json(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      maps: OutputMaps,
+      mask: &[bool],
+      amino_acids: Option<TreeAminoAcids<'_>>,
+    ) -> AugurNodeDataJsonAncestral {
+      let branch_lengths = graph.get_edges().map(|edge| (edge.key(), None)).collect();
+      let annotated = AnnotatedGraph {
+        graph,
+        names,
+        divergence_branch_lengths: &branch_lengths,
+        time_branch_lengths: None,
+        divergence: Divergence::CumulativeBranchLength,
+        branch_support: None,
+        sequences: Some(TreeSequences {
+          root_sequence: &maps.root_sequence,
+          edge_mutations: &maps.edge_mutations,
+          mutation_counts: None,
+          amino_acids,
+        }),
+        dates: None,
+        traits: None,
+      };
+      let sequences = AncestralNodeSequences {
+        node_sequences: maps.node_sequences,
+        alignment_length: maps.length,
+        ambiguous_char: Alphabet::default().unknown(),
+        mask,
+      };
+      build_augur_node_data_ancestral(&AnnotatedTreeView::new(&annotated).unwrap(), sequences).unwrap()
     }
 
     pub(super) fn write_json(
@@ -274,8 +308,7 @@ mod tests {
       maps: OutputMaps,
       mask: &[bool],
     ) -> String {
-      let (output, augur) = maps;
-      let data = build_augur_node_data_json(graph, &output, augur, mask, names, None, &BTreeMap::new()).unwrap();
+      let data = build_json(graph, names, maps, mask, None);
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
@@ -352,7 +385,7 @@ mod tests {
     }
 
     pub(super) fn build_json_with_aa() -> AugurNodeDataJsonAncestral {
-      let (graph, names, (output, augur)) = mutation_case();
+      let (graph, names, maps) = mutation_case();
       let name_to_key = node_name_to_key(&names, &graph);
       let mut aa_node_data = AaNodeData::default();
 
@@ -380,16 +413,11 @@ mod tests {
         },
       };
 
-      build_augur_node_data_json(
-        &graph,
-        &output,
-        augur,
-        &[false, false, false, false],
-        &names,
-        Some(&aa_node_data),
-        &aa_annotations,
-      )
-      .unwrap()
+      let amino_acids = TreeAminoAcids {
+        node_data: &aa_node_data,
+        cdses: &aa_annotations,
+      };
+      build_json(&graph, &names, maps, &[false, false, false, false], Some(amino_acids))
     }
 
     pub(super) fn expected_json_with_aa() -> AugurNodeDataJsonAncestral {

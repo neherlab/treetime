@@ -1,9 +1,9 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeTraits};
-use app_output::augur_node_data_mugration::write_augur_node_data_json;
-use app_output::mugration_result::MugrationResult;
+use app_output::augur_node_data_traits::write_augur_node_data_traits;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+use app_output::trait_tables::{write_trait_confidence_csv, write_traits_csv};
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -86,8 +86,6 @@ pub fn run_mugration(
   topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 
-  let result = MugrationResult::new(&output, &names, mugration_args.attribute());
-
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     let gtr_output = GtrOutput::builder()
       .gtr(&output.gtr)
@@ -107,19 +105,6 @@ pub fn run_mugration(
     &resolved,
     log,
   )?;
-
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::TraitsCsv) {
-    result.traits.write_csv_file(path)?;
-  }
-
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceCsv) {
-    result.confidence.write_csv_file(path)?;
-  }
-
-  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
-    write_augur_node_data_json(&result, &output, path)?;
-    progress_info!(log, "Wrote augur node data JSON to {}", path.display());
-  }
 
   stages.report("Done", 1.0, "");
   Ok(())
@@ -151,8 +136,19 @@ fn write_mugration_trees(
     }),
   };
   write_graph_outputs(&annotated, &resolved.tree_outputs)?;
-  if let Some(tree) = tree_view_for_outputs(&annotated, resolved)? {
-    write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Mugration, log)?;
+  let Some(tree) = tree_view_for_outputs(&annotated, resolved)? else {
+    return Ok(());
+  };
+  write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Mugration, log)?;
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::TraitsCsv) {
+    write_traits_csv(&tree, path)?;
+  }
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceCsv) {
+    write_trait_confidence_csv(&tree, path)?;
+  }
+  if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
+    write_augur_node_data_traits(&tree, &output.gtr, path)?;
+    progress_info!(log, "Wrote augur node data JSON to {}", path.display());
   }
   Ok(())
 }

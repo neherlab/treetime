@@ -1,26 +1,20 @@
 #[cfg(test)]
 mod __tests__;
 
-pub mod ancestral_result;
 pub mod annotated_graph;
-pub mod augur_node_data;
 pub mod augur_node_data_ancestral;
-pub mod augur_node_data_mugration;
-pub mod augur_node_data_optimize;
+pub mod augur_node_data_refine;
+pub mod augur_node_data_traits;
 pub(crate) mod auspice;
-pub mod mugration_result;
 pub mod mutation_filter;
 pub(crate) mod nwk_comments;
-pub mod optimize_result;
 pub mod output_plan;
 pub mod table_output;
-pub mod timetree_result;
 pub mod timetree_trace;
 pub(crate) mod trait_profile;
+pub mod trait_tables;
 pub mod tree_output;
 pub(crate) mod usher_mat;
-
-pub use timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 
 #[cfg(test)]
 mod tests {
