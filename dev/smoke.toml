@@ -94,6 +94,8 @@ selection = "all"
 
 [commands.homoplasy]
 args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out}"
+outputs = ["homoplasy.nwk", "homoplasy.stats.json", "homoplasy.report.txt"]
+selection = "all"
 
 [commands.mugration]
 args = "--tree={dataset}/tree.nwk --states={metadata} --attribute={attribute} --output-all={out}"
@@ -446,7 +448,11 @@ fail = "kb/issues/M-clock-regression-panics-on-missing-branch-length.md"
 
 [[homoplasy]]
 variant = "default"
-fail = "kb/issues/H-homoplasy-command-unimplemented.md"
+
+[[homoplasy]]
+variant = "detailed-const-rescale"
+datasets = ["zika/20"]
+args = "--detailed --const=100 --rescale=2 -n 20 --zero-based"
 
 
 [[mugration]]
