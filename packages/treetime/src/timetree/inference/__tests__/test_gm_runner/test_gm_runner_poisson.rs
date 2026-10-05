@@ -18,9 +18,17 @@ mod tests {
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
   #[rustfmt::skip]
-#[rstest]
+  #[rstest]
   #[case::ebola_20("ebola_20")]
   #[case::flu_h3n2_20("flu_h3n2_20")]
+  // TODO: enable these datasets when their golden-master gaps are fixed: kb/issues/M-timetree-gm-runner-missing-internal-times.md,
+  // kb/issues/M-timetree-date-header-hash.md
+  // #[case::dengue_20("dengue_20")]       // TODO: missing internal node times, leaf dates not refined
+  // #[case::lassa_l_20("lassa_L_20")]     // TODO: missing internal node times, leaf dates not refined
+  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // TODO: missing internal node times, leaf dates not refined
+  // #[case::rsv_a_20("rsv_a_20")]         // TODO: missing internal node times, leaf dates not refined
+  // #[case::tb_20("tb_20")]               // TODO: missing internal node times, leaf dates not refined
+  // #[case::zika_20("zika_20")]           // TODO: read_dates strips # from headers, name_column="#name" mismatches
   #[trace]
   #[ignore = "dense-vs-v0 discrepancy: max 0.27 years (grid-width limited, kb/issues/M-timetree-branch-grid-uniform-resolution.md)"]
   fn test_gm_runner_poisson(#[case] dataset: &str) -> Result<(), Report> {

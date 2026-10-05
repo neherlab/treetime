@@ -65,6 +65,8 @@ mod tests {
   #[case::rsv_a_20("rsv_a_20")]
   #[case::lassa_L_50("lassa_L_50")]
   #[case::tb_20("tb_20")]
+  // TODO: slow dataset, disabled to keep the test run short
+  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // Slow
   fn test_gm_infer_gtr_dense_real(#[case] case_name: &str) -> Result<(), Report> {
     let case = &INPUTS.real[case_name];
     let expected = &OUTPUTS.real[case_name];

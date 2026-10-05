@@ -11,6 +11,14 @@ mod tests {
 
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
+  // TODO: slow datasets, disabled to keep the test run short (kb/issues/N-optimize-dense-iteration-slow.md)
+  // #[case::dengue_20("dengue_20_jc69_damped")] // slow
+  // #[case::tb_20("tb_20_jc69_damped")] // slow (bacterial genome)
+  // #[case::ebola_20("ebola_20_jc69_damped")] // slow
+  // #[case::zika_20("zika_20_jc69_damped")] // slow
+  // #[case::rsv_a_20("rsv_a_20_jc69_damped")] // slow
+  // #[case::lassa_l_20("lassa_l_20_jc69_damped")] // slow
+  // #[case::mpox_clade_ii_20("mpox_clade_ii_20_jc69_damped")] // slow
   fn test_gm_optimize(#[case] case_name: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let outputs = load_gm_outputs();
@@ -80,6 +88,14 @@ mod tests {
 
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
+  // TODO: slow datasets, disabled to keep the test run short (kb/issues/N-optimize-dense-iteration-slow.md)
+  // #[case::dengue_20("dengue_20_jc69_damped")] // slow
+  // #[case::tb_20("tb_20_jc69_damped")] // slow (bacterial genome)
+  // #[case::ebola_20("ebola_20_jc69_damped")] // slow
+  // #[case::zika_20("zika_20_jc69_damped")] // slow
+  // #[case::rsv_a_20("rsv_a_20_jc69_damped")] // slow
+  // #[case::lassa_l_20("lassa_l_20_jc69_damped")] // slow
+  // #[case::mpox_clade_ii_20("mpox_clade_ii_20_jc69_damped")] // slow
   fn test_gm_optimize_damped_vs_undamped(#[case] case_name: &str) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let case = &inputs[case_name];
