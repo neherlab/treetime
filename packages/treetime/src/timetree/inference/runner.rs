@@ -224,6 +224,10 @@ pub(super) fn create_branch_distributions_input_mode(
     .into_par_iter()
     .map(|edge_ref| {
       let key = edge_ref.key();
+      // TODO: this is wrong. The branch length distribution should be a gamma distribution with branch_length/one_mutation
+      // as the shape parameter. n_mut = branch_length/one_mutation --> P(dt) = (mu*dt)^n_mut * exp(-mu*dt) / n_mut!
+      // v0 input mode uses a Poisson approximation for short branches and a Gaussian one for longer branches,
+      // see kb/algo/unimplemented.md, section "Branch Length Interpolator (Input Mode)".
       let time_length = branch_lengths[&key].map(|branch_length| branch_length / (clock_rate * gammas[&key]));
       let branch = BranchLikelihood {
         distribution: time_length.map(|time_length| Arc::new(Distribution::point(time_length, 0.0))),
