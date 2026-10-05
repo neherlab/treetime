@@ -10,7 +10,6 @@ Command code moved to `packages/app-commands/src/commands/` and the output code 
 - `kb/decisions/coalescent-output-schema.md`
 - `kb/decisions/command-prune-standalone.md`
 - `kb/decisions/prune-merge-jukes-cantor-branch-length.md`
-- `kb/issues/H-homoplasy-command-unimplemented.md`
 - `kb/issues/M-command-output-ownership-is-scattered.md`
 - `kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md`
 - `kb/issues/M-output-module-mixes-topology-ordering.md`
@@ -86,7 +85,6 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 
 - `kb/decisions/command-optimize-standalone.md`: `kb/issues/N-timetree-node-data-confidence-not-emitted.md`
 - `kb/decisions/timetree-no-zero-branch-collapse-in-loop.md`, `kb/issues/N-optimize-dense-iteration-slow.md`: `kb/reports/command-relationships/README.md`
-- `kb/issues/H-homoplasy-command-unimplemented.md`: `kb/features/README.md`
 - `kb/issues/M-timetree-clock-filter-default-differs-from-v0.md`: `kb/issues/H-cli-timetree-config-disables-clock-filter.md`
 - `kb/issues/N-ancestral-fitch-site-classification-parallel-scaling-unverified.md`, `kb/reports/2026-07-29_perf-report-work-first-dag-traversal/report.md`: `kb/issues/M-benchmark-reports-mix-revisions-and-are-not-reproducible.md`
 - `kb/reports/2026-07-29_perf-report-work-first-dag-traversal/report.md`: `kb/issues/H-benchmark-compared-revision-execution-trust-undecided.md`, `kb/issues/M-clock-parallel-output-order-nondeterministic.md`

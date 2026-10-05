@@ -246,22 +246,6 @@ v1: functionality exists in the optimize command but not as a GTR method.
 
 ---
 
-## Homoplasy Scanner
-
-Analysis pipeline that identifies recurrent mutations - sites where the same mutation occurred independently on multiple branches, indicating convergent evolution, recombination, or sequencing artifacts.
-
-v0: `scan_homoplasies()` (`#scan_homoplasies`) in [`packages/legacy/treetime/treetime/wrappers.py#L82-L139`](../../packages/legacy/treetime/treetime/wrappers.py#L82-L139).
-v1: returns an explicit not-implemented error at [`packages/treetime/src/homoplasy/pipeline.rs#L3-L5`](../../packages/treetime/src/homoplasy/pipeline.rs#L3-L5).
-
-### Algorithm
-
-1. Run joint ancestral reconstruction.
-2. Collect non-gap, non-ambiguous substitutions by exact change $(a, p, d)$, by position, and separately on terminal branches.
-3. Tabulate how often each exact substitution and each position is hit, and compare the position-hit histogram with a Poisson distribution having the same mean.
-4. Rank recurrent exact substitutions by multiplicity and report the top requested entries, optionally annotated with drug-resistance metadata.
-
----
-
 ## N-Branches Posterior
 
 Enhancement to the coalescent model that uses posterior probability distributions of divergence times instead of point estimates when calculating the coalescent merger rate. Produces more accurate coalescent contributions by accounting for time uncertainty.

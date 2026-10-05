@@ -19,7 +19,7 @@ v0 timetree models the gap character `-` as a fifth nucleotide state for its def
 
 ## Scope
 
-`ancestral` (and the unimplemented `homoplasy` and `arg`) build their v0 model through the same `fn create_gtr()`, so the same difference applies to them. The decision for dense gap handling notes that v0 uses a different model, but no decision approves dropping the gap state.
+`ancestral`, `homoplasy`, and the unimplemented `arg` build their v0 model through the same `fn create_gtr()`, so the same difference applies to them. The decision for dense gap handling notes that v0 uses a different model, but no decision approves dropping the gap state.
 
 ## Open question
 

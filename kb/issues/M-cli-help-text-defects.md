@@ -37,11 +37,9 @@ Defined at `commands/timetree/args.rs:184` but never read or used anywhere. The 
 
 Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) lists `--n-iqd`.
 
-### D5: `homoplasy` and `arg` show full help for unimplemented commands
+### D5: `arg` shows help for an unimplemented command
 
-`homoplasy` displays a complete options page but `run_homoplasy` returns "not yet implemented in v1". `arg` shows global flags only with no indication of being unimplemented.
-
-Related: [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md).
+`arg` shows global flags only with no indication of being unimplemented.
 
 ### D6: `--config` has no description
 
@@ -63,7 +61,7 @@ Commands: all. `--config <CONFIG>` renders with no help text, because `struct Co
 
 ### I4: `--vcf-reference` description has two phrasings
 
-`timetree`/`clock`: "Only for vcf input: fasta file of the sequence the VCF was mapped to". `ancestral`/`homoplasy`: "FASTA file of the sequence the VCF was mapped to (only for vcf input)".
+`timetree`/`clock`: "Only for vcf input: fasta file of the sequence the VCF was mapped to". `ancestral`: "FASTA file of the sequence the VCF was mapped to (only for vcf input)".
 
 ### I5: `--max-iter` default and description differ
 
@@ -90,10 +88,6 @@ Command: `optimize`. Possible value descriptions contain `$t$`, `$\sqrt{t}$`, `$
 ### U4: `--relax` uses unusual multi-value syntax
 
 Command: `timetree`. Takes two positional-style values (`--relax 1.0 0.5`). Most CLIs use separate flags or comma-separated values.
-
-### U5: `--detailed` in `homoplasy` takes opaque string value
-
-`--detailed <DETAILED>` with description "generate a more detailed report". No documentation of valid values.
 
 ### U6: `--pc` in `mugration` default not shown in metadata
 
@@ -211,6 +205,5 @@ Each behavioral item must first select its parse/runtime contract, and already-o
 
 - [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags in clock and timetree (overlaps D2 and D4)
 - [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-unimplemented.md): tree inference fallback not implemented (overlaps D1)
-- [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md): homoplasy unimplemented (overlaps D5)
 - [N-timetree-polytomy-flags-no-conflict.md](N-timetree-polytomy-flags-no-conflict.md): polytomy flag conflict (overlaps U7)
 - [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md): `--method-anc` is unused in timetree

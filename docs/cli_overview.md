@@ -6,7 +6,7 @@ The main difference between different workflows are whether they
 - use sequence information (optional in some)
 - use date information
 
-The `homoplasy` and `mugration` are simple wrappers that can be added at a later point.
+`homoplasy` and `mugration` are thin wrappers around ancestral reconstruction.
 
 ## `ancestral`
 
@@ -121,22 +121,32 @@ These are often geographic locations and the name is a mash-up of "migration" an
 
 ## `homoplasy`
 
-Another wrapper around `infer_ancestral_sequences`.
-Here actual sequences are used and inferred.
-The command then counts how often every site is mutated and compares this to a random distribution of mutations to
-detect sites that are mutated suspiciously often.
+Another wrapper around ancestral reconstruction.
+It reconstructs ancestral sequences like `ancestral`, maps the mutations to the branches, and counts how often every
+mutation and every site recurs across branches. It compares the number of mutations per site with a Poisson
+distribution of the same mean to detect sites that are mutated suspiciously often.
 
 #### Inputs:
 
-- ...
+- tree (`--tree`) and alignment (`--alignment`)
+- the reconstruction flags of `ancestral` (`--method-anc`, `--model`, `--dense`, `--gap-fill`)
+- `--const`: constant sites that the alignment leaves out
+- `--rescale`: factor for the branch lengths of the tree
+- `--drms`: table of drug resistance mutations that annotates the report
 
 #### Steps:
 
-- ...
+- ancestral reconstruction and mapping of the mutations to branches
+- sorting of the mutations into substitutions between determined states, changes involving ambiguous characters, and
+  insertions and deletions
+- multiplicity histograms, site hit histogram with the Poisson comparison, and ranked lists of recurrent mutations;
+  with `--detailed`, also the terminal branches and the samples that carry recurrent mutations
 
 #### Outputs:
 
-- ...
+- statistics JSON (`homoplasy.stats.json`) and text report (`homoplasy.report.txt`); the report is also logged at info
+  level (`-v`)
+- tree outputs with the branch mutations (`homoplasy.nwk`, `homoplasy.nexus`, and the other tree formats)
 
 ## `arg`
 

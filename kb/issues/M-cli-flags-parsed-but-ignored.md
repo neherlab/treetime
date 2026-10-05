@@ -26,7 +26,6 @@ Tracked elsewhere, with their own `expect` reasons:
 - `--alignment`/`--aln` in `clock`: [M-clock-alignment-ignored.md](M-clock-alignment-ignored.md)
 - `--vcf-reference` in `ancestral`, `clock`, and `timetree`: [M-io-vcf-input-output-unimplemented.md](M-io-vcf-input-output-unimplemented.md)
 - `--method-anc` in `timetree`: [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md)
-- every `homoplasy` flag: [H-homoplasy-command-unimplemented.md](H-homoplasy-command-unimplemented.md)
 
 ## Impact
 

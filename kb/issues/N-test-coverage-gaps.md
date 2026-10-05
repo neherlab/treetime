@@ -60,7 +60,6 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 
 ### Mugration and prune
 
-- `fn run_homoplasy()`: completely unverified (body is `unimplemented!()`)
 - Mugration file-I/O wrappers: no integration coverage
 - `fn optimize_gtr_rate()` and `fn refine_gtr_iterative()`: no tests for no-bracket path, backward-pass failure, rollback
 - `fn run_prune`: no end-to-end test

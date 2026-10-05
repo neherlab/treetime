@@ -8,7 +8,8 @@ Each command declares `--tree` as `Option<PathBuf>`, but its argument conversion
 
 - `timetree`: [`packages/app-commands/src/commands/timetree/args.rs#L157-L159`](../../packages/app-commands/src/commands/timetree/args.rs#L157-L159)
 - `clock`: [`packages/app-commands/src/commands/clock/args.rs#L101-L108`](../../packages/app-commands/src/commands/clock/args.rs#L101-L108)
-- `ancestral` (also used by `homoplasy`): [`packages/app-commands/src/commands/ancestral/args.rs#L106`](../../packages/app-commands/src/commands/ancestral/args.rs#L106)
+- `ancestral`: [`packages/app-commands/src/commands/ancestral/args.rs#L106`](../../packages/app-commands/src/commands/ancestral/args.rs#L106)
+- `homoplasy`: [`packages/app-commands/src/commands/homoplasy/args.rs#L70-L72`](../../packages/app-commands/src/commands/homoplasy/args.rs#L70-L72)
 - `mugration`: [`packages/app-commands/src/commands/mugration/args.rs#L84`](../../packages/app-commands/src/commands/mugration/args.rs#L84)
 - `optimize`: [`packages/app-commands/src/commands/optimize/args.rs#L73`](../../packages/app-commands/src/commands/optimize/args.rs#L73)
 - `prune`: [`packages/app-commands/src/commands/prune/args.rs#L45`](../../packages/app-commands/src/commands/prune/args.rs#L45)

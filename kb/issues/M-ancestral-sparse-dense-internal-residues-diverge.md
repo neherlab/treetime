@@ -37,3 +37,5 @@ Not established. Leads:
 ## Fix approach
 
 Trace one differing position (for example `data/rsv/a/20`, `NODE_0000002`, position 5437) through both backends, compare the dense posterior with the sparse variable or fixed profile at that node, and identify which backend deviates from the marginal posterior. Add a sparse-versus-dense residue regression check on a small dataset once the cause is known.
+
+The ignored test `test_dense_sparse_homoplasy_statistics_agree_with_gaps_and_unknown_characters` in [`packages/app-commands/src/commands/homoplasy/__tests__/test_dense_sparse.rs`](../../packages/app-commands/src/commands/homoplasy/__tests__/test_dense_sparse.rs) compares the `homoplasy` statistics of both backends on `data/rsv/a/20`, where the different residues move substitutions between branches: dense counts 3055 substitutions, 2145 of them on terminal branches; sparse counts 3054 and 2125. Enable the test once the backends agree.
