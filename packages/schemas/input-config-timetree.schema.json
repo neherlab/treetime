@@ -725,18 +725,6 @@
       "default": 50.0,
       "x-cli-flag": "--gen-per-year"
     },
-    "greedy_resolve": {
-      "description": "Use greedy polytomy resolution (not yet implemented)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--greedy-resolve"
-    },
-    "stochastic_resolve": {
-      "description": "Use stochastic polytomy resolution (not yet implemented)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--stochastic-resolve"
-    },
     "$schema": {
       "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
       "type": "string"

@@ -5455,18 +5455,6 @@
             "default": 50.0,
             "x-cli-flag": "--gen-per-year"
           },
-          "greedy_resolve": {
-            "description": "Use greedy polytomy resolution (not yet implemented)",
-            "type": "boolean",
-            "default": false,
-            "x-cli-flag": "--greedy-resolve"
-          },
-          "stochastic_resolve": {
-            "description": "Use stochastic polytomy resolution (not yet implemented)",
-            "type": "boolean",
-            "default": false,
-            "x-cli-flag": "--stochastic-resolve"
-          },
           "$schema": {
             "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
             "type": "string"
@@ -9477,52 +9465,6 @@
             ],
             "conflicts": [],
             "help": "Resolve polytomies using temporal information",
-            "more": ""
-          },
-          {
-            "key": "greedy_resolve",
-            "path": [
-              "greedy_resolve"
-            ],
-            "label": "Greedy resolve",
-            "flag": "--greedy-resolve",
-            "group": "Polytomies",
-            "role": "setting",
-            "kind": "switch",
-            "nullable": false,
-            "options": [],
-            "item_kind": "string",
-            "default_value": false,
-            "minimum": null,
-            "examples": [],
-            "value_names": [
-              "GREEDY_RESOLVE"
-            ],
-            "conflicts": [],
-            "help": "Use greedy polytomy resolution (not yet implemented)",
-            "more": ""
-          },
-          {
-            "key": "stochastic_resolve",
-            "path": [
-              "stochastic_resolve"
-            ],
-            "label": "Stochastic resolve",
-            "flag": "--stochastic-resolve",
-            "group": "Polytomies",
-            "role": "setting",
-            "kind": "switch",
-            "nullable": false,
-            "options": [],
-            "item_kind": "string",
-            "default_value": false,
-            "minimum": null,
-            "examples": [],
-            "value_names": [
-              "STOCHASTIC_RESOLVE"
-            ],
-            "conflicts": [],
-            "help": "Use stochastic polytomy resolution (not yet implemented)",
             "more": ""
           },
           {

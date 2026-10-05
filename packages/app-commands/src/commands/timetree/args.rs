@@ -132,16 +132,6 @@ pub struct TreetimeTimetreeArgs {
   )]
   pub(crate) clock_filter_method: Option<String>,
   pub(crate) gen_per_year: f64,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) greedy_resolve: bool,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) stochastic_resolve: bool,
 }
 
 impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
@@ -219,8 +209,6 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       custom_gtr: raw.custom_gtr,
       clock_filter_method: raw.clock_filter_method,
       gen_per_year: raw.gen_per_year,
-      greedy_resolve: raw.greedy_resolve,
-      stochastic_resolve: raw.stochastic_resolve,
     })
   }
 }
@@ -651,14 +639,6 @@ pub struct TreetimeTimetreeArgsRaw {
     clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().gen_per_year, help_heading = "Coalescent prior")
   )]
   pub gen_per_year: f64,
-
-  /// Use greedy polytomy resolution (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Polytomies"))]
-  pub greedy_resolve: bool,
-
-  /// Use stochastic polytomy resolution (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Polytomies"))]
-  pub stochastic_resolve: bool,
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]

@@ -2541,14 +2541,6 @@ export type TimetreeConfig = {
    */
   gen_per_year?: number;
   /**
-   * Use greedy polytomy resolution (not yet implemented)
-   */
-  greedy_resolve?: boolean;
-  /**
-   * Use stochastic polytomy resolution (not yet implemented)
-   */
-  stochastic_resolve?: boolean;
-  /**
    * Path or URL of the JSON schema for this config; used by editors and ignored by the loader.
    */
   $schema?: string;

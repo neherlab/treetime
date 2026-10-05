@@ -1145,8 +1145,6 @@ export const zTimetreeConfig = z.strictObject({
   custom_gtr: z.string().nullish().default(null),
   clock_filter_method: z.string().nullish().default(null),
   gen_per_year: z.number().optional().default(50),
-  greedy_resolve: z.boolean().optional().default(false),
-  stochastic_resolve: z.boolean().optional().default(false),
   $schema: z.string().optional()
 });
 
