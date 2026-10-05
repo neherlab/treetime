@@ -260,7 +260,7 @@ where $D$ is the alignment and $T_i^b$, for $i = 1, \dots, I_b$, are the topolog
 
 - **Parsimony placement uncertainty.** UShER reports the number of equally parsimonious placements of each sample <a id="cite-26c"></a>[Turakhia et al. 2021](https://doi.org/10.1038/s41588-021-00862-7) [[26](#ref-26)], and matUtils summarizes it per sample <a id="cite-28b"></a>[McBroome et al. 2021](https://doi.org/10.1093/molbev/msab264) [[28](#ref-28)]
 
-In TreeTime v1, input support values are stored per node and are not moved when a reroot inverts edges ([kb/issues/M-io-input-branch-support-not-moved-on-reroot.md](../issues/M-io-input-branch-support-not-moved-on-reroot.md)). Support that TreeTime computes itself has the same requirement.
+TreeTime v1 reads input support values and writes them nowhere, because the runs reroot, collapse and resolve branches and the values must stay with their split ([kb/issues/M-io-branch-support-dropped-from-outputs.md](../issues/M-io-branch-support-dropped-from-outputs.md)). Support that TreeTime computes itself has the same requirement.
 
 ### Time-aware topology inference
 
@@ -337,7 +337,7 @@ TreeTime is MIT-licensed. The Free Software Foundation's GPL FAQ states that a p
 - **No incremental update.** After a topology change, the `optimize` loop rebuilds the graph and recomputes all messages (`fn prune_and_merge_in_loop()` [`packages/treetime/src/optimize/run_loop.rs#L262`](../../packages/treetime/src/optimize/run_loop.rs#L262)). A search that evaluates many moves needs either local message updates or a cheaper surrogate score
 - **Parsimony at multifurcations.** The Fitch backward pass uses the plurality recurrence at nodes with three or more children, so it keeps only minimum-cost states ([kb/decisions/ancestral-fitch-plurality-on-multifurcations.md](../decisions/ancestral-fitch-plurality-on-multifurcations.md)). A parsimony placement or SPR score can use it directly
 - **Dense-sparse agreement.** [kb/issues/M-ancestral-dense-sparse-divergence.md](../issues/M-ancestral-dense-sparse-divergence.md) reports unexplained differences. A search that ranks topologies by likelihood can turn a small score difference into a different topology
-- **No branch support,** and input support is not moved on reroot ([kb/issues/M-io-input-branch-support-not-moved-on-reroot.md](../issues/M-io-input-branch-support-not-moved-on-reroot.md))
+- **No branch support,** and input support values are not written ([kb/issues/M-io-branch-support-dropped-from-outputs.md](../issues/M-io-branch-support-dropped-from-outputs.md))
 - **No pairwise distances.** The only distance code is a Jukes-Cantor correction for merged branch lengths (`fn jukes_cantor_distance()` [`packages/treetime/src/gtr/jc_distance.rs#L5`](../../packages/treetime/src/gtr/jc_distance.rs#L5))
 
 ## Applicability to TreeTime
