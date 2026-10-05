@@ -6,7 +6,6 @@ pub mod dates_csv;
 pub mod discrete_states_csv;
 pub mod fasta;
 pub mod gff;
-pub mod graph;
 pub mod graphviz;
 pub mod name_list;
 pub mod nex;

@@ -4,6 +4,7 @@ use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::OutputSelection;
+use app_output::output_plan::TreeWriteKind;
 use app_output::prune_result::{PruneNodeOut, PruneOutputMaps};
 use app_output::prune_tree_output::write_prune_tree_outputs;
 use eyre::Report;
@@ -22,7 +23,6 @@ use treetime::{make_error, make_report};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::graph::TreeWriteKind;
 use treetime_io::name_list::{name_list_read_file, name_list_read_str};
 use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
@@ -91,7 +91,7 @@ pub fn run_prune(
     branch_lengths: branch_lengths_opt,
   } = output;
 
-  let maps = if resolved.tree_outputs.keys().any(prune_output_consumes_maps) {
+  let maps = if resolved.tree_outputs.keys().copied().any(prune_output_consumes_maps) {
     gather_prune_output_maps(&graph, &partitions, UnknownMutationFilter::hiding_unknown(unknown))?
   } else {
     PruneOutputMaps::default()
@@ -156,7 +156,7 @@ pub fn run_prune(
   Ok(())
 }
 
-fn prune_output_consumes_maps(kind: &TreeWriteKind) -> bool {
+fn prune_output_consumes_maps(kind: TreeWriteKind) -> bool {
   matches!(
     kind,
     TreeWriteKind::Auspice | TreeWriteKind::MatPb | TreeWriteKind::MatJson

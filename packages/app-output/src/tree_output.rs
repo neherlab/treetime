@@ -1,4 +1,5 @@
 use crate::mutation_filter::UnknownBridge;
+use crate::output_plan::TreeWriteKind;
 use chrono::Utc;
 use eyre::{Report, WrapErr};
 use maplit::{btreemap, btreeset};
@@ -17,7 +18,6 @@ use treetime_io::auspice_types::{
   AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeBranchAttrsLabels,
   AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs,
 };
-use treetime_io::graph::TreeWriteKind;
 use treetime_io::graphviz::graphviz_write_file;
 use treetime_io::nex::nex_write_file;
 use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_write_file, nwk_write_str};
@@ -54,7 +54,7 @@ where
   let mut mat = None;
   for (kind, path) in outputs {
     match kind {
-      TreeWriteKind::Nwk(spec) => {
+      TreeWriteKind::Nwk(style) => {
         graph
           .get_exactly_one_root()
           .wrap_err_with(|| format!("When converting {command} graph to Newick"))?;
@@ -64,13 +64,13 @@ where
           names,
           nwk_weights,
           &NwkWriteOptions {
-            style: spec.style,
+            style: *style,
             ..NwkWriteOptions::default()
           },
           providers,
         )?;
       },
-      TreeWriteKind::Nexus(spec) => {
+      TreeWriteKind::Nexus(style) => {
         graph
           .get_exactly_one_root()
           .wrap_err_with(|| format!("When converting {command} graph to Nexus"))?;
@@ -80,7 +80,7 @@ where
           names,
           nwk_weights,
           &NwkWriteOptions {
-            style: spec.style,
+            style: *style,
             ..NwkWriteOptions::default()
           },
           providers,

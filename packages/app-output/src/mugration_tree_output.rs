@@ -1,4 +1,5 @@
 use crate::mugration_result::MugrationNodeOut;
+use crate::output_plan::TreeWriteKind;
 use crate::tree_output::{
   MatOutput, TraitValue, auspice_data, auspice_from_graph, auspice_node, coloring, cumulative_branch_length_from,
   ensure_finite, finite_number, generation_date, mutation_free_mat, node_name_value, with_branch_support,
@@ -16,7 +17,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeBranchAttrsLabels};
-use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 
 pub fn write_mugration_tree_outputs(

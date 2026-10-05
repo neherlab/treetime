@@ -225,6 +225,7 @@ mod tests {
   mod helpers {
     use crate::__tests__::test_tree_output::tests::helpers::{Mutations, ancestral_graph, ancestral_nodes};
     use crate::ancestral_tree_output::write_ancestral_tree_outputs;
+    use crate::output_plan::TreeWriteKind;
     use crate::tree_output::{MatGapCounts, MatOutput, mat_from_graph};
     use eyre::{Report, WrapErr};
     use maplit::btreemap;
@@ -232,7 +233,6 @@ mod tests {
     use tempfile::TempDir;
     use treetime::progress::NoopProgress;
     use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
-    use treetime_io::graph::TreeWriteKind;
     use treetime_io::nwk::{CommentProviders, nwk_read};
     use treetime_io::usher_mat::{UsherMutation, UsherTree};
     use treetime_primitives::{AsciiChar, Seq};

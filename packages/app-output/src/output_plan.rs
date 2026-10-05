@@ -7,7 +7,6 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 use treetime_io::csv::TableFormat;
-use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::NwkStyle;
 use treetime_utils::make_error;
 
@@ -94,8 +93,8 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
 
 fn styled_tree_write_kind(variant: OutputSelection, style: NwkStyle) -> TreeWriteKind {
   match variant {
-    OutputSelection::Nwk => TreeWriteKind::nwk(style),
-    OutputSelection::Nexus => TreeWriteKind::nexus(style),
+    OutputSelection::Nwk => TreeWriteKind::Nwk(style),
+    OutputSelection::Nexus => TreeWriteKind::Nexus(style),
     _ => unreachable!("styled_tree_write_kind called on non-styled variant"),
   }
 }
@@ -181,7 +180,7 @@ impl ResolvedOutputs {
     let mut by_selection: BTreeMap<OutputSelection, Vec<PathBuf>> = BTreeMap::new();
     for (kind, path) in &self.tree_outputs {
       by_selection
-        .entry(tree_write_kind_selection(kind))
+        .entry(tree_write_kind_selection(*kind))
         .or_default()
         .push(path.clone());
     }
@@ -195,7 +194,18 @@ impl ResolvedOutputs {
   }
 }
 
-fn tree_write_kind_selection(kind: &TreeWriteKind) -> OutputSelection {
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub enum TreeWriteKind {
+  Nwk(NwkStyle),
+  Nexus(NwkStyle),
+  Auspice,
+  MatPb,
+  MatJson,
+  GraphJson,
+  Dot,
+}
+
+fn tree_write_kind_selection(kind: TreeWriteKind) -> OutputSelection {
   match kind {
     TreeWriteKind::Nwk(_) => OutputSelection::Nwk,
     TreeWriteKind::Nexus(_) => OutputSelection::Nexus,

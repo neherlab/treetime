@@ -1,4 +1,5 @@
 use crate::clock_result::ClockNodeOut;
+use crate::output_plan::TreeWriteKind;
 use crate::tree_output::{
   COLORING_BAD_BRANCH, COLORING_NUM_DATE, MatOutput, auspice_data, auspice_from_graph, auspice_node, coloring,
   finite_number, generation_date, mutation_free_mat, node_name_value, write_tree_outputs,
@@ -11,7 +12,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::AuspiceTree;
-use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 
 pub fn write_clock_tree_outputs(

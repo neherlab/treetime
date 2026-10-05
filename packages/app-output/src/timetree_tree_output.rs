@@ -1,3 +1,4 @@
+use crate::output_plan::TreeWriteKind;
 use crate::timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use crate::tree_output::{
   COLORING_BAD_BRANCH, COLORING_NUM_DATE, MatOutput, NUC_TRACK, auspice_data, auspice_from_graph, auspice_node,
@@ -16,7 +17,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::AuspiceTree;
-use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 
 pub fn write_timetree_tree_outputs(

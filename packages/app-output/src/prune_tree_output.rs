@@ -1,3 +1,4 @@
+use crate::output_plan::TreeWriteKind;
 use crate::prune_result::{PruneNodeOut, PruneOutputMaps};
 use crate::tree_output::{
   MatOutput, NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date,
@@ -13,7 +14,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::AuspiceTree;
-use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 
 pub fn write_prune_tree_outputs(

@@ -1,4 +1,5 @@
 use crate::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
+use crate::output_plan::TreeWriteKind;
 use crate::tree_output::{
   MatOutput, NUC_TRACK, auspice_data, auspice_from_graph, cumulative_branch_length_from, generation_date,
   mat_from_graph, node_name_value, sequence_auspice_node, write_tree_outputs,
@@ -13,7 +14,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::AuspiceTree;
-use treetime_io::graph::TreeWriteKind;
 use treetime_io::nwk::CommentProviders;
 
 pub fn write_optimize_tree_outputs(

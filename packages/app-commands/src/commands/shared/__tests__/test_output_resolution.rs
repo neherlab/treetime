@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs};
+  use app_output::output_plan::TreeWriteKind;
   use app_output::output_plan::{CommandKind, OutputSelection};
   use helpers::{nexus, nwk};
   use maplit::{btreemap, btreeset};
@@ -9,7 +10,6 @@ mod tests {
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use tempfile::TempDir;
-  use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::NwkStyle;
   use treetime_utils::assert_error;
 
@@ -89,7 +89,7 @@ mod tests {
 
     assert_error!(
       result,
-      "Output destination 'same-output' is selected more than once (Nwk(NwkWriteSpec { style: Plain }) and --output-gtr)"
+      "Output destination 'same-output' is selected more than once (Nwk(Plain) and --output-gtr)"
     );
   }
 
@@ -170,7 +170,7 @@ mod tests {
       ..Default::default()
     };
     let resolved = args.resolve(command, &[OutputSelection::All], &[]).unwrap();
-    let actual = resolved.tree_outputs.keys().cloned().collect();
+    let actual = resolved.tree_outputs.keys().copied().collect();
     let expected = btreeset! {
       nwk(NwkStyle::Plain),
       nexus(NwkStyle::Plain),
@@ -439,11 +439,11 @@ mod tests {
     use super::*;
 
     pub(super) fn nwk(style: NwkStyle) -> TreeWriteKind {
-      TreeWriteKind::nwk(style)
+      TreeWriteKind::Nwk(style)
     }
 
     pub(super) fn nexus(style: NwkStyle) -> TreeWriteKind {
-      TreeWriteKind::nexus(style)
+      TreeWriteKind::Nexus(style)
     }
   }
 }

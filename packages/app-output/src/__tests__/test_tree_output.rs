@@ -10,6 +10,7 @@ pub(super) mod tests {
   use crate::clock_tree_output::{clock_to_auspice, clock_to_mat};
   use crate::mugration_tree_output::{mugration_to_auspice, mugration_to_mat};
   use crate::optimize_tree_output::{optimize_to_auspice, optimize_to_mat};
+  use crate::output_plan::TreeWriteKind;
   use crate::prune_tree_output::{prune_to_auspice, prune_to_mat};
   use crate::timetree_result::TimetreeOutputMaps;
   use crate::timetree_tree_output::{timetree_to_auspice, timetree_to_mat};
@@ -28,7 +29,6 @@ pub(super) mod tests {
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
-  use treetime_io::graph::TreeWriteKind;
   use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read};
   use treetime_primitives::{AsciiChar, Seq};
   use treetime_utils::io::json::{JsonPretty, json_read_file, json_read_str, json_write_str};
@@ -130,7 +130,7 @@ pub(super) mod tests {
     let nwk_path = dir.path().join("tree.nwk");
     let mat_path = dir.path().join("tree.mat.json");
     let outputs = btreemap! {
-      TreeWriteKind::nwk(NwkStyle::Plain) => nwk_path.clone(),
+      TreeWriteKind::Nwk(NwkStyle::Plain) => nwk_path.clone(),
       TreeWriteKind::MatJson => mat_path.clone(),
     };
 
