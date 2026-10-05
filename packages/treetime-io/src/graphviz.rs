@@ -67,12 +67,12 @@ where
   print_fake_edges(&mut writer, &roots.iter().map(|node| node.key()).collect_vec())?;
 
   writeln!(writer, "  }}\n\n  subgraph internals {{")?;
-  for node in graph.get_internal_nodes() {
+  for node in graph.get_internal_nodes().filter(|node| !node.is_root()) {
     print_node(&mut writer, node, names)?;
   }
 
   writeln!(writer, "  }}\n\n  subgraph leaves {{")?;
-  let leaves = graph.get_leaves().collect::<Vec<_>>();
+  let leaves = graph.get_leaves().filter(|node| !node.is_root()).collect::<Vec<_>>();
   for &node in &leaves {
     print_node(&mut writer, node, names)?;
   }
@@ -90,6 +90,7 @@ where
   let label = names[&key].clone();
 
   if let Some(label) = label {
+    let label = label.replace('\\', "\\\\").replace('"', "\\\"");
     writeln!(writer, "    {key} [label=\"({key}) {label}\"]")?;
   } else {
     writeln!(writer, "    {key} [label=\"({key})\"]")?;
