@@ -3,6 +3,7 @@ use crate::commands::ancestral::aa_node_data::{
 };
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::shared::alignment::{read_alignment, sequence_descriptions};
+use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeAminoAcids, TreeSequences};
 use app_output::augur_node_data_ancestral::{AncestralNodeSequences, write_augur_node_data_ancestral};
@@ -18,8 +19,6 @@ use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alp
 use treetime::ancestral::mask::create_mask;
 use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
-use treetime::gtr::get_gtr::{GtrModelName, GtrOutput};
-use treetime::gtr::gtr::GTR;
 use treetime::make_error;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::{LogSink, StageSink};
@@ -35,7 +34,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::{FastaWriter, fasta_read_file};
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::{AlignmentRecord, Seq};
-use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_internal_error;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
@@ -98,7 +96,12 @@ pub fn run_ancestral_reconstruction(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  write_ancestral_gtr(&resolved, output.gtr.as_ref(), output.model_name, log)?;
+  write_gtr_output(
+    &resolved,
+    output.gtr.as_ref().map(|gtr| (gtr, output.model_name)),
+    "no GTR model was fitted (use --model=infer or --gtr-iterations)",
+    log,
+  )?;
 
   let trees = AncestralTrees {
     graph: &graph,
@@ -178,29 +181,6 @@ struct AaPlan<'a> {
   annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   cdses: Vec<String>,
   fasta_paths: Option<BTreeMap<String, PathBuf>>,
-}
-
-fn write_ancestral_gtr(
-  resolved: &ResolvedOutputs,
-  gtr: Option<&GTR>,
-  model_name: GtrModelName,
-  log: &dyn LogSink,
-) -> Result<(), Report> {
-  let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) else {
-    return Ok(());
-  };
-  match gtr {
-    Some(gtr) => {
-      let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
-      json_write_file(&file.path, &gtr_output, JsonPretty(true))
-    },
-    None => output_unavailable(
-      OutputSelection::Gtr,
-      file,
-      "no GTR model was fitted (use --model=infer or --gtr-iterations)",
-      log,
-    ),
-  }
 }
 
 struct AncestralSeqSink {

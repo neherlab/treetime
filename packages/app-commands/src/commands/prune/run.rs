@@ -1,10 +1,11 @@
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::shared::alignment::read_alignment;
+use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, TreeWriteKind, output_unavailable};
+use app_output::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use maplit::btreeset;
@@ -12,7 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
-use treetime::gtr::get_gtr::{GtrModelName, GtrOutput};
+use treetime::gtr::get_gtr::GtrModelName;
 use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use treetime::progress::{LogSink, StageSink};
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
@@ -24,7 +25,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::name_list::{name_list_read_file, name_list_read_str};
 use treetime_io::nwk::{NwkStyle, nwk_read_file};
 use treetime_primitives::{AlignmentRecord, Seq};
-use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_prune(
   args: &TreetimePruneArgs,
@@ -105,20 +105,12 @@ pub fn run_prune(
     .map(|edge| (edge.key(), branch_lengths_opt[&edge.key()]))
     .collect();
 
-  if let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    match gtr.as_ref() {
-      Some(gtr) => {
-        let gtr_output = GtrOutput::builder().gtr(gtr).model_name(GtrModelName::JC69).build();
-        json_write_file(&file.path, &gtr_output, JsonPretty(true))?;
-      },
-      None => output_unavailable(
-        OutputSelection::Gtr,
-        file,
-        "no GTR model was fitted (prune fits it from the alignment only for --prune-empty or --merge-shared-mutations)",
-        log,
-      )?,
-    }
-  }
+  write_gtr_output(
+    &resolved,
+    gtr.as_ref().map(|gtr| (gtr, GtrModelName::JC69)),
+    "no GTR model was fitted (prune fits it from the alignment only for --prune-empty or --merge-shared-mutations)",
+    log,
+  )?;
 
   write_prune_trees(&graph, &names, &branch_lengths, &confidences, &maps, &resolved, log)?;
 

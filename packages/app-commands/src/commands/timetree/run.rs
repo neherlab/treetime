@@ -1,4 +1,5 @@
 use crate::commands::shared::alignment::sequence_descriptions;
+use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
@@ -15,7 +16,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime::cancel::Cancel;
 use treetime::clock::divergence::root_to_node_divergences;
-use treetime::gtr::get_gtr::GtrOutput;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
@@ -207,21 +207,12 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
     table_write_file(OutputSelection::ClockCsv, path, &output.clock_regression)?;
   }
 
-  if let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
-    match (output.gtr.as_ref(), output.model_name) {
-      (Some(gtr), Some(model_name)) => {
-        let gtr_output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
-        json_write_file(&file.path, &gtr_output, JsonPretty(true))?;
-      },
-      _ => output_unavailable(
-        OutputSelection::Gtr,
-        file,
-        "no GTR model was fitted (provide an alignment with --alignment)",
-        log,
-      )?,
-    }
-  }
-  Ok(())
+  write_gtr_output(
+    resolved,
+    output.gtr.as_ref().zip(output.model_name),
+    "no GTR model was fitted (provide an alignment with --alignment)",
+    log,
+  )
 }
 
 fn write_coalescent(selection: OutputSelection, coalescent: &CoalescentOutput, path: &Path) -> Result<(), Report> {
