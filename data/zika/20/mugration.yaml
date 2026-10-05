@@ -20,9 +20,9 @@ pc: 1.0
 
 # The default outputs, plus the confidence of the reconstructed states as a CSV.
 output_selection:
-  - "Nwk"
-  - "Nexus"
-  - "AugurNodeData"
-  - "Gtr"
-  - "TraitsCsv"
-  - "ConfidenceCsv"
+  - "nwk"
+  - "nexus"
+  - "augur-node-data"
+  - "gtr"
+  - "traits-csv"
+  - "confidence-csv"

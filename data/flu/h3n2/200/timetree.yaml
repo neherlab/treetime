@@ -25,12 +25,12 @@ max_iter: 3
 
 # The default outputs, plus the date confidence intervals as a TSV.
 output_selection:
-  - "Nwk"
-  - "Nexus"
-  - "Auspice"
-  - "AugurNodeData"
-  - "Gtr"
-  - "ReconstructedNucFasta"
-  - "ClockModel"
-  - "CoalescentTsv"
-  - "ConfidenceTsv"
+  - "nwk"
+  - "nexus"
+  - "auspice"
+  - "augur-node-data"
+  - "gtr"
+  - "reconstructed-nuc-fasta"
+  - "clock-model"
+  - "coalescent-tsv"
+  - "confidence-tsv"
