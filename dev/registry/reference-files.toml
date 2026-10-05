@@ -9,6 +9,7 @@
 # claims.
 
 roots = [
+  "packages/app-commands/src/commands/homoplasy/__tests__/__fixtures__",
   "packages/treetime-distribution/src/__tests__/__fixtures__",
   "packages/treetime/src/gtr/__tests__/__fixtures__",
   "packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__",
@@ -32,6 +33,19 @@ normalization = "parsed JSON compared with per-assertion float tolerance in the 
 files = [
   "packages/treetime-distribution/src/__tests__/__fixtures__/gm_neglog_normalization_inputs.json",
   "packages/treetime-distribution/src/__tests__/__fixtures__/gm_neglog_normalization_outputs.json",
+]
+
+[[reference]]
+name = "gm_homoplasy"
+kind = "golden-master"
+test = "packages/app-commands/src/commands/homoplasy/__tests__/test_gm_homoplasy.rs"
+origin = "TreeTime v0 (Python) homoplasy command report"
+revision = "vendored in-repo reference at packages/legacy/treetime"
+capture = "./dev/docker/python python packages/app-commands/src/commands/homoplasy/__tests__/__fixtures__/gm_homoplasy_capture"
+normalization = "numbers kept as v0 prints them and compared at that precision; the v0 total tree length includes a 0.001 root branch that v1 omits; rows with equal multiplicity at one position and taxa with equal counts are ordered by the v1 tie rule"
+files = [
+  "packages/app-commands/src/commands/homoplasy/__tests__/__fixtures__/gm_homoplasy_inputs.json",
+  "packages/app-commands/src/commands/homoplasy/__tests__/__fixtures__/gm_homoplasy_outputs.json",
 ]
 
 [[reference]]

@@ -1,0 +1,8 @@
+{
+  "zika_86_jc": {
+    "tree": "data/zika/86/tree.nwk",
+    "aln": "data/zika/86/aln.fasta.xz",
+    "gtr": "jc",
+    "n": 1000
+  }
+}

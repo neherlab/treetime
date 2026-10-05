@@ -1,0 +1,558 @@
+{
+  "zika_86_jc": {
+    "total_branch_length": "6.617e-02",
+    "mutations": 674,
+    "multiplicities": {
+      "1": 544,
+      "2": 54,
+      "3": 6,
+      "4": 1
+    },
+    "terminal_branch_length": "3.962e-02",
+    "terminal_mutations": 408,
+    "terminal_multiplicities": {
+      "1": 353,
+      "2": 23,
+      "3": 3
+    },
+    "genome_length": 10807,
+    "site_hits": [
+      {
+        "hits": 0,
+        "sites": 10241,
+        "expected": "10153.59"
+      },
+      {
+        "hits": 1,
+        "sites": 480,
+        "expected": "633.25"
+      },
+      {
+        "hits": 2,
+        "sites": 69,
+        "expected": "19.75"
+      },
+      {
+        "hits": 3,
+        "sites": 12,
+        "expected": "0.41"
+      },
+      {
+        "hits": 4,
+        "sites": 5,
+        "expected": "0.01"
+      }
+    ],
+    "log_likelihood_difference": "-7.077e+01",
+    "top_mutations": [
+      {
+        "name": "G9343A",
+        "count": 4
+      },
+      {
+        "name": "T427A",
+        "count": 3
+      },
+      {
+        "name": "T2059C",
+        "count": 3
+      },
+      {
+        "name": "A2924G",
+        "count": 3
+      },
+      {
+        "name": "G4318A",
+        "count": 3
+      },
+      {
+        "name": "T8206C",
+        "count": 3
+      },
+      {
+        "name": "C9286T",
+        "count": 3
+      },
+      {
+        "name": "A8C",
+        "count": 2
+      },
+      {
+        "name": "C10G",
+        "count": 2
+      },
+      {
+        "name": "A18C",
+        "count": 2
+      },
+      {
+        "name": "T72G",
+        "count": 2
+      },
+      {
+        "name": "A76T",
+        "count": 2
+      },
+      {
+        "name": "T77A",
+        "count": 2
+      },
+      {
+        "name": "G253A",
+        "count": 2
+      },
+      {
+        "name": "T265C",
+        "count": 2
+      },
+      {
+        "name": "T397C",
+        "count": 2
+      },
+      {
+        "name": "T505C",
+        "count": 2
+      },
+      {
+        "name": "T754C",
+        "count": 2
+      },
+      {
+        "name": "T778C",
+        "count": 2
+      },
+      {
+        "name": "G1043A",
+        "count": 2
+      },
+      {
+        "name": "C1312T",
+        "count": 2
+      },
+      {
+        "name": "C1432T",
+        "count": 2
+      },
+      {
+        "name": "T1615C",
+        "count": 2
+      },
+      {
+        "name": "C1903T",
+        "count": 2
+      },
+      {
+        "name": "T1990C",
+        "count": 2
+      },
+      {
+        "name": "C2548T",
+        "count": 2
+      },
+      {
+        "name": "T2554C",
+        "count": 2
+      },
+      {
+        "name": "C2723T",
+        "count": 2
+      },
+      {
+        "name": "A3058G",
+        "count": 2
+      },
+      {
+        "name": "A3281G",
+        "count": 2
+      },
+      {
+        "name": "A3331G",
+        "count": 2
+      },
+      {
+        "name": "T3721C",
+        "count": 2
+      },
+      {
+        "name": "T3730C",
+        "count": 2
+      },
+      {
+        "name": "C3894T",
+        "count": 2
+      },
+      {
+        "name": "T4234C",
+        "count": 2
+      },
+      {
+        "name": "T4696C",
+        "count": 2
+      },
+      {
+        "name": "A4971G",
+        "count": 2
+      },
+      {
+        "name": "T5086C",
+        "count": 2
+      },
+      {
+        "name": "C5368T",
+        "count": 2
+      },
+      {
+        "name": "T5494C",
+        "count": 2
+      },
+      {
+        "name": "C5936T",
+        "count": 2
+      },
+      {
+        "name": "C6277T",
+        "count": 2
+      },
+      {
+        "name": "C6491T",
+        "count": 2
+      },
+      {
+        "name": "C6659T",
+        "count": 2
+      },
+      {
+        "name": "T6724C",
+        "count": 2
+      },
+      {
+        "name": "G6982A",
+        "count": 2
+      },
+      {
+        "name": "G7015A",
+        "count": 2
+      },
+      {
+        "name": "C7450A",
+        "count": 2
+      },
+      {
+        "name": "C7504T",
+        "count": 2
+      },
+      {
+        "name": "A8630G",
+        "count": 2
+      },
+      {
+        "name": "C8764T",
+        "count": 2
+      },
+      {
+        "name": "T8894C",
+        "count": 2
+      },
+      {
+        "name": "C9295T",
+        "count": 2
+      },
+      {
+        "name": "G9310A",
+        "count": 2
+      },
+      {
+        "name": "G9433A",
+        "count": 2
+      },
+      {
+        "name": "C9808T",
+        "count": 2
+      },
+      {
+        "name": "A9952G",
+        "count": 2
+      },
+      {
+        "name": "T10012C",
+        "count": 2
+      },
+      {
+        "name": "C10012T",
+        "count": 2
+      },
+      {
+        "name": "A10385G",
+        "count": 2
+      },
+      {
+        "name": "C10560T",
+        "count": 2
+      }
+    ],
+    "top_terminal_mutations": [
+      {
+        "name": "A2924G",
+        "count": 3
+      },
+      {
+        "name": "G4318A",
+        "count": 3
+      },
+      {
+        "name": "G9343A",
+        "count": 3
+      },
+      {
+        "name": "T72G",
+        "count": 2
+      },
+      {
+        "name": "A76T",
+        "count": 2
+      },
+      {
+        "name": "T397C",
+        "count": 2
+      },
+      {
+        "name": "T427A",
+        "count": 2
+      },
+      {
+        "name": "T1615C",
+        "count": 2
+      },
+      {
+        "name": "T1990C",
+        "count": 2
+      },
+      {
+        "name": "T2059C",
+        "count": 2
+      },
+      {
+        "name": "T2554C",
+        "count": 2
+      },
+      {
+        "name": "C2723T",
+        "count": 2
+      },
+      {
+        "name": "A3058G",
+        "count": 2
+      },
+      {
+        "name": "A3281G",
+        "count": 2
+      },
+      {
+        "name": "A3331G",
+        "count": 2
+      },
+      {
+        "name": "T3730C",
+        "count": 2
+      },
+      {
+        "name": "C3894T",
+        "count": 2
+      },
+      {
+        "name": "T5494C",
+        "count": 2
+      },
+      {
+        "name": "C5936T",
+        "count": 2
+      },
+      {
+        "name": "G7015A",
+        "count": 2
+      },
+      {
+        "name": "C7450A",
+        "count": 2
+      },
+      {
+        "name": "T8206C",
+        "count": 2
+      },
+      {
+        "name": "C9286T",
+        "count": 2
+      },
+      {
+        "name": "A9952G",
+        "count": 2
+      },
+      {
+        "name": "C10012T",
+        "count": 2
+      },
+      {
+        "name": "C10560T",
+        "count": 2
+      }
+    ],
+    "taxa": [
+      {
+        "name": "Natal_RGN|KU527068|2015-07-01|brazil",
+        "count": 10
+      },
+      {
+        "name": "Haiti/1/2016|KX051563|2016-02-05|haiti",
+        "count": 8
+      },
+      {
+        "name": "PuertoRico/ZF8/2016|PuertoRico/ZF8/2016|2016-06-13|puerto_rico",
+        "count": 8
+      },
+      {
+        "name": "Brazil/PE243/2015|KX197192|2015-07-01|brazil",
+        "count": 7
+      },
+      {
+        "name": "Brazil_ZKV2015|KU497555|2015-11-30|brazil",
+        "count": 6
+      },
+      {
+        "name": "Rio_S1|KU926310|2016-01-29|brazil",
+        "count": 5
+      },
+      {
+        "name": "Bahia03|KX101061|2015-05-15|brazil",
+        "count": 5
+      },
+      {
+        "name": "1_0038_PF|KX447517|2014-01-15|french_polynesia",
+        "count": 4
+      },
+      {
+        "name": "PF13/251013_18|KX369547|2013-10-25|french_polynesia",
+        "count": 4
+      },
+      {
+        "name": "Bahia01|KX101066|2015-05-15|brazil",
+        "count": 4
+      },
+      {
+        "name": "Brazil/2016/INMI1|KU991811|2016-03-06|brazil",
+        "count": 4
+      },
+      {
+        "name": "Martinique/ZF1/2016|Martinique/ZF1/2016|2016-03-07|martinique",
+        "count": 4
+      },
+      {
+        "name": "HS_2015_BA_01|KX520666|2015-07-01|brazil",
+        "count": 3
+      },
+      {
+        "name": "PAN/BEI_259634_V4/2016|KX198135|2016-07-01|panama",
+        "count": 3
+      },
+      {
+        "name": "FB_GWUH_2016|KU870645|2016-02-02|guatemala",
+        "count": 3
+      },
+      {
+        "name": "GZ01|KU820898|2016-02-14|china",
+        "count": 3
+      },
+      {
+        "name": "1_0030_PF|KX447515|2013-11-15|french_polynesia",
+        "count": 2
+      },
+      {
+        "name": "Zhejiang04|KX117076|2016-02-17|china",
+        "count": 2
+      },
+      {
+        "name": "Paraiba_01|KX280026|2015-07-01|brazil",
+        "count": 2
+      },
+      {
+        "name": "BeH823339|KU729217|2015-07-01|brazil",
+        "count": 2
+      },
+      {
+        "name": "PHE_semen_Guadeloupe|KX673530|2016-04-21|guadeloupe",
+        "count": 2
+      },
+      {
+        "name": "Bahia02|KX101060|2015-05-15|brazil",
+        "count": 2
+      },
+      {
+        "name": "PAN/CDC_259359_V1_V3/2015|KX156774|2015-12-18|panama",
+        "count": 2
+      },
+      {
+        "name": "COL/UF_1/2016|KX247646|2016-02-09|colombia",
+        "count": 2
+      },
+      {
+        "name": "Rio_U1|KU926309|2016-01-14|brazil",
+        "count": 2
+      },
+      {
+        "name": "BeH815744|KU365780|2015-07-01|brazil",
+        "count": 2
+      },
+      {
+        "name": "1_0111_PF|KX447516|2014-01-15|french_polynesia",
+        "count": 1
+      },
+      {
+        "name": "H/PF/2013|KJ776791|2013-11-28|french_polynesia",
+        "count": 1
+      },
+      {
+        "name": "1_0015_PF|KX447511|2014-01-15|french_polynesia",
+        "count": 1
+      },
+      {
+        "name": "1_0181_PF|KX447512|2013-12-15|french_polynesia",
+        "count": 1
+      },
+      {
+        "name": "Cuba/ZF10/2016|Cuba/ZF10/2016|2016-06-02|cuba",
+        "count": 1
+      },
+      {
+        "name": "Bahia04|KX101062|2015-06-15|brazil",
+        "count": 1
+      },
+      {
+        "name": "PAN/CDC_259364_V1_V2/2015|KX156776|2015-12-18|panama",
+        "count": 1
+      },
+      {
+        "name": "Aedessp/MEX/MEX_2_81/2016|KX446950|2016-01-01|mexico",
+        "count": 1
+      },
+      {
+        "name": "Aedessp/MEX/MEX_I_7/2016|KX446951|2016-01-01|mexico",
+        "count": 1
+      },
+      {
+        "name": "Z1106033|KU312312|2015-10-02|suriname",
+        "count": 1
+      },
+      {
+        "name": "Z16019|KU955590|2016-02-26|china",
+        "count": 1
+      },
+      {
+        "name": "BeH819015|KU365778|2015-07-01|brazil",
+        "count": 1
+      },
+      {
+        "name": "V17271|KU758877|2015-12-15|french_guiana",
+        "count": 1
+      }
+    ]
+  }
+}

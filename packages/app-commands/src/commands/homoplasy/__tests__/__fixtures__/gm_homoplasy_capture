@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""
+Golden master capture script for the homoplasy command.
+
+Reads cases from gm_homoplasy_inputs.json, runs the TreeTime v0 CLI
+(`treetime homoplasy`) for each case, and converts the printed report into
+gm_homoplasy_outputs.json. The script parses the v0 text output only; it
+computes no statistic itself, so every number keeps the precision v0 prints.
+
+Usage:
+    ./dev/docker/python python packages/app-commands/src/commands/homoplasy/__tests__/__fixtures__/gm_homoplasy_capture
+"""
+
+import json
+import lzma
+import re
+import subprocess
+import tempfile
+from pathlib import Path
+
+FIXTURES_DIR = Path(__file__).parent
+
+TOTAL = re.compile(r"^The TOTAL tree length is (\S+) and (\d+) mutations were observed\.$")
+TERMINAL = re.compile(r"^The TERMINAL branch length is (\S+) and (\d+) mutations were observed\.$")
+MULTIPLICITY = re.compile(r"^\t - (\d+) occur (\d+) times$")
+POSITIONS = re.compile(r"^Of the (\d+) positions in the genome,$")
+SITE_HITS = re.compile(r"^\t - (\d+) were hit (\d+) times \(expected (\S+)\)$")
+LOG_LH = re.compile(r"^log-likelihood difference to Poisson distribution with same mean: (\S+)$")
+TOP_ALL = "The ten most homoplasic mutations are:"
+TOP_TERMINAL = "The ten most homoplasic mutation on terminal branches are:"
+TAXA = "Taxons that carry positions that mutated elsewhere in the tree:"
+ROW = re.compile(r"^\t([^\t]+)\t(\d+)$")
+
+
+def decompress_if_xz(path: str) -> str:
+    """Decompress .xz to a temporary file, because v0 cannot read compressed FASTA."""
+    if not path.endswith(".xz"):
+        return path
+    with lzma.open(path) as compressed, tempfile.NamedTemporaryFile(suffix=".fasta", delete=False) as tmp:
+        tmp.write(compressed.read())
+    return tmp.name
+
+
+def run_v0(case: dict) -> str:
+    command = [
+        "treetime",
+        "homoplasy",
+        "--tree",
+        case["tree"],
+        "--aln",
+        decompress_if_xz(case["aln"]),
+        "--gtr",
+        case["gtr"],
+        "-n",
+        str(case["n"]),
+        "--zero-based",
+        "--detailed",
+    ]
+    return subprocess.run(command, check=True, capture_output=True, text=True).stdout
+
+
+def parse_report(stdout: str) -> dict:
+    result: dict = {
+        "total_branch_length": None,
+        "mutations": None,
+        "multiplicities": {},
+        "terminal_branch_length": None,
+        "terminal_mutations": None,
+        "terminal_multiplicities": {},
+        "genome_length": None,
+        "site_hits": [],
+        "log_likelihood_difference": None,
+        "top_mutations": [],
+        "top_terminal_mutations": [],
+        "taxa": [],
+    }
+    section = None
+    for line in stdout.splitlines():
+        if match := TOTAL.match(line):
+            result["total_branch_length"] = match[1]
+            result["mutations"] = int(match[2])
+            section = "multiplicities"
+        elif match := TERMINAL.match(line):
+            result["terminal_branch_length"] = match[1]
+            result["terminal_mutations"] = int(match[2])
+            section = "terminal_multiplicities"
+        elif match := POSITIONS.match(line):
+            result["genome_length"] = int(match[1])
+            section = "site_hits"
+        elif match := LOG_LH.match(line):
+            result["log_likelihood_difference"] = match[1]
+            section = None
+        elif line == TOP_ALL:
+            section = "top_mutations"
+        elif line == TOP_TERMINAL:
+            section = "top_terminal_mutations"
+        elif line == TAXA:
+            section = "taxa"
+        elif section in ("multiplicities", "terminal_multiplicities") and (match := MULTIPLICITY.match(line)):
+            result[section][match[2]] = int(match[1])
+        elif section == "site_hits" and (match := SITE_HITS.match(line)):
+            result["site_hits"].append({"hits": int(match[2]), "sites": int(match[1]), "expected": match[3]})
+        elif section in ("top_mutations", "top_terminal_mutations", "taxa") and (match := ROW.match(line)):
+            if match[1] in ("mut", "taxon name"):
+                continue
+            result[section].append({"name": match[1], "count": int(match[2])})
+    return result
+
+
+def main() -> None:
+    inputs = json.loads((FIXTURES_DIR / "gm_homoplasy_inputs.json").read_text())
+    outputs = {name: parse_report(run_v0(case)) for name, case in inputs.items()}
+    (FIXTURES_DIR / "gm_homoplasy_outputs.json").write_text(json.dumps(outputs, indent=2) + "\n")
+
+
+if __name__ == "__main__":
+    main()
