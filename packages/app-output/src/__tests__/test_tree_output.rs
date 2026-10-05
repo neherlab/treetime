@@ -5,53 +5,40 @@
 
 #[cfg(test)]
 pub(super) mod tests {
-  use crate::ancestral_result::AncestralNodeOut;
-  use crate::ancestral_tree_output::{ancestral_to_auspice, ancestral_to_mat, write_ancestral_tree_outputs};
-  use crate::clock_tree_output::{clock_to_auspice, clock_to_mat};
-  use crate::mugration_tree_output::{mugration_to_auspice, mugration_to_mat};
-  use crate::optimize_tree_output::{optimize_to_auspice, optimize_to_mat};
-  use crate::output_plan::TreeWriteKind;
-  use crate::prune_tree_output::{prune_to_auspice, prune_to_mat};
-  use crate::timetree_result::TimetreeOutputMaps;
-  use crate::timetree_tree_output::{timetree_to_auspice, timetree_to_mat};
-  use crate::tree_output::{TraitValue, auspice_node, format_number, group_mutations, with_branch_support};
+  use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences, TreeTraits};
+  use crate::auspice::{format_number, group_mutations};
+  use crate::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
+  use crate::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
   use approx::assert_ulps_eq;
   use eyre::{Report, WrapErr};
-  use maplit::btreemap;
+  use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::Value;
   use serde_json::json;
   use std::collections::BTreeMap;
+  use std::iter::once;
+  use std::path::PathBuf;
   use tempfile::TempDir;
-  use treetime::ancestral::aa::AaNodeData;
   use treetime::progress::NoopProgress;
-  use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
-  use treetime_graph::node::GraphNodeKey;
+  use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
+  use treetime_graph::graph::Graph;
   use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
-  use treetime_io::nwk::{CommentProviders, NwkStyle, nwk_read};
-  use treetime_primitives::{AsciiChar, Seq};
-  use treetime_utils::io::json::{JsonPretty, json_read_file, json_read_str, json_write_str};
+  use treetime_io::nwk::{NwkStyle, nwk_read};
+  use treetime_primitives::Seq;
+  use treetime_utils::io::fs::read_file_to_string;
+  use treetime_utils::io::json::json_read_file;
   use treetime_utils::{assert_error, o};
 
   #[test]
   fn test_tree_output_ancestral_models_preserve_semantics() -> Result<(), Report> {
-    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::NucleotideSubstitution)?;
+    let setup = helpers::ancestral_setup(helpers::Mutations::NucleotideSubstitution)?;
+    let support = helpers::support_on(&setup.topology, "A", 0.9);
 
-    let nodes = helpers::ancestral_nodes(&names, &graph, &helpers::ancestral_confidences(&names, &graph));
-    let auspice = ancestral_to_auspice(
-      &graph,
-      &nodes,
-      &branch_lengths,
-      &maps,
-      aa_node_data.as_ref(),
-      &aa_annotations,
-      "2026-07-19",
-    )?;
+    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup, &support), CommandKind::Ancestral)?;
     let child = helpers::auspice_child(&auspice, "A");
-    assert_eq!(Some("2026-07-19"), auspice.data.meta.updated.as_deref());
-    assert_eq!(vec!["tree".to_owned(), "entropy".to_owned()], auspice.data.meta.panels);
+    assert_eq!(Some(helpers::UPDATED), auspice.data.meta.updated.as_deref());
+    assert_eq!(vec![o!("tree"), o!("entropy")], auspice.data.meta.panels);
     assert_eq!(
       Some(3),
       auspice
@@ -63,9 +50,9 @@ pub(super) mod tests {
         .map(|nuc| nuc.end)
     );
     assert_eq!(Some(0.5), child.node_attrs.div);
-    assert_eq!(vec!["A1T".to_owned()], child.branch_attrs.mutations["nuc"]);
+    assert_eq!(vec![o!("A1T")], child.branch_attrs.mutations["nuc"]);
 
-    let mat = ancestral_to_mat(&graph, &names, &branch_lengths, &maps)?.tree;
+    let mat = helpers::mat(&helpers::ancestral_graph(&setup, &support))?;
     let mutation = mat
       .node_mutations
       .iter()
@@ -82,33 +69,15 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_auspice_drops_nucleotide_indel_and_encodes_amino_acid() -> Result<(), Report> {
-    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::Indel)?;
-    let auspice = ancestral_to_auspice(
-      &graph,
-      &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
-      &branch_lengths,
-      &maps,
-      aa_node_data.as_ref(),
-      &aa_annotations,
-      "2026-07-19",
-    )?;
+    let setup = helpers::ancestral_setup(helpers::Mutations::Indel)?;
+    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup, &btreemap! {}), CommandKind::Ancestral)?;
     let child = helpers::auspice_child(&auspice, "A");
     assert!(!child.branch_attrs.mutations.contains_key("nuc"));
 
-    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::AminoAcid)?;
-    let auspice = ancestral_to_auspice(
-      &graph,
-      &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
-      &branch_lengths,
-      &maps,
-      aa_node_data.as_ref(),
-      &aa_annotations,
-      "2026-07-19",
-    )?;
+    let setup = helpers::ancestral_setup(helpers::Mutations::AminoAcid)?;
+    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup, &btreemap! {}), CommandKind::Ancestral)?;
     let child = helpers::auspice_child(&auspice, "A");
-    assert_eq!(vec!["A2T".to_owned()], child.branch_attrs.mutations["S"]);
+    assert_eq!(vec![o!("A2T")], child.branch_attrs.mutations["S"]);
     let annotations = auspice
       .data
       .meta
@@ -122,10 +91,145 @@ pub(super) mod tests {
   }
 
   #[test]
+  fn test_tree_output_auspice_omits_amino_acid_tracks_without_mutations() -> Result<(), Report> {
+    let mut setup = helpers::ancestral_setup(helpers::Mutations::AminoAcid)?;
+    let a_key = helpers::node_key(&setup.topology, "A");
+    setup
+      .aa_node_data
+      .as_mut()
+      .expect("AA fixture must have amino-acid data")
+      .node_aa_mutations
+      .get_mut(&a_key)
+      .expect("AA fixture must have mutations on A")
+      .insert(o!("E"), vec![]);
+
+    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup, &btreemap! {}), CommandKind::Ancestral)?;
+
+    let expected = btreemap! { o!("S") => vec![o!("A2T")] };
+    assert_eq!(expected, helpers::auspice_child(&auspice, "A").branch_attrs.mutations);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::nucleotide_substitution(helpers::Mutations::NucleotideSubstitution, true)]
+  #[case::amino_acid_only(        helpers::Mutations::AminoAcid,              true)]
+  #[case::nucleotide_indel_only(  helpers::Mutations::Indel,                  false)]
+  #[case::no_mutation(            helpers::Mutations::None,                   false)]
+  #[trace]
+  fn test_tree_output_auspice_lists_genotype_coloring_only_when_a_branch_shows_a_mutation(
+    #[case] mutations: helpers::Mutations,
+    #[case] expected: bool,
+  ) -> Result<(), Report> {
+    let setup = helpers::ancestral_setup(mutations)?;
+
+    let auspice = helpers::auspice(&helpers::ancestral_graph(&setup, &btreemap! {}), CommandKind::Ancestral)?;
+
+    let actual = auspice.data.meta.colorings.iter().any(|coloring| coloring.key == "gt");
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_auspice_orders_colorings_date_excluded_trait_genotype() -> Result<(), Report> {
+    let dated = helpers::dated_setup()?;
+    let mugration = helpers::mugration_setup()?;
+    let root_sequence = Seq::try_from_str("ACGT")?;
+    let edge_mutations = helpers::mutation_on(&dated.topology, "A")?;
+    let graph = AnnotatedGraph {
+      sequences: Some(TreeSequences {
+        root_sequence: &root_sequence,
+        edge_mutations: &edge_mutations,
+        amino_acids: None,
+      }),
+      traits: Some(TreeTraits {
+        attribute: "country",
+        states: &mugration.states,
+        values: &mugration.values,
+        profiles: &mugration.profiles,
+      }),
+      ..helpers::dated_graph(&dated, None)
+    };
+
+    let auspice = helpers::auspice(&graph, CommandKind::Timetree)?;
+
+    let colorings: Vec<(&str, &str)> = auspice
+      .data
+      .meta
+      .colorings
+      .iter()
+      .map(|coloring| (coloring.key.as_str(), coloring.title.as_str()))
+      .collect();
+    let expected = vec![
+      ("num_date", "Date"),
+      ("bad_branch", "Excluded"),
+      ("country", "country"),
+      ("gt", "Genotype"),
+    ];
+    assert_eq!(expected, colorings);
+    assert_eq!(vec![o!("bad_branch"), o!("country")], auspice.data.meta.filters);
+    assert_eq!(Some(o!("country")), auspice.data.meta.display_defaults.color_by);
+    Ok(())
+  }
+
+  #[rstest]
+  #[trace]
+  fn test_tree_output_every_fact_combination_gives_valid_auspice_and_newick(
+    #[values(false, true)] with_sequences: bool,
+    #[values(false, true)] with_dates: bool,
+    #[values(false, true)] with_traits: bool,
+  ) -> Result<(), Report> {
+    let dated = helpers::dated_setup()?;
+    let mugration = helpers::mugration_setup()?;
+    let root_sequence = Seq::try_from_str("ACGT")?;
+    let edge_mutations = helpers::mutation_on(&dated.topology, "A")?;
+    let dates = helpers::dated_graph(&dated, None).dates;
+    let graph = AnnotatedGraph {
+      sequences: with_sequences.then_some(TreeSequences {
+        root_sequence: &root_sequence,
+        edge_mutations: &edge_mutations,
+        amino_acids: None,
+      }),
+      dates: if with_dates { dates } else { None },
+      traits: with_traits.then_some(TreeTraits {
+        attribute: "country",
+        states: &mugration.states,
+        values: &mugration.values,
+        profiles: &mugration.profiles,
+      }),
+      ..helpers::annotated(&dated.topology)
+    };
+    let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
+    let auspice_path = dir.path().join("tree.auspice.json");
+    let nwk_path = dir.path().join("tree.nwk");
+    let outputs = btreemap! {
+      TreeWriteKind::Auspice => auspice_path.clone(),
+      TreeWriteKind::Nwk(NwkStyle::Beast) => nwk_path.clone(),
+    };
+
+    write_tree_outputs(
+      &AnnotatedTreeView::new(&graph)?,
+      &outputs,
+      CommandKind::Timetree,
+      &NoopProgress,
+    )?;
+
+    let document: Value = json_read_file(&auspice_path)?;
+    let errors = helpers::auspice_validator()?
+      .iter_errors(&document)
+      .map(|error| error.to_string())
+      .collect::<Vec<_>>()
+      .join("\n");
+    assert!(errors.is_empty(), "Auspice schema errors:\n{errors}");
+    let reparsed = nwk_read(read_file_to_string(&nwk_path)?.as_bytes())?;
+    assert_eq!(dated.topology.names, reparsed.names());
+    Ok(())
+  }
+
+  #[test]
   fn test_tree_output_conversion_failure_does_not_create_target_and_keeps_prior_file() -> Result<(), Report> {
-    let (graph, names, branch_lengths, mut maps, aa_node_data, aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::NucleotideSubstitution)?;
-    maps.root_sequence = Seq::try_from_str("NCG")?;
+    let mut setup = helpers::ancestral_setup(helpers::Mutations::NucleotideSubstitution)?;
+    setup.root_sequence = Seq::try_from_str("NCG")?;
     let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
     let nwk_path = dir.path().join("tree.nwk");
     let mat_path = dir.path().join("tree.mat.json");
@@ -133,20 +237,17 @@ pub(super) mod tests {
       TreeWriteKind::Nwk(NwkStyle::Plain) => nwk_path.clone(),
       TreeWriteKind::MatJson => mat_path.clone(),
     };
+    let support = btreemap! {};
+    let graph = helpers::ancestral_graph(&setup, &support);
 
     assert_error!(
-      write_ancestral_tree_outputs(
-        &graph,
-        &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
-        &branch_lengths,
-        &maps,
-        aa_node_data.as_ref(),
-        &aa_annotations,
+      write_tree_outputs(
+        &AnnotatedTreeView::new(&graph)?,
         &outputs,
-        &CommentProviders::new(),
-        &NoopProgress,
+        CommandKind::Ancestral,
+        &NoopProgress
       ),
-      "Node 'A' has root reference nucleotide 'N', but UShER MAT accepts only A, C, G, or T"
+      "When writing the tree outputs of ancestral: Node 'A' has root reference nucleotide 'N', but UShER MAT accepts only A, C, G, or T"
     );
     assert!(nwk_path.is_file());
     assert!(!mat_path.exists());
@@ -156,23 +257,14 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_graph_json_dumps_topology() -> Result<(), Report> {
-    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::None)?;
+    let setup = helpers::ancestral_setup(helpers::Mutations::None)?;
     let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
     let path = dir.path().join("graph.json");
     let outputs = btreemap! { TreeWriteKind::GraphJson => path.clone() };
+    let support = btreemap! {};
 
-    write_ancestral_tree_outputs(
-      &graph,
-      &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
-      &branch_lengths,
-      &maps,
-      aa_node_data.as_ref(),
-      &aa_annotations,
-      &outputs,
-      &CommentProviders::new(),
-      &NoopProgress,
-    )?;
+    write_graph_outputs(&helpers::ancestral_graph(&setup, &support), &outputs)?;
+
     let actual: Value = json_read_file(&path)?;
     let nodes = actual["nodes"]
       .as_array()
@@ -183,6 +275,72 @@ pub(super) mod tests {
       .expect("graph.json must carry the edge topology");
     assert!(!edges.is_empty());
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_graph_outputs_are_written_for_a_graph_that_is_not_a_tree() -> Result<(), Report> {
+    let mut graph = Graph::new();
+    let [root, left, right, shared] = [graph.add_node(), graph.add_node(), graph.add_node(), graph.add_node()];
+    let edges = [
+      graph.add_edge(root, left)?,
+      graph.add_edge(root, right)?,
+      graph.add_edge(left, shared)?,
+      graph.add_edge(right, shared)?,
+    ];
+    graph.build()?;
+    let topology = helpers::Topology {
+      graph,
+      names: btreemap! {
+        root => Some(o!("root")),
+        left => Some(o!("L")),
+        right => Some(o!("R")),
+        shared => Some(o!("S")),
+      },
+      branch_lengths: edges.iter().map(|&edge| (edge, Some(0.1))).collect(),
+    };
+    let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
+    let dot_path = dir.path().join("graph.dot");
+    let json_path = dir.path().join("graph.json");
+    let nwk_path = dir.path().join("tree.nwk");
+    let outputs = ResolvedOutputs {
+      tree_outputs: btreemap! {
+        TreeWriteKind::Dot => dot_path.clone(),
+        TreeWriteKind::GraphJson => json_path.clone(),
+        TreeWriteKind::Nwk(NwkStyle::Plain) => nwk_path.clone(),
+      },
+      non_tree_outputs: btreemap! {},
+    };
+    let annotated = helpers::annotated(&topology);
+
+    write_graph_outputs(&annotated, &outputs.tree_outputs)?;
+    let result = tree_view_for_outputs(&annotated, &outputs);
+
+    assert_error!(
+      result,
+      format!(
+        "These outputs need a tree and were not written: '{}': The graph is not a tree: node {shared} has 2 parents, but a node of a tree has at most one",
+        nwk_path.display()
+      )
+    );
+    assert!(dot_path.is_file());
+    assert!(json_path.is_file());
+    assert!(!nwk_path.exists());
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_tree_view_is_not_built_without_tree_based_outputs() -> Result<(), Report> {
+    let topology = helpers::topology()?;
+    let outputs = ResolvedOutputs {
+      tree_outputs: btreemap! { TreeWriteKind::Dot => PathBuf::from("tree.dot") },
+      non_tree_outputs: btreemap! {},
+    };
+    let annotated = helpers::annotated(&topology);
+
+    let view = tree_view_for_outputs(&annotated, &outputs)?;
+
+    assert!(view.is_none());
     Ok(())
   }
 
@@ -230,56 +388,66 @@ pub(super) mod tests {
   }
 
   #[test]
-  fn test_tree_output_branch_support_rejects_a_trait_named_confidence() {
-    let traits = btreemap! {
-      o!("confidence") => TraitValue {
-        value: o!("high"),
-        confidence: BTreeMap::new(),
-        entropy: None,
-      },
-    };
-    let node = auspice_node(o!("A"), Some(0.1), None, None, None, traits, BTreeMap::new(), None);
+  fn test_tree_output_branch_support_rejects_a_trait_named_confidence() -> Result<(), Report> {
+    let setup = helpers::mugration_setup()?;
+    let support = helpers::support_on(&setup.topology, "A", 0.9);
     assert_error!(
-      with_branch_support(node, Some(0.9), "mugration"),
+      helpers::auspice(
+        &helpers::mugration_graph(&setup, "confidence", &support),
+        CommandKind::Mugration
+      ),
       "Node 'A' has a trait named 'confidence', which Auspice JSON also uses for the input branch support. Rename the metadata column of the trait."
     );
+    Ok(())
   }
 
   #[test]
-  fn test_tree_output_branch_support_rejects_non_finite_value_with_command_name() {
-    let node = auspice_node(
-      o!("A"),
-      Some(0.1),
-      None,
-      None,
-      None,
-      BTreeMap::new(),
-      BTreeMap::new(),
-      None,
-    );
+  fn test_tree_output_branch_support_rejects_non_finite_value() -> Result<(), Report> {
+    let topology = helpers::topology()?;
+    let support = helpers::support_on(&topology, "A", f64::NAN);
+    let root_sequence = Seq::try_from_str("ACGT")?;
+    let edge_mutations = helpers::no_mutations(&topology);
     assert_error!(
-      with_branch_support(node, Some(f64::NAN), "optimize"),
-      "optimize node 'A' has non-finite input branch support=NaN"
+      helpers::auspice(
+        &helpers::optimize_graph(&topology, &support, &root_sequence, &edge_mutations),
+        CommandKind::Optimize
+      ),
+      "Node 'A' has non-finite input branch support=NaN"
     );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_errors_name_the_command() -> Result<(), Report> {
+    let topology = helpers::topology()?;
+    let support = helpers::support_on(&topology, "A", f64::NAN);
+    let root_sequence = Seq::try_from_str("ACGT")?;
+    let edge_mutations = helpers::no_mutations(&topology);
+    let graph = helpers::optimize_graph(&topology, &support, &root_sequence, &edge_mutations);
+    let outputs = btreemap! { TreeWriteKind::Auspice => PathBuf::from("tree.auspice.json") };
+
+    assert_error!(
+      write_tree_outputs(
+        &AnnotatedTreeView::new(&graph)?,
+        &outputs,
+        CommandKind::Optimize,
+        &NoopProgress
+      ),
+      "When writing the tree outputs of optimize: Node 'A' has non-finite input branch support=NaN"
+    );
+    Ok(())
   }
 
   #[test]
   fn test_tree_output_auspice_root_sequence_adds_nuc_annotation_and_entropy_panel() -> Result<(), Report> {
-    let (graph, names, _branch_lengths) = helpers::timetree_graph()?;
-    let maps = TimetreeOutputMaps {
-      root_sequence: Some(Seq::try_from_str("ACGT")?),
-      ..TimetreeOutputMaps::default()
-    };
-    let auspice = timetree_to_auspice(
-      &graph,
-      &helpers::timetree_nodes(&names, &graph, &btreemap! {}),
-      &maps,
-      None,
-      None,
-      "2026-07-19",
+    let setup = helpers::dated_setup()?;
+    let root_sequence = Seq::try_from_str("ACGT")?;
+    let auspice = helpers::auspice(
+      &helpers::dated_graph(&setup, Some(&root_sequence)),
+      CommandKind::Timetree,
     )?;
 
-    assert_eq!(vec!["tree".to_owned(), "entropy".to_owned()], auspice.data.meta.panels);
+    assert_eq!(vec![o!("tree"), o!("entropy")], auspice.data.meta.panels);
     let annotations = auspice
       .data
       .meta
@@ -290,8 +458,8 @@ pub(super) mod tests {
       Some(AuspiceGenomeAnnotationNuc {
         start: 1,
         end: 4,
-        strand: Some("+".to_owned()),
-        r#type: Some("source".to_owned()),
+        strand: Some(o!("+")),
+        r#type: Some(o!("source")),
         other: Value::default(),
       }),
       annotations.nuc
@@ -324,27 +492,67 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_auspice_rejects_node_without_divergence_or_date() -> Result<(), Report> {
-    let error = helpers::optimize_auspice_without_required_node_data()
-      .expect_err("Auspice must reject a node with neither divergence nor numerical date");
-    assert!(error.to_string().contains("requires divergence or numerical date"));
+    let mut topology = helpers::topology()?;
+    helpers::set_branch_length(&mut topology, "A", None)?;
+    let root_sequence = Seq::try_from_str("ACGT")?;
+    let edge_mutations = helpers::no_mutations(&topology);
+    assert_error!(
+      helpers::auspice(
+        &helpers::optimize_graph(&topology, &btreemap! {}, &root_sequence, &edge_mutations),
+        CommandKind::Optimize
+      ),
+      "Auspice v2 node 'A' requires divergence or numerical date data"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_auspice_divergence_sums_from_the_root() -> Result<(), Report> {
+    let topology = helpers::topology_from("((A:0.125,B:0.25)AB:0.5,C:0.25)root;")?;
+
+    let auspice = helpers::auspice(&helpers::annotated(&topology), CommandKind::Ancestral)?;
+
+    let ab = helpers::auspice_child(&auspice, "AB");
+    let actual: BTreeMap<String, Option<f64>> = once(ab)
+      .chain(&ab.children)
+      .map(|node| (node.name.clone(), node.node_attrs.div))
+      .collect();
+    let expected = btreemap! { o!("AB") => Some(0.5), o!("A") => Some(0.625), o!("B") => Some(0.75) };
+    assert_eq!(expected, actual);
     Ok(())
   }
 
   #[test]
   fn test_tree_output_auspice_rejects_invalid_amino_acid_track_name() -> Result<(), Report> {
-    let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) =
-      helpers::ancestral_graph(helpers::Mutations::IndelAndAminoAcid)?;
-    let error = ancestral_to_auspice(
-      &graph,
-      &helpers::ancestral_nodes(&names, &graph, &btreemap! {}),
-      &branch_lengths,
-      &maps,
-      aa_node_data.as_ref(),
-      &aa_annotations,
-      "2026-07-19",
-    )
-    .expect_err("Auspice must reject an amino-acid track outside its schema grammar");
-    assert!(error.to_string().contains("cannot represent amino-acid mutation track"));
+    let setup = helpers::ancestral_setup(helpers::Mutations::IndelAndAminoAcid)?;
+    assert_error!(
+      helpers::auspice(&helpers::ancestral_graph(&setup, &btreemap! {}), CommandKind::Ancestral),
+      "Auspice v2 cannot represent amino-acid mutation track 'S/1:weird'"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_auspice_marks_excluded_nodes() -> Result<(), Report> {
+    let mut setup = helpers::dated_setup()?;
+    setup.excluded = btreeset! { helpers::node_key(&setup.topology, "B") };
+
+    let auspice = helpers::auspice(&helpers::dated_graph(&setup, None), CommandKind::Clock)?;
+
+    let actual: BTreeMap<&str, &str> = auspice
+      .tree
+      .children
+      .iter()
+      .map(|child| {
+        let bad_branch = child
+          .node_attrs
+          .bad_branch
+          .as_ref()
+          .expect("dated nodes carry bad_branch");
+        (child.name.as_str(), bad_branch.value())
+      })
+      .collect();
+    assert_eq!(btreemap! { "A" => "No", "B" => "Yes", "C" => "No" }, actual);
     Ok(())
   }
 
@@ -365,53 +573,60 @@ pub(super) mod tests {
       ),
       helpers::deletion(MutationTrack::Nucleotide, (1, 3), "CG")?,
       Mutation::substitution(
-        MutationTrack::AminoAcid("GENE".to_owned()),
+        MutationTrack::AminoAcid(o!("GENE")),
         Sub::new(helpers::c(b'K'), 4_usize, helpers::c(b'R'))?,
       ),
-      helpers::deletion(MutationTrack::AminoAcid("GENE".to_owned()), (1, 3), "CG")?,
+      helpers::deletion(MutationTrack::AminoAcid(o!("GENE")), (1, 3), "CG")?,
     ];
 
-    let grouped = group_mutations(mutations)?;
+    let grouped = group_mutations(&mutations)?;
 
     let expected = btreemap! {
-      "GENE".to_owned() => vec!["K5R".to_owned(), "C2-".to_owned(), "G3-".to_owned()],
-      "nuc".to_owned() => vec!["A1T".to_owned()],
+      o!("GENE") => vec![o!("K5R"), o!("C2-"), o!("G3-")],
+      o!("nuc") => vec![o!("A1T")],
     };
     assert_eq!(expected, grouped);
     Ok(())
   }
 
   pub(crate) mod helpers {
-    use super::*;
-    use crate::ancestral_result::AncestralOutputMaps;
-    use crate::clock_result::ClockNodeOut;
-    use crate::mugration_result::MugrationNodeOut;
-    use crate::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
-    use crate::prune_result::{PruneNodeOut, PruneOutputMaps};
-    use crate::timetree_result::{TimetreeNodeOut, TimetreeOutputMaps};
+    use crate::annotated_graph::{
+      AnnotatedGraph, AnnotatedTreeView, Divergence, TreeAminoAcids, TreeDates, TreeSequences, TreeTraits,
+    };
+    use crate::auspice::auspice_tree;
+    use crate::output_plan::CommandKind;
+    use crate::usher_mat::mat_tree;
+    use eyre::Report;
     use jsonschema::{Retrieve, Uri, Validator};
-    use ndarray::array;
+    use maplit::btreemap;
+    use ndarray::{Array1, array};
     use serde::Serialize;
-    use std::collections::BTreeMap;
+    use serde_json::Value;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::error::Error;
     use std::io;
-    use treetime::gtr::gtr::GTR;
-    use treetime::mugration::pipeline::MugrationOutput;
+    use treetime::ancestral::aa::AaNodeData;
     use treetime::partition::storage::discrete::DiscreteStates;
+    use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
+    use treetime_graph::node::GraphNodeKey;
     use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
+    use treetime_io::nwk::nwk_read;
     use treetime_io::usher_mat::UsherTree;
-    use treetime_utils::make_report;
+    use treetime_primitives::{AsciiChar, Seq};
+    use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
+    use treetime_utils::{make_report, o};
     use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
+    pub(crate) const UPDATED: &str = "2026-07-19";
     const AUSPICE_SCHEMA: &str = include_str!("schemas/auspice/schema-export-v2.json");
     const AUSPICE_CONFIG_SCHEMA: &str = include_str!("schemas/auspice/schema-auspice-config-v2.json");
     const ANNOTATIONS_SCHEMA: &str = include_str!("schemas/auspice/schema-annotations.json");
     const ROOT_SEQUENCE_SCHEMA: &str = include_str!("schemas/auspice/schema-export-root-sequence.json");
     const MODEL_TREE: &str = "(A:0.1,B:0,C:0.5)root;";
 
-    #[derive(Clone, Copy)]
+    #[derive(Clone, Copy, Debug)]
     pub(crate) enum Mutations {
       None,
       NucleotideSubstitution,
@@ -421,235 +636,302 @@ pub(super) mod tests {
       IndelAndAminoAcid,
     }
 
-    fn optimize_maps(_graph: &Graph) -> Result<OptimizeOutputMaps, Report> {
-      Ok(OptimizeOutputMaps {
-        root_sequence: Seq::try_from_str("ACGT")?,
-        edge_mutations: BTreeMap::new(),
-        edge_mutation_counts: BTreeMap::new(),
-      })
-    }
-
-    fn prune_maps(_graph: &Graph) -> PruneOutputMaps {
-      PruneOutputMaps::default()
-    }
-
-    fn timetree_maps(_graph: &Graph) -> TimetreeOutputMaps {
-      TimetreeOutputMaps::default()
-    }
-
-    type AncestralGraphSetup = (
-      Graph,
-      BTreeMap<GraphNodeKey, Option<String>>,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-      AncestralOutputMaps,
-      Option<AaNodeData>,
-      BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
-    );
-
-    pub(crate) fn ancestral_graph(mutations: Mutations) -> Result<AncestralGraphSetup, Report> {
-      let nwk_parsed = nwk_read(b"(A:0.5,B:0)root;".as_slice())?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
-      let a_key = node_key(&graph, &names, "A");
-      let b_key = node_key(&graph, &names, "B");
-      let a_edge = graph.node_parent(a_key)?.unwrap().1;
-      let b_edge = graph.node_parent(b_key)?.unwrap().1;
-      let root_sequence = Seq::try_from_str("ACG")?;
-
-      let include_substitution = matches!(
-        mutations,
-        Mutations::NucleotideSubstitution | Mutations::NucleotideSubstitutionAndAminoAcid
-      );
-      let include_indel = matches!(mutations, Mutations::Indel | Mutations::IndelAndAminoAcid);
-      let include_aa = matches!(
-        mutations,
-        Mutations::AminoAcid | Mutations::NucleotideSubstitutionAndAminoAcid | Mutations::IndelAndAminoAcid
-      );
-      let mut a_mutations = Vec::new();
-      if include_substitution {
-        a_mutations.push(Mutation::substitution(
-          MutationTrack::Nucleotide,
-          Sub::new(c(b'A'), 0_usize, c(b'T'))?,
-        ));
-      }
-      if include_indel {
-        a_mutations.push(deletion(MutationTrack::Nucleotide, (1, 3), "CG")?);
-      }
-      let maps = AncestralOutputMaps {
-        root_sequence,
-        edge_mutations: btreemap! {
-          a_edge => a_mutations,
-          b_edge => vec![],
-        },
-      };
-
-      let aa_node_data = include_aa.then(|| {
-        let mut aa = AaNodeData::default();
-        let track = if matches!(mutations, Mutations::IndelAndAminoAcid) {
-          "S/1:weird"
-        } else {
-          "S"
-        };
-        aa.root_aa_sequences.insert(track.to_owned(), "AA".to_owned());
-        aa.node_aa_mutations.insert(
-          a_key,
-          btreemap! {
-            track.to_owned() => vec![MutationEvent::Substitution(
-              Sub::new(c(b'A'), 1_usize, c(b'T')).unwrap(),
-            )],
-          },
-        );
-        aa
-      });
-      let aa_annotations = if include_aa {
-        btreemap! {
-          "S".to_owned() => AugurNodeDataJsonAnnotationEntry {
-            start: Some(1),
-            end: Some(3),
-            strand: Some("+".to_owned()),
-            entry_type: Some("CDS".to_owned()),
-            ..AugurNodeDataJsonAnnotationEntry::default()
-          },
-        }
-      } else {
-        btreemap! {}
-      };
-      Ok((graph, names, branch_lengths, maps, aa_node_data, aa_annotations))
-    }
-
-    pub(crate) fn ancestral_nodes(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
-    ) -> BTreeMap<GraphNodeKey, AncestralNodeOut> {
-      graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (
-            key,
-            AncestralNodeOut {
-              name: names.get(&node.key()).cloned().flatten(),
-              branch_support: confidences.get(&key).copied().flatten(),
-            },
-          )
-        })
-        .collect()
-    }
-
-    pub(crate) fn ancestral_confidences(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-    ) -> BTreeMap<GraphNodeKey, Option<f64>> {
-      graph
-        .get_nodes()
-        .filter(|&node| names.get(&node.key()).and_then(|x| x.as_deref()) == Some("A"))
-        .map(|node| (node.key(), Some(0.9)))
-        .collect()
-    }
-
     #[derive(Clone, Copy)]
     pub(crate) enum InputBranchSupport {
       Absent,
       OnLeafA,
     }
 
-    fn branch_support(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-      support: InputBranchSupport,
-    ) -> BTreeMap<GraphNodeKey, Option<f64>> {
-      match support {
-        InputBranchSupport::Absent => BTreeMap::new(),
-        InputBranchSupport::OnLeafA => ancestral_confidences(names, graph),
+    pub(crate) struct Topology {
+      pub(crate) graph: Graph,
+      pub(crate) names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub(crate) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+    }
+
+    pub(crate) struct AncestralSetup {
+      pub(crate) topology: Topology,
+      pub(crate) root_sequence: Seq,
+      pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+      pub(crate) aa_node_data: Option<AaNodeData>,
+      pub(crate) aa_annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
+    }
+
+    pub(crate) struct MugrationSetup {
+      pub(crate) topology: Topology,
+      pub(crate) states: DiscreteStates,
+      pub(crate) values: BTreeMap<GraphNodeKey, Option<String>>,
+      pub(crate) profiles: BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
+    }
+
+    pub(crate) struct DatedSetup {
+      pub(crate) topology: Topology,
+      pub(crate) div: BTreeMap<GraphNodeKey, f64>,
+      pub(crate) num_date: BTreeMap<GraphNodeKey, Option<f64>>,
+      pub(crate) excluded: BTreeSet<GraphNodeKey>,
+      pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+    }
+
+    pub(crate) fn topology() -> Result<Topology, Report> {
+      topology_from(MODEL_TREE)
+    }
+
+    pub(crate) fn topology_from(nwk: &str) -> Result<Topology, Report> {
+      let parsed = nwk_read(nwk.as_bytes())?;
+      Ok(Topology {
+        names: parsed.names(),
+        graph: parsed.graph,
+        branch_lengths: parsed.branch_lengths,
+      })
+    }
+
+    pub(crate) fn annotated(topology: &Topology) -> AnnotatedGraph<'_> {
+      AnnotatedGraph {
+        graph: &topology.graph,
+        names: &topology.names,
+        divergence_branch_lengths: &topology.branch_lengths,
+        time_branch_lengths: None,
+        divergence: Divergence::CumulativeBranchLength,
+        branch_support: None,
+        sequences: None,
+        dates: None,
+        traits: None,
       }
     }
 
-    pub(crate) fn ancestral_topology() -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
-      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      Ok((graph, names, branch_lengths))
+    pub(crate) fn auspice(graph: &AnnotatedGraph<'_>, command: CommandKind) -> Result<AuspiceTree, Report> {
+      auspice_tree(&AnnotatedTreeView::new(graph)?, command, UPDATED)
+    }
+
+    pub(crate) fn mat(graph: &AnnotatedGraph<'_>) -> Result<UsherTree, Report> {
+      Ok(mat_tree(&AnnotatedTreeView::new(graph)?)?.tree)
+    }
+
+    pub(crate) fn no_mutations(topology: &Topology) -> BTreeMap<GraphEdgeKey, Vec<Mutation>> {
+      topology.graph.get_edges().map(|edge| (edge.key(), vec![])).collect()
+    }
+
+    pub(crate) fn mutation_on(
+      topology: &Topology,
+      name: &str,
+    ) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
+      let mut edge_mutations = no_mutations(topology);
+      edge_mutations.insert(parent_edge(topology, name)?, vec![substitution(b'A', 0, b'T')?]);
+      Ok(edge_mutations)
+    }
+
+    pub(crate) fn ancestral_setup(mutations: Mutations) -> Result<AncestralSetup, Report> {
+      let topology = topology_from("(A:0.5,B:0)root;")?;
+      let a_edge = parent_edge(&topology, "A")?;
+      let b_edge = parent_edge(&topology, "B")?;
+      let a_key = node_key(&topology, "A");
+
+      let mut a_mutations = Vec::new();
+      if matches!(
+        mutations,
+        Mutations::NucleotideSubstitution | Mutations::NucleotideSubstitutionAndAminoAcid
+      ) {
+        a_mutations.push(substitution(b'A', 0, b'T')?);
+      }
+      if matches!(mutations, Mutations::Indel | Mutations::IndelAndAminoAcid) {
+        a_mutations.push(deletion(MutationTrack::Nucleotide, (1, 3), "CG")?);
+      }
+
+      let include_aa = matches!(
+        mutations,
+        Mutations::AminoAcid | Mutations::NucleotideSubstitutionAndAminoAcid | Mutations::IndelAndAminoAcid
+      );
+      let aa_node_data = include_aa.then(|| {
+        let track = if matches!(mutations, Mutations::IndelAndAminoAcid) {
+          "S/1:weird"
+        } else {
+          "S"
+        };
+        let mut aa = AaNodeData::default();
+        aa.root_aa_sequences.insert(o!(track), o!("AA"));
+        aa.node_aa_mutations.insert(
+          a_key,
+          btreemap! {
+            o!(track) => vec![MutationEvent::Substitution(Sub::new(c(b'A'), 1_usize, c(b'T')).unwrap())],
+          },
+        );
+        aa
+      });
+      let aa_annotations = if include_aa {
+        btreemap! {
+          o!("S") => AugurNodeDataJsonAnnotationEntry {
+            start: Some(1),
+            end: Some(3),
+            strand: Some(o!("+")),
+            entry_type: Some(o!("CDS")),
+            ..AugurNodeDataJsonAnnotationEntry::default()
+          },
+        }
+      } else {
+        btreemap! {}
+      };
+
+      Ok(AncestralSetup {
+        topology,
+        root_sequence: Seq::try_from_str("ACG")?,
+        edge_mutations: btreemap! { a_edge => a_mutations, b_edge => vec![] },
+        aa_node_data,
+        aa_annotations,
+      })
+    }
+
+    pub(crate) fn ancestral_graph<'a>(
+      setup: &'a AncestralSetup,
+      support: &'a BTreeMap<GraphNodeKey, Option<f64>>,
+    ) -> AnnotatedGraph<'a> {
+      AnnotatedGraph {
+        branch_support: Some(support),
+        sequences: Some(TreeSequences {
+          root_sequence: &setup.root_sequence,
+          edge_mutations: &setup.edge_mutations,
+          amino_acids: setup.aa_node_data.as_ref().map(|node_data| TreeAminoAcids {
+            node_data,
+            cdses: &setup.aa_annotations,
+          }),
+        }),
+        ..annotated(&setup.topology)
+      }
+    }
+
+    pub(crate) fn optimize_graph<'a>(
+      topology: &'a Topology,
+      support: &'a BTreeMap<GraphNodeKey, Option<f64>>,
+      root_sequence: &'a Seq,
+      edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+    ) -> AnnotatedGraph<'a> {
+      AnnotatedGraph {
+        branch_support: Some(support),
+        sequences: Some(TreeSequences {
+          root_sequence,
+          edge_mutations,
+          amino_acids: None,
+        }),
+        ..annotated(topology)
+      }
+    }
+
+    pub(crate) fn mugration_setup() -> Result<MugrationSetup, Report> {
+      let topology = topology()?;
+      let (values, profiles) = topology
+        .graph
+        .get_nodes()
+        .enumerate()
+        .map(|(index, node)| {
+          let key = node.key();
+          let (state, profile) = if index % 2 == 0 {
+            ("CH", array![1.0, 0.0])
+          } else {
+            ("US", array![0.0, 1.0])
+          };
+          ((key, Some(o!(state))), (key, Some(profile)))
+        })
+        .unzip();
+      Ok(MugrationSetup {
+        topology,
+        states: DiscreteStates::from_values(["CH", "US"].into_iter(), "?"),
+        values,
+        profiles,
+      })
+    }
+
+    pub(crate) fn mugration_graph<'a>(
+      setup: &'a MugrationSetup,
+      attribute: &'a str,
+      support: &'a BTreeMap<GraphNodeKey, Option<f64>>,
+    ) -> AnnotatedGraph<'a> {
+      AnnotatedGraph {
+        branch_support: Some(support),
+        traits: Some(TreeTraits {
+          attribute,
+          states: &setup.states,
+          values: &setup.values,
+          profiles: &setup.profiles,
+        }),
+        ..annotated(&setup.topology)
+      }
+    }
+
+    pub(crate) fn dated_setup() -> Result<DatedSetup, Report> {
+      let topology = topology()?;
+      let div = topology
+        .graph
+        .get_nodes()
+        .enumerate()
+        .map(|(index, node)| (node.key(), index as f64 / 2.0))
+        .collect();
+      let num_date = topology
+        .graph
+        .get_nodes()
+        .enumerate()
+        .map(|(index, node)| (node.key(), Some(2020.0 + index as f64)))
+        .collect();
+      let edge_mutations = no_mutations(&topology);
+      Ok(DatedSetup {
+        topology,
+        div,
+        num_date,
+        excluded: BTreeSet::new(),
+        edge_mutations,
+      })
+    }
+
+    pub(crate) fn dated_graph<'a>(setup: &'a DatedSetup, root_sequence: Option<&'a Seq>) -> AnnotatedGraph<'a> {
+      AnnotatedGraph {
+        divergence: Divergence::Values(&setup.div),
+        sequences: root_sequence.map(|root_sequence| TreeSequences {
+          root_sequence,
+          edge_mutations: &setup.edge_mutations,
+          amino_acids: None,
+        }),
+        dates: Some(TreeDates {
+          num_date: &setup.num_date,
+          confidence: None,
+          excluded: &setup.excluded,
+        }),
+        ..annotated(&setup.topology)
+      }
     }
 
     pub(crate) fn all_auspice_documents(support: InputBranchSupport) -> Result<BTreeMap<&'static str, Value>, Report> {
-      let (ancestral_graph, ancestral_names, ancestral_bl, ancestral_maps, ancestral_aa, ancestral_aa_annotations) =
-        ancestral_graph(Mutations::NucleotideSubstitution)?;
-      let ancestral = ancestral_to_auspice(
-        &ancestral_graph,
-        &ancestral_nodes(
-          &ancestral_names,
-          &ancestral_graph,
-          &branch_support(&ancestral_names, &ancestral_graph, support),
-        ),
-        &ancestral_bl,
-        &ancestral_maps,
-        ancestral_aa.as_ref(),
-        &ancestral_aa_annotations,
-        "2026-07-19",
+      let ancestral = ancestral_setup(Mutations::NucleotideSubstitution)?;
+      let ancestral_support = branch_support(&ancestral.topology, support);
+      let ancestral = auspice(&ancestral_graph(&ancestral, &ancestral_support), CommandKind::Ancestral)?;
+
+      let optimize = topology()?;
+      let optimize_support = branch_support(&optimize, support);
+      let optimize_reference = Seq::try_from_str("ACGT")?;
+      let optimize_mutations = no_mutations(&optimize);
+      let optimize = auspice(
+        &optimize_graph(&optimize, &optimize_support, &optimize_reference, &optimize_mutations),
+        CommandKind::Optimize,
       )?;
-      let (optimize_graph, optimize_names, optimize_bl) = optimize_graph()?;
-      let optimize = optimize_to_auspice(
-        &optimize_graph,
-        &optimize_nodes(
-          &optimize_names,
-          &optimize_graph,
-          &branch_support(&optimize_names, &optimize_graph, support),
-        ),
-        &optimize_bl,
-        &optimize_maps(&optimize_graph)?,
-        "2026-07-19",
+
+      let prune = topology()?;
+      let prune_support = branch_support(&prune, support);
+      let prune = auspice(
+        &AnnotatedGraph {
+          branch_support: Some(&prune_support),
+          ..annotated(&prune)
+        },
+        CommandKind::Prune,
       )?;
-      let (prune_graph, prune_names, prune_bl) = prune_graph()?;
-      let prune = prune_to_auspice(
-        &prune_graph,
-        &prune_nodes(
-          &prune_names,
-          &prune_graph,
-          &branch_support(&prune_names, &prune_graph, support),
-        ),
-        &prune_bl,
-        &prune_maps(&prune_graph),
-        "2026-07-19",
+
+      let clock = dated_setup()?;
+      let clock = auspice(&dated_graph(&clock, None), CommandKind::Clock)?;
+
+      let mugration = mugration_setup()?;
+      let mugration_support = branch_support(&mugration.topology, support);
+      let mugration = auspice(
+        &mugration_graph(&mugration, "country", &mugration_support),
+        CommandKind::Mugration,
       )?;
-      let (clock_graph, clock_names, _clock_bl) = clock_graph()?;
-      let clock = clock_to_auspice(&clock_graph, &clock_nodes(&clock_names, &clock_graph), "2026-07-19")?;
-      let (mugration_output, mugration_names, mugration_bl) = mugration_graph()?;
-      let mugration = mugration_to_auspice(
-        &mugration_output.graph,
-        &mugration_nodes(
-          &mugration_names,
-          &mugration_output.graph,
-          &branch_support(&mugration_names, &mugration_output.graph, support),
-        ),
-        &mugration_bl,
-        &mugration_output,
-        "country",
-        "2026-07-19",
-      )?;
-      let (timetree_graph, timetree_names, _timetree_bl) = timetree_graph()?;
-      let timetree = timetree_to_auspice(
-        &timetree_graph,
-        &timetree_nodes(
-          &timetree_names,
-          &timetree_graph,
-          &branch_support(&timetree_names, &timetree_graph, support),
-        ),
-        &timetree_maps(&timetree_graph),
-        None,
-        None,
-        "2026-07-19",
-      )?;
+
+      let timetree = dated_setup()?;
+      let timetree = auspice(&dated_graph(&timetree, None), CommandKind::Timetree)?;
 
       Ok(btreemap! {
         "ancestral" => json_value(&ancestral)?,
@@ -662,37 +944,33 @@ pub(super) mod tests {
     }
 
     pub(crate) fn all_mat_documents() -> Result<Vec<UsherTree>, Report> {
-      let (ancestral, ancestral_names, mut ancestral_bl) = ancestral_topology()?;
-      set_mat_branch_lengths(&ancestral, &ancestral_names, &mut ancestral_bl)?;
-      let (optimize, optimize_names, mut optimize_bl) = optimize_graph()?;
-      set_mat_branch_lengths(&optimize, &optimize_names, &mut optimize_bl)?;
-      let (prune, prune_names, mut prune_bl) = prune_graph()?;
-      set_mat_branch_lengths(&prune, &prune_names, &mut prune_bl)?;
-      let (clock, clock_names, mut clock_bl) = clock_graph()?;
-      set_mat_branch_lengths(&clock, &clock_names, &mut clock_bl)?;
-      let (mugration_output, mugration_names, mut mugration_bl) = mugration_graph()?;
-      let mugration = &mugration_output.graph;
-      set_mat_branch_lengths(mugration, &mugration_names, &mut mugration_bl)?;
-      let (timetree, timetree_names, _timetree_bl) = timetree_graph()?;
-      let timetree_weights = timetree_mat_nwk_weights(&timetree, &timetree_names)?;
-
-      Ok(vec![
-        ancestral_to_mat(
-          &ancestral,
-          &ancestral_names,
-          &ancestral_bl,
-          &AncestralOutputMaps {
-            root_sequence: Seq::try_from_str("ACG")?,
-            edge_mutations: BTreeMap::new(),
-          },
-        )?
-        .tree,
-        optimize_to_mat(&optimize, &optimize_names, &optimize_bl, &optimize_maps(&optimize)?)?.tree,
-        prune_to_mat(&prune, &prune_names, &prune_bl, &prune_maps(&prune))?.tree,
-        clock_to_mat(&clock, &clock_names, &clock_bl)?.tree,
-        mugration_to_mat(mugration, &mugration_names, &mugration_bl)?.tree,
-        timetree_to_mat(&timetree, &timetree_names, &timetree_weights, &timetree_maps(&timetree))?.tree,
-      ])
+      let mut topology = topology()?;
+      set_branch_length(&mut topology, "A", None)?;
+      set_branch_length(&mut topology, "B", Some(0.0))?;
+      set_branch_length(&mut topology, "C", Some(0.5))?;
+      let no_mutations = no_mutations(&topology);
+      let ancestral_reference = Seq::try_from_str("ACG")?;
+      let optimize_reference = Seq::try_from_str("ACGT")?;
+      [
+        Some(&ancestral_reference),
+        Some(&optimize_reference),
+        None,
+        None,
+        None,
+        None,
+      ]
+      .into_iter()
+      .map(|root_sequence| {
+        mat(&AnnotatedGraph {
+          sequences: root_sequence.map(|root_sequence| TreeSequences {
+            root_sequence,
+            edge_mutations: &no_mutations,
+            amino_acids: None,
+          }),
+          ..annotated(&topology)
+        })
+      })
+      .collect()
     }
 
     pub(crate) fn auspice_validator() -> Result<Validator, Report> {
@@ -701,18 +979,6 @@ pub(super) mod tests {
         jsonschema::draft6::options()
           .with_retriever(AuspiceSchemaRetriever::new()?)
           .build(&schema)?,
-      )
-    }
-
-    pub(crate) fn optimize_auspice_without_required_node_data() -> Result<AuspiceTree, Report> {
-      let (graph, names, mut branch_lengths) = optimize_graph()?;
-      set_branch_length(&graph, &names, &mut branch_lengths, "A", None)?;
-      optimize_to_auspice(
-        &graph,
-        &optimize_nodes(&names, &graph, &btreemap! {}),
-        &branch_lengths,
-        &optimize_maps(&graph)?,
-        "2026-07-19",
       )
     }
 
@@ -725,30 +991,47 @@ pub(super) mod tests {
         .expect("fixture child must exist")
     }
 
-    pub(crate) fn branch_length(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-      target_name: &str,
-    ) -> Result<Option<f64>, Report> {
-      let node_key = node_key(graph, names, target_name);
-      let edge_key = graph
-        .node_parent(node_key)?
-        .expect("fixture target must not be the root")
-        .1;
-      Ok(branch_lengths.get(&edge_key).copied().flatten())
+    pub(crate) fn support_on(topology: &Topology, name: &str, value: f64) -> BTreeMap<GraphNodeKey, Option<f64>> {
+      btreemap! { node_key(topology, name) => Some(value) }
     }
 
-    fn node_key(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>, name: &str) -> GraphNodeKey {
-      graph
-        .get_nodes()
-        .into_iter()
-        .find_map(|node| (names.get(&node.key()).and_then(|x| x.as_deref()) == Some(name)).then(|| node.key()))
+    pub(crate) fn branch_length(topology: &Topology, target_name: &str) -> Result<Option<f64>, Report> {
+      Ok(topology.branch_lengths[&parent_edge(topology, target_name)?])
+    }
+
+    pub(crate) fn set_branch_length(topology: &mut Topology, name: &str, length: Option<f64>) -> Result<(), Report> {
+      let edge_key = parent_edge(topology, name)?;
+      topology.branch_lengths.insert(edge_key, length);
+      Ok(())
+    }
+
+    pub(crate) fn node_key(topology: &Topology, name: &str) -> GraphNodeKey {
+      topology
+        .names
+        .iter()
+        .find_map(|(key, node_name)| (node_name.as_deref() == Some(name)).then_some(*key))
         .expect("fixture node must exist")
+    }
+
+    pub(crate) fn parent_edge(topology: &Topology, name: &str) -> Result<GraphEdgeKey, Report> {
+      Ok(
+        topology
+          .graph
+          .node_parent(node_key(topology, name))?
+          .expect("fixture node must have a parent")
+          .1,
+      )
     }
 
     pub(crate) fn c(value: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(value)
+    }
+
+    pub(crate) fn substitution(reff: u8, pos: usize, qry: u8) -> Result<Mutation, Report> {
+      Ok(Mutation::substitution(
+        MutationTrack::Nucleotide,
+        Sub::new(c(reff), pos, c(qry))?,
+      ))
     }
 
     pub(crate) fn deletion(track: MutationTrack, range: (usize, usize), sequence: &str) -> Result<Mutation, Report> {
@@ -761,258 +1044,15 @@ pub(super) mod tests {
       })
     }
 
-    fn optimize_nodes(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
-    ) -> BTreeMap<GraphNodeKey, OptimizeNodeOut> {
-      graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (
-            key,
-            OptimizeNodeOut {
-              name: names.get(&node.key()).cloned().flatten(),
-              branch_support: confidences.get(&key).copied().flatten(),
-            },
-          )
-        })
-        .collect()
-    }
-
-    fn optimize_graph() -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
-      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      Ok((graph, names, branch_lengths))
-    }
-
-    fn prune_nodes(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
-    ) -> BTreeMap<GraphNodeKey, PruneNodeOut> {
-      graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (
-            key,
-            PruneNodeOut {
-              name: names.get(&node.key()).cloned().flatten(),
-              branch_support: confidences.get(&key).copied().flatten(),
-            },
-          )
-        })
-        .collect()
-    }
-
-    fn prune_graph() -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
-      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      Ok((graph, names, branch_lengths))
-    }
-
-    fn clock_graph() -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
-      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      Ok((graph, names, branch_lengths))
-    }
-
-    fn clock_nodes(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-    ) -> BTreeMap<GraphNodeKey, ClockNodeOut> {
-      graph
-        .get_nodes()
-        .enumerate()
-        .map(|(index, node)| {
-          let key = node.key();
-          (
-            key,
-            ClockNodeOut {
-              name: names.get(&node.key()).cloned().flatten(),
-              div: index as f64 / 2.0,
-              time: Some(2020.0 + index as f64),
-              is_outlier: false,
-              bad_branch: false,
-            },
-          )
-        })
-        .collect()
-    }
-
-    fn mugration_nodes(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
-    ) -> BTreeMap<GraphNodeKey, MugrationNodeOut> {
-      graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          (
-            key,
-            MugrationNodeOut {
-              name: names.get(&node.key()).cloned().flatten(),
-              branch_support: confidences.get(&key).copied().flatten(),
-            },
-          )
-        })
-        .collect()
-    }
-
-    fn mugration_graph() -> Result<
-      (
-        MugrationOutput,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
-      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
-      let names = nwk_parsed.names();
-      let graph: Graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let states = DiscreteStates::from_values(["CH", "US"].into_iter(), "?");
-      let gtr = GTR::builder().n_states(2).mu(1.0).pi(array![0.5, 0.5]).build()?;
-      let (reconstructed_traits, confidences) = graph
-        .get_nodes()
-        .enumerate()
-        .map(|(index, node)| {
-          let key = node.key();
-          let (state, profile) = if index % 2 == 0 {
-            ("CH", array![1.0, 0.0])
-          } else {
-            ("US", array![0.0, 1.0])
-          };
-          ((key, Some(state.to_owned())), (key, Some(profile)))
-        })
-        .unzip();
-      let output = MugrationOutput {
-        n_states: 2,
-        states,
-        gtr,
-        graph,
-        reconstructed_traits,
-        confidences,
-      };
-      Ok((output, names, branch_lengths))
-    }
-
-    pub(crate) fn timetree_graph() -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
-      let nwk_parsed = nwk_read(MODEL_TREE.as_bytes())?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      Ok((graph, names, branch_lengths))
-    }
-
-    pub(crate) fn timetree_nodes(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-      confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
-    ) -> BTreeMap<GraphNodeKey, TimetreeNodeOut> {
-      graph
-        .get_nodes()
-        .enumerate()
-        .map(|(index, node)| {
-          let key = node.key();
-          (
-            key,
-            TimetreeNodeOut {
-              name: names.get(&node.key()).cloned().flatten(),
-              branch_support: confidences.get(&key).copied().flatten(),
-              time: Some(2020.0 + index as f64),
-              div: index as f64 / 2.0,
-              is_outlier: false,
-              bad_branch: false,
-            },
-          )
-        })
-        .collect()
-    }
-
-    fn set_mat_branch_lengths(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-    ) -> Result<(), Report> {
-      set_branch_length(graph, names, branch_lengths, "A", None)?;
-      set_branch_length(graph, names, branch_lengths, "B", Some(0.0))?;
-      set_branch_length(graph, names, branch_lengths, "C", Some(0.5))
-    }
-
-    fn set_branch_length(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-      name: &str,
-      length: Option<f64>,
-    ) -> Result<(), Report> {
-      let key = graph
-        .get_nodes()
-        .into_iter()
-        .find_map(|node| (names.get(&node.key()).and_then(|x| x.as_deref()) == Some(name)).then(|| node.key()))
-        .expect("fixture node must exist");
-      let edge_key = graph.node_parent(key)?.expect("fixture node must have a parent").1;
-      branch_lengths.insert(edge_key, length);
-      Ok(())
-    }
-
-    fn timetree_mat_nwk_weights(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-    ) -> Result<BTreeMap<GraphEdgeKey, Option<f64>>, Report> {
-      let mut weights: BTreeMap<GraphEdgeKey, Option<f64>> = graph.get_edges().map(|edge| (edge.key(), None)).collect();
-      for (name, length) in [("A", None), ("B", Some(0.0)), ("C", Some(0.5))] {
-        let key = graph
-          .get_nodes()
-          .into_iter()
-          .find_map(|node| (names.get(&node.key()).and_then(|x| x.as_deref()) == Some(name)).then(|| node.key()))
-          .expect("fixture node must exist");
-        let edge_key = graph.node_parent(key)?.expect("fixture node must have a parent").1;
-        weights.insert(edge_key, length);
-      }
-      Ok(weights)
-    }
-
     pub(crate) fn json_value(value: &impl Serialize) -> Result<Value, Report> {
       json_write_str(value, JsonPretty(false)).and_then(|json| json_read_str(&json))
+    }
+
+    fn branch_support(topology: &Topology, support: InputBranchSupport) -> BTreeMap<GraphNodeKey, Option<f64>> {
+      match support {
+        InputBranchSupport::Absent => BTreeMap::new(),
+        InputBranchSupport::OnLeafA => support_on(topology, "A", 0.9),
+      }
     }
 
     struct AuspiceSchemaRetriever {

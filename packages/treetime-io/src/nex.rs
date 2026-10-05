@@ -1,4 +1,4 @@
-use crate::nwk::{CommentProviders, NwkWriteOptions, nwk_write_str};
+use crate::nwk::{NwkNodeComments, NwkWriteOptions, nwk_write_str};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -6,33 +6,34 @@ use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::tree_view::TreeView;
 use treetime_utils::io::file::write_file_with;
 use util_newick::write_label;
 
 pub fn nex_write_file(
   filepath: impl AsRef<Path>,
-  graph: &Graph,
+  tree: &TreeView<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
-  providers: &CommentProviders,
+  comments: &NwkNodeComments,
 ) -> Result<(), Report> {
   write_file_with(filepath, |writer| {
-    nex_write(writer, graph, names, weights, options, providers)
+    nex_write(writer, tree, names, weights, options, comments)
   })
 }
 
 pub fn nex_write(
   mut writer: impl Write,
-  graph: &Graph,
+  tree: &TreeView<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
-  providers: &CommentProviders,
+  comments: &NwkNodeComments,
 ) -> Result<(), Report> {
-  let n_leaves = graph.num_leaves();
-  let leaf_names = tax_labels(graph, names)?;
-  let nwk = nwk_write_str(graph, names, weights, options, providers)?;
+  let n_leaves = tree.graph().num_leaves();
+  let leaf_names = tax_labels(tree.graph(), names)?;
+  let nwk = nwk_write_str(tree, names, weights, options, comments)?;
   let nwk = nwk.strip_suffix(';').unwrap_or(&nwk);
 
   write!(

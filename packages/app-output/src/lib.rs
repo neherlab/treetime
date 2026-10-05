@@ -2,32 +2,24 @@
 mod __tests__;
 
 pub mod ancestral_result;
-pub mod ancestral_tree_output;
+pub mod annotated_graph;
 pub mod augur_node_data;
 pub mod augur_node_data_ancestral;
 pub mod augur_node_data_mugration;
 pub mod augur_node_data_optimize;
-pub mod clock_result;
-pub mod clock_tree_output;
-pub mod date_comment;
-pub mod discrete_trait_comment;
+pub(crate) mod auspice;
 pub mod mugration_result;
-pub mod mugration_tree_output;
-pub mod mutation_comment;
 pub mod mutation_filter;
+pub(crate) mod nwk_comments;
 pub mod optimize_result;
-pub mod optimize_tree_output;
 pub mod output_plan;
-pub mod prune_result;
-pub mod prune_tree_output;
 pub mod table_output;
 pub mod timetree_result;
 pub mod timetree_trace;
-pub mod timetree_tree_output;
-pub(crate) mod tree_output;
+pub(crate) mod trait_profile;
+pub mod tree_output;
+pub(crate) mod usher_mat;
 
-pub use date_comment::DateCommentProvider;
-pub use mutation_comment::EdgeMutationCommentProvider;
 pub use timetree_result::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 
 #[cfg(test)]

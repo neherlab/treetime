@@ -19,12 +19,7 @@ pub struct MugrationResult {
 }
 
 impl MugrationResult {
-  pub fn new(
-    output: &MugrationOutput,
-    input_confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-    attribute: &str,
-  ) -> Self {
+  pub fn new(output: &MugrationOutput, names: &BTreeMap<GraphNodeKey, Option<String>>, attribute: &str) -> Self {
     let nodes: BTreeMap<GraphNodeKey, MugrationNodeOut> = output
       .graph
       .get_nodes()
@@ -34,7 +29,6 @@ impl MugrationResult {
           key,
           MugrationNodeOut {
             name: names.get(&key).cloned().flatten(),
-            branch_support: input_confidences.get(&key).copied().flatten(),
           },
         )
       })
@@ -132,7 +126,6 @@ impl MugrationTraitsOutput {
 #[derive(Debug, Clone)]
 pub struct MugrationNodeOut {
   pub(crate) name: Option<String>,
-  pub(crate) branch_support: Option<f64>,
 }
 
 fn extract_trait_assignments(

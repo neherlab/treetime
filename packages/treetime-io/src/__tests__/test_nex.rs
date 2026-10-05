@@ -1,11 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::nex::nex_write;
-  use crate::nwk::{CommentProviders, NwkParse, NwkWriteOptions, nwk_read};
+  use crate::nwk::{NwkParse, NwkWriteOptions, nwk_read};
   use eyre::Report;
   use indoc::indoc;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_graph::tree_view::TreeView;
 
   #[rustfmt::skip]
   #[rstest]
@@ -69,7 +71,14 @@ mod tests {
       graph, branch_lengths, ..
     } = parse;
     let mut actual = Vec::new();
-    nex_write(&mut actual, &graph, &names, &branch_lengths, &NwkWriteOptions::default(), &CommentProviders::new())?;
+    nex_write(
+      &mut actual,
+      &TreeView::new(&graph)?,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &btreemap! {},
+    )?;
     assert_eq!(expected, String::from_utf8(actual)?);
     Ok(())
   }

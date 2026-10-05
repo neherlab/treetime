@@ -2,11 +2,10 @@ use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::shared::alignment::read_alignment;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::OutputSelection;
-use app_output::output_plan::TreeWriteKind;
-use app_output::prune_result::{PruneNodeOut, PruneOutputMaps};
-use app_output::prune_tree_output::write_prune_tree_outputs;
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, TreeWriteKind};
+use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet};
@@ -18,15 +17,14 @@ use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_warn;
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
-use treetime::seq::mutation::MutationTrack;
+use treetime::seq::mutation::{Mutation, MutationTrack};
 use treetime::{make_error, make_report};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::name_list::{name_list_read_file, name_list_read_str};
-use treetime_io::nwk::CommentProviders;
-use treetime_io::nwk::nwk_read_file;
-use treetime_primitives::AlignmentRecord;
+use treetime_io::nwk::{NwkStyle, nwk_read_file};
+use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_prune(
@@ -103,20 +101,6 @@ pub fn run_prune(
   topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
   stages.report("Writing output", 0.8, "");
 
-  let nodes: BTreeMap<GraphNodeKey, PruneNodeOut> = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      let branch_support = confidences.get(&key).copied().flatten();
-      (
-        key,
-        PruneNodeOut {
-          name: names[&key].clone(),
-          branch_support,
-        },
-      )
-    })
-    .collect();
   let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph
     .get_edges()
     .map(|edge| (edge.key(), branch_lengths_opt[&edge.key()]))
@@ -140,27 +124,55 @@ pub fn run_prune(
     }
   }
 
-  if !resolved.tree_outputs.is_empty() {
-    write_prune_tree_outputs(
-      &graph,
-      &nodes,
-      &branch_lengths,
-      &maps,
-      &resolved.tree_outputs,
-      &CommentProviders::new(),
-      log,
-    )?;
-  }
+  write_prune_trees(&graph, &names, &branch_lengths, &confidences, &maps, &resolved, log)?;
 
   stages.report("Done", 1.0, "");
   Ok(())
 }
 
+fn write_prune_trees(
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_support: &BTreeMap<GraphNodeKey, Option<f64>>,
+  maps: &PruneOutputMaps,
+  resolved: &ResolvedOutputs,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let annotated = AnnotatedGraph {
+    graph,
+    names,
+    divergence_branch_lengths: branch_lengths,
+    time_branch_lengths: None,
+    divergence: Divergence::CumulativeBranchLength,
+    branch_support: Some(branch_support),
+    sequences: maps.root_sequence.as_ref().map(|root_sequence| TreeSequences {
+      root_sequence,
+      edge_mutations: &maps.edge_mutations,
+      amino_acids: None,
+    }),
+    dates: None,
+    traits: None,
+  };
+  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
+  if let Some(tree) = tree_view_for_outputs(&annotated, resolved)? {
+    write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Prune, log)?;
+  }
+  Ok(())
+}
+
 fn prune_output_consumes_maps(kind: TreeWriteKind) -> bool {
-  matches!(
-    kind,
-    TreeWriteKind::Auspice | TreeWriteKind::MatPb | TreeWriteKind::MatJson
-  )
+  match kind {
+    TreeWriteKind::Auspice | TreeWriteKind::MatPb | TreeWriteKind::MatJson => true,
+    TreeWriteKind::Nwk(style) | TreeWriteKind::Nexus(style) => style != NwkStyle::Plain,
+    TreeWriteKind::GraphJson | TreeWriteKind::Dot => false,
+  }
+}
+
+#[derive(Debug, Default)]
+struct PruneOutputMaps {
+  root_sequence: Option<Seq>,
+  edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }
 
 fn gather_prune_output_maps(

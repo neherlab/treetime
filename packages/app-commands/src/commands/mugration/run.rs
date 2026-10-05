@@ -1,20 +1,21 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeTraits};
 use app_output::augur_node_data_mugration::write_augur_node_data_json;
-use app_output::discrete_trait_comment::DiscreteTraitCommentProvider;
 use app_output::mugration_result::MugrationResult;
-use app_output::mugration_tree_output::write_mugration_tree_outputs;
-use app_output::output_plan::OutputSelection;
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput};
-use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
+use treetime::mugration::pipeline::{self, MugrationInput, MugrationOutput, MugrationParams};
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 use treetime_io::discrete_states_csv::discrete_attrs_read_file;
-use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
@@ -85,21 +86,7 @@ pub fn run_mugration(
   topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 
-  let result = MugrationResult::new(&output, &confidences, &names, mugration_args.attribute());
-
-  if !resolved.tree_outputs.is_empty() {
-    let provider = DiscreteTraitCommentProvider::new(&output.reconstructed_traits, mugration_args.attribute());
-    let providers = CommentProviders::new().with(&provider);
-    write_mugration_tree_outputs(
-      &output,
-      &result.nodes,
-      &branch_lengths,
-      mugration_args.attribute(),
-      &resolved.tree_outputs,
-      &providers,
-      log,
-    )?;
-  }
+  let result = MugrationResult::new(&output, &names, mugration_args.attribute());
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) {
     let gtr_output = GtrOutput::builder()
@@ -110,6 +97,16 @@ pub fn run_mugration(
       .build();
     json_write_file(path, &gtr_output, JsonPretty(true))?;
   }
+
+  write_mugration_trees(
+    &output,
+    &names,
+    &branch_lengths,
+    &confidences,
+    mugration_args.attribute(),
+    &resolved,
+    log,
+  )?;
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::TraitsCsv) {
     result.traits.write_csv_file(path)?;
@@ -125,5 +122,37 @@ pub fn run_mugration(
   }
 
   stages.report("Done", 1.0, "");
+  Ok(())
+}
+
+fn write_mugration_trees(
+  output: &MugrationOutput,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_support: &BTreeMap<GraphNodeKey, Option<f64>>,
+  attribute: &str,
+  resolved: &ResolvedOutputs,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let annotated = AnnotatedGraph {
+    graph: &output.graph,
+    names,
+    divergence_branch_lengths: branch_lengths,
+    time_branch_lengths: None,
+    divergence: Divergence::CumulativeBranchLength,
+    branch_support: Some(branch_support),
+    sequences: None,
+    dates: None,
+    traits: Some(TreeTraits {
+      attribute,
+      states: &output.states,
+      values: &output.reconstructed_traits,
+      profiles: &output.confidences,
+    }),
+  };
+  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
+  if let Some(tree) = tree_view_for_outputs(&annotated, resolved)? {
+    write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Mugration, log)?;
+  }
   Ok(())
 }

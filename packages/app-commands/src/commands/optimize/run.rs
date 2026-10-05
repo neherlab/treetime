@@ -2,12 +2,12 @@ use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::shared::alignment::read_alignment;
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
-use app_output::EdgeMutationCommentProvider;
+use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::augur_node_data_optimize::write_augur_node_data_json;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::optimize_result::{OptimizeNodeOut, OptimizeOutputMaps};
-use app_output::optimize_tree_output::write_optimize_tree_outputs;
-use app_output::output_plan::OutputSelection;
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -20,9 +20,9 @@ use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::{MutationTrack, edge_state_change_counts};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -106,19 +106,7 @@ pub fn run_optimize(
     json_write_file(path, &gtr_output, JsonPretty(true))?;
   }
 
-  if !resolved.tree_outputs.is_empty() {
-    let mutation_provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph);
-    let providers = CommentProviders::new().with(&mutation_provider);
-    write_optimize_tree_outputs(
-      &graph,
-      &nodes,
-      &branch_lengths,
-      &maps,
-      &resolved.tree_outputs,
-      &providers,
-      log,
-    )?;
-  }
+  write_optimize_trees(&graph, &names, &branch_lengths, &confidences, &maps, &resolved, log)?;
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     let mutation_counts = match args.divergence_units {
@@ -141,6 +129,37 @@ pub fn run_optimize(
 
   stages.report("Done", 1.0, "");
 
+  Ok(())
+}
+
+fn write_optimize_trees(
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_support: &BTreeMap<GraphNodeKey, Option<f64>>,
+  maps: &OptimizeOutputMaps,
+  resolved: &ResolvedOutputs,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let annotated = AnnotatedGraph {
+    graph,
+    names,
+    divergence_branch_lengths: branch_lengths,
+    time_branch_lengths: None,
+    divergence: Divergence::CumulativeBranchLength,
+    branch_support: Some(branch_support),
+    sequences: Some(TreeSequences {
+      root_sequence: &maps.root_sequence,
+      edge_mutations: &maps.edge_mutations,
+      amino_acids: None,
+    }),
+    dates: None,
+    traits: None,
+  };
+  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
+  if let Some(tree) = tree_view_for_outputs(&annotated, resolved)? {
+    write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Optimize, log)?;
+  }
   Ok(())
 }
 

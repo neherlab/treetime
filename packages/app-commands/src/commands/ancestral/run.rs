@@ -5,19 +5,18 @@ use crate::commands::ancestral::aa_node_data::{
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::shared::alignment::{read_alignment, sequence_descriptions};
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
-use app_output::EdgeMutationCommentProvider;
-use app_output::ancestral_result::{AncestralNodeOut, AncestralOutputMaps, AugurOutputMaps};
-use app_output::ancestral_tree_output::write_ancestral_tree_outputs;
+use app_output::ancestral_result::{AncestralOutputMaps, AugurOutputMaps};
+use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeAminoAcids, TreeSequences};
 use app_output::augur_node_data_ancestral::write_augur_node_data_json_with_aa;
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::{OutputSelection, ResolvedOutputs};
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::aa::{AaNodeData, AaParams, CdsInput, reconstruct_aa};
 use treetime::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
 use treetime::ancestral::mask::create_mask;
-use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput};
@@ -33,7 +32,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::{FastaWriter, fasta_read_file};
-use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -100,8 +98,6 @@ pub fn run_ancestral_reconstruction(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  let nodes = ancestral_node_outputs(&names, &confidences);
-
   let aa_node_data = aa_result.as_ref().map(|(node_data, _)| node_data);
   let empty_aa_annotations = BTreeMap::new();
   let aa_annotations = aa_result
@@ -127,17 +123,15 @@ pub fn run_ancestral_reconstruction(
 
   write_ancestral_gtr(args, &resolved, output.gtr.as_ref(), output.model_name, log)?;
 
-  write_ancestral_trees(
-    &graph,
-    &nodes,
-    &branch_lengths,
-    &maps,
-    aa_node_data,
-    aa_annotations,
-    &resolved,
-    output.method,
-    log,
-  )?;
+  let trees = AncestralTrees {
+    graph: &graph,
+    names: &names,
+    branch_lengths: &branch_lengths,
+    branch_support: &confidences,
+    maps: &maps,
+    amino_acids: aa_result.as_ref(),
+  };
+  write_ancestral_trees(&trees, &resolved, log)?;
 
   stages.report("Done", 1.0, "");
   Ok(())
@@ -184,22 +178,6 @@ fn optional_aa_reconstructions(
     log,
   )
   .map(Some)
-}
-
-fn ancestral_node_outputs(
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  confidences: &BTreeMap<GraphNodeKey, Option<f64>>,
-) -> BTreeMap<GraphNodeKey, AncestralNodeOut> {
-  names
-    .iter()
-    .map(|(key, name)| {
-      let out = AncestralNodeOut {
-        name: name.clone(),
-        branch_support: confidences.get(key).copied().flatten(),
-      };
-      (*key, out)
-    })
-    .collect()
 }
 
 fn write_ancestral_gtr(
@@ -336,36 +314,42 @@ struct AncestralReadInputs {
   confidences: BTreeMap<GraphNodeKey, Option<f64>>,
 }
 
+struct AncestralTrees<'a> {
+  graph: &'a Graph,
+  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_support: &'a BTreeMap<GraphNodeKey, Option<f64>>,
+  maps: &'a AncestralOutputMaps,
+  amino_acids: Option<&'a (AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>,
+}
+
 fn write_ancestral_trees(
-  graph: &Graph,
-  nodes: &BTreeMap<GraphNodeKey, AncestralNodeOut>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &AncestralOutputMaps,
-  aa_node_data: Option<&AaNodeData>,
-  aa_annotations: &BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
+  trees: &AncestralTrees<'_>,
   resolved: &ResolvedOutputs,
-  method: MethodAncestral,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  if resolved.tree_outputs.is_empty() {
-    return Ok(());
-  }
-  let provider = EdgeMutationCommentProvider::new(&maps.edge_mutations, graph);
-  let providers = match method {
-    MethodAncestral::Marginal => CommentProviders::new().with(&provider),
-    MethodAncestral::Parsimony => CommentProviders::new(),
+  let annotated = AnnotatedGraph {
+    graph: trees.graph,
+    names: trees.names,
+    divergence_branch_lengths: trees.branch_lengths,
+    time_branch_lengths: None,
+    divergence: Divergence::CumulativeBranchLength,
+    branch_support: Some(trees.branch_support),
+    sequences: Some(TreeSequences {
+      root_sequence: &trees.maps.root_sequence,
+      edge_mutations: &trees.maps.edge_mutations,
+      amino_acids: trees
+        .amino_acids
+        .map(|(node_data, cdses)| TreeAminoAcids { node_data, cdses }),
+    }),
+    dates: None,
+    traits: None,
   };
-  write_ancestral_tree_outputs(
-    graph,
-    nodes,
-    branch_lengths,
-    maps,
-    aa_node_data,
-    aa_annotations,
-    &resolved.tree_outputs,
-    &providers,
-    log,
-  )
+  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
+  if let Some(tree) = tree_view_for_outputs(&annotated, resolved)? {
+    write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Ancestral, log)?;
+  }
+  Ok(())
 }
 
 fn run_aa_reconstructions(

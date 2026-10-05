@@ -4,25 +4,25 @@ use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::trace::TimetreeTraceSink;
-use app_output::DateCommentProvider;
-use app_output::EdgeMutationCommentProvider;
+use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates, TreeSequences};
 use app_output::augur_node_data::write_augur_node_data_json;
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::TreeWriteKind;
-use app_output::output_plan::{OutputSelection, ResolvedOutputs};
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, TreeWriteKind};
 use app_output::table_output::table_write_file;
-use app_output::timetree_tree_output::write_timetree_tree_outputs;
+use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use app_output::{TimetreeEdgeOut, TimetreeNodeOut, TimetreeOutputMaps};
 use eyre::{Report, WrapErr};
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime::cancel::Cancel;
+use treetime::clock::divergence::root_to_node_divergences;
 use treetime::gtr::get_gtr::GtrOutput;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
+use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime::timetree::params::TimetreeParams;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput, TimetreeSequences};
 use treetime::{make_error, make_internal_error};
@@ -32,7 +32,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaWriter;
-use treetime_io::nwk::CommentProviders;
 use treetime_primitives::AlignmentRecord;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
@@ -128,7 +127,7 @@ pub fn run_timetree_estimation(
     filter: UnknownMutationFilter::new(unknown, args.report_ambiguous),
     mutation_units,
   };
-  write_tree_outputs(args, &resolved, output, tree_inputs, log)?;
+  write_result_outputs(args, &resolved, output, tree_inputs, log)?;
 
   stages.report("Done", 1.0, "");
   Ok(())
@@ -247,7 +246,7 @@ struct TreeOutputInputs {
   mutation_units: bool,
 }
 
-fn write_tree_outputs(
+fn write_result_outputs(
   args: &TreetimeTimetreeArgs,
   resolved: &ResolvedOutputs,
   output: TimetreeOutput,
@@ -287,32 +286,20 @@ fn write_tree_outputs(
   );
   let edges = timetree_edge_outputs(&branch_lengths, &date_branch_lengths);
 
-  if !resolved.tree_outputs.is_empty() {
-    let date_times: BTreeMap<GraphNodeKey, f64> = nodes
-      .iter()
-      .filter_map(|(key, out)| out.time.map(|time| (*key, time)))
-      .collect();
-    let date_provider = DateCommentProvider::new(&date_times);
-    let mutation_provider = maps
-      .root_sequence
-      .is_some()
-      .then(|| EdgeMutationCommentProvider::new(&maps.edge_mutations, &graph));
-    let providers = mutation_provider
-      .iter()
-      .fold(CommentProviders::new(), |providers, provider| providers.with(provider))
-      .with(&date_provider);
-    write_timetree_tree_outputs(
-      &graph,
-      &nodes,
-      &edges,
-      &maps,
-      confidence_intervals.as_deref(),
-      mutation_counts.as_ref(),
-      &resolved.tree_outputs,
-      &providers,
-      log,
-    )?;
-  }
+  let trees = TimetreeTrees {
+    graph: &graph,
+    names: &names,
+    branch_lengths: &branch_lengths,
+    date_branch_lengths: &date_branch_lengths,
+    divergences: &divergences,
+    maps: &maps,
+    mutation_counts: mutation_counts.as_ref(),
+    node_dates: &node_dates,
+    confidence_intervals: confidence_intervals.as_deref(),
+    outliers: &outliers,
+    bad_branches: &bad_branches,
+  };
+  write_timetree_trees(&trees, resolved, log)?;
 
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::AugurNodeData) {
     let alignment = args.alignment.alignment.first().map(PathBuf::as_path);
@@ -331,6 +318,80 @@ fn write_tree_outputs(
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
   Ok(())
+}
+
+struct TimetreeTrees<'a> {
+  graph: &'a Graph,
+  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  date_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  divergences: &'a BTreeMap<GraphNodeKey, f64>,
+  maps: &'a TimetreeOutputMaps,
+  mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
+  node_dates: &'a BTreeMap<GraphNodeKey, Option<f64>>,
+  confidence_intervals: Option<&'a [NodeConfidenceInterval]>,
+  outliers: &'a BTreeSet<GraphNodeKey>,
+  bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
+}
+
+fn write_timetree_trees(
+  trees: &TimetreeTrees<'_>,
+  resolved: &ResolvedOutputs,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let mutation_divergences = trees
+    .mutation_counts
+    .map(|counts| mutation_divergences(trees.graph, counts))
+    .transpose()?;
+  let date_confidence: Option<BTreeMap<GraphNodeKey, [f64; 2]>> = trees.confidence_intervals.map(|intervals| {
+    intervals
+      .iter()
+      .map(|interval| (interval.key, [interval.lower, interval.upper]))
+      .collect()
+  });
+  let excluded: BTreeSet<GraphNodeKey> = trees
+    .graph
+    .get_nodes()
+    .map(|node| node.key())
+    .filter(|key| trees.outliers.contains(key) || trees.bad_branches[key])
+    .collect();
+  let annotated = AnnotatedGraph {
+    graph: trees.graph,
+    names: trees.names,
+    divergence_branch_lengths: trees.branch_lengths,
+    time_branch_lengths: Some(trees.date_branch_lengths),
+    divergence: Divergence::Values(mutation_divergences.as_ref().unwrap_or(trees.divergences)),
+    branch_support: None,
+    sequences: trees.maps.root_sequence.as_ref().map(|root_sequence| TreeSequences {
+      root_sequence,
+      edge_mutations: &trees.maps.edge_mutations,
+      amino_acids: None,
+    }),
+    dates: Some(TreeDates {
+      num_date: trees.node_dates,
+      confidence: date_confidence.as_ref(),
+      excluded: &excluded,
+    }),
+    traits: None,
+  };
+  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
+  if let Some(tree) = tree_view_for_outputs(&annotated, resolved)? {
+    write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Timetree, log)?;
+  }
+  Ok(())
+}
+
+#[expect(
+  clippy::as_conversions,
+  reason = "a mutation count is far below 2^53, so the conversion to f64 is exact"
+)]
+fn mutation_divergences(
+  graph: &Graph,
+  mutation_counts: &BTreeMap<GraphEdgeKey, usize>,
+) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
+  root_to_node_divergences(graph, |edge_key| {
+    mutation_counts.get(&edge_key).copied().unwrap_or_default() as f64
+  })
 }
 
 struct ReconstructedNucSink {

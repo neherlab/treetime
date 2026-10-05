@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::divergence::root_to_node_divergences;
+  use crate::clock::divergence::{root_to_node_divergences, root_to_node_divergences_where_known};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use treetime_graph::tree_view::TreeView;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
@@ -30,6 +32,31 @@ mod tests {
 
     let expected: BTreeMap<String, f64> = expected.iter().map(|(name, div)| ((*name).to_owned(), *div)).collect();
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::all_known(         "((A:0.125,B:0.25)AB:0.5,C:0.25)root;", &[("root", Some(0.0)), ("AB", Some(0.5)), ("A", Some(0.625)), ("B", Some(0.75)), ("C", Some(0.25))])]
+  #[case::missing_leaf_edge( "((A,B:0.25)AB:0.5,C:0.25)root;",       &[("root", Some(0.0)), ("AB", Some(0.5)), ("A", None),        ("B", Some(0.75)), ("C", Some(0.25))])]
+  #[case::missing_inner_edge("((A:0.125,B:0.25)AB,C:0.25)root;",     &[("root", Some(0.0)), ("AB", None),      ("A", None),        ("B", None),       ("C", Some(0.25))])]
+  #[case::single_node(       "A;",                                   &[("A", Some(0.0))])]
+  #[trace]
+  fn test_root_to_node_divergences_where_known_leaves_nodes_below_a_missing_length_unknown(
+    #[case] nwk: &str,
+    #[case] expected: &[(&str, Option<f64>)],
+  ) -> Result<(), Report> {
+    let parsed = nwk_read(nwk.as_bytes())?;
+    let names = parsed.names();
+
+    let actual: BTreeMap<String, Option<f64>> =
+      root_to_node_divergences_where_known(&TreeView::new(&parsed.graph)?, &parsed.branch_lengths)
+        .into_iter()
+        .map(|(key, div)| (names[&key].clone().unwrap(), div))
+        .collect();
+
+    let expected: BTreeMap<String, Option<f64>> = expected.iter().map(|(name, div)| ((*name).to_owned(), *div)).collect();
+    assert_eq!(expected, actual);
     Ok(())
   }
 

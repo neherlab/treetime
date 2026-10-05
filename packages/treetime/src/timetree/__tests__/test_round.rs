@@ -39,10 +39,11 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::tree_view::TreeView;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::fasta_read;
-  use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_write_str};
+  use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::assert_error;
   use treetime_utils::sync::random::get_random_number_generator;
@@ -279,11 +280,11 @@ mod tests {
 
     pub(super) fn newick(state: &RoundState) -> Result<String, Report> {
       nwk_write_str(
-        &state.graph,
+        &TreeView::new(&state.graph)?,
         &state.names,
         &state.branch_lengths,
         &NwkWriteOptions::default(),
-        &CommentProviders::new(),
+        &NwkNodeComments::new(),
       )
     }
 

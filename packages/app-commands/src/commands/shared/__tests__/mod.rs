@@ -1,7 +1,6 @@
 mod test_alignment;
 mod test_gap_fill_args;
 mod test_metadata_args;
-mod test_mutation_comment;
 mod test_output_args;
 mod test_output_resolution;
 mod test_seed_args;

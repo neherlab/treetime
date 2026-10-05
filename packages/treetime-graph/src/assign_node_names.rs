@@ -51,3 +51,7 @@ pub fn restrict_node_names(
     })
     .collect()
 }
+
+pub fn node_name_or_key(key: GraphNodeKey, name: Option<&str>) -> String {
+  name.map_or_else(|| format!("node_{}", key.as_usize()), str::to_owned)
+}

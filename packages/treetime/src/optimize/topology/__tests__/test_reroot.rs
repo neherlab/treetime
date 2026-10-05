@@ -7,7 +7,8 @@ mod tests {
   use treetime_graph::reroot::{
     apply_reroot_topology, record_merge, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
-  use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_write_str};
+  use treetime_graph::tree_view::TreeView;
+  use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
   #[test]
   fn test_reroot_split_edge_divides_branch_length() -> Result<(), Report> {
@@ -151,11 +152,11 @@ mod tests {
 
     let expected = "(B:0.2,A:0.8)root;";
     let actual = nwk_write_str(
-      &graph,
+      &TreeView::new(&graph)?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &CommentProviders::new(),
+      &NwkNodeComments::new(),
     )?;
     assert_eq!(expected, actual);
 
@@ -204,14 +205,14 @@ mod tests {
     assert_eq!(graph.get_leaves().count(), 4);
 
     let newick = nwk_write_str(
-      &graph,
+      &TreeView::new(&graph)?,
       &names,
       &branch_lengths,
       &NwkWriteOptions {
         weight_significant_digits: Some(17),
         ..NwkWriteOptions::default()
       },
-      &CommentProviders::new(),
+      &NwkNodeComments::new(),
     )?;
     for taxon in &["A", "B", "C", "D"] {
       assert!(newick.contains(taxon), "Missing taxon {taxon} in {newick}");

@@ -6,8 +6,10 @@
 #[cfg(test)]
 mod tests {
 
-  use crate::__tests__::test_tree_output::tests::helpers::{Mutations, all_mat_documents, branch_length, c};
-  use crate::tree_output::{MatGapCounts, mat_mutation};
+  use crate::__tests__::test_tree_output::tests::helpers::{
+    Mutations, all_mat_documents, branch_length, c, topology_from,
+  };
+  use crate::usher_mat::{MatGapCounts, mat_mutation};
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -15,8 +17,6 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
   use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
-  use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read;
   use treetime_io::usher_mat::UsherMutation;
   use treetime_utils::{assert_error, o};
 
@@ -194,26 +194,17 @@ mod tests {
       .into_iter()
       .zip(documents)
     {
-      let nwk_parsed = nwk_read(document.newick.as_bytes())?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let graph: Graph = graph;
-      assert_eq!(
-        None,
-        branch_length(&graph, &names, &branch_lengths, "A")?,
-        "{command}: {}",
-        document.newick
-      );
+      let topology = topology_from(&document.newick)?;
+      assert_eq!(None, branch_length(&topology, "A")?, "{command}: {}", document.newick);
       assert_eq!(
         Some(0.0),
-        branch_length(&graph, &names, &branch_lengths, "B")?,
+        branch_length(&topology, "B")?,
         "{command}: {}",
         document.newick
       );
       assert_eq!(
         Some(0.5),
-        branch_length(&graph, &names, &branch_lengths, "C")?,
+        branch_length(&topology, "C")?,
         "{command}: {}",
         document.newick
       );
@@ -223,34 +214,33 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::test_tree_output::tests::helpers::{Mutations, ancestral_graph, ancestral_nodes};
-    use crate::ancestral_tree_output::write_ancestral_tree_outputs;
-    use crate::output_plan::TreeWriteKind;
-    use crate::tree_output::{MatGapCounts, MatOutput, mat_from_graph};
+    use crate::__tests__::test_tree_output::tests::helpers::{
+      Mutations, ancestral_graph, ancestral_setup, annotated, no_mutations, parent_edge, topology_from,
+    };
+    use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
+    use crate::output_plan::{CommandKind, TreeWriteKind};
+    use crate::tree_output::write_tree_outputs;
+    use crate::usher_mat::{MatGapCounts, MatOutput, mat_tree};
     use eyre::{Report, WrapErr};
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use tempfile::TempDir;
     use treetime::progress::NoopProgress;
     use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
-    use treetime_io::nwk::{CommentProviders, nwk_read};
     use treetime_io::usher_mat::{UsherMutation, UsherTree};
     use treetime_primitives::{AsciiChar, Seq};
     use treetime_utils::io::json::json_read_file;
 
     pub(super) fn written_ancestral_mat(mutations: Mutations) -> Result<UsherTree, Report> {
-      let (graph, names, branch_lengths, maps, aa_node_data, aa_annotations) = ancestral_graph(mutations)?;
+      let setup = ancestral_setup(mutations)?;
       let dir = TempDir::new().wrap_err("When creating a temporary directory")?;
       let path = dir.path().join("tree.mat.json");
-      write_ancestral_tree_outputs(
-        &graph,
-        &ancestral_nodes(&names, &graph, &btreemap! {}),
-        &branch_lengths,
-        &maps,
-        aa_node_data.as_ref(),
-        &aa_annotations,
+      let support = btreemap! {};
+      let graph = ancestral_graph(&setup, &support);
+      write_tree_outputs(
+        &AnnotatedTreeView::new(&graph)?,
         &btreemap! { TreeWriteKind::MatJson => path.clone() },
-        &CommentProviders::new(),
+        CommandKind::Ancestral,
         &NoopProgress,
       )?;
       json_read_file(&path)
@@ -261,23 +251,21 @@ mod tests {
       reference: &str,
       edge_mutations: &BTreeMap<&str, Vec<Mutation>>,
     ) -> Result<(BTreeMap<String, Vec<UsherMutation>>, MatGapCounts), Report> {
-      let parsed = nwk_read(nwk.as_bytes())?;
-      let names = parsed.names();
-      let MatOutput { tree, gaps } = mat_from_graph(
-        &parsed.graph,
-        &names,
-        &parsed.branch_lengths,
-        Some(reference),
-        |node_key, _edge_key| {
-          Ok(
-            names[&node_key]
-              .as_deref()
-              .and_then(|name| edge_mutations.get(name))
-              .cloned()
-              .unwrap_or_default(),
-          )
-        },
-      )?;
+      let topology = topology_from(nwk)?;
+      let mut complete = no_mutations(&topology);
+      for (name, mutations) in edge_mutations {
+        complete.insert(parent_edge(&topology, name)?, mutations.clone());
+      }
+      let root_sequence = Seq::try_from_str(reference)?;
+      let graph = AnnotatedGraph {
+        sequences: Some(TreeSequences {
+          root_sequence: &root_sequence,
+          edge_mutations: &complete,
+          amino_acids: None,
+        }),
+        ..annotated(&topology)
+      };
+      let MatOutput { tree, gaps } = mat_tree(&AnnotatedTreeView::new(&graph)?)?;
       let mutations = tree
         .condensed_nodes
         .into_iter()

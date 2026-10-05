@@ -6,7 +6,8 @@ mod tests {
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use treetime_graph::graph::Graph;
-  use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_read_file, nwk_write_str};
+  use treetime_graph::tree_view::TreeView;
+  use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_read_file, nwk_write_str};
 
   #[test]
   fn test_nwk_roundtrip_binary_tree() -> Result<(), Report> {
@@ -25,11 +26,11 @@ mod tests {
     assert_eq!(root_name.as_deref(), Some("root"));
 
     let output = nwk_write_str(
-      &graph,
+      &TreeView::new(&graph)?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &CommentProviders::new(),
+      &NwkNodeComments::new(),
     )?;
     assert_eq!(input, output);
     Ok(())
@@ -72,11 +73,11 @@ mod tests {
     assert_eq!(root_name.as_deref(), Some("A"));
 
     let output = nwk_write_str(
-      &graph,
+      &TreeView::new(&graph)?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &CommentProviders::new(),
+      &NwkNodeComments::new(),
     )?;
     assert_eq!(input, output);
     Ok(())
@@ -99,11 +100,11 @@ mod tests {
     assert_eq!(root_outbound, 3, "Root should have 3 children (polytomy)");
 
     let output = nwk_write_str(
-      &graph,
+      &TreeView::new(&graph)?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &CommentProviders::new(),
+      &NwkNodeComments::new(),
     )?;
     assert_eq!(input, output);
     Ok(())
@@ -122,11 +123,11 @@ mod tests {
     assert_eq!(graph.get_leaves().count(), 5, "Should have 5 leaves");
 
     let output = nwk_write_str(
-      &graph,
+      &TreeView::new(&graph)?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &CommentProviders::new(),
+      &NwkNodeComments::new(),
     )?;
     assert_eq!(input, output);
     Ok(())
@@ -150,11 +151,11 @@ mod tests {
     assert_eq!(zero_branches, 3, "Should have 3 zero-length branches");
 
     let output = nwk_write_str(
-      &graph,
+      &TreeView::new(&graph)?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &CommentProviders::new(),
+      &NwkNodeComments::new(),
     )?;
     assert_eq!(input, output);
     Ok(())
@@ -287,11 +288,11 @@ mod tests {
     assert_eq!(graph.get_edges().count(), 2);
 
     let output = nwk_write_str(
-      &graph,
+      &TreeView::new(&graph)?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &CommentProviders::new(),
+      &NwkNodeComments::new(),
     )?;
     assert_eq!(input, output);
 

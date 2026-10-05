@@ -16,9 +16,3 @@ pub struct AugurOutputMaps {
   pub sequence_length: usize,
   pub ambiguous_char: AsciiChar,
 }
-
-#[derive(Debug, Clone)]
-pub struct AncestralNodeOut {
-  pub name: Option<String>,
-  pub branch_support: Option<f64>,
-}

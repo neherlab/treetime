@@ -1,15 +1,18 @@
 #[cfg(test)]
 mod tests {
-  use app_output::discrete_trait_comment::DiscreteTraitCommentProvider;
+  use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeTraits};
+  use app_output::output_plan::{CommandKind, TreeWriteKind};
+  use app_output::tree_output::write_tree_outputs;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use tempfile::TempDir;
   use treetime::cancel::NoopCancel;
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
   use treetime::progress::NoopProgress;
-  use treetime_io::nex::nex_write;
-  use treetime_io::nwk::{CommentProviders, NwkStyle, NwkWriteOptions, nwk_read};
+  use treetime_io::nwk::{NwkStyle, nwk_read};
+  use treetime_utils::io::fs::read_file_to_string;
   use treetime_utils::o;
 
   #[test]
@@ -38,16 +41,33 @@ mod tests {
       branch_lengths: branch_lengths.clone(),
     };
     let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())?;
-    let provider = DiscreteTraitCommentProvider::new(&output.reconstructed_traits, "country");
-    let providers = CommentProviders::new().with(&provider);
-
-    let options = NwkWriteOptions {
-      style: NwkStyle::Beast,
-      ..NwkWriteOptions::default()
+    let annotated = AnnotatedGraph {
+      graph: &output.graph,
+      names: &names,
+      divergence_branch_lengths: &branch_lengths,
+      time_branch_lengths: None,
+      divergence: Divergence::CumulativeBranchLength,
+      branch_support: None,
+      sequences: None,
+      dates: None,
+      traits: Some(TreeTraits {
+        attribute: "country",
+        states: &output.states,
+        values: &output.reconstructed_traits,
+        profiles: &output.confidences,
+      }),
     };
-    let mut buf = Vec::new();
-    nex_write(&mut buf, &output.graph, &names, &branch_lengths, &options, &providers)?;
-    let actual = String::from_utf8(buf)?;
+    let dir = TempDir::new()?;
+    let path = dir.path().join("mugration.nexus");
+
+    write_tree_outputs(
+      &AnnotatedTreeView::new(&annotated)?,
+      &btreemap! { TreeWriteKind::Nexus(NwkStyle::Beast) => path.clone() },
+      CommandKind::Mugration,
+      &NoopProgress,
+    )?;
+
+    let actual = read_file_to_string(&path)?;
     let expected = indoc! {r#"
       #NEXUS
       Begin Taxa;

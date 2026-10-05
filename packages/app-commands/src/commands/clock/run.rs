@@ -2,10 +2,10 @@ use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, Treet
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::rtt_chart::{write_clock_regression_chart_png, write_clock_regression_chart_svg};
-use app_output::clock_result::ClockNodeOut;
-use app_output::clock_tree_output::write_clock_tree_outputs;
-use app_output::output_plan::OutputSelection;
+use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates};
+use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use app_output::table_output::table_write_file;
+use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime::cancel::Cancel;
@@ -17,10 +17,10 @@ use treetime::clock::pipeline::{self, ClockInput, ClockParams};
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime::make_report;
 use treetime::progress::{LogSink, StageSink};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::metadata_read_file;
-use treetime_io::nwk::CommentProviders;
 use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
@@ -103,19 +103,6 @@ pub fn run_clock(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 
-  let nodes = gather_clock_outputs(&graph, &inputs, &divergences, &outliers, &names);
-
-  if !resolved.tree_outputs.is_empty() {
-    write_clock_tree_outputs(
-      &graph,
-      &nodes,
-      &branch_lengths,
-      &resolved.tree_outputs,
-      &CommentProviders::new(),
-      log,
-    )?;
-  }
-
   if let Some(path) = resolved.non_tree_outputs.get(&OutputSelection::ClockModel) {
     json_write_file(path, &clock_model, JsonPretty(true))?;
   }
@@ -129,6 +116,9 @@ pub fn run_clock(
     write_clock_regression_chart_png(&regression_results, &clock_model, outdir.join("clock.png"), log)?;
   }
 
+  let dates = ClockDates::new(&graph, &inputs, &outliers);
+  write_clock_trees(&graph, &names, &branch_lengths, &divergences, &dates, &resolved, log)?;
+
   stages.report("Done", 1.0, "");
   Ok(ClockResult {
     clock_model,
@@ -141,29 +131,55 @@ pub struct ClockResult {
   pub regression_results: Vec<ClockRegressionResult>,
 }
 
-fn gather_clock_outputs(
+fn write_clock_trees(
   graph: &Graph,
-  inputs: &ClockInputs,
-  divergences: &BTreeMap<GraphNodeKey, f64>,
-  outliers: &BTreeSet<GraphNodeKey>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> BTreeMap<GraphNodeKey, ClockNodeOut> {
-  graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      let name = names[&key].clone();
-      let node_input = inputs.node(key);
-      let out = ClockNodeOut {
-        name,
-        div: divergences[&key],
-        time: node_input.time,
-        is_outlier: outliers.contains(&key),
-        bad_branch: node_input.bad_branch,
-      };
-      (key, out)
-    })
-    .collect()
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  divergences: &BTreeMap<GraphNodeKey, f64>,
+  dates: &ClockDates,
+  resolved: &ResolvedOutputs,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let annotated = AnnotatedGraph {
+    graph,
+    names,
+    divergence_branch_lengths: branch_lengths,
+    time_branch_lengths: None,
+    divergence: Divergence::Values(divergences),
+    branch_support: None,
+    sequences: None,
+    dates: Some(TreeDates {
+      num_date: &dates.num_date,
+      confidence: None,
+      excluded: &dates.excluded,
+    }),
+    traits: None,
+  };
+  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
+  if let Some(tree) = tree_view_for_outputs(&annotated, resolved)? {
+    write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Clock, log)?;
+  }
+  Ok(())
+}
+
+struct ClockDates {
+  num_date: BTreeMap<GraphNodeKey, Option<f64>>,
+  excluded: BTreeSet<GraphNodeKey>,
+}
+
+impl ClockDates {
+  fn new(graph: &Graph, inputs: &ClockInputs, outliers: &BTreeSet<GraphNodeKey>) -> Self {
+    let num_date = graph
+      .get_nodes()
+      .map(|node| (node.key(), inputs.node(node.key()).time))
+      .collect();
+    let excluded = graph
+      .get_nodes()
+      .map(|node| node.key())
+      .filter(|key| outliers.contains(key) || inputs.node(*key).bad_branch)
+      .collect();
+    Self { num_date, excluded }
+  }
 }
 
 fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationParams {

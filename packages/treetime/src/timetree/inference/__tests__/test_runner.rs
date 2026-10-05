@@ -17,7 +17,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_write_str};
+  use treetime_graph::tree_view::TreeView;
+  use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
   const DYADIC_CLOCK_RATE: f64 = 0.5;
 
@@ -64,11 +65,11 @@ mod tests {
       })
       .collect();
     let actual = nwk_write_str(
-      &graph,
+      &TreeView::new(&graph)?,
       &names,
       &time_lengths,
       &NwkWriteOptions::default(),
-      &CommentProviders::new(),
+      &NwkNodeComments::new(),
     )?;
 
     let expected = "((A:3,B:6)AB:9,C:12)root;";

@@ -192,6 +192,22 @@ impl ResolvedOutputs {
     }
     by_selection
   }
+
+  pub fn tree_based_paths(&self) -> Vec<&Path> {
+    self
+      .tree_outputs
+      .iter()
+      .filter(|(kind, _)| tree_write_kind_selection(**kind).reads_tree())
+      .map(|(_, path)| path.as_path())
+      .chain(
+        self
+          .non_tree_outputs
+          .iter()
+          .filter(|(selection, _)| selection.reads_tree())
+          .map(|(_, path)| path.as_path()),
+      )
+      .collect()
+  }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -311,7 +327,7 @@ impl CommandKind {
     }
   }
 
-  fn stem(self) -> &'static str {
+  pub(crate) fn stem(self) -> &'static str {
     match self {
       Self::Ancestral => "ancestral",
       Self::Timetree => "timetree",
@@ -452,6 +468,32 @@ impl OutputSelection {
       self,
       Self::Nwk | Self::Nexus | Self::Auspice | Self::MatPb | Self::MatJson | Self::GraphJson | Self::Dot
     )
+  }
+
+  fn reads_tree(self) -> bool {
+    match self {
+      Self::Nwk
+      | Self::Nexus
+      | Self::Auspice
+      | Self::MatPb
+      | Self::MatJson
+      | Self::AugurNodeData
+      | Self::ConfidenceCsv
+      | Self::TraitsCsv => true,
+      Self::All
+      | Self::GraphJson
+      | Self::Dot
+      | Self::Gtr
+      | Self::ClockModel
+      | Self::ConfidenceTsv
+      | Self::ReconstructedNucFasta
+      | Self::ReconstructedAaFasta
+      | Self::ClockCsv
+      | Self::Tracelog
+      | Self::CoalescentTsv
+      | Self::CoalescentCsv
+      | Self::CoalescentJson => false,
+    }
   }
 
   fn is_styled_tree(self) -> bool {

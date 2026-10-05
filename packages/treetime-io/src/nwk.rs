@@ -10,10 +10,10 @@ use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::tree_view::TreeView;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::{read_file_with, write_file_with};
 use treetime_utils::make_error;
-use treetime_utils::make_internal_report;
 use treetime_utils::make_report;
 pub use util_newick::NwkStyle;
 use util_newick::{NewickGraph, NewickValue, newick_from_reader, write_beast_attrs, write_label, write_nhx_attrs};
@@ -120,66 +120,56 @@ pub struct NwkNodeMeta {
 
 pub fn nwk_write_file(
   filepath: impl AsRef<Path>,
-  graph: &Graph,
+  tree: &TreeView<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
-  providers: &CommentProviders,
+  comments: &NwkNodeComments,
 ) -> Result<(), Report> {
   write_file_with(filepath, |writer| {
-    nwk_write(&mut *writer, graph, names, weights, options, providers)?;
+    nwk_write(&mut *writer, tree, names, weights, options, comments)?;
     writeln!(writer)?;
     Ok(())
   })
 }
 
 pub fn nwk_write_str(
-  graph: &Graph,
+  tree: &TreeView<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
-  providers: &CommentProviders,
+  comments: &NwkNodeComments,
 ) -> Result<String, Report> {
   let mut text = String::new();
-  write_nwk_text(&mut text, graph, names, weights, options, providers).wrap_err("When writing Newick")?;
+  write_nwk_text(&mut text, tree, names, weights, options, comments).wrap_err("When writing Newick")?;
   Ok(text)
 }
 
 pub fn nwk_write(
   mut writer: impl Write,
-  graph: &Graph,
+  tree: &TreeView<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
-  providers: &CommentProviders,
+  comments: &NwkNodeComments,
 ) -> Result<(), Report> {
-  let text = nwk_write_str(graph, names, weights, options, providers)?;
+  let text = nwk_write_str(tree, names, weights, options, comments)?;
   writer.write_all(text.as_bytes()).wrap_err("When writing Newick")
 }
 
+pub type NwkNodeComments = BTreeMap<GraphNodeKey, BTreeMap<String, String>>;
+
 fn write_nwk_text(
   writer: &mut impl fmt::Write,
-  graph: &Graph,
+  tree: &TreeView<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
-  providers: &CommentProviders,
+  comments: &NwkNodeComments,
 ) -> Result<(), Report> {
-  if graph.num_roots() == 0 {
-    return make_error!("When converting graph to Newick format: No roots found.");
-  }
-
-  if graph.num_roots() > 1 {
-    return make_error!("Multiple roots are not supported. Found {} roots", graph.num_roots());
-  }
-  let root_key = graph.root_key()?;
-
-  let mut stack: Vec<(GraphNodeKey, Option<GraphEdgeKey>, usize)> = vec![(root_key, None, 0)];
+  let mut stack: Vec<(GraphNodeKey, Option<GraphEdgeKey>, usize)> = vec![(tree.root(), None, 0)];
   while let Some((node_key, edge_key, child_visit)) = stack.pop() {
-    let node = graph
-      .get_node(node_key)
-      .ok_or_else(|| make_internal_report!("Node {node_key} not found in graph"))?;
-    let children: Vec<_> = graph.children_keys_of(node).collect();
+    let children = tree.children(node_key);
 
     if child_visit < children.len() {
       stack.push((node_key, edge_key, child_visit + 1));
@@ -197,17 +187,15 @@ fn write_nwk_text(
         write!(writer, ")")?;
       }
 
-      let name = names[&node_key].clone();
-      let comments = providers.merged_comments(node_key)?;
-
-      let weight = edge_key.and_then(|edge_key| weights[&edge_key]);
-
-      if let Some(name) = &name {
+      if let Some(name) = &names[&node_key] {
         write_label(writer, name)?;
       }
 
-      if options.style != NwkStyle::Plain && !comments.is_empty() {
-        let attrs = str_comments_to_newick_values(&comments);
+      if options.style != NwkStyle::Plain
+        && let Some(node_comments) = comments.get(&node_key)
+        && !node_comments.is_empty()
+      {
+        let attrs = str_comments_to_newick_values(node_comments);
         match options.style {
           NwkStyle::Beast => write_beast_attrs(writer, &attrs)?,
           NwkStyle::Nhx => write_nhx_attrs(writer, &attrs)?,
@@ -215,7 +203,7 @@ fn write_nwk_text(
         }
       }
 
-      if let Some(weight) = weight {
+      if let Some(weight) = edge_key.and_then(|edge_key| weights[&edge_key]) {
         write!(writer, ":{}", format_weight(weight, options))?;
       }
     }
@@ -271,33 +259,4 @@ pub struct NwkWriteOptions {
   pub weight_significant_digits: Option<u8>,
 
   pub weight_decimal_digits: Option<i8>,
-}
-
-#[must_use]
-#[derive(Default)]
-pub struct CommentProviders<'a> {
-  providers: Vec<&'a dyn NodeCommentProvider>,
-}
-
-impl<'a> CommentProviders<'a> {
-  pub fn new() -> Self {
-    Self::default()
-  }
-
-  pub fn with(mut self, provider: &'a dyn NodeCommentProvider) -> Self {
-    self.providers.push(provider);
-    self
-  }
-
-  fn merged_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report> {
-    let mut comments = BTreeMap::new();
-    for provider in &self.providers {
-      comments.extend(provider.node_comments(key)?);
-    }
-    Ok(comments)
-  }
-}
-
-pub trait NodeCommentProvider {
-  fn node_comments(&self, key: GraphNodeKey) -> Result<BTreeMap<String, String>, Report>;
 }

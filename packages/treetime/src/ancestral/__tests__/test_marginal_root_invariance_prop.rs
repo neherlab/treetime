@@ -49,7 +49,8 @@ mod tests {
     use treetime_graph::reroot::{
       apply_reroot_topology, record_merge, remove_node_if_trivial, trivial_node_branch_lengths,
     };
-    use treetime_io::nwk::{CommentProviders, NwkWriteOptions, nwk_read, nwk_write_str};
+    use treetime_graph::tree_view::TreeView;
+    use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
     pub(super) fn reroot_at_internal_node(newick: &str, node_idx: usize) -> Result<String, Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
@@ -82,7 +83,13 @@ mod tests {
         weight_significant_digits: Some(17),
         ..NwkWriteOptions::default()
       };
-      nwk_write_str(&graph, &names, &branch_lengths, &options, &CommentProviders::new())
+      nwk_write_str(
+        &TreeView::new(&graph)?,
+        &names,
+        &branch_lengths,
+        &options,
+        &NwkNodeComments::new(),
+      )
     }
 
     #[cfg(test)]

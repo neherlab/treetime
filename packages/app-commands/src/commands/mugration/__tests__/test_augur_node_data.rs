@@ -110,7 +110,6 @@ mod tests {
 
     pub(super) fn run_and_serialize(tree: &str, traits: &std::collections::BTreeMap<String, String>) -> String {
       let nwk_parsed = nwk_read(tree.as_bytes()).unwrap();
-      let confidences = nwk_parsed.confidences();
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -130,7 +129,7 @@ mod tests {
         branch_lengths,
       };
       let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress).unwrap();
-      let result = MugrationResult::new(&output, &confidences, &names, "country");
+      let result = MugrationResult::new(&output, &names, "country");
       let data = build_augur_node_data_json(&result, &output).unwrap();
       json_write_str(&data, JsonPretty(true)).unwrap()
     }

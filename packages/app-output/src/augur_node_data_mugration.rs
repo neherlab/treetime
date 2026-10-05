@@ -1,5 +1,5 @@
 use crate::mugration_result::MugrationResult;
-use crate::mugration_tree_output::{build_confidence_map, compute_entropy};
+use crate::trait_profile::{build_confidence_map, compute_entropy};
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
