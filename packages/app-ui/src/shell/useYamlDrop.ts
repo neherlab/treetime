@@ -3,7 +3,9 @@ import { useCallback } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 
 import { useConfigLoader } from "../analysis/useConfigLoader";
+import { useHost } from "../host-context";
 import { commandSwitchNote } from "../settings/commands";
+import { folderName } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import { useToastManager } from "../ui/toast";
 
@@ -11,13 +13,15 @@ const YAML_ACCEPT = { "application/yaml": [".yaml", ".yml"] };
 
 export function useYamlDrop() {
   const loadConfig = useConfigLoader();
+  const host = useHost();
   const toasts = useToastManager();
 
   const load = useCallback(
     async (file: File) => {
       try {
         const requested = useDraftStore.getState().command;
-        const result = await loadConfig(await file.text(), requested, true);
+        const folder = host === null ? undefined : folderName(host.pathForFile(file));
+        const result = await loadConfig(await file.text(), requested, true, folder);
 
         toasts.add(
           result.loaded
@@ -28,7 +32,7 @@ export function useYamlDrop() {
         toasts.add({ title: `${file.name} cannot be loaded`, description: errorMessage(error) });
       }
     },
-    [loadConfig, toasts],
+    [host, loadConfig, toasts],
   );
 
   const onDropAccepted = useCallback(

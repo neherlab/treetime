@@ -54,6 +54,7 @@ mod tests {
         text: text.to_owned(),
         inputs: Map::new(),
         input_facts: None,
+        folder: None,
       });
       match response {
         CheckConfigResponse::Valid { .. } => panic!("check-config accepted the config"),

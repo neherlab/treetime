@@ -1,3 +1,4 @@
+use crate::cli::config::config_folder;
 use crate::cli::diagnostics::entry::check_pipeline;
 use crate::cli::pipeline::check::print_pipeline_plan;
 use crate::cli::pipeline::resolve::{PipelineDoc, ResolvedPipeline, ResolvedStep, resolve_pipeline};
@@ -12,7 +13,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 use treetime::cancel::NoopCancel;
 use treetime::progress::{LogSink, StageSink};
-use treetime_utils::io::fs::read_file_to_string;
+use treetime_utils::io::fs::{absolute_path, read_file_to_string};
 use treetime_utils::make_error;
 
 pub(crate) fn run_pipeline_command(
@@ -20,7 +21,8 @@ pub(crate) fn run_pipeline_command(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  let pipeline = load_pipeline(&args.config)?;
+  let output_all = args.output_all.as_deref().map(absolute_path).transpose()?;
+  let pipeline = load_pipeline(&args.config, output_all.as_deref())?;
   let selected = (!args.steps.is_empty()).then(|| args.steps.iter().cloned().collect::<BTreeSet<String>>());
   validate_plan(&pipeline, selected.as_ref())?;
   if args.check {
@@ -30,7 +32,7 @@ pub(crate) fn run_pipeline_command(
   }
 }
 
-pub(crate) fn load_pipeline(config: &Path) -> Result<ResolvedPipeline, Report> {
+pub(crate) fn load_pipeline(config: &Path, output_all: Option<&Path>) -> Result<ResolvedPipeline, Report> {
   let text = read_file_to_string(config)?;
   let source = ConfigSource::new(config.display().to_string(), text.clone());
 
@@ -38,7 +40,7 @@ pub(crate) fn load_pipeline(config: &Path) -> Result<ResolvedPipeline, Report> {
 
   check_pipeline(&source, &value)?;
   let doc = PipelineDoc::from_value(value)?;
-  resolve_pipeline(&doc, &process_env())
+  resolve_pipeline(&doc, &process_env(), &config_folder(config)?, output_all)
 }
 
 fn process_env() -> Value {
@@ -121,16 +123,22 @@ fn output_dir_hint(output_all: Option<&Path>) -> String {
 
 #[cfg(test)]
 mod tests {
+  const PIPELINE_FOLDER: &str = "/pipeline";
+
   use super::*;
   use crate::cli::pipeline::resolve::PipelineDoc;
+  use indoc::indoc;
   use maplit::btreeset;
   use pretty_assertions::assert_eq;
   use serde_json::json;
+  use std::path::PathBuf;
+  use std::{env, fs, iter};
+  use tempfile::tempdir;
   use treetime_utils::assert_error;
 
   fn resolve(config: Value) -> ResolvedPipeline {
     let doc = PipelineDoc::from_value(config).unwrap();
-    resolve_pipeline(&doc, &json!({})).unwrap()
+    resolve_pipeline(&doc, &json!({}), Path::new(PIPELINE_FOLDER), None).unwrap()
   }
 
   fn config() -> Value {
@@ -171,5 +179,50 @@ mod tests {
       result,
       "unknown step `tta` in --steps; did you mean `tt`? Valid values: `anc`, `tt`"
     );
+  }
+
+  #[test]
+  fn test_runner_load_pipeline_resolves_a_relative_config_and_a_relative_output_folder() {
+    let dir = tempdir().unwrap();
+    let config = dir.path().join("pipeline.yaml");
+    fs::write(
+      &config,
+      indoc! {r"
+        steps:
+          - name: tt
+            timetree: { tree: tree.nwk, metadata: metadata.tsv }
+          - name: anc
+            ancestral: { tree: '{{ steps.tt.outputs.nwk }}', alignment: [aln.fasta.xz] }
+      "},
+    )
+    .unwrap();
+    let cwd = env::current_dir().unwrap();
+    let relative_config = relative_from(&cwd, &config);
+    let relative_out = relative_from(&cwd, &dir.path().join("out"));
+    let output_all = absolute_path(&relative_out).unwrap();
+
+    let pipeline = load_pipeline(&relative_config, Some(&output_all)).unwrap();
+
+    let anc = pipeline.steps.iter().find(|step| step.name == "anc").unwrap();
+    let args = anc.command.args_value().unwrap();
+    let config_folder = cwd.join(&relative_config).parent().unwrap().to_path_buf();
+    assert_eq!(
+      (
+        json!(cwd.join(&relative_out).join("tt/timetree.nwk")),
+        json!([config_folder.join("aln.fasta.xz")]),
+        json!(cwd.join(&relative_out).join("anc"))
+      ),
+      (
+        args["tree"].clone(),
+        args["alignment"].clone(),
+        args["output_all"].clone()
+      )
+    );
+  }
+
+  fn relative_from(cwd: &Path, target: &Path) -> PathBuf {
+    let up = cwd.components().count() - 1;
+    let target = target.strip_prefix("/").unwrap();
+    iter::repeat_n(Path::new(".."), up).collect::<PathBuf>().join(target)
   }
 }

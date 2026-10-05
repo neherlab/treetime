@@ -142,7 +142,7 @@ function usePaletteItems(): PaletteItem[] {
   const loadExample = useCallback(
     async (example: ExampleConfig) => {
       try {
-        const result = await loadConfig(example.content, example.command, false);
+        const result = await loadConfig(example.content, example.command, false, example.folder);
 
         if (!result.loaded) {
           toasts.add({ title: `${example.path} cannot be loaded`, description: result.messages.join("; ") });

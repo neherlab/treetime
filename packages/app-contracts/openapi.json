@@ -1359,6 +1359,10 @@
             "description": "Title of the example: the first comment line after the directive.",
             "type": "string"
           },
+          "folder": {
+            "description": "Absolute folder of the file, which relative paths in the file resolve from.",
+            "type": "string"
+          },
           "content": {
             "description": "Text of the file.",
             "type": "string"
@@ -1368,6 +1372,7 @@
           "path",
           "command",
           "title",
+          "folder",
           "content"
         ]
       },
@@ -1410,6 +1415,14 @@
               {
                 "type": "null"
               }
+            ],
+            "default": null
+          },
+          "folder": {
+            "description": "Absolute folder that relative paths in the text resolve from: the folder of the config file. Paths in `inputs`\nstay as they are. Unset: relative paths resolve from the working directory of the back end.",
+            "type": [
+              "string",
+              "null"
             ],
             "default": null
           }

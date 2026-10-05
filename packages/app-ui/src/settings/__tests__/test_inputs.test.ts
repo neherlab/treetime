@@ -2,7 +2,15 @@ import { describe, expect, test } from "vitest";
 
 import { COMMAND_SETTINGS } from "../catalog";
 import { defaultConfig } from "../config";
-import { datasetInputs, inputFactsRequest, pathList, runInputAssignments, slotFactsText, slotProblem } from "../inputs";
+import {
+  datasetInputs,
+  folderName,
+  inputFactsRequest,
+  pathList,
+  runInputAssignments,
+  slotFactsText,
+  slotProblem,
+} from "../inputs";
 import { setAt } from "../json";
 
 const ZIKA_86 = {
@@ -100,5 +108,16 @@ describe("slot facts", () => {
 
   test("a slot shows the problem of its own input", () => {
     expect([slotProblem("tree", facts), slotProblem("metadata", facts)]).toStrictEqual(["bad", null]);
+  });
+});
+
+describe("folder name of a path", () => {
+  test.each([
+    ["/home/user/zika/ancestral.yaml", "/home/user/zika"],
+    ["C:\\data\\zika\\ancestral.yaml", "C:\\data\\zika"],
+    ["/ancestral.yaml", "/"],
+    ["ancestral.yaml", undefined],
+  ])("%s is in %s", (path, expected) => {
+    expect(folderName(path)).toBe(expected);
   });
 });

@@ -12,6 +12,7 @@ pub mod code;
 pub mod labels;
 pub mod load;
 pub mod properties;
+pub mod resolve_paths;
 pub mod schema;
 pub mod schema_check;
 pub mod settings;

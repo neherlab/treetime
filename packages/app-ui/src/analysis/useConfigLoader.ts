@@ -17,13 +17,21 @@ export function useConfigLoader() {
   const navigate = useNavigate();
 
   return useCallback(
-    async (text: string, fallbackCommand: AppCommand, keepInputs: boolean): Promise<ConfigLoadResult> => {
+    async (
+      text: string,
+      fallbackCommand: AppCommand,
+      keepInputs: boolean,
+      folder?: string,
+    ): Promise<ConfigLoadResult> => {
       const draft = useDraftStore.getState();
       const inputs = keepInputs ? inputSettings(draft.command, draft.config) : {};
 
       const { data: result } = await configCheck({
         client,
-        body: { command: fallbackCommand, text, inputs },
+        body:
+          folder === undefined
+            ? { command: fallbackCommand, text, inputs }
+            : { command: fallbackCommand, text, inputs, folder },
         throwOnError: true,
       });
 

@@ -5,9 +5,10 @@ use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use strum::VariantNames;
+use treetime_utils::io::fs::absolute_path;
 use treetime_utils::make_report;
 
 const DATASET_FILES: [(InputKind, &[&str]); 3] = [
@@ -18,13 +19,18 @@ const DATASET_FILES: [(InputKind, &[&str]); 3] = [
 
 pub fn dataset_catalog(examples_dir: &Path) -> Result<DatasetCatalog, Report> {
   let discovered = discover_datasets(examples_dir, AppCommand::VARIANTS)?;
+  let folder = absolute_path(examples_dir)?;
   Ok(DatasetCatalog {
     datasets: discovered
       .datasets
       .iter()
       .map(|dataset| Dataset::new(&discovered.examples_dir, dataset))
       .collect(),
-    examples: discovered.examples.into_iter().map(ExampleConfig::new).try_collect()?,
+    examples: discovered
+      .examples
+      .into_iter()
+      .map(|example| ExampleConfig::new(&folder, example))
+      .try_collect()?,
   })
 }
 
@@ -96,15 +102,21 @@ pub struct ExampleConfig {
   pub command: AppCommand,
   /// Title of the example: the first comment line after the directive.
   pub title: String,
+  /// Absolute folder of the file, which relative paths in the file resolve from.
+  pub folder: PathBuf,
   /// Text of the file.
   pub content: String,
 }
 
 impl ExampleConfig {
-  fn new(example: ExampleFile) -> Result<Self, Report> {
+  fn new(examples_dir: &Path, example: ExampleFile) -> Result<Self, Report> {
+    let file = examples_dir.join(&example.path);
     Ok(Self {
       command: AppCommand::from_str(&example.command)
         .map_err(|err| make_report!("example `{}` names an unknown command: {err}", example.path))?,
+      folder: file
+        .parent()
+        .map_or_else(|| examples_dir.to_path_buf(), Path::to_path_buf),
       path: example.path,
       title: example.title,
       content: example.content,

@@ -110,6 +110,8 @@ fn output_paths(step: &ResolvedStep) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+  const PIPELINE_FOLDER: &str = "/pipeline";
+
   use super::*;
   use crate::cli::pipeline::resolve::{PipelineDoc, resolve_pipeline};
   use maplit::btreeset;
@@ -118,7 +120,7 @@ mod tests {
 
   fn resolve(config: Value) -> ResolvedPipeline {
     let doc = PipelineDoc::from_value(config).unwrap();
-    resolve_pipeline(&doc, &json!({})).unwrap()
+    resolve_pipeline(&doc, &json!({}), Path::new(PIPELINE_FOLDER), None).unwrap()
   }
 
   #[test]
@@ -132,7 +134,7 @@ mod tests {
     let result = validate_plan(&pipeline, None);
     assert_error!(
       result,
-      "steps `a` and `b` both write `shared.nwk`; each output path must be written by only one step"
+      "steps `a` and `b` both write `/pipeline/shared.nwk`; each output path must be written by only one step"
     );
   }
 
@@ -146,7 +148,7 @@ mod tests {
     let result = validate_plan(&pipeline, None);
     assert_error!(
       result,
-      "step `a` reads and writes the same file `same.nwk`, which would truncate the input"
+      "step `a` reads and writes the same file `/pipeline/same.nwk`, which would truncate the input"
     );
   }
 
@@ -176,7 +178,7 @@ mod tests {
     let result = validate_plan(&pipeline, Some(&btreeset! { "anc".to_owned() }));
     assert_error!(
       result,
-      "step `anc` reads `tmp/pipeline-safety-absent/tt/timetree.nwk`, produced by step `tt`, which is not selected and whose output is absent; include `tt` in --steps or run it first"
+      "step `anc` reads `/pipeline/tmp/pipeline-safety-absent/tt/timetree.nwk`, produced by step `tt`, which is not selected and whose output is absent; include `tt` in --steps or run it first"
     );
   }
 

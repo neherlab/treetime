@@ -83,6 +83,7 @@ export const zExampleConfig = z.object({
   path: z.string(),
   command: zAppCommand,
   title: z.string(),
+  folder: z.string(),
   content: z.string()
 });
 
@@ -163,7 +164,8 @@ export const zCheckConfigRequest = z.strictObject({
   command: zAppCommand,
   text: z.string(),
   inputs: z.record(z.string(), z.unknown()).optional().default({}),
-  input_facts: zInputFacts.nullish().default(null)
+  input_facts: zInputFacts.nullish().default(null),
+  folder: z.string().nullish().default(null)
 });
 
 /**

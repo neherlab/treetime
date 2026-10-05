@@ -3,14 +3,16 @@ use app_commands::config::schema::command_schema;
 use app_commands::config::source::ConfigSource;
 use clap::ArgMatches;
 use clap::parser::ValueSource;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::collections::BTreeSet;
-use std::path::PathBuf;
-use treetime_utils::io::fs::read_file_to_string;
+use std::env;
+use std::path::{Path, PathBuf};
+use treetime_utils::io::file::is_path_stdin;
+use treetime_utils::io::fs::{absolute_path, read_file_to_string};
 
 pub(crate) fn overlay_config<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where
@@ -28,7 +30,8 @@ where
 
   let text = read_file_to_string(config_path)?;
   let source = ConfigSource::new(config_path.display().to_string(), text.clone());
-  let mut merged = load_config_document::<T>(&source, &text)?;
+  let base = config_folder(config_path)?;
+  let mut merged = load_config_document::<T>(&source, &text, Some(&base))?;
   let cli = serde_json::to_value(&*args)?;
   apply_cli_overrides(&mut merged, &cli, &explicit);
 
@@ -36,6 +39,18 @@ where
 
   *args = serde_json::from_value(merged)?;
   Ok(())
+}
+
+pub(crate) fn config_folder(config_path: &Path) -> Result<PathBuf, Report> {
+  if is_path_stdin(config_path) {
+    return env::current_dir().wrap_err("When resolving the current directory");
+  }
+  let config_path = absolute_path(config_path)?;
+  Ok(
+    config_path
+      .parent()
+      .map_or_else(|| config_path.clone(), Path::to_path_buf),
+  )
 }
 
 fn apply_cli_overrides(merged: &mut Value, cli: &Value, explicit: &BTreeSet<String>) {
@@ -96,7 +111,8 @@ mod tests {
 
   mod end_to_end {
     use crate::cli::config::overlay_config;
-    use crate::cli::treetime_cli::TreetimeArgs;
+    use crate::cli::treetime_cli::{TreetimeArgs, treetime_parse_cli_args};
+    use crate::run::run_command;
     use app_commands::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use app_commands::commands::clock::args::TreetimeClockArgsRaw;
     use app_commands::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
@@ -111,6 +127,7 @@ mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
     use tempfile::tempdir;
+    use treetime::progress::NoopProgress;
     use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
     fn parse_timetree(argv: &[&str]) -> TreetimeTimetreeArgsRaw {
@@ -187,7 +204,66 @@ mod tests {
       )
       .unwrap();
       let args = resolve_ancestral(&["treetime", "ancestral", "--config", path.to_str().unwrap()]).unwrap();
-      assert_eq!(Path::new("from-config.nwk"), args.tree());
+      assert_eq!(dir.path().join("from-config.nwk"), args.tree());
+    }
+
+    #[test]
+    fn test_config_relative_paths_in_the_file_resolve_from_its_folder_and_flags_from_the_working_directory() {
+      let dir = tempdir().unwrap();
+      let path = dir.path().join("timetree.yaml");
+      fs::write(
+        &path,
+        indoc! {r"
+          tree: tree.nwk
+          alignment: [aln.fasta.xz, /data/other.fasta]
+          output_all: out
+        "},
+      )
+      .unwrap();
+      let args = parse_timetree(&[
+        "treetime",
+        "timetree",
+        "--config",
+        path.to_str().unwrap(),
+        "--metadata",
+        "metadata.tsv",
+      ]);
+      assert_eq!(
+        (
+          Some(dir.path().join("tree.nwk")),
+          vec![dir.path().join("aln.fasta.xz"), PathBuf::from("/data/other.fasta")],
+          Some(PathBuf::from("metadata.tsv")),
+          Some(dir.path().join("out"))
+        ),
+        (
+          args.tree,
+          args.alignment.alignment,
+          args.metadata,
+          args.output.output_all
+        )
+      );
+    }
+
+    #[test]
+    fn test_config_runs_a_config_by_its_absolute_path_from_another_folder() {
+      let dir = tempdir().unwrap();
+      let zika = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
+      fs::copy(zika.join("tree.nwk"), dir.path().join("tree.nwk")).unwrap();
+      fs::copy(zika.join("aln.fasta.xz"), dir.path().join("aln.fasta.xz")).unwrap();
+      let config = dir.path().join("ancestral.yaml");
+      fs::write(&config, "tree: tree.nwk\nalignment: [aln.fasta.xz]\n").unwrap();
+      let out = dir.path().join("out");
+      let args = treetime_parse_cli_args([
+        "treetime",
+        "ancestral",
+        "--config",
+        config.to_str().unwrap(),
+        "--output-all",
+        out.to_str().unwrap(),
+      ])
+      .unwrap();
+      run_command(args.command, &NoopProgress, &NoopProgress).unwrap();
+      assert_eq!(true, out.join("ancestral.nwk").is_file());
     }
 
     #[test]
@@ -203,7 +279,7 @@ mod tests {
       )
       .unwrap();
       let args = resolve_ancestral(&["treetime", "ancestral", "--config", path.to_str().unwrap()]).unwrap();
-      assert_eq!(Path::new("from-config.nwk"), args.tree());
+      assert_eq!(dir.path().join("from-config.nwk"), args.tree());
     }
 
     #[test]

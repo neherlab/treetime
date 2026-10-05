@@ -57,7 +57,17 @@ export function pathList(value: JsonValue | undefined): string[] {
 }
 
 export function baseName(path: string): string {
-  return path.slice(Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1);
+  return path.slice(lastSeparator(path) + 1);
+}
+
+export function folderName(path: string): string | undefined {
+  const separator = lastSeparator(path);
+
+  return separator < 0 ? undefined : path.slice(0, Math.max(separator, 1));
+}
+
+function lastSeparator(path: string): number {
+  return Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
 }
 
 function isListInput(command: AppCommand, key: string): boolean {

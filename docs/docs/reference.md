@@ -107,7 +107,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
 ###### **Options:**
 
-* `--config <CONFIG>`
+* `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — Only for vcf input: fasta file of the sequence the VCF was mapped to
@@ -399,7 +399,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
 ###### **Options:**
 
-* `--config <CONFIG>`
+* `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet
@@ -621,7 +621,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
 ###### **Options:**
 
-* `--config <CONFIG>`
+* `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--alphabet <ALPHABET>` — Sequence alphabet
@@ -769,7 +769,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
 ###### **Options:**
 
-* `--config <CONFIG>`
+* `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Tree in Newick format
@@ -987,7 +987,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
 ###### **Options:**
 
-* `--config <CONFIG>`
+* `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — Only for vcf input: fasta file of the sequence the VCF was mapped to
@@ -1202,7 +1202,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
 ###### **Options:**
 
-* `--config <CONFIG>`
+* `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Tree in Newick format
@@ -1427,7 +1427,7 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 
 ###### **Options:**
 
-* `--config <CONFIG>`
+* `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--attribute <ATTRIBUTE>` — Attribute to reconstruct, e.g. country
 * `-s`, `--metadata <METADATA>` [alias: `states`] — CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...
@@ -1575,7 +1575,10 @@ The config file (JSON or YAML) lists named steps, each an analysis command with 
 
 ###### **Options:**
 
-* `--config <CONFIG>` — Pipeline configuration file (JSON or YAML) describing an ordered list of steps
+* `--config <CONFIG>` — Pipeline configuration file (JSON or YAML) describing an ordered list of steps.
+
+   A relative path in the file resolves from the folder of the file, and from the working directory when the file is read from standard input (`-`).
+* `--output-all <OUTPUT_ALL>` — Folder of the outputs: each step writes into a subfolder named after the step. Takes precedence over the top-level `output_all` of the pipeline file. A relative path resolves from the working directory
 * `--steps <STEPS>` — Run only these named steps (comma-separated), in the pipeline's list order.
 
    A referenced upstream step that is not selected must already have its outputs on disk.

@@ -11,6 +11,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Map, json};
+  use std::path::PathBuf;
   use treetime_utils::assert_error;
   use treetime_utils::o;
 
@@ -26,6 +27,7 @@ mod tests {
       .to_owned(),
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -53,6 +55,7 @@ mod tests {
       .to_owned(),
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Valid { config, code, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -74,6 +77,7 @@ mod tests {
       text: r#"{ "tree": "t.nwk", "method_anc": "parsimony" }"#.to_owned(),
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -89,6 +93,7 @@ mod tests {
       text: text.to_owned(),
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Invalid {
       message,
@@ -130,6 +135,7 @@ mod tests {
       text: format!("tree: t.nwk\nmethod_anc: {value}\n"),
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Invalid { message, problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -149,12 +155,50 @@ mod tests {
   }
 
   #[test]
+  fn test_check_config_folder_resolves_the_paths_of_the_text_and_keeps_the_draft_inputs() {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Ancestral,
+      text: "tree: tree.nwk\noutput_all: out\n".to_owned(),
+      inputs: Map::from_iter([(o!("alignment"), json!(["inputs/aln.fasta"]))]),
+      input_facts: None,
+      folder: Some(PathBuf::from("/data/zika/20")),
+    });
+    let CheckConfigResponse::Valid { config, .. } = response else {
+      panic!("expected a valid config, got {response:?}");
+    };
+    assert_eq!(
+      (json!("/data/zika/20/tree.nwk"), json!(["inputs/aln.fasta"]), None),
+      (
+        config["tree"].clone(),
+        config["alignment"].clone(),
+        config.get("output_all")
+      )
+    );
+  }
+
+  #[test]
+  fn test_check_config_without_folder_keeps_relative_paths() {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Ancestral,
+      text: "tree: tree.nwk\n".to_owned(),
+      inputs: Map::new(),
+      input_facts: None,
+      folder: None,
+    });
+    let CheckConfigResponse::Valid { config, .. } = response else {
+      panic!("expected a valid config, got {response:?}");
+    };
+    assert_eq!(json!("tree.nwk"), config["tree"]);
+  }
+
+  #[test]
   fn test_check_config_missing_required_input_uses_cli_wording() {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Mugration,
       text: "tree: t.nwk\n".to_owned(),
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Invalid {
       message,
@@ -182,6 +226,7 @@ mod tests {
       text: "tree: t.nwk\ntree: other.nwk\n".to_owned(),
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Invalid { message, problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -205,6 +250,7 @@ mod tests {
       text: "tree: t.nwk\n".to_owned(),
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let value = serde_json::to_value(response).unwrap();
     assert_eq!(
@@ -231,6 +277,7 @@ mod tests {
       text,
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Valid { command, config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -249,6 +296,7 @@ mod tests {
       text,
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Valid { command, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -264,6 +312,7 @@ mod tests {
       text: "alignment: [\"text.fasta\"]\ndense: true".to_owned(),
       inputs: inputs.as_object().unwrap().clone(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -286,6 +335,7 @@ mod tests {
       text: text.to_owned(),
       inputs: json!({ "tree": "draft.nwk" }).as_object().unwrap().clone(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Invalid { problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -306,6 +356,7 @@ mod tests {
       text: "tree: t.nwk\nmethod_anc: margnal\n".to_owned(),
       inputs: Map::new(),
       input_facts: None,
+      folder: None,
     });
     let CheckConfigResponse::Invalid { messages, checks, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -346,6 +397,7 @@ mod tests {
       text: "tree: t.nwk\nalignment: [a.fasta]\n".to_owned(),
       inputs: Map::new(),
       input_facts: Some(facts),
+      folder: None,
     });
     let CheckConfigResponse::Valid { checks, code, .. } = response else {
       panic!("expected a valid config, got {response:?}");

@@ -1,8 +1,10 @@
 use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve_vars, template_context};
 use crate::cli::pipeline::types::{PipelineStepCommand, RawStep};
+use app_commands::command::AppCommand;
 use app_commands::commands::ancestral::aa_node_data::is_cds_output_template;
+use app_commands::config::resolve_paths::resolve_config_paths;
 use app_commands::config::suggest::{suggestion_suffix, valid_values};
-use app_output::output_plan::OutputSelection;
+use app_output::output_plan::{MissingOutputs, OutputSelection};
 use eyre::Report;
 use itertools::Itertools;
 use regex::{Regex, regex};
@@ -14,14 +16,20 @@ use treetime_utils::{make_error, make_report};
 
 pub(crate) const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "steps"];
 
-pub(crate) fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<ResolvedPipeline, Report> {
+pub(crate) fn resolve_pipeline(
+  doc: &PipelineDoc,
+  env: &Value,
+  base: &Path,
+  output_all: Option<&Path>,
+) -> Result<ResolvedPipeline, Report> {
   let interp = Interpolator::default();
   let vars = resolve_vars(&interp, &doc.vars, env)?;
 
   let value_context = template_context(&vars, env);
-  let workdir = match &doc.output_all {
-    Some(template) => Some(interpolate_to_path(&interp, template, &value_context, "output_all")?),
-    None => None,
+  let workdir = match (output_all, &doc.output_all) {
+    (Some(dir), _) => Some(dir.to_path_buf()),
+    (None, Some(template)) => Some(base.join(interpolate_to_path(&interp, template, &value_context, "output_all")?)),
+    (None, None) => None,
   };
 
   let all_names: BTreeSet<&str> = doc.steps.iter().map(|step| step.name.as_str()).collect();
@@ -33,6 +41,10 @@ pub(crate) fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<Resolve
     let mut payload = interp
       .interpolate_value(&payload, &value_context)
       .map_err(|err| step_error(&raw.name, &err))?;
+    if let Ok(command) = AppCommand::from_str(&raw.tag) {
+      resolve_config_paths(&mut payload, command.config_schema().as_value(), base)
+        .map_err(|err| step_error(&raw.name, &err))?;
+    }
 
     if let Some(dir) = &workdir {
       set_output_all_if_absent(&mut payload, &dir.join(&raw.name));
@@ -40,7 +52,9 @@ pub(crate) fn resolve_pipeline(doc: &PipelineDoc, env: &Value) -> Result<Resolve
 
     let command =
       PipelineStepCommand::from_tag_and_value(&raw.tag, payload).map_err(|err| step_error(&raw.name, &err))?;
-    let resolved = command.resolve_outputs().map_err(|err| step_error(&raw.name, &err))?;
+    let resolved = command
+      .resolve_outputs()
+      .map_err(|err| step_error(&raw.name, &missing_outputs_error(err)))?;
     let outputs = StepOutputs {
       output_all: command.output_all().map(Path::to_path_buf),
       by_selection: resolved.paths_by_selection(),
@@ -284,12 +298,25 @@ fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
   }
 }
 
+fn missing_outputs_error(err: Report) -> Report {
+  if err.downcast_ref::<MissingOutputs>().is_some() {
+    make_report!(
+      "the step writes no outputs; set the top-level `output_all` key of the pipeline, pass `treetime pipeline \
+       --output-all <dir>`, or name output files in the step"
+    )
+  } else {
+    err
+  }
+}
+
 fn step_error(step: &str, err: &Report) -> Report {
   make_report!("in pipeline step `{step}`: {err}")
 }
 
 #[cfg(test)]
 mod tests {
+  const PIPELINE_FOLDER: &str = "/pipeline";
+
   use super::*;
   use pretty_assertions::assert_eq;
   use serde_json::json;
@@ -297,7 +324,7 @@ mod tests {
 
   fn resolve(config: Value) -> Result<ResolvedPipeline, Report> {
     let doc = PipelineDoc::from_value(config)?;
-    resolve_pipeline(&doc, &json!({}))
+    resolve_pipeline(&doc, &json!({}), Path::new(PIPELINE_FOLDER), None)
   }
 
   fn tree_of(step: &ResolvedStep) -> String {
@@ -330,7 +357,7 @@ mod tests {
       ]
     });
     let resolved = resolve(config).unwrap();
-    assert_eq!("tmp/run/tt/timetree.nwk", tree_of(step(&resolved, "anc")));
+    assert_eq!("/pipeline/tmp/run/tt/timetree.nwk", tree_of(step(&resolved, "anc")));
   }
 
   #[test]
@@ -342,7 +369,7 @@ mod tests {
       ]
     });
     let resolved = resolve(config).unwrap();
-    assert_eq!("out/tt/timetree.nwk", tree_of(step(&resolved, "anc")));
+    assert_eq!("/pipeline/out/tt/timetree.nwk", tree_of(step(&resolved, "anc")));
   }
 
   #[test]
@@ -357,7 +384,7 @@ mod tests {
     let result = resolve(config);
     assert_error!(
       result,
-      "step `anc` references `nwk` from step `tt`, which resolves to more than one file (`tmp/run/tt/timetree.annotated.nwk`, `tmp/run/tt/timetree.nwk`); pin a single style or CDS, or reference a specific path"
+      "step `anc` references `nwk` from step `tt`, which resolves to more than one file (`/pipeline/tmp/run/tt/timetree.annotated.nwk`, `/pipeline/tmp/run/tt/timetree.nwk`); pin a single style or CDS, or reference a specific path"
     );
   }
 
@@ -373,7 +400,7 @@ mod tests {
     let result = resolve(config);
     assert_error!(
       result,
-      "step `anc2` references `reconstructed-aa-fasta` from step `anc`, which resolves to a per-CDS template (`out/{cds}.fasta`); reference a specific CDS output path instead"
+      "step `anc2` references `reconstructed-aa-fasta` from step `anc`, which resolves to a per-CDS template (`/pipeline/out/{cds}.fasta`); reference a specific CDS output path instead"
     );
   }
 
@@ -422,6 +449,67 @@ mod tests {
     assert_error!(
       result,
       "step `anc` references `traits-csv` from step `tt`, which does not produce it; it produces: `augur-node-data`, `auspice`, `clock-model`, `coalescent-tsv`, `gtr`, `nexus`, `nwk`, `reconstructed-nuc-fasta`"
+    );
+  }
+
+  #[test]
+  fn test_resolve_output_flag_alone_sets_the_folder_of_every_step() {
+    let doc = PipelineDoc::from_value(json!({
+      "steps": [{ "name": "anc", "ancestral": { "tree": "in.nwk" } }]
+    }))
+    .unwrap();
+    let resolved = resolve_pipeline(
+      &doc,
+      &json!({}),
+      Path::new(PIPELINE_FOLDER),
+      Some(Path::new("/work/out")),
+    )
+    .unwrap();
+    assert_eq!(
+      (Some(PathBuf::from("/work/out")), Some(PathBuf::from("/work/out/anc"))),
+      (
+        resolved.workdir.clone(),
+        step(&resolved, "anc").outputs.output_all.clone()
+      )
+    );
+  }
+
+  #[test]
+  fn test_resolve_output_flag_takes_precedence_over_the_file() {
+    let doc = PipelineDoc::from_value(json!({
+      "output_all": "from-file",
+      "steps": [{ "name": "anc", "ancestral": { "tree": "in.nwk" } }]
+    }))
+    .unwrap();
+    let resolved = resolve_pipeline(
+      &doc,
+      &json!({}),
+      Path::new(PIPELINE_FOLDER),
+      Some(Path::new("/work/out")),
+    )
+    .unwrap();
+    assert_eq!(Some(PathBuf::from("/work/out")), resolved.workdir);
+  }
+
+  #[test]
+  fn test_resolve_top_level_output_of_the_file_resolves_from_its_folder() {
+    let resolved = resolve(json!({
+      "output_all": "out",
+      "steps": [{ "name": "anc", "ancestral": { "tree": "in.nwk" } }]
+    }))
+    .unwrap();
+    assert_eq!(Some(PathBuf::from("/pipeline/out")), resolved.workdir);
+  }
+
+  #[test]
+  fn test_resolve_step_without_an_output_folder_names_the_pipeline_options() {
+    let result = resolve(json!({
+      "steps": [{ "name": "anc", "ancestral": { "tree": "in.nwk" } }]
+    }));
+    assert_error!(
+      result,
+      "in pipeline step `anc`: the step writes no outputs; set the top-level `output_all` key of the pipeline, pass \
+       `treetime pipeline --output-all <dir>`, or name output files in the step"
     );
   }
 

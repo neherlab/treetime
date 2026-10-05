@@ -25,6 +25,7 @@ util-augur-node-data-json = { workspace = true }
 
 # [external]
 chrono = { workspace = true }
+derive_more = { workspace = true }
 eyre = { workspace = true }
 indexmap = { workspace = true }
 itertools = { workspace = true }

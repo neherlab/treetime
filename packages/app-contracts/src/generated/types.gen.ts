@@ -117,6 +117,10 @@ export type ExampleConfig = {
    */
   title: string;
   /**
+   * Absolute folder of the file, which relative paths in the file resolve from.
+   */
+  folder: string;
+  /**
    * Text of the file.
    */
   content: string;
@@ -151,6 +155,11 @@ export type CheckConfigRequest = {
    * Facts about the input files, from `check-inputs`, for the checks that depend on them.
    */
   input_facts?: InputFacts | null;
+  /**
+   * Absolute folder that relative paths in the text resolve from: the folder of the config file. Paths in `inputs`
+   * stay as they are. Unset: relative paths resolve from the working directory of the back end.
+   */
+  folder?: string | null;
 };
 
 /**

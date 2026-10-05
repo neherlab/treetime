@@ -160,8 +160,16 @@ pub(crate) enum TreetimeCommands {
 #[derive(Parser, Debug, Serialize)]
 pub(crate) struct TreetimePipelineArgs {
   /// Pipeline configuration file (JSON or YAML) describing an ordered list of steps.
+  ///
+  /// A relative path in the file resolves from the folder of the file, and from the working directory when the file
+  /// is read from standard input (`-`).
   #[clap(long, value_hint = ValueHint::FilePath)]
   pub config: PathBuf,
+
+  /// Folder of the outputs: each step writes into a subfolder named after the step. Takes precedence over the
+  /// top-level `output_all` of the pipeline file. A relative path resolves from the working directory.
+  #[clap(long, value_hint = ValueHint::DirPath)]
+  pub output_all: Option<PathBuf>,
 
   /// Run only these named steps (comma-separated), in the pipeline's list order.
   ///

@@ -2,6 +2,7 @@ use crate::check_inputs::InputFacts;
 use crate::command::AppCommand;
 use crate::config::catalog::{SettingRole, command_settings};
 use crate::config::code::{ConfigCode, config_code};
+use crate::config::resolve_paths::resolve_config_paths_where;
 use crate::config::settings::has_path;
 use crate::config::source::{ConfigProblem, ConfigSource, InvalidConfig, parse_config_document};
 use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, rejection_messages, run_checks};
@@ -11,6 +12,9 @@ use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use std::collections::BTreeSet;
+use std::mem;
+use std::path::{Path, PathBuf};
 use strum::IntoEnumIterator;
 use treetime_utils::error::ReportChain;
 
@@ -22,15 +26,20 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
     .unwrap_or(request.command);
   let facts = request.input_facts.as_ref();
   let source = ConfigSource::new(SOURCE_NAME, request.text.as_str());
-  let prepared = parse_config_document(&source, &request.text)
-    .and_then(|document| with_inputs(command, &request.text, document, &request.inputs))
-    .and_then(|(text, document)| Ok((text, command.config_over_defaults(&document)?)));
-  let (text, config) = match prepared {
+  let prepared = parse_config_document(&source, &request.text).and_then(|document| {
+    let text_keys = top_level_keys(&document);
+    let (text, document) = with_inputs(command, &request.text, document, &request.inputs)?;
+    Ok((text, text_keys, command.config_over_defaults(&document)?))
+  });
+  let (text, text_keys, config) = match prepared {
     Ok(prepared) => prepared,
     Err(report) => return invalid(command, &report, None, facts),
   };
   let resolved = command.prepare_text(SOURCE_NAME, &text).and_then(|prepared| {
     let mut config = prepared.config;
+    if let Some(folder) = &request.folder {
+      resolve_text_paths(command, &mut config, folder, &text_keys)?;
+    }
     command.remove_output_paths(&mut config)?;
     Ok((config_code(command, &config)?, config))
   });
@@ -100,6 +109,10 @@ pub struct CheckConfigRequest {
   /// Facts about the input files, from `check-inputs`, for the checks that depend on them.
   #[serde(default)]
   pub input_facts: Option<InputFacts>,
+  /// Absolute folder that relative paths in the text resolve from: the folder of the config file. Paths in `inputs`
+  /// stay as they are. Unset: relative paths resolve from the working directory of the back end.
+  #[serde(default)]
+  pub folder: Option<PathBuf>,
 }
 
 fn invalid(
@@ -132,6 +145,29 @@ fn invalid(
     causes,
     problems,
   }
+}
+
+fn top_level_keys(document: &Value) -> BTreeSet<String> {
+  document
+    .as_object()
+    .map(|settings| settings.keys().cloned().collect())
+    .unwrap_or_default()
+}
+
+fn resolve_text_paths(
+  command: AppCommand,
+  config: &mut Map<String, Value>,
+  folder: &Path,
+  text_keys: &BTreeSet<String>,
+) -> Result<(), Report> {
+  let mut value = Value::Object(mem::take(config));
+  resolve_config_paths_where(&mut value, command.config_schema().as_value(), folder, |key_path| {
+    key_path.first().is_some_and(|key| text_keys.contains(key))
+  })?;
+  if let Value::Object(settings) = value {
+    *config = settings;
+  }
+  Ok(())
 }
 
 fn with_inputs(

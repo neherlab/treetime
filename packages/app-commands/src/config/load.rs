@@ -1,18 +1,23 @@
-use crate::config::schema::SCHEMA_KEY;
+use crate::config::resolve_paths::resolve_config_paths;
+use crate::config::schema::{SCHEMA_KEY, command_schema};
 use crate::config::schema_check::schema_diagnostics;
 use crate::config::source::{ConfigSource, parse_config_document, render_and_bail};
 use eyre::Report;
-use schemars::Schema;
+use schemars::{JsonSchema, Schema};
 use serde::Serialize;
 use serde_json::Value;
+use std::path::Path;
 
-pub fn load_config_document<T>(source: &ConfigSource, text: &str) -> Result<Value, Report>
+pub fn load_config_document<T>(source: &ConfigSource, text: &str, base: Option<&Path>) -> Result<Value, Report>
 where
-  T: Serialize + Default,
+  T: Serialize + Default + JsonSchema,
 {
   let mut file_value = parse_config_document(source, text)?;
   if let Value::Object(map) = &mut file_value {
     map.remove(SCHEMA_KEY);
+  }
+  if let Some(base) = base {
+    resolve_config_paths(&mut file_value, command_schema::<T>().as_value(), base)?;
   }
   let mut merged = serde_json::to_value(T::default())?;
   merge_value(&mut merged, &file_value);

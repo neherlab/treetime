@@ -261,12 +261,12 @@ mod tests {
     pub(super) fn load_yaml(command: AppCommand, text: &str) -> Value {
       let source = ConfigSource::new("run.yaml", text);
       match command {
-        AppCommand::Timetree => load_config_document::<TreetimeTimetreeArgsRaw>(&source, text),
-        AppCommand::Optimize => load_config_document::<TreetimeOptimizeArgsRaw>(&source, text),
-        AppCommand::Prune => load_config_document::<TreetimePruneArgsRaw>(&source, text),
-        AppCommand::Ancestral => load_config_document::<TreetimeAncestralArgsRaw>(&source, text),
-        AppCommand::Clock => load_config_document::<TreetimeClockArgsRaw>(&source, text),
-        AppCommand::Mugration => load_config_document::<TreetimeMugrationArgsRaw>(&source, text),
+        AppCommand::Timetree => load_config_document::<TreetimeTimetreeArgsRaw>(&source, text, None),
+        AppCommand::Optimize => load_config_document::<TreetimeOptimizeArgsRaw>(&source, text, None),
+        AppCommand::Prune => load_config_document::<TreetimePruneArgsRaw>(&source, text, None),
+        AppCommand::Ancestral => load_config_document::<TreetimeAncestralArgsRaw>(&source, text, None),
+        AppCommand::Clock => load_config_document::<TreetimeClockArgsRaw>(&source, text, None),
+        AppCommand::Mugration => load_config_document::<TreetimeMugrationArgsRaw>(&source, text, None),
       }
       .unwrap()
     }

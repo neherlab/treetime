@@ -1,3 +1,4 @@
+use derive_more::{Display, Error};
 use eyre::Report;
 use maplit::btreeset;
 use schemars::JsonSchema;
@@ -84,14 +85,11 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
       }
     }
   } else if !request.selection.is_empty() {
-    return make_error!("--output-selection requires --output-all");
+    return Err(Report::new(MissingOutputs::SelectionWithoutFolder));
   }
 
   if tree_outputs.is_empty() && non_tree_outputs.is_empty() {
-    return make_error!(
-      "No output flags provided. At least one is required: \
-       --output-all or one of the --output-tree-* / --output-* flags"
-    );
+    return Err(Report::new(MissingOutputs::NoOutputs));
   }
 
   let resolved = ResolvedOutputs {
@@ -183,6 +181,16 @@ pub struct OutputPlanRequest {
   pub tree_overrides: BTreeMap<OutputSelection, PathBuf>,
 
   pub non_tree_overrides: BTreeMap<OutputSelection, PathBuf>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, Error)]
+pub enum MissingOutputs {
+  #[display("--output-selection requires --output-all")]
+  SelectionWithoutFolder,
+  #[display(
+    "No output flags provided. At least one is required: --output-all or one of the --output-tree-* / --output-* flags"
+  )]
+  NoOutputs,
 }
 
 pub struct ResolvedOutputs {

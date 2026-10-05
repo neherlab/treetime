@@ -342,7 +342,7 @@ fn prepare<R: RawConfig>(
   run_out: Option<&Path>,
 ) -> Result<PreparedCommand, Report> {
   let schema = command_schema::<R>();
-  let merged = load_config_document::<R>(source, text)?;
+  let merged = load_config_document::<R>(source, text, None)?;
   check_command_config(source, &merged, &schema)?;
   let mut raw: R = serde_json::from_value(merged)?;
   let mut defaults = R::default();
