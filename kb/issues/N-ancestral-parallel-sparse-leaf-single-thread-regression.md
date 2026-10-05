@@ -1,7 +1,7 @@
 # Parallel sparse leaf setup may regress single-thread ancestral runtime
 
 > [!IMPORTANT]
-> **More performance research is required.** The available measurement covers one dataset and does not establish whether the regression is systematic or noise.
+> **Investigation required.** More performance research is required. The available measurement covers one dataset and does not establish whether the regression is systematic or noise.
 
 ## Observation
 

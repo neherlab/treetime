@@ -33,7 +33,7 @@ The mass actually contained in the current window, integrating the Gamma likelih
 
 For the zero-length branches that dominate this dataset the existing window already holds 99.9955% of the mass. It is a good _sensible domain_; it was only ever wrong as a _support_. Two consequences:
 
-- The fix is boundary semantics, not a wider grid. [kb/tickets/timetree-switch-branch-grid-to-nonuniform-spacing.md](../tickets/timetree-switch-branch-grid-to-nonuniform-spacing.md) drops from correctness to accuracy.
+- The fix is boundary semantics, not a wider grid. [kb/issues/M-timetree-branch-grid-uniform-resolution.md](../issues/M-timetree-branch-grid-uniform-resolution.md) drops from correctness to accuracy.
 - The `5 ·` peak multiple is the one genuinely tight case (4% of mass outside at n=1). It should be replaced by the same mass criterion used for re-windowing, not tuned.
 
 ## v0 reference

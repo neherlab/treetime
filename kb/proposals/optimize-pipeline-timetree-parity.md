@@ -41,8 +41,8 @@ Wire `--reroot`, `--reroot-tips`, and `--keep-root` into optimize. Two-phase BL 
 Prune internal branches too short to be resolved by the alignment after the optimization loop converges. v0 criterion: `bl < 0.1 * one_mutation` AND `P(zero) > 0.1`.
 
 - Proposal: [optimize-short-branch-pruning.md](optimize-short-branch-pruning.md)
-- Tickets:
-  - [optimize-add-short-branch-pruning.md](../tickets/optimize-add-short-branch-pruning.md) -- pruning logic, topology collapse, partition reconciliation
+- Issue:
+  - [kb/issues/M-optimize-short-branch-pruning-unimplemented.md](../issues/M-optimize-short-branch-pruning-unimplemented.md) -- pruning logic, topology collapse, partition reconciliation
 
 ### 4. GTR re-estimation in optimization loop
 
@@ -55,7 +55,7 @@ Alternate model inference and BL optimization per ECM iteration. Already propose
 Specify output tree file paths, select output formats. Orthogonal to the pipeline items above; addresses a separate user request for workflow integration.
 
 - Proposal: [output-format-selection.md](output-format-selection.md) (existing)
-- Ticket: implemented on `feat/cli-output-args`
+- Status: implemented on `feat/cli-output-args`
 
 ## Execution order
 

@@ -1,10 +1,10 @@
 # Skyline constant extrapolation policy is unapproved
 
-> **Still open; implementation changed.** `build_tc_distribution()` now emits a
-> piecewise-*constant* $T_c(t)$ (a step function via `Distribution::Formula`), not
-> a piecewise-linear `GridFn`. Out-of-domain times still clamp to the first/last
-> segment (constant extrapolation), so the policy question below remains. See
-> [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).
+> [!IMPORTANT]
+> **Decision required.** Constant boundary extrapolation is the current runtime behavior, but it is not an approved scientific policy. The options are under "Design axis: out-of-domain evaluation": reject out-of-domain evaluation, keep constant extrapolation and record it in output metadata, or extrapolate with the terminal slope.
+
+> [!WARNING]
+> **Needs review.** `build_tc_distribution()` now emits a piecewise-_constant_ $T_c(t)$ (a step function via `Distribution::Formula`), not a piecewise-linear `GridFn`. Out-of-domain times still clamp to the first/last segment (constant extrapolation), so the policy question below remains. See [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).
 
 `build_tc_distribution()` constructs a piecewise-constant $T_c(t)$ distribution and clamps to the first/last segment value outside the segment grid.
 

@@ -1,5 +1,8 @@
 # Golden master runner tests missing internal node times for 5 datasets
 
+> [!WARNING]
+> **Needs review.** The runner test cases for dengue_20, lassa_L_20, mpox_clade_ii_20, rsv_a_20, and tb_20 are gone, not commented out. Commit `3aca7de4` (refactor(treetime): remove comments) deleted the commented-out `#[case::...]` lines from all three runner test files. The same commit also deleted the commented-out ebola_20 cases of the marginal dense and marginal sparse tests. The files now keep only `flu_h3n2_20` (all three modes) and `ebola_20` (Poisson), and every remaining test is `#[ignore]`d for a grid-width discrepancy ([test_gm_runner_poisson.rs#L22-L25](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs#L22-L25), [test_gm_runner_marginal_dense.rs#L32-L34](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L32-L34), [test_gm_runner_marginal_sparse.rs#L32-L34](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L32-L34)). Coverage for these datasets must be re-added; the fixtures still hold their expected values. The claim under "Working datasets" that flu_h3n2_20 and ebola_20 pass in all modes is not current.
+
 Golden master runner tests for dengue_20, lassa_L_20, mpox_clade_ii_20, rsv_a_20, and tb_20 fail across all three test modes (poisson, marginal dense, marginal sparse). The actual output contains only leaf times (matching raw date constraints), while the expected output from v0 contains both leaf and internal node times refined by inference.
 
 ## Affected tests
@@ -31,12 +34,8 @@ Both fixes are in the `fix/multiply-honor-tails` branch. End-to-end verification
 
 ## Remaining verification
 
-The 15 commented-out GM runner test cases (5 datasets * 3 modes) need to be uncommented and run. They may still fail for independent reasons (grid-width tolerance, rerooting topology differences) even though the missing-times root cause is addressed.
+The 15 GM runner test cases (5 datasets * 3 modes) need to be added back to the test files and run. They may still fail for independent reasons (grid-width tolerance, rerooting topology differences) even though the missing-times root cause is addressed.
 
 ## Working datasets
 
 flu_h3n2_20 and ebola_20 pass in all test modes, suggesting the issue is data-dependent.
-
-## Related tickets
-
-- [kb/tickets/timetree-gm-runner-missing-internal-node-times.md](../tickets/timetree-gm-runner-missing-internal-node-times.md)

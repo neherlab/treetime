@@ -1,5 +1,8 @@
 # ClockSet::chisq() numerically unstable for near-zero determinant
 
+> [!IMPORTANT]
+> **Investigation required.** No failing input or theoretically justified determinant threshold is established. Reproduce a reachable near-degenerate root choice and derive the admissible numerical boundary.
+
 `ClockSet::chisq()` divides by `determinant()` without a minimum threshold guard. When `det` is positive but near zero, the chi-squared value can become extreme (large negative), winning the `< best_chisq` comparison in `find_best_root()` and selecting a near-degenerate root position.
 
 ## Impact
@@ -14,6 +17,6 @@ The `force_positive_rate: false` path in the pre-filter step does not meaningful
 
 `packages/treetime/src/clock/find_best_root/find_best_root.rs:137-139` (`has_positive_clock_rate` checks `det > 0.0` without minimum)
 
-## Ticket readiness
+## Readiness
 
-No failing input or theoretically justified determinant threshold is established. Reproduce a reachable near-degenerate root choice and derive the admissible numerical boundary before creating an implementation ticket.
+No failing input or theoretically justified determinant threshold is established. Reproduce a reachable near-degenerate root choice and derive the admissible numerical boundary before implementation starts.

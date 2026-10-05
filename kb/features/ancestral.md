@@ -2,7 +2,7 @@
 
 ## Fitch Parsimony (Sparse)
 
-- [/] Backward pass (binary trees are covered; multifurcation recurrence can exceed the minimum score: [kb/issues/M-ancestral-fitch-polytomy-recurrence-not-minimum.md](../issues/M-ancestral-fitch-polytomy-recurrence-not-minimum.md))
+- [x] Backward pass (multifurcations use the plurality recurrence, a deliberate divergence from v0: [kb/decisions/ancestral-fitch-plurality-on-multifurcations.md](../decisions/ancestral-fitch-plurality-on-multifurcations.md))
 - [x] Forward pass (resolve ambiguities top-down)
 - [x] Indel tracking (insertions, deletions)
 - [x] Composition tracking (character counts)
@@ -33,7 +33,7 @@
 - [x] Sparse compression before GTR selection
 - [x] Per-partition GTR assignment after dummy JC69 bootstrap
 - [x] Single `update_marginal()` pass after final GTR assignment
-- [/] Fallible parallel passes can expose partial state before returning an error ([kb/issues/M-inference-fallible-parallel-passes-partially-commit.md](../issues/M-inference-fallible-parallel-passes-partially-commit.md))
+- [/] Fitch passes leave the partition without nodes when a pass returns an error ([kb/issues/M-inference-fallible-parallel-passes-partially-commit.md](../issues/M-inference-fallible-parallel-passes-partially-commit.md))
 
 ## Per-CDS Amino-Acid Reconstruction
 

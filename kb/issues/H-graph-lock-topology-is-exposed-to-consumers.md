@@ -28,7 +28,3 @@ The abstraction must avoid returning references beyond guard lifetimes and must 
 - Domain operations no longer depend on `Node`, `Edge`, and payload wrapper nesting.
 - Throughput benchmarks compare traversal and marginal passes before raw access is restricted.
 - Poisoning/error paths retain original context and cannot leave partially applied graph commands.
-
-## Related issues
-
-- [H-graph-indexed-payload-extraction-exposes-invalid-state.md](H-graph-indexed-payload-extraction-exposes-invalid-state.md)

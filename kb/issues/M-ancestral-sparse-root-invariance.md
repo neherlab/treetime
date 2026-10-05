@@ -1,5 +1,8 @@
 # Sparse root invariance violation
 
+> [!IMPORTANT]
+> **Investigation required.** The failing invariant is reproduced, but the Fitch-assignment explanation does not establish a representation-preserving correction. Collect the sparse representation mapping and an independent oracle that define the fix. See "Readiness".
+
 Felsenstein's pulley principle states that log-likelihood is invariant to root placement for reversible GTR models. [`test_prop_marginal_dense_log_lh_root_invariance`](../../packages/treetime/src/ancestral/__tests__/test_marginal_root_invariance_prop.rs) (`#test_prop_marginal_dense_log_lh_root_invariance`) confirms this for dense marginal reconstruction to 1e-6 (limited by `exp(Q*(t1+t2))` vs `exp(Q*t1)*exp(Q*t2)` matrix exponential path difference from edge collapse during rerooting). The sparse counterpart [`test_prop_marginal_sparse_log_lh_root_invariance`](../../packages/treetime/src/ancestral/__tests__/test_marginal_root_invariance_prop.rs#L44) (`#test_prop_marginal_sparse_log_lh_root_invariance`) is currently failing: sparse marginal reconstruction violates invariance by ~0.09 on the proptest minimal failing input (caterpillar tree with short branches, 4 taxa, 10 positions).
 
 ## Cause
@@ -33,6 +36,6 @@ Dense marginal operates on full probability vectors at every position, independe
 - [Dense-sparse log-likelihood divergence](M-ancestral-dense-sparse-divergence.md):
   same Fitch compression mechanism causes dense and sparse to produce different likelihoods on ~2.5% of random inputs (distinct issue, same root cause).
 
-## Ticket readiness
+## Readiness
 
 The failing invariant and reproducer establish a scientific correctness problem, but the proposed Fitch-assignment explanation does not establish the required representation-preserving correction. Keep this issue active until the sparse representation mapping and an independent oracle define an executable fix.

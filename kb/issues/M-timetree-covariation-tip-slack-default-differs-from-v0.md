@@ -16,4 +16,4 @@ The tip term of the branch variance is `tip_slack²/L²`, so the v1 default give
 ## Related
 
 - [M-clock-covariation-variance-diverges-from-v0.md](M-clock-covariation-variance-diverges-from-v0.md): the `clock` command's variance
-- [kb/tickets/test-build-covariation-clock-params.md](../tickets/test-build-covariation-clock-params.md): unit tests of the same function
+- [N-test-coverage-gaps.md](N-test-coverage-gaps.md): unit tests of `fn build_covariation_clock_params()`

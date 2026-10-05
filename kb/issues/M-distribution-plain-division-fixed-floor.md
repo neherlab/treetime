@@ -1,5 +1,8 @@
 # Plain distribution division applies an unscaled fixed divisor floor
 
+> [!IMPORTANT]
+> **Decision required.** The numerical contract of Plain division is unresolved: cavity division in negative-log space, or rejection of non-finite, negative, and zero divisors without a fixed floor. See "Decision required" below.
+
 `Plain::safe_divisor()` replaces every value below `1e-10` with `1e-10`. This includes valid small positive densities, zero, and invalid negative densities. [`packages/treetime-distribution/src/policy.rs#L57-L61`](../../packages/treetime-distribution/src/policy.rs#L57-L61)
 
 The point/function, range/function, and function/function division kernels apply this transformation before division. [`packages/treetime-distribution/src/distribution_ops/divide.rs#L55-L61`](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L55-L61) [`packages/treetime-distribution/src/distribution_ops/divide.rs#L72-L86`](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L72-L86) [`packages/treetime-distribution/src/distribution_ops/divide.rs#L108-L130`](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L108-L130)
@@ -13,4 +16,4 @@ Choose and validate the numerical contract before implementation:
 - perform cavity division in negative-log space, representing zero probability explicitly; or
 - reject non-finite, negative, and zero Plain divisors while dividing every strictly positive value without a fixed floor.
 
-The decision must define zero-over-zero behavior and include a timetree cavity-message oracle. No implementation ticket is ready while this contract is unresolved.
+The decision must define zero-over-zero behavior and include a timetree cavity-message oracle. Implementation waits until this contract is resolved.

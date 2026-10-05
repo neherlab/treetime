@@ -1,5 +1,8 @@
 # Mixed-NaN distribution semantics are undefined
 
+> [!IMPORTANT]
+> **Decision required.** The meaning of `NaN` in sampled values and the enforcement boundary are undecided. Whether missing samples are a required domain feature, and how to represent them, needs approval. The options are under "Decision axes".
+
 Sampled distributions can contain both finite values and `NaN`, but the distribution API does not define whether `NaN` means an invalid likelihood, a missing sample, or a value to ignore. Normalization and the most-likely-time search reject `NaN` with an error, while construction and the other reductions accept it, so the same distribution passes some operations and fails others.
 
 ## Evidence
@@ -31,4 +34,4 @@ Recommendation: validate during construction. Constructors are the boundary wher
 
 ## Recommendation
 
-Reject every `NaN` during construction unless the application requires missing samples; in that case, represent missingness explicitly and still enforce the contract during construction. This issue remains ticketless until the missing-sample requirement and representation are approved.
+Reject every `NaN` during construction unless the application requires missing samples; in that case, represent missingness explicitly and still enforce the contract during construction. Implementation waits until the missing-sample requirement and representation are approved.

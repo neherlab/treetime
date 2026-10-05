@@ -20,7 +20,7 @@ v1 matches v0's Newick format exactly:
 comments.insert("date".to_owned(), format!("{time:.2}"));
 ```
 
-At `packages/treetime/src/payload/timetree.rs#L135`.
+At `packages/app-output/src/date_comment.rs#L21`.
 
 ## Rationale
 
@@ -36,4 +36,4 @@ The 2-decimal format is a deliberate v0 design choice for Newick readability. Ne
 
 ## Impact
 
-Newick/Nexus date annotations lose sub-week temporal resolution. Full-precision dates are available in the Auspice JSON output (`num_date` attribute). The TSV dates output is not yet implemented (see `kb/tickets/timetree-output-implement-node-dates.md`).
+Newick/Nexus date annotations lose sub-week temporal resolution. Full-precision dates are available in the Auspice JSON output (`num_date` attribute). The TSV dates output is not yet implemented (see `kb/issues/N-timetree-node-dates-output-unimplemented.md`).

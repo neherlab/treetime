@@ -10,7 +10,7 @@ Shared knowledge base (KB). AI agents and humans collaborate here: documenting p
 
 - AI continuity. Sessions start with zero memory. KB persists decisions, defects, and findings so knowledge compounds instead of being rediscovered.
 - Human onboarding. Synthesized view of algorithms, design rationale, open problems, and research context.
-- Multi-agent coordination. Parallel agents working on different tickets share state through issues, decisions, and proposals.
+- Multi-agent coordination. Parallel agents working on different issues share state through issues, decisions, and proposals.
 - Scientific rigor. Math-heavy phylogenetics code requires tracking what is correct, what diverges from theory, and what diverges from the reference implementation.
 - Preventing rework. Known issues and errata prevent re-investigating solved problems or re-introducing fixed bugs.
 - Decision traceability. Design choices are documented with rationale, not implicit in code.
@@ -26,7 +26,6 @@ Shared knowledge base (KB). AI agents and humans collaborate here: documenting p
 | [`issues/`](issues/)       | Concrete problems. Severity-prefixed (H/M/N). The working list agents consult before domain work. PREFER independent issues, but entangled problems may share a file when splitting would lose clarity                                                    |
 | [`proposals/`](proposals/) | Undecided design documents analyzing a problem space with options and tradeoffs. Source material for issues -- every actionable item in a proposal must be extracted into a separate issue so it is not lost when the proposal is no longer actively read |
 | [`reports/`](reports/)     | Research reports on algorithms, optimization methods, and implementation analysis                                                                                                                                                                         |
-| [`tickets/`](tickets/)     | Implementation instructions for a coding agent. One task per file, executable in one session without further research or decisions. Derived from decided, implementation-ready issues                                                                 |
 | [`v0-errata/`](v0-errata/) | Defects in v0 that v1 correctly avoids (2+ evidence sources required)                                                                                                                                                                                     |
 
 ## Structure
@@ -61,10 +60,10 @@ Every work item falls into exactly one category:
 
 ### Severity (issues only)
 
-| Prefix | Severity   | Criteria                                                                        |
-| ------ | ---------- | ------------------------------------------------------------------------------- |
-| `H-`   | High       | Crashes, data loss, incorrect scientific results, or blocked required behavior  |
-| `M-`   | Medium     | Incorrect behavior under bounded conditions or a specified capability gap       |
+| Prefix | Severity   | Criteria                                                                                         |
+| ------ | ---------- | ------------------------------------------------------------------------------------------------ |
+| `H-`   | High       | Crashes, data loss, incorrect scientific results, or blocked required behavior                   |
+| `M-`   | Medium     | Incorrect behavior under bounded conditions or a specified capability gap                        |
 | `N-`   | Negligible | Documentation, test, maintainability, or presentation defect with no demonstrated runtime effect |
 
 Derive severity from specification language, user requirements, external evidence, or demonstrated impact. If the evidence does not distinguish a severity, do not infer one from assumed usage frequency.
@@ -72,11 +71,12 @@ Derive severity from specification language, user requirements, external evidenc
 ### Proposal lifecycle
 
 - Proposal records the problem space, design axes, options, and tradeoffs.
-- Extract every actionable item into a separate issue. Create a ticket from a decided, implementation-ready issue; keep open design questions in their issues until the required decisions are approved.
+- Extract every actionable item into a separate issue. Keep open design questions in their issues until the required decisions are approved.
 
-### Ticket lifecycle
+### Issue lifecycle
 
-- Issue exists in [`issues/`](issues/). Ticket created in [`tickets/`](tickets/) with `## Related issues` linking back
-- Ticket readiness: all design decisions made, implementation path clear, no open questions requiring user input. An issue with undecided design axes is not ready for a ticket
-- Ticket executed. Both deleted if fully resolved
-- Partial resolution: update both to reflect remaining work
+- An issue records the problem, its locations, the fix direction, and the validation plan when one is known. It is the unit of work an agent or developer picks up
+- Open design questions stay in the issue until the required decisions are approved. Mark them with a `> [!IMPORTANT]` block that starts with **Decision required.** and states the conflict, the options, and the evidence without choosing an option
+- Mark a claim that lacks evidence (an unreproduced defect, an unmeasured cost, an unverified contract) with a `> [!IMPORTANT]` block that starts with **Investigation required.** and names the evidence to collect
+- Mark statements that code changes may have made stale with a `> [!WARNING]` block that starts with **Needs review.** and gives the evidence
+- Delete the issue when it is fully resolved. On partial resolution, update it to describe the remaining work

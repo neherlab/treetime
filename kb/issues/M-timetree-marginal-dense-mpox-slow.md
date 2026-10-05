@@ -1,29 +1,34 @@
 # Marginal dense timetree inference disproportionately slow for mpox dataset
 
+> [!WARNING]
+> **Needs review.** The `mpox_clade_ii_20` marginal dense runner case is gone, not commented out. Commit `3aca7de4` (refactor(treetime): remove comments) deleted the commented-out case line; [test_gm_runner_marginal_dense.rs#L32](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L32) now holds only `flu_h3n2_20`. The 2647-second measurement has no date, and the branch grid now goes through `rewindow_to_mass` ([branch_length_likelihood.rs#L64](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L64)), which the analysis below does not account for. Coverage for mpox_clade_ii_20 must be re-added and the timing re-measured.
+
 The `test_gm_runner_marginal_dense` golden master test for `mpox_clade_ii_20` (20 tips) takes 2647 seconds (44 minutes) before failing with a value mismatch. For comparison, `flu_h3n2_20` (also 20 tips) completes in under 10 seconds. The 250x slowdown is disproportionate to the tree size and requires investigation.
 
 ## Repro
 
+The runner test is `#[ignore]`d, so the run needs `--run-ignored all`:
+
 ```bash
 # Fast (flu, 20 tips): ~7 seconds
-./dev/docker/run cargo test -p treetime -- test_gm_runner_marginal_dense::case_2_flu_h3n2_20 --test-threads=1
+./dev/docker/run just test-rs --run-ignored all 'test_gm_runner_marginal_dense::case_1_flu_h3n2_20'
 
-# Slow (mpox, 20 tips): ~44 minutes
-./dev/docker/run cargo test -p treetime -- test_gm_runner_marginal_dense::case_4_mpox_clade_ii_20 --test-threads=1
+# Slow (mpox, 20 tips): ~44 minutes, once the mpox_clade_ii_20 case is re-added
+./dev/docker/run just test-rs --run-ignored all -E 'test(test_gm_runner_marginal_dense) & test(mpox_clade_ii_20)'
 ```
 
 The full CLI also shows the disparity:
 
 ```bash
 # Fast
-./dev/docker/run just run treetime timetree \
-  --tree=data/flu/h3n2/20/tree.nwk --dates=data/flu/h3n2/20/metadata.tsv \
-  --outdir=tmp/timetree/flu/h3n2/20 data/flu/h3n2/20/aln.fasta.xz
+./dev/docker/run just r treetime timetree \
+  --tree=data/flu/h3n2/20/tree.nwk --metadata=data/flu/h3n2/20/metadata.tsv \
+  --alignment=data/flu/h3n2/20/aln.fasta.xz --output-all=tmp/timetree/flu/h3n2/20
 
 # Slow
-./dev/docker/run just run treetime timetree \
-  --tree=data/mpox/clade-ii/20/tree.nwk --dates=data/mpox/clade-ii/20/metadata.tsv \
-  --outdir=tmp/timetree/mpox/clade-ii/20 data/mpox/clade-ii/20/aln.fasta.xz
+./dev/docker/run just r treetime timetree \
+  --tree=data/mpox/clade-ii/20/tree.nwk --metadata=data/mpox/clade-ii/20/metadata.tsv \
+  --alignment=data/mpox/clade-ii/20/aln.fasta.xz --output-all=tmp/timetree/mpox/clade-ii/20
 ```
 
 ## Scientific context
@@ -93,9 +98,5 @@ v1 uses uniform `Array1::linspace` grids throughout (`create_simple_grid` produc
 
 ## Related issues
 
-- [Golden master runner tests missing internal node times for 5 datasets](M-timetree-gm-runner-missing-internal-times.md) - the mpox test also fails with value mismatch, but the 44-minute runtime is a separate concern
+- [M-timetree-gm-runner-missing-internal-times.md](M-timetree-gm-runner-missing-internal-times.md) - the mpox test also fails with value mismatch, but the 44-minute runtime is a separate concern
 - The same slow-evolving regime can also amplify degenerate or weakly informative time distributions, so this performance issue is a plausible co-factor when internal-node inference fails on low-rate datasets
-
-## Related tickets
-
-- [kb/tickets/timetree-marginal-dense-mpox-disproportionately-slow.md](../tickets/timetree-marginal-dense-mpox-disproportionately-slow.md)

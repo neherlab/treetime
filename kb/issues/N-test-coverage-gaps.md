@@ -18,6 +18,12 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 - `fn propagate_distributions_forward`: zero dedicated unit tests (forward pass tested only through GM)
 - `fn load_input_data` / `fn initialize_partitions`: no direct tests
 - `fn run_timetree_estimation()`: no branch coverage for input mode, confidence, skyline, rerooting, failure paths
+- `fn build_covariation_clock_params()` [packages/treetime/src/timetree/params.rs#L64-L94](../../packages/treetime/src/timetree/params.rs#L64-L94): no unit tests. It encodes the v0 covariation variance $\left(\ell + s^2/L\right)/L$ ([packages/legacy/treetime/treetime/clock_tree.py#L277-L285](../../packages/legacy/treetime/treetime/clock_tree.py#L277-L285)) as `variance_factor = 1/L`, `variance_offset = 0`, `variance_offset_leaf = s²/L²`, where $\ell$ is the branch length, $s$ the tip slack, and $L$ the sequence length. Tests in `packages/treetime/src/timetree/__tests__/test_params.rs`, with expected values from the v0 formula, not from running the function:
+  - `covariation=false` returns `None`
+  - `covariation=true, seq_len=Some(1000), tip_slack=None`: `variance_factor=1e-3`, `variance_offset=0.0`, `variance_offset_leaf = s²/1000²` for the default tip slack. The default value is undecided: [M-timetree-covariation-tip-slack-default-differs-from-v0.md](M-timetree-covariation-tip-slack-default-differs-from-v0.md)
+  - `covariation=true, seq_len=Some(500), tip_slack=Some(5.0)`: exact values
+  - `covariation=true, aln=Some(records)`: sequence length derived from the alignment
+  - `covariation=true, seq_len=None, aln=None`: error
 
 ### Clock command
 
@@ -50,6 +56,7 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 - `fn apply_initial_guess_mode()`: no test for finite negative branch lengths in `Never` mode
 - `fn run_optimize()`: no integration test proving negative branch lengths rejected
 - `fn OptimizationContribution::from_sparse()` and `fn get_coefficients()`: not exercised through real sparse fixtures
+- Damping guard of `fn run()` [packages/treetime/src/optimize/pipeline.rs#L42-L47](../../packages/treetime/src/optimize/pipeline.rs#L42-L47): no test that `damping >= 1.0` and `damping < 0.0` return the invalid-parameter error
 
 ### Mugration and prune
 
@@ -116,13 +123,13 @@ Score invariance under rerooting remains relevant. State-set containment must be
 
 ## Potential solutions
 
-- O1. Create focused test tickets at each production ownership boundary after the corresponding behavior and oracle are defined.
-- O2. Use one coverage ticket spanning every listed function and ignored suite. This obscures distinct oracles and makes blocked production defects appear test-ready.
+- O1. Add tests in focused changes, one production ownership boundary at a time, after the corresponding behavior and oracle are defined.
+- O2. Add coverage for every listed function and ignored suite in one change. This obscures distinct oracles and makes blocked production defects appear test-ready.
 
 ## Recommendation
 
-Use O1. Keep this file as the coverage inventory, link each focused ticket back here, and enable an ignored test only after its production or parity blocker is resolved. Do not create a repository-wide coverage ticket.
+Use O1. Keep this file as the coverage inventory, remove each entry when its tests land, and enable an ignored test only after its production or parity blocker is resolved.
 
-## Ticket readiness
+## Readiness
 
-The inventory itself is not ticket-ready. Focused property and domain tickets require valid properties, explicit generators, and traceable oracles; ignored golden masters and unrelated zero-test functions require separate source issues or resolved blockers.
+The inventory as a whole is not ready for implementation. Focused property and domain tests require valid properties, explicit generators, and traceable oracles; ignored golden masters and unrelated zero-test functions require separate issues or resolved blockers.

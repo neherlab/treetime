@@ -1,12 +1,7 @@
 # Skyline grid construction accepts invalid endpoint arrays
 
-> **Partially obsolete.** The `SkylineCostFunction` and the externally supplied
-> `log_tc` array are gone: the segment grid is now derived internally as equal-width
-> boundaries over the tree's time span (`equal_width_boundaries()`), and the
-> optimizer is a convex Newton solve. The remaining validation gap is narrower —
-> internal `boundaries` indexing still lacks a typed nonempty/ordering guard. See
-> [decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md).
-> The original text below predates the rewrite.
+> [!WARNING]
+> **Needs review.** The `SkylineCostFunction` and the externally supplied `log_tc` array are gone: the segment grid is now derived internally as equal-width boundaries over the tree's time span (`equal_width_boundaries()`), and the optimizer is a convex Newton solve. The remaining validation gap is narrower: internal `boundaries` indexing still lacks a typed nonempty/ordering guard. See [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md). The original text below predates the rewrite.
 
 Skyline construction indexes the first and last time-grid values before a typed boundary proves that the time and log-$T_c$ arrays are nonempty, equal in length, finite, and strictly ordered. Objective tests also exercise reconstructed formula fragments instead of the production cost function.
 

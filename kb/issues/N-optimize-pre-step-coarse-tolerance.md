@@ -1,5 +1,8 @@
 # Optimize pre-step uses default Brent tolerance instead of v0's coarse tolerance
 
+> [!IMPORTANT]
+> **Investigation required.** The claim that `0.02` differences disappear in later refinement is unsupported. Measure v0/v1 output and runtime behavior with both tolerances. Copying the coarse v0 tolerance into v1 then needs approval.
+
 v0's `optimize_tree_marginal` uses a progressive tolerance schedule: `tol = 1e-8 + 0.01^(i+1)` where `i` is the iteration index (0-based). At iteration 0 (the pre-step), this evaluates to `tol = 0.02`, intentionally coarse to prioritize speed over precision in early iterations.
 
 v1's pre-step uses `BrentSqrt` with its default tolerance (Brent's method default from `argmin`, approximately 1e-8). This is tighter than v0's first-iteration tolerance.
@@ -14,6 +17,6 @@ Add a `tolerance` parameter to `run_optimize_mixed()` or pass it through `Branch
 
 Requires plumbing the tolerance through the Brent method implementation in `method_brent.rs`, which currently uses `argmin::BrentOpt` with its default tolerance.
 
-## Ticket readiness
+## Readiness
 
 The claim that `0.02` differences disappear in later refinement is unsupported. Measure v0/v1 output and runtime behavior, then obtain approval before copying a coarse v0 numerical tolerance into v1.

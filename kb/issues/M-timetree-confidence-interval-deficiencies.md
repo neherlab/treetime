@@ -1,39 +1,42 @@
 # Timetree confidence interval computation deficiencies
 
+> [!IMPORTANT]
+> **Decision required.** Of the three defects this issue was opened for, one no longer exists, one matches v0, and one is a v1-only step that differs from its first description:
+>
+> - Rate susceptibility no longer mutates the graph: `fn compute_rate_susceptibility()` [`packages/treetime/src/timetree/confidence.rs#L23-L72`](../../packages/treetime/src/timetree/confidence.rs#L23-L72) runs `run_timetree` three times on copies of `TimeInferenceInputs` with scaled gammas; the inputs hold the graph as `&Graph` ([`packages/treetime/src/timetree/inference/runner.rs#L79-L80`](../../packages/treetime/src/timetree/inference/runner.rs#L79-L80)). No restoration pass exists to verify
+> - The symmetric rate term matches v0: v0 computes `c + x * np.abs(y - c)` ([`packages/legacy/treetime/treetime/clock_tree.py#L1085`](../../packages/legacy/treetime/treetime/clock_tree.py#L1085)), the same as v1 [`packages/treetime/src/timetree/confidence.rs#L129-L130`](../../packages/treetime/src/timetree/confidence.rs#L129-L130). Under the reference-parity rule this is expected behavior unless a v0 erratum is recorded
+> - The last step widens the interval to contain the point estimate (`lower.min(date)`, `upper.max(date)`, [`packages/treetime/src/timetree/confidence.rs#L110-L111`](../../packages/treetime/src/timetree/confidence.rs#L110-L111)); it does not move the point estimate. v0 has no such step: `get_confidence_interval` returns the `combine_confidence` result directly ([`packages/legacy/treetime/treetime/clock_tree.py#L1128-L1145`](../../packages/legacy/treetime/treetime/clock_tree.py#L1128-L1145))
+>
+> Options: close the issue; keep it only for the v1-only widening step (remove the step for parity, or record it as an intentional change); or keep the asymmetry question open as a proposed v0 erratum, which needs evidence.
+
 ## Summary
 
-Three defects in the confidence interval computation: the rate susceptibility function mutates graph state without postcondition assertion, date uncertainty is forced symmetric, and the CI clamp hides inconsistencies.
+Confidence intervals of `timetree --confidence` combine a rate-susceptibility term with the bounds of the node time distribution. The computation differs from v0 and from augur in the places listed below.
 
 ## Details
 
-### compute_rate_susceptibility mutates graph 3 times without postcondition
+### Symmetric rate contribution
 
-`packages/treetime/src/timetree/confidence.rs:56-124:`
+`fn date_uncertainty_due_to_rate()` [`packages/treetime/src/timetree/confidence.rs#L125-L132`](../../packages/treetime/src/timetree/confidence.rs#L125-L132)
 
-The function runs marginal inference three times (upper rate, lower rate, restored original rate), relying on the third run to restore the graph to its pre-call state. No postcondition assertion verifies that restoration succeeded. If the third pass fails or produces different rounding, subsequent operations read corrupted state.
+Both bounds are computed from the absolute difference between the rate-perturbed date and the nominal date. This forces the rate contribution to be symmetric around the point estimate, regardless of whether the rate-date relationship is asymmetric (as it can be for short branches where the Poisson likelihood is skewed). v0 does the same ([`packages/legacy/treetime/treetime/clock_tree.py#L1085`](../../packages/legacy/treetime/treetime/clock_tree.py#L1085)).
 
-### date_uncertainty_due_to_rate uses abs() making CI symmetric
+### Interval widened to contain the point estimate
 
-`packages/treetime/src/timetree/confidence.rs:155-156:`
+`fn extract_confidence_intervals()` [`packages/treetime/src/timetree/confidence.rs#L110-L111`](../../packages/treetime/src/timetree/confidence.rs#L110-L111)
 
-Both upper and lower confidence bounds are computed as the absolute difference between the rate-perturbed date and the nominal date. This forces the confidence interval to be symmetric around the point estimate, regardless of whether the rate-date relationship is asymmetric (which it is for short branches where the Poisson likelihood is skewed).
+After combining the contributions, the code widens `[lower, upper]` so that it contains the reported date. A case where the computed interval and the reported date are inconsistent (e.g. from the symmetric approximation above, or numerical issues in rate susceptibility) is hidden instead of reported. v0 has no equivalent step.
 
-### CI clamp forces point estimate inside interval
+### Mutation contribution is not used
 
-`packages/treetime/src/timetree/confidence.rs:219-220:`
-
-After computing confidence bounds, the code clamps the point estimate to lie within `[lower, upper]`. This hides cases where the CI computation and the reported date are inconsistent (e.g., due to the symmetric approximation above or numerical issues in rate susceptibility). The inconsistency should be reported, not masked.
+`fn extract_confidence_intervals()` fixes `mutation_contribution` to `None` ([`packages/treetime/src/timetree/confidence.rs#L93`](../../packages/treetime/src/timetree/confidence.rs#L93)). v0 passes the marginal inverse-CDF quantiles of the node time as `c2` to `combine_confidence` ([`packages/legacy/treetime/treetime/clock_tree.py#L1138`](../../packages/legacy/treetime/treetime/clock_tree.py#L1138)). Without a rate contribution, v1 reports the degenerate interval `[date, date]`.
 
 ### num_date_confidence composition diverges from augur's marginal HPD
 
-`num_date_confidence` in `timetree.augur-node-data.json` (and `auspice_tree.json` `num_date.confidence`) is the `[lower, upper]` 90% region produced by this module. Augur sets `num_date_confidence = list(tt.get_max_posterior_region(n, 0.9))`, the pure marginal-posterior HPD. v1 combines the marginal HPD with a rate-susceptibility contribution (quadrature) when `--confidence` runs with rate uncertainty, and forces symmetry via the `abs()` above. The field mapping is correct (a 90% region), but the bounds can differ numerically from augur. This is a consumed field (auspice colors and HPD bars use it), so closing this affects auspice output, not just the node data file.
+`num_date_confidence` in `timetree.augur-node-data.json` (and `auspice_tree.json` `num_date.confidence`) is the `[lower, upper]` 90% region produced by this module. Augur sets `num_date_confidence = list(tt.get_max_posterior_region(n, 0.9))`, the pure marginal-posterior HPD. v1 instead reports the rate-susceptibility contribution, clamped to the support of the node time distribution and made symmetric by the `abs()` above. The field mapping is correct (a 90% region), but the bounds can differ numerically from augur. This is a consumed field (auspice colors and HPD bars use it), so closing this affects auspice output, not just the node data file.
 
 ## Impact
 
-- Confidence intervals are symmetric when they should be asymmetric for short branches
-- Graph state corruption if third rate-susceptibility pass diverges from original
-- Inconsistent point estimates hidden instead of flagged
-
-## Related tickets
-
-- [kb/tickets/timetree-confidence-interval-computation-deficiencies.md](../tickets/timetree-confidence-interval-computation-deficiencies.md)
+- Rate contributions are symmetric even where the rate-date relationship is asymmetric
+- Inconsistencies between the interval and the point estimate are hidden instead of flagged
+- `num_date_confidence` differs from augur's marginal HPD

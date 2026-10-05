@@ -1,9 +1,8 @@
 # Date column header matching breaks on hash
 
-`metadata_read()` (`#metadata_read`) strips leading `#` from TSV/CSV column headers. When the metadata file uses `#name` as the column header and the CLI argument specifies `name_column="#name"`, the stripped header (`name`) no longer matches the expected column name (`#name`). The zika_20 dataset uses this pattern, and all three timetree runner test files have zika_20 commented out, including [test_gm_runner_poisson.rs#L26](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs#L26).
+> [!WARNING]
+> **Needs review.** The zika_20 golden-master runner cases are gone, not commented out. Commit `3aca7de4` (refactor(treetime): remove comments) deleted the commented-out `#[case::zika_20("zika_20")]` lines from all three runner test files, so no test exercises this mismatch. The fixture still requests it: `zika_20` in [gm_runner_inputs.json](../../packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_inputs.json) sets `"name_column": "#name"`. Coverage for zika_20 must be re-added once the matching is fixed.
+
+`normalize_csv_headers()` strips leading and trailing `#` from TSV/CSV column headers ([csv.rs#L230-L235](../../packages/treetime-io/src/csv.rs#L230-L235)). `get_col_name()` then compares a user-provided column name with the normalized headers without normalizing the provided name ([csv.rs#L142-L148](../../packages/treetime-io/src/csv.rs#L142-L148)). When the metadata file uses `#name` as the column header and the CLI argument specifies `name_column="#name"`, the stripped header (`name`) no longer matches the expected column name (`#name`). The zika_20 dataset uses this pattern ([data/zika/20/metadata.tsv](../../data/zika/20/metadata.tsv)).
 
 Note: the `#`-stripping itself is a v1 improvement over v0. v0 does not strip `#` from column headers, so `--name-column=name` fails on zika/20 metadata (header is `#name`). v1 strips the `#` and finds "name" automatically. The bug is specifically the mismatch when the user passes `--name-column="#name"` (pre-stripped value does not match post-stripped header).
-
-## Related tickets
-
-- [kb/tickets/timetree-fix-date-column-header-hash-matching.md](../tickets/timetree-fix-date-column-header-hash-matching.md)

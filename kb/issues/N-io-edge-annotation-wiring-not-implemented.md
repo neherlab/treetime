@@ -14,4 +14,4 @@ No current command reads or writes branch-level annotations -- all annotation da
 
 ## Related issues
 
-- Resolved by ticket #1: writer now emits annotations in node position (before `:`), not branch position (after `:`), so round-trip through treetime preserves node annotations without needing edge annotation wiring
+- The writer emits annotations in node position (before `:`), not branch position (after `:`), so round-trip through treetime preserves node annotations without needing edge annotation wiring

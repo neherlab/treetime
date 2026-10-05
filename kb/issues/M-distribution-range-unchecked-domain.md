@@ -1,5 +1,8 @@
 # Distribution Range accepts invalid supports and amplitudes
 
+> [!IMPORTANT]
+> **Decision required.** The range construction contract is unapproved: fallible range construction with validated endpoints and amplitude, or a validated support type that separates positive-width intervals from points. See "Decision required" below.
+
 `Distribution::range()` is infallible and delegates to `DistributionRange::new()`. [`packages/treetime-distribution/src/distribution_core/distribution.rs#L36-L42`](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L36-L42)
 
 `DistributionRange::new()` stores arbitrary endpoints and amplitude without checking ordering, finiteness, or the `YAxisPolicy` validity rule. [`packages/treetime-distribution/src/distribution_core/range.rs#L17-L24`](../../packages/treetime-distribution/src/distribution_core/range.rs#L17-L24)
@@ -13,4 +16,4 @@ Choose one construction contract:
 - make range construction fallible and validate finite ordered endpoints plus policy-valid amplitude; or
 - introduce a validated support type that distinguishes positive-width intervals from points before constructing a distribution.
 
-Update serde deserialization and every direct constructor consistently. No implementation ticket is ready until this API decision is approved.
+Update serde deserialization and every direct constructor consistently. Implementation waits until this API decision is approved.

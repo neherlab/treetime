@@ -5,11 +5,11 @@
 
 ## Problem
 
-`pub(crate) fn format_number()` [packages/app-output/src/tree_output.rs#L524](../../packages/app-output/src/tree_output.rs#L524) reimplements Augur's significant-digit behavior for divergence and numeric dates. Its unit tests use manually written expected values attributed to `augur export_v2.format_number`; they do not capture outputs from a pinned Augur revision.
+`pub(crate) fn format_number()` [packages/app-output/src/tree_output.rs#L694-L708](../../packages/app-output/src/tree_output.rs#L694-L708) reimplements Augur's significant-digit behavior for divergence, numeric dates and their confidence intervals, trait confidences, and trait entropy. Its unit tests use manually written expected values attributed to `augur export_v2.format_number`; they do not capture outputs from a pinned Augur revision.
 
 This leaves boundary behavior unverified for negative values, powers of ten, values crossing an integer-digit boundary after rounding, very small magnitudes, and ties affected by Python and Rust formatting differences. Output-generating tests cannot serve as an independent oracle because they read output produced by the same code.
 
-The `i32` precision API also performs unchecked `significand + precision` [packages/app-output/src/tree_output.rs#L534](../../packages/app-output/src/tree_output.rs#L534). Extreme values can panic in debug, wrap in release, or request disproportionate formatting allocation. Equivalent significant-digit formatting already exists in `treetime-utils`.
+The `i32` precision API also performs unchecked `significand + precision` [packages/app-output/src/tree_output.rs#L704](../../packages/app-output/src/tree_output.rs#L704). Extreme values can panic in debug, wrap in release, or request disproportionate formatting allocation. Equivalent significant-digit formatting already exists in `treetime-utils`.
 
 ## Potential solutions
 
@@ -29,9 +29,24 @@ For finite nonzero $n$, let $d = \lfloor \log_{10}(\lfloor |n| \rfloor) \rfloor 
 - Require exact Augur textual formatting over the supported precision domain; numeric equivalence alone does not establish serialized-output parity.
 - Cover $d + p = 255$ and reject $d + p = 256$, so the `u8` utility boundary cannot wrap or allocate from an unchecked signed precision.
 
+## Fix
+
+- Replace the signed precision parameter with a validated nonzero `u8` fractional-precision type. Reject zero and out-of-range values at the configuration and deserialization boundaries
+- Delete the adapter-local formatting algorithm. Call `float_to_significant_digits(n, s as u8)`, parse its string result back to `f64` with contextual error propagation, and let the Auspice DTO serializer do the final number-to-JSON conversion. This string-to-number boundary matches Augur's `float(f"{n:.{s}g}")` contract while `treetime-utils` stays the only Rust formatting implementation
+- Capture the exact textual expected values by running pinned Augur only in the project's trusted reference environment, never from v1 output
+- Test the serialized divergence and date fields, not only the helper return values
+
+## Validation
+
+- Negative values, zero, powers of ten, integer-digit boundaries before and after rounding, tiny magnitudes, ties, non-finite input, and both precision bounds
+- The exact mapping against pinned Augur revision `d8e38736037ba9474a809f9a5a63bc2b279d2407` for every supported boundary class, including $d + p = 255$ and rejection at $d + p = 256$
+- Identical results in debug and release builds over the supported domain
+- Golden master of the whole Auspice JSON document
+
 ## Locations
 
-- `pub(crate) fn format_number()` [packages/app-output/src/tree_output.rs#L524](../../packages/app-output/src/tree_output.rs#L524)
+- `pub(crate) fn format_number()` [packages/app-output/src/tree_output.rs#L694-L708](../../packages/app-output/src/tree_output.rs#L694-L708)
+- Callers [packages/app-output/src/tree_output.rs#L618](../../packages/app-output/src/tree_output.rs#L618), [#L624](../../packages/app-output/src/tree_output.rs#L624), [#L671](../../packages/app-output/src/tree_output.rs#L671), [packages/app-output/src/timetree_tree_output.rs#L156](../../packages/app-output/src/timetree_tree_output.rs#L156)
 - Unit tests [`packages/app-output/src/__tests__/test_tree_output.rs`](../../packages/app-output/src/__tests__/test_tree_output.rs)
 
 ## Related KB items

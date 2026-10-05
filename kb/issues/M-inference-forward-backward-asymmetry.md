@@ -1,44 +1,30 @@
-# Inference forward/backward pass asymmetries
+# GTR transition counting clamps branch lengths and timetree rounds always refit the clock
 
-## Summary
-
-Four asymmetries between the backward and forward marginal passes: normalization strategy differs, graph mutation through interior mutability during read traversal, branch-length floor applied inside GTR inference, and clock model rebuilt unnecessarily.
+> [!IMPORTANT]
+> **Decision required.** Both instances below reproduce v0 behavior. Changing either one diverges from v0 and needs approval and a `kb/decisions/` entry. The options are:
+>
+> - Keep v0 parity and close this issue
+> - Change the behavior as described under each instance, and accept the divergence from the v0 oracle
+>
+> Evidence for parity: v0 clamps the branch length used for GTR mutation counting through `_branch_length_to_gtr()` ([packages/legacy/treetime/treetime/treeanc.py#L752-L760](../../packages/legacy/treetime/treetime/treeanc.py#L752-L760), used at [#L1106](../../packages/legacy/treetime/treetime/treeanc.py#L1106)). v0 refits the clock model in every `make_time_tree()` call through `init_date_constraints()` ([packages/legacy/treetime/treetime/clock_tree.py#L418](../../packages/legacy/treetime/treetime/clock_tree.py#L418), [#L374](../../packages/legacy/treetime/treetime/clock_tree.py#L374)), and `TreeTime.run()` calls `make_time_tree()` in every iteration ([packages/legacy/treetime/treetime/treetime.py#L342-L349](../../packages/legacy/treetime/treetime/treetime.py#L342-L349)).
 
 ## Instances
 
-### Silent normalization asymmetry backward/forward pass
+### Branch-length floor inside GTR transition counting
 
-In the dense forward pass (`marginal_dense.rs:363:`), `msg_to_child` for each edge is computed as `node_data.profile.dis / safe_child` where `safe_child` is `msg_from_child.dis` clamped to `MIN_POSITIVE` (`marginal_dense.rs:424-428:`). The result is normalized via `normalize_inplace`.
+The dense and discrete transition counts apply the marginal-pass branch-length floor before they evaluate `expQt` and accumulate dwell times: `fn count_transitions_dense()` calls `effective_branch_length()` ([packages/treetime/src/partition/marginal/shared/data.rs#L32](../../packages/treetime/src/partition/marginal/shared/data.rs#L32), [#L66-L68](../../packages/treetime/src/partition/marginal/shared/data.rs#L66-L68)). The sparse count clamps the same way ([packages/treetime/src/partition/marginal/sparse/count.rs#L29](../../packages/treetime/src/partition/marginal/sparse/count.rs#L29), [#L36](../../packages/treetime/src/partition/marginal/sparse/count.rs#L36)).
 
-The intermediate node profile at line 363 is built by multiplying `msg_to_parent.dis * msg_child` in probability space without per-step normalization across parent edges, unlike the backward pass which normalizes via `normalize_from_log` after combining child messages in log space.
+GTR parameter estimation therefore sees clamped branch lengths instead of raw values. Zero-length branches contribute dwell time `T_i` at the floor length, which can bias the rate matrix toward short-branch statistics.
 
-This means the forward pass accumulates probability-space products (risk of underflow for deep trees) while the backward pass accumulates log-space sums (numerically stable).
+Possible change: count transitions with raw branch lengths and handle zero-length branches explicitly.
 
-### gather_clock_regression_results mutates graph via interior mutability
+### Timetree round always refits the clock model
 
-`packages/treetime/src/clock/rtt.rs:42:`
+`fn refinement_round()` calls `fn update_clock_model()` unconditionally ([packages/treetime/src/timetree/round.rs#L136](../../packages/treetime/src/timetree/round.rs#L136), [#L385](../../packages/treetime/src/timetree/round.rs#L385)), also when no sequence changed and no polytomy was resolved. The refit is a regression over all dated tips. It costs computation when nothing moved, and small floating-point differences in the regression can perturb the next round and delay convergence detection.
 
-Mutates node `div` (divergence) through a read-path graph traversal. The function signature suggests a read-only operation (gathering results) but has write side effects. This makes the function non-idempotent and its ordering relative to other graph operations significant.
-
-### fix_branch_length clamp inside GTR inference
-
-`packages/treetime/src/gtr/infer_gtr/common.rs:192:`
-
-Applies the marginal-pass branch-length floor during mutation counting for GTR inference. This means GTR parameter estimation sees clamped branch lengths rather than raw values, biasing the rate matrix toward shorter-branch statistics.
-
-### refinement_round always rebuilds clock model
-
-`packages/treetime/src/timetree/round.rs` (`fn update_clock_model`)
-
-Rebuilds the clock model even when nothing moved (`n_diff==0 && n_resolved==0`). The clock model estimation involves regression over all dated tips, which is wasted computation when no dates changed. More importantly, floating-point non-determinism in the regression can introduce small perturbations that prevent clean convergence.
+Possible change: skip the refit when the round changed no sequence state, topology, or node time.
 
 ## Impact
 
-- Forward pass underflow risk for deep trees with many siblings
-- Hidden write side effects in nominally read-only functions
-- GTR inference biased by branch-length clamping
-- Unnecessary clock model rebuilds can prevent convergence detection
-
-## Related tickets
-
-- [kb/tickets/inference-forward-backward-pass-asymmetries.md](../tickets/inference-forward-backward-pass-asymmetries.md)
+- GTR inference can be biased by branch-length clamping
+- Unconditional clock refits cost computation and can delay convergence detection

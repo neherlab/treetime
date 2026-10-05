@@ -1,5 +1,8 @@
 # Per-site rate variation is not inferred or wired end to end
 
+> [!IMPORTANT]
+> **Decision required.** The target rate contract is undecided: a supplied fixed rate vector, discrete-gamma categories, v0 full site-specific inference, or separately exposed contracts. Compressed fixed-site behavior, serialization, validation, and CLI behavior also need decisions. See "Decisions required".
+
 v1 represents and propagates an optional per-site rate vector, but no command constructs that vector from input or inference and optimizer coverage is incomplete. The design document specifies a vector $\mu^a$, where $a$ indexes sites and each site evolves at its own supplied rate. [`kb/_raw/sequence_evolution.md#L87-L89`](../_raw/sequence_evolution.md#L87-L89)
 
 ## Background
@@ -29,7 +32,7 @@ The remaining gaps are rate-vector construction or loading, command wiring, comp
 - Define serialization, validation, and CLI behavior.
 - Establish dense, sparse, and optimizer golden masters against v0, with independent analytical tests for any implementation strategy that differs internally.
 
-No implementation ticket is ready until these contracts are decided.
+Implementation waits until these contracts are decided.
 
 ## Site-specific equilibrium frequencies
 
@@ -39,7 +42,7 @@ Per-site $\mu$ (rate only): shared eigendecomposition, scaled eigenvalues. Compu
 
 Per-site $\pi$ (equilibrium frequencies): per-site eigendecomposition. Computational cost: $O(n \cdot L \cdot s^2)$ or $O(n \cdot L \cdot s^3)$ depending on caching. The symmetrization trick ($\tilde{Q} = D^{-1} Q D$ where $D = \text{diag}(\sqrt{\pi})$) must be applied per site.
 
-v1 has no implementation of per-site pi1000 4 6 24 27 30 46 100 105 125 127 986 1000tracked in [N-gtr-site-specific-model-not-implemented.md](N-gtr-site-specific-model-not-implemented.md)).
+v1 has no implementation of per-site $\pi$ (tracked in [N-gtr-site-specific-model-not-implemented.md](N-gtr-site-specific-model-not-implemented.md)).
 
 Context-dependent substitution models where both rates and equilibrium frequencies vary by position are described by <a id="cite-2"></a>[Siepel and Haussler 2004](https://doi.org/10.1093/molbev/msh039) [[2](#ref-2)].
 

@@ -1,5 +1,8 @@
 # CLI flags parsed but ignored
 
+> [!IMPORTANT]
+> **Decision required.** Each flag needs its own disposition against v0 behavior and its owning feature issue: implement the documented behavior, or remove the flag. See "Potential solutions".
+
 Several command-line flags are accepted by the parser, validated, and then never read. A user who sets one of them gets no error and no effect. This is the same class of defect as a silently wrong result: the command reports success while ignoring part of its input.
 
 The command's resolved argument struct (`Treetime<Command>Args` in `packages/app-commands/src/commands/<command>/args.rs`) stores the value, and no code reads it. The compiler detects these fields because the command modules are crate-private; each field carries `#[expect(dead_code, reason = "...")]` that points here, so the expectation fails the build's lint check as soon as a flag is wired.
@@ -11,7 +14,7 @@ Flags marked _hidden_ are accepted but not listed in `--help`.
 | Command     | Flags                                                                                                                                                                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ancestral` | `--model-params`/`--gtr-params`, `--zero-based`, `--aa` (hidden), `--marginal` (hidden), `--custom-gtr` (hidden)                                                                                                                                             |
-| `clock`     | `--model`/`--gtr`, `--model-params`/`--gtr-params`, `--branch-length-mode`, `--method-anc`, `--prune-short`, `--clock-filter-method` (hidden), `--plot-rtt` (hidden), `--prune-outliers` (hidden)                           |
+| `clock`     | `--model`/`--gtr`, `--model-params`/`--gtr-params`, `--branch-length-mode`, `--method-anc`, `--prune-short`, `--clock-filter-method` (hidden), `--plot-rtt` (hidden), `--prune-outliers` (hidden)                                                            |
 | `timetree`  | `--model-params`/`--gtr-params`, `--tip-labels`, `--no-tip-labels`, `--n-iqd`, `--keep-polytomies`, `--zero-based`, `--aa` (hidden), `--custom-gtr` (hidden), `--clock-filter-method` (hidden), `--greedy-resolve` (hidden), `--stochastic-resolve` (hidden) |
 
 `optimize` also accepts `--model-params`/`--gtr-params` and never reads it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. `ModelArgs` derives `Serialize`, which reads every field, so no `dead_code` expectation marks the field. For example, `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
@@ -40,11 +43,11 @@ Tracked elsewhere, with their own `expect` reasons:
 
 ## Recommendation
 
-Decide each flag on its own against v0 behavior and its owning feature issue. The flags differ in scientific meaning, input requirements, and parity constraints, so one aggregate implementation ticket would bundle unrelated decisions.
+Decide each flag on its own against v0 behavior and its owning feature issue. The flags differ in scientific meaning, input requirements, and parity constraints, so one aggregate change would bundle unrelated decisions.
 
-## Ticket readiness
+## Readiness
 
-No aggregate ticket is ready. Create one focused ticket per flag after its disposition is decided.
+Implement each flag as a separate change after its disposition is decided.
 
 ## Related issues
 

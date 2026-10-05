@@ -16,13 +16,19 @@ Root branch lengths appear in some tool outputs (IQ-TREE, BEAST) and can carry e
 
 ## Fix
 
-Add `root_branch_length: Option<f64>` to `NewickGraph`. Store the parsed root branch length there instead of discarding it. Update the writer to emit it after the root subtree.
+1. Add `root_branch_length: Option<f64>` to `NewickGraph`
+2. Store the parsed root branch length in `fn visit_root_branch()` instead of discarding it
+3. Emit the stored value after the root subtree in the Newick writer `fn newick_to_writer()` [`packages/util-newick/src/write.rs#L7`](../../packages/util-newick/src/write.rs#L7)
+4. Carry the field through `NexusTree` records and every conversion that constructs or consumes `NewickGraph`
+
+## Validation
+
+- Parser, writer, Newick round-trip, and Nexus round-trip tests for present, absent, zero, and scientific-notation root lengths
+- Root branch lengths round-trip without value loss
+- Trees without a root branch length keep their current serialization
+- Every `NewickGraph` transformation preserves the field
 
 ## Location
 
-- Parser: `fn visit_root_branch()` [`packages/util-newick/src/parse.rs#L78-L107`](../../packages/util-newick/src/parse.rs#L78-L107)
-- Data model: `struct NewickGraph` [`packages/util-newick/src/types.rs#L7-L16`](../../packages/util-newick/src/types.rs#L7-L16)
-
-## Related tickets
-
-- [kb/tickets/io-preserve-newick-root-branch-length.md](../tickets/io-preserve-newick-root-branch-length.md)
+- Parser: `fn visit_root_branch()` [`packages/util-newick/src/parse.rs#L77-L105`](../../packages/util-newick/src/parse.rs#L77-L105)
+- Data model: `struct NewickGraph` [`packages/util-newick/src/types.rs#L30-L35`](../../packages/util-newick/src/types.rs#L30-L35), `struct NexusTree` [`packages/util-newick/src/types.rs#L24-L27`](../../packages/util-newick/src/types.rs#L24-L27)

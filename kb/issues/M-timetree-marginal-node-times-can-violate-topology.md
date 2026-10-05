@@ -1,5 +1,8 @@
 # Marginal timetree point estimates use an unapproved topology projection
 
+> [!IMPORTANT]
+> **Decision required.** The current projection of committed node times diverges from v0 and is unapproved. The options are v0 parity with independent marginal modes, constrained inference, or an approved and fully specified point-estimate projection. See "Decision required" below.
+
 Marginal inference computes each node's posterior independently, so the raw posterior modes are not jointly constrained by `child_time >= parent_time` in calendar coordinates. Current v1 then projects the committed point estimate of each node whose time was inferred onto that constraint. The projection prevents negative committed durations between inferred nodes but does not make the marginal posteriors jointly consistent.
 
 ## Current and reference behavior
@@ -21,7 +24,7 @@ These values describe different estimators when projection occurs. Equality with
 
 ## Decision required
 
-No implementation ticket is ready until the project chooses the desired contract:
+Implementation waits until the project chooses the desired contract:
 
 - preserve v0 parity by committing independent marginal modes and handling negative durations explicitly downstream;
 - perform constrained inference so posteriors and selected times satisfy topology together; or

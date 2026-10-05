@@ -17,6 +17,9 @@ Per project rules, numerical error > 1e-6 against the v0 oracle is a defect. Thi
 
 - **Stale forward messages**: v0 runs a full marginal pass under the first fitted GTR before its rate-and-GTR iterations (`infer_ancestral_sequences` calls `_ml_anc` after `infer_gtr`, [packages/legacy/treetime/treetime/treeanc.py#L564-L566](../../packages/legacy/treetime/treetime/treeanc.py#L564-L566)). v1 `refine_gtr_model_and_rate` ([packages/treetime/src/gtr/refinement.rs](../../packages/treetime/src/gtr/refinement.rs)) refreshes the backward messages through the rate optimization but keeps the forward messages from the initial GTR for every iteration. The claim in [kb/proposals/mugration-full-reconstruction-per-iteration.md](../proposals/mugration-full-reconstruction-per-iteration.md) that v1 matches v0 here does not hold
 - **Rate-optimizer evaluation point**: v0's `optimize_gtr_rate` sets the rate to the optimum without a new backward pass, so its subtree messages come from the last Brent evaluation; v1 recomputes them at the optimum
+- **GTR numerics**: the exchangeability matrix `W` and its eigendecomposition
+- **Branch-length-to-GTR mapping**: the branch length the marginal passes and the transition counts pass to `expQt`
+- **Normalization order** in the marginal passes
 
 ## Leaf evidence
 
@@ -30,10 +33,13 @@ Discrete leaves keep their observed trait as evidence in every pass ([packages/t
 - `test_gm_mugration_outputs`: zika, zika_weights, lassa pass; dengue, tb, rsv, mpox ignored (`test_gm_mugration_outputs_v1_divergence`).
 - `test_gm_mugration_confidence_zika` (1e-6) and `test_gm_mugration_confidence_outputs` (1e-10): ignored; profiles diverge ~1e-3.
 
+## Fix
+
+- Localize the ~1e-3 marginal-confidence divergence, starting from zika_20_country root `NODE_0000000` (v0 `0.4812`, v1 `0.4800`)
+- Drive the divergence below the 1e-6 oracle tolerance, then enable the ignored cases: fold `test_gm_mugration_outputs_v1_divergence` (dengue, tb, rsv, mpox) into `test_gm_mugration_outputs`, and remove the `#[ignore]` from `test_gm_mugration_confidence_zika` (1e-6) and `test_gm_mugration_confidence_outputs` (1e-10) [packages/treetime/src/mugration/__tests__/test_gm_mugration.rs](../../packages/treetime/src/mugration/__tests__/test_gm_mugration.rs)
+- Keep the test tolerances unchanged: the gap is a numerical defect, so a wider tolerance would hide it
+
 ## Related
 
-- [Full forward-backward reconstruction proposal](../proposals/mugration-full-reconstruction-per-iteration.md)
-
-## Related tickets
-
-- [kb/tickets/mugration-iterative-gtr-golden-master-divergence.md](../tickets/mugration-iterative-gtr-golden-master-divergence.md)
+- [kb/proposals/mugration-full-reconstruction-per-iteration.md](../proposals/mugration-full-reconstruction-per-iteration.md)
+- [M-mugration-gtr-rate-restore-inconsistency.md](M-mugration-gtr-rate-restore-inconsistency.md)

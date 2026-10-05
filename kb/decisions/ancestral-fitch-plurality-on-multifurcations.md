@@ -120,6 +120,4 @@ pushes mutations toward the tips.
 
 ## Related
 
-- Source issue: [kb/issues/M-ancestral-fitch-polytomy-recurrence-not-minimum.md](../issues/M-ancestral-fitch-polytomy-recurrence-not-minimum.md)
-- Ticket: [kb/tickets/ancestral-fitch-plurality-recurrence-on-multifurcations.md](../tickets/ancestral-fitch-plurality-recurrence-on-multifurcations.md)
 - Hartigan, John A. 1973. "Minimum mutation fits to a given tree." _Biometrics_ 29:53-65. https://doi.org/10.2307/2529676

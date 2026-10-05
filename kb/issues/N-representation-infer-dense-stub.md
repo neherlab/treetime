@@ -1,6 +1,9 @@
 # `infer_dense()` stub always returns false
 
-`partition/algo/infer_dense.rs` exports `infer_dense()` as the shared dense-vs-sparse selector, but the function always returns `false`. Three user-facing commands use it as the default when `--dense` is omitted: `ancestral`, `optimize`, and `timetree`.
+> [!IMPORTANT]
+> **Decision required.** The two fix options under "Fix" lead to different code: implement a selection heuristic, or remove the shared selector and state the default where each pipeline resolves its representation. [kb/decisions/sequence-representation-dense-sparse.md](../decisions/sequence-representation-dense-sparse.md) describes the planned criterion (expected mutations per branch relative to sequence length) but no threshold.
+
+`fn infer_dense()` [packages/treetime/src/partition/algo/infer_dense.rs#L1-L3](../../packages/treetime/src/partition/algo/infer_dense.rs#L1-L3) is the shared dense-vs-sparse selector, but the function always returns `false`. `fn Representation::resolve()` uses it as the default when `--dense` is omitted, and the `ancestral`, `optimize`, and `timetree` pipelines call `Representation::resolve()`.
 
 ## Impact
 
@@ -16,9 +19,14 @@ Implement a heuristic based on branch lengths, sequence length, or both. Alterna
 
 ## Locations
 
-- Stub: `packages/treetime/src/partition/algo/infer_dense.rs`
-- Consumers: `packages/treetime/src/commands/ancestral/run.rs`, `packages/treetime/src/commands/optimize/run.rs`, `packages/treetime/src/commands/timetree/initialization.rs`
+- Stub: `fn infer_dense()` [packages/treetime/src/partition/algo/infer_dense.rs#L1-L3](../../packages/treetime/src/partition/algo/infer_dense.rs#L1-L3)
+- Selector: `fn Representation::resolve()` [packages/treetime/src/partition/create.rs#L25-L31](../../packages/treetime/src/partition/create.rs#L25-L31)
+- Consumers:
+  - ancestral, nucleotide [packages/treetime/src/ancestral/plan.rs#L67](../../packages/treetime/src/ancestral/plan.rs#L67)
+  - ancestral, amino acid [packages/treetime/src/ancestral/aa.rs#L37](../../packages/treetime/src/ancestral/aa.rs#L37)
+  - optimize [packages/treetime/src/optimize/pipeline.rs#L61](../../packages/treetime/src/optimize/pipeline.rs#L61)
+  - timetree [packages/treetime/src/timetree/pipeline.rs#L349](../../packages/treetime/src/timetree/pipeline.rs#L349)
 
-## Related tickets
+## Related decisions
 
-- [kb/tickets/representation-implement-infer-dense-heuristic.md](../tickets/representation-implement-infer-dense-heuristic.md)
+- [kb/decisions/sequence-representation-dense-sparse.md](../decisions/sequence-representation-dense-sparse.md)

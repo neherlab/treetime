@@ -1,7 +1,10 @@
 # Parallel sparse leaf setup has no defined error atomicity contract
 
 > [!IMPORTANT]
-> **Investigation and discussion required.** This is an unverified failure-state contract, not a confirmed regression. Define the required atomicity before preparing an implementation ticket.
+> **Investigation required.** This is an unverified failure-state contract, not a confirmed regression. Collect the failure-injection evidence listed under "Validation" to establish the current partial-mutation behavior.
+
+> [!IMPORTANT]
+> **Decision required.** Define the required atomicity before implementation: atomicity scope (A1) and parallel failure behavior (A2). See "Decision axes".
 
 ## Problem
 
@@ -32,7 +35,7 @@ The function borrows the graph and partitions rather than consuming a disposable
 
 - `pub(crate) fn attach_seqs_to_graph()` mutates descriptions during collection [packages/treetime/src/ancestral/fitch.rs#L55-L91](../../packages/treetime/src/partition/fitch/passes.rs#L91-L107)
 - Partition node and edge commits [packages/treetime/src/ancestral/fitch.rs#L93-L109](../../packages/treetime/src/partition/fitch/passes.rs#L91-L107)
-- Sparse marginal tests [packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs](../../packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs)
+- Sparse marginal tests [`packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs`](../../packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs)
 
 ## Validation
 

@@ -1,7 +1,7 @@
 # Nexus parser handles a limited subset
 
 > [!IMPORTANT]
-> **Scope decision required.** The current tree-only subset is implemented deliberately, but its acceptance as the complete Nexus contract has not been approved. Keep this as an issue until the supported syntax and malformed-input behavior are explicitly decided.
+> **Decision required.** The current tree-only subset is implemented deliberately, but its acceptance as the complete Nexus contract has not been approved. Keep this as an issue until the supported syntax and malformed-input behavior are explicitly decided.
 
 The `util-newick` crate Nexus parser covers the TREES block subset needed for phylogenetic tree I/O. It does not implement a full Nexus grammar parser.
 
@@ -32,4 +32,4 @@ TreeTime currently needs tree content from `TREES` blocks. Supporting unrelated 
 - **Malformed input:** return actionable parse errors or preserve empty-result behavior.
 - **Non-tree blocks:** ignore them as out of scope or represent them in a broader data model.
 
-No implementation ticket is ready until these axes are decided.
+Implementation waits until these axes are decided.

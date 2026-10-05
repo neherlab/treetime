@@ -1,9 +1,12 @@
 # Ancestral Auspice output is incomplete and method-dependent
 
-V0's `ancestral` command produces `auspice_tree.json` through `def export_sequences_and_tree()`. V1 now writes Auspice output directly from the graph via `fn ancestral_to_auspice()` [`packages/treetime/src/commands/shared/tree_output.rs#L240`](../../packages/treetime/src/commands/shared/tree_output.rs#L240).
+> [!IMPORTANT]
+> **Decision required.** Method availability (A1), Auspice payload (A2), and failure atomicity (A3) are unapproved. The reference-parity options depend on approval of the shared output boundary, and restricting Auspice to marginal reconstruction is an intentional parity divergence. See "Decision axes".
 
-> [!NOTE]
-> The tree-output refactor removed the TreeIR projection and wired `ancestral_to_auspice` into the writer. Whether ancestral Auspice is now produced completely and for **every** method (Fitch parsimony as well as sparse/dense marginal), and whether its payload matches the v0 fields below, is **not yet confirmed** against the current writer.
+> [!WARNING]
+> **Needs review.** The tree-output refactor removed the TreeIR projection and wired `ancestral_to_auspice` into the writer. Whether ancestral Auspice is now produced completely and for **every** method (Fitch parsimony as well as sparse/dense marginal), and whether its payload matches the v0 fields below, is **not yet confirmed** against the current writer.
+
+V0's `ancestral` command produces `auspice_tree.json` through `def export_sequences_and_tree()`. V1 now writes Auspice output directly from the graph via `fn ancestral_to_auspice()` [`packages/treetime/src/commands/shared/tree_output.rs#L240`](../../packages/treetime/src/commands/shared/tree_output.rs#L240).
 
 V0's ancestral Auspice JSON contains `node_attrs.div` (cumulative `mutation_length`), `branch_attrs.mutations.nuc` (per-branch mutations), `node_attrs.confidence` (pseudo-bootstrap), `meta.genome_annotations.nuc`, and `node_attrs.bad_branch`. It contains no dates because `timetree=false`.
 
@@ -50,9 +53,9 @@ This is a standalone visualization convenience for viewing ancestral reconstruct
 - Exercise a recurrent mutation whose parent allele differs from the global reference when validating UShER projection.
 - Inject a projection failure and assert that no requested output path has been created or modified.
 
-## Ticket readiness
+## Readiness
 
-No implementation ticket is ready. O1 is the reference-parity recommendation, but implementing it through TreeIR depends on approval of the shared TreeIR boundary. O2 is an intentional parity divergence and also requires approval. The independent topology-ordering defect has its own ready ticket.
+O1 is the reference-parity recommendation, but implementing it through TreeIR depends on approval of the shared TreeIR boundary. O2 is an intentional parity divergence and also requires approval. The independent topology-ordering defect is tracked separately.
 
 ## Related
 

@@ -525,7 +525,7 @@ Re-window deliberately leaves $2\epsilon$ mass in the tails, so a grid-only inte
 </details>
 
 <details>
-<summary>K18. Related open tickets 💻</summary>
+<summary>K18. Related open issues 💻</summary>
 
 - [kb/issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md](../issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md)
 - [kb/issues/M-timetree-confidence-interval-deficiencies.md](../issues/M-timetree-confidence-interval-deficiencies.md)

@@ -1,16 +1,25 @@
 # Test quality deficiencies
 
+> [!WARNING]
+> **Needs review.** The `propagate_raw_per_site` tests no longer compute expected values through the GTR exponential: `packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L40-L56` and `#L92-L108` compare against hardcoded literals. The literals have no stated source, so whether they were captured from the SUT is unknown. The section below describes the current state.
+
 ## Summary
 
-Remaining test quality issues: circular tests, weak assertions, and missing coverage for specific entities.
+Remaining test quality issues: unsourced and symmetric-model tests, weak assertions, and missing coverage for specific entities.
 
 ## Instances
 
-### propagate_raw_per_site tests are circular
+### propagate_raw_per_site tests use a symmetric model and unsourced expected values
 
-`packages/treetime/src/partition/marginal_helpers/__tests__/test_marginal_helpers.rs:10,66:`
+`packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs:14,66:`
 
-Both test functions compute expected values using `gtr.expQt_with_rate()`, the same function called internally by the SUT. Tautological verification.
+Both test functions use JC69, whose transition matrix is symmetric ($P(t) = P(t)^T$). The forward (`transpose = false`) and backward (`transpose = true`) tests therefore produce identical expected values and cannot detect a defect in the `transpose` handling of `fn propagate_raw_per_site()` (`packages/treetime/src/partition/marginal/sparse/message.rs:146`). The expected values are hardcoded literals with no stated source.
+
+Fix:
+
+- Add an HKY85 (or other non-symmetric model) case where forward and backward produce different results, so the transpose code path is exercised. HKY85 with unequal base frequencies (e.g. $\pi = [0.4, 0.1, 0.1, 0.4]$) produces an asymmetric $P(t)$
+- Derive expected values from the HKY85 closed form or the v0 Python GTR, never from the v1 GTR matrix exponential, because that reintroduces a circular oracle
+- State the source of the expected values in the test
 
 ### Skyline tests are runs-to-completion only
 
@@ -51,7 +60,3 @@ These tests assert `err.to_string().contains(...)` instead of the exact message 
 
 - No tests for `fn Sub::from_str`, `fn parse_pos`, validators at `seq/mutation.rs`
 - No tests for `enum AlphabetName::AaNoStop` at `alphabet.rs`
-
-## Related tickets
-
-- [kb/tickets/test-add-hky85-case-to-propagate-raw-per-site.md](../tickets/test-add-hky85-case-to-propagate-raw-per-site.md)

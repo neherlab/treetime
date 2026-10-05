@@ -1,11 +1,7 @@
 # --n-branches-posterior returns error
 
-The `--n-branches-posterior` flag is accepted by clap but returns an error at runtime with "not yet implemented" via `make_error!()`.
+The `--n-branches-posterior` flag is accepted by clap but returns an error at runtime with "not yet implemented" (`OperationError::InvalidParams` from the timetree pipeline).
 
 ## Location
 
-[`run.rs#L177`](../../packages/treetime/src/commands/timetree/run.rs#L177)
-
-## Related tickets
-
-- [kb/tickets/timetree-implement-n-branches-posterior.md](../tickets/timetree-implement-n-branches-posterior.md)
+[`pipeline.rs#L221-L223`](../../packages/treetime/src/timetree/pipeline.rs#L221-L223)

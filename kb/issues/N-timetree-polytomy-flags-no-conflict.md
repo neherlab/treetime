@@ -17,10 +17,6 @@ Represent polytomy handling as one exhaustive policy and parse CLI flags into it
 - Existing keep and resolve outputs remain unchanged.
 - An exhaustive match prevents a new policy variant from being silently ignored.
 
-## Related tickets
-
-- [kb/tickets/timetree-polytomy-flags-missing-conflicts-with-declaration.md](../tickets/timetree-polytomy-flags-missing-conflicts-with-declaration.md)
-
 ## Related issues
 
 - [M-timetree-coalescent-modes-represent-invalid-states.md](M-timetree-coalescent-modes-represent-invalid-states.md)

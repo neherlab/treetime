@@ -1,5 +1,8 @@
 # normalize_inplace NEG_INFINITY masks all contributions
 
+> [!IMPORTANT]
+> **Decision required.** The finite-penalty, exclusion, and masked-accumulation options define different likelihoods. The intended probability model and convergence behavior must be derived before one is selected. See "Fix" and "Readiness".
+
 ## Summary
 
 `normalize_inplace` returns `f64::NEG_INFINITY` for degenerate rows and substitutes uniform distributions. A single degenerate row makes the total log-likelihood negative infinity, masking contributions from all well-determined rows.
@@ -32,6 +35,6 @@ Options:
 2. Track degenerate row count separately and exclude from convergence arithmetic
 3. Use a masked accumulator that skips degenerate contributions
 
-## Ticket readiness
+## Readiness
 
 The listed finite-penalty, exclusion, and masked-accumulation choices define different likelihoods. Derive the intended probability model and convergence behavior before selecting a correction.

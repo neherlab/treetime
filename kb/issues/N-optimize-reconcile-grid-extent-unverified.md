@@ -1,5 +1,8 @@
 # `reconcile_zero_boundary` grid extent argument is unverified
 
+> [!IMPORTANT]
+> **Investigation required.** No test proves that the grid covers the true mode when the input branch length is uninformative. Build a fixture with the input branch length $100\times$ away from the true mode in each direction, as in step 1 of "Proposed action".
+
 ## Problem
 
 `reconcile_zero_boundary` at [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) takes a `branch_length_for_extent` parameter separate from `candidate`. The separation exists because `candidate` may be clamped to $0$ or to a tiny floor like $10^{-12}$ after the inner solver runs, and the grid extent must remain tied to a meaningful scale. The dispatcher in `run_optimize_mixed` passes the edge's INPUT branch length (the value before optimization) as the extent.
@@ -24,6 +27,6 @@ Negligible when the initial guess is calibrated (the standard workflow). On data
 
 - [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) (`reconcile_zero_boundary`, `grid_search_branch_lengths`)
 
-## Ticket readiness
+## Readiness
 
-The proposed test is evidence gathering, and the alternative extent formulas are speculative. Create an implementation ticket only after a failing fixture identifies the required admissible interval.
+The proposed test is evidence gathering, and the alternative extent formulas are speculative. Start implementation only after a failing fixture identifies the required admissible interval.

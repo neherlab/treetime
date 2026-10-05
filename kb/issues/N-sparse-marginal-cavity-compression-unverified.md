@@ -1,5 +1,8 @@
 # Sparse cavity-profile compression lacks an error contract
 
+> [!IMPORTANT]
+> **Investigation required.** No analytical error bound or lossless equivalence criterion establishes when cavity-profile compression is safe. Collect the evidence listed under "Investigation required"; a lossy threshold then needs explicit approval.
+
 ## Summary
 
 `fn compute_msg_to_child()` stores normalized cavity profiles explicitly even when their MAP state matches the fixed-row fallback and their probability is near $1$. Compressing those profiles approximately could improve representation density, but no analytical error bound or approved numerical contract establishes when that conversion is safe.
@@ -17,4 +20,4 @@ Let $\varepsilon$ denote a proposed probability threshold. A near-deterministic 
 - Determine whether any approximate threshold can satisfy the project's numerical contract across repeated inference passes.
 - Obtain explicit approval before introducing a lossy threshold.
 
-No implementation ticket is ready until the representation criterion and numerical contract are decided.
+Implementation waits until the representation criterion and numerical contract are decided.

@@ -1,5 +1,8 @@
 # Graphviz DOT writer uses Newick precision defaults for edge labels
 
+> [!IMPORTANT]
+> **Decision required.** The display precision of DOT edge labels (for example 6 significant digits, as under "Fix") needs approval independently from the Newick exchange-format default in [N-io-nwk-writer-3-sigfig-default-truncates-precision.md](N-io-nwk-writer-3-sigfig-default-truncates-precision.md).
+
 The Graphviz DOT writer at `packages/treetime-io/src/graphviz.rs` calls `format_weight` with `NwkWriteOptions::default()`. DOT output is for visualization, not data exchange -- full-precision labels like `0.00123456789012345` on every edge make graphs unreadable.
 
 Currently this produces 3-significant-digit labels (matching the Newick default). After the Newick precision default is fixed ([N-io-nwk-writer-3-sigfig-default-truncates-precision.md](N-io-nwk-writer-3-sigfig-default-truncates-precision.md)), the DOT writer would produce full-precision labels unless it sets its own explicit precision.
@@ -24,4 +27,4 @@ format_weight(weight, &NwkWriteOptions {
 - Blocked by: [N-io-nwk-writer-3-sigfig-default-truncates-precision.md](N-io-nwk-writer-3-sigfig-default-truncates-precision.md)
 - Design: [kb/proposals/newick-branch-length-precision.md](../proposals/newick-branch-length-precision.md) (Follow-up section)
 
-No implementation ticket is ready until the display precision is approved independently from the exchange-format default.
+Implementation waits until the display precision is approved independently from the exchange-format default.

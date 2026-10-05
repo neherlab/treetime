@@ -148,7 +148,7 @@ Should precision be exposed as a CLI flag?
 - Con: adds a flag that rarely matters; the correct default should not need overriding
 - Con: requires plumbing through `OutputArgs` -> `NwkWriteOptions`
 
-#### C. Defer CLI flag to a separate ticket
+#### C. Defer CLI flag to a separate change
 
 - Pro: keeps this change focused on fixing the bad default
 - Pro: `NwkWriteOptions` fields already exist for programmatic use; CLI wiring is independent work

@@ -1,5 +1,8 @@
 # VCF input and output are unimplemented
 
+> [!IMPORTANT]
+> **Decision required.** The parser and compression support, internal representation, output contract, and multi-contig semantics are undecided, and they determine incompatible APIs and data models. See "Scope axes requiring decisions".
+
 TreeTime v1 exposes `--vcf-reference` on sequence-consuming commands, but it has no VCF reader or writer. VCF input, compressed VCF input, and VCF output remain unchecked in [kb/features/io.md](../features/io.md).
 
 ## User-facing impact
@@ -29,9 +32,9 @@ Define which reconstructed states are emitted, how root and ancestral samples ar
 
 Decide whether contigs are independent partitions, one coordinate space with contig-qualified positions, or separate command invocations. The choice affects reference loading, sample identity reconciliation, output ordering, and model assignment.
 
-## Ticket readiness
+## Readiness
 
-No implementation ticket is ready. The parser, compression, internal representation, output contract, and multi-contig semantics determine incompatible APIs and data models. A ticket can be created after these axes are decided and the accepted design specifies end-to-end behavior and validation oracles.
+The parser, compression, internal representation, output contract, and multi-contig semantics determine incompatible APIs and data models. Start implementation after these axes are decided and the accepted design specifies end-to-end behavior and validation oracles.
 
 ## Related
 

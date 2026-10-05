@@ -1,5 +1,8 @@
 # Internal node dates missing in nexus for input branch length mode
 
+> [!WARNING]
+> **Needs review.** The message-passing code changed after the 19/37 measurement. The backward pass now drops `Empty` child messages before the n-ary `distribution_product()` ([`backward_pass.rs#L101-L111`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L101-L111)), and the forward pass divides out the subtree message and keeps the given date when the product is empty ([`forward_pass.rs#L143-L158`](../../packages/treetime/src/timetree/inference/forward_pass.rs#L143-L158)). Input mode still builds Point branch distributions and `multiply_point_point()` still uses the `1e-9` tolerance, but the measured scope and the diagnostic output need a rerun of the repro below.
+
 `timetree.nexus` contains date annotations only on tips when using `--branch-length-mode=input`. Default mode correctly annotates all nodes (tips + internal).
 
 ## Scope
@@ -15,30 +18,32 @@ Point distribution multiplication fails when time coordinates differ by more tha
 ### Code path
 
 1. `create_branch_distributions_input_mode()` at
-   [`runner.rs#L143-L166`](../../packages/treetime/src/timetree/inference/runner.rs#L143) creates `Distribution::point(time_duration, 1.0)` for each edge.
+   [`runner.rs#L215-L235`](../../packages/treetime/src/timetree/inference/runner.rs#L215-L235) creates `Distribution::point(time_length, 0.0)` for each edge.
 
 2. Leaf time distributions are Point distributions at collection dates.
 
 3. Backward pass at
-   [`backward_pass.rs#L62-L77`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L62):
-   - Convolves child Point with negated branch Point, yielding parent Point
-   - Multiplies child messages via `distribution_multiplication()`
+   [`backward_pass.rs#L101-L111`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L101-L111) and [`backward_pass.rs#L147-L172`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L147-L172):
+   - Convolves child Point with negated branch Point (`convolve_across_edge()`), yielding parent Point
+   - Multiplies the non-empty child messages via `distribution_product()`
    - Point x Point works when `|t_a - t_b| <= 1e-9`
 
 4. Forward pass at
-   [`forward_pass.rs#L69-L82`](../../packages/treetime/src/timetree/inference/forward_pass.rs#L69):
-   - `dist_from_parent = convolution(parent_time_dist, branch_dist)` - Point
-   - `combined = multiplication(dist_from_parent, subtree_dist)` - Point x Point
+   [`forward_pass.rs#L137-L158`](../../packages/treetime/src/timetree/inference/forward_pass.rs#L137-L158):
+   - `dist_from_parent = convolve_across_edge(parent_except_subtree, branch_dist)` - Point
+   - `combined = distribution_multiplication(dist_from_parent, subtree_dist)` - Point x Point
    - When these Points have slightly different `t` values (floating-point
      accumulation through tree depth), `multiply_point_point()` returns Empty
 
 5. `multiply_point_point()` at
-   [`multiply.rs#L55-L65`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L55):
+   [`multiply.rs#L52-L64`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L52-L64):
 
    ```rust
    const EPS: f64 = 1e-9;
    if (a.t() - b.t()).abs() > EPS {
-     return Ok(Distribution::empty());
+     let a_domain = Some(point_hard_domain(a));
+     let b_domain = Some(point_hard_domain(b));
+     return guarded_empty_result("multiplication", a_domain, b_domain);
    }
    ```
 
@@ -103,11 +108,12 @@ Point (delta) distributions assume zero uncertainty. When backward and forward p
 ## Repro
 
 ```bash
-./dev/docker/run just run treetime timetree --clock-filter=0 \
+./dev/docker/run just r treetime timetree --clock-filter=0 \
   --branch-length-mode=input \
   --tree=data/flu/h3n2/20/tree.nwk \
-  --dates=data/flu/h3n2/20/metadata.tsv \
-  --outdir=tmp/repro-input-bl data/flu/h3n2/20/aln.fasta.xz
+  --metadata=data/flu/h3n2/20/metadata.tsv \
+  --alignment=data/flu/h3n2/20/aln.fasta.xz \
+  --output-all=tmp/repro-input-bl
 grep -oP '\[&[^\]]*\]' tmp/repro-input-bl/timetree.nexus | wc -l
 # 19 (expected: 37)
 ```
@@ -122,7 +128,9 @@ if (a.t() - b.t()).abs() > EPS {
     "multiply_point_point: t_a={:.12e} t_b={:.12e} diff={:.12e}",
     a.t(), b.t(), (a.t() - b.t()).abs()
   );
-  return Ok(Distribution::empty());
+  let a_domain = Some(point_hard_domain(a));
+  let b_domain = Some(point_hard_domain(b));
+  return guarded_empty_result("multiplication", a_domain, b_domain);
 }
 ```
 
@@ -155,7 +163,3 @@ Sequence length: v0 requires either `--aln` or `--sequence-length` ([`wrappers.p
 This input-branch-length variant has a distinct root cause from the other timetree missing-date failures. Here the problem is Point-distribution multiplication tolerance, not branch-grid resolution or normalized product handling.
 
 That distinction matters because the symptom is similar - internal nodes lose dates - but the remedy is different. Fixes in the grid-based branches do not address the Point x Point failure in input branch length mode.
-
-## Related tickets
-
-- [kb/tickets/timetree-internal-dates-missing-nexus-input-branch-length-mode.md](../tickets/timetree-internal-dates-missing-nexus-input-branch-length-mode.md)

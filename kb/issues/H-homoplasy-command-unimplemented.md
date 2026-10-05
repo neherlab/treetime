@@ -1,5 +1,8 @@
 # Homoplasy command is unimplemented
 
+> [!IMPORTANT]
+> **Decision required.** The v1 argument types of `--rescale` and `--detailed` do not match v0, and the CLI parity, output schemas, oracles, VCF behavior, DRM validation, and acceptance contract are unspecified. See "Decisions required".
+
 `fn run_homoplasy()` [`packages/treetime/src/commands/homoplasy/run.rs#L6-L8`](../../packages/treetime/src/commands/homoplasy/run.rs#L6-L8) returns an explicit not-implemented error. The CLI accepts `treetime homoplasy` and parses all flags via `struct TreetimeHomoplasyArgs` [`packages/treetime/src/commands/homoplasy/args.rs#L12-L28`](../../packages/treetime/src/commands/homoplasy/args.rs#L12-L28), but the command cannot produce homoplasy results.
 
 ## Scope
@@ -23,9 +26,9 @@ None of these features are implemented in v1.
 
 The current v1 argument types do not match v0: v1 parses `--rescale` as a boolean and `--detailed` as an optional string, while v0 uses a numeric rescaling factor and a detail flag. [`packages/treetime/src/commands/homoplasy/args.rs#L20-L26`](../../packages/treetime/src/commands/homoplasy/args.rs#L20-L26) [`packages/legacy/treetime/treetime/argument_parser.py#L372-L376`](../../packages/legacy/treetime/treetime/argument_parser.py#L372-L376)
 
-Before creating an implementation ticket, specify exact CLI parity, output schemas, numerical and statistical oracles, VCF behavior, DRM validation, and the complete acceptance contract. The existing explicit error is the correct failure mode while the command is unavailable.
+Before implementation starts, specify exact CLI parity, output schemas, numerical and statistical oracles, VCF behavior, DRM validation, and the complete acceptance contract. The existing explicit error is the correct failure mode while the command is unavailable.
 
 ## Related
 
 - [algo/unimplemented.md](../algo/unimplemented.md): homoplasy algorithms listed as unimplemented
-- [features/\README.md](../features/README.md): homoplasy features tracked as 0/9 ported
+- [features/README.md](../features/README.md): homoplasy features tracked as 0/9 ported

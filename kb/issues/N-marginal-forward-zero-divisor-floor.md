@@ -1,5 +1,8 @@
 # Marginal forward pass zero-divisor floor converts structural zeros
 
+> [!IMPORTANT]
+> **Investigation required.** The claimed support change is not established. Reproduce the reachable zero patterns of numerator and divisor together and derive the intended cavity-message semantics, as listed under "Investigation required".
+
 The forward pass msg_to_child computation divides the node posterior by the child's msg_from_child. When msg_from_child contains exact zeros (a state is structurally impossible given the subtree evidence), the division would produce infinity. The code floors the divisor to `f64::MIN_POSITIVE` (~2.2e-308) to avoid this.
 
 The claimed support change is not established: an exact-zero numerator divided by `f64::MIN_POSITIVE` remains zero, while a positive numerator over an exact-zero denominator indicates a different inconsistent-message case. The numerator and divisor states must be reproduced together before assigning a failure mechanism.
@@ -19,6 +22,6 @@ The practical impact is negligible because `f64::MIN_POSITIVE` is ~2.2e-308, mak
 - Derive the cavity-message limit for each reachable zero pattern.
 - Compare dense, sparse, and v0 log-space paths against an independent analytical case.
 
-## Ticket readiness
+## Readiness
 
 No correction is ready until the reachable zero patterns and intended cavity-message semantics are established.

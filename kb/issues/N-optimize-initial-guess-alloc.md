@@ -1,9 +1,5 @@
-# initial_guess_mixed allocates Vec<Sub> per edge for count only
+# Initial branch-length guess allocates Vec<Sub> per edge for count only
 
-`initial_guess_mixed()` ([packages/treetime/src/optimize/dispatch.rs#L309](../../packages/treetime/src/optimize/dispatch.rs#L309)) calls `edge_subs()` and takes `.len()`, discarding the substitution vector. For dense partitions, `edge_subs()` ([packages/treetime/src/partition/marginal_dense.rs#L87-L118](../../packages/treetime/src/partition/marginal_dense.rs#L87-L118)) builds a `Vec<Sub>` with one allocation per differing site. The initializer runs across every edge before optimization.
+`fn gather_edge_sub_counts()` ([packages/treetime/src/optimize/gather.rs#L71-L83](../../packages/treetime/src/optimize/gather.rs#L71-L83)) calls `edge_subs()` and takes `.len()`, discarding the substitution vector. The optimize pipeline calls it before the loop ([packages/treetime/src/optimize/pipeline.rs#L99](../../packages/treetime/src/optimize/pipeline.rs#L99)) and passes the counts to `fn initial_guess_mixed()` ([packages/treetime/src/optimize/dispatch.rs#L167](../../packages/treetime/src/optimize/dispatch.rs#L167)). For dense partitions, `edge_subs()` ([packages/treetime/src/partition/marginal/dense/partition.rs#L77-L108](../../packages/treetime/src/partition/marginal/dense/partition.rs#L77-L108)) builds a `Vec<Sub>` with one allocation per differing site. The count runs across every edge before optimization.
 
 A count-only method (incrementing a counter instead of pushing `Sub` values) would avoid the allocation. For small alignments the cost is negligible. For large alignments (thousands of positions, hundreds of edges) the cumulative allocation is avoidable.
-
-## Related tickets
-
-- [kb/tickets/optimize-initial-guess-allocates-vec-for-count-only.md](../tickets/optimize-initial-guess-allocates-vec-for-count-only.md)

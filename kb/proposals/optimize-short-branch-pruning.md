@@ -47,4 +47,4 @@ The optimization loop already calls `find_zero_optimal_internal_edges` per itera
 
 - [kb/proposals/optimize-pipeline-timetree-parity.md](optimize-pipeline-timetree-parity.md) -- parent proposal
 - [kb/features/optimize.md](../features/optimize.md) -- `[ ] Short branch pruning after optimization` and `[ ] MIN_BRANCH_LENGTH floor for GTR calculations`
-- [kb/tickets/optimize-add-short-branch-pruning.md](../tickets/optimize-add-short-branch-pruning.md) -- implementation ticket
+- [kb/issues/M-optimize-short-branch-pruning-unimplemented.md](../issues/M-optimize-short-branch-pruning-unimplemented.md) -- implementation scope and validation

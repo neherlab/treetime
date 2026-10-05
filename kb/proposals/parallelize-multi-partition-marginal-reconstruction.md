@@ -145,5 +145,5 @@ Defer C3 (exact-parallel sampling) and treat C2 as the fallback only if a decisi
 
 ## Follow-up
 
-- Extract the recommended combination into `kb/issues/` as separate actionable items (driver refactor and bound widening; two-knob CLI and clamp; per-partition RNG and determinism contract; documentation; the dense/discrete inner-parallelism verification from Q1). Create tickets only for issues whose design axes above are decided.
+- Extract the recommended combination into `kb/issues/` as separate actionable items (driver refactor and bound widening; two-knob CLI and clamp; per-partition RNG and determinism contract; documentation; the dense/discrete inner-parallelism verification from Q1).
 - On implementation, record the non-deterministic-sampling divergence in `kb/decisions/` (requires explicit human consent, since it changes sampling reproducibility under parallel execution).

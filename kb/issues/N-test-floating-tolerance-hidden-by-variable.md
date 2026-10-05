@@ -2,7 +2,7 @@
 
 `assert_sparse_profile_normalized` accepts `max_ulps` and forwards it to floating-point assertions. Current callers pass a literal, but the assertion site does not expose or constrain the oracle tolerance, violating the repository’s test policy.
 
-The helper parameter is forwarded into `pretty_assert_ulps_eq!` in [packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L35-L59](../../packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L35-L59).
+The helper parameter is forwarded into `pretty_assert_ulps_eq!` in [packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L36-L80](../../packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L36-L80).
 
 ## Potential solutions
 

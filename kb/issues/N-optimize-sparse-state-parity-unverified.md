@@ -1,5 +1,8 @@
 # Sparse branch optimization state parity lacks a coefficient oracle
 
+> [!IMPORTANT]
+> **Investigation required.** No failing fixture shows that the stored sparse reference state is stale. Construct the dense-versus-sparse coefficient oracle listed under "Investigation required" and trace any divergence to its root cause.
+
 ## Summary
 
 Sparse and dense branch optimization have no coefficient-level oracle proving that their compressed state selection remains equivalent after marginal updates. `VarPos.state` is the exact sparse reference state and cannot be replaced independently with a posterior MAP state.
@@ -19,4 +22,4 @@ The current evidence does not establish that the reference state should contain 
 - Trace the first divergence to the representation component that is stale.
 - If stale compression is confirmed, specify how all coupled compressed state is rebuilt atomically.
 
-No implementation ticket is ready until the coefficient oracle reproduces a defect and identifies its root cause.
+Implementation waits until the coefficient oracle reproduces a defect and identifies its root cause.

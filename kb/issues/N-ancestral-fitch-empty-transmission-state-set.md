@@ -1,8 +1,11 @@
 # Fitch transmission filtering can produce an empty state set
 
-The Fitch backward recurrence excludes a child's substitution state when the position lies in that edge's `transmission` ranges [packages/treetime/src/ancestral/fitch_sub.rs#L43-L51](../../packages/treetime/src/partition/fitch/sub.rs#L43-L51). If every child is excluded at one candidate position, both the intersection and union of the remaining profiles are empty, so the backward pass stores an empty variable state [packages/treetime/src/ancestral/fitch_sub.rs#L61-L72](../../packages/treetime/src/partition/fitch/sub.rs#L61-L72). A later forward pass calls `StateSet::get_one()` without a valid state to select [packages/treetime/src/ancestral/fitch_sub.rs#L110-L119](../../packages/treetime/src/partition/fitch/sub.rs#L110-L119).
+> [!WARNING]
+> **Needs review.** The backward pass no longer stores an empty variable state. When every child is filtered, `fn resolve_variable_positions_backward()` now skips the position (`if child_profiles.is_empty() { continue; }`, [packages/treetime/src/partition/fitch/sub.rs#L52-L54](../../packages/treetime/src/partition/fitch/sub.rs#L52-L54), commit `219a014a`). The discovery pass ignores `transmission` and can already have written `VARIABLE_CHAR` at that position [packages/treetime/src/partition/fitch/sub.rs#L99-L107](../../packages/treetime/src/partition/fitch/sub.rs#L99-L107), so the node can keep the sentinel in its sequence with no `variable` entry. The forward passes iterate only `variable` [packages/treetime/src/partition/fitch/sub.rs#L118-L129](../../packages/treetime/src/partition/fitch/sub.rs#L118-L129). The effect of that leftover sentinel is not verified.
 
-No production code currently assigns `SparseEdgePartition::transmission`, so the invalid state is dormant [packages/treetime/src/partition/sparse.rs#L34-L47](../../packages/treetime/src/partition/sparse.rs#L34-L47). Activating the field without first defining its evidence semantics would turn the dormant state into a failure or arbitrary reconstruction.
+The Fitch backward recurrence excludes a child's substitution state when the position lies in that edge's `transmission` ranges [packages/treetime/src/partition/fitch/sub.rs#L36-L40](../../packages/treetime/src/partition/fitch/sub.rs#L36-L40). If every child is excluded at one candidate position, no child state set remains to intersect or unite [packages/treetime/src/partition/fitch/sub.rs#L52-L74](../../packages/treetime/src/partition/fitch/sub.rs#L52-L74), and the position has no valid state for the forward pass to select [packages/treetime/src/partition/fitch/sub.rs#L118-L184](../../packages/treetime/src/partition/fitch/sub.rs#L118-L184).
+
+No production code currently assigns `SparseEdgeObs::transmission`, so the invalid state is dormant [packages/treetime/src/partition/storage/sparse.rs#L99](../../packages/treetime/src/partition/storage/sparse.rs#L99). Activating the field without first defining its evidence semantics would turn the dormant state into a failure or arbitrary reconstruction.
 
 ## Potential solutions
 
@@ -12,8 +15,8 @@ No production code currently assigns `SparseEdgePartition::transmission`, so the
 
 ## Recommendation
 
-Define the biological and partition-boundary meaning of `transmission` before selecting an option. Then make the all-children-filtered state representable or reject it with a typed error; never construct an empty `StateSet`. No implementation ticket is ready while those semantics remain undecided.
+Define the biological and partition-boundary meaning of `transmission` before selecting an option. Then make the all-children-filtered state representable or reject it with a typed error; never construct an empty `StateSet` or leave a sentinel without a state set. Implementation waits until those semantics are decided.
 
-## Related issues
+## Related
 
-- [M-ancestral-fitch-polytomy-recurrence-not-minimum.md](M-ancestral-fitch-polytomy-recurrence-not-minimum.md)
+- [kb/decisions/ancestral-fitch-plurality-on-multifurcations.md](../decisions/ancestral-fitch-plurality-on-multifurcations.md)

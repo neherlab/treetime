@@ -24,7 +24,7 @@ This is v0 parity: one alignment, one model, one partition.
 
 When `--dense` is omitted, `infer_dense()` in `partition/algo/infer_dense.rs` determines dense vs sparse. The stub always returns `false`. The planned heuristic: select dense when tree branches are long enough that most positions become variable (expected mutations per branch approaches sequence length). Below that threshold, sparse saves memory and compute.
 
-**Sources:** `kb/issues/N-representation-infer-dense-stub.md`, `kb/tickets/representation-implement-infer-dense-heuristic.md`
+**Sources:** `kb/issues/N-representation-infer-dense-stub.md`
 
 ### 2.3 Multiple alignment files
 

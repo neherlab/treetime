@@ -2,45 +2,21 @@
 
 ## Summary
 
-Several numeric thresholds remain hardcoded without named constants, documentation, or validation of degenerate inputs.
+Numeric thresholds remain hardcoded without named constants, documentation, or a defined fallback contract for degenerate inputs.
 
 ## Instances
 
 ### 1e-10 magic denominator in relaxed_clock.rs
 
-`packages/treetime/src/timetree/optimization/relaxed_clock.rs:70,91,106:`
+`fn apply_relaxed_clock()` uses `1e-10` as a denominator floor in three places [packages/treetime/src/timetree/optimization/relaxed_clock.rs#L46](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L46), [#L66](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L66), [#L80](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L80). The constant has no name. Below the floor, the code skips the child contribution or sets the rate multiplier `gamma` to `1.0` without a warning.
 
-Three locations use `1e-10` as a denominator floor. No named constant.
-
-### Shared marginal forward pass MIN_POSITIVE clamp biases near-zero divisor
-
-`packages/treetime/src/partition/marginal_core.rs:163:`
-
-Silently biases near-zero values to `f64::MIN_POSITIVE` without propagating information about the degenerate log-likelihood to callers. Used by both dense and discrete partitions.
-
-### SUPERTINY_NUMBER distorts column-stochastic normalization
-
-`packages/treetime/src/gtr/infer_gtr/common.rs:199:`
-
-`SUPERTINY_NUMBER` (1e-24) added to `expQt` result distorts column-stochastic normalization. The additive constant prevents exact zeros but shifts column sums away from 1.0.
-
-### debug_assert!(gamma > 0.0) not a production guard
-
-`packages/treetime/src/timetree/inference/branch_length_likelihood.rs:61:`
-
-The assertion is stripped in release builds. When gamma <= 0 reaches this code path in production, the computation produces inf/NaN silently.
+v0's `relaxed_clock()` has no such guard and divides directly [packages/legacy/treetime/treetime/treetime.py#L1110-L1130](../../packages/legacy/treetime/treetime/treetime.py#L1110-L1130), so the guard and its fallback values are an undocumented divergence from v0.
 
 ## Impact
 
-- Silent NaN/inf propagation in production builds for edge-case inputs
-- Column-stochastic property violated by additive perturbation
-- Degenerate zero branch lengths and non-positive gamma values are not rejected at boundaries
+- Degenerate relaxed-clock coefficients silently produce default rate multipliers
 
-## Ticket readiness
+## Related issues
 
-Each instance needs an independent issue because input validation, denominator regularization, stochastic normalization, and release-mode guards have different behavioral contracts. Existing focused tickets remain valid only where their source issue selects one correction and supplies an oracle.
-
-## Related tickets
-
-- [kb/tickets/numerical-promote-debug-assert-to-production-guards.md](../tickets/numerical-promote-debug-assert-to-production-guards.md)
-- [kb/tickets/numerical-supertiny-number-distorts-column-stochastic-normalization.md](../tickets/numerical-supertiny-number-distorts-column-stochastic-normalization.md)
+- [N-marginal-forward-zero-divisor-floor.md](N-marginal-forward-zero-divisor-floor.md): the `f64::MIN_POSITIVE` divisor floor of the marginal forward pass [packages/treetime/src/partition/marginal/shared/normalize.rs#L59](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L59)
+- [N-timetree-branch-likelihood-positivity-checked-only-in-debug.md](N-timetree-branch-likelihood-positivity-checked-only-in-debug.md)

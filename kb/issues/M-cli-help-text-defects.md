@@ -1,5 +1,8 @@
 # CLI help text defects, inconsistencies, and UX violations
 
+> [!IMPORTANT]
+> **Decision required.** Each behavioral item needs its own parse and runtime contract before implementation, and the split of this inventory is unapproved: focused issues per behavior contract (O1), or one repository-wide CLI cleanup (O2). See "Potential solutions".
+
 Systematic audit of `--help` output across all commands reveals defects affecting human scientists, automation clients, and workflow engines such as Snakemake and Nextflow.
 
 ## Defects
@@ -198,11 +201,11 @@ Root help lists tooling commands at the same level as analysis commands with no 
 
 ## Recommendation
 
-Use O1. Parser behavior such as dense/sparse mode, required outputs, and per-command format availability needs focused issues and tickets. Pure spelling, capitalization, grammar, and layout corrections may share one documentation ticket after behavior-dependent items are removed. This inventory has no executable omnibus ticket.
+Use O1. Parser behavior such as dense/sparse mode, required outputs, and per-command format availability needs focused issues. Pure spelling, capitalization, grammar, and layout corrections may share one documentation change after behavior-dependent items are removed. This inventory is not executable as one change.
 
-## Ticket readiness
+## Readiness
 
-No aggregate ticket is ready. Each behavioral item must first select its parse/runtime contract, and already-owned unused or unimplemented flags remain with their domain issues.
+Each behavioral item must first select its parse/runtime contract, and already-owned unused or unimplemented flags remain with their domain issues.
 
 ## Related issues
 
