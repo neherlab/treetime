@@ -18,7 +18,7 @@ The optimize M-step operates in substitution space with free branch lengths ($b_
 
 The two loops are siblings sharing an E-step (ancestral reconstruction via `update_marginal()`) but with different M-step objectives. Topology cleanup belongs in the substitution-space objective, not the time-space objective.
 
-Initial branch quality is handled by the ML branch-length pre-step before the timetree loop begins (`optimize_branch_lengths_pre_step()` in [`packages/treetime/src/commands/timetree/run.rs`](../../packages/treetime/src/commands/timetree/run.rs)).
+Initial branch lengths are optimized by the ML branch-length pre-step before the timetree loop begins (`fn ml_optimize()` and `fn optimize_branch_lengths()` in [`packages/treetime/src/timetree/pre_loop.rs`](../../packages/treetime/src/timetree/pre_loop.rs)). Unlike v0, this pre-step does not prune short branches: [kb/issues/M-timetree-pre-loop-short-branch-pruning-missing.md](../issues/M-timetree-pre-loop-short-branch-pruning-missing.md).
 
 Topology cleanup in the substitution-space M-step is consistent with EM algorithm theory <a id="cite-1"></a>[Dempster, Laird, and Rubin 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) [[1](#ref-1)]: each M-step maximizes the expected complete-data log-likelihood under its own parameterization. The substitution-space M-step optimizes branch lengths freely and can detect zero-length branches. The time-space M-step optimizes node times under clock constraints, where zero time difference is a valid state.
 

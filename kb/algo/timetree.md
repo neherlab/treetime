@@ -155,7 +155,7 @@ The `one_mutation` parameter (sum of sequence lengths across all partitions) set
 
 ## Polytomy Resolution
 
-A polytomy (multifurcation) is a node with more than two children, arising from insufficient phylogenetic signal to resolve the true bifurcating topology (soft polytomy) or from genuine simultaneous divergence (hard polytomy, rare). Tree builders (IQ-TREE, FastTree, RAxML) resolve zero-length branches into arbitrary bifurcations. TreeTime collapses these back into polytomies and re-resolves them in a way consistent with the temporal ordering of nodes.
+A polytomy (multifurcation) is a node with more than two children, arising from insufficient phylogenetic signal to resolve the true bifurcating topology (soft polytomy) or from genuine simultaneous divergence (hard polytomy, rare). Tree builders (IQ-TREE, FastTree, RAxML) resolve zero-length branches into arbitrary bifurcations. v0 collapses these back into polytomies before the timetree loop (`prune_short_branches()`) and re-resolves them in a way consistent with the temporal ordering of nodes. v1 does not collapse them, so it re-resolves only polytomies already present in the input tree: [kb/issues/M-timetree-pre-loop-short-branch-pruning-missing.md](../issues/M-timetree-pre-loop-short-branch-pruning-missing.md).
 
 v1 uses mutation-conditioned stochastic coalescent sampling. v0 provides stochastic and greedy generators, but v1 corrects three documented v0 defects in the stochastic rate selection, parent bound, and arrival handling.
 
@@ -215,6 +215,8 @@ Component and total scalar boundaries use `LogLh`, while positional distribution
 ## Iterative EM-like Refinement
 
 Alternates sequence reconstruction (E-step) and time inference (M-step), iterating until convergence ([[3](#ref-3)], Section 2.4). Each iteration optionally applies relaxed clock rate estimation, resolves polytomies, and re-estimates the clock model.
+
+A single backward and forward pass over per-branch length likelihoods already gives a timetree. Iteration is needed only for the optional parts. Some form a cycle: node times determine the coalescent likelihood, and the coalescent prior changes the node times. Others alternate in EM style: branch times are optimized for a fixed coalescent model or fixed rate multipliers, then those are optimized for fixed times. v1 runs the loop up to `--max-iter` times even when no optional part is enabled.
 
 v1: [`packages/treetime/src/timetree/round.rs`](../../packages/treetime/src/timetree/round.rs), driven by [`packages/treetime/src/timetree/refinement_loop.rs`](../../packages/treetime/src/timetree/refinement_loop.rs).
 
@@ -341,12 +343,12 @@ v1: [`packages/treetime/src/timetree/optimization/reroot.rs`](../../packages/tre
 
 ## File Index
 
-| File                                                                                                       | Algorithms                                                            |
-| ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| [`packages/treetime/src/timetree/inference/`](../../packages/treetime/src/timetree/inference/)             | Belief propagation, branch distributions, timetree runner             |
-| [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/)                             | Kingman coalescent, skyline, Tc optimization                          |
-| [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/)       | Polytomy, relaxed clock, reroot, clock filter                         |
-| [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/timetree/convergence/)         | Convergence monitoring, likelihood tracking, sequence change counting |
-| [`packages/app-output/src/`](../../packages/app-output/src/)                                               | Output writers: tree outputs, confidence intervals, coalescent, RTT   |
-| [`packages/treetime/src/timetree/round.rs`](../../packages/treetime/src/timetree/round.rs)                 | EM-like iterative refinement                                          |
-| [`packages/treetime/src/timetree/pipeline.rs`](../../packages/treetime/src/timetree/pipeline.rs)           | End-to-end estimation pipeline                                        |
+| File                                                                                                 | Algorithms                                                            |
+| ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [`packages/treetime/src/timetree/inference/`](../../packages/treetime/src/timetree/inference/)       | Belief propagation, branch distributions, timetree runner             |
+| [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/)                       | Kingman coalescent, skyline, Tc optimization                          |
+| [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/) | Polytomy, relaxed clock, reroot, clock filter                         |
+| [`packages/treetime/src/timetree/convergence/`](../../packages/treetime/src/timetree/convergence/)   | Convergence monitoring, likelihood tracking, sequence change counting |
+| [`packages/app-output/src/`](../../packages/app-output/src/)                                         | Output writers: tree outputs, confidence intervals, coalescent, RTT   |
+| [`packages/treetime/src/timetree/round.rs`](../../packages/treetime/src/timetree/round.rs)           | EM-like iterative refinement                                          |
+| [`packages/treetime/src/timetree/pipeline.rs`](../../packages/treetime/src/timetree/pipeline.rs)     | End-to-end estimation pipeline                                        |
