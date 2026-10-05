@@ -31,8 +31,9 @@ pub fn nex_write(
   options: &NwkWriteOptions,
   comments: &NwkNodeComments,
 ) -> Result<(), Report> {
-  let n_leaves = tree.graph().num_leaves();
-  let leaf_names = tax_labels(tree.graph(), names)?;
+  let leaf_names = leaf_names(tree.graph(), names);
+  let n_leaves = leaf_names.len();
+  let leaf_names = tax_labels(&leaf_names)?;
   let nwk = nwk_write_str(tree, names, weights, options, comments)?;
   let nwk = nwk.strip_suffix(';').unwrap_or(&nwk);
 
@@ -51,9 +52,16 @@ End;
   .wrap_err("When writing Nexus")
 }
 
-fn tax_labels(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<String, Report> {
+fn leaf_names<'a>(graph: &Graph, names: &'a BTreeMap<GraphNodeKey, Option<String>>) -> Vec<&'a str> {
+  graph
+    .get_leaves()
+    .filter_map(|leaf| names[&leaf.key()].as_deref())
+    .collect()
+}
+
+fn tax_labels(leaf_names: &[&str]) -> Result<String, Report> {
   let mut labels = String::new();
-  for name in graph.get_leaves().filter_map(|leaf| names[&leaf.key()].as_deref()) {
+  for name in leaf_names {
     if !labels.is_empty() {
       labels.push(' ');
     }

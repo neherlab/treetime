@@ -82,4 +82,41 @@ mod tests {
     assert_eq!(expected, String::from_utf8(actual)?);
     Ok(())
   }
+
+  #[test]
+  fn test_nex_taxon_count_matches_written_labels() -> Result<(), Report> {
+    let parse = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
+    let mut names = parse.names();
+    let b_key = names
+      .iter()
+      .find_map(|(key, name)| (name.as_deref() == Some("B")).then_some(*key))
+      .expect("fixture has leaf B");
+    names.insert(b_key, None);
+    let NwkParse {
+      graph, branch_lengths, ..
+    } = parse;
+    let mut actual = Vec::new();
+
+    nex_write(
+      &mut actual,
+      &TreeView::new(&graph)?,
+      &names,
+      &branch_lengths,
+      &NwkWriteOptions::default(),
+      &btreemap! {},
+    )?;
+
+    let expected = indoc! {r#"
+      #NEXUS
+      Begin Taxa;
+        Dimensions NTax=1;
+        TaxLabels A;
+      End;
+      Begin Trees;
+        Tree tree1=(A:0.1,:0.2)root;
+      End;
+    "#};
+    assert_eq!(expected, String::from_utf8(actual)?);
+    Ok(())
+  }
 }
