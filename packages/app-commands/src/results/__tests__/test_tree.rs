@@ -7,6 +7,7 @@ pub(crate) mod tests {
   use eyre::Report;
   use helpers::fixture;
   use pretty_assertions::assert_eq;
+  use treetime::alphabet::alphabet::Alphabet;
   use treetime::o;
   use treetime_utils::{assert_error, vec_of_owned};
 
@@ -165,7 +166,7 @@ pub(crate) mod tests {
         },
       ],
     };
-    assert_eq!(expected, ancestral_results(Some(&tree))?);
+    assert_eq!(expected, ancestral_results(Some(&tree), &Alphabet::default())?);
     Ok(())
   }
 
@@ -180,8 +181,8 @@ pub(crate) mod tests {
     let tree = ResultTree::from_auspice(&auspice)?;
 
     assert_error!(
-      ancestral_results(Some(&tree)),
-      "mutation `A1B2` names 2 sequence positions, expected one"
+      ancestral_results(Some(&tree), &Alphabet::default()),
+      "Unable to parse nucleotide mutation: 'A1B2'"
     );
     Ok(())
   }

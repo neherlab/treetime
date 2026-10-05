@@ -4,7 +4,10 @@ use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_utils::make_report;
+use std::str::FromStr;
+use treetime::alphabet::alphabet::Alphabet;
+use treetime::homoplasy::classify::{MutationClass, classify_mutation};
+use treetime::seq::mutation::{MutationEvent, Sub};
 
 /// Results of an `ancestral` run.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -13,7 +16,8 @@ pub struct AncestralResults {
   pub mutations: usize,
   /// Branches with at least one mutation, most mutations first.
   pub branches: Vec<BranchMutations>,
-  /// Sequence positions that mutate on more than one branch, most branches first.
+  /// Sequence positions with substitutions between determined states on more than one branch, most
+  /// branches first.
   pub recurrent_sites: Vec<RecurrentSite>,
 }
 
@@ -37,7 +41,7 @@ pub struct RecurrentSite {
   pub branches: usize,
 }
 
-pub fn ancestral_results(tree: Option<&ResultTree>) -> Result<AncestralResults, Report> {
+pub fn ancestral_results(tree: Option<&ResultTree>, alphabet: &Alphabet) -> Result<AncestralResults, Report> {
   let Some(tree) = tree else {
     return Ok(AncestralResults {
       mutations: 0,
@@ -66,8 +70,9 @@ pub fn ancestral_results(tree: Option<&ResultTree>) -> Result<AncestralResults, 
     let positions = node
       .mutations
       .iter()
-      .map(|mutation| mutation_position(mutation))
-      .collect::<Result<BTreeSet<_>, Report>>()?;
+      .map(|mutation| substitution_position(mutation, alphabet))
+      .flatten_ok()
+      .collect::<Result<BTreeSet<usize>, Report>>()?;
     for position in positions {
       *branches_per_site.entry(position).or_default() += 1;
     }
@@ -85,17 +90,11 @@ pub fn ancestral_results(tree: Option<&ResultTree>) -> Result<AncestralResults, 
   })
 }
 
-fn mutation_position(mutation: &str) -> Result<usize, Report> {
-  mutation
-    .split(|c: char| !c.is_ascii_digit())
-    .filter(|digits| !digits.is_empty())
-    .exactly_one()
-    .map_err(|groups| {
-      make_report!(
-        "mutation `{mutation}` names {} sequence positions, expected one",
-        groups.count()
-      )
-    })?
-    .parse()
-    .map_err(|err| make_report!("mutation `{mutation}` has an invalid position: {err}"))
+fn substitution_position(mutation: &str, alphabet: &Alphabet) -> Result<Option<usize>, Report> {
+  if mutation.contains(&alphabet.gap().to_string()) {
+    return Ok(None);
+  }
+  let sub = Sub::from_str(mutation)?;
+  let class = classify_mutation(&MutationEvent::Substitution(sub.clone()), alphabet);
+  Ok((class == MutationClass::Substitution).then(|| sub.pos() + 1))
 }

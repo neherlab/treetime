@@ -396,7 +396,7 @@ impl FromStr for Sub {
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    if let Some(captures) = regex!(r"^(?P<ref>[A-Z])(?P<pos>\d{1,10})(?P<qry>[A-Z])$").captures(s) {
+    if let Some(captures) = regex!(r"^(?P<ref>[A-Z*])(?P<pos>\d{1,10})(?P<qry>[A-Z*])$").captures(s) {
       return match (captures.name("ref"), captures.name("pos"), captures.name("qry")) {
         (Some(reff), Some(pos), Some(qry)) => {
           let reff = AsciiChar::try_new(reff.as_str().bytes().next().unwrap())

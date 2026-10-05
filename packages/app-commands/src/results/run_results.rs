@@ -15,6 +15,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::path::Path;
+use treetime::alphabet::alphabet::Alphabet;
 use treetime::gtr::get_gtr::GtrOutput;
 use treetime_utils::make_report;
 use util_augur_node_data_json::AugurNodeDataJsonRefine;
@@ -116,7 +117,10 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
       clock_model.as_ref(),
       clock_rows.as_deref(),
     )),
-    CommandConfig::Ancestral(_) => CommandResults::Ancestral(ancestral_results(tree.as_ref())?),
+    CommandConfig::Ancestral(config) => CommandResults::Ancestral(ancestral_results(
+      tree.as_ref(),
+      &Alphabet::new(config.alphabet_args.alphabet_name().unwrap_or_default())?,
+    )?),
     CommandConfig::Mugration(config) => {
       let attribute = config
         .attribute
