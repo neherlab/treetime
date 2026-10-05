@@ -287,7 +287,6 @@ export default defineConfig({
           "\\* @internal",
           "/ <reference",
           "/usr/bin/env",
-          "SAFETY:",
           "TODO",
           "FIXME",
           "HACK",
