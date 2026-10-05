@@ -202,6 +202,8 @@ The `--app-dir=<dir>` switch of the app names the app folder for one start, rela
 
 An environment variable takes precedence over the settings key, and the key over the default. A relative path in `settings.yaml` is relative to the app folder; a relative path in a variable is relative to the working directory. `just desktop` and `just desktop-prod` use `tmp/app/treetime-dev` and `tmp/app/treetime-prod` of the checkout as app folder, so development never touches an installed app, and `data/` of the checkout as examples folder; `TREETIME_DESKTOP_DEV_DIR`, `TREETIME_DESKTOP_PROD_DIR`, and the variables above in `.env` choose other folders (see `.env.example`).
 
+An installed app starts with an empty examples folder. The example dialogs and the command palette then offer "Download examples": the back end downloads `examples.zip` of the app's release from `neherlab/treetime-nightly` and unpacks it into the examples folder in the background (`POST /api/examples/download`, with the progress on the app event stream), so a reload of the window does not stop it. A nightly build downloads the archive of its own release; a development or release build downloads the archive of the latest release. `treetime examples get --output-dir <dir>` does the same for CLI users, and `--url` names another archive. The hosted web app copies `data/` into its image and does not offer the download.
+
 `settings.yaml` holds the folders (`paths`) and the preferences of the user interface (`ui`: theme, sidebar width, and the unfinished form):
 
 ```yaml
@@ -383,7 +385,7 @@ Prerelease builds are published in [neherlab/treetime-nightly](https://github.co
 
 1. `.github/workflows/schedule-nightly.yml` on `master` runs daily at 04:00 UTC and calls `.github/workflows/nightly.yml` on `rust`, which skips when `rust` has no new commits
 2. `nightly.yml` builds the cross-compilation matrix of `.github/workflows/cli-build.yml`, and the desktop apps with `.github/workflows/desktop-build.yml`: the addon of each target in its cross image, the bundles, and the packages. A failed target does not block the others
-3. `dev/publish-nightly` creates the prerelease with the built binaries and desktop packages. Its notes list the changelog since the previous nightly, followed by a downloads table that links every asset, one row per platform
+3. `dev/publish-nightly` creates the prerelease with the built binaries, the desktop packages, and `examples.zip`, the example datasets of `data/` without the smoke fixtures and the development scripts. Its notes list the changelog since the previous nightly, followed by a downloads table that links every asset, one row per platform
 
 `./dev/trigger-nightly` starts a nightly by hand. The version format is `<cargo-version>-nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>`.
 
