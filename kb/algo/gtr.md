@@ -160,6 +160,11 @@ See [unimplemented](unimplemented.md) for full details:
 - Random GTR generation
 - File-based GTR loading
 
+Not tracked in [unimplemented](unimplemented.md), because v0 has neither:
+
+- Closed-form propagation for JC69 (see the JC69 section above), which would replace the matrix-vector product per site with $n$ numbers
+- Substitution models that change along the tree. v1 has one model per partition, and every edge of the partition uses it
+
 ---
 
 ## References
@@ -179,10 +184,10 @@ See [unimplemented](unimplemented.md) for full details:
 
 ## File Index
 
-| File                                                                                                   | Algorithms                                                            |
-| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)                           | GTR core, eigendecomposition, `expQt()` (`#expQt`)                    |
-| [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)                   | JC69, K80, F81, HKY85, T92, TN93, JTT92, GTR output JSON              |
-| [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs) | `MutationCounts`, `InferGtrOptions`, `infer_gtr_impl()`               |
-| [`packages/treetime/src/partition/fitch/gtr_inference.rs`](../../packages/treetime/src/partition/fitch/gtr_inference.rs) | Fitch GTR inference from parsimony mutation counts (dense and sparse) |
-| [`packages/treetime/src/partition/marginal/shared/data.rs`](../../packages/treetime/src/partition/marginal/shared/data.rs) | Dense GTR inference from branch joint distributions |
+| File                                                                                                                       | Algorithms                                                            |
+| -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [`packages/treetime/src/gtr/gtr.rs`](../../packages/treetime/src/gtr/gtr.rs)                                               | GTR core, eigendecomposition, `expQt()` (`#expQt`)                    |
+| [`packages/treetime/src/gtr/get_gtr.rs`](../../packages/treetime/src/gtr/get_gtr.rs)                                       | JC69, K80, F81, HKY85, T92, TN93, JTT92, GTR output JSON              |
+| [`packages/treetime/src/gtr/infer_gtr/common.rs`](../../packages/treetime/src/gtr/infer_gtr/common.rs)                     | `MutationCounts`, `InferGtrOptions`, `infer_gtr_impl()`               |
+| [`packages/treetime/src/partition/fitch/gtr_inference.rs`](../../packages/treetime/src/partition/fitch/gtr_inference.rs)   | Fitch GTR inference from parsimony mutation counts (dense and sparse) |
+| [`packages/treetime/src/partition/marginal/shared/data.rs`](../../packages/treetime/src/partition/marginal/shared/data.rs) | Dense GTR inference from branch joint distributions                   |

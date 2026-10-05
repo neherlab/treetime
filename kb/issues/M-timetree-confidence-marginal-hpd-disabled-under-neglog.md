@@ -1,6 +1,6 @@
 # Timetree confidence intervals drop the marginal-posterior HPD contribution under NegLog
 
-Node confidence intervals combine two sources: the highest-posterior-density (HPD) region of the marginal time distribution (mutation stochasticity) and the rate-susceptibility interval (clock-rate uncertainty). The marginal-posterior source is missing: `extract_confidence_intervals` sets `mutation_contribution` to `None` [`packages/treetime/src/timetree/confidence.rs#L137`](../../packages/treetime/src/timetree/confidence.rs#L137), because v1 has no HPD region for the negative-log ordinates the time distribution stores (`Distribution<NegLog>`).
+Node confidence intervals combine two sources: the highest-posterior-density (HPD) region of the marginal time distribution (mutation stochasticity) and the rate-susceptibility interval (clock-rate uncertainty). The marginal-posterior source is missing: `extract_confidence_intervals` sets `mutation_contribution` to `None` [`packages/treetime/src/timetree/confidence.rs#L93`](../../packages/treetime/src/timetree/confidence.rs#L93), because v1 has no HPD region for the negative-log ordinates the time distribution stores (`Distribution<NegLog>`).
 
 ## Impact and scope
 

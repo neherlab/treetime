@@ -116,7 +116,7 @@
 
 ## Confidence Intervals
 
-- [x] 90% HPD from marginal posteriors
+- [ ] 90% HPD from marginal posteriors (`mutation_contribution` is `None`; [kb/issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md](../issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md))
 - [x] `combine_confidence()` quadrature sum
 - [x] `Distribution::quantile()` inverse CDF
 - [x] Rate susceptibility analysis (`compute_rate_susceptibility()`)

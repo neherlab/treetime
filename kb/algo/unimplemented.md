@@ -88,7 +88,7 @@ After finding optimal root position `x*`:
 
 ## Per-Site Rate Variation
 
-The design document specifies a fixed rate vector $\mu^a$, where $a$ indexes alignment sites and each rate scales a shared GTR rate matrix. [`kb/_raw/sequence_evolution.md#site-specific-models`](../_raw/sequence_evolution.md#site-specific-models) This contract differs from two related models:
+The intended model is a fixed rate vector $\mu^a$, where $a$ indexes alignment sites and each rate scales a shared GTR rate matrix, so all sites share one set of eigenvalues and eigenvectors. This contract differs from two related models:
 
 - Discrete-gamma among-site rate variation integrates over latent rate categories, $L_a = \sum_k w_k L_a(r_k)$, rather than assigning one known rate to each site.
 - Full site-specific GTR allows parameters such as equilibrium frequencies $\pi^a$ to vary by site, so the rate-matrix eigendecomposition can also vary by site.
@@ -251,7 +251,7 @@ v1: functionality exists in the optimize command but not as a GTR method.
 Analysis pipeline that identifies recurrent mutations - sites where the same mutation occurred independently on multiple branches, indicating convergent evolution, recombination, or sequencing artifacts.
 
 v0: `scan_homoplasies()` (`#scan_homoplasies`) in [`packages/legacy/treetime/treetime/wrappers.py#L82-L139`](../../packages/legacy/treetime/treetime/wrappers.py#L82-L139).
-v1: returns an explicit not-implemented error at [`packages/treetime/src/commands/homoplasy/run.rs#L6-L8`](../../packages/treetime/src/commands/homoplasy/run.rs#L6-L8).
+v1: returns an explicit not-implemented error at [`packages/treetime/src/homoplasy/pipeline.rs#L3-L5`](../../packages/treetime/src/homoplasy/pipeline.rs#L3-L5).
 
 ### Algorithm
 
@@ -267,7 +267,7 @@ v1: returns an explicit not-implemented error at [`packages/treetime/src/command
 Enhancement to the coalescent model that uses posterior probability distributions of divergence times instead of point estimates when calculating the coalescent merger rate. Produces more accurate coalescent contributions by accounting for time uncertainty.
 
 v0: `--n-branches-posterior` flag uses posterior distributions for branch counting in merger rate computation.
-v1: CLI arg declared (hidden) at [`packages/treetime/src/commands/timetree/args.rs#L184`](../../packages/treetime/src/commands/timetree/args.rs#L184), returns error at [`packages/treetime/src/commands/timetree/run.rs#L115`](../../packages/treetime/src/commands/timetree/run.rs#L115).
+v1: CLI arg declared at [`packages/app-commands/src/commands/timetree/args.rs#L385`](../../packages/app-commands/src/commands/timetree/args.rs#L385), returns error at [`packages/treetime/src/timetree/pipeline.rs#L221-L225`](../../packages/treetime/src/timetree/pipeline.rs#L221-L225).
 
 ---
 
