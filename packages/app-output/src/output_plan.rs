@@ -10,6 +10,7 @@ use treetime::progress::LogSink;
 use treetime::progress_debug;
 use treetime_io::csv::TableFormat;
 use treetime_io::nwk::NwkStyle;
+use treetime_utils::io::file::is_path_stdout;
 use treetime_utils::make_error;
 
 #[allow(
@@ -402,7 +403,12 @@ fn ensure_unique_output_paths(
     );
   let mut destinations: BTreeMap<&Path, &str> = BTreeMap::new();
   for (flag, path) in flags_and_paths {
-    if let Some(previous) = destinations.insert(path, flag) {
+    let destination = if is_path_stdout(path) {
+      Path::new("-")
+    } else {
+      path.as_path()
+    };
+    if let Some(previous) = destinations.insert(destination, flag) {
       return make_error!(
         "Output destination '{}' is selected more than once ({previous} and {flag})",
         path.display()

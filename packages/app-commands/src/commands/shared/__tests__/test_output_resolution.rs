@@ -8,7 +8,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use std::path::PathBuf;
+  use std::path::{Path, PathBuf};
   use tempfile::TempDir;
   use treetime_io::nwk::NwkStyle;
   use treetime_utils::assert_error;
@@ -91,6 +91,29 @@ mod tests {
       result,
       "Output destination 'same-output' is selected more than once (--output-tree-nwk and --output-gtr)"
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::dash_then_dev_stdout( ("-",           "/dev/stdout"), "Output destination '/dev/stdout' is selected more than once (--output-tree-nwk and --output-gtr)")]
+  #[case::dev_stdout_then_dash( ("/dev/stdout", "-"),           "Output destination '-' is selected more than once (--output-tree-nwk and --output-gtr)")]
+  #[trace]
+  fn test_resolve_rejects_two_outputs_to_stdout_whatever_the_spelling(
+    #[case] (tree_path, gtr_path): (&str, &str),
+    #[case] expected: &str,
+  ) {
+    let args = OutputCoreArgs {
+      output_tree_nwk: Some(PathBuf::from(tree_path)),
+      ..OutputCoreArgs::default()
+    };
+
+    let result = args.resolve(
+      CommandKind::Ancestral,
+      &[],
+      &[(OutputSelection::Gtr, Some(Path::new(gtr_path)))],
+    );
+
+    assert_error!(result, expected);
   }
 
   #[test]
