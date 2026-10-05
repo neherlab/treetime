@@ -32,7 +32,10 @@ impl<K: Ord> RecurrenceTable<K> {
     }
     let mut ranked: Vec<Recurrence<K>> = branches_by_mutation
       .into_iter()
-      .map(|(mutation, branches)| Recurrence { mutation, branches })
+      .map(|(mutation, mut branches)| {
+        branches.sort();
+        Recurrence { mutation, branches }
+      })
       .collect();
     ranked.sort_by(|a, b| {
       b.multiplicity()
