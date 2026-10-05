@@ -9,11 +9,12 @@ export declare class PortExchange {
   abort(): void
 }
 
-export declare function appPaths(): DesktopPaths
+export declare function appStartup(): AppStartup
 
-export interface DesktopPaths {
+export interface AppStartup {
   profileDir: string
   logsDir: string
+  theme: string
 }
 
 export interface PortError {

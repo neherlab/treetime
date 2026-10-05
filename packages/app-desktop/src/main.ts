@@ -2,8 +2,15 @@ import { mkdirSync } from "node:fs";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { zPickFilesRequest, zPickFolderRequest, type ErrorResponse } from "@neherlab/app-contracts";
-import { appPaths } from "@neherlab/app-napi";
+import {
+  zPickFilesRequest,
+  zPickFolderRequest,
+  zUiTheme,
+  type ErrorResponse,
+  type UiTheme,
+} from "@neherlab/app-contracts";
+import { appStartup } from "@neherlab/app-napi";
+import { windowBackground, WINDOW_MIN_SIZE } from "@neherlab/app-ui/window";
 import {
   app,
   BrowserWindow,
@@ -13,6 +20,7 @@ import {
   nativeTheme,
   net,
   protocol,
+  screen,
   shell,
   utilityProcess,
   webContents,
@@ -39,8 +47,12 @@ import {
   THEME_CHANNEL,
 } from "./channels";
 import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
+import { napiErrorResponse } from "./napi-error";
 import { confineNavigation, isTrustedSender } from "./security";
 import type { SaveReply, SaveRunArchiveDialog, SaveRunFileDialog } from "./shell-protocol";
+import { firstWindowBounds } from "./window-bounds";
+
+const MAIN_WINDOW_NAME = "main";
 
 const launchDir = process.cwd();
 
@@ -66,18 +78,6 @@ Object.assign(
   }),
 );
 
-const paths = appPaths();
-
-mkdirSync(paths.profileDir, { recursive: true });
-
-app.setPath("userData", paths.profileDir);
-
-app.setAppLogsPath(paths.logsDir);
-
-const diagnosticDir = process.env[DIAGNOSTIC_DIR_ENV] ?? path.join(paths.logsDir, "diagnostics");
-
-initDiagnostics("treetime-desktop", diagnosticDir);
-
 if (process.env["ELECTRON_DISABLE_SANDBOX"] === "1") {
   app.commandLine.appendSwitch("no-sandbox");
 }
@@ -88,12 +88,81 @@ const appRoot = path.join(__dirname, "../dist");
 
 protocol.registerSchemesAsPrivileged([{ scheme: APP_SCHEME, privileges: APP_SCHEME_PRIVILEGES }]);
 
-async function main(): Promise<void> {
+function readStartup(): Startup | undefined {
+  try {
+    const { profileDir, logsDir, theme } = appStartup();
+
+    return { profileDir, logsDir, theme: zUiTheme.parse(theme) };
+  } catch (error: unknown) {
+    const { message, causes } = napiErrorResponse(error);
+    dialog.showErrorBox("TreeTime cannot start", [message, ...causes].join(": "));
+    app.quit();
+
+    return undefined;
+  }
+}
+
+function launch({ logsDir, theme }: Startup): void {
+  const diagnosticDir = process.env[DIAGNOSTIC_DIR_ENV] ?? path.join(logsDir, "diagnostics");
+  initDiagnostics("treetime-desktop", diagnosticDir);
+  const mainWindow = new MainWindow();
+
+  app.on("second-instance", () => {
+    void mainWindow.show();
+  });
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
+      app.quit();
+    }
+  });
+  main(mainWindow, theme, diagnosticDir).catch((error: unknown) => {
+    console.error(error);
+    app.quit();
+  });
+}
+
+async function main(mainWindow: MainWindow, theme: UiTheme, diagnosticDir: string): Promise<void> {
   await app.whenReady();
   protocol.handle(APP_SCHEME, serveAppAsset);
-  const backend = new BackendProcess();
+  nativeTheme.themeSource = theme;
+  nativeTheme.on("updated", () => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      window.setBackgroundColor(windowBackground(nativeTheme.shouldUseDarkColors));
+    }
+  });
+  const backend = new BackendProcess(diagnosticDir);
   registerIpcHandlers(backend);
-  await createWindow();
+  await mainWindow.show();
+  app.on("activate", () => {
+    void mainWindow.show();
+  });
+}
+
+interface Startup {
+  profileDir: string;
+  logsDir: string;
+  theme: UiTheme;
+}
+
+class MainWindow {
+  private window: BrowserWindow | undefined;
+
+  async show(): Promise<void> {
+    await app.whenReady();
+
+    if (this.window === undefined || this.window.isDestroyed()) {
+      this.window = createWindow();
+
+      return;
+    }
+
+    if (this.window.isMinimized()) {
+      this.window.restore();
+    }
+
+    this.window.show();
+    this.window.focus();
+  }
 }
 
 class BackendProcess {
@@ -104,8 +173,10 @@ class BackendProcess {
   private nextSave = 0;
   private failure: BackendStop | undefined;
   private startError: ErrorResponse | undefined;
+  private readonly diagnosticDir: string;
 
-  constructor() {
+  constructor(diagnosticDir: string) {
+    this.diagnosticDir = diagnosticDir;
     this.child = this.spawn();
   }
 
@@ -159,7 +230,7 @@ class BackendProcess {
       serviceName: "TreeTime back end",
       cwd: process.cwd(),
       stdio: "inherit",
-      env: { ...process.env, [DIAGNOSTIC_DIR_ENV]: diagnosticDir },
+      env: { ...process.env, [DIAGNOSTIC_DIR_ENV]: this.diagnosticDir },
     });
 
     this.startError = undefined;
@@ -338,10 +409,17 @@ async function saveTo(
   return reply.kind === "saved" ? { saved: true } : { error: reply.error };
 }
 
-async function createWindow(): Promise<void> {
+function createWindow(): BrowserWindow {
+  const bounds = firstWindowBounds(screen.getPrimaryDisplay().workArea, WINDOW_MIN_SIZE);
+
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    ...bounds,
+    name: MAIN_WINDOW_NAME,
+    windowStatePersistence: true,
+    minWidth: WINDOW_MIN_SIZE.width,
+    minHeight: WINDOW_MIN_SIZE.height,
+    show: false,
+    backgroundColor: windowBackground(nativeTheme.shouldUseDarkColors),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -350,21 +428,39 @@ async function createWindow(): Promise<void> {
     },
   });
 
+  win.once("ready-to-show", () => {
+    win.show();
+  });
   confineNavigation(win.webContents, appUrl, (url) => void shell.openExternal(url));
+  void loadWindow(win);
 
-  if (devServerUrl !== undefined && devServerUrl !== "") {
-    await win.loadURL(devServerUrl);
-    win.webContents.openDevTools({ mode: "bottom" });
-  } else {
+  return win;
+}
+
+async function loadWindow(win: BrowserWindow): Promise<void> {
+  try {
     await win.loadURL(appUrl);
+  } catch (error: unknown) {
+    console.error(error);
+
+    return;
+  }
+
+  if (devServer) {
+    win.webContents.openDevTools();
   }
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  app.quit();
-});
+const startup = readStartup();
 
-app.on("window-all-closed", () => {
-  app.quit();
-});
+if (startup !== undefined) {
+  mkdirSync(startup.profileDir, { recursive: true });
+  app.setPath("userData", startup.profileDir);
+  app.setAppLogsPath(startup.logsDir);
+
+  if (app.requestSingleInstanceLock()) {
+    launch(startup);
+  } else {
+    app.quit();
+  }
+}

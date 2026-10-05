@@ -1,10 +1,10 @@
-import { errorMessage, zErrorResponse, type ErrorResponse } from "@neherlab/app-contracts";
 import { Backend, type PortMessage, type PortReply } from "@neherlab/app-napi";
 import type { MessagePortMain } from "electron";
 
 import { saveRunFiles, serveFetch } from "./backend-host";
 import type { ControlReply, ControlRequest, FetchEndpoint, SaveRequest } from "./backend-protocol";
 import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
+import { napiErrorResponse } from "./napi-error";
 
 const diagnosticDir = process.env[DIAGNOSTIC_DIR_ENV];
 
@@ -39,20 +39,9 @@ function startBackend(): Backend | undefined {
     return new Backend();
   } catch (error: unknown) {
     // oxlint-disable-next-line unicorn/require-post-message-target-origin -- the parent port of a utility process takes no target origin
-    process.parentPort.postMessage({ kind: "failed", error: startError(error) } satisfies ControlReply);
+    process.parentPort.postMessage({ kind: "failed", error: napiErrorResponse(error) } satisfies ControlReply);
 
     return undefined;
-  }
-}
-
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- the addon constructor throws an untyped error, parsed here at the boundary
-function startError(error: unknown): ErrorResponse {
-  const message = errorMessage(error);
-
-  try {
-    return zErrorResponse.parse(JSON.parse(message));
-  } catch {
-    return { code: "internal_error", message, causes: [] };
   }
 }
 

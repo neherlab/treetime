@@ -9,6 +9,7 @@ export default defineConfig({
   plugins: [auspice(), icons()],
   test: {
     server: { deps: { inline: ["auspice"] } },
+    css: { include: [/theme\.css/u] },
     include: ["packages/*/src/**/*.test.{ts,tsx}", "packages/*/build/**/*.test.ts"],
     setupFiles: ["./vitest.setup.ts"],
     environment: "node",

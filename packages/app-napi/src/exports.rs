@@ -2,6 +2,7 @@ use crate::backend::DesktopService;
 use crate::guard::{guarded, to_napi};
 use crate::port::{PortReply, PortRequest};
 use app_commands::app_paths::{AppFolderEnv, AppPaths, app_root};
+use app_commands::app_settings::settings::UiTheme;
 use app_commands::app_settings::store::AppSettingsStore;
 use app_commands::job::JobId;
 use eyre::Report;
@@ -9,10 +10,11 @@ use napi::bindgen_prelude::{AsyncTask, ToNapiValue, TypeName};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::{Env, Status, Task};
 use napi_derive::napi;
+use serde_json::Value;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::task::AbortHandle;
-use treetime_utils::make_report;
+use treetime_utils::{make_internal_report, make_report};
 
 #[napi]
 pub struct Backend {
@@ -66,23 +68,28 @@ impl Backend {
 }
 
 #[napi]
-pub fn app_paths() -> napi::Result<DesktopPaths> {
+pub fn app_startup() -> napi::Result<AppStartup> {
   guarded(|| {
     let root = app_root()?;
     let settings = AppSettingsStore::open(&root)?.read()?;
     let paths = AppPaths::resolve(&root, &AppFolderEnv::from_env()?, &settings.paths);
-    Ok(DesktopPaths {
+    let Value::String(theme) = serde_json::to_value(settings.ui.theme.unwrap_or(UiTheme::System))? else {
+      return Err(make_internal_report!("a theme serializes to a JSON string"));
+    };
+    Ok(AppStartup {
       profile_dir: path_string(&paths.profile.path)?,
       logs_dir: path_string(&paths.logs.path)?,
+      theme,
     })
   })
   .map_err(|err| to_napi(&err))
 }
 
 #[napi(object)]
-pub struct DesktopPaths {
+pub struct AppStartup {
   pub profile_dir: String,
   pub logs_dir: String,
+  pub theme: String,
 }
 
 #[napi(object)]

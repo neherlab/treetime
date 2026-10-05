@@ -10,7 +10,8 @@
     "./build/content-security-policy-vite": "./build/content-security-policy-vite.ts",
     "./build/icons-vite": "./build/icons-vite.ts",
     "./build/public-dir": "./build/public-dir.ts",
-    "./icons": "./src/icons.d.ts"
+    "./icons": "./src/icons.d.ts",
+    "./window": "./src/window.ts"
   },
   "scripts": {
     "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit && tsc -p tsconfig.node.json --noEmit"
