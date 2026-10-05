@@ -738,7 +738,7 @@ export type OutputFile = {
  * selection enums into this type, and [`plan`] resolves each key to a path.
  * Tree variants do not encode the separately selected Newick style.
  */
-export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json';
+export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json' | 'clock-chart-svg' | 'clock-chart-png';
 
 /**
  * Error of a failed run.
@@ -3471,7 +3471,7 @@ export type AncestralConfig = {
   $schema?: string;
 };
 
-export type ClockOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb' | 'MatJson' | 'GraphJson' | 'Dot' | 'ClockModel' | 'ClockCsv';
+export type ClockOutputSelection = 'All' | 'Nwk' | 'Nexus' | 'Auspice' | 'MatPb' | 'MatJson' | 'GraphJson' | 'Dot' | 'ClockModel' | 'ClockCsv' | 'ClockChartSvg' | 'ClockChartPng';
 
 /**
  * Branch split optimization parameters
@@ -3742,6 +3742,18 @@ export type ClockConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    */
   output_clock_csv?: string | null;
+  /**
+   * Path to output root-to-tip regression chart in SVG format.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_clock_chart_svg?: string | null;
+  /**
+   * Path to output root-to-tip regression chart in PNG format.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_clock_chart_png?: string | null;
   /**
    * Comma-separated list of outputs to produce with `--output-all`.
    *

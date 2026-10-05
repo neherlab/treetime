@@ -460,6 +460,42 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::default_set(  vec![],                       vec![("clock.svg", OutputSelection::ClockChartSvg), ("clock.png", OutputSelection::ClockChartPng)])]
+  #[case::nwk_only(     vec![OutputSelection::Nwk],   vec![])]
+  #[case::svg_selected( vec![OutputSelection::ClockChartSvg], vec![("clock.svg", OutputSelection::ClockChartSvg)])]
+  #[trace]
+  fn test_resolve_clock_charts_follow_the_selection(
+    #[case] selection: Vec<OutputSelection>,
+    #[case] expected: Vec<(&str, OutputSelection)>,
+  ) {
+    let dir = TempDir::new().unwrap();
+    let args = OutputCoreArgs {
+      output_all: Some(dir.path().to_path_buf()),
+      ..Default::default()
+    };
+
+    let resolved = args.resolve(CommandKind::Clock, &selection, &[]).unwrap();
+
+    let expected: BTreeMap<OutputSelection, PlannedFile> = expected
+      .into_iter()
+      .map(|(name, selection)| {
+        let file = PlannedFile {
+          path: dir.path().join(name),
+          requested: Requested::All,
+        };
+        (selection, file)
+      })
+      .collect();
+    let actual: BTreeMap<OutputSelection, PlannedFile> = resolved
+      .non_tree_outputs
+      .into_iter()
+      .filter(|(selection, _)| matches!(selection, OutputSelection::ClockChartSvg | OutputSelection::ClockChartPng))
+      .collect();
+    assert_eq!(expected, actual);
+  }
+
   mod helpers {
     use super::*;
 

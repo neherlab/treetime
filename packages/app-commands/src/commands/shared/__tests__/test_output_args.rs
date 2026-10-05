@@ -231,6 +231,31 @@ mod tests {
   }
 
   #[test]
+  fn test_clock_output_chart_flags_parse() {
+    let args = TreetimeClockArgsRaw::try_parse_from([
+      "treetime",
+      "--metadata=/dev/null",
+      "--output-clock-chart-svg=/tmp/chart.svg",
+      "--output-clock-chart-png=/tmp/chart.png",
+      "--output-all=/tmp/out",
+      "--output-selection=clock-chart-svg,clock-chart-png",
+    ])
+    .unwrap();
+    assert_eq!(
+      (
+        args.output_clock_chart_svg.as_deref(),
+        args.output_clock_chart_png.as_deref(),
+        args.output_selection,
+      ),
+      (
+        Some(Path::new("/tmp/chart.svg")),
+        Some(Path::new("/tmp/chart.png")),
+        vec![ClockOutputSelection::ClockChartSvg, ClockOutputSelection::ClockChartPng],
+      )
+    );
+  }
+
+  #[test]
   fn test_mugration_output_traits_csv_parses() {
     let args = TreetimeMugrationArgsRaw::try_parse_from([
       "treetime",

@@ -2380,7 +2380,9 @@
           "tracelog",
           "coalescent-tsv",
           "coalescent-csv",
-          "coalescent-json"
+          "coalescent-json",
+          "clock-chart-svg",
+          "clock-chart-png"
         ]
       },
       "RunError": {
@@ -6637,7 +6639,9 @@
           "GraphJson",
           "Dot",
           "ClockModel",
-          "ClockCsv"
+          "ClockCsv",
+          "ClockChartSvg",
+          "ClockChartPng"
         ]
       },
       "BranchSplitArgs": {
@@ -7034,6 +7038,26 @@
             "default": null,
             "x-path": "output",
             "x-cli-flag": "--output-clock-csv"
+          },
+          "output_clock_chart_svg": {
+            "description": "Path to output root-to-tip regression chart in SVG format.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null,
+            "x-path": "output",
+            "x-cli-flag": "--output-clock-chart-svg"
+          },
+          "output_clock_chart_png": {
+            "description": "Path to output root-to-tip regression chart in PNG format.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null,
+            "x-path": "output",
+            "x-cli-flag": "--output-clock-chart-png"
           },
           "output_selection": {
             "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example\nthe substitution model of a run that fits none. A per-file flag for such an output fails.",
@@ -15277,6 +15301,52 @@
             "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`."
           },
           {
+            "key": "output_clock_chart_svg",
+            "path": [
+              "output_clock_chart_svg"
+            ],
+            "label": "Output clock chart svg",
+            "flag": "--output-clock-chart-svg",
+            "group": "Output",
+            "role": "output",
+            "kind": "text",
+            "nullable": true,
+            "options": [],
+            "item_kind": "string",
+            "default_value": null,
+            "minimum": null,
+            "examples": [],
+            "value_names": [
+              "OUTPUT_CLOCK_CHART_SVG"
+            ],
+            "conflicts": [],
+            "help": "Path to output root-to-tip regression chart in SVG format.",
+            "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`."
+          },
+          {
+            "key": "output_clock_chart_png",
+            "path": [
+              "output_clock_chart_png"
+            ],
+            "label": "Output clock chart png",
+            "flag": "--output-clock-chart-png",
+            "group": "Output",
+            "role": "output",
+            "kind": "text",
+            "nullable": true,
+            "options": [],
+            "item_kind": "string",
+            "default_value": null,
+            "minimum": null,
+            "examples": [],
+            "value_names": [
+              "OUTPUT_CLOCK_CHART_PNG"
+            ],
+            "conflicts": [],
+            "help": "Path to output root-to-tip regression chart in PNG format.",
+            "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`."
+          },
+          {
             "key": "output_selection",
             "path": [
               "output_selection"
@@ -15326,6 +15396,14 @@
               },
               {
                 "value": "ClockCsv",
+                "help": ""
+              },
+              {
+                "value": "ClockChartSvg",
+                "help": ""
+              },
+              {
+                "value": "ClockChartPng",
                 "help": ""
               }
             ],

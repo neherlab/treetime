@@ -362,7 +362,12 @@ impl CommandKind {
         OutputSelection::ConfidenceCsv,
         OutputSelection::TraitsCsv
       ],
-      Self::Clock => btreeset![OutputSelection::ClockModel, OutputSelection::ClockCsv],
+      Self::Clock => btreeset![
+        OutputSelection::ClockModel,
+        OutputSelection::ClockCsv,
+        OutputSelection::ClockChartSvg,
+        OutputSelection::ClockChartPng
+      ],
       Self::Prune => btreeset![OutputSelection::Gtr],
     }
   }
@@ -452,6 +457,8 @@ pub enum OutputSelection {
   CoalescentTsv,
   CoalescentCsv,
   CoalescentJson,
+  ClockChartSvg,
+  ClockChartPng,
 }
 
 impl OutputSelection {
@@ -477,6 +484,8 @@ impl OutputSelection {
       Self::Tracelog => "Convergence values of every iteration",
       Self::CoalescentTsv | Self::CoalescentCsv => "Coalescent time scale and effective population size",
       Self::CoalescentJson => "Coalescent model and its likelihood",
+      Self::ClockChartSvg => "Root-to-tip regression chart (SVG)",
+      Self::ClockChartPng => "Root-to-tip regression chart (PNG)",
     }
   }
 
@@ -499,7 +508,9 @@ impl OutputSelection {
       | Self::ClockModel
       | Self::ReconstructedNucFasta
       | Self::ReconstructedAaFasta
-      | Self::CoalescentJson => None,
+      | Self::CoalescentJson
+      | Self::ClockChartSvg
+      | Self::ClockChartPng => None,
     }
   }
 
@@ -532,7 +543,9 @@ impl OutputSelection {
       | Self::Tracelog
       | Self::CoalescentTsv
       | Self::CoalescentCsv
-      | Self::CoalescentJson => false,
+      | Self::CoalescentJson
+      | Self::ClockChartSvg
+      | Self::ClockChartPng => false,
     }
   }
 
@@ -567,6 +580,8 @@ impl OutputSelection {
       Self::CoalescentTsv => ".coalescent.tsv",
       Self::CoalescentCsv => ".coalescent.csv",
       Self::CoalescentJson => ".coalescent.json",
+      Self::ClockChartSvg => ".svg",
+      Self::ClockChartPng => ".png",
     }
   }
 
@@ -604,6 +619,8 @@ impl OutputSelection {
       Self::CoalescentTsv => "--output-coalescent-tsv",
       Self::CoalescentCsv => "--output-coalescent-csv",
       Self::CoalescentJson => "--output-coalescent-json",
+      Self::ClockChartSvg => "--output-clock-chart-svg",
+      Self::ClockChartPng => "--output-clock-chart-png",
     }
   }
 }

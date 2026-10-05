@@ -10,10 +10,11 @@ use treetime::progress::LogSink;
 use treetime::progress_warn;
 use treetime_utils::make_error;
 
+use std::io::Write;
+use treetime_utils::io::file::write_file_with;
+
 #[cfg(feature = "png")]
 use image::{ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb, codecs::png::PngEncoder};
-#[cfg(feature = "png")]
-use treetime_utils::io::file::write_file_with;
 
 const CHART_SIZE: (u32, u32) = (1200, 800);
 
@@ -22,10 +23,13 @@ pub fn write_clock_regression_chart_svg(
   clock_model: &ClockModel,
   filepath: impl AsRef<Path>,
 ) -> Result<(), Report> {
-  let svg = SVGBackend::new(filepath.as_ref(), CHART_SIZE).into_drawing_area();
-  draw_chart(results, clock_model, &svg)?;
-  svg.present()?;
-  Ok(())
+  let mut text = String::new();
+  {
+    let svg = SVGBackend::with_string(&mut text, CHART_SIZE).into_drawing_area();
+    draw_chart(results, clock_model, &svg)?;
+    svg.present()?;
+  }
+  write_file_with(filepath, |writer| Ok(writer.write_all(text.as_bytes())?))
 }
 
 #[cfg(feature = "png")]

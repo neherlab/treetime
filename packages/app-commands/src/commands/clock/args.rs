@@ -67,6 +67,8 @@ pub struct TreetimeClockArgs {
   pub(crate) output: OutputCoreArgs,
   pub(crate) output_clock_model: Option<PathBuf>,
   pub(crate) output_clock_csv: Option<PathBuf>,
+  pub(crate) output_clock_chart_svg: Option<PathBuf>,
+  pub(crate) output_clock_chart_png: Option<PathBuf>,
   pub(crate) output_selection: Vec<ClockOutputSelection>,
   pub(crate) topology_order: TopologyOrderArgs,
   #[expect(
@@ -129,6 +131,8 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
       output: raw.output,
       output_clock_model: raw.output_clock_model,
       output_clock_csv: raw.output_clock_csv,
+      output_clock_chart_svg: raw.output_clock_chart_svg,
+      output_clock_chart_png: raw.output_clock_chart_png,
       output_selection: raw.output_selection,
       topology_order: raw.topology_order,
       clock_filter_method: raw.clock_filter_method,
@@ -248,6 +252,20 @@ pub struct TreetimeClockArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_clock_csv: Option<PathBuf>,
+
+  /// Path to output root-to-tip regression chart in SVG format.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_clock_chart_svg: Option<PathBuf>,
+
+  /// Path to output root-to-tip regression chart in PNG format.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_clock_chart_png: Option<PathBuf>,
 
   /// Comma-separated list of outputs to produce with `--output-all`.
   ///

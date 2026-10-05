@@ -1122,13 +1122,19 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 * `--output-clock-csv <OUTPUT_CLOCK_CSV>` — Path to output clock regression CSV.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
+* `--output-clock-chart-svg <OUTPUT_CLOCK_CHART_SVG>` — Path to output root-to-tip regression chart in SVG format.
+
+   Takes precedence over paths configured with `--output-all` and `--output-selection`.
+* `--output-clock-chart-png <OUTPUT_CLOCK_CHART_PNG>` — Path to output root-to-tip regression chart in PNG format.
+
+   Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `--output-selection <OUTPUT_SELECTION>` — Comma-separated list of outputs to produce with `--output-all`.
 
    Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
 
    A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
-  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `clock-model`, `clock-csv`
+  Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `clock-model`, `clock-csv`, `clock-chart-svg`, `clock-chart-png`
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 

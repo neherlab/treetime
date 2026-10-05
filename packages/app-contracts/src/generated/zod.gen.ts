@@ -384,7 +384,9 @@ export const zOutputSelection = z.enum([
   'tracelog',
   'coalescent-tsv',
   'coalescent-csv',
-  'coalescent-json'
+  'coalescent-json',
+  'clock-chart-svg',
+  'clock-chart-png'
 ]);
 
 /**
@@ -1397,7 +1399,9 @@ export const zClockOutputSelection = z.enum([
   'GraphJson',
   'Dot',
   'ClockModel',
-  'ClockCsv'
+  'ClockCsv',
+  'ClockChartSvg',
+  'ClockChartPng'
 ]);
 
 /**
@@ -1478,6 +1482,8 @@ export const zClockConfig = z.strictObject({
   output_tree_dot: z.string().nullish().default(null),
   output_clock_model: z.string().nullish().default(null),
   output_clock_csv: z.string().nullish().default(null),
+  output_clock_chart_svg: z.string().nullish().default(null),
+  output_clock_chart_png: z.string().nullish().default(null),
   output_selection: z.array(zClockOutputSelection).optional().default([]),
   ladderize: zLadderizeArg.nullish().default(null),
   topology_order: zTopologyOrderArg.nullish().default(null),

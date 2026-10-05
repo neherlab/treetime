@@ -61,7 +61,12 @@ per_command_output_selection!(TimetreeOutputSelection {
   CoalescentCsv,
   CoalescentJson,
 });
-per_command_output_selection!(ClockOutputSelection { ClockModel, ClockCsv });
+per_command_output_selection!(ClockOutputSelection {
+  ClockModel,
+  ClockCsv,
+  ClockChartSvg,
+  ClockChartPng,
+});
 per_command_output_selection!(MugrationOutputSelection {
   AugurNodeData,
   Gtr,

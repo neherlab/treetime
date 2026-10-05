@@ -296,6 +296,26 @@
       "x-path": "output",
       "x-cli-flag": "--output-clock-csv"
     },
+    "output_clock_chart_svg": {
+      "description": "Path to output root-to-tip regression chart in SVG format.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "x-path": "output",
+      "x-cli-flag": "--output-clock-chart-svg"
+    },
+    "output_clock_chart_png": {
+      "description": "Path to output root-to-tip regression chart in PNG format.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "x-path": "output",
+      "x-cli-flag": "--output-clock-chart-png"
+    },
     "output_selection": {
       "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example\nthe substitution model of a run that fits none. A per-file flag for such an output fails.",
       "type": "array",
@@ -478,7 +498,9 @@
         "GraphJson",
         "Dot",
         "ClockModel",
-        "ClockCsv"
+        "ClockCsv",
+        "ClockChartSvg",
+        "ClockChartPng"
       ]
     },
     "LadderizeArg": {

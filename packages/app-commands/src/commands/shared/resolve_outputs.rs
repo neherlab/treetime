@@ -53,6 +53,8 @@ impl_resolve_outputs!(Timetree; TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw; |
 impl_resolve_outputs!(Clock; TreetimeClockArgs, TreetimeClockArgsRaw; |s| [
   (OutputSelection::ClockModel, s.output_clock_model.as_deref()),
   (OutputSelection::ClockCsv, s.output_clock_csv.as_deref()),
+  (OutputSelection::ClockChartSvg, s.output_clock_chart_svg.as_deref()),
+  (OutputSelection::ClockChartPng, s.output_clock_chart_png.as_deref()),
 ]);
 
 impl_resolve_outputs!(Mugration; TreetimeMugrationArgs, TreetimeMugrationArgsRaw; |s| [

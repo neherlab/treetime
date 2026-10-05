@@ -111,9 +111,12 @@ pub fn run_clock(
     table_write_file(OutputSelection::ClockCsv, path, &regression_results)?;
   }
 
-  if let Some(outdir) = &clock_args.output.output_all {
-    write_clock_regression_chart_svg(&regression_results, &clock_model, outdir.join("clock.svg"))?;
-    write_clock_regression_chart_png(&regression_results, &clock_model, outdir.join("clock.png"), log)?;
+  if let Some(path) = resolved.path(OutputSelection::ClockChartSvg) {
+    write_clock_regression_chart_svg(&regression_results, &clock_model, path)?;
+  }
+
+  if let Some(path) = resolved.path(OutputSelection::ClockChartPng) {
+    write_clock_regression_chart_png(&regression_results, &clock_model, path, log)?;
   }
 
   let dates = ClockDates::new(&graph, &inputs, &outliers);

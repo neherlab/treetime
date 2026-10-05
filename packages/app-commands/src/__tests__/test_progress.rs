@@ -161,7 +161,7 @@ mod tests {
         let mut files: Vec<PathBuf> = fs::read_dir(&self.outdir)
           .unwrap()
           .map(|entry| entry.unwrap().path())
-          .filter(|path| path.is_file() && path.extension().is_none_or(|ext| ext != "svg" && ext != "png"))
+          .filter(|path| path.is_file())
           .collect();
         files.sort();
         files

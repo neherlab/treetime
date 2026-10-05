@@ -9,7 +9,7 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::timetree_defaults( AppCommand::Timetree,  json!(null),             json!(["Nwk", "Nexus", "Auspice", "AugurNodeData", "Gtr", "ReconstructedNucFasta", "ClockModel", "CoalescentTsv", "Tracelog", "ClockCsv"]))]
-  #[case::clock_defaults(    AppCommand::Clock,     json!(null),             json!(["Nwk", "Nexus", "ClockModel", "ClockCsv", "Auspice"]))]
+  #[case::clock_defaults(    AppCommand::Clock,     json!(null),             json!(["Nwk", "Nexus", "ClockModel", "ClockCsv", "ClockChartSvg", "ClockChartPng", "Auspice"]))]
   #[case::ancestral_defaults(AppCommand::Ancestral, json!(null),             json!(["Nwk", "Nexus", "AugurNodeData", "Gtr", "ReconstructedNucFasta", "Auspice"]))]
   #[case::mugration_defaults(AppCommand::Mugration, json!(null),             json!(["Nwk", "Nexus", "AugurNodeData", "Gtr", "TraitsCsv", "Auspice"]))]
   #[case::optimize_defaults( AppCommand::Optimize,  json!(null),             json!(["Nwk", "Nexus", "AugurNodeData", "Gtr", "Auspice"]))]
