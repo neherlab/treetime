@@ -10,6 +10,8 @@ Per-edge branch length optimization using Newton's method with analytical first 
 
 A non-negative initial second derivative triggers a 100-point log-spaced grid search. If the second derivative becomes non-negative after a Newton step, the iteration stops and returns its current candidate.
 
+Newton's method converges only from a start inside its basin of attraction. Input branch lengths usually satisfy this. Edges with missing or invalid lengths, or all edges with `--branch-length-initial-guess=always`, start from the observed substitution count divided by the edge's effective (non-gap) length, or from the indel count over the indel rate on an edge with indels only. v1: `fn initial_guess_mixed()` in [`packages/treetime/src/optimize/dispatch.rs#L167`](../../packages/treetime/src/optimize/dispatch.rs#L167).
+
 v1: [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/src/optimize/method_newton.rs).
 
 v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in $\sqrt{t}$ space with a Hamming-distance bracket. v1 ships six methods (Newton and Brent in $t$, $\sqrt{t}$, and $\ln(t)$ coordinates) selectable via `--opt-method`; `brent-sqrt` is the default. It uses the same square-root parameterization and corresponding substitution-likelihood objective form as v0, but the solver, bounds, tolerances, regularization, indel term, and resulting branch lengths are not exactly equivalent. The Newton variants compute analytical derivatives from cached eigenvalue-space coefficients. The implementation evaluates the second derivative in a centered eigenvalue form to reduce cancellation relative to subtracting two independently accumulated moments; its signed weights are not a posterior distribution or Welford recurrence. See [feature inventory](../features/optimize.md) for parity evidence and [intentional change](../decisions/optimize-newton-raphson-per-edge.md) for the per-method rationale.
@@ -65,7 +67,7 @@ v1: [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/opti
 
 v0: not implemented; v0 ignores indels in this branch-length likelihood.
 
-This is a v1-only feature. See the indel models report ([kb/reports/indel-models/1-introduction.md](../reports/indel-models/1-introduction.md)) for the full catalog of indel modeling approaches, [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md), [design doc](../_raw/optimize.md), and [alternatives proposal](../proposals/optimize-indel-model-alternatives.md).
+This is a v1-only feature. See the indel models report ([kb/reports/indel-models/1-introduction.md](../reports/indel-models/1-introduction.md)) for the full catalog of indel modeling approaches, [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md) and [alternatives proposal](../proposals/optimize-indel-model-alternatives.md).
 
 ---
 
@@ -91,7 +93,7 @@ v1: [`packages/treetime-grid/src/interp_nonuniform.rs#L25-L56`](../../packages/t
 
 Blends optimized branch lengths with previous values using iteration-dependent weights: `bl = bl_new * (1 - damping^(i+1)) + bl_old * damping^(i+1)`. Early iterations take conservative steps; later iterations approach the full update. This is intended to moderate oscillation in the alternating marginal-reconstruction and branch-length-update cycle.
 
-v1: [`packages/treetime/src/commands/optimize/run.rs`](../../packages/treetime/src/commands/optimize/run.rs) `apply_damping()`.
+v1: `fn apply_damping()` in [`packages/treetime/src/optimize/iteration.rs#L7`](../../packages/treetime/src/optimize/iteration.rs#L7).
 
 v0: `optimize_tree_marginal()` at [`packages/legacy/treetime/treetime/treeanc.py#L1297-L1360`](../../packages/legacy/treetime/treetime/treeanc.py#L1297-L1360) with `damping=0.75` default.
 
@@ -166,7 +168,7 @@ v1 collapses internal edges driven to exactly zero during optimization. It does 
 
 ## Shared-Mutation Polytomy Merging
 
-Scans children of polytomy nodes for shared substitutions. When two siblings carry identical mutations, they are grouped under a new internal node whose branch length is the Jukes-Cantor 1969 correction of the pooled p-distance `#shared_mutations / alignment_length` (see [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs)). Shared mutations move to the new parent edge; remaining unique mutations stay on child edges. See [the corresponding intentional change](../decisions/prune-merge-jukes-cantor-branch-length.md) for the rationale for correcting the raw ratio specified in `../_raw/optimize.md`.
+Scans children of polytomy nodes for shared substitutions. When two siblings carry identical mutations, they are grouped under a new internal node whose branch length is the Jukes-Cantor 1969 correction of the pooled p-distance `#shared_mutations / alignment_length` (see [`jukes_cantor_distance()`](../../packages/treetime/src/gtr/jc_distance.rs)). Shared mutations move to the new parent edge; remaining unique mutations stay on child edges. See [the corresponding intentional change](../decisions/prune-merge-jukes-cantor-branch-length.md) for the rationale for correcting the raw ratio.
 
 v1: [`packages/treetime/src/optimize/topology/merge_shared_mutations.rs`](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs) `merge_shared_mutation_branches()`. Invoked by `prune --merge-shared-mutations` and by the `optimize` topology-cleanup pre-step before each per-edge optimization round.
 
@@ -201,11 +203,11 @@ v1: [`packages/treetime/src/timetree/optimization/polytomy/`](../../packages/tre
 
 ## File Index
 
-| File                                                                                                                               | Algorithms                                                                             |
-| ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| [`packages/treetime/src/optimize/`](../../packages/treetime/src/optimize/)                                       | Newton-Raphson, Brent, grid search, likelihood eval, damping, convergence, zero-detect |
-| [`packages/treetime/src/prune/`](../../packages/treetime/src/prune/)                                             | Shared-mutation merging                                                                |
-| [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/)             | Stochastic temporal polytomy resolution                                                |
-| [`packages/treetime/src/optimize/topology/`](../../packages/treetime/src/optimize/topology/) | Edge collapse (shared)                                                                 |
+| File                                                                                                 | Algorithms                                                                             |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [`packages/treetime/src/optimize/`](../../packages/treetime/src/optimize/)                           | Newton-Raphson, Brent, grid search, likelihood eval, damping, convergence, zero-detect |
+| [`packages/treetime/src/prune/`](../../packages/treetime/src/prune/)                                 | Shared-mutation merging                                                                |
+| [`packages/treetime/src/timetree/optimization/`](../../packages/treetime/src/timetree/optimization/) | Stochastic temporal polytomy resolution                                                |
+| [`packages/treetime/src/optimize/topology/`](../../packages/treetime/src/optimize/topology/)         | Edge collapse (shared)                                                                 |
 | [`packages/treetime/src/partition/`](../../packages/treetime/src/partition/)                         | Forward-pass zero-divisor clamping, normalize_inplace                                  |
-| [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                                                 | Interpolation (uniform, non-uniform)                                                   |
+| [`packages/treetime-grid/src/`](../../packages/treetime-grid/src/)                                   | Interpolation (uniform, non-uniform)                                                   |

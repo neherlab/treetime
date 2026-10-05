@@ -5,7 +5,7 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 ## Standalone Command (v1-only)
 
 - [x] `optimize` command with `--tree`, `--aln`, `--output-all`
-- [x] Mixed dense and sparse partition setup (one of each, from same alignment)
+- [x] Dense or sparse partition setup from the full alignment, selected by `--dense`
 - [x] Initial branch-length guess from observed mutation counts (excludes deletion and ambiguous positions)
 - [x] `--branch-length-initial-guess` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing/NaN, and on zero branch length when indels are present)
 - [x] Output annotated Newick and Nexus trees
@@ -98,7 +98,5 @@ The merge, hoist, and retire steps form one per-polytomy routine (`resolve_polyt
 
 ## Current Limitations
 
-- [/] Command always builds one sparse and one dense partition from the same full alignment
-- [ ] `--dense` (parsed but not wired, `infer_dense()` is a stub returning false)
-- [ ] Separate dense-only and sparse-only command modes not exposed
+- [ ] Automatic choice of the representation without `--dense`: `infer_dense()` always returns false, so the default is sparse
 - [ ] Standalone `run_optimize_sparse()` zero-branch inconsistency

@@ -16,19 +16,19 @@ Low for most datasets. Indels are rare in typical viral phylogenetics. The effec
 
 ## Implementation
 
-- `optimize_indel.rs`: Poisson log-likelihood, derivatives, global rate estimation (generic over any `Graph<N, E, ()>` whose edges implement `HasBranchLength`)
-- `dispatch.rs`: indel contribution added to `run_optimize_mixed`, `initial_guess_mixed`, and the zero-branch optimality check
-- `run.rs`: `run_optimize_loop()` records the joint substitution + indel objective and passes one per-iteration `indel_rate` to both tree-level evaluation and per-edge optimization
-- `timetree/inference/branch_length_likelihood.rs` and `timetree/inference/runner.rs`: the timetree branch-length distribution grid uses the same `evaluate_with_indels_log_lh_only()` evaluator, with `indel_rate` estimated once per pass and `indel_count` computed per edge
-- `partition_ops.rs`: `edge_indel_count()` trait method
+- `optimize/indel.rs`: Poisson log-likelihood, derivatives, global rate estimation
+- `optimize/dispatch.rs`: indel contribution added to `run_optimize_mixed`, `initial_guess_mixed`, and the zero-branch optimality check
+- `optimize/run_loop.rs`: `run_optimize_loop()` estimates `indel_rate` once from the branch lengths it receives and passes it to both tree-level evaluation and per-edge optimization in every iteration
+- `optimize/likelihood.rs`: `evaluate_with_indels_log_lh_only()`, also used by the timetree branch-length distribution grid (`timetree/inference/branch_length_likelihood.rs`, `timetree/inference/runner.rs`), with `indel_rate` estimated once per pass and `indel_count` computed per edge
+- `edge_indel_count()` on the sparse and dense partitions and on `MarginalReconstruction`
 
 ## Convergence note
 
-The indel rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated from current branch lengths at each optimization round. On the first iteration, branch lengths come from `initial_guess_mixed` which bootstraps indel-only edges to `one_mutation` (a small value). This makes the denominator artificially small and the rate estimate artificially high, biasing branches shorter on the first iteration. The bias self-corrects on subsequent iterations as branch lengths converge.
+The indel rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated once at the start of each `run_optimize_loop()` call [`packages/treetime/src/optimize/run_loop.rs#L48-L53`](../../packages/treetime/src/optimize/run_loop.rs#L48-L53) and held fixed for its iterations. It uses the branch lengths that enter the loop, which come from `initial_guess_mixed` when the input lacks valid lengths. That function bootstraps indel-only edges to `one_mutation` (a small value) when no rate is available, which makes the denominator small and the rate estimate high, biasing those branches shorter. Because the rate is fixed during the loop, this bias does not correct itself within one call.
 
-`run_optimize_loop()` now uses the same per-iteration $\hat{\mu}$ both for the recorded outer-loop likelihood and for `run_optimize_mixed()`. This removes the previous objective mismatch where edge optimization included indels but `LH`, convergence checks, and rollback logic ignored them.
+`run_optimize_loop()` uses the same $\hat{\mu}$ both for the recorded outer-loop likelihood and for `run_optimize_mixed()`, so edge optimization, `LH`, convergence checks, and rollback logic all see the same objective.
 
-Per-iteration $\hat{\mu}$ recomputation amplifies a 2-cycle caused by the sparse variable/fixed position boundary. On sc2/2844, $\hat{\mu} \approx 12{,}000$ (3751 indels / 0.31 total BL), and a 0.06% BL oscillation shifts $\hat{\mu}$ proportionally across all edges. Computing $\hat{\mu}$ once before the loop and caching it avoids this. See [optimize-convergence-and-robustness](../proposals/optimize-convergence-and-robustness.md) P4.
+A rate recomputed in every iteration would amplify a 2-cycle caused by the sparse variable/fixed position boundary. On sc2/2844, $\hat{\mu} \approx 12{,}000$ (3751 indels / 0.31 total BL), and a 0.06% BL oscillation shifts $\hat{\mu}$ proportionally across all edges. Computing $\hat{\mu}$ once before the loop avoids this. See [optimize-convergence-and-robustness](../proposals/optimize-convergence-and-robustness.md) P4.
 
 ## Double-counting caveat
 
@@ -52,4 +52,4 @@ The primary goal is preventing zero-length assignment on branches with only inde
 
 ## v0 handling
 
-v0 ignores indels in the likelihood. This is consistent with RAxML, IQ-TREE, PhyML, and BEAST, which all treat gaps as missing data. The v1 indel contribution is a design-doc feature, not a v0 port.
+v0 ignores indels in the likelihood. This is consistent with RAxML, IQ-TREE, PhyML, and BEAST, which all treat gaps as missing data. The v1 indel contribution is a v1 addition, not a v0 port.

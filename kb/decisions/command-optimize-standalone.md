@@ -12,7 +12,7 @@ There is no way for a v0 user to optimize branch lengths on a tree without also 
 
 ## What v1 does
 
-v1 adds a dedicated `treetime optimize` subcommand ([packages/treetime/src/commands/optimize/run.rs#L34-L145](../../packages/treetime/src/commands/optimize/run.rs#L34-L145)) that optimizes branch lengths given a tree and alignment. The command accepts user-facing parameters for convergence control.
+v1 adds a dedicated `treetime optimize` subcommand (`fn run_optimize()` in [packages/app-commands/src/commands/optimize/run.rs](../../packages/app-commands/src/commands/optimize/run.rs), core pipeline `fn run()` in [packages/treetime/src/optimize/pipeline.rs](../../packages/treetime/src/optimize/pipeline.rs)) that optimizes branch lengths given a tree and alignment. The command accepts user-facing parameters for convergence control.
 
 ### CLI arguments
 
@@ -32,18 +32,18 @@ v1 adds a dedicated `treetime optimize` subcommand ([packages/treetime/src/comma
 
 The command runs an iterative cycle of marginal ancestral reconstruction and per-branch optimization:
 
-1. Read alignment and tree. Create both sparse and dense partitions from the same alignment.
-2. Run Fitch compression on sparse partitions. Initialize marginal reconstruction (backward and forward passes) on both partition types.
-3. Compute initial branch lengths as Hamming distance divided by sequence length across all partitions.
+1. Read alignment and tree. Create one partition from the full alignment, sparse by default or dense with `--dense`.
+2. Run Fitch reconstruction. Initialize marginal reconstruction (backward and forward passes).
+3. Keep valid input branch lengths and fill the others with the observed substitution count divided by the effective sequence length (`--branch-length-initial-guess`).
 4. Iterate until convergence or `max-iter`:
-   - Run marginal reconstruction on both sparse and dense partitions, computing total log-likelihood.
-   - If `|log_lh - log_lh_prev| < dp`, stop.
-   - Optimize each branch length independently using Newton-Raphson with grid search fallback (documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md)).
+   - Run marginal reconstruction, computing total log-likelihood.
+   - Stop on the convergence conditions of `run_optimize_loop()`.
+   - Optimize each branch length independently with the method of `--opt-method`, by default Brent's method in $\sqrt{t}$ space as in v0. The Newton-Raphson methods are documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md).
 5. Write `annotated_tree.nwk`, `annotated_tree.nexus`, `gtr.json`, and `optimize.augur-node-data.json` to the output directory.
 
 ### Augur node data JSON output
 
-The command writes an augur-compatible node data JSON ([packages/treetime/src/commands/optimize/augur_node_data.rs](../../packages/treetime/src/commands/optimize/augur_node_data.rs)), consumed by `augur export v2 --node-data`. There is no augur "optimize" command, so the output contract is `augur refine` run WITHOUT `--timetree`: top-level `generated_by`, `alignment`, and `input_tree`, plus per-node `branch_length`. Augur's non-timetree path sets `attributes = ['branch_length', 'confidence']` and skips the clock, date, and `num_date_confidence` fields ([augur/refine.py](https://github.com/nextstrain/augur/blob/024292af6daf/augur/refine.py)).
+The command writes an augur-compatible node data JSON ([packages/app-output/src/augur_node_data_optimize.rs](../../packages/app-output/src/augur_node_data_optimize.rs)), consumed by `augur export v2 --node-data`. There is no augur "optimize" command, so the output contract is `augur refine` run WITHOUT `--timetree`: top-level `generated_by`, `alignment`, and `input_tree`, plus per-node `branch_length`. Augur's non-timetree path sets `attributes = ['branch_length', 'confidence']` and skips the clock, date, and `num_date_confidence` fields ([augur/refine.py](https://github.com/nextstrain/augur/blob/024292af6daf/augur/refine.py)).
 
 The one content difference from augur's non-timetree refine: augur reads `branch_length` from the unmodified input tree (it only instantiates `TreeAnc` to name internal nodes), whereas `optimize` writes the ML-optimized branch length into the same field. The file shape is identical; the values are v1's optimized divergences (substitutions per site). `augur export v2`'s `node_div()` consumes `branch_length` for cumulative divergence when `mutation_length` is absent.
 
@@ -100,14 +100,14 @@ Standard practice in phylogenetic ML software (RAxML, IQ-TREE, PhyML) is coordin
 
 ## Differences from v0's internal optimization
 
-| Aspect              | v0 (internal)                            | v1 (standalone command)                       |
-| ------------------- | ---------------------------------------- | --------------------------------------------- |
-| Exposure            | Internal method within `optimize_tree()` | Standalone CLI subcommand                     |
-| Convergence control | Hardcoded parameters                     | User-specified `--max-iter` and `--dp`        |
-| Outer loop damping  | Exponential decay (factor 0.75)          | Exponential decay (`--damping`, default 0.75) |
-| Per-branch method   | Brent's method (derivative-free)         | Newton-Raphson + grid fallback                |
-| Partition support   | Single representation                    | Mixed dense + sparse partitions               |
-| Model selection     | GTR inferred internally                  | User-specified via `--model`                  |
+| Aspect              | v0 (internal)                            | v1 (standalone command)                                                                               |
+| ------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Exposure            | Internal method within `optimize_tree()` | Standalone CLI subcommand                                                                             |
+| Convergence control | Hardcoded parameters                     | User-specified `--max-iter` and `--dp`                                                                |
+| Outer loop damping  | Exponential decay (factor 0.75)          | Exponential decay (`--damping`, default 0.75)                                                         |
+| Per-branch method   | Brent's method in sqrt(t) space          | `--opt-method`: Brent or Newton-Raphson in t, sqrt(t), or ln(t) space; default Brent in sqrt(t) space |
+| Partition support   | Dense only                               | Dense or sparse (`--dense`)                                                                           |
+| Model selection     | GTR inferred internally                  | User-specified via `--model`                                                                          |
 
 The per-branch optimization method difference (Newton-Raphson vs Brent) is documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md).
 
