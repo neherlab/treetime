@@ -6,22 +6,20 @@ These are the guiding principles, kept as a reference to ensure consistency and 
 
 Abstract example which applies all principles. Real implementation might have more nuance - to be brought forward prominently, discussed and handled explicitly.
 
-The `mod shared` block below is collapsed to one module only to keep the example short. Real shared code is several concern-named units (per format, per domain, validation), never one module -- see P3.4/P3.7.
-
 ```rust
 mod core {
   #[derive(Clone, Debug, Serialize, Deserialize)]
   pub struct Params {
     pub iterations: usize,
     pub tolerance: f64,
-    pub seed: Option<u64>,
+    pub seed: u64,
   }
 
   pub fn run(input: &Input, params: &Params, sink: &mut dyn Sink) -> Result<Output, Error> {
     let c = plan(input, params);
     emit_items(&input.right, &c, params.seed, sink)?;
-    let e = step_e(&c, params.seed);
-    Ok(step_f(&input.right, &c, &e))
+    let e = E::draw(&c, params.seed);
+    Ok(Output::assemble(&input.right, &c, &e))
   }
 
   pub trait Sink {
@@ -29,20 +27,18 @@ mod core {
   }
 
   fn plan(input: &Input, params: &Params) -> C {
-    let a = step_a(&input.left, params.tolerance);
+    let a = A::build(&input.left, params.tolerance);
     let b = step_b(&input.right, &a);
     let d = collect_d(&input.parts, &b, params.tolerance);
     step_c(&a.secondary, &b, &d, params)
   }
 
-  fn emit_items(right: &Right, c: &C, seed: Option<u64>, sink: &mut dyn Sink) -> Result<(), Error> {
+  fn emit_items(right: &Right, c: &C, seed: u64, sink: &mut dyn Sink) -> Result<(), Error> {
     for item in Item::stream(right, c, seed) {
       sink.emit(item)?;
     }
     Ok(())
   }
-
-  fn step_a(left: &Left, tolerance: f64) -> A { A::build(left, tolerance) }
 
   fn step_b(right: &Right, a: &A) -> B {
     match a.mode {
@@ -52,48 +48,32 @@ mod core {
   }
 
   fn collect_d(parts: &[Part], b: &B, tolerance: f64) -> Vec<D> {
-    let mut items = Vec::new();
-    for part in parts {
-      if part.selected(tolerance) {
-        items.push(build_d(part, b));
-      }
-    }
-    items
+    parts
+      .iter()
+      .filter(|part| part.selected(tolerance))
+      .map(|part| D::build(part, b))
+      .collect()
   }
 
-  fn build_d(part: &Part, b: &B) -> D { D::build(part, b) }
-
-  fn step_e(c: &C, seed: Option<u64>) -> E { E::draw(c, seed) }
-  fn step_f(right: &Right, c: &C, e: &E) -> Output { Output::assemble(right, c, e) }
-
   fn step_c(secondary: &Secondary, b: &B, d: &[D], params: &Params) -> C {
-    let seed = seed_c(secondary, d);
-    let weights = weigh(b, d);
+    let seed = Seed::build(secondary, d);
+    let weights = Weights::build(b, d);
 
-    let mut state = init_c(&seed, &weights);
+    let mut state = State::init(&seed, &weights);
     for round in 0..params.iterations {
-      let proposal = advance_c(&state, &weights, round);
-      let scored = score_c(&proposal, b);
+      let proposal = state.advance(&weights, round);
+      let scored = Scored::eval(&proposal, b);
       state = if scored.improves(&state, params.tolerance) {
-        accept_c(state, scored)
+        state.accept(scored)
       } else {
-        relax_c(state, proposal)
+        state.relax(proposal)
       };
       if state.converged(params.tolerance) {
         break;
       }
     }
-    finalize_c(state, &seed)
+    C::finalize(state, &seed)
   }
-
-  fn seed_c(secondary: &Secondary, d: &[D]) -> Seed { Seed::build(secondary, d) }
-  fn weigh(b: &B, d: &[D]) -> Weights { Weights::build(b, d) }
-  fn init_c(seed: &Seed, weights: &Weights) -> State { State::init(seed, weights) }
-  fn advance_c(state: &State, weights: &Weights, round: usize) -> Proposal { state.advance(weights, round) }
-  fn score_c(proposal: &Proposal, b: &B) -> Scored { Scored::eval(proposal, b) }
-  fn accept_c(state: State, scored: Scored) -> State { state.accept(scored) }
-  fn relax_c(state: State, proposal: Proposal) -> State { state.relax(proposal) }
-  fn finalize_c(state: State, seed: &Seed) -> C { C::finalize(state, seed) }
 
   enum Mode {
     Fast,
@@ -107,11 +87,14 @@ mod core {
   }
 }
 
-mod shared {
+mod format {
   pub fn parse(raw: &[u8]) -> Result<core::Input, Error> { core::Input::parse(raw) }
-  pub fn validate(params: &core::Params) -> Result<(), Error> { params.check() }
   pub fn encode(output: &core::Output) -> Vec<u8> { output.encode() }
   pub fn encode_item(item: &core::Item) -> Vec<u8> { item.encode() }
+}
+
+mod validation {
+  pub fn validate(params: &core::Params) -> Result<(), Error> { params.check() }
 }
 
 mod cli {
@@ -123,7 +106,7 @@ mod cli {
     #[arg(long, value_hint = ValueHint::FilePath)]
     pub output: PathBuf,
     #[arg(long, value_hint = ValueHint::FilePath)]
-    pub summary: PathBuf,
+    pub summary: Option<PathBuf>,
     #[arg(long, default_value_t = 10)]
     pub iterations: usize,
     #[arg(long, default_value_t = 1e-6)]
@@ -134,17 +117,19 @@ mod cli {
 
   impl From<&CliArgs> for core::Params {
     fn from(a: &CliArgs) -> Self {
-      core::Params { iterations: a.iterations, tolerance: a.tolerance, seed: a.seed }
+      core::Params { iterations: a.iterations, tolerance: a.tolerance, seed: a.seed.unwrap_or_else(draw_seed) }
     }
   }
 
   pub fn run(args: &CliArgs) -> Result<(), Error> {
-    let input = shared::parse(&fs::read(&args.input)?)?;
+    let input = format::parse(&fs::read(&args.input)?)?;
     let params = core::Params::from(args);
-    shared::validate(&params)?;
+    validation::validate(&params)?;
     let mut sink = FileSink { out: File::create(&args.output)? };
     let output = core::run(&input, &params, &mut sink)?;
-    fs::write(&args.summary, shared::encode(&output))?;
+    if let Some(path) = &args.summary {
+      fs::write(path, format::encode(&output))?;
+    }
     Ok(())
   }
 
@@ -154,7 +139,7 @@ mod cli {
 
   impl core::Sink for FileSink {
     fn emit(&mut self, item: core::Item) -> Result<(), Error> {
-      self.out.write_all(&shared::encode_item(&item))?;
+      self.out.write_all(&format::encode_item(&item))?;
       Ok(())
     }
   }
@@ -168,11 +153,11 @@ mod web {
   }
 
   pub fn handle(req: &Request, body: ResponseStream) -> Result<(), Error> {
-    let input = shared::parse(&req.input)?;
-    shared::validate(&req.params)?;
+    let input = format::parse(&req.input)?;
+    validation::validate(&req.params)?;
     let mut sink = ResponseSink { body };
     let output = core::run(&input, &req.params, &mut sink)?;
-    sink.body.write_chunk(&shared::encode(&output))
+    sink.body.write_chunk(&format::encode(&output))
   }
 
   struct ResponseSink {
@@ -181,7 +166,7 @@ mod web {
 
   impl core::Sink for ResponseSink {
     fn emit(&mut self, item: core::Item) -> Result<(), Error> {
-      self.body.write_chunk(&shared::encode_item(&item))
+      self.body.write_chunk(&format::encode_item(&item))
     }
   }
 }
@@ -193,14 +178,19 @@ mod web {
   - **P1.1.1. Inference as a chain**: inference is a chain of `step(input1, input2, ...) -> output` functions, organized hierarchically
   - **P1.1.2. Per-item data as value maps**: per-item data flows as value collections keyed by a stable identifier, not by mutating shared state
   - **P1.1.3. DAG dataflow**: data flows along a DAG: sources -> transformations -> sinks, and only that direction. Sources are read, never written back. Each stage is a pure function that consumes values and returns new values; no stage mutates its inputs, a shared object, or a neighbor's state. The dataflow is acyclic: nothing feeds back upstream, and only the sink is written. A single long-lived mutable object spanning stages is the pattern this forbids
-- **P1.2. No god-objects**: no long-lived mutable object spans stages, and no object is partially initialized then completed by later mutation. State flows as values passed in and returned. The values need not mirror any earlier in-place structure; they carry only the necessary information. Multiple inputs may be passed rather than one object, and a step may use its inputs and prior outputs fully or partially. The final sink is the output write.
+- **P1.2. No god-objects**: no long-lived mutable object spans stages, and no object is partially initialized then completed by later mutation. State flows as values passed in and returned. The values need not mirror any earlier in-place structure; they carry only the necessary information. A step takes several inputs or one parameter record (P2.5), and may use its inputs and prior outputs fully or partially. The final sink is the output write.
 - **P1.3. Structure without payload**: a shared structural topology object (graph, tree) carries only its shape, holding no per-item data payload and no data-type generics. Per-item data travels alongside it.
+- **P1.4. External iteration**: a traversal returns the visit order (`Vec<NodeKey>` or an iterator), and the caller loops with `for`. Reason: `?`, `break`, borrowing and composition work in a loop, not inside a callback. Exception: a parallel scheduler that owns its work queue.
+- **P1.5. Complete maps**: every per-item map covers every item it describes. A missing entry is a bug: index with `map[&key]`, never `get(..).unwrap_or_default()`.
 
 ## Principle 2: Top-level functions read as an ordered sequence of named, single-responsibility steps.
 
-- **P2.1. Orchestrator, not a blob**: a top-level function is a short orchestrator whose body reads top-to-bottom like a table of contents. It names the steps and fixes their order; it does not inline their guts. A reader traces the whole operation from the orchestrator alone, then descends only into the one step that matters. Branches and loops are a step's internals, never the orchestrator body: an orchestrator that must choose or iterate names a selecting or iterating step, so the top level stays a flat sequence of `let x = step(...)` calls. A step may itself be a sub-orchestrator with its own table of contents (see `step_c` in the example).
+- **P2.1. Orchestrator, not a blob**: a top-level function is a short orchestrator whose body reads top-to-bottom like a table of contents. It names the steps and fixes their order; it does not inline their guts. A reader traces the whole operation from the orchestrator alone, then descends only into the one step that matters. Branches and loops are a step's internals, never the orchestrator body: an orchestrator that must choose or iterate names a selecting or iterating step, so the top level stays a flat sequence of `let x = step(...)` calls. Exception: a flat list of optional outputs (`if let Some(path) = &args.x { write_x(path, &value)? }`) or one `match` over requested outputs stays in the orchestrator, because extracting it creates a single-caller wrapper (P5.1). A step may itself be a sub-orchestrator with its own table of contents (see `step_c` in the example).
 - **P2.2. One responsibility per step**: each step does one thing -- read, one transformation, or write -- never a mix. The phases stay separated and in order: inputs read first, computation in the middle, outputs written last. No write concern leaks into the compute phase, and no I/O hides inside a computational step.
 - **P2.3. Correct, minimal boundaries**: each step takes exactly the inputs it needs and returns exactly what its consumers read, no more. No pass-through parameters (threaded in and handed back unused), no unused return fields (produced and never read), no god-struct passed so helpers can reach unrelated state.
+- **P2.4. Pass data, not behavior**: a step receives the data it needs as maps, slices or plain structs. Use a closure only as a call-site argument to a library combinator (`map`, `sort_by_key`) or a scoped resource (`write_file_with(path, |f| ..)`). Use a trait object only for an open set with two or more production implementations chosen at run time (the sink in the example). Reason: closures and trait objects hide what a step reads, block `?` and `break`, and let per-caller differences grow unseen.
+- **P2.5. Parameter records**: an immutable struct that groups the inputs of one step, built once and passed by reference, is a parameter record, not a god-object (P1.2) or a command object (P3.8). Prefer it over more than five positional parameters, or when several callers pass the same group. Group optional data that belongs together in one `Option<Group>` or an enum, so a value cannot exist without the values it depends on (mutations without their reference sequence).
+- **P2.6. Linear passes**: per-item work is O(n log n) or better: no walk to the root per node, no linear search per node, no output per pair of items.
 
 ## Principle 3: Separation of Concerns
 
@@ -211,29 +201,25 @@ One core, served unchanged from a CLI and a web backend. The CLI and web adapter
 - **P3.3. Web adapter**: the web backend layer handles HTTP requests, responses, and its interaction with the core algorithms, without embedding algo logic
 - **P3.4. Shared is a tier, not a module**: code used by more than one adapter (parse/encode of core types, shared validation) lives in the shared tier -- below the adapters, beside the core. Split it into cohesive units named for their concern (`newick`, `auspice`, `output-paths`), one reason to change each. NEVER one catch-all crate or module; NEVER a layer or grab-bag name (`shared`, `common`, `api`, `util`, `misc`). Adapter-specific (de)serialization -- CLI argument parsing, HTTP request and response shapes -- stays in its own adapter
 - **P3.5. One-way dependencies**: dependencies point one way and form no cycle. The CLI and web adapters depend on the core and on shared code; the core depends on neither adapter and holds no CLI or Web knowledge; the two adapters never depend on each other
-- **P3.6. Return small results, stream large ones**: one `run` returns the small aggregate output by value and emits the large per-item output in order through a caller-supplied sink; the core owns no I/O either way. The CLI writes the stream to a file, the web backend to a response stream. The sink can take several forms:
-  - **P3.6.1. Push callback / trait sink** (recommended): matches existing code, core owns no I/O
-  - **P3.6.2. Returned lazy iterator (pull)**: cleanest separation of concerns, but Rust lifetime friction
-  - **P3.6.3. Channel**: good for parallel ordered emit, adds concurrency machinery
-  - **P3.6.4. Async stream**: best for web streaming, risks async in core
-  - **P3.6.5. Raw `Write` of bytes**: reject at the core seam (leaks format/I/O)
+- **P3.6. Return values; stream only large per-item results**: functions return their results by value. Only a core `run` that produces large per-item output while it computes (reconstructed sequences, optimizer trace) emits it in order through a caller-supplied sink, so the core owns no I/O and holds no full copy. The CLI writes the stream to a file, the web backend to a response stream. Output projection, graph traversal and every other step return values (P1.4, P2.4). Never pass raw `Write` or bytes into the core interface, because that leaks format and I/O into the core.
 - **P3.7. No shared blob**: one shared unit per concern, format, or domain, so removing a capability touches one unit and a consumer depends only on what it uses. The no-`utils` rule applies inside the shared tier exactly as everywhere else.
-- **P3.8. Adapters own the workflow, shared code owns steps**: each adapter owns its complete external interaction -- convert its arguments or request, read the inputs, build core values, call the core, then project and deliver the result. A shared unit owns one step (parse, validate, plan, project, encode, write). It never owns a whole read-run-write command or an adapter-neutral command object, because that recreates the generic command layer under a new name.
+- **P3.8. Adapters own the workflow, shared code owns steps**: each adapter owns its complete external interaction -- convert its arguments or request, read the inputs, build core values, call the core, then project and deliver the result. A shared unit owns one step (parse, validate, plan, project, encode, write). It never owns a whole read-run-write command or an adapter-neutral command object, because that recreates the generic command layer under a new name. A plain data struct that several writers read, such as a tree with its per-node facts, is a parameter record (P2.5), not a command object.
 - **P3.9. The encoding tier encodes only**: a shared output unit turns core values into bytes and nothing more. It reads no input, parses nothing, and holds no path policy. The adapter selects the destination; the writer may open the path the adapter chose.
 
 ## Principle 4: Production code is the only consumer that shapes structure.
 
 Production code is the sole consumer that shapes architecture and refactoring
 
-- **P4.1. Production call sites decide**: module boundaries, seams, signatures, visibility, and placement derive from production callers only
+- **P4.1. Production call sites decide**: module boundaries, interfaces, signatures, visibility, and placement derive from production callers only
 - **P4.2. Tests do not count**: a symbol referenced solely by tests has zero consumers; exclude test files from fan-in, single-consumer chain, and unused-code counts
 - **P4.3. Tests never justify a shape**: a test, fixture, mock, or helper is never a reason to add, keep, or shape a production unit, parameter, boundary
 - **P4.4. Tests come last**: the architecture is settled from production first, and after that the tests are updated, moved, or deleted to fit the new structure
 
 ## Principle 5: Design from intent, with no accidental abstractions or legacy remnants.
 
-- **P5.1. No accidental abstractions**: distrust incidental structure. Remove a wrapper with a single caller, a struct destructured one line after it is built, an `Option` that is always `Some` on success, and a type that duplicates an existing canonical type. Keep duplication until a stable shared concept appears; merge entangled or single-consumer code, not merely similar code.
+- **P5.1. No accidental abstractions**: distrust incidental structure. Remove a wrapper with a single caller, a struct destructured one line after it is built, an `Option` that is always `Some` on success, and a type that duplicates an existing canonical type. Keep duplication until a stable shared concept appears; merge entangled or single-consumer code, not merely similar code. When three or more copies differ only in data, put the data in a struct and share one function, because such copies drift apart; copies that differ in logic stay separate.
 - **P5.2. Design from intent**: name and shape each unit from what the operation must do, not from an incidental code layout. Prefer a canonical type or utility over a new local one. The result reads as written from scratch: no versioned names, no edit-history comments, no compatibility shims, legacy wrappers, or re-exports to a prior design.
+- **P5.3. Typed values until the encoder**: never format a value to a string and parse it back; carry the typed value to the writer. Reason: a round trip through text changes values (`2020.50` becomes `2020.5`, the trait value `Nan` becomes `NaN`).
 
 ## Principle 6: Each operation exposes one uniform core contract.
 
