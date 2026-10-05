@@ -103,21 +103,7 @@ pub fn run_clock(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 
-  if let Some(path) = resolved.path(OutputSelection::ClockModel) {
-    json_write_file(path, &clock_model, JsonPretty(true))?;
-  }
-
-  if let Some(path) = resolved.path(OutputSelection::ClockCsv) {
-    table_write_file(OutputSelection::ClockCsv, path, &regression_results)?;
-  }
-
-  if let Some(path) = resolved.path(OutputSelection::ClockChartSvg) {
-    write_clock_regression_chart_svg(&regression_results, &clock_model, path)?;
-  }
-
-  if let Some(path) = resolved.path(OutputSelection::ClockChartPng) {
-    write_clock_regression_chart_png(&regression_results, &clock_model, path, log)?;
-  }
+  write_clock_run_outputs(&resolved, &clock_model, &regression_results, log)?;
 
   let dates = ClockDates::new(&graph, &inputs, &outliers);
   write_clock_trees(&graph, &names, &branch_lengths, &divergences, &dates, &resolved, log)?;
@@ -132,6 +118,27 @@ pub fn run_clock(
 pub struct ClockResult {
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
+}
+
+fn write_clock_run_outputs(
+  resolved: &ResolvedOutputs,
+  clock_model: &ClockModel,
+  regression_results: &[ClockRegressionResult],
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  if let Some(path) = resolved.path(OutputSelection::ClockModel) {
+    json_write_file(path, clock_model, JsonPretty(true))?;
+  }
+  if let Some(path) = resolved.path(OutputSelection::ClockCsv) {
+    table_write_file(OutputSelection::ClockCsv, path, regression_results)?;
+  }
+  if let Some(path) = resolved.path(OutputSelection::ClockChartSvg) {
+    write_clock_regression_chart_svg(regression_results, clock_model, path)?;
+  }
+  if let Some(path) = resolved.path(OutputSelection::ClockChartPng) {
+    write_clock_regression_chart_png(regression_results, clock_model, path, log)?;
+  }
+  Ok(())
 }
 
 fn write_clock_trees(
