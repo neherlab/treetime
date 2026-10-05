@@ -112,25 +112,26 @@ impl Seq {
     self.data.reserve(additional);
   }
 
-  #[allow(
-    unsafe_code,
-    clippy::undocumented_unsafe_blocks,
-    reason = "AsciiChar is transparent over a validated ASCII byte"
-  )]
+  #[allow(unsafe_code, reason = "AsciiChar is transparent over a validated ASCII byte")]
   pub fn as_str(&self) -> &str {
+    // SAFETY: `self.data.as_ptr()` is valid for reads of `self.data.len()` elements and properly aligned
+    // because `data` is a `Vec<AsciiChar>`, and `AsciiChar` is `repr(transparent)` over `u8`, which makes
+    // the cast to a `u8` pointer valid.
     let byte_slice = unsafe { std::slice::from_raw_parts(self.data.as_ptr().cast::<u8>(), self.data.len()) };
 
+    // SAFETY: `byte_slice` contains only valid UTF-8 data because every `AsciiChar` holds an ASCII byte,
+    // and ASCII is a subset of UTF-8.
     unsafe { std::str::from_utf8_unchecked(byte_slice) }
   }
 
-  #[allow(
-    unsafe_code,
-    clippy::undocumented_unsafe_blocks,
-    reason = "AsciiChar is transparent over a validated ASCII byte"
-  )]
+  #[allow(unsafe_code, reason = "AsciiChar is transparent over a validated ASCII byte")]
   pub fn into_string(self) -> String {
     let mut data = ManuallyDrop::new(self.data);
+    // SAFETY: the pointer, length, and capacity come from a `Vec<AsciiChar>` that `ManuallyDrop` keeps from
+    // being freed, and `AsciiChar` is `repr(transparent)` over `u8`, so the allocation has the size and
+    // alignment of a `Vec<u8>` with the same length and capacity.
     let bytes = unsafe { Vec::from_raw_parts(data.as_mut_ptr().cast::<u8>(), data.len(), data.capacity()) };
+    // SAFETY: `bytes` contains only valid UTF-8 data because every `AsciiChar` holds an ASCII byte.
     unsafe { String::from_utf8_unchecked(bytes) }
   }
 
@@ -141,6 +142,18 @@ impl Seq {
   pub fn as_mut_slice(&mut self) -> &mut [AsciiChar] {
     &mut self.data
   }
+
+  // TODO: enable when a caller needs to replace a range of the sequence in place
+  // pub fn splice<I>(
+  //   &mut self,
+  //   range: core::ops::Range<usize>,
+  //   replace_with: I,
+  // ) -> std::vec::Splice<'_, <I as IntoIterator>::IntoIter>
+  // where
+  //   I: IntoIterator<Item = AsciiChar>,
+  // {
+  //   self.data.splice(range, replace_with)
+  // }
 }
 
 impl PartialEq for Seq {
@@ -307,14 +320,16 @@ impl IntoIterator for Seq {
   }
 }
 
-#[allow(
-  unsafe_code,
-  clippy::undocumented_unsafe_blocks,
-  reason = "AsciiChar is transparent over a validated ASCII byte"
-)]
+#[allow(unsafe_code, reason = "AsciiChar is transparent over a validated ASCII byte")]
 impl std::io::Read for Seq {
   fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
     let len = std::cmp::min(buf.len(), self.len());
+    // SAFETY:
+    // 1. `self.data` holds only ASCII bytes because `AsciiChar` is `repr(transparent)` over an ASCII `u8`.
+    // 2. `len` is the minimum of `buf.len()` and `self.len()`, so neither slice is accessed out of bounds.
+    // 3. `std::ptr::copy_nonoverlapping` is safe to use here because:
+    //    a. Both `self.data` and `buf` are valid, properly aligned, and non-overlapping.
+    //    b. The memory regions are accessible for `len` bytes.
     unsafe {
       std::ptr::copy_nonoverlapping(self.data.as_ptr().cast::<u8>(), buf.as_mut_ptr(), len);
     }
