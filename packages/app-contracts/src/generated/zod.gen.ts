@@ -87,10 +87,9 @@ export const zExampleConfig = z.object({
 });
 
 /**
- * Example datasets and example command configurations found in the data directory.
+ * Example datasets and example command configurations found in the examples folder.
  */
 export const zDatasetCatalog = z.object({
-  data_dir: z.string(),
   datasets: z.array(zDataset),
   examples: z.array(zExampleConfig)
 });
@@ -940,7 +939,8 @@ export const zAppSettings = z.strictObject({
 export const zWorkspace = z.object({
   path: z.string(),
   default_path: z.string(),
-  fixed_by: z.string().nullish()
+  fixed_by: z.string().nullish(),
+  error: z.string().nullish()
 });
 
 /**
@@ -2133,7 +2133,7 @@ export const zHealthResponse = zHealthStatus;
 export const zVersionResponse = zVersionInfo;
 
 /**
- * Example datasets and example command configurations found in the data directory.
+ * Example datasets and example command configurations found in the examples folder.
  */
 export const zDatasetsResponse = zDatasetCatalog;
 

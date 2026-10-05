@@ -1,7 +1,7 @@
 import { errorMessage, type Workspace, type WorkspaceShell } from "@neherlab/app-contracts";
 import { runsList, workspace as getWorkspace, workspaceUpdate } from "@neherlab/app-contracts/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import FolderOpen from "~icons/lucide/folder-open";
 
 import { useApiContext } from "../api/context";
@@ -51,9 +51,35 @@ export function WorkspaceDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
+      <WorkspaceErrorNotice />
       <DialogContent>{open && <WorkspaceForm shell={shell} onChanged={close} />}</DialogContent>
     </Dialog>
   );
+}
+
+function WorkspaceErrorNotice() {
+  const { data: workspace } = useApi((context) => getWorkspace(context));
+  const setOpen = useShellStore((state) => state.setWorkspaceOpen);
+  const toasts = useToastManager();
+  const shown = useRef(false);
+  const error = workspace?.error ?? undefined;
+
+  useEffect(() => {
+    if (error === undefined || shown.current) {
+      return;
+    }
+
+    shown.current = true;
+    toasts.add({
+      type: "warning",
+      title: "The runs folder cannot be opened",
+      description: error,
+      timeout: 0,
+      actionProps: { children: RUNS_FOLDER, onClick: () => setOpen(true) },
+    });
+  }, [error, setOpen, toasts]);
+
+  return null;
 }
 
 function WorkspaceForm({ shell, onChanged }: { shell: WorkspaceShell; onChanged: () => void }) {
@@ -95,6 +121,11 @@ function WorkspaceForm({ shell, onChanged }: { shell: WorkspaceShell; onChanged:
         </DialogDescription>
       </DialogHeader>
       <WorkspacePath workspace={workspace} />
+      {workspace?.error != null && (
+        <Alert variant="destructive">
+          <AlertDescription>{workspace.error}</AlertDescription>
+        </Alert>
+      )}
       {fixedBy !== undefined && (
         <Alert>
           <AlertDescription>

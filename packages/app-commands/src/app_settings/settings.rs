@@ -166,6 +166,8 @@ pub struct Workspace {
   pub default_path: PathBuf,
   /// The environment variable that sets the runs folder; the app cannot change the folder then.
   pub fixed_by: Option<String>,
+  /// Why the runs folder named in the settings could not be opened. The default runs folder is in use then.
+  pub error: Option<String>,
 }
 
 /// A new runs folder. It takes effect when the back end starts again.

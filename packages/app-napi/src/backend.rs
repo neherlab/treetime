@@ -1,12 +1,12 @@
 use crate::port::{PortHeader, PortReply, PortRequest};
 use app_commands::app_paths::{AppFolderEnv, AppFolderPath, AppPaths};
 use app_commands::app_settings::store::AppSettingsStore;
+use app_commands::app_settings::workspace::{OpenedRuns, open_runs_folder};
 use app_commands::atomic_write::write_atomically;
 use app_commands::bridge::error::ErrorResponse;
 use app_commands::bridge::service::{AppService, Unconfined};
 use app_commands::job::JobId;
 use app_commands::runs::files::write_run_zip;
-use app_commands::runs::manager::RunManager;
 use app_server::routes::api_router;
 use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
 use axum::Router;
@@ -34,14 +34,12 @@ impl DesktopService {
   pub fn open(root: &Path, env: &AppFolderEnv) -> Result<Self, Report> {
     let store = Arc::new(AppSettingsStore::open(root)?);
     let settings = store.read()?;
-    let paths = AppPaths::resolve(root, env, &settings.paths);
-    let runs = RunManager::open(&paths.runs.path).wrap_err_with(|| {
-      format!(
-        "When opening the runs folder '{}'{}",
-        paths.runs.path.display(),
-        folder_source(&paths.runs, settings.paths.runs.is_some(), store.path())
-      )
-    })?;
+    let mut paths = AppPaths::resolve(root, env, &settings.paths);
+    let named_in = settings.paths.runs.is_some().then(|| store.path());
+    let OpenedRuns {
+      runs,
+      error: runs_error,
+    } = open_runs_folder(&mut paths, named_in)?;
     fs::create_dir_all(&paths.examples.path).wrap_err_with(|| {
       format!(
         "When creating the examples folder '{}'{}",
@@ -58,7 +56,11 @@ impl DesktopService {
         runs_dir: paths.runs.path.clone(),
         max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
         shutdown: CancellationToken::new(),
-        settings: Some(LocalSettings { store, paths }),
+        settings: Some(LocalSettings {
+          store,
+          paths,
+          runs_error,
+        }),
       },
     )?;
     let runtime = Builder::new_multi_thread()

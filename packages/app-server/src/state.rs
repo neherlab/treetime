@@ -25,6 +25,7 @@ pub struct ServerConfig {
 pub struct LocalSettings {
   pub store: Arc<AppSettingsStore>,
   pub paths: AppPaths,
+  pub runs_error: Option<String>,
 }
 
 pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> {

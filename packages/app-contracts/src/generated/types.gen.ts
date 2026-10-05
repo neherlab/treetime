@@ -46,14 +46,9 @@ export type ErrorResponse = {
 export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'method_not_allowed' | 'forbidden' | 'timeout' | 'internal_error';
 
 /**
- * Example datasets and example command configurations found in the data directory.
+ * Example datasets and example command configurations found in the examples folder.
  */
 export type DatasetCatalog = {
-  /**
-   * Data directory as a run configuration names it: a path relative to the working directory of the process that
-   * runs the commands, as in the example configurations.
-   */
-  data_dir: string;
   /**
    * Directories that hold a `tree.nwk`, with their files.
    */
@@ -69,7 +64,7 @@ export type DatasetCatalog = {
  */
 export type Dataset = {
   /**
-   * Path of the directory relative to the data directory, with `/` separators.
+   * Path of the directory relative to the examples folder, with `/` separators.
    */
   name: string;
   /**
@@ -91,7 +86,7 @@ export type DatasetInput = {
    */
   kind: InputKind;
   /**
-   * Path of the file relative to the data directory, with `/` separators.
+   * Path of the file relative to the examples folder, with `/` separators.
    */
   file: string;
   /**
@@ -110,7 +105,7 @@ export type InputKind = 'tree' | 'metadata' | 'alignment';
  */
 export type ExampleConfig = {
   /**
-   * Path of the file relative to the data directory, with `/` separators.
+   * Path of the file relative to the examples folder, with `/` separators.
    */
   path: string;
   /**
@@ -1976,6 +1971,10 @@ export type Workspace = {
    * The environment variable that sets the runs folder; the app cannot change the folder then.
    */
   fixed_by?: string | null;
+  /**
+   * Why the runs folder named in the settings could not be opened. The default runs folder is in use then.
+   */
+  error?: string | null;
 };
 
 /**
@@ -4783,7 +4782,7 @@ export type DatasetsError = DatasetsErrors[keyof DatasetsErrors];
 
 export type DatasetsResponses = {
   /**
-   * Example datasets and example command configurations found in the data directory.
+   * Example datasets and example command configurations found in the examples folder.
    */
   200: DatasetCatalog;
 };

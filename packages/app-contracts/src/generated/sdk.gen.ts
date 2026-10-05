@@ -63,7 +63,7 @@ export const version = <ThrowOnError extends boolean = false>(options?: Options<
 });
 
 /**
- * Example datasets and example configurations in the data directory.
+ * Example datasets and example configurations in the examples folder.
  */
 export const datasets = <ThrowOnError extends boolean = false>(options?: Options<DatasetsData, ThrowOnError>): RequestResult<DatasetsResponses, DatasetsErrors, ThrowOnError> => (options?.client ?? client).get<DatasetsResponses, DatasetsErrors, ThrowOnError>({
   requestValidator: async (data) => await z.object({

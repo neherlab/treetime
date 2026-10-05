@@ -55,7 +55,8 @@ mod tests {
     let local = local_app();
     let runs = local.app.runs_dir.path().to_path_buf();
     let actual = request(&local.app, "GET", "/api/workspace", None).await;
-    let expected = json!({ "path": runs, "default_path": local.dir.path().join("runs"), "fixed_by": null });
+    let expected =
+      json!({ "path": runs, "default_path": local.dir.path().join("runs"), "fixed_by": null, "error": null });
     assert_eq!((200, expected), actual);
   }
 
@@ -179,6 +180,7 @@ mod tests {
           settings: Some(LocalSettings {
             store: Arc::new(AppSettingsStore::open(dir.path()).unwrap()),
             paths,
+            runs_error: None,
           }),
         },
         &WebOptions::default(),

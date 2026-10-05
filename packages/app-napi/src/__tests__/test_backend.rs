@@ -272,7 +272,7 @@ mod tests {
     assert_eq!(
       (
         200,
-        json!({ "path": elsewhere, "default_path": root.path().join("runs"), "fixed_by": null }),
+        json!({ "path": elsewhere, "default_path": root.path().join("runs"), "fixed_by": null, "error": null }),
         true
       ),
       (status, workspace, elsewhere.join(&id).join("run.json").is_file())
@@ -318,8 +318,80 @@ mod tests {
     let service = DesktopService::open(root.path(), &env).unwrap();
     let (_, workspace) = fetch_json(&service, "GET", "/api/workspace", None);
     assert_eq!(
-      json!({ "path": scratch.path(), "default_path": root.path().join("runs"), "fixed_by": "TREETIME_RUNS_DIR" }),
+      json!({
+        "path": scratch.path(),
+        "default_path": root.path().join("runs"),
+        "fixed_by": "TREETIME_RUNS_DIR",
+        "error": null
+      }),
       workspace
+    );
+  }
+
+  #[test]
+  fn test_backend_opens_the_default_runs_folder_when_the_settings_name_an_unopenable_one() {
+    let root = tempdir().unwrap();
+    let blocked = root.path().join("blocked");
+    fs::write(&blocked, "").unwrap();
+    let settings = root.path().join("settings.yaml");
+    fs::write(&settings, format!("paths:\n  runs: {}\n", blocked.display())).unwrap();
+    let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
+    let (status, workspace) = fetch_json(&service, "GET", "/api/workspace", None);
+    let error = format!(
+      "the runs folder '{}', named in '{}' cannot be opened: When creating the runs directory '{}': File exists (os \
+       error 17). The default runs folder is in use.",
+      blocked.display(),
+      settings.display(),
+      blocked.display()
+    );
+    assert_eq!(
+      (
+        200,
+        json!({ "path": root.path().join("runs"), "default_path": root.path().join("runs"), "fixed_by": null, "error": error }),
+        true
+      ),
+      (status, workspace, root.path().join("runs").is_dir())
+    );
+  }
+
+  #[test]
+  fn test_backend_fails_when_the_runs_folder_of_the_environment_cannot_be_opened() {
+    let root = tempdir().unwrap();
+    let blocked = root.path().join("blocked");
+    fs::write(&blocked, "").unwrap();
+    let env = AppFolderEnv {
+      runs: Some(blocked.clone()),
+      ..AppFolderEnv::default()
+    };
+    assert_error!(
+      DesktopService::open(root.path(), &env),
+      format!(
+        "When opening the runs folder '{}', set by TREETIME_RUNS_DIR: When creating the runs directory '{}': File \
+         exists (os error 17)",
+        blocked.display(),
+        blocked.display()
+      )
+    );
+  }
+
+  #[test]
+  fn test_backend_names_both_folders_when_the_default_runs_folder_cannot_be_opened_either() {
+    let root = tempdir().unwrap();
+    let blocked = root.path().join("blocked");
+    fs::write(&blocked, "").unwrap();
+    fs::write(root.path().join("runs"), "").unwrap();
+    let settings = root.path().join("settings.yaml");
+    fs::write(&settings, format!("paths:\n  runs: {}\n", blocked.display())).unwrap();
+    assert_error!(
+      DesktopService::open(root.path(), &AppFolderEnv::default()),
+      format!(
+        "the runs folder '{blocked}', named in '{settings}' cannot be opened: When creating the runs directory \
+         '{blocked}': File exists (os error 17); the default runs folder '{default}' cannot be opened either: When \
+         creating the runs directory '{default}': File exists (os error 17)",
+        blocked = blocked.display(),
+        settings = settings.display(),
+        default = root.path().join("runs").display()
+      )
     );
   }
 

@@ -97,7 +97,7 @@
     },
     "/api/datasets": {
       "get": {
-        "description": "Example datasets and example configurations in the data directory.",
+        "description": "Example datasets and example configurations in the examples folder.",
         "operationId": "datasets",
         "responses": {
           "default": {
@@ -111,7 +111,7 @@
             }
           },
           "200": {
-            "description": "Example datasets and example command configurations found in the data directory.",
+            "description": "Example datasets and example command configurations found in the examples folder.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1214,13 +1214,9 @@
         ]
       },
       "DatasetCatalog": {
-        "description": "Example datasets and example command configurations found in the data directory.",
+        "description": "Example datasets and example command configurations found in the examples folder.",
         "type": "object",
         "properties": {
-          "data_dir": {
-            "description": "Data directory as a run configuration names it: a path relative to the working directory of the process that\nruns the commands, as in the example configurations.",
-            "type": "string"
-          },
           "datasets": {
             "description": "Directories that hold a `tree.nwk`, with their files.",
             "type": "array",
@@ -1237,7 +1233,6 @@
           }
         },
         "required": [
-          "data_dir",
           "datasets",
           "examples"
         ]
@@ -1247,7 +1242,7 @@
         "type": "object",
         "properties": {
           "name": {
-            "description": "Path of the directory relative to the data directory, with `/` separators.",
+            "description": "Path of the directory relative to the examples folder, with `/` separators.",
             "type": "string"
           },
           "files": {
@@ -1280,7 +1275,7 @@
             "$ref": "#/components/schemas/InputKind"
           },
           "file": {
-            "description": "Path of the file relative to the data directory, with `/` separators.",
+            "description": "Path of the file relative to the examples folder, with `/` separators.",
             "type": "string"
           },
           "path": {
@@ -1308,7 +1303,7 @@
         "type": "object",
         "properties": {
           "path": {
-            "description": "Path of the file relative to the data directory, with `/` separators.",
+            "description": "Path of the file relative to the examples folder, with `/` separators.",
             "type": "string"
           },
           "command": {
@@ -4561,6 +4556,13 @@
           },
           "fixed_by": {
             "description": "The environment variable that sets the runs folder; the app cannot change the folder then.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error": {
+            "description": "Why the runs folder named in the settings could not be opened. The default runs folder is in use then.",
             "type": [
               "string",
               "null"

@@ -60,7 +60,8 @@ async fn app_settings_ui(
 }
 
 async fn workspace(State(state): State<Arc<AppState>>) -> Result<Json<Workspace>, AppError> {
-  Ok(Json(active_workspace(&local_settings(&state)?.paths)))
+  let local = local_settings(&state)?;
+  Ok(Json(active_workspace(&local.paths, local.runs_error.as_deref())))
 }
 
 async fn workspace_update(

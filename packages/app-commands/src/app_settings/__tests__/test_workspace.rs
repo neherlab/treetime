@@ -21,8 +21,9 @@ mod tests {
       path: PathBuf::from("/data/runs"),
       default_path: PathBuf::from("/app/runs"),
       fixed_by: None,
+      error: None,
     };
-    assert_eq!(expected, active_workspace(&paths));
+    assert_eq!(expected, active_workspace(&paths, None));
   }
 
   #[test]
@@ -36,8 +37,9 @@ mod tests {
       path: PathBuf::from("/scratch/runs"),
       default_path: PathBuf::from("/app/runs"),
       fixed_by: Some("TREETIME_RUNS_DIR".to_owned()),
+      error: None,
     };
-    assert_eq!(expected, active_workspace(&paths));
+    assert_eq!(expected, active_workspace(&paths, None));
   }
 
   #[test]
