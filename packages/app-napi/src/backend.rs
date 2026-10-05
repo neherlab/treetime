@@ -4,6 +4,7 @@ use app_commands::app_settings::store::AppSettingsStore;
 use app_commands::app_settings::workspace::{OpenedRuns, open_runs_folder};
 use app_commands::bridge::error::{ErrorCode, ErrorResponse};
 use app_commands::bridge::service::{AppService, Unconfined};
+use app_commands::examples_download::{ExampleDownloads, examples_url};
 use app_server::error::error_response;
 use app_server::routes::{LocalRouters, local_api_routers};
 use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
@@ -54,7 +55,7 @@ impl DesktopService {
     let routers = local_api_routers(
       app,
       ServerConfig {
-        examples_dir: examples,
+        examples_dir: examples.clone(),
         runs_dir: paths.runs.path.clone(),
         max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
         shutdown: CancellationToken::new(),
@@ -62,6 +63,7 @@ impl DesktopService {
           store,
           paths,
           runs_error,
+          examples: Arc::new(ExampleDownloads::new(examples_url(), &examples)),
         }),
       },
     )?;

@@ -32,6 +32,7 @@ fn main() -> Result<(), Box<dyn Error>> {
   };
 
   println!("cargo:rustc-env=TREETIME_LONG_VERSION={long_version}");
+  println!("cargo:rustc-env=TREETIME_BUILD_MODE={mode}");
   Ok(())
 }
 

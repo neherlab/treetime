@@ -1,4 +1,5 @@
 use crate::api::extract::{ApiJson, ApiPath};
+use crate::api::response::Accepted;
 use crate::error::AppError;
 use crate::routes::RunPath;
 use crate::state::{AppState, LocalSettings};
@@ -6,6 +7,7 @@ use aide::axum::ApiRouter;
 use aide::axum::routing::{get_with, post_with, put_with};
 use app_commands::app_settings::settings::{AppSettings, UiSettings, Workspace, WorkspaceUpdate};
 use app_commands::app_settings::workspace::{active_workspace, prepare_workspace};
+use app_commands::examples_download::ExamplesDownloadStatus;
 use app_commands::runs::record::SaveRunRequest;
 use axum::Json;
 use axum::extract::State;
@@ -41,6 +43,25 @@ pub(crate) fn app_settings_routes() -> ApiRouter<Arc<AppState>> {
       put_with(app_settings_ui, |op| {
         op.id("appSettingsUi")
           .description("Replace the preferences of the user interface. Only local apps serve this path.")
+      }),
+    )
+    .api_route(
+      "/api/examples/download",
+      get_with(examples_download, |op| {
+        op.id("examplesDownload").description(
+          "The download of the example datasets into the examples folder, with the app event that reported it \
+           last. Only local apps serve this path.",
+        )
+      })
+      .post_with(examples_download_start, |op| {
+        op.id("examplesDownloadStart")
+          .description(
+            "Start downloading the example datasets into the examples folder; the app events report the progress. \
+             Only local apps serve this path.",
+          )
+          .response_with::<409, AppError, _>(|response| {
+            response.description("A download runs already, or the examples folder is not empty")
+          })
       }),
     )
     .api_route(
@@ -91,6 +112,19 @@ async fn workspace_update(
   })
   .await
   .map(Json)
+}
+
+async fn examples_download(State(state): State<Arc<AppState>>) -> Result<Json<ExamplesDownloadStatus>, AppError> {
+  Ok(Json(local_settings(&state)?.examples.status()))
+}
+
+async fn examples_download_start(
+  State(state): State<Arc<AppState>>,
+) -> Result<Accepted<ExamplesDownloadStatus>, AppError> {
+  let runs = Arc::clone(&state.runs);
+  blocking(&state, move |local| local.examples.start(&runs))
+    .await
+    .map(Accepted)
 }
 
 async fn runs_save(

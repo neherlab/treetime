@@ -3,6 +3,7 @@ use app_commands::app_paths::AppPaths;
 use app_commands::app_settings::store::AppSettingsStore;
 use app_commands::bridge::service::{AppService, InputPolicy};
 use app_commands::command::AppCommand;
+use app_commands::examples_download::ExampleDownloads;
 use app_commands::runs::manager::RunManager;
 use eyre::Report;
 use serde_json::Value;
@@ -26,6 +27,7 @@ pub struct LocalSettings {
   pub store: Arc<AppSettingsStore>,
   pub paths: AppPaths,
   pub runs_error: Option<String>,
+  pub examples: Arc<ExampleDownloads>,
 }
 
 pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> {

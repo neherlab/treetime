@@ -9,6 +9,7 @@ use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
 use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use app_commands::commands::prune::args::TreetimePruneArgsRaw;
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use app_commands::version::LONG_VERSION;
 use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
@@ -64,7 +65,7 @@ fn resolve_args(mut args: TreetimeArgs, matches: &ArgMatches) -> Result<Treetime
 
 #[derive(Parser, Debug, Serialize)]
 #[clap(name = "treetime")]
-#[clap(author, version = env!("TREETIME_LONG_VERSION"))]
+#[clap(author, version = LONG_VERSION)]
 #[clap(verbatim_doc_comment)]
 #[clap(styles = styles())]
 /// Maximum-likelihood phylodynamic inference
@@ -142,6 +143,12 @@ pub(crate) enum TreetimeCommands {
   /// running anything, and `--steps` to run only a subset.
   Pipeline(TreetimePipelineArgs),
 
+  /// Downloads the example datasets: trees, alignments, metadata, and example configs.
+  Examples {
+    #[clap(subcommand)]
+    command: TreetimeExamplesCommands,
+  },
+
   /// Estimates ancestral reassortment graph (ARG).
   Arg(TreetimeAncestralReassortmentGraphArgs),
 
@@ -180,6 +187,31 @@ pub(crate) struct TreetimePipelineArgs {
   /// Resolve and print the plan (steps, inputs, outputs) without running any step.
   #[clap(long)]
   pub check: bool,
+}
+
+#[derive(Subcommand, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum TreetimeExamplesCommands {
+  /// Download the example datasets of this TreeTime release from GitHub and unpack them into a folder.
+  ///
+  /// The folder must be empty or missing. Each dataset folder holds its input files and example configs, whose
+  /// relative paths resolve from that folder, for example:
+  ///
+  ///    treetime examples get --output-dir examples
+  ///
+  ///    treetime ancestral --config examples/zika/20/ancestral.yaml --output-all out/zika-ancestral
+  Get(TreetimeExamplesGetArgs),
+}
+
+#[derive(Parser, Debug, Serialize)]
+pub(crate) struct TreetimeExamplesGetArgs {
+  /// Folder to unpack the example datasets into. It must be empty or missing.
+  #[clap(long, value_hint = ValueHint::DirPath)]
+  pub output_dir: PathBuf,
+
+  /// Address of another example archive (a ZIP file) to download instead of the one of this release.
+  #[clap(long, value_hint = ValueHint::Url)]
+  pub url: Option<String>,
 }
 
 #[derive(Parser, Debug, Serialize)]

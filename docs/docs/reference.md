@@ -32,6 +32,8 @@ If you have TreeTime CLI installed, you can type `treetime --help` to read the l
 * [`treetime homoplasy`↴](#treetime-homoplasy)
 * [`treetime mugration`↴](#treetime-mugration)
 * [`treetime pipeline`↴](#treetime-pipeline)
+* [`treetime examples`↴](#treetime-examples)
+* [`treetime examples get`↴](#treetime-examples-get)
 * [`treetime arg`↴](#treetime-arg)
 * [`treetime schema`↴](#treetime-schema)
 * [`treetime help-markdown`↴](#treetime-help-markdown)
@@ -56,6 +58,7 @@ Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
 * `homoplasy` — Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar
 * `mugration` — Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred
 * `pipeline` — Runs an ordered list of analysis commands from one config file, on one dataset, in one process
+* `examples` — Downloads the example datasets: trees, alignments, metadata, and example configs
 * `arg` — Estimates ancestral reassortment graph (ARG)
 * `schema` — Write JSON Schema definitions for TreeTime data types
 * `help-markdown` — Print CLI reference documentation in Markdown format
@@ -1583,6 +1586,37 @@ The config file (JSON or YAML) lists named steps, each an analysis command with 
 
    A referenced upstream step that is not selected must already have its outputs on disk.
 * `--check` — Resolve and print the plan (steps, inputs, outputs) without running any step
+
+
+
+## `treetime examples`
+
+Downloads the example datasets: trees, alignments, metadata, and example configs
+
+**Usage:** `treetime examples <COMMAND>`
+
+###### **Subcommands:**
+
+* `get` — Download the example datasets of this TreeTime release from GitHub and unpack them into a folder
+
+
+
+## `treetime examples get`
+
+Download the example datasets of this TreeTime release from GitHub and unpack them into a folder.
+
+The folder must be empty or missing. Each dataset folder holds its input files and example configs, whose relative paths resolve from that folder, for example:
+
+treetime examples get --output-dir examples
+
+treetime ancestral --config examples/zika/20/ancestral.yaml --output-all out/zika-ancestral
+
+**Usage:** `treetime examples get [OPTIONS] --output-dir <OUTPUT_DIR>`
+
+###### **Options:**
+
+* `--output-dir <OUTPUT_DIR>` — Folder to unpack the example datasets into. It must be empty or missing
+* `--url <URL>` — Address of another example archive (a ZIP file) to download instead of the one of this release
 
 
 

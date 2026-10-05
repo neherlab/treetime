@@ -1,3 +1,4 @@
+use crate::cli::examples::run_examples_get;
 use crate::cli::pipeline::runner::run_pipeline_command;
 use crate::cli::print_debug_info::print_debug_info;
 use crate::cli::print_help_markdown::print_help_markdown;
@@ -5,7 +6,7 @@ use crate::cli::progress::{BarProgress, TextProgress};
 use crate::cli::rtt_chart::print_clock_regression_chart;
 use crate::cli::schema::generate_schema;
 use crate::cli::treetime_cli::{
-  TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args,
+  TreetimeCommands, TreetimeExamplesCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args,
 };
 use crate::cli::verbosity::Verbosity;
 use app_commands::command::CommandArgs;
@@ -60,6 +61,11 @@ pub(crate) fn run_command(command: TreetimeCommands, stages: &dyn StageSink, log
     TreetimeCommands::Mugration(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, stages, log)?,
     TreetimeCommands::Pipeline(pipeline_args) => {
       run_pipeline_command(&pipeline_args, stages, log)?;
+    },
+    TreetimeCommands::Examples {
+      command: TreetimeExamplesCommands::Get(examples_args),
+    } => {
+      run_examples_get(&examples_args)?;
     },
     TreetimeCommands::Arg(_) => {},
     TreetimeCommands::Schema(TreetimeSchemaArgs { target, output }) => {

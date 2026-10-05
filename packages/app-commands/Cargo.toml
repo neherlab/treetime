@@ -41,6 +41,8 @@ miette = { workspace = true }
 parking_lot = { workspace = true }
 plotters = { workspace = true }
 rand = { workspace = true }
+reqwest = { workspace = true }
+rustls = { workspace = true }
 saphyr = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
@@ -64,12 +66,14 @@ png = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
 [dev-dependencies]
 approx = { workspace = true }
+axum = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
+tokio = { workspace = true }
 
 [lints]
 workspace = true

@@ -1,14 +1,16 @@
 use crate::error::AppError;
 use aide::OperationOutput;
 use aide::generate::GenContext;
-use aide::openapi::{MediaType, Operation, Response as ApiResponse, SchemaObject, StatusCode};
+use aide::openapi::{MediaType, Operation, Response as ApiResponse, SchemaObject, StatusCode as ApiStatusCode};
 use app_commands::bridge::error::ErrorResponse;
+use axum::Json;
 use axum::body::Body;
-use axum::http::{HeaderValue, header};
+use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
 use indexmap::IndexMap;
 use schemars::{JsonSchema, Schema, json_schema};
+use serde::Serialize;
 use std::convert::Infallible;
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -27,9 +29,37 @@ impl OperationOutput for AppError {
     Some(content_response("The error, with its causes", JSON, schema))
   }
 
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<StatusCode>, ApiResponse)> {
+  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
     Self::operation_response(ctx, operation)
       .map(|response| (None, response))
+      .into_iter()
+      .collect()
+  }
+}
+
+pub(crate) struct Accepted<T>(pub T);
+
+impl<T: Serialize> IntoResponse for Accepted<T> {
+  fn into_response(self) -> Response {
+    (StatusCode::ACCEPTED, Json(self.0)).into_response()
+  }
+}
+
+impl<T: JsonSchema> OperationOutput for Accepted<T> {
+  type Inner = T;
+
+  fn operation_response(ctx: &mut GenContext, _operation: &mut Operation) -> Option<ApiResponse> {
+    let schema = ctx.schema.subschema_for::<T>();
+    Some(content_response(
+      "The request was accepted and runs in the background",
+      JSON,
+      schema,
+    ))
+  }
+
+  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
+    Self::operation_response(ctx, operation)
+      .map(|response| (Some(ApiStatusCode::Code(202)), response))
       .into_iter()
       .collect()
   }
@@ -69,7 +99,7 @@ impl<T: JsonSchema> OperationOutput for TypedSse<T> {
     ))
   }
 
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<StatusCode>, ApiResponse)> {
+  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
     success(Self::operation_response(ctx, operation))
   }
 }
@@ -89,7 +119,7 @@ impl OperationOutput for FileContent {
     Some(content_response("Contents of the file", OCTET_STREAM, binary()))
   }
 
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<StatusCode>, ApiResponse)> {
+  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
     success(Self::operation_response(ctx, operation))
   }
 }
@@ -119,14 +149,14 @@ impl OperationOutput for ZipAttachment {
     Some(content_response("Zip archive", ZIP, binary()))
   }
 
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<StatusCode>, ApiResponse)> {
+  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
     success(Self::operation_response(ctx, operation))
   }
 }
 
-fn success(response: Option<ApiResponse>) -> Vec<(Option<StatusCode>, ApiResponse)> {
+fn success(response: Option<ApiResponse>) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
   response
-    .map(|response| (Some(StatusCode::Code(200)), response))
+    .map(|response| (Some(ApiStatusCode::Code(200)), response))
     .into_iter()
     .collect()
 }

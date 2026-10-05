@@ -140,6 +140,10 @@ mod tests {
   }
 
   mod helpers {
+    use app_commands::examples_download::ExampleDownloads;
+
+    const EXAMPLES_URL: &str = "http://127.0.0.1:9/examples.zip";
+
     use crate::__tests__::test_routes::tests::helpers::TestApp;
     use crate::create_router;
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
@@ -181,6 +185,7 @@ mod tests {
             store: Arc::new(AppSettingsStore::open(dir.path()).unwrap()),
             paths,
             runs_error: None,
+            examples: Arc::new(ExampleDownloads::new(EXAMPLES_URL, dir.path().join("examples"))),
           }),
         },
         &WebOptions::default(),

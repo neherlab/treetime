@@ -1045,6 +1045,70 @@
         }
       }
     },
+    "/api/examples/download": {
+      "get": {
+        "description": "The download of the example datasets into the examples folder, with the app event that reported it last. Only local apps serve this path.",
+        "operationId": "examplesDownload",
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The download of the example datasets, with the app event that reported it last.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamplesDownloadStatus"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Start downloading the example datasets into the examples folder; the app events report the progress. Only local apps serve this path.",
+        "operationId": "examplesDownloadStart",
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The request was accepted and runs in the background",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamplesDownloadStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A download runs already, or the examples folder is not empty",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/workspace": {
       "get": {
         "description": "The runs folder in use and the default runs folder. Only local apps serve this path.",
@@ -4266,6 +4330,9 @@
             "$ref": "#/components/schemas/AppEventRunUpdated"
           },
           {
+            "$ref": "#/components/schemas/AppEventExamplesDownload"
+          },
+          {
             "$ref": "#/components/schemas/AppEventResync"
           }
         ],
@@ -4274,6 +4341,7 @@
           "mapping": {
             "run-created": "#/components/schemas/AppEventRunCreated",
             "run-updated": "#/components/schemas/AppEventRunUpdated",
+            "examples-download": "#/components/schemas/AppEventExamplesDownload",
             "resync": "#/components/schemas/AppEventResync"
           }
         }
@@ -4310,6 +4378,32 @@
             "const": "subtree"
           }
         ]
+      },
+      "ExamplesDownload": {
+        "description": "Stage of the download of the example datasets.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ExamplesDownloadIdle"
+          },
+          {
+            "$ref": "#/components/schemas/ExamplesDownloadRunning"
+          },
+          {
+            "$ref": "#/components/schemas/ExamplesDownloadDone"
+          },
+          {
+            "$ref": "#/components/schemas/ExamplesDownloadFailed"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "state",
+          "mapping": {
+            "idle": "#/components/schemas/ExamplesDownloadIdle",
+            "running": "#/components/schemas/ExamplesDownloadRunning",
+            "done": "#/components/schemas/ExamplesDownloadDone",
+            "failed": "#/components/schemas/ExamplesDownloadFailed"
+          }
+        }
       },
       "UploadedInput": {
         "description": "A file uploaded into a run's `inputs/` folder.",
@@ -4598,6 +4692,27 @@
             "type": "string",
             "const": "yaml"
           }
+        ]
+      },
+      "ExamplesDownloadStatus": {
+        "description": "The download of the example datasets, with the app event that reported it last.",
+        "type": "object",
+        "properties": {
+          "download": {
+            "$ref": "#/components/schemas/ExamplesDownload"
+          },
+          "seq": {
+            "description": "Sequence number of the last app event about the download. A client keeps whichever of this answer and the\nevents it received has the higher number.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "download"
         ]
       },
       "Workspace": {
@@ -8662,6 +8777,44 @@
           "run"
         ]
       },
+      "AppEventExamplesDownload": {
+        "description": "The download of the example datasets progressed, finished, or failed.",
+        "type": "object",
+        "properties": {
+          "seq": {
+            "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "time": {
+            "description": "Time the event was recorded.",
+            "type": "string"
+          },
+          "stale": {
+            "description": "REST paths whose answers the change made stale.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StalePath"
+            }
+          },
+          "download": {
+            "description": "The download after the change.",
+            "$ref": "#/components/schemas/ExamplesDownload"
+          },
+          "kind": {
+            "type": "string",
+            "const": "examples-download"
+          }
+        },
+        "required": [
+          "seq",
+          "time",
+          "stale",
+          "kind",
+          "download"
+        ]
+      },
       "AppEventResync": {
         "description": "The stream cannot continue after the requested event, because the server no longer keeps that event or the\nevent belongs to a previous server. Every path in `stale` must be read again; the stream continues with the\nevents after this one.",
         "type": "object",
@@ -8693,6 +8846,86 @@
           "time",
           "stale",
           "kind"
+        ]
+      },
+      "ExamplesDownloadIdle": {
+        "description": "No download started since the back end started.",
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "const": "idle"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "ExamplesDownloadRunning": {
+        "description": "The archive is being downloaded or unpacked.",
+        "type": "object",
+        "properties": {
+          "received": {
+            "description": "Bytes received so far.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "total": {
+            "description": "Size of the archive in bytes, when the server sends it.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "const": "running"
+          }
+        },
+        "required": [
+          "state",
+          "received"
+        ]
+      },
+      "ExamplesDownloadDone": {
+        "description": "The example datasets are in the examples folder.",
+        "type": "object",
+        "properties": {
+          "received": {
+            "description": "Size of the archive in bytes.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "const": "done"
+          }
+        },
+        "required": [
+          "state",
+          "received"
+        ]
+      },
+      "ExamplesDownloadFailed": {
+        "description": "The download failed; the examples folder is unchanged.",
+        "type": "object",
+        "properties": {
+          "message": {
+            "description": "What failed.",
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "const": "failed"
+          }
+        },
+        "required": [
+          "state",
+          "message"
         ]
       },
       "JobEventStarted": {

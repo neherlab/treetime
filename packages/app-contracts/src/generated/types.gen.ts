@@ -1792,6 +1792,8 @@ export type AppEvent = ({
 } & AppEventRunCreated) | ({
   kind: 'run-updated';
 } & AppEventRunUpdated) | ({
+  kind: 'examples-download';
+} & AppEventExamplesDownload) | ({
   kind: 'resync';
 } & AppEventResync);
 
@@ -1813,6 +1815,19 @@ export type StalePath = {
  * Which answers a stale path covers.
  */
 export type StaleScope = 'exact' | 'subtree';
+
+/**
+ * Stage of the download of the example datasets.
+ */
+export type ExamplesDownload = ({
+  state: 'idle';
+} & ExamplesDownloadIdle) | ({
+  state: 'running';
+} & ExamplesDownloadRunning) | ({
+  state: 'done';
+} & ExamplesDownloadDone) | ({
+  state: 'failed';
+} & ExamplesDownloadFailed);
 
 /**
  * A file uploaded into a run's `inputs/` folder.
@@ -1963,6 +1978,18 @@ export type UiSettingsView = 'main' | 'all';
  * Format of the code that reproduces the form.
  */
 export type UiCodeFormat = 'cli' | 'yaml';
+
+/**
+ * The download of the example datasets, with the app event that reported it last.
+ */
+export type ExamplesDownloadStatus = {
+  download: ExamplesDownload;
+  /**
+   * Sequence number of the last app event about the download. A client keeps whichever of this answer and the
+   * events it received has the higher number.
+   */
+  seq?: number | null;
+};
 
 /**
  * The runs folder of the running back end, and the folder used when the settings name none.
@@ -4658,6 +4685,31 @@ export type AppEventRunUpdated = {
 };
 
 /**
+ * The download of the example datasets progressed, finished, or failed.
+ */
+export type AppEventExamplesDownload = {
+  /**
+   * Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
+   * restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
+   * the event.
+   */
+  seq: number;
+  /**
+   * Time the event was recorded.
+   */
+  time: string;
+  /**
+   * REST paths whose answers the change made stale.
+   */
+  stale: Array<StalePath>;
+  /**
+   * The download after the change.
+   */
+  download: ExamplesDownload;
+  kind: 'examples-download';
+};
+
+/**
  * The stream cannot continue after the requested event, because the server no longer keeps that event or the
  * event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
  * events after this one.
@@ -4678,6 +4730,50 @@ export type AppEventResync = {
    */
   stale: Array<StalePath>;
   kind: 'resync';
+};
+
+/**
+ * No download started since the back end started.
+ */
+export type ExamplesDownloadIdle = {
+  state: 'idle';
+};
+
+/**
+ * The archive is being downloaded or unpacked.
+ */
+export type ExamplesDownloadRunning = {
+  /**
+   * Bytes received so far.
+   */
+  received: number;
+  /**
+   * Size of the archive in bytes, when the server sends it.
+   */
+  total?: number | null;
+  state: 'running';
+};
+
+/**
+ * The example datasets are in the examples folder.
+ */
+export type ExamplesDownloadDone = {
+  /**
+   * Size of the archive in bytes.
+   */
+  received: number;
+  state: 'done';
+};
+
+/**
+ * The download failed; the examples folder is unchanged.
+ */
+export type ExamplesDownloadFailed = {
+  /**
+   * What failed.
+   */
+  message: string;
+  state: 'failed';
 };
 
 /**
@@ -5445,6 +5541,60 @@ export type AppSettingsUiResponses = {
 };
 
 export type AppSettingsUiResponse = AppSettingsUiResponses[keyof AppSettingsUiResponses];
+
+export type ExamplesDownloadData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/examples/download';
+};
+
+export type ExamplesDownloadErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type ExamplesDownloadError = ExamplesDownloadErrors[keyof ExamplesDownloadErrors];
+
+export type ExamplesDownloadResponses = {
+  /**
+   * The download of the example datasets, with the app event that reported it last.
+   */
+  200: ExamplesDownloadStatus;
+};
+
+export type ExamplesDownloadResponse = ExamplesDownloadResponses[keyof ExamplesDownloadResponses];
+
+export type ExamplesDownloadStartData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/examples/download';
+};
+
+export type ExamplesDownloadStartErrors = {
+  /**
+   * A download runs already, or the examples folder is not empty
+   */
+  409: ErrorResponse;
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type ExamplesDownloadStartError = ExamplesDownloadStartErrors[keyof ExamplesDownloadStartErrors];
+
+export type ExamplesDownloadStartResponses = {
+  /**
+   * The request was accepted and runs in the background
+   */
+  202: ExamplesDownloadStatus;
+};
+
+export type ExamplesDownloadStartResponse = ExamplesDownloadStartResponses[keyof ExamplesDownloadStartResponses];
 
 export type WorkspaceData = {
   body?: never;

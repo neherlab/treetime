@@ -2076,11 +2076,73 @@ export const zAppEventResync = z.object({
 });
 
 /**
+ * No download started since the back end started.
+ */
+export const zExamplesDownloadIdle = z.object({
+  state: z.literal('idle')
+});
+
+/**
+ * The archive is being downloaded or unpacked.
+ */
+export const zExamplesDownloadRunning = z.object({
+  received: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
+  total: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).nullish(),
+  state: z.literal('running')
+});
+
+/**
+ * The example datasets are in the examples folder.
+ */
+export const zExamplesDownloadDone = z.object({
+  received: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
+  state: z.literal('done')
+});
+
+/**
+ * The download failed; the examples folder is unchanged.
+ */
+export const zExamplesDownloadFailed = z.object({
+  message: z.string(),
+  state: z.literal('failed')
+});
+
+/**
+ * Stage of the download of the example datasets.
+ */
+export const zExamplesDownload = z.discriminatedUnion('state', [
+  zExamplesDownloadIdle,
+  zExamplesDownloadRunning,
+  zExamplesDownloadDone,
+  zExamplesDownloadFailed
+]);
+
+/**
+ * The download of the example datasets, with the app event that reported it last.
+ */
+export const zExamplesDownloadStatus = z.object({
+  download: zExamplesDownload,
+  seq: z.int().gte(0).nullish()
+});
+
+/**
+ * The download of the example datasets progressed, finished, or failed.
+ */
+export const zAppEventExamplesDownload = z.object({
+  seq: z.int().gte(0),
+  time: z.string(),
+  stale: z.array(zStalePath),
+  download: zExamplesDownload,
+  kind: z.literal('examples-download')
+});
+
+/**
  * Change of the app's runs, sent on the app-wide event stream.
  */
 export const zAppEvent = z.discriminatedUnion('kind', [
   zAppEventRunCreated,
   zAppEventRunUpdated,
+  zAppEventExamplesDownload,
   zAppEventResync
 ]);
 
@@ -2353,6 +2415,16 @@ export const zAppSettingsUiBody = zUiSettings;
  * Preferences of the user interface. Unset preferences take the defaults of the user interface.
  */
 export const zAppSettingsUiResponse = zUiSettings;
+
+/**
+ * The download of the example datasets, with the app event that reported it last.
+ */
+export const zExamplesDownloadResponse = zExamplesDownloadStatus;
+
+/**
+ * The request was accepted and runs in the background
+ */
+export const zExamplesDownloadStartResponse = zExamplesDownloadStatus;
 
 /**
  * The runs folder of the running back end, and the folder used when the settings name none.

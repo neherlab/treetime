@@ -1,3 +1,4 @@
+use crate::examples_download::ExamplesDownload;
 use crate::job::JobId;
 use crate::runs::record::RunSummary;
 use chrono::{DateTime, Utc};
@@ -11,6 +12,10 @@ pub const RUNS_PATH: &str = "/api/runs";
 
 pub const CLADE_IN_RUNS_PATH: &str = "/api/clade-in-runs";
 
+pub const DATASETS_PATH: &str = "/api/datasets";
+
+pub const EXAMPLES_DOWNLOAD_PATH: &str = "/api/examples/download";
+
 pub fn run_stale_paths(id: &JobId) -> Vec<StalePath> {
   vec![
     StalePath::exact(RUNS_PATH),
@@ -20,7 +25,12 @@ pub fn run_stale_paths(id: &JobId) -> Vec<StalePath> {
 }
 
 pub fn resync_stale_paths() -> Vec<StalePath> {
-  vec![StalePath::subtree(RUNS_PATH), StalePath::exact(CLADE_IN_RUNS_PATH)]
+  vec![
+    StalePath::subtree(RUNS_PATH),
+    StalePath::exact(CLADE_IN_RUNS_PATH),
+    StalePath::exact(DATASETS_PATH),
+    StalePath::exact(EXAMPLES_DOWNLOAD_PATH),
+  ]
 }
 
 /// Change of the app's runs, sent on the app-wide event stream.
@@ -89,6 +99,11 @@ pub enum AppChange {
   RunUpdated {
     /// The run after the change.
     run: RunSummary,
+  },
+  /// The download of the example datasets progressed, finished, or failed.
+  ExamplesDownload {
+    /// The download after the change.
+    download: ExamplesDownload,
   },
   /// The stream cannot continue after the requested event, because the server no longer keeps that event or the
   /// event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the

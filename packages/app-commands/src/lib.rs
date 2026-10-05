@@ -12,6 +12,7 @@ pub mod command;
 pub mod commands;
 pub mod config;
 pub mod datasets;
+pub mod examples_download;
 pub mod job;
 pub mod json_float;
 pub mod results;
@@ -21,6 +22,7 @@ pub mod run_checks;
 #[cfg(feature = "clap")]
 pub mod run_config;
 pub mod runs;
+pub mod version;
 pub mod yaml;
 
 #[cfg(test)]

@@ -1,5 +1,6 @@
 pub(crate) mod config;
 pub(crate) mod diagnostics;
+pub(crate) mod examples;
 pub(crate) mod jobs;
 pub(crate) mod pipeline;
 pub(crate) mod print_debug_info;

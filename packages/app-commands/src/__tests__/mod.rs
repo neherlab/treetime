@@ -4,6 +4,7 @@ mod test_check_inputs;
 mod test_cli_rules;
 mod test_config_code;
 mod test_datasets;
+mod test_examples_download;
 mod test_iteration_events;
 mod test_job;
 mod test_json_float;
