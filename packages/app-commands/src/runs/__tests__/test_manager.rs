@@ -19,6 +19,8 @@ mod tests {
   use std::sync::Arc;
   use std::thread;
   use tempfile::tempdir;
+  use treetime::o;
+  use treetime::progress::{RunWarning, RunWarningKind};
   use treetime_utils::assert_error;
 
   #[test]
@@ -358,6 +360,40 @@ mod tests {
     assert_eq!(
       (btreeset! { recent.id, finished.id }, false),
       (kept, reopened.store().run_dir(&stale.id).exists())
+    );
+  }
+
+  #[test]
+  fn test_manager_failed_run_keeps_the_warnings_raised_before_the_failure() {
+    let root = tempdir().unwrap();
+    let inputs = tempdir().unwrap();
+    let tree = inputs.path().join("tree.nwk");
+    let metadata = inputs.path().join("metadata.tsv");
+    fs::write(&tree, "((A:0.1,A:0.1)X:0.1,B:0.1)root;\n").unwrap();
+    fs::write(&metadata, "strain\tdate\nZ\t2000.5\n").unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, json!({ "tree": tree, "metadata": metadata }));
+
+    let terminal = runs
+      .start(&created.id, &StartRunRequest::default(), accept())
+      .unwrap()
+      .run();
+
+    let record = runs.get(&created.id).unwrap();
+    assert_eq!(
+      (
+        "error",
+        RunStatus::Error,
+        vec![RunWarning {
+          kind: RunWarningKind::DuplicateNodeNames,
+          message: format!(
+            "The tree '{}' gives the same name to more than one node: A. Nodes with the same name receive the same data from the other inputs, and augur node data keeps one entry per name.",
+            tree.display()
+          ),
+          names: vec![o!("A")],
+        }],
+      ),
+      (terminal_status(&terminal), record.status, record.warnings)
     );
   }
 

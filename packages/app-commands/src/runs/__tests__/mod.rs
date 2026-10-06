@@ -5,3 +5,4 @@ mod test_inputs;
 mod test_manager;
 mod test_setting_differences;
 mod test_store;
+mod test_warnings;
