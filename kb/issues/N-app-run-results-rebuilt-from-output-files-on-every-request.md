@@ -8,7 +8,7 @@
 - `fn run_auspice()` in `packages/app-commands/src/results/auspice.rs` parses the Auspice JSON with `fn read_auspice()` (`packages/app-commands/src/results/outputs.rs`) and computes the color scales with `fn display_auspice()`
 - `fn compare_runs()` in `packages/app-commands/src/results/compare.rs` calls `run_results` for both runs, and `fn clade_in_runs()` in `packages/app-commands/src/results/clades.rs` reads the result tree of every other finished time-tree run on each request
 - Nothing caches these answers in the back end; `AppService` (`packages/app-commands/src/bridge/service.rs`) passes each call straight to these functions
-- The run page requests the Auspice document only after the results arrive (`fn FinishedResults()` in `packages/app-ui/src/runs/RunPage.tsx`), and both answers parse the same Auspice JSON, so a results page parses it twice, one parse after the other ([M-io-json-read-from-reader-slow.md](M-io-json-read-from-reader-slow.md))
+- The run page requests the Auspice document only after the results arrive (`fn FinishedResults()` in `packages/app-ui/src/runs/RunPage.tsx`), and both answers parse the same Auspice JSON, so a results page parses it twice, one parse after the other
 
 ## Measurements
 

@@ -29,6 +29,6 @@ It does not implement dereferencing, mixed arithmetic with `f64`, or implicit co
 
 ## Representation and serialization
 
-`#[repr(transparent)]` preserves the size and alignment of `f64`. Serde's transparent representation preserves existing JSON and CSV scalar schemas: a `LogLh` serializes as a number rather than an object.
+`#[repr(transparent)]` preserves the size and alignment of `f64`. `#[deser(transparent)]` preserves existing JSON and CSV scalar schemas: a `LogLh` serializes as a number rather than an object.
 
 The implementation is defined in [`packages/treetime-primitives/src/log_lh.rs`](../../packages/treetime-primitives/src/log_lh.rs). Unit and compile-fail tests cover arithmetic, layout, serialization, and rejected mixed-domain expressions.
