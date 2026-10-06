@@ -1,7 +1,6 @@
 use crate::csv::{delimiter_from_path, detect_csv_delimiter, get_col_name, normalize_csv_headers, table_reader};
 use csv::StringRecord;
 use eyre::{Report, WrapErr};
-use std::collections::BTreeMap;
 use std::io::BufRead;
 use std::path::Path;
 use treetime_utils::io::file::read_file_with;
@@ -14,7 +13,7 @@ pub fn discrete_attrs_read_file<T>(
   name_column: Option<&str>,
   value_column: Option<&str>,
   parser: impl Fn(&str) -> Result<T, Report>,
-) -> Result<(BTreeMap<String, T>, String), Report> {
+) -> Result<(Vec<(String, T)>, String), Report> {
   let filepath = filepath.as_ref();
   read_file_with(filepath, |reader| {
     discrete_attrs_read(
@@ -37,7 +36,7 @@ pub fn discrete_attrs_read<T>(
   name_column: Option<&str>,
   value_column: Option<&str>,
   parser: impl Fn(&str) -> Result<T, Report>,
-) -> Result<(BTreeMap<String, T>, String), Report> {
+) -> Result<(Vec<(String, T)>, String), Report> {
   let delimiter = detect_csv_delimiter(&mut reader, path_delimiter, delimiters, |headers| {
     get_col_name(headers, name_candidates, name_column).is_ok() && get_col_name(headers, &[], value_column).is_ok()
   })
@@ -61,7 +60,7 @@ pub fn discrete_attrs_read<T>(
       let record = record?;
       convert_record::<T>(index, &record, name_column_idx, value_column_idx, &parser)
     })
-    .collect::<Result<BTreeMap<String, T>, Report>>()?;
+    .collect::<Result<Vec<(String, T)>, Report>>()?;
 
   Ok((values, value_name))
 }

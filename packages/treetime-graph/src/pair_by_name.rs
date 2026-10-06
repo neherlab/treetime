@@ -33,7 +33,7 @@ pub fn pair_by_name<T: Clone>(
   let mut unmatched = vec![];
   for ((name, value), keys) in izip!(by_name, keys_by_entry) {
     let Some((last, others)) = keys.split_last() else {
-      unmatched.push(name);
+      unmatched.push((name, value));
       continue;
     };
     by_node.extend(others.iter().map(|key| (*key, value.clone())));
@@ -50,6 +50,6 @@ pub fn pair_by_name<T: Clone>(
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamePairing<T> {
   pub by_node: BTreeMap<GraphNodeKey, T>,
-  pub unmatched: Vec<String>,
+  pub unmatched: Vec<(String, T)>,
   pub duplicate_entry_names: Vec<String>,
 }

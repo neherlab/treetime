@@ -7,6 +7,7 @@ mod tests {
   };
   use crate::partition::storage::discrete::DiscreteStates;
   use crate::progress::NoopProgress;
+  use crate::test_utils::{TraitsByNode, traits_by_node};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indexmap::{IndexMap, IndexSet};
@@ -48,9 +49,14 @@ mod tests {
       smooth_initial_pi,
       filter_uninformative_root,
     };
+    let TraitsByNode {
+      traits,
+      observed_values,
+    } = traits_by_node(traits.clone(), &graph, &names);
     let input = MugrationInput {
       graph,
-      traits: traits.clone(),
+      traits,
+      observed_values,
       weights,
       branch_lengths,
     };

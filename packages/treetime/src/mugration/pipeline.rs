@@ -16,7 +16,7 @@ use indexmap::IndexSet;
 use itertools::Itertools;
 use ndarray::Array1;
 use statrs::statistics::Statistics;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -33,12 +33,13 @@ pub fn run(
   let MugrationInput {
     graph,
     traits,
+    observed_values,
     weights,
     branch_lengths,
   } = input;
   let weights = weights.as_ref();
 
-  let observed_values: IndexSet<String> = traits.values().sorted().cloned().collect();
+  let observed_values: IndexSet<String> = observed_values.into_iter().collect();
 
   let model_values: IndexSet<String> = match weights {
     Some(weights_map) => {
@@ -108,7 +109,6 @@ pub fn run(
     names,
     MIN_BRANCH_LENGTH_FRACTION,
     params.filter_uninformative_root,
-    log,
   )
   .map_err(OperationError::InvalidInput)?;
 
@@ -156,7 +156,8 @@ pub struct MugrationParams {
 
 pub struct MugrationInput {
   pub graph: Graph,
-  pub traits: BTreeMap<String, String>,
+  pub traits: BTreeMap<GraphNodeKey, String>,
+  pub observed_values: BTreeSet<String>,
   pub weights: Option<BTreeMap<String, f64>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }

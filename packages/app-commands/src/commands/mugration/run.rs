@@ -1,4 +1,5 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
+use crate::commands::shared::input_warnings::warn_duplicate_names;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeTraits};
@@ -7,17 +8,23 @@ use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use app_output::trait_tables::{write_trait_confidence_csv, write_traits_csv};
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
-use std::collections::BTreeMap;
+use itertools::Itertools;
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput};
 use treetime::mugration::pipeline::{self, MugrationInput, MugrationOutput, MugrationParams};
+use treetime::progress::RunWarningKind;
 use treetime::progress::{LogSink, StageSink};
-use treetime::progress_info;
+use treetime::{progress_info, progress_warn};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::pair_by_name::pair_by_name;
 use treetime_io::discrete_states_csv::discrete_attrs_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
+
+const UNMATCHED_NAMES_SHOWN: usize = 10;
 
 pub fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
@@ -36,7 +43,7 @@ pub fn run_mugration(
 
   let attribute_column = Some(mugration_args.attribute());
 
-  let (attr_values, _attr_name) = discrete_attrs_read_file::<String>(
+  let (rows, _attr_name) = discrete_attrs_read_file::<String>(
     mugration_args.metadata(),
     &mugration_args.metadata_id.metadata_delimiters,
     &mugration_args.metadata_id.metadata_id_columns,
@@ -44,7 +51,10 @@ pub fn run_mugration(
     attribute_column,
     |s| Ok(s.to_owned()),
   )?;
-  let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
+  let MugrationTraits {
+    traits,
+    observed_values,
+  } = pair_traits(rows, &graph, &names, mugration_args.metadata(), log);
 
   let weights = if let Some(weights_filepath) = &mugration_args.weights {
     let (map, _) = discrete_attrs_read_file::<f64>(
@@ -74,6 +84,7 @@ pub fn run_mugration(
   let input = MugrationInput {
     graph,
     traits,
+    observed_values,
     weights,
     branch_lengths: branch_lengths.clone(),
   };
@@ -106,6 +117,56 @@ pub fn run_mugration(
 
   stages.report("Done", 1.0, "");
   Ok(())
+}
+
+pub(crate) fn pair_traits(
+  rows: Vec<(String, String)>,
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  path: &Path,
+  log: &dyn LogSink,
+) -> MugrationTraits {
+  let pairing = pair_by_name(graph.get_leaves().map(|leaf| leaf.key()), names, rows);
+  warn_duplicate_names(
+    log,
+    RunWarningKind::DuplicateMetadataNames,
+    &format!("The metadata '{}' has more than one row named", path.display()),
+    "TreeTime uses the first row of each name.",
+    &pairing.duplicate_entry_names,
+  );
+  if !pairing.unmatched.is_empty() {
+    let shown = pairing
+      .unmatched
+      .iter()
+      .take(UNMATCHED_NAMES_SHOWN)
+      .map(|(name, _)| name)
+      .join(", ");
+    let suffix = if pairing.unmatched.len() > UNMATCHED_NAMES_SHOWN {
+      "..."
+    } else {
+      ""
+    };
+    progress_warn!(
+      log,
+      "Mugration: {} metadata names not present in tree: {shown}{suffix}",
+      pairing.unmatched.len()
+    );
+  }
+  let observed_values = pairing
+    .by_node
+    .values()
+    .chain(pairing.unmatched.iter().map(|(_, value)| value))
+    .cloned()
+    .collect();
+  MugrationTraits {
+    traits: pairing.by_node,
+    observed_values,
+  }
+}
+
+pub(crate) struct MugrationTraits {
+  pub(crate) traits: BTreeMap<GraphNodeKey, String>,
+  pub(crate) observed_values: BTreeSet<String>,
 }
 
 fn write_mugration_trees(

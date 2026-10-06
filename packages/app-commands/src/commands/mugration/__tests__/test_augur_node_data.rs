@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::mugration::run::{MugrationTraits, pair_traits};
   use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeTraits};
   use app_output::augur_node_data_traits::build_augur_node_data_traits;
   use helpers::run_and_serialize;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use std::path::Path;
   use treetime::cancel::NoopCancel;
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
   use treetime::progress::NoopProgress;
@@ -122,9 +124,20 @@ mod tests {
         smooth_initial_pi: false,
         filter_uninformative_root: false,
       };
+      let MugrationTraits {
+        traits,
+        observed_values,
+      } = pair_traits(
+        traits.clone().into_iter().collect(),
+        &graph,
+        &names,
+        Path::new("metadata.tsv"),
+        &NoopProgress,
+      );
       let input = MugrationInput {
         graph,
-        traits: traits.clone(),
+        traits,
+        observed_values,
         weights: None,
         branch_lengths,
       };

@@ -40,7 +40,12 @@ pub fn read_input_dates(
     &pairing.duplicate_entry_names,
   );
   if !pairing.unmatched.is_empty() {
-    let shown = pairing.unmatched.iter().take(UNMATCHED_NAMES_SHOWN).join(", ");
+    let shown = pairing
+      .unmatched
+      .iter()
+      .take(UNMATCHED_NAMES_SHOWN)
+      .map(|(name, _)| name)
+      .join(", ");
     let suffix = if pairing.unmatched.len() > UNMATCHED_NAMES_SHOWN {
       "..."
     } else {

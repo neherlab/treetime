@@ -1,6 +1,4 @@
 use crate::make_error;
-use crate::progress::LogSink;
-use crate::progress_warn;
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -19,36 +17,22 @@ pub(crate) fn missing_trait_profile(n_states: usize) -> Array2<f64> {
   Array2::ones((1, n_states))
 }
 
-pub(crate) fn validate_trait_names(
+pub(crate) fn validate_trait_leaves(
   graph: &Graph,
-  traits: &BTreeMap<String, String>,
+  traits: &BTreeMap<GraphNodeKey, String>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  log: &dyn LogSink,
 ) -> Result<(), Report> {
-  let leaf_names: IndexSet<String> = graph
+  let missing_in_metadata: IndexSet<String> = graph
     .get_leaves()
-    .map(|leaf| names[&leaf.key()].clone().unwrap_or_default())
+    .map(|leaf| leaf.key())
+    .filter(|key| !traits.contains_key(key))
+    .map(|key| names[&key].clone().unwrap_or_default())
     .collect();
-  let trait_names: IndexSet<String> = traits.keys().cloned().collect();
-
-  let missing_in_metadata: IndexSet<String> = leaf_names.difference(&trait_names).cloned().collect();
   if !missing_in_metadata.is_empty() {
     return make_error!(
       "Mugration: tree leaves missing from metadata: {}",
       missing_in_metadata.iter().join(", ")
     );
   }
-
-  let missing_in_tree: IndexSet<String> = trait_names.difference(&leaf_names).cloned().collect();
-  if !missing_in_tree.is_empty() {
-    let sample = missing_in_tree.iter().take(10).join(", ");
-    let suffix = if missing_in_tree.len() > 10 { "..." } else { "" };
-    progress_warn!(
-      log,
-      "Mugration: {} metadata names not present in tree: {sample}{suffix}",
-      missing_in_tree.len()
-    );
-  }
-
   Ok(())
 }

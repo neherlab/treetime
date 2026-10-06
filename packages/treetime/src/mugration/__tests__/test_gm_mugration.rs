@@ -108,6 +108,7 @@ mod tests {
     use crate::cancel::NoopCancel;
     use crate::mugration::pipeline::{MugrationInput, MugrationOutput, MugrationParams, run};
     use crate::progress::NoopProgress;
+    use crate::test_utils::{TraitsByNode, traits_by_node};
     use eyre::Report;
     use indexmap::IndexMap;
     use ndarray::Array1;
@@ -173,7 +174,7 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
 
       let metadata_path = project_root.join(&fixture.metadata_path);
-      let (attr_values, _attr_name) = discrete_attrs_read_file::<String>(
+      let (rows, _attr_name) = discrete_attrs_read_file::<String>(
         &metadata_path,
         &[',', '\t', ';'],
         &default_name_candidates(),
@@ -181,7 +182,10 @@ mod tests {
         Some(fixture.attribute.as_str()),
         |s| Ok(s.to_owned()),
       )?;
-      let traits: BTreeMap<String, String> = attr_values.into_iter().collect();
+      let TraitsByNode {
+        traits,
+        observed_values,
+      } = traits_by_node(rows, &graph, &names);
 
       let weights = match &fixture.parameters.weights_path {
         Some(weights_path) => {
@@ -211,6 +215,7 @@ mod tests {
       let input = MugrationInput {
         graph,
         traits,
+        observed_values,
         weights,
         branch_lengths,
       };

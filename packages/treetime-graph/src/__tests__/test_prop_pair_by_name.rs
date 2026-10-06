@@ -33,7 +33,7 @@ mod tests {
         .iter()
         .unique()
         .filter(|name| !candidate_names.contains(name.as_str()))
-        .cloned()
+        .map(|name| (name.clone(), first_index(name).expect("the name has an entry")))
         .collect_vec();
       let expected_duplicates = entry_names
         .iter()

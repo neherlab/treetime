@@ -2,6 +2,7 @@ mod clock;
 mod graph_lookup;
 mod indel;
 mod marginal;
+mod mugration;
 mod sparse;
 mod timetree;
 
@@ -13,6 +14,7 @@ pub(crate) use marginal::{
   emitted_sequences_by_name, internal_node_keys, node_keys, run_dense_marginal_with_newick,
   run_sparse_marginal_with_newick, sparse_reconstruction, sparse_reconstruction_mut,
 };
+pub(crate) use mugration::{TraitsByNode, traits_by_node};
 pub(crate) use sparse::{fitch_edge_obs, sparse_edge_obs};
 pub(crate) use timetree::{
   RecordingLog, constraint_coalescent_node_times, empty_time_inference, marginal_timetree_params, parent_edge_key,

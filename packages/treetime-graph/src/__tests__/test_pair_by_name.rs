@@ -35,7 +35,7 @@ mod tests {
     assert_eq!(
       NamePairing {
         by_node: btreemap! { a => 2 },
-        unmatched: vec_of_owned!["Z", "C"],
+        unmatched: vec![(o!("Z"), 1), (o!("C"), 3)],
         duplicate_entry_names: vec_of_owned!["Z"],
       },
       actual
@@ -86,7 +86,7 @@ mod tests {
     assert_eq!(
       NamePairing {
         by_node: btreemap! {},
-        unmatched: vec_of_owned!["I"],
+        unmatched: vec![(o!("I"), 1)],
         duplicate_entry_names: vec![],
       },
       actual

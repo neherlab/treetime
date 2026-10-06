@@ -150,7 +150,7 @@ mod tests {
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
     use crate::partition::storage::discrete::DiscreteStates;
-    use crate::progress::NoopProgress;
+    use crate::test_utils::traits_by_node;
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
     use maplit::btreemap;
@@ -178,11 +178,10 @@ mod tests {
       let partition = PartitionMarginalDiscrete::new(
         discrete_states,
         graph,
-        traits,
+        &traits_by_node(traits.clone(), graph, names).traits,
         names,
         MIN_BRANCH_LENGTH_FRACTION,
         false,
-        &NoopProgress,
       )?;
       Ok((partition, gtr))
     }

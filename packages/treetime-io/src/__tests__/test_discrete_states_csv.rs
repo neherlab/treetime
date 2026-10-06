@@ -3,7 +3,6 @@ mod tests {
   use crate::csv::default_name_candidates;
   use crate::discrete_states_csv::*;
   use eyre::Report;
-  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::o;
@@ -20,10 +19,10 @@ mod tests {
     let (values, attr_name) =
       discrete_attrs_read(content.as_bytes(), None, &[char::from(delimiter)], &default_name_candidates(), None, Some("location"), |s| Ok(s.to_owned()))?;
 
-    let expected = btreemap! {
-      o!("A") => o!("usa"),
-      o!("B") => o!("europe"),
-    };
+    let expected = vec![
+      (o!("A"), o!("usa")),
+      (o!("B"), o!("europe")),
+    ];
 
     assert_eq!(expected, values);
     assert_eq!("location", attr_name);
@@ -45,10 +44,10 @@ mod tests {
     let (values, _) =
       discrete_attrs_read(content.as_bytes(), None, &[char::from(b'\t')], &default_name_candidates(), name_column.as_deref(), Some("location"), |s| Ok(s.to_owned()))?;
 
-    let expected = btreemap! {
-      o!("A") => o!("usa"),
-      o!("B") => o!("europe"),
-    };
+    let expected = vec![
+      (o!("A"), o!("usa")),
+      (o!("B"), o!("europe")),
+    ];
 
     assert_eq!(expected, values);
 
@@ -68,7 +67,27 @@ mod tests {
       discrete_attrs_read(content.as_bytes(), None, &[char::from(b'\t')], &default_name_candidates(), None, Some(value_col_name), |s| Ok(s.to_owned()))?;
 
     assert_eq!(attr_name, value_col_name);
-    assert!(values.contains_key(&o!("A")));
+    assert_eq!(vec![o!("A")], values.into_iter().map(|(name, _)| name).collect::<Vec<_>>());
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_discrete_states_csv_keeps_every_row_in_file_order() -> Result<(), Report> {
+    let content = "name\tlocation\nB\teurope\nA\tusa\nB\tasia";
+
+    let (values, _) = discrete_attrs_read(
+      content.as_bytes(),
+      None,
+      &[char::from(b'\t')],
+      &default_name_candidates(),
+      None,
+      Some("location"),
+      |s| Ok(s.to_owned()),
+    )?;
+
+    let expected = vec![(o!("B"), o!("europe")), (o!("A"), o!("usa")), (o!("B"), o!("asia"))];
+    assert_eq!(expected, values);
 
     Ok(())
   }
@@ -87,10 +106,7 @@ mod tests {
       |s| Ok(s.to_owned()),
     )?;
 
-    let expected = btreemap! {
-      o!("A") => o!("usa"),
-      o!("B") => o!("europe"),
-    };
+    let expected = vec![(o!("A"), o!("usa")), (o!("B"), o!("europe"))];
 
     assert_eq!(expected, values);
     assert_eq!("location", attr_name);
@@ -112,11 +128,7 @@ mod tests {
       |s| Ok(s.parse::<f64>()?),
     )?;
 
-    let expected = btreemap! {
-      o!("A") => 1.5,
-      o!("B") => 2.0,
-      o!("C") => 0.5,
-    };
+    let expected = vec![(o!("A"), 1.5), (o!("B"), 2.0), (o!("C"), 0.5)];
 
     assert_eq!(expected, values);
     assert_eq!("weight", attr_name);
@@ -138,10 +150,7 @@ mod tests {
       |s| Ok(s.to_owned()),
     )?;
 
-    let expected = btreemap! {
-      o!("A") => o!("usa"),
-      o!("B") => o!("europe"),
-    };
+    let expected = vec![(o!("A"), o!("usa")), (o!("B"), o!("europe"))];
 
     assert_eq!(expected, values);
 

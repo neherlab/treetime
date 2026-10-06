@@ -1,12 +1,11 @@
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
-use crate::partition::marginal::discrete::input::{missing_trait_profile, one_hot_profile, validate_trait_names};
+use crate::partition::marginal::discrete::input::{missing_trait_profile, one_hot_profile, validate_trait_leaves};
 use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::pass::{IndexedKind, indexed_backward, indexed_forward};
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses};
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseNodeState};
 use crate::partition::storage::discrete::DiscreteStates;
-use crate::progress::LogSink;
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use serde::Serialize;
@@ -27,21 +26,19 @@ impl PartitionMarginalDiscrete {
   pub(crate) fn new(
     states: DiscreteStates,
     graph: &Graph,
-    traits: &BTreeMap<String, String>,
+    traits: &BTreeMap<GraphNodeKey, String>,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     min_branch_length: f64,
     filter_uninformative_root: bool,
-    log: &dyn LogSink,
   ) -> Result<Self, Report> {
-    validate_trait_names(graph, traits, names, log)?;
+    validate_trait_leaves(graph, traits, names)?;
     let n_states = states.len();
     let obs_leaves = graph
       .get_leaves()
       .map(|leaf| {
         let leaf_key = leaf.key();
-        let leaf_name = names[&leaf_key].clone().unwrap_or_default();
         let profile = traits
-          .get(&leaf_name)
+          .get(&leaf_key)
           .and_then(|trait_value| states.get_index(trait_value))
           .map_or_else(
             || missing_trait_profile(n_states),
