@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::error::OperationError;
 use crate::homoplasy::classify::{MutationClass, classify_mutation};
 use crate::homoplasy::recurrence::RecurrenceTable;
+use crate::homoplasy::site_branches::{SiteBranches, sites_by_branch_count};
 use crate::homoplasy::site_hits::{SiteHistogram, site_histogram};
 use crate::seq::indel::InDelKind;
 use crate::seq::mutation::{AlignedMutation, Mutation, MutationEvent, Sub};
@@ -58,12 +59,6 @@ pub struct AmbiguousStats {
   pub all: RecurrenceTable<Sub>,
   pub sites: Vec<SiteBranches>,
   pub leaves: BTreeMap<GraphNodeKey, usize>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SiteBranches {
-  pub position: usize,
-  pub branches: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -207,19 +202,17 @@ fn ambiguous_stats(input: &HomoplasyInput<'_>, branches: &[Branch]) -> Ambiguous
   };
   let all = RecurrenceTable::new(events().map(|(sub, branch)| (sub, branch.node)), substitution_order);
 
-  let mut branches_per_site: BTreeMap<usize, usize> = BTreeMap::new();
   let mut leaves: BTreeMap<GraphNodeKey, usize> = BTreeMap::new();
-  for (sub, branch) in events() {
-    *branches_per_site.entry(sub.pos()).or_default() += 1;
-    if branch.terminal {
-      *leaves.entry(branch.node).or_default() += 1;
-    }
+  for (_, branch) in events().filter(|(_, branch)| branch.terminal) {
+    *leaves.entry(branch.node).or_default() += 1;
   }
-  let mut sites: Vec<SiteBranches> = branches_per_site
-    .into_iter()
-    .map(|(position, branches)| SiteBranches { position, branches })
-    .collect();
-  sites.sort_by(|a, b| b.branches.cmp(&a.branches).then_with(|| a.position.cmp(&b.position)));
+  let sites = sites_by_branch_count(
+    branches
+      .iter()
+      .map(|branch| mutations[&branch.edge].iter().map(|mutation| &mutation.event)),
+    input.alphabet,
+    class,
+  );
 
   AmbiguousStats { all, sites, leaves }
 }

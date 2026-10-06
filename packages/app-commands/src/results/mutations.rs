@@ -3,10 +3,10 @@ use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::homoplasy::classify::{MutationClass, classify_mutation};
+use treetime::homoplasy::classify::MutationClass;
+use treetime::homoplasy::site_branches::sites_by_branch_count;
 use treetime::seq::mutation::{MutationEvent, Sub};
 
 /// Results of an `ancestral` run.
@@ -65,23 +65,25 @@ pub fn ancestral_results(tree: Option<&ResultTree>, alphabet: &Alphabet) -> Resu
         .then_with(|| a.name.cmp(&b.name))
     })
     .collect_vec();
-  let mut branches_per_site: BTreeMap<usize, usize> = BTreeMap::new();
-  for node in &tree.nodes {
-    let positions = node
-      .mutations
-      .iter()
-      .map(|mutation| substitution_position(mutation, alphabet))
-      .flatten_ok()
-      .collect::<Result<BTreeSet<usize>, Report>>()?;
-    for position in positions {
-      *branches_per_site.entry(position).or_default() += 1;
-    }
-  }
-  let recurrent_sites = branches_per_site
+  let substitutions = tree
+    .nodes
+    .iter()
+    .map(|node| {
+      node
+        .mutations
+        .iter()
+        .map(|mutation| substitution_event(mutation, alphabet))
+        .flatten_ok()
+        .collect::<Result<Vec<MutationEvent>, Report>>()
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
+  let recurrent_sites = sites_by_branch_count(&substitutions, alphabet, MutationClass::Substitution)
     .into_iter()
-    .filter(|&(_, branches)| branches > 1)
-    .map(|(position, branches)| RecurrentSite { position, branches })
-    .sorted_by(|a, b| b.branches.cmp(&a.branches).then_with(|| a.position.cmp(&b.position)))
+    .filter(|site| site.branches > 1)
+    .map(|site| RecurrentSite {
+      position: site.position + 1,
+      branches: site.branches,
+    })
     .collect();
   Ok(AncestralResults {
     mutations: branches.iter().map(|branch| branch.mutations.len()).sum(),
@@ -90,11 +92,9 @@ pub fn ancestral_results(tree: Option<&ResultTree>, alphabet: &Alphabet) -> Resu
   })
 }
 
-fn substitution_position(mutation: &str, alphabet: &Alphabet) -> Result<Option<usize>, Report> {
+fn substitution_event(mutation: &str, alphabet: &Alphabet) -> Result<Option<MutationEvent>, Report> {
   if mutation.contains(&alphabet.gap().to_string()) {
     return Ok(None);
   }
-  let sub = Sub::from_str(mutation)?;
-  let class = classify_mutation(&MutationEvent::Substitution(sub.clone()), alphabet);
-  Ok((class == MutationClass::Substitution).then(|| sub.pos() + 1))
+  Ok(Some(MutationEvent::Substitution(Sub::from_str(mutation)?)))
 }

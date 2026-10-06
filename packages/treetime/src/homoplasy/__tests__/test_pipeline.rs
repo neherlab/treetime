@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::homoplasy::pipeline::{IndelKey, SiteBranches};
+  use crate::homoplasy::pipeline::IndelKey;
   use crate::homoplasy::recurrence::Recurrence;
+  use crate::homoplasy::site_branches::SiteBranches;
   use crate::seq::indel::InDelKind;
   use crate::test_utils::deletion;
   use eyre::Report;

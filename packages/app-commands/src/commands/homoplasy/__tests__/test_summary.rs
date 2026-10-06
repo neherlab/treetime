@@ -118,10 +118,9 @@ mod tests {
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use std::str::FromStr;
-    use treetime::homoplasy::pipeline::{
-      AmbiguousStats, HomoplasyOutput, IndelKey, IndelStats, SiteBranches, SubstitutionStats,
-    };
+    use treetime::homoplasy::pipeline::{AmbiguousStats, HomoplasyOutput, IndelKey, IndelStats, SubstitutionStats};
     use treetime::homoplasy::recurrence::{Recurrence, RecurrenceTable};
+    use treetime::homoplasy::site_branches::SiteBranches;
     use treetime::homoplasy::site_hits::{SiteHistogram, SiteHits};
     use treetime::o;
     use treetime::seq::indel::InDelKind;
