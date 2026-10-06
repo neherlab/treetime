@@ -1,5 +1,5 @@
 import type { AmbiguousSite, GapFill, HomoplasyStatistics, TaxonResult } from "@neherlab/app-contracts";
-import { memo, useCallback, useMemo } from "react";
+import { createContext, memo, use, useCallback, useMemo } from "react";
 import ChevronRight from "~icons/lucide/chevron-right";
 
 import { DataTable, dataColumns } from "../components/DataTable";
@@ -16,6 +16,15 @@ const taxonColumn = dataColumns<TaxonResult>();
 
 const ambiguousColumn = dataColumns<AmbiguousSite>();
 
+const AMBIGUOUS_COLUMNS = ambiguousColumn.columns([
+  ambiguousColumn.accessor((row) => row.display_position, {
+    id: "position",
+    header: "Position",
+    cell: ({ row }) => <AmbiguousPositionCell row={row.original} />,
+  }),
+  ambiguousColumn.accessor((row) => row.branches, { id: "branches", header: "Branches" }),
+]);
+
 const TAXON_NUMERIC = new Set(["homoplasic", "drm", "ambiguous", "indels"]);
 
 const AMBIGUOUS_NUMERIC = new Set(["branches"]);
@@ -23,6 +32,13 @@ const AMBIGUOUS_NUMERIC = new Set(["branches"]);
 const HOMOPLASIC_SORT = [{ id: "homoplasic", desc: true }];
 
 const BRANCHES_SORT = [{ id: "branches", desc: true }];
+
+interface AmbiguousSelection {
+  position: number | undefined;
+  onColor: (position: number) => void;
+}
+
+const AmbiguousSelectionContext = createContext<AmbiguousSelection | undefined>(undefined);
 
 export function HomoplasyTables({
   statistics,
@@ -120,7 +136,7 @@ function AmbiguousPanel({
   const note = gapFillNote(gapFill);
   const shown = statistics.ambiguous_sites.length;
 
-  const columns = useMemo(() => ambiguousColumns(position, onColor), [onColor, position]);
+  const selection = useMemo(() => ({ position, onColor }), [onColor, position]);
 
   return (
     <Collapsible>
@@ -137,14 +153,16 @@ function AmbiguousPanel({
           <p className="text-muted-foreground text-xs">
             Top {shown} of {statistics.ambiguous_site_count} sites
           </p>
-          <DataTable
-            label="Sites with ambiguous changes"
-            columns={columns}
-            rows={statistics.ambiguous_sites}
-            rowId={ambiguousKey}
-            initialSorting={BRANCHES_SORT}
-            numeric={AMBIGUOUS_NUMERIC}
-          />
+          <AmbiguousSelectionContext value={selection}>
+            <DataTable
+              label="Sites with ambiguous changes"
+              columns={AMBIGUOUS_COLUMNS}
+              rows={statistics.ambiguous_sites}
+              rowId={ambiguousKey}
+              initialSorting={BRANCHES_SORT}
+              numeric={AMBIGUOUS_NUMERIC}
+            />
+          </AmbiguousSelectionContext>
         </CollapsibleContent>
       </Card>
     </Collapsible>
@@ -170,23 +188,22 @@ function taxonColumns(drmAnnotated: boolean, onSelect: (name: string) => void) {
   ]);
 }
 
-function ambiguousColumns(position: number | undefined, onColor: (position: number) => void) {
-  return ambiguousColumn.columns([
-    ambiguousColumn.accessor((row) => row.display_position, {
-      id: "position",
-      header: "Position",
-      cell: ({ row }) => (
-        <PositionButton
-          position={row.original.position}
-          text={String(row.original.display_position)}
-          label={`Color the tree by the base at position ${row.original.display_position}`}
-          pressed={row.original.position === position}
-          onColor={onColor}
-        />
-      ),
-    }),
-    ambiguousColumn.accessor((row) => row.branches, { id: "branches", header: "Branches" }),
-  ]);
+function AmbiguousPositionCell({ row }: { row: AmbiguousSite }) {
+  const selection = use(AmbiguousSelectionContext);
+
+  if (selection === undefined) {
+    throw new Error("An ambiguous site cell renders only inside the ambiguous site table");
+  }
+
+  return (
+    <PositionButton
+      position={row.position}
+      text={String(row.display_position)}
+      label={`Color the tree by the base at position ${row.display_position}`}
+      pressed={row.position === selection.position}
+      onColor={selection.onColor}
+    />
+  );
 }
 
 function taxonKey(row: TaxonResult): string {
