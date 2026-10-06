@@ -1,6 +1,6 @@
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr, eyre};
 use pretty_dtoa::{FmtFloatConfig, dtoa};
-use deser::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NumberFormat {

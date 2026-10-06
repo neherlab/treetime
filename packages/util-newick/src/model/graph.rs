@@ -2,8 +2,8 @@ use crate::model::data::{NewickEdgeData, NewickNodeData};
 use crate::model::equality::graphs_equal;
 use crate::model::traverse::{Postorder, Preorder};
 use crate::model::validate::{describe_node, validate_graph};
-use eyre::{Report, eyre};
 use deser::{Deserialize, Serialize};
+use eyre::{Report, eyre};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewickGraph {
