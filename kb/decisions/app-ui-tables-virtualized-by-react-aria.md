@@ -13,12 +13,12 @@ The shared result table `DataTable` (`packages/app-ui/src/components/DataTable.t
 
 ## Reason
 
-Results of large runs have tables with thousands of rows: 4,470 recurrent mutations and 4,717 samples on the homoplasy page of `data/sc2/4500`, 6,537 branches with mutations on its ancestral page. Rendering every row made each update of such a table cost about 2 s in the dev build. With virtualization, a recolor of the tree on that homoplasy page dropped from 5.45 s to 2.61 s in the dev build; the rest of that time is spent outside the tables.
+Results of large runs have tables with thousands of rows: 4,470 recurrent mutations and 4,717 samples on the homoplasy page of `data/sc2/4500`, 6,537 branches with mutations on its ancestral page. Rendering every row made each update of such a table cost about 2 s in the dev build. With virtualization, a recolor of the tree on that homoplasy page dropped from 5.45 s to 2.61 s in the dev build. Most of the rest came from the genome chart, which remounted all its bars on every recolor ([app-ui-chart-axis-labels-as-props.md](app-ui-chart-axis-labels-as-props.md)), and from the visible rows of both recurrent tables, which re-rendered twice per recolor. Removing both causes brought the recolor to about 0.2 s in the dev build.
 
 `@tanstack/react-virtual`, the library for virtual lists (`packages/app-ui/src/runs/LogLines.tsx`), only computes the visible range and measures items. A table on it needs project code for the positioning of rows in table layout, the sticky header offset, keeping the focused row rendered, and the ARIA row counts. React Aria provides all of these for tables, so result tables use it as a second virtualization library, and log lines stay on TanStack Virtual.
 
 ## Implementation
 
-- `packages/app-ui/src/components/DataTable.tsx`: `DataTable`, `DataColumnMeta`, `CellText`
+- `packages/app-ui/src/components/DataTable.tsx`: `DataTable`, `DataColumnMeta`, `CellText`. `DataTable` memoizes its React Aria tree on the TanStack table object and its own props, because a re-render of the `Virtualizer` re-renders every visible row; a parent re-render with unchanged inputs, such as a pressed-mutation change, then reaches only the context consumers in the cells
 - `packages/app-ui/src/components/sortDescriptor.ts`: the React Aria sort descriptor of a TanStack sorting state
 - `packages/app-ui/src/runs/RecurrentTable.tsx`, `packages/app-ui/src/runs/HomoplasyTables.tsx`: the pressed mutation and the selected position reach the cells through a React context, so a recolor re-renders the visible cells without remounting them; the row of a pressed button is highlighted through CSS (`has-aria-pressed:bg-accent`)
