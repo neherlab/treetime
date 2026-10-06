@@ -121,6 +121,13 @@ mod tests {
     assert!(err_msg.contains("canonical"));
   }
 
+  #[test]
+  fn test_alphabet_config_serializes_bytes_as_numbers() -> Result<(), Report> {
+    let expected = r#"{"canonical":[65,67,71,84],"ambiguous":{"82":[65,71],"89":[67,84]},"unknown":78,"gap":45}"#;
+    assert_eq!(expected, json_write_str(&make_valid_config(), JsonPretty(false))?);
+    Ok(())
+  }
+
   #[rstest]
   #[case::non_char(u8::from(NON_CHAR))]
   #[case::variable_char(u8::from(VARIABLE_CHAR))]

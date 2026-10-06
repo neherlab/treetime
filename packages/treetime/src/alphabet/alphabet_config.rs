@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, ProfileMap, VARIABLE_CHAR};
 use crate::make_error;
 use color_eyre::{Section, SectionExt};
+use deser::adapters::{BytesFallback, IntSeq};
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use indexmap::IndexMap;
@@ -13,7 +14,9 @@ use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AlphabetConfig {
+  #[deser(as = BytesFallback<IntSeq>)]
   pub(crate) canonical: Vec<u8>,
+  #[deser(as = IndexMap<_, BytesFallback<IntSeq>>)]
   pub(crate) ambiguous: IndexMap<u8, Vec<u8>>,
   pub(crate) unknown: u8,
   pub(crate) gap: u8,
