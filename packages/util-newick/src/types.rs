@@ -1,8 +1,16 @@
+use crate::equality::graphs_equal;
+use crate::validate::validate_graph;
+use eyre::Report;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::fmt;
-use std::hash::{DefaultHasher, Hash, Hasher};
+use std::hash::{Hash, Hasher};
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct NewickReadOptions {
+  pub enewick: bool,
+}
 
 #[derive(Clone, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct NewickWriteOptions {
@@ -57,11 +65,12 @@ impl NewickGraph {
     idx
   }
 
+  pub fn validate(&self) -> Result<(), Report> {
+    validate_graph(self)
+  }
+
   pub fn eq_ordered(&self, other: &NewickGraph) -> bool {
-    if self.rooted != other.rooted {
-      return false;
-    }
-    eq_subtree_ordered(self, self.root, other, other.root)
+    graphs_equal(self, other, true)
   }
 }
 
@@ -73,119 +82,11 @@ impl Default for NewickGraph {
 
 impl PartialEq for NewickGraph {
   fn eq(&self, other: &Self) -> bool {
-    if self.rooted != other.rooted {
-      return false;
-    }
-    eq_subtree_unordered(self, self.root, other, other.root)
+    graphs_equal(self, other, false)
   }
 }
 
 impl Eq for NewickGraph {}
-
-fn subtree_hash(graph: &NewickGraph, node_idx: usize) -> u64 {
-  let mut hasher = DefaultHasher::new();
-  let node = &graph.nodes[node_idx];
-  node.name.hash(&mut hasher);
-  node.confidence.map(f64::to_bits).hash(&mut hasher);
-  node.node_attrs.hash(&mut hasher);
-  node.raw_comments.hash(&mut hasher);
-  node.hybrid.hash(&mut hasher);
-
-  #[expect(
-    clippy::collection_is_never_read,
-    reason = "the vector is read by Hash::hash, which the lint does not see"
-  )]
-  let mut child_hashes: Vec<(u64, u64)> = node
-    .children
-    .iter()
-    .map(|&ei| {
-      let edge = &graph.edges[ei];
-      let child_h = subtree_hash(graph, edge.child);
-      let mut edge_hasher = DefaultHasher::new();
-      edge.data.branch_length.map(f64::to_bits).hash(&mut edge_hasher);
-      edge.data.branch_attrs.hash(&mut edge_hasher);
-      edge.data.raw_comments.hash(&mut edge_hasher);
-      edge.data.is_acceptor.hash(&mut edge_hasher);
-      (child_h, edge_hasher.finish())
-    })
-    .collect();
-  child_hashes.sort_unstable();
-  child_hashes.hash(&mut hasher);
-  hasher.finish()
-}
-
-fn eq_subtree_unordered(g1: &NewickGraph, n1: usize, g2: &NewickGraph, n2: usize) -> bool {
-  let nd1 = &g1.nodes[n1];
-  let nd2 = &g2.nodes[n2];
-
-  if nd1.name != nd2.name
-    || nd1.confidence.map(f64::to_bits) != nd2.confidence.map(f64::to_bits)
-    || nd1.node_attrs != nd2.node_attrs
-    || nd1.raw_comments != nd2.raw_comments
-    || nd1.hybrid != nd2.hybrid
-    || nd1.children.len() != nd2.children.len()
-  {
-    return false;
-  }
-
-  if nd1.children.is_empty() {
-    return true;
-  }
-
-  let mut hashes1: Vec<(u64, u64)> = nd1
-    .children
-    .iter()
-    .map(|&ei| {
-      let edge = &g1.edges[ei];
-      let child_h = subtree_hash(g1, edge.child);
-      let mut eh = DefaultHasher::new();
-      edge.data.branch_length.map(f64::to_bits).hash(&mut eh);
-      edge.data.branch_attrs.hash(&mut eh);
-      edge.data.raw_comments.hash(&mut eh);
-      edge.data.is_acceptor.hash(&mut eh);
-      (child_h, eh.finish())
-    })
-    .collect();
-  let mut hashes2: Vec<(u64, u64)> = nd2
-    .children
-    .iter()
-    .map(|&ei| {
-      let edge = &g2.edges[ei];
-      let child_h = subtree_hash(g2, edge.child);
-      let mut eh = DefaultHasher::new();
-      edge.data.branch_length.map(f64::to_bits).hash(&mut eh);
-      edge.data.branch_attrs.hash(&mut eh);
-      edge.data.raw_comments.hash(&mut eh);
-      edge.data.is_acceptor.hash(&mut eh);
-      (child_h, eh.finish())
-    })
-    .collect();
-
-  hashes1.sort_unstable();
-  hashes2.sort_unstable();
-  hashes1 == hashes2
-}
-
-fn eq_subtree_ordered(g1: &NewickGraph, n1: usize, g2: &NewickGraph, n2: usize) -> bool {
-  let nd1 = &g1.nodes[n1];
-  let nd2 = &g2.nodes[n2];
-
-  if nd1.name != nd2.name
-    || nd1.confidence.map(f64::to_bits) != nd2.confidence.map(f64::to_bits)
-    || nd1.node_attrs != nd2.node_attrs
-    || nd1.raw_comments != nd2.raw_comments
-    || nd1.hybrid != nd2.hybrid
-    || nd1.children.len() != nd2.children.len()
-  {
-    return false;
-  }
-
-  nd1.children.iter().zip(nd2.children.iter()).all(|(&ei1, &ei2)| {
-    let e1 = &g1.edges[ei1];
-    let e2 = &g2.edges[ei2];
-    edge_data_eq(&e1.data, &e2.data) && eq_subtree_ordered(g1, e1.child, g2, e2.child)
-  })
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewickEdgeEntry {
@@ -196,8 +97,7 @@ pub struct NewickEdgeEntry {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewickNodeData {
-  pub name: Option<String>,
-  pub confidence: Option<f64>,
+  pub label: Option<NewickLabel>,
   pub node_attrs: BTreeMap<String, NewickValue>,
   pub raw_comments: Vec<String>,
   pub hybrid: Option<NewickHybrid>,
@@ -207,8 +107,7 @@ pub struct NewickNodeData {
 impl NewickNodeData {
   pub fn new() -> Self {
     Self {
-      name: None,
-      confidence: None,
+      label: None,
       node_attrs: BTreeMap::new(),
       raw_comments: Vec::new(),
       hybrid: None,
@@ -218,8 +117,28 @@ impl NewickNodeData {
 
   #[must_use]
   pub fn with_name(mut self, name: impl Into<String>) -> Self {
-    self.name = Some(name.into());
+    self.label = Some(NewickLabel::Name(name.into()));
     self
+  }
+
+  #[must_use]
+  pub fn with_support(mut self, support: f64) -> Self {
+    self.label = Some(NewickLabel::Support(support));
+    self
+  }
+
+  pub fn name(&self) -> Option<&str> {
+    match &self.label {
+      Some(NewickLabel::Name(name)) => Some(name),
+      Some(NewickLabel::Support(_)) | None => None,
+    }
+  }
+
+  pub fn support(&self) -> Option<f64> {
+    match &self.label {
+      Some(NewickLabel::Support(support)) => Some(*support),
+      Some(NewickLabel::Name(_)) | None => None,
+    }
   }
 }
 
@@ -229,19 +148,56 @@ impl Default for NewickNodeData {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NewickLabel {
+  Name(String),
+  Support(f64),
+}
+
+impl PartialEq for NewickLabel {
+  fn eq(&self, other: &Self) -> bool {
+    match (self, other) {
+      (Self::Name(a), Self::Name(b)) => a == b,
+      (Self::Support(a), Self::Support(b)) => a.to_bits() == b.to_bits(),
+      (Self::Name(_), Self::Support(_)) | (Self::Support(_), Self::Name(_)) => false,
+    }
+  }
+}
+
+impl Eq for NewickLabel {}
+
+impl PartialOrd for NewickLabel {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl Ord for NewickLabel {
+  fn cmp(&self, other: &Self) -> Ordering {
+    match (self, other) {
+      (Self::Name(a), Self::Name(b)) => a.cmp(b),
+      (Self::Support(a), Self::Support(b)) => a.to_bits().cmp(&b.to_bits()),
+      (Self::Name(_), Self::Support(_)) => Ordering::Less,
+      (Self::Support(_), Self::Name(_)) => Ordering::Greater,
+    }
+  }
+}
+
+impl Hash for NewickLabel {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    std::mem::discriminant(self).hash(state);
+    match self {
+      Self::Name(name) => name.hash(state),
+      Self::Support(support) => support.to_bits().hash(state),
+    }
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct NewickHybrid {
   pub kind: Option<String>,
   pub index: u32,
-}
-
-fn edge_data_eq(e1: &NewickEdgeData, e2: &NewickEdgeData) -> bool {
-  let bl_eq = match (e1.branch_length, e2.branch_length) {
-    (Some(a), Some(b)) => a.to_bits() == b.to_bits(),
-    (None, None) => true,
-    _ => false,
-  };
-  bl_eq && e1.branch_attrs == e2.branch_attrs && e1.raw_comments == e2.raw_comments && e1.is_acceptor == e2.is_acceptor
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -299,6 +255,36 @@ impl PartialEq for NewickValue {
 
 impl Eq for NewickValue {}
 
+impl PartialOrd for NewickValue {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl Ord for NewickValue {
+  fn cmp(&self, other: &Self) -> Ordering {
+    match (self, other) {
+      (Self::Boolean(a), Self::Boolean(b)) => a.cmp(b),
+      (Self::Number(a), Self::Number(b)) => a.to_bits().cmp(&b.to_bits()),
+      (Self::NumberText(a), Self::NumberText(b)) | (Self::String(a), Self::String(b)) => a.cmp(b),
+      (Self::Array(a), Self::Array(b)) => a.cmp(b),
+      _ => self.rank().cmp(&other.rank()),
+    }
+  }
+}
+
+impl NewickValue {
+  fn rank(&self) -> u8 {
+    match self {
+      Self::Boolean(_) => 0,
+      Self::Number(_) => 1,
+      Self::NumberText(_) => 2,
+      Self::String(_) => 3,
+      Self::Array(_) => 4,
+    }
+  }
+}
+
 impl Hash for NewickValue {
   fn hash<H: Hasher>(&self, state: &mut H) {
     std::mem::discriminant(self).hash(state);
@@ -307,33 +293,6 @@ impl Hash for NewickValue {
       Self::Number(n) => n.to_bits().hash(state),
       Self::NumberText(s) | Self::String(s) => s.hash(state),
       Self::Array(a) => a.hash(state),
-    }
-  }
-}
-
-#[cfg_attr(
-  dylint_lib = "treetime_lints",
-  expect(
-    handwritten_fmt_impl,
-    reason = "array values render recursively in the Newick comment syntax"
-  )
-)]
-impl fmt::Display for NewickValue {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      Self::Boolean(b) => write!(f, "{b}"),
-      Self::Number(n) => write!(f, "{n}"),
-      Self::NumberText(s) | Self::String(s) => write!(f, "{s}"),
-      Self::Array(arr) => {
-        write!(f, "{{")?;
-        for (i, elem) in arr.iter().enumerate() {
-          if i > 0 {
-            write!(f, ",")?;
-          }
-          write!(f, "{elem}")?;
-        }
-        write!(f, "}}")
-      },
     }
   }
 }

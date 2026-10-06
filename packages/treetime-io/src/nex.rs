@@ -1,4 +1,4 @@
-use crate::nwk::{NwkNodeComments, NwkWriteOptions, nwk_write_str};
+use crate::nwk::{NwkNodeComments, NwkWriteOptions, write_nwk_tree};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -31,25 +31,36 @@ pub fn nex_write(
   options: &NwkWriteOptions,
   comments: &NwkNodeComments,
 ) -> Result<(), Report> {
-  let leaf_names = leaf_names(tree.graph(), names);
-  let n_leaves = leaf_names.len();
-  let leaf_names = tax_labels(&leaf_names)?;
-  let nwk = nwk_write_str(tree, names, weights, options, comments)?;
-  let nwk = nwk.strip_suffix(';').unwrap_or(&nwk);
+  write_nex(&mut writer, tree, names, weights, options, comments).wrap_err("When writing Nexus")
+}
 
-  write!(
-    writer,
-    r#"#NEXUS
-Begin Taxa;
-  Dimensions NTax={n_leaves};
-  TaxLabels {leaf_names};
-End;
-Begin Trees;
-  Tree tree1={nwk};
-End;
-"#
-  )
-  .wrap_err("When writing Nexus")
+fn write_nex(
+  writer: &mut impl Write,
+  tree: &TreeView<'_>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  options: &NwkWriteOptions,
+  comments: &NwkNodeComments,
+) -> Result<(), Report> {
+  let leaf_names = leaf_names(tree.graph(), names);
+  writeln!(writer, "#NEXUS")?;
+  writeln!(writer, "Begin Taxa;")?;
+  writeln!(writer, "  Dimensions NTax={};", leaf_names.len())?;
+  write!(writer, "  TaxLabels ")?;
+  for (i, name) in leaf_names.iter().enumerate() {
+    if i > 0 {
+      write!(writer, " ")?;
+    }
+    write_label(writer, name)?;
+  }
+  writeln!(writer, ";")?;
+  writeln!(writer, "End;")?;
+  writeln!(writer, "Begin Trees;")?;
+  write!(writer, "  Tree tree1=")?;
+  write_nwk_tree(writer, tree, names, weights, options, comments)?;
+  writeln!(writer, ";")?;
+  writeln!(writer, "End;")?;
+  Ok(())
 }
 
 fn leaf_names<'a>(graph: &Graph, names: &'a BTreeMap<GraphNodeKey, Option<String>>) -> Vec<&'a str> {
@@ -57,15 +68,4 @@ fn leaf_names<'a>(graph: &Graph, names: &'a BTreeMap<GraphNodeKey, Option<String
     .get_leaves()
     .filter_map(|leaf| names[&leaf.key()].as_deref())
     .collect()
-}
-
-fn tax_labels(leaf_names: &[&str]) -> Result<String, Report> {
-  let mut labels = String::new();
-  for name in leaf_names {
-    if !labels.is_empty() {
-      labels.push(' ');
-    }
-    write_label(&mut labels, name)?;
-  }
-  Ok(labels)
 }

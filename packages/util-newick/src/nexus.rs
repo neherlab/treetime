@@ -1,27 +1,40 @@
 use crate::parse::newick_from_string;
-use crate::types::{NewickGraph, NewickWriteOptions, NexusTree};
+use crate::types::{NewickGraph, NewickLabel, NewickReadOptions, NewickWriteOptions, NexusTree};
 use crate::write::write_newick;
-use eyre::{Report, WrapErr};
-use std::collections::BTreeMap;
-use std::fmt::Write;
+use eyre::{Report, WrapErr, eyre};
+use pest::Parser;
+use pest::error::Error as PestError;
+use pest::iterators::Pair;
+use pest_derive::Parser;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Read};
 
-pub fn nexus_from_reader(mut reader: impl Read) -> Result<Vec<NexusTree>, Report> {
+pub fn nexus_from_reader(mut reader: impl Read, options: &NewickReadOptions) -> Result<Vec<NexusTree>, Report> {
   let mut input = String::new();
   reader.read_to_string(&mut input).wrap_err("When reading Nexus input")?;
-  nexus_from_string(&input)
+  nexus_from_string(&input, options)
 }
 
-pub fn nexus_from_string(input: &str) -> Result<Vec<NexusTree>, Report> {
-  let input = input.trim();
-  let header = input.split_ascii_whitespace().next().unwrap_or("");
-  if !header.eq_ignore_ascii_case("#nexus") {
-    return Err(eyre::eyre!("Input does not start with #NEXUS header"));
+pub fn nexus_from_string(input: &str, options: &NewickReadOptions) -> Result<Vec<NexusTree>, Report> {
+  if !is_nexus(input) {
+    return Err(eyre!("Input does not start with #NEXUS header"));
   }
+  let blocks = NexusParser::parse(Rule::nexus, input)
+    .map_err(|error| Report::new(rename_rules(error)))
+    .wrap_err("Failed to parse Nexus input")?;
+  let mut trees = Vec::new();
+  for block in blocks.filter(|pair| pair.as_rule() == Rule::block) {
+    read_block(block, options, &mut trees)?;
+  }
+  Ok(trees)
+}
 
-  let blocks = parse_nexus_blocks(input);
-  let translate_table = extract_translate_table(&blocks);
-  extract_trees(&blocks, &translate_table)
+pub fn is_nexus(input: &str) -> bool {
+  input
+    .trim_start_matches('\u{feff}')
+    .trim_start()
+    .get(..6)
+    .is_some_and(|header| header.eq_ignore_ascii_case("#nexus"))
 }
 
 pub fn nexus_to_writer(
@@ -29,294 +42,209 @@ pub fn nexus_to_writer(
   trees: &[NexusTree],
   options: &NewickWriteOptions,
 ) -> Result<(), Report> {
-  let text = nexus_to_string(trees, options)?;
-  writer.write_all(text.as_bytes()).wrap_err("When writing Nexus")
+  write_nexus(writer, trees, options).wrap_err("When writing Nexus")
 }
 
 pub fn nexus_to_string(trees: &[NexusTree], options: &NewickWriteOptions) -> Result<String, Report> {
-  let mut text = String::new();
-  write_nexus(&mut text, trees, options)?;
-  Ok(text)
+  let mut buffer = Vec::new();
+  nexus_to_writer(&mut buffer, trees, options)?;
+  Ok(String::from_utf8(buffer)?)
 }
 
-fn write_nexus(writer: &mut impl Write, trees: &[NexusTree], options: &NewickWriteOptions) -> Result<(), Report> {
+fn write_nexus_word(writer: &mut impl io::Write, word: &str) -> Result<(), Report> {
+  if needs_nexus_quoting(word) {
+    write!(writer, "'{}'", word.replace('\'', "''"))?;
+  } else {
+    writer.write_all(word.as_bytes())?;
+  }
+  Ok(())
+}
+
+#[derive(Parser)]
+#[grammar_inline = r##"
+nexus             = _{ SOI ~ "\u{FEFF}"? ~ header ~ block* ~ EOI }
+header            = @{ "#" ~ ^"nexus" ~ boundary }
+block             =  { begin_keyword ~ word ~ ";" ~ command* ~ block_end }
+block_end         =  { end_keyword ~ ";" }
+begin_keyword     = @{ ^"begin" ~ boundary }
+end_keyword       = @{ (^"endblock" | ^"end") ~ boundary }
+tree_keyword      = @{ (^"utree" | ^"tree") ~ boundary }
+translate_keyword = @{ ^"translate" ~ boundary }
+command           = _{ tree_command | translate_command | other_command }
+tree_command      = ${ tree_head ~ newick_text ~ ";" }
+tree_head         = !{ tree_keyword ~ "*"? ~ word ~ "=" }
+translate_command =  { translate_keyword ~ (translate_pair ~ ("," ~ translate_pair)*)? ~ ","? ~ ";" }
+translate_pair    =  { word ~ word }
+other_command     =  { !block_end ~ word ~ command_text ~ ";" }
+command_text      = @{ (quoted_word | double_quoted | comment | !";" ~ ANY)* }
+newick_text       = @{ (quoted_word | newick_comment | !";" ~ ANY)* }
+word              = ${ quoted_word | double_quoted | plain_word }
+quoted_word       = @{ "'" ~ ("''" | !"'" ~ ANY)* ~ "'" }
+double_quoted     = @{ "\"" ~ ("\"\"" | !"\"" ~ ANY)* ~ "\"" }
+plain_word        = @{ (!(";" | "=" | "," | "[" | "]" | "'" | "\"" | WHITESPACE) ~ ANY)+ }
+boundary          = _{ !(ASCII_ALPHANUMERIC | "_") }
+comment           = @{ "[" ~ (PUSH("[") | "]" ~ DROP | !"]" ~ ANY)* ~ "]" }
+newick_comment    = @{ "[" ~ ("\"" ~ (!"\"" ~ ANY)* ~ "\"" | PUSH("[") | "]" ~ DROP | !"]" ~ ANY)* ~ "]" }
+COMMENT           = _{ comment }
+WHITESPACE        = _{ " " | "\t" | NEWLINE }
+"##]
+struct NexusParser;
+
+fn rename_rules(error: PestError<Rule>) -> PestError<Rule> {
+  error.renamed_rules(|rule| {
+    match rule {
+      Rule::header => "'#NEXUS' header",
+      Rule::block | Rule::begin_keyword => "'Begin' block",
+      Rule::block_end | Rule::end_keyword => "'End;'",
+      Rule::tree_keyword => "'Tree' command",
+      Rule::translate_keyword => "'Translate' command",
+      Rule::tree_command | Rule::tree_head => "'Tree' command",
+      Rule::translate_command | Rule::translate_pair => "'Translate' entry",
+      Rule::other_command | Rule::command | Rule::command_text => "command",
+      Rule::newick_text => "Newick tree",
+      Rule::word | Rule::quoted_word | Rule::double_quoted | Rule::plain_word => "word",
+      Rule::comment | Rule::newick_comment | Rule::COMMENT => "comment",
+      Rule::EOI => "end of input",
+      Rule::nexus | Rule::boundary | Rule::WHITESPACE => "input",
+    }
+    .to_owned()
+  })
+}
+
+fn read_block(block: Pair<'_, Rule>, options: &NewickReadOptions, trees: &mut Vec<NexusTree>) -> Result<(), Report> {
+  let mut parts = block.into_inner().filter(|part| part.as_rule() != Rule::begin_keyword);
+  let is_trees_block = parts
+    .next()
+    .is_some_and(|name| word_value(name).eq_ignore_ascii_case("trees"));
+  if !is_trees_block {
+    return Ok(());
+  }
+  let mut translate = BTreeMap::new();
+  for command in parts {
+    match command.as_rule() {
+      Rule::translate_command => {
+        for pair in command
+          .into_inner()
+          .filter(|part| part.as_rule() == Rule::translate_pair)
+        {
+          let mut words = pair.into_inner();
+          if let (Some(key), Some(value)) = (words.next(), words.next()) {
+            translate.insert(word_value(key), word_value(value));
+          }
+        }
+      },
+      Rule::tree_command => trees.push(read_tree(command, &translate, options)?),
+      _ => {},
+    }
+  }
+  Ok(())
+}
+
+fn read_tree(
+  command: Pair<'_, Rule>,
+  translate: &BTreeMap<String, String>,
+  options: &NewickReadOptions,
+) -> Result<NexusTree, Report> {
+  let (line, _) = command.line_col();
+  let mut parts = command.into_inner();
+  let name = parts
+    .next()
+    .and_then(|head| head.into_inner().find(|part| part.as_rule() == Rule::word))
+    .map(word_value)
+    .unwrap_or_default();
+  let newick = parts.next().map(|text| text.as_str()).unwrap_or_default();
+  let mut graph =
+    newick_from_string(newick, options).wrap_err_with(|| format!("In Nexus tree '{name}' at line {line}"))?;
+  translate_names(&mut graph, translate);
+  Ok(NexusTree { name, graph })
+}
+
+fn translate_names(graph: &mut NewickGraph, translate: &BTreeMap<String, String>) {
+  for node in &mut graph.nodes {
+    if let Some(NewickLabel::Name(name)) = &mut node.label {
+      if let Some(translated) = translate.get(name.as_str()) {
+        name.clone_from(translated);
+      }
+    }
+  }
+}
+
+fn word_value(word: Pair<'_, Rule>) -> String {
+  let text = word.as_str();
+  match word.into_inner().next().map(|inner| inner.as_rule()) {
+    Some(Rule::quoted_word) => unquote(text, '\''),
+    Some(Rule::double_quoted) => unquote(text, '"'),
+    _ => text.to_owned(),
+  }
+}
+
+fn unquote(text: &str, quote: char) -> String {
+  text
+    .strip_prefix(quote)
+    .and_then(|inner| inner.strip_suffix(quote))
+    .unwrap_or(text)
+    .replace(&format!("{quote}{quote}"), &quote.to_string())
+}
+
+fn write_nexus(writer: &mut impl io::Write, trees: &[NexusTree], options: &NewickWriteOptions) -> Result<(), Report> {
+  let taxa: BTreeSet<&str> = trees
+    .iter()
+    .flat_map(|tree| tree.graph.nodes.iter())
+    .filter(|node| node.children.is_empty())
+    .filter_map(|node| node.name())
+    .collect();
+
   writeln!(writer, "#NEXUS")?;
   writeln!(writer)?;
-
-  let mut taxa: Vec<String> = Vec::new();
-  for tree in trees {
-    collect_leaf_names(&tree.graph, &mut taxa);
-  }
-  taxa.sort();
-  taxa.dedup();
-
   writeln!(writer, "Begin Taxa;")?;
   writeln!(writer, "  Dimensions ntax={};", taxa.len())?;
   writeln!(writer, "  TaxLabels")?;
-  for name in &taxa {
-    if needs_nexus_quoting(name) {
-      writeln!(writer, "    '{}'", name.replace('\'', "''"))?;
-    } else {
-      writeln!(writer, "    {name}")?;
-    }
+  for name in taxa {
+    write!(writer, "    ")?;
+    write_nexus_word(writer, name)?;
+    writeln!(writer)?;
   }
   writeln!(writer, "  ;")?;
   writeln!(writer, "End;")?;
   writeln!(writer)?;
-
   writeln!(writer, "Begin Trees;")?;
   for tree in trees {
-    let name = &tree.name;
-    if needs_nexus_quoting(name) {
-      write!(writer, "  Tree '{}' = ", name.replace('\'', "''"))?;
-    } else {
-      write!(writer, "  Tree {name} = ")?;
-    }
-    write_newick(writer, &tree.graph, options)?;
+    write!(writer, "  Tree ")?;
+    write_nexus_word(writer, &tree.name)?;
+    write!(writer, " = ")?;
+    write_newick(writer, &tree.graph, options).wrap_err_with(|| format!("In Nexus tree '{}'", tree.name))?;
     writeln!(writer)?;
   }
   writeln!(writer, "End;")?;
-
   Ok(())
 }
 
-fn collect_leaf_names(graph: &NewickGraph, taxa: &mut Vec<String>) {
-  for node in &graph.nodes {
-    if node.children.is_empty() {
-      if let Some(name) = &node.name {
-        taxa.push(name.clone());
-      }
-    }
-  }
-}
-
-fn needs_nexus_quoting(s: &str) -> bool {
-  s.contains(|c: char| matches!(c, '(' | ')' | '[' | ']' | ',' | ';' | ':' | '\'') || c.is_whitespace())
-}
-
-#[expect(
-  clippy::string_slice,
-  reason = "indices come from str::find on ASCII patterns in an ASCII-lowercased copy of the same length"
-)]
-fn parse_nexus_blocks(input: &str) -> Vec<NexusBlock> {
-  let mut blocks = Vec::new();
-  let lower = input.to_ascii_lowercase();
-  let mut pos = 0;
-
-  while pos < input.len() {
-    let Some(begin_pos) = lower[pos..].find("begin ") else {
-      break;
-    };
-    let begin_start = pos + begin_pos + 6;
-
-    let Some(semi_pos) = input[begin_start..].find(';') else {
-      break;
-    };
-    let block_name = input[begin_start..begin_start + semi_pos].trim().to_ascii_lowercase();
-    let content_start = begin_start + semi_pos + 1;
-
-    let Some(end_pos) = lower[content_start..].find("end;") else {
-      break;
-    };
-    let content = input[content_start..content_start + end_pos].to_owned();
-
-    blocks.push(NexusBlock {
-      name: block_name,
-      content,
-    });
-
-    pos = content_start + end_pos + 4;
-  }
-
-  blocks
-}
-
-#[expect(
-  clippy::string_slice,
-  reason = "indices come from str::find on ASCII patterns in an ASCII-lowercased copy of the same length"
-)]
-fn extract_translate_table(blocks: &[NexusBlock]) -> BTreeMap<String, String> {
-  let mut table = BTreeMap::new();
-
-  for block in blocks {
-    if block.name != "trees" {
-      continue;
-    }
-
-    let lower = block.content.to_ascii_lowercase();
-    let Some(translate_pos) = lower.find("translate") else {
-      continue;
-    };
-
-    let after_translate = &block.content[translate_pos + 9..];
-    let Some(semi_pos) = after_translate.find(';') else {
-      continue;
-    };
-    let translate_body = &after_translate[..semi_pos];
-
-    for entry in split_translate_entries(translate_body) {
-      let entry = entry.trim();
-      if entry.is_empty() {
-        continue;
-      }
-      let mut parts = entry.splitn(2, char::is_whitespace);
-      let Some(key) = parts.next() else { continue };
-      let Some(value) = parts.next() else { continue };
-      let key = key.trim().to_owned();
-      let value = value.trim().to_owned();
-      let value = strip_nexus_quotes(&value);
-      table.insert(key, value);
-    }
-  }
-
-  table
-}
-
-fn split_translate_entries(body: &str) -> Vec<String> {
-  let mut entries = Vec::new();
-  let mut current = String::new();
-  let mut in_single_quote = false;
-
-  for ch in body.chars() {
-    match ch {
-      '\'' => {
-        in_single_quote = !in_single_quote;
-        current.push(ch);
-      },
-      ',' if !in_single_quote => {
-        entries.push(std::mem::take(&mut current));
-      },
-      _ => {
-        current.push(ch);
-      },
-    }
-  }
-  if !current.is_empty() {
-    entries.push(current);
-  }
-  entries
-}
-
-#[expect(
-  clippy::string_slice,
-  reason = "indices come from str::find on ASCII patterns in an ASCII-lowercased copy of the same length"
-)]
-fn extract_trees(blocks: &[NexusBlock], translate_table: &BTreeMap<String, String>) -> Result<Vec<NexusTree>, Report> {
-  let mut trees = Vec::new();
-
-  for block in blocks {
-    if block.name != "trees" {
-      continue;
-    }
-
-    let lower = block.content.to_ascii_lowercase();
-    let mut search_pos = 0;
-
-    while search_pos < block.content.len() {
-      let remaining_lower = &lower[search_pos..];
-      let Some(tree_pos) = find_tree_command(remaining_lower) else {
-        break;
-      };
-
-      let abs_pos = search_pos + tree_pos + 4;
-      let after_tree = &block.content[abs_pos..];
-
-      let Some(eq_pos) = after_tree.find('=') else {
-        break;
-      };
-      let tree_name = after_tree[..eq_pos].trim();
-      let tree_name = strip_nexus_quotes(tree_name);
-
-      let after_eq = &after_tree[eq_pos + 1..];
-      let Some(semi_pos) = find_newick_semicolon(after_eq) else {
-        break;
-      };
-      let nwk_str = after_eq[..=semi_pos].trim();
-
-      let graph = parse_newick_with_translate(nwk_str, translate_table)
-        .wrap_err_with(|| format!("In Nexus tree '{tree_name}'"))?;
-
-      trees.push(NexusTree { name: tree_name, graph });
-
-      search_pos = abs_pos + eq_pos + 1 + semi_pos + 1;
-    }
-  }
-
-  Ok(trees)
-}
-
-struct NexusBlock {
-  name: String,
-  content: String,
-}
-
-fn strip_nexus_quotes(s: &str) -> String {
-  if let Some(inner) = s.strip_prefix('\'').and_then(|i| i.strip_suffix('\'')) {
-    return inner.replace("''", "'");
-  }
-  if let Some(inner) = s.strip_prefix('"').and_then(|i| i.strip_suffix('"')) {
-    return inner.replace("\"\"", "\"");
-  }
-  s.to_owned()
-}
-
-#[expect(
-  clippy::string_slice,
-  reason = "indices come from str::find on ASCII patterns in an ASCII-lowercased copy of the same length"
-)]
-fn find_tree_command(lower: &str) -> Option<usize> {
-  let mut pos = 0;
-  while pos < lower.len() {
-    let found = lower[pos..].find("tree")?;
-    let abs = pos + found;
-
-    let before_ok = abs == 0 || lower.as_bytes()[abs - 1].is_ascii_whitespace() || lower.as_bytes()[abs - 1] == b';';
-    let after_ok = abs + 4 < lower.len() && lower.as_bytes()[abs + 4].is_ascii_whitespace();
-
-    if before_ok && after_ok {
-      let prefix = &lower[..abs].trim_end();
-      if !prefix.ends_with("translat") {
-        return Some(found + pos);
-      }
-    }
-
-    pos = abs + 4;
-  }
-  None
-}
-
-fn find_newick_semicolon(s: &str) -> Option<usize> {
-  let mut in_single_quote = false;
-  let mut bracket_depth = 0_u32;
-  for (i, c) in s.char_indices() {
-    match c {
-      '\'' if bracket_depth == 0 => in_single_quote = !in_single_quote,
-      '[' if !in_single_quote => bracket_depth += 1,
-      ']' if !in_single_quote && bracket_depth > 0 => bracket_depth -= 1,
-      ';' if !in_single_quote && bracket_depth == 0 => return Some(i),
-      _ => {},
-    }
-  }
-  None
-}
-
-fn parse_newick_with_translate(
-  nwk_str: &str,
-  translate_table: &BTreeMap<String, String>,
-) -> Result<NewickGraph, Report> {
-  let mut graph = newick_from_string(nwk_str)?;
-
-  if translate_table.is_empty() {
-    return Ok(graph);
-  }
-
-  for node in &mut graph.nodes {
-    if let Some(name) = &node.name {
-      if let Some(translated) = translate_table.get(name) {
-        node.name = Some(translated.clone());
-      }
-    }
-  }
-
-  Ok(graph)
+fn needs_nexus_quoting(word: &str) -> bool {
+  word.is_empty()
+    || word.contains(|c: char| {
+      c.is_whitespace()
+        || matches!(
+          c,
+          '('
+            | ')'
+            | '['
+            | ']'
+            | '{'
+            | '}'
+            | '/'
+            | '\\'
+            | ','
+            | ';'
+            | ':'
+            | '='
+            | '*'
+            | '\''
+            | '"'
+            | '`'
+            | '+'
+            | '-'
+            | '<'
+            | '>'
+        )
+    })
 }

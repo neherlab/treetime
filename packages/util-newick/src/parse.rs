@@ -1,490 +1,427 @@
-#![allow(
-  clippy::expect_used,
-  reason = "structural invariants guaranteed by a successful pest parse against the inline grammar"
-)]
-
-use crate::types::{NewickEdgeData, NewickGraph, NewickHybrid, NewickNodeData, NewickValue};
-use eyre::{Report, WrapErr};
+use crate::annotation::classify_comment;
+use crate::types::{NewickEdgeData, NewickGraph, NewickHybrid, NewickLabel, NewickNodeData, NewickReadOptions};
+use crate::validate::describe_node;
+use eyre::{Report, WrapErr, eyre};
 use pest::Parser;
+use pest::error::Error as PestError;
+use pest::iterators::Pair;
 use pest_derive::Parser;
 use regex::regex;
 use std::collections::BTreeMap;
 use std::io::Read;
 
-pub fn newick_from_reader(mut reader: impl Read) -> Result<NewickGraph, Report> {
+pub fn newick_from_reader(mut reader: impl Read, options: &NewickReadOptions) -> Result<NewickGraph, Report> {
   let mut input = String::new();
   reader
     .read_to_string(&mut input)
     .wrap_err("When reading Newick input")?;
-  newick_from_string(&input)
+  newick_from_string(&input, options)
 }
 
-pub fn newick_from_string(input: &str) -> Result<NewickGraph, Report> {
-  let pairs = NewickParser::parse(Rule::tree, input).wrap_err("Failed to parse Newick string")?;
+pub fn newick_from_string(input: &str, options: &NewickReadOptions) -> Result<NewickGraph, Report> {
+  build_graph(input, options).wrap_err("Failed to parse Newick string")
+}
 
-  let mut graph = NewickGraph::new();
-  let mut hybrid_map: BTreeMap<(Option<String>, u32), usize> = BTreeMap::new();
-
-  let mut rooted = None;
-  let mut root = None;
-
-  for pair in pairs {
-    match pair.as_rule() {
-      Rule::rooting => {
-        let inner = pair.into_inner().next().expect("rooting_value");
-        rooted = Some(inner.as_str().eq_ignore_ascii_case("r"));
-      },
-      Rule::root_branch => {
-        root = Some(visit_root_branch(pair, &mut graph, &mut hybrid_map)?);
-      },
-      _ => {},
-    }
-  }
-
-  graph.root = root.expect("tree must have a root subtree");
-  graph.rooted = rooted;
-
-  Ok(graph)
+pub(crate) fn is_comment_token(text: &str) -> bool {
+  NewickParser::parse(Rule::comment_token, text).is_ok()
 }
 
 #[derive(Parser)]
-#[grammar_inline = r#"
-tree        = _{ SOI ~ rooting? ~ root_branch ~ ";" ~ EOI }
-root_branch =  { subtree ~ comment* ~ (":" ~ comment* ~ number)? ~ comment* }
-subtree     =  { leaf | internal }
-internal =  { "(" ~ branch_list ~ ")" ~ label? ~ comment* }
-leaf     =  { label ~ comment* }
-
-branch_list = { branch ~ ("," ~ branch)* }
-branch      = { subtree? ~ comment* ~ (":" ~ comment* ~ number)? ~ comment* }
-
-rooting        = { "[&" ~ rooting_value ~ "]" }
+#[grammar_inline = r##"
+tree           = _{ SOI ~ "\u{FEFF}"? ~ rooting? ~ item* ~ (end ~ comment*)? ~ EOI }
+item           = _{ open | close | comma | length | label | comment }
+open           =  { "(" }
+close          =  { ")" }
+comma          =  { "," }
+end            =  { ";" }
+length         =  { ":" ~ comment* ~ number? }
+rooting        =  { "[&" ~ rooting_value ~ "]" }
 rooting_value  = @{ ^"r" | ^"u" }
-
-label          = { quoted_label | unquoted_label }
-quoted_label   = @{ "'" ~ (!"'" ~ ANY | "''")* ~ "'" }
-unquoted_label = @{ safe_char+ }
-safe_char      = _{ !("(" | ")" | "[" | "]" | "," | ";" | ":" | WHITESPACE) ~ ANY }
-number  = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
-
-comment       = @{ "[" ~ comment_inner ~ "]" }
-comment_inner = _{ (!"[" ~ !"]" ~ ANY | "[" ~ comment_inner ~ "]")* }
-
-WHITESPACE = _{ " " | "\t" | NEWLINE }
-"#]
+label          = ${ quoted_label ~ hybrid_tag? | unquoted_label }
+quoted_label   = @{ "'" ~ ("''" | !"'" ~ ANY)* ~ "'" }
+hybrid_tag     = @{ "#" ~ "#"? ~ ASCII_ALPHA* ~ ASCII_DIGIT+ }
+unquoted_label = @{ !"'" ~ (!("(" | ")" | "[" | "]" | "," | ";" | ":" | WHITESPACE) ~ ANY)+ }
+number         = @{ ("+" | "-")? ~ (ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)? | "." ~ ASCII_DIGIT+) ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
+comment        = @{ "[" ~ comment_char* ~ "]" }
+comment_char   = _{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" | PUSH("[") | "]" ~ DROP | !"]" ~ ANY }
+comment_token  = _{ SOI ~ strict_comment ~ EOI }
+strict_comment = @{ "[" ~ ("\"" ~ (!"\"" ~ ANY)* ~ "\"" | PUSH("[") | "]" ~ DROP | !("]" | "\"") ~ ANY)* ~ "]" }
+WHITESPACE     = _{ " " | "\t" | NEWLINE }
+"##]
 struct NewickParser;
 
-fn visit_root_branch(
-  pair: pest::iterators::Pair<Rule>,
-  graph: &mut NewickGraph,
-  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
-) -> Result<usize, Report> {
-  let mut root_idx = None;
-  let mut root_attrs = BTreeMap::new();
-  let mut root_raw = Vec::new();
+fn build_graph(input: &str, options: &NewickReadOptions) -> Result<NewickGraph, Report> {
+  let tokens = NewickParser::parse(Rule::tree, input).map_err(|error| Report::new(rename_rules(error)))?;
+  let mut builder = Builder::new(options);
+  for token in tokens {
+    builder.consume(token)?;
+  }
+  builder.finish()
+}
 
-  for inner in pair.into_inner() {
-    match inner.as_rule() {
-      Rule::subtree => {
-        let (idx, _acceptor) = visit_subtree(inner, graph, hybrid_map)?;
-        root_idx = Some(idx);
-      },
-      Rule::number => {},
-      Rule::comment => {
-        classify_comment(inner.as_str(), &mut root_attrs, &mut root_raw);
-      },
-      _ => {},
+fn rename_rules(error: PestError<Rule>) -> PestError<Rule> {
+  error.renamed_rules(|rule| {
+    match rule {
+      Rule::open => "'('",
+      Rule::close => "')'",
+      Rule::comma => "','",
+      Rule::end => "';'",
+      Rule::length => "':'",
+      Rule::label | Rule::unquoted_label => "label",
+      Rule::quoted_label => "quoted label",
+      Rule::hybrid_tag => "hybrid tag",
+      Rule::number => "branch length",
+      Rule::comment | Rule::comment_token | Rule::strict_comment => "comment",
+      Rule::rooting | Rule::rooting_value => "rooting comment",
+      Rule::EOI => "end of input",
+      Rule::tree | Rule::item | Rule::comment_char | Rule::WHITESPACE => "input",
+    }
+    .to_owned()
+  })
+}
+
+struct Builder<'i> {
+  options: &'i NewickReadOptions,
+  graph: NewickGraph,
+  hybrids: BTreeMap<(Option<String>, u32), HybridEntry>,
+  open: Vec<OpenNode<'i>>,
+  current: Slot<'i>,
+  seen_token: bool,
+  ended: bool,
+}
+
+impl<'i> Builder<'i> {
+  fn new(options: &'i NewickReadOptions) -> Self {
+    Self {
+      options,
+      graph: NewickGraph::new(),
+      hybrids: BTreeMap::new(),
+      open: Vec::new(),
+      current: Slot::default(),
+      seen_token: false,
+      ended: false,
     }
   }
 
-  let idx = root_idx.expect("root_branch must contain a subtree");
-  let root_node = &mut graph.nodes[idx];
-  root_node.node_attrs.extend(root_attrs);
-  root_node.raw_comments.extend(root_raw);
-  Ok(idx)
-}
-
-fn visit_subtree(
-  pair: pest::iterators::Pair<Rule>,
-  graph: &mut NewickGraph,
-  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
-) -> Result<(usize, bool), Report> {
-  let inner = pair.into_inner().next().expect("subtree must have leaf or internal");
-  match inner.as_rule() {
-    Rule::leaf => visit_leaf(inner, graph, hybrid_map),
-    Rule::internal => visit_internal(inner, graph, hybrid_map),
-    _ => unreachable!(),
-  }
-}
-
-fn visit_internal(
-  pair: pest::iterators::Pair<Rule>,
-  graph: &mut NewickGraph,
-  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
-) -> Result<(usize, bool), Report> {
-  let mut name = None;
-  let mut raw_comments = Vec::new();
-  let mut node_attrs = BTreeMap::new();
-  let mut branch_children = Vec::new();
-
-  for inner in pair.into_inner() {
-    match inner.as_rule() {
-      Rule::branch_list => {
-        for branch in inner.into_inner() {
-          if branch.as_rule() == Rule::branch {
-            branch_children.push(visit_branch(branch, graph, hybrid_map)?);
-          }
+  fn consume(&mut self, token: Pair<'i, Rule>) -> Result<(), Report> {
+    if self.ended {
+      return Ok(());
+    }
+    match token.as_rule() {
+      Rule::rooting => {
+        let value = token.into_inner().as_str();
+        self.graph.rooted = Some(value.eq_ignore_ascii_case("r"));
+        return Ok(());
+      },
+      Rule::open => {
+        if self.current.has_content() {
+          return Err(at(
+            &token,
+            "unexpected '(': a node's '(' must come before its label and branch length",
+          ));
+        }
+        let comments = std::mem::take(&mut self.current.node_comments);
+        self.open.push(OpenNode {
+          token,
+          children: Vec::new(),
+          comments,
+        });
+      },
+      Rule::comma => {
+        if self.open.is_empty() {
+          return Err(at(&token, "unexpected ',' outside of parentheses"));
+        }
+        let child = self.finish_slot()?;
+        if let Some(parent) = self.open.last_mut() {
+          parent.children.push(child);
         }
       },
-      Rule::label => {
-        name = Some(parse_label(inner));
+      Rule::close => {
+        if self.open.is_empty() {
+          return Err(at(&token, "unexpected ')' without a matching '('"));
+        }
+        let child = self.finish_slot()?;
+        if let Some(mut parent) = self.open.pop() {
+          parent.children.push(child);
+          self.current.children = Some(parent.children);
+          self.current.node_comments = parent.comments;
+        }
       },
-      Rule::comment => {
-        classify_comment(inner.as_str(), &mut node_attrs, &mut raw_comments);
-      },
-      _ => {},
+      Rule::label => self.set_label(token)?,
+      Rule::length => self.set_length(token)?,
+      Rule::comment => self.current.add_comment(token.as_str()),
+      Rule::end => self.ended = true,
+      _ => return Ok(()),
     }
+    self.seen_token = true;
+    Ok(())
   }
 
-  let extraction = extract_hybrid(name)?;
-
-  let (final_name, confidence) = match extraction.clean_name {
-    Some(label) => match parse_support_value(&label) {
-      Some(confidence) => (None, Some(confidence)),
-      None => (Some(label), None),
-    },
-    None => (None, None),
-  };
-
-  let node_data = NewickNodeData {
-    name: final_name,
-    confidence,
-    node_attrs,
-    raw_comments,
-    hybrid: extraction.hybrid.clone(),
-    children: Vec::new(),
-  };
-
-  let node_idx = resolve_hybrid_node(node_data, extraction.hybrid.as_ref(), graph, hybrid_map);
-
-  for (child_idx, edge_data) in branch_children {
-    graph.add_edge(node_idx, child_idx, edge_data);
-  }
-
-  Ok((node_idx, extraction.is_acceptor))
-}
-
-fn visit_branch(
-  pair: pest::iterators::Pair<Rule>,
-  graph: &mut NewickGraph,
-  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
-) -> Result<(usize, NewickEdgeData), Report> {
-  let mut child_idx = None;
-  let mut branch_length = None;
-  let mut seen_number = false;
-
-  let mut is_acceptor = false;
-  let mut raw_comments: Vec<String> = Vec::new();
-  let mut pre_colon_attrs = BTreeMap::new();
-  let mut post_colon_attrs = BTreeMap::new();
-
-  for inner in pair.into_inner() {
-    match inner.as_rule() {
-      Rule::subtree => {
-        let (idx, acceptor) = visit_subtree(inner, graph, hybrid_map)?;
-        child_idx = Some(idx);
-        is_acceptor = acceptor;
+  fn set_label(&mut self, token: Pair<'i, Rule>) -> Result<(), Report> {
+    if self.current.colon_seen {
+      return Err(at(
+        &token,
+        &format!("unexpected label {:?} after the branch length", token.as_str()),
+      ));
+    }
+    if let Some(previous) = &self.current.label {
+      return Err(at(
+        &token,
+        &format!(
+          "unexpected label {:?}: the node already has the label {:?}. Quote a label that contains spaces or punctuation",
+          token.as_str(),
+          previous.text
+        ),
+      ));
+    }
+    let text = token.as_str();
+    let mut parts = token.into_inner();
+    let label = match parts.next() {
+      Some(part) if part.as_rule() == Rule::quoted_label => LabelToken {
+        text,
+        value: unescape_quoted(part.as_str()),
+        quoted: true,
+        hybrid_tag: parts.next().map(|tag| tag.as_str()),
       },
-      Rule::number => {
-        branch_length = Some(
-          inner
+      _ => LabelToken {
+        text,
+        value: text.to_owned(),
+        quoted: false,
+        hybrid_tag: None,
+      },
+    };
+    self.current.label = Some(label);
+    Ok(())
+  }
+
+  fn set_length(&mut self, token: Pair<'i, Rule>) -> Result<(), Report> {
+    if self.current.colon_seen {
+      return Err(at(&token, "unexpected ':': the node already has a branch length"));
+    }
+    self.current.colon_seen = true;
+    for part in token.into_inner() {
+      match part.as_rule() {
+        Rule::number => {
+          let number = part
             .as_str()
             .parse::<f64>()
-            .wrap_err_with(|| format!("Invalid branch length: '{}'", inner.as_str()))?,
-        );
-        seen_number = true;
-      },
-      Rule::comment => {
-        if seen_number {
-          classify_comment(inner.as_str(), &mut post_colon_attrs, &mut raw_comments);
-        } else {
-          classify_comment(inner.as_str(), &mut pre_colon_attrs, &mut raw_comments);
-        }
-      },
-      _ => {},
+            .wrap_err_with(|| format!("When reading the branch length {:?}", part.as_str()))?;
+          self.current.length = Some(number);
+        },
+        _ => self.current.add_comment(part.as_str()),
+      }
     }
+    Ok(())
   }
 
-  let child_idx = child_idx.unwrap_or_else(|| graph.add_node(NewickNodeData::new()));
+  fn finish(mut self) -> Result<NewickGraph, Report> {
+    if let Some(unclosed) = self.open.last() {
+      return Err(at(&unclosed.token, "the '(' is never closed"));
+    }
+    if !self.seen_token {
+      return Err(eyre!("The input contains no tree"));
+    }
+    let (root, root_edge) = self.finish_slot()?;
+    let root_node = &mut self.graph.nodes[root];
+    root_node.node_attrs.extend(root_edge.branch_attrs);
+    root_node.raw_comments.extend(root_edge.raw_comments);
+    self.graph.root = root;
+    self.graph.validate()?;
+    Ok(self.graph)
+  }
 
-  let mut branch_attrs = pre_colon_attrs;
-  branch_attrs.extend(post_colon_attrs);
+  fn finish_slot(&mut self) -> Result<(usize, NewickEdgeData), Report> {
+    let slot = std::mem::take(&mut self.current);
+    let is_internal = slot.children.is_some();
+    let parsed = slot
+      .label
+      .as_ref()
+      .map(|label| parse_label(label, is_internal, self.options))
+      .transpose()?
+      .unwrap_or_default();
 
-  let edge_data = NewickEdgeData {
-    branch_length,
-    branch_attrs,
-    raw_comments,
-    is_acceptor,
-  };
+    let mut node = NewickNodeData::new();
+    node.label = parsed.label;
+    node.hybrid = parsed.hybrid.clone();
+    for comment in &slot.node_comments {
+      classify_comment(comment, &mut node.node_attrs, &mut node.raw_comments);
+    }
+    let mut edge = NewickEdgeData::new();
+    edge.branch_length = slot.length;
+    edge.is_acceptor = parsed.is_acceptor;
+    for comment in &slot.edge_comments {
+      classify_comment(comment, &mut edge.branch_attrs, &mut edge.raw_comments);
+    }
 
-  Ok((child_idx, edge_data))
+    let children = slot.children.unwrap_or_default();
+    let idx = match parsed.hybrid {
+      Some(hybrid) => self.merge_hybrid(hybrid, node, !children.is_empty())?,
+      None => self.graph.add_node(node),
+    };
+    for (child, child_edge) in children {
+      self.graph.add_edge(idx, child, child_edge);
+    }
+    Ok((idx, edge))
+  }
+
+  fn merge_hybrid(&mut self, hybrid: NewickHybrid, node: NewickNodeData, has_children: bool) -> Result<usize, Report> {
+    let tag = format!("#{}{}", hybrid.kind.as_deref().unwrap_or(""), hybrid.index);
+    let key = (hybrid.kind, hybrid.index);
+    let Some(entry) = self.hybrids.get_mut(&key) else {
+      let idx = self.graph.add_node(node);
+      self.hybrids.insert(key, HybridEntry { idx, has_children });
+      return Ok(idx);
+    };
+    let idx = entry.idx;
+    if has_children && entry.has_children {
+      return Err(eyre!(
+        "The hybrid node {tag} has children in more than one of its occurrences"
+      ));
+    }
+    entry.has_children |= has_children;
+    let existing = &mut self.graph.nodes[idx];
+    match (&existing.label, node.label) {
+      (_, None) => {},
+      (None, label) => existing.label = label,
+      (Some(previous), Some(label)) if *previous == label => {},
+      (Some(_), Some(_)) => {
+        return Err(eyre!(
+          "The occurrences of the hybrid node {tag} have different labels, at {}",
+          describe_node(&self.graph, idx)
+        ));
+      },
+    }
+    let existing = &mut self.graph.nodes[idx];
+    existing.node_attrs.extend(node.node_attrs);
+    existing.raw_comments.extend(node.raw_comments);
+    Ok(idx)
+  }
 }
 
-fn visit_leaf(
-  pair: pest::iterators::Pair<Rule>,
-  graph: &mut NewickGraph,
-  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
-) -> Result<(usize, bool), Report> {
-  let mut name = None;
-  let mut raw_comments = Vec::new();
-  let mut node_attrs = BTreeMap::new();
+#[derive(Default)]
+struct Slot<'i> {
+  label: Option<LabelToken<'i>>,
+  colon_seen: bool,
+  length: Option<f64>,
+  node_comments: Vec<&'i str>,
+  edge_comments: Vec<&'i str>,
+  children: Option<Vec<(usize, NewickEdgeData)>>,
+}
 
-  for inner in pair.into_inner() {
-    match inner.as_rule() {
-      Rule::label => {
-        name = Some(parse_label(inner));
-      },
-      Rule::comment => {
-        classify_comment(inner.as_str(), &mut node_attrs, &mut raw_comments);
-      },
-      _ => {},
-    }
+impl<'i> Slot<'i> {
+  fn has_content(&self) -> bool {
+    self.label.is_some() || self.colon_seen || self.children.is_some()
   }
 
-  let extraction = extract_hybrid(name)?;
-  let node_data = NewickNodeData {
-    name: extraction.clean_name,
-    confidence: None,
-    node_attrs,
-    raw_comments,
-    hybrid: extraction.hybrid.clone(),
-    children: Vec::new(),
-  };
+  fn add_comment(&mut self, comment: &'i str) {
+    if self.colon_seen {
+      self.edge_comments.push(comment);
+    } else {
+      self.node_comments.push(comment);
+    }
+  }
+}
 
-  let idx = resolve_hybrid_node(node_data, extraction.hybrid.as_ref(), graph, hybrid_map);
-  Ok((idx, extraction.is_acceptor))
+struct OpenNode<'i> {
+  token: Pair<'i, Rule>,
+  children: Vec<(usize, NewickEdgeData)>,
+  comments: Vec<&'i str>,
+}
+
+struct LabelToken<'i> {
+  text: &'i str,
+  value: String,
+  quoted: bool,
+  hybrid_tag: Option<&'i str>,
+}
+
+struct HybridEntry {
+  idx: usize,
+  has_children: bool,
+}
+
+#[derive(Default)]
+struct ParsedLabel {
+  label: Option<NewickLabel>,
+  hybrid: Option<NewickHybrid>,
+  is_acceptor: bool,
+}
+
+fn parse_label(token: &LabelToken<'_>, is_internal: bool, options: &NewickReadOptions) -> Result<ParsedLabel, Report> {
+  let (name, hybrid_tag) = match (token.quoted, token.hybrid_tag) {
+    (true, Some(tag)) if options.enewick => (token.value.clone(), Some(tag)),
+    (true, Some(tag)) => (format!("{}{tag}", token.value), None),
+    (true, None) => (token.value.clone(), None),
+    (false, _) if options.enewick => split_unquoted_hybrid(&token.value),
+    (false, _) => (token.value.clone(), None),
+  };
+  let (hybrid, is_acceptor) = match hybrid_tag {
+    Some(tag) => {
+      let (hybrid, is_acceptor) = parse_hybrid_tag(tag, token.text)?;
+      (Some(hybrid), is_acceptor)
+    },
+    None => (None, false),
+  };
+  let label = if name.is_empty() && hybrid.is_some() {
+    None
+  } else if is_internal {
+    Some(parse_support(&name).map_or(NewickLabel::Name(name), NewickLabel::Support))
+  } else {
+    Some(NewickLabel::Name(name))
+  };
+  Ok(ParsedLabel {
+    label,
+    hybrid,
+    is_acceptor,
+  })
+}
+
+#[expect(
+  clippy::string_slice,
+  reason = "the indices come from regex matches on the same string"
+)]
+fn split_unquoted_hybrid(text: &str) -> (String, Option<&str>) {
+  match regex!(r"^(.*?)(##?[A-Za-z]*[0-9]+)$").captures(text) {
+    Some(captures) => match (captures.get(1), captures.get(2)) {
+      (Some(name), Some(tag)) => (name.as_str().to_owned(), Some(&text[tag.start()..tag.end()])),
+      _ => (text.to_owned(), None),
+    },
+    None => (text.to_owned(), None),
+  }
+}
+
+fn parse_hybrid_tag(tag: &str, label: &str) -> Result<(NewickHybrid, bool), Report> {
+  let is_acceptor = tag.starts_with("##");
+  let body = tag.trim_start_matches('#');
+  let digits_start = body.find(|c: char| c.is_ascii_digit()).unwrap_or(body.len());
+  let (kind, index) = body.split_at(digits_start);
+  let index = index
+    .parse::<u32>()
+    .wrap_err_with(|| format!("When parsing the hybrid node index in '{label}'"))?;
+  let kind = (!kind.is_empty()).then(|| kind.to_owned());
+  Ok((NewickHybrid { kind, index }, is_acceptor))
 }
 
 #[cfg_attr(
   dylint_lib = "treetime_lints",
   expect(
     result_defaulted,
-    reason = "a label that is not a number is a node name, not a malformed support value"
+    reason = "an internal label that is not a number is a node name, not a malformed support value"
   )
 )]
-fn parse_support_value(label: &str) -> Option<f64> {
+fn parse_support(label: &str) -> Option<f64> {
   label.parse::<f64>().ok()
 }
 
-fn parse_label(pair: pest::iterators::Pair<Rule>) -> String {
-  let inner = pair.into_inner().next().expect("label must have content");
-  match inner.as_rule() {
-    Rule::quoted_label => {
-      let raw = inner.as_str();
-      raw
-        .strip_prefix('\'')
-        .and_then(|s| s.strip_suffix('\''))
-        .unwrap_or(raw)
-        .replace("''", "'")
-    },
-    Rule::unquoted_label => inner.as_str().to_owned(),
-    _ => unreachable!(),
-  }
+fn unescape_quoted(quoted: &str) -> String {
+  quoted
+    .strip_prefix('\'')
+    .and_then(|inner| inner.strip_suffix('\''))
+    .unwrap_or(quoted)
+    .replace("''", "'")
 }
 
-fn extract_hybrid(name: Option<String>) -> Result<HybridExtraction, Report> {
-  let Some(name) = name else {
-    return Ok(HybridExtraction {
-      clean_name: None,
-      hybrid: None,
-      is_acceptor: false,
-    });
-  };
-
-  let Some(caps) = regex!(r"^(.*?)(##|#)([A-Za-z]*)(\d+)$").captures(&name) else {
-    return Ok(HybridExtraction {
-      clean_name: Some(name),
-      hybrid: None,
-      is_acceptor: false,
-    });
-  };
-
-  let prefix = caps.get(1).map_or("", |m| m.as_str());
-  let hash_marker = caps.get(2).map_or("", |m| m.as_str());
-  let kind_str = caps.get(3).map_or("", |m| m.as_str());
-  let index_str = caps.get(4).map_or("0", |m| m.as_str());
-
-  let clean_name = if prefix.is_empty() {
-    None
-  } else {
-    Some(prefix.to_owned())
-  };
-  let kind = if kind_str.is_empty() {
-    None
-  } else {
-    Some(kind_str.to_owned())
-  };
-  let index = index_str
-    .parse::<u32>()
-    .wrap_err_with(|| format!("When parsing the hybrid node index in '{name}'"))?;
-  let is_acceptor = hash_marker == "##";
-
-  Ok(HybridExtraction {
-    clean_name,
-    hybrid: Some(NewickHybrid { kind, index }),
-    is_acceptor,
-  })
-}
-
-struct HybridExtraction {
-  clean_name: Option<String>,
-  hybrid: Option<NewickHybrid>,
-  is_acceptor: bool,
-}
-
-fn resolve_hybrid_node(
-  node_data: NewickNodeData,
-  hybrid: Option<&NewickHybrid>,
-  graph: &mut NewickGraph,
-  hybrid_map: &mut BTreeMap<(Option<String>, u32), usize>,
-) -> usize {
-  let Some(h) = hybrid else {
-    return graph.add_node(node_data);
-  };
-
-  let key = (h.kind.clone(), h.index);
-  if let Some(&existing_idx) = hybrid_map.get(&key) {
-    let existing = &mut graph.nodes[existing_idx];
-    existing.node_attrs.extend(node_data.node_attrs);
-    existing.raw_comments.extend(node_data.raw_comments);
-    existing_idx
-  } else {
-    let idx = graph.add_node(node_data);
-    hybrid_map.insert(key, idx);
-    idx
-  }
-}
-
-fn classify_comment(comment_text: &str, attrs: &mut BTreeMap<String, NewickValue>, raw: &mut Vec<String>) {
-  let inner = comment_text
-    .strip_prefix('[')
-    .and_then(|s| s.strip_suffix(']'))
-    .unwrap_or(comment_text);
-
-  if let Some(nhx_body) = inner.strip_prefix("&&NHX") {
-    parse_nhx_attrs(nhx_body, attrs);
-  } else if let Some(beast_body) = inner.strip_prefix('&') {
-    parse_beast_attrs(beast_body, attrs);
-  } else {
-    raw.push(comment_text.to_owned());
-  }
-}
-
-fn parse_nhx_attrs(body: &str, attrs: &mut BTreeMap<String, NewickValue>) {
-  for tag in body.split(':') {
-    let tag = tag.trim();
-    if tag.is_empty() {
-      continue;
-    }
-    if let Some((key, value)) = tag.split_once('=') {
-      attrs.insert(key.to_owned(), NewickValue::String(value.to_owned()));
-    }
-  }
-}
-
-fn parse_beast_attrs(body: &str, attrs: &mut BTreeMap<String, NewickValue>) {
-  let pairs = split_beast_pairs(body);
-  for pair_str in pairs {
-    let pair_str = pair_str.trim();
-    if pair_str.is_empty() {
-      continue;
-    }
-    if let Some((key, value_str)) = pair_str.split_once('=') {
-      let key = strip_beast_quotes(key.trim());
-      let value_str = value_str.trim();
-      attrs.insert(key, parse_beast_value(value_str));
-    } else {
-      attrs.insert(strip_beast_quotes(pair_str), NewickValue::Boolean(true));
-    }
-  }
-}
-
-#[cfg_attr(
-  dylint_lib = "treetime_lints",
-  expect(
-    error_dropped_by_pattern,
-    reason = "a value that is not a finite number is kept as a string"
-  )
-)]
-fn parse_beast_value(s: &str) -> NewickValue {
-  let s = s.trim();
-
-  if let Some(inner) = s.strip_prefix('{').and_then(|s| s.strip_suffix('}')) {
-    let elements: Vec<NewickValue> = split_beast_pairs(inner)
-      .iter()
-      .map(|e| parse_beast_value(e.trim()))
-      .collect();
-    return NewickValue::Array(elements);
-  }
-
-  if s.eq_ignore_ascii_case("true") {
-    return NewickValue::Boolean(true);
-  }
-  if s.eq_ignore_ascii_case("false") {
-    return NewickValue::Boolean(false);
-  }
-
-  if s.starts_with(|c: char| c.is_ascii_digit() || c == '-') {
-    if let Ok(n) = s.parse::<f64>() {
-      if n.is_finite() {
-        return NewickValue::Number(n);
-      }
-    }
-  }
-
-  NewickValue::String(strip_beast_quotes(s))
-}
-
-fn split_beast_pairs(body: &str) -> Vec<String> {
-  let mut pairs = Vec::new();
-  let mut current = String::new();
-  let mut brace_depth = 0_u32;
-  let mut in_quote = false;
-
-  for ch in body.chars() {
-    match ch {
-      '"' if brace_depth == 0 => {
-        in_quote = !in_quote;
-        current.push(ch);
-      },
-      '{' if !in_quote => {
-        brace_depth += 1;
-        current.push(ch);
-      },
-      '}' if !in_quote => {
-        brace_depth = brace_depth.saturating_sub(1);
-        current.push(ch);
-      },
-      ',' if brace_depth == 0 && !in_quote => {
-        pairs.push(std::mem::take(&mut current));
-      },
-      _ => {
-        current.push(ch);
-      },
-    }
-  }
-  if !current.is_empty() {
-    pairs.push(current);
-  }
-  pairs
-}
-
-fn strip_beast_quotes(s: &str) -> String {
-  if let Some(inner) = s.strip_prefix('"').and_then(|i| i.strip_suffix('"')) {
-    return inner.replace("\"\"", "\"");
-  }
-  if let Some(inner) = s.strip_prefix('\'').and_then(|i| i.strip_suffix('\'')) {
-    return inner.replace("''", "'");
-  }
-  s.to_owned()
+fn at(token: &Pair<'_, Rule>, message: &str) -> Report {
+  let (line, column) = token.line_col();
+  eyre!("At line {line}, column {column}: {message}")
 }

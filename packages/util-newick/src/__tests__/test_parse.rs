@@ -5,23 +5,23 @@
 
 #[cfg(test)]
 mod tests {
-  use crate::parse::newick_from_string;
   use crate::types::NewickValue;
+  use helpers::parse;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
   #[test]
   fn test_parse_single_leaf() {
-    let g = newick_from_string("A;").unwrap();
+    let g = parse("A;").unwrap();
     assert_eq!(g.nodes.len(), 1);
-    assert_eq!(g.nodes[0].name.as_deref(), Some("A"));
+    assert_eq!(g.nodes[0].name(), Some("A"));
     assert!(g.nodes[0].children.is_empty());
   }
 
   #[test]
   fn test_parse_two_leaves() {
-    let g = newick_from_string("(A,B);").unwrap();
+    let g = parse("(A,B);").unwrap();
     assert_eq!(g.nodes.len(), 3);
     let root = &g.nodes[g.root];
     assert_eq!(root.children.len(), 2);
@@ -29,13 +29,13 @@ mod tests {
 
   #[test]
   fn test_parse_named_internal() {
-    let g = newick_from_string("(A,B)root;").unwrap();
-    assert_eq!(g.nodes[g.root].name.as_deref(), Some("root"));
+    let g = parse("(A,B)root;").unwrap();
+    assert_eq!(g.nodes[g.root].name(), Some("root"));
   }
 
   #[test]
   fn test_parse_branch_lengths() {
-    let g = newick_from_string("(A:0.1,B:0.2):0.0;").unwrap();
+    let g = parse("(A:0.1,B:0.2):0.0;").unwrap();
     assert_eq!(g.edges.len(), 2);
     let lengths: Vec<f64> = g.edges.iter().filter_map(|e| e.data.branch_length).collect();
     assert!(lengths.contains(&0.1));
@@ -44,7 +44,7 @@ mod tests {
 
   #[test]
   fn test_parse_scientific_notation() {
-    let g = newick_from_string("(A:1.5e-3,B:2E4);").unwrap();
+    let g = parse("(A:1.5e-3,B:2E4);").unwrap();
     let lengths: Vec<f64> = g.edges.iter().filter_map(|e| e.data.branch_length).collect();
     assert!(lengths.contains(&1.5e-3));
     assert!(lengths.contains(&2e4));
@@ -52,7 +52,7 @@ mod tests {
 
   #[test]
   fn test_parse_negative_branch_length() {
-    let g = newick_from_string("(A:-0.01,B:0.2);").unwrap();
+    let g = parse("(A:-0.01,B:0.2);").unwrap();
     assert!(
       g.edges
         .iter()
@@ -63,31 +63,31 @@ mod tests {
 
   #[test]
   fn test_parse_quoted_label() {
-    let g = newick_from_string("'node with spaces';").unwrap();
-    assert_eq!(g.nodes[0].name.as_deref(), Some("node with spaces"));
+    let g = parse("'node with spaces';").unwrap();
+    assert_eq!(g.nodes[0].name(), Some("node with spaces"));
   }
 
   #[test]
   fn test_parse_quoted_label_escaped_quote() {
-    let g = newick_from_string("'it''s a name';").unwrap();
-    assert_eq!(g.nodes[0].name.as_deref(), Some("it's a name"));
+    let g = parse("'it''s a name';").unwrap();
+    assert_eq!(g.nodes[0].name(), Some("it's a name"));
   }
 
   #[test]
   fn test_parse_empty_branches() {
-    let g = newick_from_string("(,);").unwrap();
+    let g = parse("(,);").unwrap();
     assert_eq!(g.nodes.len(), 3);
     let root = &g.nodes[g.root];
     assert_eq!(root.children.len(), 2);
     for &ei in &root.children {
       let child_idx = g.edges[ei].child;
-      assert_eq!(g.nodes[child_idx].name, None);
+      assert_eq!(g.nodes[child_idx].name(), None);
     }
   }
 
   #[test]
   fn test_parse_empty_branches_three() {
-    let g = newick_from_string("(A,,B);").unwrap();
+    let g = parse("(A,,B);").unwrap();
     assert_eq!(g.nodes.len(), 4);
     let root = &g.nodes[g.root];
     assert_eq!(root.children.len(), 3);
@@ -95,32 +95,32 @@ mod tests {
 
   #[test]
   fn test_parse_rooted_marker() {
-    let g = newick_from_string("[&R](A,B);").unwrap();
+    let g = parse("[&R](A,B);").unwrap();
     assert_eq!(g.rooted, Some(true));
   }
 
   #[test]
   fn test_parse_unrooted_marker() {
-    let g = newick_from_string("[&U](A,B);").unwrap();
+    let g = parse("[&U](A,B);").unwrap();
     assert_eq!(g.rooted, Some(false));
   }
 
   #[test]
   fn test_parse_rooted_case_insensitive() {
-    let g = newick_from_string("[&r](A,B);").unwrap();
+    let g = parse("[&r](A,B);").unwrap();
     assert_eq!(g.rooted, Some(true));
   }
 
   #[test]
   fn test_parse_no_rooting_marker() {
-    let g = newick_from_string("(A,B);").unwrap();
+    let g = parse("(A,B);").unwrap();
     assert_eq!(g.rooted, None);
   }
 
   #[test]
   fn test_parse_beast_node_attrs() {
-    let g = newick_from_string("(A[&prob=0.95,rate=1.2],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[&prob=0.95,rate=1.2],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     let attrs = &g.nodes[a_idx].node_attrs;
     assert_eq!(attrs.get("prob"), Some(&NewickValue::Number(0.95)));
     assert_eq!(attrs.get("rate"), Some(&NewickValue::Number(1.2)));
@@ -128,8 +128,8 @@ mod tests {
 
   #[test]
   fn test_parse_beast_boolean_values() {
-    let g = newick_from_string("(A[&fixed=TRUE,active=FALSE],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[&fixed=TRUE,active=FALSE],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     let attrs = &g.nodes[a_idx].node_attrs;
     assert_eq!(attrs.get("fixed"), Some(&NewickValue::Boolean(true)));
     assert_eq!(attrs.get("active"), Some(&NewickValue::Boolean(false)));
@@ -137,8 +137,8 @@ mod tests {
 
   #[test]
   fn test_parse_beast_boolean_case_insensitive() {
-    let g = newick_from_string("(A[&x=true,y=False],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[&x=true,y=False],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     let attrs = &g.nodes[a_idx].node_attrs;
     assert_eq!(attrs.get("x"), Some(&NewickValue::Boolean(true)));
     assert_eq!(attrs.get("y"), Some(&NewickValue::Boolean(false)));
@@ -146,24 +146,20 @@ mod tests {
 
   #[test]
   fn test_parse_beast_array_values() {
-    let g = newick_from_string("(A[&hpd={1.0,2.0,3.0}],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
-    let hpd = &g.nodes[a_idx].node_attrs["hpd"];
-    match hpd {
-      NewickValue::Array(arr) => {
-        assert_eq!(arr.len(), 3);
-        assert_eq!(arr[0], NewickValue::Number(1.0));
-        assert_eq!(arr[1], NewickValue::Number(2.0));
-        assert_eq!(arr[2], NewickValue::Number(3.0));
-      },
-      _ => panic!("Expected Array"),
-    }
+    let g = parse("(A[&hpd={1.0,2.0,3.0}],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
+    let expected = NewickValue::Array(vec![
+      NewickValue::NumberText("1.0".to_owned()),
+      NewickValue::NumberText("2.0".to_owned()),
+      NewickValue::NumberText("3.0".to_owned()),
+    ]);
+    assert_eq!(&expected, &g.nodes[a_idx].node_attrs["hpd"]);
   }
 
   #[test]
   fn test_parse_beast_string_value() {
-    let g = newick_from_string("(A[&country=USA],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[&country=USA],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     assert_eq!(
       g.nodes[a_idx].node_attrs.get("country"),
       Some(&NewickValue::String("USA".to_owned()))
@@ -172,8 +168,8 @@ mod tests {
 
   #[test]
   fn test_parse_beast_quoted_string_value() {
-    let g = newick_from_string("(A[&label=\"hello, world\"],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[&label=\"hello, world\"],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     assert_eq!(
       g.nodes[a_idx].node_attrs.get("label"),
       Some(&NewickValue::String("hello, world".to_owned()))
@@ -182,8 +178,8 @@ mod tests {
 
   #[test]
   fn test_parse_beast_bare_key_boolean() {
-    let g = newick_from_string("(A[&flagged],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[&flagged],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     assert_eq!(
       g.nodes[a_idx].node_attrs.get("flagged"),
       Some(&NewickValue::Boolean(true))
@@ -192,31 +188,23 @@ mod tests {
 
   #[test]
   fn test_parse_beast2_branch_attrs() {
-    let g = newick_from_string("(A:[&rate=1.5]0.1,B:0.2);").unwrap();
-    let a_edge = g
-      .edges
-      .iter()
-      .find(|e| g.nodes[e.child].name.as_deref() == Some("A"))
-      .unwrap();
+    let g = parse("(A:[&rate=1.5]0.1,B:0.2);").unwrap();
+    let a_edge = g.edges.iter().find(|e| g.nodes[e.child].name() == Some("A")).unwrap();
     assert_eq!(a_edge.data.branch_attrs.get("rate"), Some(&NewickValue::Number(1.5)));
     assert_eq!(a_edge.data.branch_length, Some(0.1));
   }
 
   #[test]
   fn test_parse_mrbayes_branch_attrs() {
-    let g = newick_from_string("(A:0.1[&prob=0.99],B:0.2);").unwrap();
-    let a_edge = g
-      .edges
-      .iter()
-      .find(|e| g.nodes[e.child].name.as_deref() == Some("A"))
-      .unwrap();
+    let g = parse("(A:0.1[&prob=0.99],B:0.2);").unwrap();
+    let a_edge = g.edges.iter().find(|e| g.nodes[e.child].name() == Some("A")).unwrap();
     assert_eq!(a_edge.data.branch_attrs.get("prob"), Some(&NewickValue::Number(0.99)));
   }
 
   #[test]
   fn test_parse_nhx_attrs() {
-    let g = newick_from_string("(A[&&NHX:S=human:B=90],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[&&NHX:S=human:B=90],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     let attrs = &g.nodes[a_idx].node_attrs;
     assert_eq!(attrs.get("S"), Some(&NewickValue::String("human".to_owned())));
     assert_eq!(attrs.get("B"), Some(&NewickValue::String("90".to_owned())));
@@ -224,55 +212,48 @@ mod tests {
 
   #[test]
   fn test_parse_raw_comment() {
-    let g = newick_from_string("(A[some comment],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[some comment],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     assert_eq!(g.nodes[a_idx].raw_comments, vec!["[some comment]"]);
     assert!(g.nodes[a_idx].node_attrs.is_empty());
   }
 
   #[test]
   fn test_parse_nested_bracket_comment() {
-    let g = newick_from_string("(A[outer[inner]],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[outer[inner]],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     assert_eq!(g.nodes[a_idx].raw_comments, vec!["[outer[inner]]"]);
   }
 
   #[test]
   fn test_parse_malformed_beast_fallback() {
-    let g = newick_from_string("(A[&broken=],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[&broken=],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     assert!(g.nodes[a_idx].node_attrs.contains_key("broken"));
   }
 
   #[test]
   fn test_parse_enewick_hybrid_index_overflow_is_error() {
-    let actual = newick_from_string("((A)x#H4294967296,(x#H4294967296,B));");
-    let message = actual
-      .unwrap_err()
-      .chain()
-      .map(ToString::to_string)
-      .collect::<Vec<_>>()
-      .join(": ");
     assert_eq!(
-      "When parsing the hybrid node index in 'x#H4294967296': number too large to fit in target type",
-      message
+      "Failed to parse Newick string: When parsing the hybrid node index in 'x#H4294967296': number too large to fit in target type",
+      helpers::parse_enewick_error("((A)x#H4294967296,(x#H4294967296,B));")
     );
   }
 
   #[test]
   fn test_parse_enewick_hybrid() {
-    let g = newick_from_string("(A,B,((C,(Y)x#H1)c,(x#H1,D)d)e)f;").unwrap();
+    let g = helpers::parse_enewick("(A,B,((C,(Y)x#H1)c,(x#H1,D)d)e)f;").unwrap();
     let hybrid_nodes: Vec<_> = g.nodes.iter().filter(|n| n.hybrid.is_some()).collect();
     assert_eq!(hybrid_nodes.len(), 1);
     let h = hybrid_nodes[0].hybrid.as_ref().unwrap();
     assert_eq!(h.kind.as_deref(), Some("H"));
     assert_eq!(h.index, 1);
-    assert_eq!(hybrid_nodes[0].name.as_deref(), Some("x"));
+    assert_eq!(hybrid_nodes[0].name(), Some("x"));
   }
 
   #[test]
   fn test_parse_enewick_acceptor() {
-    let g = newick_from_string("((A)x##LGT1,(x#LGT1,B));").unwrap();
+    let g = helpers::parse_enewick("((A)x##LGT1,(x#LGT1,B));").unwrap();
     let hybrid_nodes: Vec<_> = g.nodes.iter().filter(|n| n.hybrid.is_some()).collect();
     assert_eq!(1, hybrid_nodes.len());
     let h = hybrid_nodes[0].hybrid.as_ref().unwrap();
@@ -288,35 +269,35 @@ mod tests {
 
   #[test]
   fn test_parse_enewick_no_name() {
-    let g = newick_from_string("((A)#H1,(#H1,B));").unwrap();
+    let g = helpers::parse_enewick("((A)#H1,(#H1,B));").unwrap();
     let hybrid_nodes: Vec<_> = g.nodes.iter().filter(|n| n.hybrid.is_some()).collect();
     assert_eq!(hybrid_nodes.len(), 1);
-    assert_eq!(hybrid_nodes[0].name, None);
+    assert_eq!(hybrid_nodes[0].name(), None);
   }
 
   #[test]
   fn test_parse_hash_no_match_is_plain_name() {
-    let g = newick_from_string("node#;").unwrap();
-    assert_eq!(g.nodes[0].name.as_deref(), Some("node#"));
+    let g = parse("node#;").unwrap();
+    assert_eq!(g.nodes[0].name(), Some("node#"));
     assert!(g.nodes[0].hybrid.is_none());
   }
 
   #[test]
   fn test_parse_spec_no_names() {
-    let g = newick_from_string("(,,(,));").unwrap();
+    let g = parse("(,,(,));").unwrap();
     assert_eq!(6, g.nodes.len());
     assert_eq!(3, g.nodes[g.root].children.len());
   }
 
   #[test]
   fn test_parse_spec_leaf_names() {
-    let g = newick_from_string("(A,B,(C,D));").unwrap();
+    let g = parse("(A,B,(C,D));").unwrap();
     assert_eq!(6, g.nodes.len());
     let leaf_names: Vec<_> = g
       .nodes
       .iter()
       .filter(|n| n.children.is_empty())
-      .filter_map(|n| n.name.as_deref())
+      .filter_map(|n| n.name())
       .collect();
     assert!(leaf_names.contains(&"A"));
     assert!(leaf_names.contains(&"B"));
@@ -326,113 +307,112 @@ mod tests {
 
   #[test]
   fn test_parse_spec_all_names() {
-    let g = newick_from_string("(A,B,(C,D)E)F;").unwrap();
+    let g = parse("(A,B,(C,D)E)F;").unwrap();
     assert_eq!(6, g.nodes.len());
-    assert_eq!(Some("F"), g.nodes[g.root].name.as_deref());
+    assert_eq!(Some("F"), g.nodes[g.root].name());
     assert_eq!(3, g.nodes[g.root].children.len());
   }
 
   #[test]
   fn test_parse_spec_distances_and_leaf_names() {
-    let g = newick_from_string("(A:0.1,B:0.2,(C:0.3,D:0.4):0.5);").unwrap();
+    let g = parse("(A:0.1,B:0.2,(C:0.3,D:0.4):0.5);").unwrap();
     assert_eq!(6, g.nodes.len());
-    let a_edge = g
-      .edges
-      .iter()
-      .find(|e| g.nodes[e.child].name.as_deref() == Some("A"))
-      .unwrap();
+    let a_edge = g.edges.iter().find(|e| g.nodes[e.child].name() == Some("A")).unwrap();
     assert_eq!(Some(0.1), a_edge.data.branch_length);
   }
 
   #[test]
   fn test_parse_spec_distances_and_all_names() {
-    let g = newick_from_string("(A:0.1,B:0.2,(C:0.3,D:0.4)E:0.5)F;").unwrap();
+    let g = parse("(A:0.1,B:0.2,(C:0.3,D:0.4)E:0.5)F;").unwrap();
     assert_eq!(6, g.nodes.len());
-    assert_eq!(Some("F"), g.nodes[g.root].name.as_deref());
-    let e_edge = g
-      .edges
-      .iter()
-      .find(|e| g.nodes[e.child].name.as_deref() == Some("E"))
-      .unwrap();
+    assert_eq!(Some("F"), g.nodes[g.root].name());
+    let e_edge = g.edges.iter().find(|e| g.nodes[e.child].name() == Some("E")).unwrap();
     assert_eq!(Some(0.5), e_edge.data.branch_length);
   }
 
   #[test]
   fn test_parse_missing_semicolon() {
-    let err = format!("{}", newick_from_string("(A,B)").unwrap_err());
-    assert!(err.contains("Failed to parse Newick string"), "unexpected error: {err}");
+    let expected = parse("(A:1,B:2)C;").unwrap();
+
+    let actual = parse("(A:1,B:2)C").unwrap();
+
+    assert!(expected.eq_ordered(&actual));
   }
 
   #[test]
   fn test_parse_unmatched_paren() {
-    let err = format!("{}", newick_from_string("(A,B;").unwrap_err());
-    assert!(err.contains("Failed to parse Newick string"), "unexpected error: {err}");
+    assert_eq!(
+      "Failed to parse Newick string: At line 1, column 1: the '(' is never closed",
+      helpers::parse_error("(A,B;")
+    );
   }
 
   #[test]
   fn test_parse_empty_string() {
-    let err = format!("{}", newick_from_string("").unwrap_err());
-    assert!(err.contains("Failed to parse Newick string"), "unexpected error: {err}");
+    assert_eq!(
+      "Failed to parse Newick string: The input contains no tree",
+      helpers::parse_error("")
+    );
   }
 
   #[test]
   fn test_eq_order_insensitive() {
-    let g1 = newick_from_string("(A,B,C);").unwrap();
-    let g2 = newick_from_string("(C,A,B);").unwrap();
+    let g1 = parse("(A,B,C);").unwrap();
+    let g2 = parse("(C,A,B);").unwrap();
     assert_eq!(g1, g2);
   }
 
   #[test]
   fn test_eq_ordered_sensitive() {
-    let g1 = newick_from_string("(A,B,C);").unwrap();
-    let g2 = newick_from_string("(C,A,B);").unwrap();
+    let g1 = parse("(A,B,C);").unwrap();
+    let g2 = parse("(C,A,B);").unwrap();
     assert!(!g1.eq_ordered(&g2));
   }
 
   #[test]
   fn test_eq_ordered_same() {
-    let g1 = newick_from_string("(A,B,C);").unwrap();
-    let g2 = newick_from_string("(A,B,C);").unwrap();
+    let g1 = parse("(A,B,C);").unwrap();
+    let g2 = parse("(A,B,C);").unwrap();
     assert!(g1.eq_ordered(&g2));
   }
 
   #[test]
   fn test_eq_with_branch_lengths() {
-    let g1 = newick_from_string("(A:0.1,B:0.2);").unwrap();
-    let g2 = newick_from_string("(B:0.2,A:0.1);").unwrap();
+    let g1 = parse("(A:0.1,B:0.2);").unwrap();
+    let g2 = parse("(B:0.2,A:0.1);").unwrap();
     assert_eq!(g1, g2);
   }
 
   #[test]
   fn test_eq_unnamed_internal_reorder() {
-    let g1 = newick_from_string("((A,B),(C,D));").unwrap();
-    let g2 = newick_from_string("((C,D),(A,B));").unwrap();
+    let g1 = parse("((A,B),(C,D));").unwrap();
+    let g2 = parse("((C,D),(A,B));").unwrap();
     assert_eq!(g1, g2);
   }
 
   #[test]
   fn test_neq_different_topology() {
-    let g1 = newick_from_string("((A,B),C);").unwrap();
-    let g2 = newick_from_string("(A,(B,C));").unwrap();
+    let g1 = parse("((A,B),C);").unwrap();
+    let g2 = parse("(A,(B,C));").unwrap();
     assert_ne!(g1, g2);
   }
 
   #[test]
   fn test_eq_rooting_matters() {
-    let g1 = newick_from_string("[&R](A,B);").unwrap();
-    let g2 = newick_from_string("[&U](A,B);").unwrap();
+    let g1 = parse("[&R](A,B);").unwrap();
+    let g2 = parse("[&U](A,B);").unwrap();
     assert_ne!(g1, g2);
   }
 
   #[test]
   fn test_parse_whitespace() {
-    let g = newick_from_string("  ( A : 0.1 , B : 0.2 ) ; ").unwrap();
+    let g = parse("  ( A : 0.1 , B : 0.2 ) ; ").unwrap();
     assert_eq!(g.nodes.len(), 3);
   }
 
   #[test]
   fn test_parse_newlines() {
-    let g = newick_from_string(indoc! {"
+    let g = parse(indoc! {"
       (
         A:0.1,
         B:0.2
@@ -444,20 +424,20 @@ mod tests {
 
   #[test]
   fn test_parse_single_child_internal() {
-    let g = newick_from_string("((A));").unwrap();
+    let g = parse("((A));").unwrap();
     assert_eq!(g.nodes.len(), 3);
   }
 
   #[test]
   fn test_parse_deep_nesting() {
-    let g = newick_from_string("((((A,B),C),D),E);").unwrap();
+    let g = parse("((((A,B),C),D),E);").unwrap();
     assert_eq!(g.nodes.len(), 9);
   }
 
   #[test]
   fn test_parse_comment_no_length() {
-    let g = newick_from_string("(A[&note=yes],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[&note=yes],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     assert_eq!(
       g.nodes[a_idx].node_attrs.get("note"),
       Some(&NewickValue::String("yes".to_owned()))
@@ -477,59 +457,80 @@ mod tests {
     #[case] nwk: &str,
     #[case] (expected_name, expected_confidence): (Option<&str>, Option<f64>),
   ) {
-    let g = newick_from_string(nwk).unwrap();
+    let g = parse(nwk).unwrap();
     let root = &g.nodes[g.root];
-    assert_eq!(root.name.as_deref(), expected_name);
-    assert_eq!(root.confidence, expected_confidence);
+    assert_eq!(root.name(), expected_name);
+    assert_eq!(root.support(), expected_confidence);
   }
 
   #[test]
   fn test_parse_confidence_not_applied_to_leaves() {
-    let g = newick_from_string("(0.999:0.1,B:0.2);").unwrap();
-    let leaf = g.nodes.iter().find(|n| n.name.as_deref() == Some("0.999")).unwrap();
-    assert_eq!(leaf.confidence, None);
+    let g = parse("(0.999:0.1,B:0.2);").unwrap();
+    let leaf = g.nodes.iter().find(|n| n.name() == Some("0.999")).unwrap();
+    assert_eq!(leaf.support(), None);
   }
 
   #[test]
   fn test_parse_confidence_nested_internals() {
-    let g = newick_from_string("((A,B)0.95:0.1,(C,D)0.80:0.2)0.50;").unwrap();
+    let g = parse("((A,B)0.95:0.1,(C,D)0.80:0.2)0.50;").unwrap();
     let internal_count = g
       .nodes
       .iter()
-      .filter(|n| !n.children.is_empty() && n.confidence.is_some())
+      .filter(|n| !n.children.is_empty() && n.support().is_some())
       .count();
     assert_eq!(internal_count, 3);
-    assert_eq!(g.nodes[g.root].confidence, Some(0.50));
+    assert_eq!(g.nodes[g.root].support(), Some(0.50));
   }
 
   #[test]
   fn test_parse_confidence_mixed_named_and_float_internals() {
-    let g = newick_from_string("((A,B)clade1:0.1,(C,D)0.90:0.2)root;").unwrap();
-    let clade1 = g.nodes.iter().find(|n| n.name.as_deref() == Some("clade1")).unwrap();
-    assert_eq!(clade1.confidence, None);
+    let g = parse("((A,B)clade1:0.1,(C,D)0.90:0.2)root;").unwrap();
+    let clade1 = g.nodes.iter().find(|n| n.name() == Some("clade1")).unwrap();
+    assert_eq!(clade1.support(), None);
 
-    let float_node = g.nodes.iter().find(|n| n.confidence == Some(0.90)).unwrap();
-    assert_eq!(float_node.name, None);
+    let float_node = g.nodes.iter().find(|n| n.support() == Some(0.90)).unwrap();
+    assert_eq!(float_node.name(), None);
 
     let root = &g.nodes[g.root];
-    assert_eq!(root.name.as_deref(), Some("root"));
-    assert_eq!(root.confidence, None);
+    assert_eq!(root.name(), Some("root"));
+    assert_eq!(root.support(), None);
   }
 
   #[test]
   fn test_parse_confidence_roundtrip() {
-    let g = newick_from_string("(A:0.1,B:0.2)0.999;").unwrap();
+    let g = parse("(A:0.1,B:0.2)0.999;").unwrap();
     let written = crate::write::newick_to_string(&g, &crate::types::NewickWriteOptions::default()).unwrap();
     assert_eq!(written, "(A:0.1,B:0.2)0.999;");
   }
 
   #[test]
   fn test_parse_beast_infinity_as_string() {
-    let g = newick_from_string("(A[&score=-infinity],B);").unwrap();
-    let a_idx = g.nodes.iter().position(|n| n.name.as_deref() == Some("A")).unwrap();
+    let g = parse("(A[&score=-infinity],B);").unwrap();
+    let a_idx = g.nodes.iter().position(|n| n.name() == Some("A")).unwrap();
     assert!(
       matches!(g.nodes[a_idx].node_attrs.get("score"), Some(NewickValue::String(_))),
       "Non-finite value should parse as String, not Number"
     );
+  }
+
+  mod helpers {
+    use crate::parse::newick_from_string;
+    use crate::types::{NewickGraph, NewickReadOptions};
+
+    pub(super) fn parse(input: &str) -> eyre::Result<NewickGraph> {
+      newick_from_string(input, &NewickReadOptions::default())
+    }
+
+    pub(super) fn parse_enewick(input: &str) -> eyre::Result<NewickGraph> {
+      newick_from_string(input, &NewickReadOptions { enewick: true })
+    }
+
+    pub(super) fn parse_error(input: &str) -> String {
+      format!("{:#}", parse(input).unwrap_err())
+    }
+
+    pub(super) fn parse_enewick_error(input: &str) -> String {
+      format!("{:#}", parse_enewick(input).unwrap_err())
+    }
   }
 }

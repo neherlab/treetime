@@ -1,4 +1,9 @@
+mod test_annotation;
+mod test_equality;
 mod test_nexus;
 mod test_parse;
+mod test_parse_enewick;
+mod test_parse_syntax;
 mod test_prop_roundtrip;
 mod test_write;
+mod test_write_validation;

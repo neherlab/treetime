@@ -1,8 +1,12 @@
 #[cfg(test)]
 mod tests {
+  use crate::annotation::{write_beast_attrs, write_nhx_attrs};
   use crate::parse::newick_from_string;
-  use crate::types::{NewickEdgeData, NewickGraph, NewickNodeData, NewickValue, NewickWriteOptions, NwkStyle};
-  use crate::write::{newick_to_string, write_beast_attrs, write_nhx_attrs};
+  use crate::types::{
+    NewickEdgeData, NewickGraph, NewickLabel, NewickNodeData, NewickReadOptions, NewickValue, NewickWriteOptions,
+    NwkStyle,
+  };
+  use crate::write::newick_to_string;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
@@ -17,21 +21,21 @@ mod tests {
 
   #[test]
   fn test_write_plain_simple() {
-    let g = newick_from_string("(A:0.1,B:0.2)root;").unwrap();
+    let g = newick_from_string("(A:0.1,B:0.2)root;", &NewickReadOptions::default()).unwrap();
     let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
     assert_eq!("(A:0.1,B:0.2)root;", s);
   }
 
   #[test]
   fn test_write_plain_strips_annotations() {
-    let g = newick_from_string("(A[&prob=0.95]:0.1,B:0.2);").unwrap();
+    let g = newick_from_string("(A[&prob=0.95]:0.1,B:0.2);", &NewickReadOptions::default()).unwrap();
     let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
     assert_eq!("(A:0.1,B:0.2);", s);
   }
 
   #[test]
   fn test_write_plain_strips_raw_comments() {
-    let g = newick_from_string("(A[some comment]:0.1,B:0.2);").unwrap();
+    let g = newick_from_string("(A[some comment]:0.1,B:0.2);", &NewickReadOptions::default()).unwrap();
     let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
     assert_eq!("(A:0.1,B:0.2);", s);
   }
@@ -42,16 +46,14 @@ mod tests {
     let mut attrs = BTreeMap::new();
     attrs.insert("prob".to_owned(), NewickValue::Number(0.95));
     let root = g.add_node(NewickNodeData {
-      name: None,
-      confidence: None,
+      label: None,
       node_attrs: BTreeMap::new(),
       raw_comments: Vec::new(),
       hybrid: None,
       children: Vec::new(),
     });
     let a = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
+      label: Some(NewickLabel::Name("A".to_owned())),
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -96,8 +98,7 @@ mod tests {
     attrs.insert("active".to_owned(), NewickValue::Boolean(true));
     attrs.insert("fixed".to_owned(), NewickValue::Boolean(false));
     let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
+      label: Some(NewickLabel::Name("A".to_owned())),
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -118,8 +119,7 @@ mod tests {
       NewickValue::Array(vec![NewickValue::Number(1.0), NewickValue::Number(2.0)]),
     );
     let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
+      label: Some(NewickLabel::Name("A".to_owned())),
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -137,8 +137,7 @@ mod tests {
     let mut attrs = BTreeMap::new();
     attrs.insert("label".to_owned(), NewickValue::String("hello, world".to_owned()));
     let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
+      label: Some(NewickLabel::Name("A".to_owned())),
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -154,8 +153,7 @@ mod tests {
   fn test_write_beast_raw_comments() {
     let mut g = NewickGraph::new();
     let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
+      label: Some(NewickLabel::Name("A".to_owned())),
       node_attrs: BTreeMap::new(),
       raw_comments: vec!["[some note]".to_owned()],
       hybrid: None,
@@ -174,8 +172,7 @@ mod tests {
     attrs.insert("S".to_owned(), NewickValue::String("human".to_owned()));
     attrs.insert("T".to_owned(), NewickValue::String("9606".to_owned()));
     let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
+      label: Some(NewickLabel::Name("A".to_owned())),
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -216,7 +213,7 @@ mod tests {
 
   #[test]
   fn test_write_rooted_prefix() {
-    let mut g = newick_from_string("(A,B);").unwrap();
+    let mut g = newick_from_string("(A,B);", &NewickReadOptions::default()).unwrap();
     g.rooted = Some(true);
     let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
     assert_eq!("[&R](A,B);", s);
@@ -224,7 +221,7 @@ mod tests {
 
   #[test]
   fn test_write_unrooted_prefix() {
-    let mut g = newick_from_string("(A,B);").unwrap();
+    let mut g = newick_from_string("(A,B);", &NewickReadOptions::default()).unwrap();
     g.rooted = Some(false);
     let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
     assert_eq!("[&U](A,B);", s);
@@ -232,7 +229,7 @@ mod tests {
 
   #[test]
   fn test_write_significant_digits() {
-    let g = newick_from_string("(A:0.123456789,B:0.2);").unwrap();
+    let g = newick_from_string("(A:0.123456789,B:0.2);", &NewickReadOptions::default()).unwrap();
 
     let full = newick_to_string(&g, &NewickWriteOptions::default()).unwrap();
     assert_eq!("(A:0.123456789,B:0.2);", full);
@@ -248,21 +245,21 @@ mod tests {
 
   #[test]
   fn test_write_empty_branches() {
-    let g = newick_from_string("(,);").unwrap();
+    let g = newick_from_string("(,);", &NewickReadOptions::default()).unwrap();
     let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
     assert_eq!("(,);", s);
   }
 
   #[test]
   fn test_write_no_branch_length() {
-    let g = newick_from_string("(A,B);").unwrap();
+    let g = newick_from_string("(A,B);", &NewickReadOptions::default()).unwrap();
     let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
     assert_eq!("(A,B);", s);
   }
 
   #[test]
   fn test_write_enewick_hybrid() {
-    let g = newick_from_string("(A,B,((C,(Y)x#H1)c,(x#H1,D)d)e)f;").unwrap();
+    let g = newick_from_string("(A,B,((C,(Y)x#H1)c,(x#H1,D)d)e)f;", &NewickReadOptions::default()).unwrap();
     let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
     let count = s.matches("x#H1").count();
     assert_eq!(count, 2, "hybrid marker should appear twice: {s}");
@@ -274,8 +271,7 @@ mod tests {
     let mut attrs = BTreeMap::new();
     attrs.insert("val".to_owned(), NewickValue::String("TRUE".to_owned()));
     let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
+      label: Some(NewickLabel::Name("A".to_owned())),
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -284,8 +280,8 @@ mod tests {
     g.root = node;
 
     let written = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    let parsed = newick_from_string(&written).unwrap();
-    let a = parsed.nodes.iter().find(|n| n.name.as_deref() == Some("A")).unwrap();
+    let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
+    let a = parsed.nodes.iter().find(|n| n.name() == Some("A")).unwrap();
     assert_eq!(Some(&NewickValue::String("TRUE".to_owned())), a.node_attrs.get("val"));
   }
 
@@ -295,8 +291,7 @@ mod tests {
     let mut attrs = BTreeMap::new();
     attrs.insert("id".to_owned(), NewickValue::String("123".to_owned()));
     let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
+      label: Some(NewickLabel::Name("A".to_owned())),
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -305,8 +300,8 @@ mod tests {
     g.root = node;
 
     let written = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    let parsed = newick_from_string(&written).unwrap();
-    let a = parsed.nodes.iter().find(|n| n.name.as_deref() == Some("A")).unwrap();
+    let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
+    let a = parsed.nodes.iter().find(|n| n.name() == Some("A")).unwrap();
     assert_eq!(Some(&NewickValue::String("123".to_owned())), a.node_attrs.get("id"));
   }
 
@@ -316,8 +311,7 @@ mod tests {
     let mut attrs = BTreeMap::new();
     attrs.insert("note".to_owned(), NewickValue::String("say \"hello\"".to_owned()));
     let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
+      label: Some(NewickLabel::Name("A".to_owned())),
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -326,8 +320,8 @@ mod tests {
     g.root = node;
 
     let written = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    let parsed = newick_from_string(&written).unwrap();
-    let a = parsed.nodes.iter().find(|n| n.name.as_deref() == Some("A")).unwrap();
+    let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
+    let a = parsed.nodes.iter().find(|n| n.name() == Some("A")).unwrap();
     assert_eq!(
       Some(&NewickValue::String("say \"hello\"".to_owned())),
       a.node_attrs.get("note")
@@ -336,43 +330,19 @@ mod tests {
 
   #[test]
   fn test_write_nhx_rejects_colon_in_value() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert("key".to_owned(), NewickValue::String("a:b".to_owned()));
-    let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
+    let g = helpers::single_node_with_attr("key", NewickValue::String("a:b".to_owned()));
 
-    let mut buf = Vec::new();
-    let result = crate::write::newick_to_writer(
-      &mut buf,
-      &g,
-      &NewickWriteOptions {
-        style: NwkStyle::Nhx,
-        ..Default::default()
-      },
-    );
-    let message = result
-      .unwrap_err()
-      .chain()
-      .map(ToString::to_string)
-      .collect::<Vec<_>>()
-      .join(": ");
+    let actual = format!("{:#}", newick_to_string(&g, &opts(NwkStyle::Nhx)).unwrap_err());
+
     assert_eq!(
-      "NHX cannot represent value containing reserved character (':', '=', or ']'): a:b",
-      message
+      "When writing Newick: NHX cannot represent a value containing a reserved character (':', '=', '[', ']' or '\"'): a:b",
+      actual
     );
   }
 
   #[test]
   fn test_write_all_styles_differ() {
-    let g = newick_from_string("(A[&prob=0.9]:0.1,B:0.2);").unwrap();
+    let g = newick_from_string("(A[&prob=0.9]:0.1,B:0.2);", &NewickReadOptions::default()).unwrap();
     let plain = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
     let beast = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
     let nhx = newick_to_string(&g, &opts(NwkStyle::Nhx)).unwrap();
@@ -387,8 +357,7 @@ mod tests {
     let mut attrs = BTreeMap::new();
     attrs.insert("posterior prob".to_owned(), NewickValue::Number(0.95));
     let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
+      label: Some(NewickLabel::Name("A".to_owned())),
       node_attrs: attrs,
       raw_comments: Vec::new(),
       hybrid: None,
@@ -396,31 +365,10 @@ mod tests {
     });
     g.root = node;
     let s = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    let parsed = newick_from_string(&s).unwrap();
+    let parsed = newick_from_string(&s, &NewickReadOptions::default()).unwrap();
     assert_eq!(
       Some(&NewickValue::Number(0.95)),
       parsed.nodes[0].node_attrs.get("posterior prob")
-    );
-  }
-
-  #[test]
-  fn test_write_newick_to_string_nhx_error() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert("k".to_owned(), NewickValue::String("a:b".to_owned()));
-    let node = g.add_node(NewickNodeData {
-      name: Some("A".to_owned()),
-      confidence: None,
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
-    let result = newick_to_string(&g, &opts(NwkStyle::Nhx));
-    assert!(
-      result.is_err(),
-      "newick_to_string should return Err for NHX reserved chars"
     );
   }
 
@@ -441,13 +389,15 @@ mod tests {
   }
 
   #[test]
-  fn test_write_number_text_parses_back_as_number() {
+  fn test_write_number_text_keeps_its_text() {
     let g = helpers::single_node_with_attr("date", NewickValue::NumberText("2020.50".to_owned()));
 
-    let parsed = newick_from_string(&newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap()).unwrap();
+    let written = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
+
+    let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
 
     assert_eq!(
-      Some(&NewickValue::Number(2020.5)),
+      Some(&NewickValue::NumberText("2020.50".to_owned())),
       parsed.nodes[0].node_attrs.get("date")
     );
   }
@@ -467,22 +417,28 @@ mod tests {
   fn test_write_beast_attrs_in_caller_order() {
     let date = NewickValue::NumberText("2003.84".to_owned());
     let mutations = NewickValue::String("A55G".to_owned());
-    let mut actual = String::new();
+    let mut actual = Vec::new();
 
     write_beast_attrs(&mut actual, [("mutations", &mutations), ("date", &date)]).unwrap();
 
-    assert_eq!(r#"[&mutations="A55G",date=2003.84]"#, actual);
+    assert_eq!(
+      r#"[&mutations="A55G",date=2003.84]"#,
+      String::from_utf8(actual).unwrap()
+    );
   }
 
   #[test]
   fn test_write_nhx_attrs_in_caller_order() {
     let date = NewickValue::NumberText("2003.84".to_owned());
     let mutations = NewickValue::String("A55G".to_owned());
-    let mut actual = String::new();
+    let mut actual = Vec::new();
 
     write_nhx_attrs(&mut actual, [("mutations", &mutations), ("date", &date)]).unwrap();
 
-    assert_eq!("[&&NHX:mutations=A55G:date=2003.84]", actual);
+    assert_eq!(
+      "[&&NHX:mutations=A55G:date=2003.84]",
+      String::from_utf8(actual).unwrap()
+    );
   }
 
   mod helpers {

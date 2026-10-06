@@ -1,9 +1,7 @@
 use eyre::{Report, WrapErr};
-use log::warn;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
-use std::fmt;
 use std::io::{Read, Write};
 use std::path::Path;
 use treetime_graph::assign_node_names::{AssignedNodeNames, assign_node_names};
@@ -15,38 +13,29 @@ use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::{read_file_with, write_file_with};
 use treetime_utils::make_error;
 use treetime_utils::make_report;
-use util_newick::{NewickGraph, newick_from_reader, write_beast_attrs, write_label, write_nhx_attrs};
+use util_newick::{
+  NewickGraph, NewickReadOptions, newick_from_reader, write_beast_attrs, write_label, write_nhx_attrs,
+};
 pub use util_newick::{NewickValue, NwkStyle};
-
-pub const NEWICK_EXTENSIONS: [&str; 4] = ["nwk", "newick", "tree", "tre"];
 
 pub fn nwk_read_file(filepath: impl AsRef<Path>) -> Result<NwkParse, Report> {
   read_file_with(filepath, nwk_read)
 }
 
 pub fn nwk_read(reader: impl Read) -> Result<NwkParse, Report> {
-  newick_from_reader(reader)
+  newick_from_reader(reader, &NewickReadOptions::default())
     .and_then(|nwk_graph| graph_from_newick(&nwk_graph))
     .wrap_err("When reading Newick")
 }
 
-fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
-  for (idx, node) in nwk_graph.nodes.iter().enumerate() {
-    if node.hybrid.is_some() {
-      return make_error!(
-        "eNewick hybrid/reticulate node #{idx} '{}' is not supported. Treetime requires tree structure.",
-        node.name.as_deref().unwrap_or("")
-      );
-    }
-  }
-
+pub(crate) fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
   let mut graph = Graph::new();
 
   let mut node_keys: Vec<GraphNodeKey> = Vec::with_capacity(nwk_graph.nodes.len());
   let mut nodes: BTreeMap<GraphNodeKey, NwkNodeMeta> = BTreeMap::new();
   let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = BTreeMap::new();
   for nwk_node in &nwk_graph.nodes {
-    let name: Option<&str> = nwk_node.name.as_deref().filter(|n| !n.is_empty());
+    let name: Option<&str> = nwk_node.name().filter(|n| !n.is_empty());
 
     let key = graph.add_node();
     nodes.insert(
@@ -136,9 +125,9 @@ pub fn nwk_write_str(
   options: &NwkWriteOptions,
   comments: &NwkNodeComments,
 ) -> Result<String, Report> {
-  let mut text = String::new();
-  write_nwk_text(&mut text, tree, names, weights, options, comments).wrap_err("When writing Newick")?;
-  Ok(text)
+  let mut buffer = Vec::new();
+  nwk_write(&mut buffer, tree, names, weights, options, comments)?;
+  Ok(String::from_utf8(buffer)?)
 }
 
 pub fn nwk_write(
@@ -149,14 +138,15 @@ pub fn nwk_write(
   options: &NwkWriteOptions,
   comments: &NwkNodeComments,
 ) -> Result<(), Report> {
-  let text = nwk_write_str(tree, names, weights, options, comments)?;
-  writer.write_all(text.as_bytes()).wrap_err("When writing Newick")
+  write_nwk_tree(&mut writer, tree, names, weights, options, comments)
+    .and_then(|()| Ok(writer.write_all(b";")?))
+    .wrap_err("When writing Newick")
 }
 
 pub type NwkNodeComments = BTreeMap<GraphNodeKey, Vec<(String, NewickValue)>>;
 
-fn write_nwk_text(
-  writer: &mut impl fmt::Write,
+pub(crate) fn write_nwk_tree(
+  writer: &mut impl Write,
   tree: &TreeView<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -169,51 +159,44 @@ fn write_nwk_text(
 
     if child_visit < children.len() {
       stack.push((node_key, edge_key, child_visit + 1));
-
-      if child_visit == 0 {
-        write!(writer, "(")?;
-      } else {
-        write!(writer, ",")?;
-      }
-
+      writer.write_all(if child_visit == 0 { b"(" } else { b"," })?;
       let (child_key, child_edge_key) = children[child_visit];
       stack.push((child_key, Some(child_edge_key), 0));
-    } else {
-      if child_visit > 0 {
-        write!(writer, ")")?;
-      }
+      continue;
+    }
 
-      if let Some(name) = &names[&node_key] {
-        write_label(writer, name)?;
-      }
+    if child_visit > 0 {
+      writer.write_all(b")")?;
+    }
 
-      if options.style != NwkStyle::Plain
-        && let Some(node_comments) = comments.get(&node_key)
-        && !node_comments.is_empty()
-      {
-        let attrs = node_comments.iter().map(|(key, value)| (key.as_str(), value));
-        match options.style {
-          NwkStyle::Beast => write_beast_attrs(writer, attrs)?,
-          NwkStyle::Nhx => write_nhx_attrs(writer, attrs)?,
-          NwkStyle::Plain => {},
-        }
-      }
+    if let Some(name) = &names[&node_key] {
+      write_label(writer, name)?;
+    }
 
-      if let Some(weight) = edge_key.and_then(|edge_key| weights[&edge_key]) {
-        write!(writer, ":{}", format_weight(weight, options))?;
+    if options.style != NwkStyle::Plain
+      && let Some(node_comments) = comments.get(&node_key)
+      && !node_comments.is_empty()
+    {
+      let attrs = node_comments.iter().map(|(key, value)| (key.as_str(), value));
+      match options.style {
+        NwkStyle::Beast => write_beast_attrs(writer, attrs)?,
+        NwkStyle::Nhx => write_nhx_attrs(writer, attrs)?,
+        NwkStyle::Plain => {},
       }
     }
+
+    if let Some(weight) = edge_key.and_then(|edge_key| weights[&edge_key]) {
+      if !weight.is_finite() {
+        let name = names[&node_key].as_deref().unwrap_or("");
+        return make_error!("The branch above node '{name}' has the length {weight}, which Newick cannot represent");
+      }
+      write!(writer, ":{}", format_weight(weight, options))?;
+    }
   }
-
-  write!(writer, ";")?;
-
   Ok(())
 }
 
 pub(crate) fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
-  if !weight.is_finite() {
-    warn!("When converting graph to Newick: Weight is invalid: '{weight}'");
-  }
   float_to_digits(
     weight,
     options.weight_significant_digits.or(Some(3)),

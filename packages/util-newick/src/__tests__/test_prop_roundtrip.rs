@@ -1,126 +1,183 @@
 #[cfg(test)]
 mod tests {
   use crate::parse::newick_from_string;
-  use crate::types::{NewickEdgeData, NewickGraph, NewickNodeData, NewickValue, NewickWriteOptions, NwkStyle};
+  use crate::types::{NewickReadOptions, NewickWriteOptions, NwkStyle};
   use crate::write::newick_to_string;
+  use generators::{AnnotationAlphabet, arb_graph, without_annotations};
   use proptest::prelude::*;
-  use std::collections::BTreeMap;
-
-  fn arb_branch_length() -> impl Strategy<Value = Option<f64>> {
-    prop_oneof![Just(None), (0.0001_f64..100.0).prop_map(Some),]
-  }
-
-  fn arb_value() -> impl Strategy<Value = NewickValue> {
-    prop_oneof![
-      any::<bool>().prop_map(NewickValue::Boolean),
-      (0.001_f64..1000.0).prop_map(NewickValue::Number),
-      "[A-Za-z]{1,6}".prop_map(NewickValue::String),
-    ]
-  }
-
-  fn arb_attrs() -> impl Strategy<Value = BTreeMap<String, NewickValue>> {
-    proptest::collection::btree_map("[a-z]{1,4}", arb_value(), 0..3)
-  }
-
-  fn arb_leaf() -> impl Strategy<Value = (NewickNodeData, NewickEdgeData)> {
-    (arb_branch_length(), arb_attrs()).prop_flat_map(|(bl, branch_attrs)| {
-      let branch_attrs = if bl.is_some() { branch_attrs } else { BTreeMap::new() };
-      let name_strat = "[A-Za-z][A-Za-z0-9_]{0,8}".prop_map(Some);
-      (name_strat, Just(bl), Just(branch_attrs), arb_attrs()).prop_map(|(name, bl, branch_attrs, node_attrs)| {
-        (
-          NewickNodeData {
-            name,
-            confidence: None,
-            node_attrs,
-            raw_comments: Vec::new(),
-            hybrid: None,
-            children: Vec::new(),
-          },
-          NewickEdgeData {
-            branch_length: bl,
-            branch_attrs,
-            raw_comments: Vec::new(),
-            is_acceptor: false,
-          },
-        )
-      })
-    })
-  }
-
-  fn arb_tree() -> impl Strategy<Value = NewickGraph> {
-    proptest::collection::vec(arb_leaf(), 2..7).prop_map(|leaves| {
-      let mut g = NewickGraph::new();
-      let root = g.add_node(NewickNodeData::new());
-      g.root = root;
-      for (i, (mut node_data, edge_data)) in leaves.into_iter().enumerate() {
-        node_data.name = Some(format!("T{i}_{}", node_data.name.unwrap_or_default()));
-        let child = g.add_node(node_data);
-        g.add_edge(root, child, edge_data);
-      }
-      g
-    })
-  }
 
   proptest! {
     #[test]
-    fn test_prop_roundtrip_beast(g in arb_tree()) {
-      let opts = NewickWriteOptions {
-        style: NwkStyle::Beast,
-        significant_digits: None,
-        decimal_digits: None,
-      };
-      let written = newick_to_string(&g, &opts).unwrap();
-      let parsed = newick_from_string(&written).unwrap();
-      prop_assert_eq!(&g, &parsed, "Round-trip failed.\nWritten: {}", written);
+    fn test_prop_roundtrip_beast(graph in arb_graph(AnnotationAlphabet::Beast)) {
+      let written = newick_to_string(&graph, &options(NwkStyle::Beast)).unwrap();
+      let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
+      prop_assert!(graph.eq_ordered(&parsed), "Round trip changed the graph.\nWritten: {written}\nBefore: {graph:#?}\nAfter: {parsed:#?}");
     }
 
     #[test]
-    fn test_prop_roundtrip_nhx(g in arb_tree()) {
-      let opts = NewickWriteOptions {
-        style: NwkStyle::Nhx,
-        significant_digits: None,
-        decimal_digits: None,
-      };
-      let written = newick_to_string(&g, &opts).unwrap();
-      let parsed = newick_from_string(&written).unwrap();
-      prop_assert_eq!(g.nodes.len(), parsed.nodes.len());
-      prop_assert_eq!(g.edges.len(), parsed.edges.len());
-      for (e1, e2) in g.edges.iter().zip(parsed.edges.iter()) {
-        match (e1.data.branch_length, e2.data.branch_length) {
-          (Some(a), Some(b)) => {
-            prop_assert!((a - b).abs() < 1e-10,
-              "Branch length mismatch: {a} vs {b}");
-          }
-          (None, None) => {}
-          _ => prop_assert!(false, "Branch length presence mismatch"),
+    fn test_prop_roundtrip_nhx(graph in arb_graph(AnnotationAlphabet::Nhx)) {
+      let written = newick_to_string(&graph, &options(NwkStyle::Nhx)).unwrap();
+      let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
+      prop_assert!(graph.eq_ordered(&parsed), "Round trip changed the graph.\nWritten: {written}\nBefore: {graph:#?}\nAfter: {parsed:#?}");
+    }
+
+    #[test]
+    fn test_prop_roundtrip_plain_drops_only_annotations(graph in arb_graph(AnnotationAlphabet::Beast)) {
+      let written = newick_to_string(&graph, &options(NwkStyle::Plain)).unwrap();
+      let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
+      let expected = without_annotations(&graph);
+      prop_assert!(expected.eq_ordered(&parsed), "Round trip changed the graph.\nWritten: {written}");
+    }
+
+    #[test]
+    fn test_prop_roundtrip_write_idempotent(graph in arb_graph(AnnotationAlphabet::Beast)) {
+      let first = newick_to_string(&graph, &options(NwkStyle::Beast)).unwrap();
+      let parsed = newick_from_string(&first, &NewickReadOptions::default()).unwrap();
+      let second = newick_to_string(&parsed, &options(NwkStyle::Beast)).unwrap();
+      prop_assert_eq!(first, second);
+    }
+  }
+
+  fn options(style: NwkStyle) -> NewickWriteOptions {
+    NewickWriteOptions {
+      style,
+      significant_digits: None,
+      decimal_digits: None,
+    }
+  }
+
+  mod generators {
+    use crate::types::{NewickEdgeData, NewickGraph, NewickLabel, NewickNodeData, NewickValue};
+    use proptest::collection::{btree_map, vec};
+    use proptest::prelude::*;
+    use std::collections::BTreeMap;
+
+    #[derive(Clone, Copy, Debug)]
+    pub(super) enum AnnotationAlphabet {
+      Beast,
+      Nhx,
+    }
+
+    #[derive(Clone, Debug)]
+    pub(super) struct GenNode {
+      node: NewickNodeData,
+      children: Vec<(GenNode, NewickEdgeData)>,
+    }
+
+    pub(super) fn arb_graph(alphabet: AnnotationAlphabet) -> impl Strategy<Value = NewickGraph> {
+      let leaf = arb_node(alphabet, false).prop_map(|node| GenNode {
+        node,
+        children: Vec::new(),
+      });
+      let tree = leaf.prop_recursive(4, 40, 4, move |inner| {
+        (arb_node(alphabet, true), vec((inner, arb_edge(alphabet)), 1..4))
+          .prop_map(|(node, children)| GenNode { node, children })
+      });
+      tree.prop_map(|root| {
+        let mut graph = NewickGraph::new();
+        graph.root = add_subtree(&mut graph, root);
+        graph
+      })
+    }
+
+    pub(super) fn without_annotations(graph: &NewickGraph) -> NewickGraph {
+      let mut graph = graph.clone();
+      for node in &mut graph.nodes {
+        node.node_attrs.clear();
+        node.raw_comments.clear();
+      }
+      for edge in &mut graph.edges {
+        edge.data.branch_attrs.clear();
+        edge.data.raw_comments.clear();
+      }
+      graph
+    }
+
+    fn add_subtree(graph: &mut NewickGraph, node: GenNode) -> usize {
+      let children: Vec<(usize, NewickEdgeData)> = node
+        .children
+        .into_iter()
+        .map(|(child, edge)| (add_subtree(graph, child), edge))
+        .collect();
+      let idx = graph.add_node(node.node);
+      for (child, edge) in children {
+        graph.add_edge(idx, child, edge);
+      }
+      idx
+    }
+
+    fn arb_node(alphabet: AnnotationAlphabet, is_internal: bool) -> impl Strategy<Value = NewickNodeData> {
+      (arb_label(is_internal), arb_attrs(alphabet), arb_raw_comments()).prop_map(|(label, node_attrs, raw_comments)| {
+        NewickNodeData {
+          label,
+          node_attrs,
+          raw_comments,
+          hybrid: None,
+          children: Vec::new(),
         }
+      })
+    }
+
+    fn arb_edge(alphabet: AnnotationAlphabet) -> impl Strategy<Value = NewickEdgeData> {
+      (
+        proptest::option::of(arb_finite()),
+        arb_attrs(alphabet),
+        arb_raw_comments(),
+      )
+        .prop_map(|(branch_length, branch_attrs, raw_comments)| NewickEdgeData {
+          branch_length,
+          branch_attrs,
+          raw_comments,
+          is_acceptor: false,
+        })
+    }
+
+    fn arb_label(is_internal: bool) -> BoxedStrategy<Option<NewickLabel>> {
+      let any_name = "\\PC{0,8}";
+      if is_internal {
+        prop_oneof![
+          Just(None),
+          arb_finite().prop_map(|support| Some(NewickLabel::Support(support))),
+          any_name
+            .prop_filter("an internal name that parses as a number is a support value", |name| {
+              name.parse::<f64>().is_err()
+            })
+            .prop_map(|name| Some(NewickLabel::Name(name))),
+        ]
+        .boxed()
+      } else {
+        prop_oneof![Just(None), any_name.prop_map(|name| Some(NewickLabel::Name(name)))].boxed()
       }
     }
 
-    #[test]
-    fn test_prop_idempotent_write_beast(g in arb_tree()) {
-      let opts = NewickWriteOptions {
-        style: NwkStyle::Beast,
-        significant_digits: None,
-        decimal_digits: None,
-      };
-      let w1 = newick_to_string(&g, &opts).unwrap();
-      let parsed = newick_from_string(&w1).unwrap();
-      let w2 = newick_to_string(&parsed, &opts).unwrap();
-      prop_assert_eq!(w1, w2, "Write not idempotent");
+    fn arb_attrs(alphabet: AnnotationAlphabet) -> BoxedStrategy<BTreeMap<String, NewickValue>> {
+      match alphabet {
+        AnnotationAlphabet::Beast => btree_map("\\PC{1,6}", arb_beast_value(), 0..3).boxed(),
+        AnnotationAlphabet::Nhx => btree_map(
+          "[A-Za-z0-9_]{1,6}",
+          "[^:=\\[\\]\"\\s]{1,6}".prop_map(NewickValue::String),
+          0..3,
+        )
+        .boxed(),
+      }
     }
 
-    #[test]
-    fn test_prop_idempotent_write_plain(g in arb_tree()) {
-      let opts = NewickWriteOptions {
-        style: NwkStyle::Plain,
-        significant_digits: None,
-        decimal_digits: None,
-      };
-      let w1 = newick_to_string(&g, &opts).unwrap();
-      let parsed = newick_from_string(&w1).unwrap();
-      let w2 = newick_to_string(&parsed, &opts).unwrap();
-      prop_assert_eq!(w1, w2, "Write not idempotent");
+    fn arb_beast_value() -> impl Strategy<Value = NewickValue> {
+      let scalar = prop_oneof![
+        any::<bool>().prop_map(NewickValue::Boolean),
+        arb_finite().prop_map(NewickValue::Number),
+        "[0-9]{1,3}\\.[0-9]{0,2}0".prop_map(NewickValue::NumberText),
+        "\\PC{0,8}".prop_map(NewickValue::String),
+      ];
+      scalar.prop_recursive(2, 8, 3, |inner| vec(inner, 0..3).prop_map(NewickValue::Array))
+    }
+
+    fn arb_raw_comments() -> impl Strategy<Value = Vec<String>> {
+      vec("\\[[a-z ]{0,6}(\\[[a-z]{0,3}\\])?\\]", 0..2)
+    }
+
+    fn arb_finite() -> impl Strategy<Value = f64> {
+      proptest::num::f64::NORMAL | proptest::num::f64::SUBNORMAL | proptest::num::f64::ZERO
     }
   }
 }

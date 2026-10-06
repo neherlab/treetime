@@ -226,14 +226,11 @@ mod tests {
   }
 
   #[test]
-  fn test_nwk_rejects_enewick_hybrid() {
-    let result = nwk_read(b"((A,(B)x#H1)c,(x#H1,C)d);".as_slice());
-    let err = result.unwrap_err();
-    let msg = format!("{err:?}");
-    assert!(
-      msg.contains("eNewick") || msg.contains("reticulate") || msg.contains("hybrid"),
-      "Error should mention eNewick/hybrid/reticulate, got: {msg}"
-    );
+  fn test_nwk_reads_hybrid_marker_as_part_of_name() -> Result<(), Report> {
+    let parse = nwk_read(b"((A,(B)x#H1)c,(x#H1,C)d);".as_slice())?;
+
+    assert_eq!(vec!["x#H1".to_owned()], parse.duplicate_names);
+    Ok(())
   }
 
   #[test]
