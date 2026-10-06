@@ -185,17 +185,18 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::quoted_semicolon(   Rule::tree_extent,       "(A,'B;C');(D);",           Some("(A,'B;C');"))]
-  #[case::comment_semicolon(  Rule::tree_extent,       "(A[x;y]);",                Some("(A[x;y]);"))]
-  #[case::string_bracket(     Rule::tree_extent,       "(A[&a=\"x];y\"]);(B);",   Some("(A[&a=\"x];y\"]);"))]
-  #[case::apostrophe_in_name( Rule::tree_extent,       "(it's,B);(C,D'x);",        Some("(it's,B);"))]
-  #[case::open_comment(       Rule::tree_extent,       "(A[x;",                    None)]
-  #[case::open_quote(         Rule::tree_extent,       "(A,'x;",                   None)]
-  #[case::open_string(        Rule::tree_extent,       "(A[&a=\"x];",             None)]
-  #[case::final_open_comment( Rule::tree_extent_final, "(A[x;",                    Some("(A[x;"))]
-  #[case::no_semicolon(       Rule::tree_extent_final, "(A,B)",                    None)]
+  #[case::quoted_semicolon(   Rule::tree_scan,       "(A,'B;C');(D);",           Some("(A,'B;C')"))]
+  #[case::comment_semicolon(  Rule::tree_scan,       "(A[x;y]);",                Some("(A[x;y])"))]
+  #[case::string_bracket(     Rule::tree_scan,       "(A[&a=\"x];y\"]);(B);",   Some("(A[&a=\"x];y\"])"))]
+  #[case::nhx_quote(          Rule::tree_scan,       "(A[&&NHX:S=a\"b];(B\");", Some("(A[&&NHX:S=a\"b]"))]
+  #[case::apostrophe_in_name( Rule::tree_scan,       "(it's,B);(C,D'x);",        Some("(it's,B)"))]
+  #[case::open_comment(       Rule::tree_scan,       "(A[x;",                    Some("(A"))]
+  #[case::open_quote(         Rule::tree_scan,       "(A,'x;",                   Some("(A,"))]
+  #[case::open_string(        Rule::tree_scan,       "(A[&a=\"x];",             Some("(A"))]
+  #[case::final_open_comment( Rule::tree_scan_final, "(A[x;",                    Some("(A[x"))]
+  #[case::final_no_semicolon( Rule::tree_scan_final, "(A,B)",                    Some("(A,B)"))]
   #[trace]
-  fn test_grammar_tree_extent(#[case] rule: Rule, #[case] input: &str, #[case] expected: Option<&str>) {
+  fn test_grammar_tree_scan(#[case] rule: Rule, #[case] input: &str, #[case] expected: Option<&str>) {
     assert_eq!(expected.map(str::to_owned), prefix(rule, input));
   }
 

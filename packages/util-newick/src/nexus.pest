@@ -9,9 +9,9 @@ boundary = _{ !(ASCII_ALPHANUMERIC | "_") }
 header = @{ "#" ~ ^"nexus" ~ boundary }
 nexus_header = { SOI ~ bom? ~ WHITESPACE* ~ header }
 
-command_extent       = @{ (quoted_label | scan_comment_strict | scan_word | !(";" | "[" | "'") ~ ANY)* ~ ";" }
-command_extent_final = @{ (quoted_label | scan_comment | scan_word | !";" ~ ANY)* ~ ";" }
-trivia_only          = { SOI ~ EOI }
+command_scan       = @{ scan_text }
+command_scan_final = @{ scan_text_final }
+trivia_only        = { SOI ~ EOI }
 
 begin_keyword      = @{ ^"begin" ~ boundary }
 end_keyword        = @{ (^"endblock" | ^"end") ~ boundary }

@@ -76,7 +76,7 @@ impl<'i> Builder<'_, '_, 'i> {
         Ok(())
       },
       Rule::label | Rule::network_label => {
-        self.slot.label_location = Some(self.context.locate(&token));
+        self.slot.label_offset = token.as_span().start();
         self.slot.label = Some(read_label(token, self.context)?);
         Ok(())
       },
@@ -166,8 +166,8 @@ impl<'i> Builder<'_, '_, 'i> {
     let mut node = NewickNodeData::new();
     let mut hybrid = None;
     if let Some(label) = slot.label {
-      let location = slot.label_location.unwrap_or(Location::START);
-      let decoded = self.decode_label(label, is_internal, field_support, location)?;
+      let offset = slot.label_offset;
+      let decoded = self.decode_label(label, is_internal, field_support, offset)?;
       if let Some(name) = decoded.name {
         node = node.with_name(name);
       }
@@ -177,7 +177,7 @@ impl<'i> Builder<'_, '_, 'i> {
       if let Some(tag) = decoded.hybrid {
         node = node.with_hybrid(tag.clone());
         edge = edge.with_acceptor(decoded.is_acceptor);
-        hybrid = Some((tag, location));
+        hybrid = Some((tag, offset));
       }
     }
     let has_label = node.has_label();
@@ -194,8 +194,8 @@ impl<'i> Builder<'_, '_, 'i> {
       );
     node.comments_mut().extend(comments);
     let children = slot.children.unwrap_or_default();
-    let idx = if let Some((tag, location)) = hybrid {
-      self.merge_hybrid(tag, node, !children.is_empty(), location)?
+    let idx = if let Some((tag, offset)) = hybrid {
+      self.merge_hybrid(tag, node, !children.is_empty(), offset)?
     } else {
       self.nodes.push(node);
       self.nodes.len() - 1
@@ -238,7 +238,7 @@ impl<'i> Builder<'_, '_, 'i> {
     label: LabelToken,
     is_internal: bool,
     field_support: bool,
-    location: Location,
+    offset: usize,
   ) -> Result<DecodedLabel, NewickError> {
     let mut decoded = DecodedLabel {
       name: label.name,
@@ -254,6 +254,7 @@ impl<'i> Builder<'_, '_, 'i> {
       },
       None if is_internal && self.context.options.internal_label == InternalLabel::Support => {
         let message = format!("The internal label {:?} is not a support value", label.text);
+        let location = self.context.index.locate(offset);
         self
           .context
           .tolerate_at(NewickErrorKind::Structure, location, message)?;
@@ -268,7 +269,7 @@ impl<'i> Builder<'_, '_, 'i> {
     hybrid: NewickHybrid,
     node: NewickNodeData,
     has_children: bool,
-    location: Location,
+    offset: usize,
   ) -> Result<usize, NewickError> {
     let tag = hybrid.tag(false);
     let NewickHybrid { kind, index } = hybrid;
@@ -282,7 +283,7 @@ impl<'i> Builder<'_, '_, 'i> {
     if has_children && entry.has_children {
       return Err(NewickError::new(
         NewickErrorKind::Structure,
-        location,
+        self.context.index.locate(offset),
         format!("The hybrid node {tag} has children in more than one of its occurrences"),
       ));
     }
@@ -296,7 +297,7 @@ impl<'i> Builder<'_, '_, 'i> {
       (Some(previous), Some(name)) => {
         return Err(NewickError::new(
           NewickErrorKind::Structure,
-          location,
+          self.context.index.locate(offset),
           format!("The occurrences of the hybrid node {tag} have different names: {previous:?} and {name:?}"),
         ));
       },
@@ -311,7 +312,7 @@ struct Slot {
   before_label: Vec<NewickComment>,
   after_label: Vec<NewickComment>,
   label: Option<LabelToken>,
-  label_location: Option<Location>,
+  label_offset: usize,
   fields: Vec<FieldSlot>,
   children: Option<Vec<(usize, NewickEdgeData)>>,
 }

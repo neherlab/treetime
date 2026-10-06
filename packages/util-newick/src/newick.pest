@@ -19,7 +19,7 @@ number = @{ ("+" | "-")? ~ (ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)? | "." ~ ASCII_D
 
 delimiter  = _{ "(" | ")" | "[" | "]" | "," | ";" | ":" }
 label_end  = _{ WHITESPACE | delimiter | EOI }
-label_char = _{ !(delimiter | WHITESPACE) ~ ANY }
+label_char = _{ ASCII_ALPHANUMERIC | !(delimiter | WHITESPACE) ~ ANY }
 
 // A support value, or several separated by '/' (IQ-TREE writes "80.5/95").
 support_label = ${ number ~ ("/" ~ number)* ~ &label_end }
@@ -44,7 +44,7 @@ malformed_annotation = @{ &"[&" ~ plain_comment }
 beast_comment   = ${ "[&" ~ beast_ws ~ (beast_pair ~ (beast_ws ~ "," ~ beast_ws ~ beast_pair)*)? ~ beast_ws ~ "]" }
 beast_pair      = ${ beast_key ~ (beast_ws ~ "=" ~ beast_ws ~ beast_value)? }
 beast_key       = _{ double_quoted | single_quoted | beast_bare_key }
-beast_bare_key  = @{ !"&" ~ (!("," | "=" | "[" | "]" | "{" | "}" | "\"" | "'" | WHITESPACE) ~ ANY)+ }
+beast_bare_key  = @{ !"&" ~ (ASCII_ALPHANUMERIC | !("," | "=" | "[" | "]" | "{" | "}" | "\"" | "'" | WHITESPACE) ~ ANY)+ }
 beast_ws        = _{ WHITESPACE* }
 beast_value_end = _{ beast_ws ~ ("," | "]" | "}") }
 beast_value     = _{ beast_array | beast_scalar }
@@ -52,7 +52,7 @@ beast_scalar    = _{ double_quoted | single_quoted | (color | boolean | number) 
 single_quoted   = @{ "'" ~ ("''" | !"'" ~ ANY)* ~ "'" }
 color           = @{ "#" ~ ASCII_HEX_DIGIT{6} }
 boolean         = @{ ^"true" | ^"false" }
-bare_string     = @{ !("\"" | "'") ~ (!beast_value_end ~ !("[" | "{") ~ ANY)+ }
+bare_string     = @{ !("\"" | "'") ~ (ASCII_ALPHANUMERIC | !beast_value_end ~ !("[" | "{") ~ ANY)+ }
 
 // An array is a flat sequence of tokens as well. The parser stack counts the
 // open inner arrays, so an inner '}' closes the innermost one and the '}' found
@@ -65,13 +65,13 @@ beast_array_next  = _{ "," ~ beast_ws ~ ((PUSH(array_open) ~ beast_ws)+ ~ (beast
 
 nhx_comment = ${ "[&&" ~ ^"nhx" ~ (":" ~ nhx_tag)* ~ ":"? ~ "]" }
 nhx_tag     = ${ nhx_key ~ ("=" ~ nhx_value)? }
-nhx_key     = @{ (!(":" | "=" | "[" | "]" | ">") ~ ANY)+ }
+nhx_key     = @{ (ASCII_ALPHANUMERIC | !(":" | "=" | "[" | "]" | ">") ~ ANY)+ }
 nhx_value   = ${ nhx_part ~ (">" ~ nhx_part)* }
-nhx_part    = @{ (!(":" | "=" | "[" | "]" | ">") ~ ANY)* }
+nhx_part    = @{ (ASCII_ALPHANUMERIC | !(":" | "=" | "[" | "]" | ">") ~ ANY)* }
 
 mrbayes_comment = ${ "[&" ~ mrbayes_kind ~ " " ~ mrbayes_token ~ (WHITESPACE+ ~ mrbayes_token)* ~ WHITESPACE* ~ "]" }
 mrbayes_kind    = @{ "E" | "B" | "N" }
-mrbayes_token   = @{ (!(WHITESPACE | "[" | "]") ~ ANY)+ }
+mrbayes_token   = @{ (ASCII_ALPHANUMERIC | !(WHITESPACE | "[" | "]") ~ ANY)+ }
 
 // Comments before the first token of a tree
 
@@ -124,20 +124,21 @@ rich_items    = _{ rich_open* ~ rich_tail ~ (comma ~ rich_open* ~ rich_tail | cl
 rich_preamble = _{ (rooting | weight | rich_comment)* }
 
 // Start rules: one strict and one tolerant form per dialect. The tolerant form
-// also accepts a byte order mark and a missing final ';'.
+// also accepts a byte order mark and a missing final ';'. Comments after the
+// final ';' belong to no node.
 
-classic_strict   = { SOI ~ !bom ~ classic_items ~ end ~ EOI }
-classic_tolerant = { SOI ~ bom? ~ classic_items ~ end? ~ EOI }
-beast_strict     = { SOI ~ !bom ~ beast_preamble ~ beast_items ~ end ~ EOI }
-beast_tolerant   = { SOI ~ bom? ~ beast_preamble ~ beast_items ~ end? ~ EOI }
-mrbayes_strict   = { SOI ~ !bom ~ mrbayes_preamble ~ mrbayes_items ~ end ~ EOI }
-mrbayes_tolerant = { SOI ~ bom? ~ mrbayes_preamble ~ mrbayes_items ~ end? ~ EOI }
-nhx_strict       = { SOI ~ !bom ~ nhx_items ~ end ~ EOI }
-nhx_tolerant     = { SOI ~ bom? ~ nhx_items ~ end? ~ EOI }
-enewick_strict   = { SOI ~ !bom ~ enewick_items ~ end ~ EOI }
-enewick_tolerant = { SOI ~ bom? ~ enewick_items ~ end? ~ EOI }
-rich_strict      = { SOI ~ !bom ~ rich_preamble ~ rich_items ~ end ~ EOI }
-rich_tolerant    = { SOI ~ bom? ~ rich_preamble ~ rich_items ~ end? ~ EOI }
+classic_strict   = { SOI ~ !bom ~ classic_items ~ end ~ scan_comment* ~ EOI }
+classic_tolerant = { SOI ~ bom? ~ classic_items ~ end? ~ scan_comment* ~ EOI }
+beast_strict     = { SOI ~ !bom ~ beast_preamble ~ beast_items ~ end ~ scan_comment* ~ EOI }
+beast_tolerant   = { SOI ~ bom? ~ beast_preamble ~ beast_items ~ end? ~ scan_comment* ~ EOI }
+mrbayes_strict   = { SOI ~ !bom ~ mrbayes_preamble ~ mrbayes_items ~ end ~ scan_comment* ~ EOI }
+mrbayes_tolerant = { SOI ~ bom? ~ mrbayes_preamble ~ mrbayes_items ~ end? ~ scan_comment* ~ EOI }
+nhx_strict       = { SOI ~ !bom ~ nhx_items ~ end ~ scan_comment* ~ EOI }
+nhx_tolerant     = { SOI ~ bom? ~ nhx_items ~ end? ~ scan_comment* ~ EOI }
+enewick_strict   = { SOI ~ !bom ~ enewick_items ~ end ~ scan_comment* ~ EOI }
+enewick_tolerant = { SOI ~ bom? ~ enewick_items ~ end? ~ scan_comment* ~ EOI }
+rich_strict      = { SOI ~ !bom ~ rich_preamble ~ rich_items ~ end ~ scan_comment* ~ EOI }
+rich_tolerant    = { SOI ~ bom? ~ rich_preamble ~ rich_items ~ end? ~ scan_comment* ~ EOI }
 
 // One comment alone, in the comment rule of each dialect (NEXUS tree command comments)
 
@@ -164,11 +165,9 @@ nhx_color_exact     = ${ SOI ~ color_channel ~ "." ~ color_channel ~ "." ~ color
 color_channel       = @{ ASCII_DIGIT{1, 3} }
 plain_comment_exact = @{ SOI ~ plain_comment ~ EOI }
 
-// Scanner rules for reading tree by tree: the text of one tree up to its ';',
-// and input that holds no tree. While more input may follow, a comment or a
-// quoted label must be complete, because its end may hide a ';'. At the end of
-// the input, an unclosed '[' or quote is read as an ordinary character.
+// Scanner rules for reading tree by tree: the text of a tree before its ';', and
+// input that holds no tree.
 
-tree_extent       = @{ (quoted_label | scan_comment_strict | scan_word | !(";" | "[" | "'") ~ ANY)* ~ ";" }
-tree_extent_final = @{ (quoted_label | scan_comment | scan_word | !";" ~ ANY)* ~ ";" }
-trivia_only       = { SOI ~ bom? ~ scan_comment* ~ EOI }
+tree_scan       = @{ scan_text }
+tree_scan_final = @{ scan_text_final }
+trivia_only     = { SOI ~ bom? ~ scan_comment* ~ EOI }

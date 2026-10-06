@@ -61,8 +61,10 @@ pub(crate) const fn rule_name(rule: Rule) -> &'static str {
     Rule::WHITESPACE
     | Rule::boundary
     | Rule::scan_word
-    | Rule::command_extent
-    | Rule::command_extent_final
+    | Rule::scan_text
+    | Rule::scan_text_final
+    | Rule::command_scan
+    | Rule::command_scan_final
     | Rule::trivia_only
     | Rule::command_strict
     | Rule::command_tolerant => "input",

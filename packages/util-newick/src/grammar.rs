@@ -160,8 +160,10 @@ pub(crate) const fn rule_name(rule: Rule) -> &'static str {
     | Rule::rich_strict
     | Rule::rich_tolerant
     | Rule::scan_word
-    | Rule::tree_extent
-    | Rule::tree_extent_final
+    | Rule::scan_text
+    | Rule::scan_text_final
+    | Rule::tree_scan
+    | Rule::tree_scan_final
     | Rule::trivia_only => "tree",
   }
 }

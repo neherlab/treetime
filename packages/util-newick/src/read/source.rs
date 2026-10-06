@@ -1,4 +1,5 @@
 use crate::read::error::{Location, NewickError, NewickErrorKind};
+use crate::read::options::ReadMode;
 use std::io::{self, Read};
 use std::str;
 
@@ -91,4 +92,37 @@ pub(crate) struct Window<'b> {
   pub(crate) text: &'b str,
   pub(crate) at_end: bool,
   pub(crate) is_invalid: bool,
+}
+
+pub(crate) enum Scan<'t> {
+  Found(&'t str),
+  Unterminated(&'t str),
+  Trivia,
+  NeedMore,
+}
+
+pub(crate) fn scan_to_semicolon<'t>(
+  text: &'t str,
+  at_end: bool,
+  mode: ReadMode,
+  scanned: &mut usize,
+  scan: impl Fn(&str, bool) -> usize,
+  is_trivia: impl Fn(&str) -> bool,
+) -> Scan<'t> {
+  let start = (*scanned).min(text.len());
+  let stop = start + scan(text.get(start..).unwrap_or_default(), at_end);
+  if let Some(found) = text.get(..=stop).filter(|found| found.ends_with(';')) {
+    *scanned = 0;
+    return Scan::Found(found);
+  }
+  if !at_end {
+    *scanned = stop;
+    return Scan::NeedMore;
+  }
+  *scanned = 0;
+  match mode {
+    _ if is_trivia(text) => Scan::Trivia,
+    ReadMode::Strict => Scan::Unterminated(text),
+    ReadMode::Tolerant => Scan::Found(text),
+  }
 }

@@ -10,7 +10,7 @@ use crate::read::context::MapContext;
 use crate::read::error::{Location, NewickError, NewickErrorKind, NewickWarning, TextIndex};
 use crate::read::options::{NewickReadOptions, ReadMode};
 use crate::read::select::{read_tree_text, syntax_error};
-use crate::read::source::TextSource;
+use crate::read::source::{Scan, TextSource, scan_to_semicolon};
 use pest::error::{Error, ErrorVariant, InputLocation};
 use pest::iterators::Pair;
 use std::collections::{BTreeMap, BTreeSet};
@@ -39,6 +39,7 @@ pub fn nexus_trees<R: Read>(reader: R, options: NewickReadOptions) -> NexusTrees
     source: TextSource::new(reader),
     options,
     state: BlockState::default(),
+    scanned: 0,
     has_header: false,
     done: false,
     skipped: Vec::new(),
@@ -50,6 +51,7 @@ pub struct NexusTrees<R> {
   source: TextSource<R>,
   options: NewickReadOptions,
   state: BlockState,
+  scanned: usize,
   has_header: bool,
   done: bool,
   skipped: Vec<NexusCommand>,
@@ -81,8 +83,15 @@ impl<R: Read> NexusTrees<R> {
           Header::NeedMore => {},
         }
       } else {
-        match scan_command(window.text, window.at_end, self.options.mode) {
-          CommandScan::Command(slice) => {
+        match scan_to_semicolon(
+          window.text,
+          window.at_end,
+          self.options.mode,
+          &mut self.scanned,
+          scan_prefix,
+          |text| matches(Rule::trivia_only, text),
+        ) {
+          Scan::Found(slice) => {
             let (len, next) = (slice.len(), location.advanced_by(slice));
             let mut reader = CommandReader {
               options: &self.options,
@@ -98,16 +107,16 @@ impl<R: Read> NexusTrees<R> {
               Err(error) => return Some(Err(error)),
             }
           },
-          CommandScan::Unterminated(rest) => {
+          Scan::Unterminated(rest) => {
             let at = location.advanced_by(rest.trim_end());
             return Some(Err(NewickError::new(
-              NewickErrorKind::Nexus,
+              NewickErrorKind::Incomplete,
               at,
               "The command does not end with ';'",
             )));
           },
-          CommandScan::Done => return self.finish(location.advanced_by(window.text)).err().map(Err),
-          CommandScan::NeedMore => {},
+          Scan::Trivia => return self.finish(location.advanced_by(window.text)).err().map(Err),
+          Scan::NeedMore => {},
         }
       }
       if let Err(error) = self.source.fill() {
@@ -188,30 +197,16 @@ fn read_header(text: &str, at_end: bool, location: Location) -> Header {
   ))
 }
 
-enum CommandScan<'t> {
-  Command(&'t str),
-  Unterminated(&'t str),
-  Done,
-  NeedMore,
-}
-
-fn scan_command(text: &str, at_end: bool, mode: ReadMode) -> CommandScan<'_> {
+fn scan_prefix(text: &str, at_end: bool) -> usize {
   let rule = if at_end {
-    Rule::command_extent_final
+    Rule::command_scan_final
   } else {
-    Rule::command_extent
+    Rule::command_scan
   };
-  if let Ok(mut pairs) = parse(rule, text)
-    && let Some(extent) = pairs.next()
-  {
-    return CommandScan::Command(extent.as_str());
-  }
-  match (at_end, mode) {
-    (false, _) => CommandScan::NeedMore,
-    (true, _) if matches(Rule::trivia_only, text) => CommandScan::Done,
-    (true, ReadMode::Strict) => CommandScan::Unterminated(text),
-    (true, ReadMode::Tolerant) => CommandScan::Command(text),
-  }
+  parse(rule, text)
+    .ok()
+    .and_then(|mut pairs| pairs.next())
+    .map_or(0, |prefix| prefix.as_str().len())
 }
 
 struct CommandReader<'r> {

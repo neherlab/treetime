@@ -55,6 +55,7 @@ impl fmt::Display for NewickError {
       | NewickErrorKind::Nexus
       | NewickErrorKind::InvalidUtf8
       | NewickErrorKind::MultipleTrees
+      | NewickErrorKind::Incomplete
       | NewickErrorKind::Options
       | NewickErrorKind::Io => write!(f, "line {}, column {}: {}", self.line, self.column, self.message),
     }
@@ -72,6 +73,7 @@ pub enum NewickErrorKind {
   Nexus,
   InvalidUtf8,
   MultipleTrees,
+  Incomplete,
   Options,
   Io,
   NoDialect(Vec<DialectAttempt>),
