@@ -164,7 +164,7 @@ mod tests {
     let result = parse_step(json!({ "name": "x", "debug": {} }));
     assert_error!(
       result,
-      "in pipeline step `x`: unknown command `debug`; valid values: `ancestral`, `clock`, `mugration`, `optimize`, `prune`, `timetree`"
+      "in pipeline step `x`: unknown command `debug`; valid values: `ancestral`, `clock`, `homoplasy`, `mugration`, `optimize`, `prune`, `timetree`"
     );
   }
 
@@ -173,7 +173,7 @@ mod tests {
     let result = parse_step(json!({ "name": "x", "timtree": {} }));
     assert_error!(
       result,
-      "in pipeline step `x`: unknown command `timtree`; did you mean `timetree`? Valid values: `ancestral`, `clock`, `mugration`, `optimize`, `prune`, `timetree`"
+      "in pipeline step `x`: unknown command `timtree`; did you mean `timetree`? Valid values: `ancestral`, `clock`, `homoplasy`, `mugration`, `optimize`, `prune`, `timetree`"
     );
   }
 
@@ -191,7 +191,7 @@ mod tests {
     let result = parse_step(json!({ "name": "x" }));
     assert_error!(
       result,
-      "pipeline step `x` has no command; expected one of `timetree`, `clock`, `ancestral`, `mugration`, `optimize`, `prune`"
+      "pipeline step `x` has no command; expected one of `timetree`, `clock`, `ancestral`, `homoplasy`, `mugration`, `optimize`, `prune`"
     );
   }
 

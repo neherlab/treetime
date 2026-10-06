@@ -195,6 +195,7 @@ mod tests {
   mod helpers {
     use crate::command::AppCommand;
     use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
+    use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
     use crate::commands::clock::args::TreetimeClockArgsRaw;
     use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
     use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
@@ -280,6 +281,7 @@ mod tests {
         AppCommand::Optimize => settings(&TreetimeOptimizeArgsRaw::from_arg_matches(&matches).unwrap()),
         AppCommand::Prune => settings(&TreetimePruneArgsRaw::from_arg_matches(&matches).unwrap()),
         AppCommand::Ancestral => settings(&TreetimeAncestralArgsRaw::from_arg_matches(&matches).unwrap()),
+        AppCommand::Homoplasy => settings(&TreetimeHomoplasyArgsRaw::from_arg_matches(&matches).unwrap()),
         AppCommand::Clock => settings(&TreetimeClockArgsRaw::from_arg_matches(&matches).unwrap()),
         AppCommand::Mugration => settings(&TreetimeMugrationArgsRaw::from_arg_matches(&matches).unwrap()),
       }
@@ -292,6 +294,7 @@ mod tests {
         AppCommand::Optimize => load_config_document::<TreetimeOptimizeArgsRaw>(&source, text, None),
         AppCommand::Prune => load_config_document::<TreetimePruneArgsRaw>(&source, text, None),
         AppCommand::Ancestral => load_config_document::<TreetimeAncestralArgsRaw>(&source, text, None),
+        AppCommand::Homoplasy => load_config_document::<TreetimeHomoplasyArgsRaw>(&source, text, None),
         AppCommand::Clock => load_config_document::<TreetimeClockArgsRaw>(&source, text, None),
         AppCommand::Mugration => load_config_document::<TreetimeMugrationArgsRaw>(&source, text, None),
       }

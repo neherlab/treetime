@@ -1,6 +1,7 @@
 use crate::command::{AppCommand, CommandArgs};
 use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use crate::commands::clock::args::TreetimeClockArgsRaw;
+use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
 use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
 use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use crate::commands::prune::args::TreetimePruneArgsRaw;
@@ -29,6 +30,7 @@ pub enum CommandConfig {
   Optimize(Box<TreetimeOptimizeArgsRaw>),
   Prune(Box<TreetimePruneArgsRaw>),
   Ancestral(Box<TreetimeAncestralArgsRaw>),
+  Homoplasy(Box<TreetimeHomoplasyArgsRaw>),
   Clock(Box<TreetimeClockArgsRaw>),
   Mugration(Box<TreetimeMugrationArgsRaw>),
 }
@@ -55,6 +57,7 @@ impl CommandConfig {
       Self::Optimize(_) => AppCommand::Optimize,
       Self::Prune(_) => AppCommand::Prune,
       Self::Ancestral(_) => AppCommand::Ancestral,
+      Self::Homoplasy(_) => AppCommand::Homoplasy,
       Self::Clock(_) => AppCommand::Clock,
       Self::Mugration(_) => AppCommand::Mugration,
     }
@@ -66,6 +69,7 @@ impl CommandConfig {
       Self::Optimize(config) => CommandArgs::try_from((**config).clone()),
       Self::Prune(config) => CommandArgs::try_from((**config).clone()),
       Self::Ancestral(config) => CommandArgs::try_from((**config).clone()),
+      Self::Homoplasy(config) => CommandArgs::try_from((**config).clone()),
       Self::Clock(config) => CommandArgs::try_from((**config).clone()),
       Self::Mugration(config) => CommandArgs::try_from((**config).clone()),
     }
@@ -77,6 +81,7 @@ impl CommandConfig {
       Self::Optimize(config) => config.resolve_outputs(),
       Self::Prune(config) => config.resolve_outputs(),
       Self::Ancestral(config) => config.resolve_outputs(),
+      Self::Homoplasy(config) => config.resolve_outputs(),
       Self::Clock(config) => config.resolve_outputs(),
       Self::Mugration(config) => config.resolve_outputs(),
     }
@@ -88,6 +93,7 @@ impl CommandConfig {
       Self::Optimize(config) => &config.output,
       Self::Prune(config) => &config.output,
       Self::Ancestral(config) => &config.output,
+      Self::Homoplasy(config) => &config.output,
       Self::Clock(config) => &config.output,
       Self::Mugration(config) => &config.output,
     };
@@ -100,6 +106,7 @@ impl CommandConfig {
       Self::Optimize(config) => serde_json::to_value(config),
       Self::Prune(config) => serde_json::to_value(config),
       Self::Ancestral(config) => serde_json::to_value(config),
+      Self::Homoplasy(config) => serde_json::to_value(config),
       Self::Clock(config) => serde_json::to_value(config),
       Self::Mugration(config) => serde_json::to_value(config),
     }?;

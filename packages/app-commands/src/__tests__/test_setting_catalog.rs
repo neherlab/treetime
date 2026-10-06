@@ -27,6 +27,7 @@ mod tests {
         AppCommand::Timetree,
         AppCommand::Clock,
         AppCommand::Ancestral,
+        AppCommand::Homoplasy,
         AppCommand::Mugration,
         AppCommand::Optimize,
         AppCommand::Prune
@@ -261,6 +262,7 @@ mod tests {
   #[case::timetree( AppCommand::Timetree,  true,  &[(InputKind::Tree, InputNeed::Required), (InputKind::Metadata, InputNeed::Required), (InputKind::Alignment, InputNeed::Recommended)])]
   #[case::clock(    AppCommand::Clock,     true,  &[(InputKind::Tree, InputNeed::Required), (InputKind::Metadata, InputNeed::Required), (InputKind::Alignment, InputNeed::Optional)])]
   #[case::ancestral(AppCommand::Ancestral, false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Alignment, InputNeed::Required)])]
+  #[case::homoplasy(AppCommand::Homoplasy, false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Alignment, InputNeed::Required)])]
   #[case::mugration(AppCommand::Mugration, false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Metadata, InputNeed::Required)])]
   #[case::optimize( AppCommand::Optimize,  false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Alignment, InputNeed::Required)])]
   #[case::prune(    AppCommand::Prune,     false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Alignment, InputNeed::Optional)])]

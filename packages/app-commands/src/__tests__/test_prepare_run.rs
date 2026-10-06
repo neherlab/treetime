@@ -11,6 +11,8 @@ mod tests {
   #[case::timetree_defaults( AppCommand::Timetree,  json!(null),             json!(["nwk", "nexus", "auspice", "augur-node-data", "gtr", "reconstructed-nuc-fasta", "clock-model", "coalescent-tsv", "tracelog", "clock-csv"]))]
   #[case::clock_defaults(    AppCommand::Clock,     json!(null),             json!(["nwk", "nexus", "clock-model", "clock-csv", "clock-chart-svg", "clock-chart-png", "auspice"]))]
   #[case::ancestral_defaults(AppCommand::Ancestral, json!(null),             json!(["nwk", "nexus", "augur-node-data", "gtr", "reconstructed-nuc-fasta", "auspice"]))]
+  #[case::homoplasy_defaults(AppCommand::Homoplasy, json!(null),             json!(["nwk", "nexus", "homoplasy-stats", "homoplasy-report", "auspice"]))]
+  #[case::homoplasy_chosen(  AppCommand::Homoplasy, json!(["nwk"]),          json!(["nwk", "auspice", "homoplasy-stats"]))]
   #[case::mugration_defaults(AppCommand::Mugration, json!(null),             json!(["nwk", "nexus", "augur-node-data", "gtr", "traits-csv", "auspice"]))]
   #[case::optimize_defaults( AppCommand::Optimize,  json!(null),             json!(["nwk", "nexus", "augur-node-data", "gtr", "auspice"]))]
   #[case::prune_defaults(    AppCommand::Prune,     json!(null),             json!(["nwk", "nexus", "gtr", "auspice"]))]
@@ -27,7 +29,9 @@ mod tests {
     let mut config = match command {
       AppCommand::Timetree | AppCommand::Clock => json!({ "tree": "t.nwk", "metadata": "m.tsv" }),
       AppCommand::Mugration => json!({ "tree": "t.nwk", "metadata": "m.tsv", "attribute": "country" }),
-      AppCommand::Ancestral | AppCommand::Optimize | AppCommand::Prune => json!({ "tree": "t.nwk" }),
+      AppCommand::Ancestral | AppCommand::Homoplasy | AppCommand::Optimize | AppCommand::Prune => {
+        json!({ "tree": "t.nwk" })
+      },
     };
     if !chosen.is_null() {
       config["output_selection"] = chosen;

@@ -201,6 +201,7 @@ pub(crate) mod tests {
       AppCommand::Optimize,
       AppCommand::Prune,
       AppCommand::Ancestral,
+      AppCommand::Homoplasy,
       AppCommand::Clock,
       AppCommand::Mugration
     )]
@@ -306,10 +307,10 @@ pub(crate) mod tests {
   #[test]
   fn test_check_config_request_rejects_unknown_command() {
     let result =
-      serde_json::from_value::<CheckConfigRequest>(json!({ "command": "homoplasy", "text": "" })).map_err(Report::from);
+      serde_json::from_value::<CheckConfigRequest>(json!({ "command": "transmission", "text": "" })).map_err(Report::from);
     assert_error!(
       result,
-      "unknown variant `homoplasy`, expected one of `timetree`, `clock`, `ancestral`, `mugration`, `optimize`, `prune`"
+      "unknown variant `transmission`, expected one of `timetree`, `clock`, `ancestral`, `homoplasy`, `mugration`, `optimize`, `prune`"
     );
   }
 

@@ -12,8 +12,6 @@ use crate::cli::verbosity::Verbosity;
 use app_commands::command::CommandArgs;
 use app_commands::commands::clock::args::TreetimeClockArgs;
 use app_commands::commands::clock::run::run_clock;
-use app_commands::commands::homoplasy::args::TreetimeHomoplasyArgs;
-use app_commands::commands::homoplasy::run::run_homoplasy;
 use eyre::Report;
 use log::info;
 use std::env;
@@ -54,10 +52,7 @@ pub(crate) fn run_command(command: TreetimeCommands, stages: &dyn StageSink, log
         print_clock_regression_chart(&result.regression_results, &result.clock_model)?;
       }
     },
-    TreetimeCommands::Homoplasy(homoplasy_args) => {
-      let homoplasy_args = TreetimeHomoplasyArgs::try_from(homoplasy_args)?;
-      run_homoplasy(&homoplasy_args, &NoopCancel, stages, log)?;
-    },
+    TreetimeCommands::Homoplasy(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, stages, log)?,
     TreetimeCommands::Mugration(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, stages, log)?,
     TreetimeCommands::Pipeline(pipeline_args) => {
       run_pipeline_command(&pipeline_args, stages, log)?;

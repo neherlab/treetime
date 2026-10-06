@@ -41,6 +41,7 @@ fn all_targets() -> impl Iterator<Item = SchemaTarget> {
     SchemaTarget::Optimize,
     SchemaTarget::Prune,
     SchemaTarget::Ancestral,
+    SchemaTarget::Homoplasy,
     SchemaTarget::Clock,
     SchemaTarget::Mugration,
   ]
@@ -59,6 +60,7 @@ fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
     SchemaTarget::Optimize => annotated_config_schema(AppCommand::Optimize)?,
     SchemaTarget::Prune => annotated_config_schema(AppCommand::Prune)?,
     SchemaTarget::Ancestral => annotated_config_schema(AppCommand::Ancestral)?,
+    SchemaTarget::Homoplasy => annotated_config_schema(AppCommand::Homoplasy)?,
     SchemaTarget::Clock => annotated_config_schema(AppCommand::Clock)?,
     SchemaTarget::Mugration => annotated_config_schema(AppCommand::Mugration)?,
     SchemaTarget::All | SchemaTarget::VersionInfo | SchemaTarget::ProgressEvent | SchemaTarget::ErrorResponse => {
@@ -82,6 +84,7 @@ pub(crate) enum SchemaTarget {
   Optimize,
   Prune,
   Ancestral,
+  Homoplasy,
   Clock,
   Mugration,
 }
@@ -107,6 +110,7 @@ impl SchemaTarget {
       SchemaTarget::Optimize => Some("input-config-optimize.schema.json"),
       SchemaTarget::Prune => Some("input-config-prune.schema.json"),
       SchemaTarget::Ancestral => Some("input-config-ancestral.schema.json"),
+      SchemaTarget::Homoplasy => Some("input-config-homoplasy.schema.json"),
       SchemaTarget::Clock => Some("input-config-clock.schema.json"),
       SchemaTarget::Mugration => Some("input-config-mugration.schema.json"),
     }

@@ -74,6 +74,7 @@ mod tests {
         ),
         (AppCommand::Clock, vec![ChoiceName::Root]),
         (AppCommand::Ancestral, vec![]),
+        (AppCommand::Homoplasy, vec![]),
         (AppCommand::Mugration, vec![]),
         (AppCommand::Optimize, vec![ChoiceName::Root]),
         (AppCommand::Prune, vec![]),

@@ -11,6 +11,7 @@ mod tests {
   #[case::timetree( AppCommand::Timetree)]
   #[case::clock(    AppCommand::Clock)]
   #[case::ancestral(AppCommand::Ancestral)]
+  #[case::homoplasy(AppCommand::Homoplasy)]
   #[case::mugration(AppCommand::Mugration)]
   #[case::optimize( AppCommand::Optimize)]
   #[case::prune(    AppCommand::Prune)]
@@ -81,7 +82,7 @@ mod tests {
           "tree": zika.join("tree.nwk"),
           "metadata": zika.join("metadata.tsv"),
         }),
-        AppCommand::Ancestral => json!({
+        AppCommand::Ancestral | AppCommand::Homoplasy => json!({
           "tree": zika.join("tree.nwk"),
           "alignment": [zika.join("aln.fasta.xz")],
         }),

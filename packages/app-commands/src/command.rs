@@ -5,6 +5,8 @@ use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralA
 use crate::commands::ancestral::run::run_ancestral_reconstruction;
 use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
 use crate::commands::clock::run::run_clock;
+use crate::commands::homoplasy::args::{TreetimeHomoplasyArgs, TreetimeHomoplasyArgsRaw};
+use crate::commands::homoplasy::run::run_homoplasy;
 use crate::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
 use crate::commands::mugration::run::run_mugration;
 use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
@@ -12,8 +14,8 @@ use crate::commands::optimize::run::run_optimize;
 use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 use crate::commands::prune::run::run_prune;
 use crate::commands::shared::output_args::{
-  AncestralOutputSelection, ClockOutputSelection, MugrationOutputSelection, OptimizeOutputSelection,
-  PruneOutputSelection, TimetreeOutputSelection,
+  AncestralOutputSelection, ClockOutputSelection, HomoplasyOutputSelection, MugrationOutputSelection,
+  OptimizeOutputSelection, PruneOutputSelection, TimetreeOutputSelection,
 };
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
@@ -70,6 +72,7 @@ pub enum AppCommand {
   Timetree,
   Clock,
   Ancestral,
+  Homoplasy,
   Mugration,
   Optimize,
   Prune,
@@ -116,7 +119,7 @@ impl AppCommand {
     match self {
       Self::Timetree => &[TREE, METADATA, ALIGNMENT_RECOMMENDED],
       Self::Clock => &[TREE, METADATA, ALIGNMENT_OPTIONAL],
-      Self::Ancestral | Self::Optimize => &[TREE, ALIGNMENT],
+      Self::Ancestral | Self::Homoplasy | Self::Optimize => &[TREE, ALIGNMENT],
       Self::Mugration => &[TREE, METADATA],
       Self::Prune => &[TREE, ALIGNMENT_OPTIONAL],
     }
@@ -131,6 +134,7 @@ impl AppCommand {
       Self::Timetree => "Time tree",
       Self::Clock => "Clock signal",
       Self::Ancestral => "Ancestral sequences",
+      Self::Homoplasy => "Homoplasy",
       Self::Mugration => "Discrete traits",
       Self::Optimize => "Branch lengths",
       Self::Prune => "Prune tree",
@@ -142,6 +146,7 @@ impl AppCommand {
       Self::Timetree => "Date the ancestors and estimate the clock rate from sampling dates.",
       Self::Clock => "Root-to-tip regression: clock rate, temporal signal and outliers.",
       Self::Ancestral => "Infer ancestral sequences and the mutations on each branch.",
+      Self::Homoplasy => "Mutations that arise on several branches, compared with a Poisson expectation.",
       Self::Mugration => "Ancestral states of a metadata column, such as country or host.",
       Self::Optimize => "Maximum-likelihood branch lengths on a fixed topology.",
       Self::Prune => "Collapse short or empty branches and remove listed samples.",
@@ -184,6 +189,7 @@ impl AppCommand {
         "gap_fill",
         "reconstruct_tip_states",
       ],
+      Self::Homoplasy => &["method_anc", "model", "gap_fill", "constant_sites", "drms", "rescale"],
       Self::Mugration => &["attribute", "weights", "pc", "missing_data", "sampling_bias_correction"],
       Self::Optimize => &["opt_method", "reroot", "divergence_units", "no_indels", "max_iter"],
       Self::Prune => &[
@@ -246,6 +252,7 @@ impl AppCommand {
       Self::Optimize => visitor.visit::<TreetimeOptimizeArgsRaw>(),
       Self::Prune => visitor.visit::<TreetimePruneArgsRaw>(),
       Self::Ancestral => visitor.visit::<TreetimeAncestralArgsRaw>(),
+      Self::Homoplasy => visitor.visit::<TreetimeHomoplasyArgsRaw>(),
       Self::Clock => visitor.visit::<TreetimeClockArgsRaw>(),
       Self::Mugration => visitor.visit::<TreetimeMugrationArgsRaw>(),
     }
@@ -263,6 +270,7 @@ pub enum CommandArgs {
   Optimize(Box<TreetimeOptimizeArgs>),
   Prune(Box<TreetimePruneArgs>),
   Ancestral(Box<TreetimeAncestralArgs>),
+  Homoplasy(Box<TreetimeHomoplasyArgs>),
   Clock(Box<TreetimeClockArgs>),
   Mugration(Box<TreetimeMugrationArgs>),
 }
@@ -274,6 +282,7 @@ impl CommandArgs {
       Self::Optimize(_) => AppCommand::Optimize,
       Self::Prune(_) => AppCommand::Prune,
       Self::Ancestral(_) => AppCommand::Ancestral,
+      Self::Homoplasy(_) => AppCommand::Homoplasy,
       Self::Clock(_) => AppCommand::Clock,
       Self::Mugration(_) => AppCommand::Mugration,
     }
@@ -285,6 +294,7 @@ impl CommandArgs {
       Self::Optimize(args) => run_optimize(args, cancel, stages, log),
       Self::Prune(args) => run_prune(args, cancel, stages, log),
       Self::Ancestral(args) => run_ancestral_reconstruction(args, cancel, stages, log),
+      Self::Homoplasy(args) => run_homoplasy(args, cancel, stages, log).map(|_| ()),
       Self::Clock(args) => run_clock(args, cancel, stages, log).map(|_| ()),
       Self::Mugration(args) => run_mugration(args, cancel, stages, log),
     }
@@ -297,6 +307,7 @@ impl CommandArgs {
       Self::Optimize(args) => args.resolve_outputs()?,
       Self::Prune(args) => args.resolve_outputs()?,
       Self::Ancestral(args) => args.resolve_outputs()?,
+      Self::Homoplasy(args) => args.resolve_outputs()?,
       Self::Clock(args) => args.resolve_outputs()?,
       Self::Mugration(args) => args.resolve_outputs()?,
     };
@@ -494,6 +505,16 @@ impl_raw_config!(
   Ancestral,
   Ancestral,
   [AncestralOutputSelection::Auspice]
+);
+impl_raw_config!(
+  TreetimeHomoplasyArgsRaw,
+  TreetimeHomoplasyArgs,
+  Homoplasy,
+  Homoplasy,
+  [
+    HomoplasyOutputSelection::Auspice,
+    HomoplasyOutputSelection::HomoplasyStats,
+  ]
 );
 impl_raw_config!(
   TreetimeClockArgsRaw,

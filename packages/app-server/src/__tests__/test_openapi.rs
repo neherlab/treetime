@@ -466,6 +466,7 @@ mod tests {
           AppCommand::Timetree,
           AppCommand::Clock,
           AppCommand::Ancestral,
+          AppCommand::Homoplasy,
           AppCommand::Mugration,
           AppCommand::Optimize,
           AppCommand::Prune
