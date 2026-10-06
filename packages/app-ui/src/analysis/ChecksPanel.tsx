@@ -67,7 +67,7 @@ export function ChecksPanel({
           )}
         </ul>
         {duplicate !== undefined && (
-          <Alert className="border-warning/40 bg-warning/10">
+          <Alert variant="warning">
             <Copy aria-hidden />
             <AlertTitle>Run &quot;{duplicate.title}&quot; has the same inputs and settings</AlertTitle>
             <AlertDescription>

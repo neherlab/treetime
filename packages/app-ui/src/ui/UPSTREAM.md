@@ -23,6 +23,7 @@ These are the rewrites the shadcn CLI applies when it installs a component:
 A component refreshed from the registry needs these changes again.
 
 - **All files**: exports and variants the app does not use are removed; `knip` reports any that become unused
+- **`alert.tsx`**: a `warning` variant with a warning-colored border, background and icon, for notices that let the run go on
 - **`card.tsx`**: the card has the theme corner radius, a border-colored ring and no shadow, and its title is bold
 - **`dialog.tsx`, `sheet.tsx`, `empty.tsx`**: titles are bold, because Lato has no medium weight
 - **`accordion.tsx`**: the trigger text is bold, because Lato has no medium weight. The panel uses a 100 ms height transition instead of the keyframe animation, so a panel that mounts open appears without animation

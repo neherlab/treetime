@@ -26,6 +26,7 @@ import { LogTab } from "./LogTab";
 import { MugrationResultsView } from "./MugrationResultsView";
 import { RunningView } from "./RunningView";
 import { RunTitle } from "./RunTitle";
+import { RunWarnings } from "./RunWarnings";
 import { SettingsTab } from "./SettingsTab";
 import { TimetreeResultsView } from "./TimetreeResultsView";
 import { TreeOnlyResults } from "./TreeOnlyResults";
@@ -179,6 +180,7 @@ function FinishedResults({ record }: { record: RunRecord }) {
 
   return (
     <div className="grid gap-4">
+      <RunWarnings warnings={record.warnings} />
       {results.problems.length > 0 && (
         <Alert variant="destructive">
           <AlertTitle>Some outputs cannot be read</AlertTitle>
@@ -258,6 +260,7 @@ function EndedRun({ record, progress }: { record: RunRecord; progress: RunProgre
           </Button>
         </AlertDescription>
       </Alert>
+      <RunWarnings warnings={record.warnings} />
       <RunningView record={record} progress={progress} />
     </div>
   );
