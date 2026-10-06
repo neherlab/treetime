@@ -1833,6 +1833,10 @@ export type AppSettings = {
    * Preferences of the user interface.
    */
   ui?: UiSettings;
+  /**
+   * Settings of the analyses that the app runs.
+   */
+  analysis?: AnalysisSettings;
 };
 
 /**
@@ -1945,6 +1949,18 @@ export type UiSettingsView = 'main' | 'all';
  * Format of the code that reproduces the form.
  */
 export type UiCodeFormat = 'cli' | 'yaml';
+
+/**
+ * Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set
+ * it.
+ */
+export type AnalysisSettings = {
+  /**
+   * Largest number of points of one probability grid during time inference, for runs whose configuration does not
+   * set `max_grid_points`. Unset: 1000000.
+   */
+  max_grid_points?: number;
+};
 
 /**
  * The download of the example datasets, with the app event that reported it last.
@@ -2339,6 +2355,13 @@ export type TimetreeConfig = {
    * When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
    */
   confidence?: boolean;
+  /**
+   * Largest number of points of one probability grid during time inference.
+   *
+   * A run stops with an error when a grid would need more points. The value bounds single grids, not the total
+   * memory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000.
+   */
+  max_grid_points?: number;
   /**
    * Don't resolve polytomies using temporal information.
    */
@@ -5877,6 +5900,36 @@ export type AppSettingsUiResponses = {
 };
 
 export type AppSettingsUiResponse = AppSettingsUiResponses[keyof AppSettingsUiResponses];
+
+export type AppSettingsAnalysisData = {
+  /**
+   * Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set
+   * it.
+   */
+  body: AnalysisSettings;
+  path?: never;
+  query?: never;
+  url: '/api/app-settings/analysis';
+};
+
+export type AppSettingsAnalysisErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type AppSettingsAnalysisError = AppSettingsAnalysisErrors[keyof AppSettingsAnalysisErrors];
+
+export type AppSettingsAnalysisResponses = {
+  /**
+   * Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set
+   * it.
+   */
+  200: AnalysisSettings;
+};
+
+export type AppSettingsAnalysisResponse = AppSettingsAnalysisResponses[keyof AppSettingsAnalysisResponses];
 
 export type ExamplesDownloadData = {
   body?: never;

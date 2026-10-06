@@ -151,6 +151,9 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--confidence` — Add rate-uncertainty to confidence intervals.
 
    `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs. This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined via quadrature sum. Requires `--covariation` or `--clock-std-dev`. When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
+* `--max-grid-points <MAX_GRID_POINTS>` — Largest number of points of one probability grid during time inference.
+
+   A run stops with an error when a grid would need more points. The value bounds single grids, not the total memory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000.
 * `--keep-polytomies` — Don't resolve polytomies using temporal information
 * `--resolve-polytomies` — Resolve polytomies using temporal information
 * `--relax <SLACK>` — use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0 0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more strongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock

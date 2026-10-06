@@ -332,6 +332,24 @@
             }
           ]
         },
+        "max_grid_points": {
+          "anyOf": [
+            {
+              "description": "Largest number of points of one probability grid during time inference.\n\nA run stops with an error when a grid would need more points. The value bounds single grids, not the total\nmemory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000.",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 1000,
+              "examples": [
+                1000000
+              ],
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
         "keep_polytomies": {
           "anyOf": [
             {

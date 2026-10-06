@@ -980,7 +980,7 @@
     },
     "/api/app-settings": {
       "get": {
-        "description": "Settings of a local installation: the runs folder and the preferences of the user interface. Only local apps serve this path.",
+        "description": "Settings of a local installation: the folders of the app, the preferences of the user interface, and the settings of the analyses. Only local apps serve this path.",
         "operationId": "appSettings",
         "responses": {
           "default": {
@@ -1038,6 +1038,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UiSettings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/app-settings/analysis": {
+      "put": {
+        "description": "Replace the settings of the analyses; they apply to runs whose configuration does not set them. Only local apps serve this path.",
+        "operationId": "appSettingsAnalysis",
+        "requestBody": {
+          "description": "Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set\nit.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set\nit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisSettings"
                 }
               }
             }
@@ -4140,6 +4179,10 @@
           "ui": {
             "description": "Preferences of the user interface.",
             "$ref": "#/components/schemas/UiSettings"
+          },
+          "analysis": {
+            "description": "Settings of the analyses that the app runs.",
+            "$ref": "#/components/schemas/AnalysisSettings"
           }
         },
         "additionalProperties": false
@@ -4350,6 +4393,20 @@
             "const": "yaml"
           }
         ]
+      },
+      "AnalysisSettings": {
+        "description": "Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set\nit.",
+        "type": "object",
+        "properties": {
+          "max_grid_points": {
+            "description": "Largest number of points of one probability grid during time inference, for runs whose configuration does not\nset `max_grid_points`. Unset: 1000000.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 1000,
+            "x-unset": true
+          }
+        },
+        "additionalProperties": false
       },
       "ExamplesDownloadStatus": {
         "description": "The download of the example datasets, with the app event that reported it last.",
@@ -5084,6 +5141,17 @@
             "description": "Add rate-uncertainty to confidence intervals.\n\n`--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.\nThis flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined\nvia quadrature sum. Requires `--covariation` or `--clock-std-dev`.\nWhen set with `--time-marginal=never` (default), automatically promotes to `only-final`.",
             "type": "boolean",
             "x-cli-flag": "--confidence"
+          },
+          "max_grid_points": {
+            "description": "Largest number of points of one probability grid during time inference.\n\nA run stops with an error when a grid would need more points. The value bounds single grids, not the total\nmemory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 1000,
+            "examples": [
+              1000000
+            ],
+            "x-unset": true,
+            "x-cli-flag": "--max-grid-points"
           },
           "keep_polytomies": {
             "description": "Don't resolve polytomies using temporal information.",

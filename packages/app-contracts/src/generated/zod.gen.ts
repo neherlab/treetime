@@ -952,12 +952,21 @@ export const zUiSettings = z.strictObject({
 });
 
 /**
+ * Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set
+ * it.
+ */
+export const zAnalysisSettings = z.strictObject({
+  max_grid_points: z.int().gte(1000).optional()
+});
+
+/**
  * Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
  * setting is optional.
  */
 export const zAppSettings = z.strictObject({
   paths: zAppPathSettings.optional(),
-  ui: zUiSettings.optional()
+  ui: zUiSettings.optional(),
+  analysis: zAnalysisSettings.optional()
 });
 
 /**
@@ -1232,6 +1241,7 @@ export const zTimetreeConfig = z.strictObject({
   branch_length_mode: zBranchLengthMode.optional(),
   time_marginal: zTimeMarginalMode.optional(),
   confidence: z.boolean().optional(),
+  max_grid_points: z.int().gte(1000).optional(),
   keep_polytomies: z.boolean().optional(),
   resolve_polytomies: z.boolean().optional(),
   relax: z.array(z.number()).optional(),
@@ -2504,6 +2514,18 @@ export const zAppSettingsUiBody = zUiSettings;
  * Preferences of the user interface. Unset preferences take the defaults of the user interface.
  */
 export const zAppSettingsUiResponse = zUiSettings;
+
+/**
+ * Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set
+ * it.
+ */
+export const zAppSettingsAnalysisBody = zAnalysisSettings;
+
+/**
+ * Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set
+ * it.
+ */
+export const zAppSettingsAnalysisResponse = zAnalysisSettings;
 
 /**
  * The download of the example datasets, with the app event that reported it last.

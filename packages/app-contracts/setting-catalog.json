@@ -919,6 +919,30 @@
           "more": "`--time-marginal=always` and `only-final` already write mutation-stochasticity CIs. This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined via quadrature sum. Requires `--covariation` or `--clock-std-dev`. When set with `--time-marginal=never` (default), automatically promotes to `only-final`."
         },
         {
+          "key": "max_grid_points",
+          "path": [
+            "max_grid_points"
+          ],
+          "label": "Max grid points",
+          "flag": "--max-grid-points",
+          "group": "Dating",
+          "role": "setting",
+          "kind": "integer",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "minimum": 1000.0,
+          "examples": [
+            1000000
+          ],
+          "value_names": [
+            "MAX_GRID_POINTS"
+          ],
+          "conflicts": [],
+          "help": "Largest number of points of one probability grid during time inference.",
+          "more": "A run stops with an error when a grid would need more points. The value bounds single grids, not the total memory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000."
+        },
+        {
           "key": "max_iter",
           "path": [
             "max_iter"
