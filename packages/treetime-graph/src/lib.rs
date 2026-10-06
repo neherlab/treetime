@@ -6,6 +6,7 @@ pub mod graph;
 pub mod graph_ops;
 pub mod graph_traverse;
 pub mod node;
+pub mod pair_by_name;
 pub mod pass;
 pub mod reachability;
 pub mod reroot;

@@ -4954,6 +4954,7 @@ dependencies = [
  "derive_more",
  "eyre",
  "getset",
+ "indexmap",
  "itertools",
  "maplit",
  "ordered-float",

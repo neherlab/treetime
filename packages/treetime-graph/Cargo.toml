@@ -23,6 +23,7 @@ crossbeam-channel = { workspace = true }
 derive_more = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
+indexmap = { workspace = true }
 itertools = { workspace = true }
 ordered-float = { workspace = true }
 parking_lot = { workspace = true }
