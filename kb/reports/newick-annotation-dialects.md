@@ -235,11 +235,11 @@ eNewick strings can appear inside NEXUS `Begin Trees;` blocks. SplitsTree adds `
 
 ## Dialect 4: Rich Newick
 
-Origin: PhyloNet [[repo](https://github.com/phylonet/PhyloNet)] (Rice University, Nakhleh Lab). Extends eNewick with rooting markers, tree probabilities, and inheritance probabilities.
+Origin: PhyloNet [[repo](https://github.com/NakhlehLab/PhyloNet)] (Rice University, Nakhleh Lab). Extends eNewick with rooting markers, tree probabilities, and inheritance probabilities.
 
 ### Grammar
 
-From PhyloNet ANTLR grammar at [RichNewick_1_1.g](https://github.com/phylonet/PhyloNet/blob/2ee2b48cdf0d9fef61066d265c7690f2bca6fc2a/src/edu/rice/cs/bioinfo/library/language/richnewick/_1_1/reading/parsers/antlr/ast/) [[src](https://github.com/phylonet/PhyloNet/blob/2ee2b48cdf0d9fef61066d265c7690f2bca6fc2a/src/edu/rice/cs/bioinfo/library/language/richnewick/_1_1/reading/parsers/antlr/ast/)]:
+From the PhyloNet ANTLR grammar RichNewick 1.1, whose generated lexer and token list are in [RichNewick_1_1.tokens](https://github.com/NakhlehLab/PhyloNet/blob/09c08553734bdf2bdb23d8f21a81956cd7c3f89d/src/edu/rice/cs/bioinfo/library/language/richnewick/_1_1/reading/parsers/antlr/ast/RichNewick_1_1.tokens) [[src](https://github.com/NakhlehLab/PhyloNet/blob/09c08553734bdf2bdb23d8f21a81956cd7c3f89d/src/edu/rice/cs/bioinfo/library/language/richnewick/_1_1/reading/parsers/antlr/ast/RichNewick_1_1Lexer.java)]:
 
 ```
 ROOTAGE_QUALIFIER  = '[&' ('R'|'r'|'U'|'u') ']'
@@ -305,7 +305,7 @@ R = reads, W = writes, RW = both, blank = unsupported. Source evidence in footno
 [d] Reads/writes via JEBL library. Adds custom `begin figtree;` NEXUS block for display settings at [FigTreeNexusExporter.java](https://github.com/rambaut/figtree/blob/24c51adc9b4a61760b828d99511cf3449a7ba9d3/src/figtree/application/FigTreeNexusExporter.java).
 [e] NCL layer reads `[&R]`/`[&U]` only in [nxstreesblock.cpp](https://github.com/Cibiv/IQ-TREE/blob/6776a95f15a2eccda2aa330497291dc246575995/ncl/nxstreesblock.cpp). Writes `[&gCF=...,sCF=...]` with double-quoted values for comma protection.
 [f] Huson lab tools. Dendroscope: [NewickInputDialog.java](https://github.com/husonlab/dendroscope3/blob/c2d35555003a9261120a1d3223fd00e3e180f46b/src/dendroscope/util/NewickInputDialog.java). SplitsTree: [TreesNexusOutput.java](https://github.com/husonlab/splitstree6/blob/8236ada348055d9d6e7c4141c0c73511f38b075b/src/main/java/splitstree6/io/nexus/TreesNexusOutput.java) adds `PROPERTIES reticulated=yes`.
-[g] [RnNewickPrinter.java](https://github.com/phylonet/PhyloNet/blob/2ee2b48cdf0d9fef61066d265c7690f2bca6fc2a/src/edu/rice/cs/bioinfo/library/language/richnewick/_1_1/reading/parsers/antlr/ast/) writes Rich Newick with `[&U]` prefix and `name#Hindex:bl:support:probability` fields.
+[g] [RnNewickPrinter.java](https://github.com/NakhlehLab/PhyloNet/blob/09c08553734bdf2bdb23d8f21a81956cd7c3f89d/src/edu/rice/cs/bioinfo/programs/phylonet/structs/network/io/RnNewickPrinter.java) writes Rich Newick with `[&U]` prefix and `name#Hindex:bl:support:probability` fields.
 [h] Reads NHX natively, BEAST-style with appropriate settings. Primary NHX consumer in the Python ecosystem.
 [i] `Bio.Phylo` `.comment` attribute becomes `[&...]` in Nexus output. Does NOT parse `[&...]` back into structured data on read - comments stripped or stored as raw strings.
 [j] Writes BEAST-style `[&mutations=...,date=...]` via BioPython `.comment` at [CLI_io.py](https://github.com/neherlab/treetime/blob/master/treetime/CLI_io.py). Cannot read annotations back (BioPython strips comments on Newick read). Local v0 source: `packages/legacy/treetime/treetime/CLI_io.py#L166-L205`.

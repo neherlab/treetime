@@ -38,7 +38,7 @@ Rules shared by the dialects:
 
 BEAST annotations (`beast_comment`) are comma-separated pairs `key=value` or a bare `key`, which reads as `TRUE`. A key is bare or in double or single quotes. A value is a string in double quotes (`""` is a quote) or single quotes, a color `#RRGGBB`, `TRUE` or `FALSE`, a number, an array `{..}` of values that may nest, or a bare string without `, [ ] { }` that does not start with a quote.
 
-NHX annotations (`nhx_comment`) are `:`-separated tags `key=value` or a bare `key`, which reads as `true`. A value has parts separated by `>`. The standard tags have types: `B` a decimal number, `T` and `W` integers, `D` one of `T`, `F`, `Y`, `N`, `?`, `C` a color `red.green.blue`. Every other tag holds text, or a list of text parts when it has more than one part. A number in a tag of type text reads back as text.
+NHX annotations (`nhx_comment`) are `:`-separated tags `key=value` or a bare `key`, which reads as `true`. A value has parts separated by `>`. The standard tags have types: `B` a decimal number, `T` and `W` integers, `D` one of `T`, `F`, `Y`, `N`, `?`, `C` a color `red.green.blue`. Every other tag holds text, or a list of text parts when it has more than one part. A number in a tag of type text reads back as text. Forester and ETE write the NHX comment after the branch length (`ADH2:0.1[&&NHX:S=human]`), so its tags are comments of the edge above the node; `NewickEdgeData::annotations()` returns them.
 
 MrBayes sampling comments (`mrbayes_comment`) are `[&E name ..]`, `[&B name ..]` and `[&N name ..]`: a kind letter, a name and values separated by whitespace.
 
