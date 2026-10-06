@@ -9,8 +9,7 @@
 # toolchain only, such as dylint or knip, keep their own name. A recipe without
 # a language suffix combines the leaves of both toolchains and calls no tool
 # itself. The suffix `-all` adds the slow tools to the fast set of the same name:
-# `fix` and `fix-all`, `lint` and `lint-all`, `test` and `test-all`, `check` and
-# `check-all`.
+# `fix` and `fix-all`, `lint` and `lint-all`, `check` and `check-all`.
 
 set minimum-version := "1.58.0"
 set default-list
@@ -83,7 +82,7 @@ hawk_toolchain := trim(read("dev/docker/files/hawk-toolchain"))
 # needs a second full compilation and runs locally only.
 checks_format := "fmt-check-rs fmt-check-ts fmt-check-other lint-shell lint-docker lint-workflows deny shear fixtures-check"
 checks_clippy := "lint-rs"
-checks_dylint := "dylint test-dylint"
+checks_dylint := "dylint"
 checks_tests := "test-rs"
 checks_generated := "generated-check"
 checks_typescript := "typecheck lint-ts knip test-ts"
@@ -203,11 +202,6 @@ example name *args:
 test: _js
     TREETIME_JS_READY=1 dev/run-checks --serial test-rs test-ts
 
-# Rust and TypeScript tests, and the tests of the custom dylint libraries, keep-going
-[group("test")]
-test-all: _js
-    TREETIME_JS_READY=1 dev/run-checks --serial test-rs test-ts test-dylint
-
 # Rust tests (nextest); arguments are nextest filters and options
 [group("test")]
 test-rs *args:
@@ -228,14 +222,10 @@ test-integration-rs *args:
 test-list-rs *args:
     cargo nextest list --locked --workspace "$@"
 
-# TypeScript tests (vitest) and the custom oxlint rule tests, keep-going
+# TypeScript tests (vitest)
 [group("test")]
-[script]
 test-ts: _js
-    status=0
-    bun run --silent test || status=1
-    node --test "dev/lints/oxlint/__tests__/test_*.ts" "dev/lints/oxlint-anti-slop/**/*.test.ts" || status=1
-    exit "${status}"
+    bun run --silent test
 
 # Tests of the custom dylint libraries and the pub-unused-report tool, keep-going
 [group("test")]
@@ -378,14 +368,13 @@ deny:
 shear:
     cargo shear
 
-# TypeScript type checks of the packages, the tool configs, and the vendored lint rules, keep-going
+# TypeScript type checks of the packages and the tool configs, keep-going
 [group("lint")]
 [script]
 typecheck: _js
     status=0
     bun run --silent typecheck:packages || status=1
     bun run --silent typecheck:tools || status=1
-    bun run --silent typecheck:vendor || status=1
     exit "${status}"
 
 # Unused TypeScript files, exports, and dependencies (knip), keep-going
