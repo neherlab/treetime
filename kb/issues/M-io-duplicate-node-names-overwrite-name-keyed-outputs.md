@@ -16,13 +16,13 @@ v0 has no duplicate check either. `TreeAnc` looks leaves up in a dictionary keye
 
 ## Required behavior
 
-[kb/decisions/duplicate-names-warned-ids-from-input-order.md](../decisions/duplicate-names-warned-ids-from-input-order.md) sets the rule: warn on every surface, keep running, identify nodes by input order, and never guess which node a name means.
+[kb/decisions/duplicate-names-warned-ids-from-input-order.md](../decisions/duplicate-names-warned-ids-from-input-order.md) sets the rule: keep running, identify nodes by input order, never guess which node a name means, and warn on every surface where a duplicate is found at no or small cost, without a duplicate search that every run pays for.
 
-- Warn about duplicate node names on every surface. The input check finds them in linear time, but no command reports them
+- Warn where a writer meets a duplicate at no extra cost: the augur node data writer collects `nodes` into a map keyed by name, so an insert that replaces an entry finds the duplicate. Do not run the full name count of the input check in every run, because every user would pay for it
 - Write the traits CSV with one row per node in node order, as the confidence CSV does, because a CSV file can hold repeated names
 - Keep writing augur node data: its `nodes` object cannot hold two nodes of the same name, so the warning is the only remedy
 
 ## Validation
 
-- A tree with two leaves `A` gives the warning on every surface, two rows `A` in both mugration CSVs, and one entry `A` in augur node data of every layout
+- A tree with two leaves `A` gives the warning in every run that writes augur node data, two rows `A` in both mugration CSVs, and one entry `A` in augur node data of every layout
 - A tree with unique names produces byte-identical outputs
