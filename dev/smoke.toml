@@ -983,6 +983,14 @@ variant = "fixed-clock"
 datasets = ["mpox/clade-ii/1000"]
 args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
 
+# A fixed clock rate thousands of times the rate of the data makes branch-time distributions so narrow that time
+# inference needs grids above the grid point limit; the run stops with an error instead of exhausting memory
+[[timetree]]
+variant = "grid-point-limit"
+datasets = ["mpox/clade-ii/20"]
+args = "--clock-rate=0.5 --max-iter=1"
+fail = "stops at the grid point limit: kb/decisions/distribution-grid-point-limit.md"
+
 
 # A Nexus input tree
 [[timetree]]
