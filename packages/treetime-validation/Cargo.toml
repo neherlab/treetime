@@ -27,7 +27,6 @@ treetime-utils = { workspace = true }
 approx = { workspace = true }
 bon = { workspace = true }
 clap = { workspace = true }
-csv = { workspace = true }
 deser = { workspace = true }
 eyre = { workspace = true }
 image = { workspace = true, optional = true }
@@ -41,6 +40,7 @@ serde = { workspace = true }
 smart-default = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
+treetime-io = { workspace = true }
 
 [features]
 "png" = ["image", "plotters/bitmap_backend", "plotters/ttf"]

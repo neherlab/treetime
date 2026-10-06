@@ -1,10 +1,9 @@
-use crate::csv::{delimiter_from_path, detect_csv_delimiter, get_col_name, normalize_csv_headers, table_reader};
-use csv::StringRecord;
+use crate::csv::{delimiter_from_path, detect_csv_delimiter, get_col_name, normalize_csv_headers, table_records};
 use eyre::{Report, WrapErr};
 use std::io::BufRead;
 use std::path::Path;
 use treetime_utils::io::file::read_file_with;
-use treetime_utils::{make_internal_report, make_report};
+use treetime_utils::make_internal_report;
 
 pub fn discrete_attrs_read_file<T>(
   filepath: impl AsRef<Path>,
@@ -41,12 +40,9 @@ pub fn discrete_attrs_read<T>(
     get_col_name(headers, name_candidates, name_column).is_ok() && get_col_name(headers, &[], value_column).is_ok()
   })
   .wrap_err("When detecting the table delimiter")?;
-  let mut reader = table_reader(reader, delimiter);
+  let mut reader = table_records(reader, delimiter);
 
-  let headers = reader
-    .headers()
-    .map(normalize_csv_headers)
-    .map_err(|err| make_report!("{err}"))?;
+  let headers = normalize_csv_headers(&reader.read::<Vec<String>>()?.unwrap_or_default());
 
   let name_column_idx = get_col_name(&headers, name_candidates, name_column)?;
   let value_column_idx = get_col_name(&headers, &[], value_column)?;
@@ -54,7 +50,7 @@ pub fn discrete_attrs_read<T>(
   let value_name = headers[value_column_idx].clone();
 
   let values = reader
-    .records()
+    .iter::<Vec<String>>()
     .enumerate()
     .map(|(index, record)| {
       let record = record?;
@@ -67,7 +63,7 @@ pub fn discrete_attrs_read<T>(
 
 fn convert_record<T>(
   index: usize,
-  record: &StringRecord,
+  record: &[String],
   name_column_idx: usize,
   value_column_idx: usize,
   parser: &impl Fn(&str) -> Result<T, Report>,
@@ -75,7 +71,7 @@ fn convert_record<T>(
   let key = record
     .get(name_column_idx)
     .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{name_column_idx}'"))?
-    .to_owned();
+    .clone();
 
   let value = record
     .get(value_column_idx)

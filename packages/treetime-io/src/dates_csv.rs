@@ -1,4 +1,4 @@
-use crate::csv::{delimiter_from_path, detect_csv_delimiter, get_col_name, normalize_csv_headers, table_reader};
+use crate::csv::{delimiter_from_path, detect_csv_delimiter, get_col_name, normalize_csv_headers, table_records};
 use eyre::{Report, WrapErr};
 use std::io::BufRead;
 use std::path::Path;
@@ -85,30 +85,27 @@ pub fn metadata_read(
   })
   .wrap_err("When detecting the metadata delimiter")?;
 
-  let mut reader = table_reader(reader, delimiter);
-  let columns = reader
-    .headers()
-    .map(normalize_csv_headers)
-    .map_err(|err| make_report!("{err}"))?;
+  let mut reader = table_records(reader, delimiter);
+  let columns = normalize_csv_headers(&reader.read::<Vec<String>>()?.unwrap_or_default());
   let id_index = get_col_name(&columns, name_candidates, name_column)?;
   let date_index = get_col_name(&columns, &date_candidates, date_column);
 
   let rows = reader
-    .records()
+    .iter::<Vec<String>>()
     .enumerate()
     .map(|(index, record)| {
       let record = record?;
       let name = record
         .get(id_index)
         .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{id_index}'"))?
-        .to_owned();
+        .clone();
       let date = date_index
         .as_ref()
         .ok()
         .map(|&date_index| {
           record
             .get(date_index)
-            .map(str::to_owned)
+            .cloned()
             .ok_or_else(|| make_internal_report!("Row '{index}': Unable to get column with index '{date_index}'"))
         })
         .transpose()?;

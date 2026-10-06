@@ -145,10 +145,10 @@ comfy-table = "=7.2.1"
 criterion = { version = "=0.7.0", features = ["html_reports"] }
 crossbeam-channel = "=0.5.17"
 crossterm = "=0.29.0"
-csv = "=1.4.0"
 ctor = "=1.0.13"
 derive_more = { version = "=2.1.1", features = ["full"] }
 deser = { version = "=0.9.0", features = ["derive", "indexmap", "chrono"] }
+deser-csv = "=0.9.0"
 deser-json = { version = "=0.9.0", features = ["speedups"] }
 deser-path = "=0.9.0"
 deser-serde = "=0.9.0"

@@ -1,7 +1,7 @@
 use crate::output_plan::OutputSelection;
+use deser::Serialize;
+use deser::de::DeserializeOwned;
 use eyre::Report;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use std::path::Path;
 use treetime_io::csv::{CsvWriter, TableFormat, csv_read_file, csv_write_file};
 use treetime_utils::io::file::FileWriter;

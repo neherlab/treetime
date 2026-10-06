@@ -26,8 +26,8 @@ util-newick = { workspace = true }
 util-usher-mat = { workspace = true }
 
 # [external]
-csv = { workspace = true }
 deser = { workspace = true }
+deser-csv = { workspace = true }
 deser-value = { workspace = true }
 eyre = { workspace = true }
 itertools = { workspace = true }

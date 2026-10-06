@@ -166,6 +166,42 @@ mod tests {
   }
 
   #[test]
+  fn test_csv_writer_round_trips_missing_values_as_empty_fields() -> Result<(), Report> {
+    let rows = vec![
+      helpers::OptionalRow {
+        name: o!("A"),
+        label: None,
+        score: None,
+      },
+      helpers::OptionalRow {
+        name: o!("B"),
+        label: Some(o!("x")),
+        score: Some(1.5),
+      },
+      helpers::OptionalRow {
+        name: o!(""),
+        label: None,
+        score: Some(2.0),
+      },
+    ];
+
+    let mut buf = Vec::new();
+    let mut csv = CsvWriter::new(&mut buf, TableFormat::Csv);
+    rows.iter().try_for_each(|row| csv.write_row(row))?;
+    csv.into_inner()?;
+
+    assert_eq!(
+      "name,label,score\nA,,\nB,x,1.5\n,,2.0\n",
+      String::from_utf8(buf.clone())?
+    );
+    assert_eq!(
+      rows,
+      csv_read::<helpers::OptionalRow>(buf.as_slice(), TableFormat::Csv)?
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_csv_writer_writes_records_of_any_width() -> Result<(), Report> {
     let mut buf = Vec::new();
     let mut csv = CsvWriter::new(&mut buf, TableFormat::Csv);
@@ -178,12 +214,21 @@ mod tests {
   }
 
   mod helpers {
+    use deser::adapters::SkipBlank;
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
     pub(super) struct Row {
       pub(super) name: String,
       pub(super) value: f64,
+    }
+
+    #[derive(Debug, PartialEq, deser::Serialize, deser::Deserialize)]
+    pub(super) struct OptionalRow {
+      pub(super) name: String,
+      #[deser(as = SkipBlank<Option<_>>)]
+      pub(super) label: Option<String>,
+      pub(super) score: Option<f64>,
     }
   }
 }

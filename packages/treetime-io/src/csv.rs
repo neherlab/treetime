@@ -1,8 +1,9 @@
-use csv::{Reader, ReaderBuilder, Trim, Writer, WriterBuilder};
+use deser::Serialize;
+use deser::de::DeserializeOwned;
+use deser::io::{Reader, Writer};
+use deser_csv::{DeserializerConfig, Headers, Serializer, SerializerConfig, StreamDeserializer, Trim};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 use treetime_utils::io::compression::remove_compression_ext;
@@ -33,8 +34,9 @@ pub fn csv_read_file<T: DeserializeOwned>(filepath: impl AsRef<Path>, format: Ta
 }
 
 pub fn csv_read<T: DeserializeOwned>(reader: impl Read, format: TableFormat) -> Result<Vec<T>, Report> {
-  table_reader(reader, format.delimiter())
-    .deserialize()
+  table_config(format.delimiter())
+    .reader(reader)
+    .iter()
     .enumerate()
     .map(|(index, record)| record.wrap_err_with(|| format!("When parsing row {}", index + 1)))
     .collect()
@@ -54,7 +56,7 @@ pub fn csv_write_file<T: Serialize>(
 }
 
 pub struct CsvWriter<W: Write> {
-  writer: Writer<W>,
+  writer: Writer<W, Serializer>,
   filepath: Option<PathBuf>,
 }
 
@@ -64,24 +66,26 @@ impl<W: Write> CsvWriter<W> {
   }
 
   pub fn write_row<T: Serialize>(&mut self, row: &T) -> Result<(), Report> {
-    let result = self.writer.serialize(row).wrap_err("When writing a table row");
+    let result = self.writer.write(row).wrap_err("When writing a table row");
     self.wrap_filepath(result)
   }
 
   pub fn write_record<I, T>(&mut self, record: I) -> Result<(), Report>
   where
     I: IntoIterator<Item = T>,
-    T: AsRef<[u8]>,
+    T: AsRef<str>,
   {
-    let result = self.writer.write_record(record).wrap_err("When writing a table row");
+    let record = record.into_iter().collect_vec();
+    let fields = record.iter().map(AsRef::as_ref).collect_vec();
+    let result = self.writer.write(&fields).wrap_err("When writing a table row");
     self.wrap_filepath(result)
   }
 
   pub fn into_inner(self) -> Result<W, Report> {
-    let Self { writer, filepath } = self;
+    let Self { mut writer, filepath } = self;
     let result = writer
-      .into_inner()
-      .map_err(|error| Report::new(error.into_error()))
+      .flush()
+      .map(|()| writer.into_inner())
       .wrap_err("When flushing the table");
     match filepath {
       Some(filepath) => result.wrap_err_with(|| format!("When writing file '{}'", filepath.display())),
@@ -91,7 +95,7 @@ impl<W: Write> CsvWriter<W> {
 
   fn with_filepath(writer: W, format: TableFormat, filepath: Option<PathBuf>) -> Self {
     Self {
-      writer: WriterBuilder::new().delimiter(format.delimiter()).from_writer(writer),
+      writer: SerializerConfig::new().delimiter(format.delimiter()).writer(writer),
       filepath,
     }
   }
@@ -119,11 +123,16 @@ impl CsvWriter<FileWriter> {
   }
 }
 
-pub(crate) fn table_reader<R: Read>(reader: R, delimiter: u8) -> Reader<R> {
-  ReaderBuilder::new()
-    .trim(Trim::All)
+pub(crate) fn table_records<R: Read>(reader: R, delimiter: u8) -> Reader<R, StreamDeserializer> {
+  DeserializerConfig::new()
     .delimiter(delimiter)
-    .from_reader(reader)
+    .trim(Trim::All)
+    .headers(Headers::None)
+    .reader(reader)
+}
+
+const fn table_config(delimiter: u8) -> DeserializerConfig {
+  DeserializerConfig::new().delimiter(delimiter).trim(Trim::All)
 }
 
 pub fn default_name_candidates() -> Vec<String> {
@@ -223,11 +232,14 @@ fn delimiter_to_byte(delimiter: char) -> Result<u8, Report> {
     .wrap_err_with(|| format!("Metadata delimiter {delimiter:?} must fit in one byte"))
 }
 
-fn csv_headers(sample: &[u8], delimiter: u8) -> Result<Vec<String>, csv::Error> {
-  table_reader(sample, delimiter).headers().map(normalize_csv_headers)
+fn csv_headers(sample: &[u8], delimiter: u8) -> Result<Vec<String>, Report> {
+  table_records(sample, delimiter)
+    .read::<Vec<String>>()?
+    .map(|headers| normalize_csv_headers(&headers))
+    .ok_or_else(|| make_report!("The table is empty"))
 }
 
-pub(crate) fn normalize_csv_headers(headers: &csv::StringRecord) -> Vec<String> {
+pub(crate) fn normalize_csv_headers(headers: &[String]) -> Vec<String> {
   headers
     .iter()
     .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())

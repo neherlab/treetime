@@ -1,10 +1,10 @@
 use crate::testing::framework::results::{TestResult, TestRunOutcome};
 use crate::testing::framework::test_case::TestCase;
-use csv::WriterBuilder;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::fs;
+use treetime_io::csv::{CsvWriter, TableFormat};
 use treetime_utils::make_error;
 
 pub(crate) fn generate_tsv_outputs<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>]) -> Result<(), Report>
@@ -54,7 +54,7 @@ where
     );
   }
 
-  let mut writer = WriterBuilder::new().delimiter(b'\t').from_path(&tsv_path)?;
+  let mut writer = CsvWriter::create(&tsv_path, TableFormat::Tsv)?;
 
   writer.write_record(["x", "f(x)", "g(x)"])?;
 
@@ -66,7 +66,7 @@ where
   }
 
   writer
-    .flush()
+    .finish()
     .wrap_err_with(|| format!("When writing TSV file '{tsv_path}'"))?;
   Ok(())
 }
@@ -93,7 +93,7 @@ where
     );
   }
 
-  let mut writer = WriterBuilder::new().delimiter(b'\t').from_path(&tsv_path)?;
+  let mut writer = CsvWriter::create(&tsv_path, TableFormat::Tsv)?;
 
   writer.write_record(["t", "expected", "actual", "absolute_error", "relative_error"])?;
 
@@ -118,7 +118,7 @@ where
   }
 
   writer
-    .flush()
+    .finish()
     .wrap_err_with(|| format!("When writing TSV file '{tsv_path}'"))?;
   Ok(())
 }
@@ -156,7 +156,7 @@ where
   fs::create_dir_all(output_dir).wrap_err_with(|| format!("When creating directory '{output_dir}'"))?;
   let tsv_path = format!("{output_dir}/comparative_summary.tsv");
 
-  let mut writer = WriterBuilder::new().delimiter(b'\t').from_path(&tsv_path)?;
+  let mut writer = CsvWriter::create(&tsv_path, TableFormat::Tsv)?;
 
   let mut headers = vec!["test_case".to_owned()];
   for algo in &algorithms {
@@ -194,7 +194,7 @@ where
   }
 
   writer
-    .flush()
+    .finish()
     .wrap_err_with(|| format!("When writing TSV file '{tsv_path}'"))?;
   Ok(())
 }

@@ -1,6 +1,7 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_regression::ClockRegressionPoint;
 use crate::clock::clock_state::ClockInputs;
+use deser::adapters::SkipBlank;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -38,6 +39,7 @@ pub(crate) fn gather_clock_regression_results(
 
 #[derive(Debug, Clone, Deserialize, Serialize, deser::Serialize, deser::Deserialize)]
 pub struct ClockRegressionResult {
+  #[deser(as = SkipBlank<Option<_>>)]
   pub name: Option<String>,
   pub div: f64,
   pub date: Option<f64>,
