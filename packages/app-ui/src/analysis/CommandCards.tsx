@@ -1,8 +1,8 @@
 import type { AppCommand, CommandSettings, SparseConfig } from "@neherlab/app-contracts";
 import { useCallback } from "react";
 
-import { COMMANDS, commandSettings } from "../settings/catalog";
-import { carryOverConfig } from "../settings/config";
+import { COMMANDS } from "../settings/catalog";
+import { carryOverDraft } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
 import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "../ui/field";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
@@ -16,16 +16,9 @@ export function CommandCards({ command, config }: { command: AppCommand; config:
         return;
       }
 
-      const targetSpecs = commandSettings(target).settings;
-      const keys = new Set(targetSpecs.map((spec) => spec.key));
       const { draft, load } = useDraftStore.getState();
 
-      load({
-        ...draft,
-        command: target,
-        config: carryOverConfig(targetSpecs, commandSettings(command).settings, config),
-        sources: Object.fromEntries(Object.entries(draft.sources).filter(([key]) => keys.has(key))),
-      });
+      load({ ...draft, command: target, ...carryOverDraft(target, command, config, draft.sources) });
     },
     [command, config],
   );

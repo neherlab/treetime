@@ -28,6 +28,31 @@ const RECORD: RunRecord = {
   warnings: [],
 };
 
+const ANCESTRAL: RunRecord = {
+  id: "r2",
+  title: "Ancestral zika",
+  command: "ancestral",
+  config: {
+    tree: "/data/zika/86/tree.nwk",
+    alignment: ["/data/zika/86/aln.fasta.xz"],
+    model: "jc69",
+    gap_fill: "all",
+    reconstruct_tip_states: true,
+    output_all: "/runs/r2/out",
+  },
+  status: "ok",
+  pinned: false,
+  created_at: "2026-09-25T08:00:00Z",
+  treetime_version: "1.0.0",
+  inputs: [
+    { setting: "tree", path: "/data/zika/86/tree.nwk", size: 10, sha256: "a" },
+    { setting: "alignment", path: "/data/zika/86/aln.fasta.xz", size: 20, sha256: "b" },
+  ],
+  changed_settings: ["model", "gap_fill", "reconstruct_tip_states"],
+  headline: {},
+  output_files: [],
+};
+
 describe("edit and run again", () => {
   test("keeps the settings and inputs of the run and drops its output paths", () => {
     const draft = rerunDraft(RECORD);
@@ -52,5 +77,29 @@ describe("edit and run again", () => {
     rerunDraft(RECORD);
 
     expect(JSON.stringify(RECORD)).toStrictEqual(before);
+  });
+});
+
+describe("analyze homoplasy from an ancestral run", () => {
+  test("carries the inputs and the changed settings that homoplasy also has", () => {
+    const draft = rerunDraft(ANCESTRAL, "homoplasy");
+
+    expect({
+      tree: draft.config["tree"],
+      alignment: draft.config["alignment"],
+      model: draft.config["model"],
+      gapFill: draft.config["gap_fill"],
+      tipStates: draft.config["reconstruct_tip_states"],
+      outputAll: draft.config["output_all"],
+      labels: draft.inputLabels,
+    }).toStrictEqual({
+      tree: "/data/zika/86/tree.nwk",
+      alignment: ["/data/zika/86/aln.fasta.xz"],
+      model: "jc69",
+      gapFill: "all",
+      tipStates: undefined,
+      outputAll: undefined,
+      labels: { tree: "tree.nwk", alignment: "aln.fasta.xz" },
+    });
   });
 });

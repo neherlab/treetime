@@ -150,17 +150,15 @@ function PageHeader() {
   const command = useDraftStore((state) => state.draft.command);
   const reset = useDraftStore((state) => state.reset);
   const { data: runList } = useApi((context) => runsList(context));
-  const fromTitle = runList?.runs.find((run) => run.id === fromRunId)?.title ?? fromRunId;
+  const fromRun = runList?.runs.find((run) => run.id === fromRunId);
+  const fromTitle = fromRun?.title ?? fromRunId ?? "";
   const resetForm = useCallback(() => reset(command), [command, reset]);
+  const otherCommand = fromRun !== undefined && fromRun.command !== command;
 
   return (
     <PageHeading
-      title={fromRunId === undefined ? "New analysis" : "Edit and run again"}
-      description={
-        fromRunId === undefined
-          ? "Choose an analysis, add the data, check the settings, run."
-          : `Settings copied from "${fromTitle ?? ""}". The original run stays unchanged.`
-      }
+      title={fromRunId === undefined || otherCommand ? "New analysis" : "Edit and run again"}
+      description={pageDescription(fromRunId === undefined, otherCommand, fromTitle)}
       actions={
         <Button type="button" variant="ghost" onClick={resetForm}>
           <RotateCcw aria-hidden />
@@ -169,6 +167,16 @@ function PageHeader() {
       }
     />
   );
+}
+
+function pageDescription(fresh: boolean, otherCommand: boolean, fromTitle: string): string {
+  if (fresh) {
+    return "Choose an analysis, add the data, check the settings, run.";
+  }
+
+  return otherCommand
+    ? `Inputs and shared settings copied from "${fromTitle}". The original run stays unchanged.`
+    : `Settings copied from "${fromTitle}". The original run stays unchanged.`;
 }
 
 function Step({

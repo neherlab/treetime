@@ -1,11 +1,14 @@
 import type { RunRecord, RunResults, AncestralResults, BranchMutations, RecurrentSite } from "@neherlab/app-contracts";
 import { useMemo } from "react";
+import ChartColumn from "~icons/lucide/chart-column";
 
 import { DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
+import { Button } from "../ui/button";
 import { OutputFiles } from "./OutputFiles";
 import { settingText } from "./settingText";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
+import { useRerun } from "./useRerun";
 
 const branchColumn = dataColumns<BranchMutations>();
 
@@ -53,6 +56,7 @@ export function AncestralResultsView({
   const branches = data.branches;
   const sites = data.recurrent_sites;
   const total = data.mutations;
+  const analyzeHomoplasy = useRerun(record, "homoplasy");
 
   const summary = useMemo<SummaryEntry[]>(
     () => [
@@ -81,7 +85,17 @@ export function AncestralResultsView({
             numeric={BRANCH_NUMERIC}
           />
         </Panel>
-        <Panel title="Sites mutated on several branches">
+        <Panel
+          title="Sites mutated on several branches"
+          actions={
+            sites.length === 0 ? undefined : (
+              <Button type="button" variant="outline" size="xs" onClick={analyzeHomoplasy}>
+                <ChartColumn aria-hidden />
+                Analyze homoplasy
+              </Button>
+            )
+          }
+        >
           <DataTable
             label="Sites mutated on several branches"
             columns={SITE_COLUMNS}
