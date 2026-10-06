@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_support::tests::{c, edge_mutation_map};
+  use crate::__tests__::test_support::tests::{NUC_ALPHABET, c, edge_mutation_map};
   use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeDates, TreeSequences};
   use app_output::output_plan::{CommandKind, TreeWriteKind};
   use app_output::tree_output::write_tree_outputs;
@@ -46,6 +46,7 @@ mod tests {
       time_branch_lengths: Some(&time_lengths),
       divergence: Divergence::Values(&divergences),
       sequences: Some(TreeSequences {
+        alphabet: &NUC_ALPHABET,
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         mutation_counts: None,

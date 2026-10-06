@@ -130,6 +130,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_support::tests::NUC_ALPHABET;
     use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeDates, TreeSequences};
     use app_output::augur_node_data_refine::{RefineRun, build_augur_node_data_refine};
     use indoc::indoc;
@@ -192,6 +193,7 @@ mod tests {
           time_branch_lengths: Some(&time_lengths),
           divergence: Divergence::CumulativeBranchLength,
           sequences: mutation_counts.map(|mutation_counts| TreeSequences {
+            alphabet: &NUC_ALPHABET,
             root_sequence: &root_sequence,
             edge_mutations: &edge_mutations,
             mutation_counts: Some(mutation_counts),

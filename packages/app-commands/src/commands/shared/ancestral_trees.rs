@@ -4,6 +4,7 @@ use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use std::collections::BTreeMap;
+use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::aa::AaNodeData;
 use treetime::progress::LogSink;
 use treetime::progress_info;
@@ -16,6 +17,7 @@ use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 pub(crate) struct AncestralTrees<'a> {
   pub(crate) graph: &'a Graph,
+  pub(crate) alphabet: &'a Alphabet,
   pub(crate) names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   pub(crate) branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   pub(crate) maps: &'a AncestralOutputMaps,
@@ -41,6 +43,7 @@ pub(crate) fn write_ancestral_trees(
     time_branch_lengths: None,
     divergence: Divergence::CumulativeBranchLength,
     sequences: Some(TreeSequences {
+      alphabet: trees.alphabet,
       root_sequence: &trees.maps.root_sequence,
       edge_mutations: &trees.maps.edge_mutations,
       mutation_counts: None,

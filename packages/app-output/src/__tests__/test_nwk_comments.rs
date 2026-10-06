@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_tree_output::tests::helpers::{
-    annotated, dated_graph, dated_setup, mugration_graph, mugration_setup, no_mutations, node_key, parent_edge,
-    substitution, topology_from,
+    NUC_ALPHABET, annotated, dated_graph, dated_setup, mugration_graph, mugration_setup, no_mutations, node_key,
+    parent_edge, substitution, topology_from,
   };
   use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
   use crate::nwk_comments::nwk_node_comments;
@@ -75,6 +75,7 @@ mod tests {
     let root_sequence = Seq::try_from_str("ACGT")?;
     let graph = AnnotatedGraph {
       sequences: Some(TreeSequences {
+        alphabet: &NUC_ALPHABET,
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         mutation_counts: None,
@@ -121,6 +122,7 @@ mod tests {
     let root_sequence = Seq::try_from_str("ACGT")?;
     let graph = AnnotatedGraph {
       sequences: Some(TreeSequences {
+        alphabet: &NUC_ALPHABET,
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         mutation_counts: None,
@@ -203,6 +205,7 @@ mod tests {
     let root_sequence = Seq::try_from_str("ACGT")?;
     let graph = AnnotatedGraph {
       sequences: Some(TreeSequences {
+        alphabet: &NUC_ALPHABET,
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         mutation_counts: None,
@@ -229,7 +232,7 @@ mod tests {
 
   mod helpers {
     use crate::__tests__::test_tree_output::tests::helpers::{
-      annotated, no_mutations, node_key, parent_edge, topology_from,
+      NUC_ALPHABET, annotated, no_mutations, node_key, parent_edge, topology_from,
     };
     use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
     use crate::nwk_comments::nwk_node_comments;
@@ -245,6 +248,7 @@ mod tests {
       let root_sequence = Seq::try_from_str("ACGT")?;
       let graph = AnnotatedGraph {
         sequences: Some(TreeSequences {
+          alphabet: &NUC_ALPHABET,
           root_sequence: &root_sequence,
           edge_mutations: &edge_mutations,
           mutation_counts: None,

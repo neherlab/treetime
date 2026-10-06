@@ -4,10 +4,14 @@ pub(crate) mod tests {
   use serde_json::Value;
   use std::collections::BTreeMap;
   use std::path::PathBuf;
+  use std::sync::LazyLock;
+  use treetime::alphabet::alphabet::Alphabet;
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_primitives::AsciiChar;
+
+  pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   pub(crate) fn sparse(value: Value) -> SparseConfig {
     serde_json::from_value(value).expect("a test config is a mapping of settings")

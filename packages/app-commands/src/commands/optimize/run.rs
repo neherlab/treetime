@@ -92,6 +92,7 @@ pub fn run_optimize(
 
   let trees = OptimizeTrees {
     graph: &graph,
+    alphabet: reconstruction.alphabet(),
     names: &names,
     branch_lengths: &branch_lengths,
     maps: &maps,
@@ -108,6 +109,7 @@ pub fn run_optimize(
 
 struct OptimizeTrees<'a> {
   graph: &'a Graph,
+  alphabet: &'a Alphabet,
   names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &'a OptimizeOutputMaps,
@@ -128,6 +130,7 @@ fn write_optimize_trees(
     time_branch_lengths: None,
     divergence: Divergence::CumulativeBranchLength,
     sequences: Some(TreeSequences {
+      alphabet: trees.alphabet,
       root_sequence: &trees.maps.root_sequence,
       edge_mutations: &trees.maps.edge_mutations,
       mutation_counts: trees.mutation_units.then_some(&trees.maps.edge_mutation_counts),

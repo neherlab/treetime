@@ -14,6 +14,7 @@ use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::clock::divergence::root_to_node_divergences;
 use treetime::optimize::params::BranchLengthMode;
@@ -66,7 +67,8 @@ pub fn run_timetree_estimation(
   let params = timetree_params(args, sequence_outputs_requested, seed);
 
   let aln_descs = sequence_descriptions(input_data.aln.iter().flatten());
-  let unknown = input_data.alphabet.unknown();
+  let alphabet = input_data.alphabet.clone();
+  let unknown = alphabet.unknown();
   let input = TimetreeInput {
     graph: input_data.graph,
     names: parse_names.clone(),
@@ -113,6 +115,7 @@ pub fn run_timetree_estimation(
   progress_info!(log, "### TreeTime: writing outputs");
   write_model_outputs(&resolved, &output, log)?;
   let tree_inputs = TreeOutputInputs {
+    alphabet,
     input_leaf_order,
     filter: UnknownMutationFilter::new(unknown, args.report_ambiguous),
     mutation_units,
@@ -243,6 +246,7 @@ pub(crate) fn reconstructed_nuc_fasta_path(
 }
 
 struct TreeOutputInputs {
+  alphabet: Alphabet,
   input_leaf_order: Vec<String>,
   filter: UnknownMutationFilter,
   mutation_units: bool,
@@ -279,6 +283,7 @@ fn write_result_outputs(
 
   let trees = TimetreeTrees {
     graph: &graph,
+    alphabet: &inputs.alphabet,
     names: &names,
     branch_lengths: &branch_lengths,
     date_branch_lengths: &date_branch_lengths,
@@ -301,6 +306,7 @@ fn write_result_outputs(
 
 struct TimetreeTrees<'a> {
   graph: &'a Graph,
+  alphabet: &'a Alphabet,
   names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   date_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -343,6 +349,7 @@ fn write_timetree_trees(
     time_branch_lengths: Some(trees.date_branch_lengths),
     divergence: Divergence::Values(mutation_divergences.as_ref().unwrap_or(trees.divergences)),
     sequences: trees.maps.root_sequence.as_ref().map(|root_sequence| TreeSequences {
+      alphabet: trees.alphabet,
       root_sequence,
       edge_mutations: &trees.maps.edge_mutations,
       mutation_counts: trees.mutation_counts,

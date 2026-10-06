@@ -71,7 +71,7 @@ pub fn run_prune(
   let unknown = alphabet.unknown();
   let input = PruneInput {
     graph,
-    alphabet,
+    alphabet: alphabet.clone(),
     sequences,
     branch_lengths: branch_lengths_input,
   };
@@ -111,7 +111,7 @@ pub fn run_prune(
     log,
   )?;
 
-  write_prune_trees(&graph, &names, &branch_lengths, &maps, &resolved, log)?;
+  write_prune_trees(&graph, &alphabet, &names, &branch_lengths, &maps, &resolved, log)?;
 
   stages.report("Done", 1.0, "");
   Ok(())
@@ -119,6 +119,7 @@ pub fn run_prune(
 
 fn write_prune_trees(
   graph: &Graph,
+  alphabet: &Alphabet,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   maps: &PruneOutputMaps,
@@ -132,6 +133,7 @@ fn write_prune_trees(
     time_branch_lengths: None,
     divergence: Divergence::CumulativeBranchLength,
     sequences: maps.root_sequence.as_ref().map(|root_sequence| TreeSequences {
+      alphabet,
       root_sequence,
       edge_mutations: &maps.edge_mutations,
       mutation_counts: None,

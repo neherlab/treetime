@@ -1,3 +1,4 @@
+mod test_auspice_color_by;
 mod test_model_json;
 mod test_mutation_filter;
 mod test_nwk_comments;

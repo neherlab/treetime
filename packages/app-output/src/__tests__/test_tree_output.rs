@@ -136,6 +136,7 @@ pub(super) mod tests {
     let edge_mutations = helpers::mutation_on(&dated.topology, "A")?;
     let graph = AnnotatedGraph {
       sequences: Some(TreeSequences {
+        alphabet: &helpers::NUC_ALPHABET,
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         mutation_counts: None,
@@ -185,6 +186,7 @@ pub(super) mod tests {
     let dates = helpers::dated_graph(&dated, None).dates;
     let graph = AnnotatedGraph {
       sequences: with_sequences.then_some(TreeSequences {
+        alphabet: &helpers::NUC_ALPHABET,
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         mutation_counts: None,
@@ -566,6 +568,8 @@ pub(super) mod tests {
     use std::collections::{BTreeMap, BTreeSet};
     use std::error::Error;
     use std::io;
+    use std::sync::LazyLock;
+    use treetime::alphabet::alphabet::Alphabet;
     use treetime::ancestral::aa::AaNodeData;
     use treetime::partition::storage::discrete::DiscreteStates;
     use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
@@ -579,6 +583,8 @@ pub(super) mod tests {
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use treetime_utils::{make_report, o};
     use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
+
+    pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
     pub(crate) const UPDATED: &str = "2026-07-19";
     const AUSPICE_SCHEMA: &str = include_str!("schemas/auspice/schema-export-v2.json");
@@ -736,6 +742,7 @@ pub(super) mod tests {
     pub(crate) fn ancestral_graph(setup: &AncestralSetup) -> AnnotatedGraph<'_> {
       AnnotatedGraph {
         sequences: Some(TreeSequences {
+          alphabet: &NUC_ALPHABET,
           root_sequence: &setup.root_sequence,
           edge_mutations: &setup.edge_mutations,
           mutation_counts: None,
@@ -755,6 +762,7 @@ pub(super) mod tests {
     ) -> AnnotatedGraph<'a> {
       AnnotatedGraph {
         sequences: Some(TreeSequences {
+          alphabet: &NUC_ALPHABET,
           root_sequence,
           edge_mutations,
           mutation_counts: None,
@@ -828,6 +836,7 @@ pub(super) mod tests {
       AnnotatedGraph {
         divergence: Divergence::Values(&setup.div),
         sequences: root_sequence.map(|root_sequence| TreeSequences {
+          alphabet: &NUC_ALPHABET,
           root_sequence,
           edge_mutations: &setup.edge_mutations,
           mutation_counts: None,
@@ -897,6 +906,7 @@ pub(super) mod tests {
       .map(|root_sequence| {
         mat(&AnnotatedGraph {
           sequences: root_sequence.map(|root_sequence| TreeSequences {
+            alphabet: &NUC_ALPHABET,
             root_sequence,
             edge_mutations: &no_mutations,
             mutation_counts: None,

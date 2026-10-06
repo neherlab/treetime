@@ -7,6 +7,8 @@ use maplit::btreemap;
 use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 use treetime::clock::divergence::root_to_node_divergences_where_known;
+use treetime::homoplasy::classify::MutationClass;
+use treetime::homoplasy::site_branches::sites_by_branch_count;
 use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
 use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::node::GraphNodeKey;
@@ -127,7 +129,10 @@ fn auspice_data(
   if has_mutations {
     colorings.push(coloring(COLORING_GENOTYPE, "Genotype", "categorical"));
   }
-  let color_by = filters.last().cloned();
+  let color_by = filters
+    .last()
+    .cloned()
+    .or_else(|| graph.sequences.as_ref().and_then(genotype_color_by));
 
   let root_sequences = graph.sequences.as_ref().map(root_sequences).unwrap_or_default();
   let cdses = graph
@@ -161,6 +166,22 @@ fn auspice_data(
     root_sequence: (!root_sequences.is_empty()).then_some(root_sequences),
     other: Value::default(),
   })
+}
+
+fn genotype_color_by(sequences: &TreeSequences<'_>) -> Option<String> {
+  let site = sites_by_branch_count(
+    sequences.edge_mutations.values().map(|mutations| {
+      mutations
+        .iter()
+        .filter(|mutation| matches!(mutation.track, MutationTrack::Nucleotide))
+        .map(|mutation| &mutation.event)
+    }),
+    sequences.alphabet,
+    MutationClass::Substitution,
+  )
+  .into_iter()
+  .next()?;
+  Some(format!("{COLORING_GENOTYPE}-{NUC_TRACK}_{}", site.position + 1))
 }
 
 fn root_sequences(sequences: &TreeSequences<'_>) -> BTreeMap<String, String> {

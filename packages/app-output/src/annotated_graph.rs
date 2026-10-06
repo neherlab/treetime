@@ -1,6 +1,7 @@
 use eyre::Report;
 use ndarray::Array1;
 use std::collections::{BTreeMap, BTreeSet};
+use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::aa::AaNodeData;
 use treetime::partition::storage::discrete::DiscreteStates;
 use treetime::seq::mutation::Mutation;
@@ -57,6 +58,7 @@ pub enum Divergence<'a> {
 }
 
 pub struct TreeSequences<'a> {
+  pub alphabet: &'a Alphabet,
   pub root_sequence: &'a Seq,
   pub edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
   pub mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,

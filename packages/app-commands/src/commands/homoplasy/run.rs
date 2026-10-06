@@ -97,6 +97,7 @@ pub fn run_homoplasy(
   };
   let trees = AncestralTrees {
     graph: &graph,
+    alphabet: &alphabet,
     names: &names,
     branch_lengths: &branch_lengths,
     maps: &maps,

@@ -28,6 +28,8 @@ This is a standalone visualization convenience for viewing ancestral reconstruct
 
 **Recommendation:** O1, the project default of reference parity. Shared metadata construction should be reused with timetree where the field semantics are identical.
 
+O1 adds the `bad_branch` filter, which then becomes the default coloring in place of the most recurrent site ([kb/decisions/auspice-default-coloring-most-recurrent-site.md](../decisions/auspice-default-coloring-most-recurrent-site.md)). Every ancestral branch has the value `No`, so the tree opens in one color.
+
 ### A3. Failure atomicity
 
 - O1. Validate format availability and construct every requested projection before opening output files.

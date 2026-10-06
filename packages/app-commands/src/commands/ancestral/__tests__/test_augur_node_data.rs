@@ -165,6 +165,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_support::tests::NUC_ALPHABET;
     use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
     use crate::commands::shared::alignment::AlignmentArgs;
@@ -284,6 +285,7 @@ mod tests {
         time_branch_lengths: None,
         divergence: Divergence::CumulativeBranchLength,
         sequences: Some(TreeSequences {
+          alphabet: &NUC_ALPHABET,
           root_sequence: &maps.root_sequence,
           edge_mutations: &maps.edge_mutations,
           mutation_counts: None,

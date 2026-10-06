@@ -215,7 +215,7 @@ mod tests {
 
   mod helpers {
     use crate::__tests__::test_tree_output::tests::helpers::{
-      Mutations, ancestral_graph, ancestral_setup, annotated, no_mutations, parent_edge, topology_from,
+      Mutations, NUC_ALPHABET, ancestral_graph, ancestral_setup, annotated, no_mutations, parent_edge, topology_from,
     };
     use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
     use crate::output_plan::{CommandKind, TreeWriteKind};
@@ -258,6 +258,7 @@ mod tests {
       let root_sequence = Seq::try_from_str(reference)?;
       let graph = AnnotatedGraph {
         sequences: Some(TreeSequences {
+          alphabet: &NUC_ALPHABET,
           root_sequence: &root_sequence,
           edge_mutations: &complete,
           mutation_counts: None,

@@ -65,6 +65,7 @@ pub fn run_ancestral_reconstruction(
   let seed = args.seed_args.resolve(random_step, log);
   let params = ancestral_params(args, seed);
 
+  let alphabet = input.alphabet.clone();
   let output =
     pipeline::run(&params, input, Some(&mut seq_sink), cancel, stages, log).map_err(|err| err.into_report())?;
   let mut graph = output.graph;
@@ -103,6 +104,7 @@ pub fn run_ancestral_reconstruction(
 
   let trees = AncestralTrees {
     graph: &graph,
+    alphabet: &alphabet,
     names: &names,
     branch_lengths: &branch_lengths,
     maps: &maps,
