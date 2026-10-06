@@ -1,20 +1,30 @@
-pub mod annotation;
-mod equality;
+pub mod dialect;
+pub(crate) mod grammar;
+pub mod model;
 pub mod nexus;
-mod number;
-pub mod parse;
-pub mod types;
-mod validate;
+pub(crate) mod nhx;
+pub mod number;
+pub mod read;
 pub mod write;
 
-pub use crate::annotation::{write_beast_attrs, write_nhx_attrs};
-pub use crate::nexus::{is_nexus, nexus_from_reader, nexus_from_string, nexus_to_string, nexus_to_writer};
-pub use crate::parse::{newick_from_reader, newick_from_string};
-pub use crate::types::{
-  NewickEdgeData, NewickEdgeEntry, NewickGraph, NewickHybrid, NewickLabel, NewickNodeData, NewickReadOptions,
-  NewickValue, NewickWriteOptions, NexusTree, NwkStyle,
+pub use crate::dialect::{CommentKind, DialectFeatures, NewickDialect};
+pub use crate::model::comment::{
+  EdgeComment, EdgeField, LabelSide, MrBayesComment, MrBayesKind, NewickComment, NodeComment, ValueSide,
 };
-pub use crate::write::{needs_quoting, newick_to_string, newick_to_writer, write_label};
+pub use crate::model::data::{NewickEdgeData, NewickHybrid, NewickNodeData, SupportSource};
+pub use crate::model::graph::{NewickEdgeEntry, NewickGraph};
+pub use crate::model::traverse::{Postorder, Preorder};
+pub use crate::model::value::{NewickArray, NewickValue};
+pub use crate::nexus::read::{NexusTrees, is_nexus, nexus_from_reader, nexus_from_str, nexus_trees};
+pub use crate::nexus::types::{NexusCommand, NexusFile, NexusTree, NexusTreeRef, NexusWriteOptions};
+pub use crate::nexus::write::{nexus_to_string, nexus_to_writer};
+pub use crate::number::NumberFormat;
+pub use crate::read::error::{DialectAttempt, Location, NewickError, NewickErrorKind, NewickWarning};
+pub use crate::read::options::{InternalLabel, NewickReadOptions, NewickTree, ReadMode};
+pub use crate::read::stream::{NewickTrees, newick_from_reader, newick_from_str, newick_trees};
+pub use crate::write::conversions::{Conversion, DataKind, conversion};
+pub use crate::write::newick::{newick_to_string, newick_to_writer, write_newick_trees};
+pub use crate::write::options::{BranchAnnotations, NewickWriteOptions, Quoting, Spaces, SupportPlacement};
 
 #[cfg(test)]
 mod __tests__;

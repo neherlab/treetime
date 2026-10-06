@@ -1,0 +1,35 @@
+// Lexical rules shared by the Newick and the NEXUS grammars.
+
+WHITESPACE = _{ " " | "\t" | NEWLINE }
+
+bom = { "\u{FEFF}" }
+
+// A single-quoted label or NEXUS word. Two quotes inside stand for one quote.
+quoted_label = @{ "'" ~ ("''" | !"'" ~ ANY)* ~ "'" }
+
+// A double-quoted string of a BEAST annotation. Two quotes inside stand for one quote.
+double_quoted = @{ "\"" ~ ("\"\"" | !"\"" ~ ANY)* ~ "\"" }
+
+// A comment without structure. Nested brackets are counted on the parser stack,
+// so deeply nested comments do not use the call stack.
+plain_comment = @{ "[" ~ (PUSH("[") | "]" ~ DROP | !"]" ~ ANY)* ~ "]" }
+
+// A comment as seen by the scanner that finds where a tree or a command ends.
+// In a comment that starts with a single '[&', a double-quoted string that
+// starts a BEAST key or value may contain brackets. Other comments only count
+// brackets.
+scan_comment     = @{ scan_annotation | plain_comment }
+scan_annotation  = _{ "[" ~ &annotation_start ~ (scan_string | PUSH("[") | "]" ~ DROP | !"]" ~ ANY)* ~ "]" }
+scan_string      = _{ scan_quote_start ~ double_quoted }
+scan_quote_start = _{ ("&" | "=" | "," | "{") ~ (" " | "\t")* ~ &"\"" }
+annotation_start = _{ "&" ~ !"&" }
+
+// The same comment while more input may follow: a string that has started must
+// also end, because its end may lie beyond a ']' or ';' that is already in view.
+scan_comment_strict    = @{ &("[" ~ annotation_start) ~ scan_annotation_strict | !("[" ~ annotation_start) ~ plain_comment }
+scan_annotation_strict = _{ "[" ~ (scan_string | !scan_quote_start ~ (PUSH("[") | "]" ~ DROP | !"]" ~ ANY))* ~ "]" }
+
+// An unquoted run of a label or a NEXUS word, as seen by the same scanner. A
+// quote inside the run belongs to the run; a quote at its start opens a quoted
+// label.
+scan_word = _{ !"'" ~ (!(";" | "[" | "]" | "(" | ")" | "," | ":" | "=" | WHITESPACE) ~ ANY)+ }

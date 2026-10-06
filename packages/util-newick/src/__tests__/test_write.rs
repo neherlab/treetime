@@ -1,455 +1,388 @@
 #[cfg(test)]
 mod tests {
-  use crate::annotation::{write_beast_attrs, write_nhx_attrs};
-  use crate::parse::newick_from_string;
-  use crate::types::{
-    NewickEdgeData, NewickGraph, NewickLabel, NewickNodeData, NewickReadOptions, NewickValue, NewickWriteOptions,
-    NwkStyle,
+  use crate::__tests__::test_read_basic::tests::helpers::{caterpillar, on_small_stack, read_with};
+  use crate::dialect::NewickDialect;
+  use crate::model::comment::NewickComment;
+  use crate::model::data::{NewickEdgeData, NewickNodeData, SupportSource};
+  use crate::model::graph::NewickGraph;
+  use crate::model::value::NewickValue;
+  use crate::number::NumberFormat;
+  use crate::read::options::NewickReadOptions;
+  use crate::write::newick::{newick_to_string, write_newick_trees};
+  use crate::write::options::{BranchAnnotations, NewickWriteOptions, Quoting, Spaces, SupportPlacement};
+  use helpers::{
+    commented_leaf, named_internal_with_support, named_root_support, reread, rewrite, star, star_with_edge, write_error,
   };
-  use crate::write::newick_to_string;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
 
-  fn opts(style: NwkStyle) -> NewickWriteOptions {
-    NewickWriteOptions {
-      style,
-      significant_digits: None,
-      decimal_digits: None,
-    }
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::classic(           NewickDialect::Classic, "(A:0.1,B:0.2)root;")]
+  #[case::empty_names(       NewickDialect::Classic, "(,);")]
+  #[case::root_length(       NewickDialect::Classic, "(A,B):0.5;")]
+  #[case::support(           NewickDialect::Classic, "((A,B)95:1,C)0.5;")]
+  #[case::multi_support(     NewickDialect::Classic, "((A,B)80.5/95,C);")]
+  #[case::exponent(          NewickDialect::Classic, "(A:1.0e-10,B:1.0e20);")]
+  #[case::plain_comments(    NewickDialect::Classic, "([a]A[b]:[c]1[d],[e]:2)[r]Y[f];")]
+  #[case::ampersand_classic( NewickDialect::Classic, "(A[&a=1],B);")]
+  #[case::beast(             NewickDialect::Beast,   "[&R]((A[&rate=1.5,s=\"x,y\"]:[&r=1]1[c],B)[&posterior=0.9]:1,C);")]
+  #[case::beast_arrays(      NewickDialect::Beast,   "(A[&a={1,{2,\"x\"},{}},c=#ff0080,b=TRUE],B);")]
+  #[case::mrbayes(           NewickDialect::MrBayes, "[&U](A:1[&B TK02Brlens 0.1],B[&E ibr 2: 0.1]);")]
+  #[case::nhx(               NewickDialect::Nhx,     "(A[&&NHX:S=human:T=9606:C=1.2.3:D:Ev=1>2]:1,B);")]
+  #[case::enewick(           NewickDialect::ENewick, "((A)x##LGT1,(x#LGT1,B));")]
+  #[case::enewick_unnamed(   NewickDialect::ENewick, "((A)#H1:1,(#H1:2,B));")]
+  #[case::rich(              NewickDialect::Rich,    "[&U][&W 0.5]((A:1:90,(B)#H1:::0.3),(#H1:::0.7,C)):0.1;")]
+  #[case::rich_field_comment(NewickDialect::Rich,    "(A:1[c]:[d]80,B);")]
+  #[trace]
+  fn test_write_reproduces_canonical_text(#[case] dialect: NewickDialect, #[case] text: &str) {
+    assert_eq!(text, rewrite(text, dialect, &NewickWriteOptions::new(dialect)));
   }
 
-  #[test]
-  fn test_write_plain_simple() {
-    let g = newick_from_string("(A:0.1,B:0.2)root;", &NewickReadOptions::default()).unwrap();
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    assert_eq!("(A:0.1,B:0.2)root;", s);
-  }
-
-  #[test]
-  fn test_write_plain_strips_annotations() {
-    let g = newick_from_string("(A[&prob=0.95]:0.1,B:0.2);", &NewickReadOptions::default()).unwrap();
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    assert_eq!("(A:0.1,B:0.2);", s);
-  }
-
-  #[test]
-  fn test_write_plain_strips_raw_comments() {
-    let g = newick_from_string("(A[some comment]:0.1,B:0.2);", &NewickReadOptions::default()).unwrap();
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    assert_eq!("(A:0.1,B:0.2);", s);
-  }
-
-  #[test]
-  fn test_write_beast_node_attrs() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert("prob".to_owned(), NewickValue::Number(0.95));
-    let root = g.add_node(NewickNodeData {
-      label: None,
-      node_attrs: BTreeMap::new(),
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    let a = g.add_node(NewickNodeData {
-      label: Some(NewickLabel::Name("A".to_owned())),
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    let b = g.add_node(NewickNodeData::new().with_name("B"));
-    g.add_edge(root, a, NewickEdgeData::new().with_length(0.1));
-    g.add_edge(root, b, NewickEdgeData::new().with_length(0.2));
-    g.root = root;
-
-    let s = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    assert_eq!("(A[&prob=0.95]:0.1,B:0.2);", s);
-  }
-
-  #[test]
-  fn test_write_beast_branch_attrs() {
-    let mut g = NewickGraph::new();
-    let root = g.add_node(NewickNodeData::new());
-    let a = g.add_node(NewickNodeData::new().with_name("A"));
-    let mut branch_attrs = BTreeMap::new();
-    branch_attrs.insert("rate".to_owned(), NewickValue::Number(1.5));
-    g.add_edge(
-      root,
-      a,
-      NewickEdgeData {
-        branch_length: Some(0.1),
-        branch_attrs,
-        raw_comments: Vec::new(),
-        is_acceptor: false,
-      },
-    );
-    g.root = root;
-
-    let s = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    assert_eq!("(A:[&rate=1.5]0.1);", s);
-  }
-
-  #[test]
-  fn test_write_beast_boolean_values() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert("active".to_owned(), NewickValue::Boolean(true));
-    attrs.insert("fixed".to_owned(), NewickValue::Boolean(false));
-    let node = g.add_node(NewickNodeData {
-      label: Some(NewickLabel::Name("A".to_owned())),
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
-
-    let s = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    assert_eq!("A[&active=TRUE,fixed=FALSE];", s);
-  }
-
-  #[test]
-  fn test_write_beast_array_values() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert(
-      "hpd".to_owned(),
-      NewickValue::Array(vec![NewickValue::Number(1.0), NewickValue::Number(2.0)]),
-    );
-    let node = g.add_node(NewickNodeData {
-      label: Some(NewickLabel::Name("A".to_owned())),
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
-
-    let s = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    assert_eq!("A[&hpd={1,2}];", s);
-  }
-
-  #[test]
-  fn test_write_beast_quoted_string() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert("label".to_owned(), NewickValue::String("hello, world".to_owned()));
-    let node = g.add_node(NewickNodeData {
-      label: Some(NewickLabel::Name("A".to_owned())),
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
-
-    let s = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    assert_eq!("A[&label=\"hello, world\"];", s);
-  }
-
-  #[test]
-  fn test_write_beast_raw_comments() {
-    let mut g = NewickGraph::new();
-    let node = g.add_node(NewickNodeData {
-      label: Some(NewickLabel::Name("A".to_owned())),
-      node_attrs: BTreeMap::new(),
-      raw_comments: vec!["[some note]".to_owned()],
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
-
-    let s = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    assert_eq!("A[some note];", s);
-  }
-
-  #[test]
-  fn test_write_nhx_node_attrs() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert("S".to_owned(), NewickValue::String("human".to_owned()));
-    attrs.insert("T".to_owned(), NewickValue::String("9606".to_owned()));
-    let node = g.add_node(NewickNodeData {
-      label: Some(NewickLabel::Name("A".to_owned())),
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
-
-    let s = newick_to_string(&g, &opts(NwkStyle::Nhx)).unwrap();
-    assert_eq!("A[&&NHX:S=human:T=9606];", s);
-  }
-
-  #[test]
-  fn test_write_name_quoting_special_chars() {
-    let mut g = NewickGraph::new();
-    let node = g.add_node(NewickNodeData::new().with_name("node (1)"));
-    g.root = node;
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    assert_eq!("'node (1)';", s);
-  }
-
-  #[test]
-  fn test_write_name_quoting_single_quote() {
-    let mut g = NewickGraph::new();
-    let node = g.add_node(NewickNodeData::new().with_name("it's"));
-    g.root = node;
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    assert_eq!("'it''s';", s);
-  }
-
-  #[test]
-  fn test_write_name_no_quoting_needed() {
-    let mut g = NewickGraph::new();
-    let node = g.add_node(NewickNodeData::new().with_name("simple_name"));
-    g.root = node;
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    assert_eq!("simple_name;", s);
-  }
-
-  #[test]
-  fn test_write_rooted_prefix() {
-    let mut g = newick_from_string("(A,B);", &NewickReadOptions::default()).unwrap();
-    g.rooted = Some(true);
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    assert_eq!("[&R](A,B);", s);
-  }
-
-  #[test]
-  fn test_write_unrooted_prefix() {
-    let mut g = newick_from_string("(A,B);", &NewickReadOptions::default()).unwrap();
-    g.rooted = Some(false);
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    assert_eq!("[&U](A,B);", s);
-  }
-
-  #[test]
-  fn test_write_significant_digits() {
-    let g = newick_from_string("(A:0.123456789,B:0.2);", &NewickReadOptions::default()).unwrap();
-
-    let full = newick_to_string(&g, &NewickWriteOptions::default()).unwrap();
-    assert_eq!("(A:0.123456789,B:0.2);", full);
-
-    let o = NewickWriteOptions {
-      style: NwkStyle::Plain,
-      significant_digits: Some(3),
-      decimal_digits: None,
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::spaces(              "a b",       false, "'a b'")]
+  #[case::parentheses(         "node (1)",  false, "'node (1)'")]
+  #[case::apostrophe(          "it's",      false, "'it''s'")]
+  #[case::simple(              "simple_n",  false, "simple_n")]
+  #[case::hybrid_shaped(       "A#1",       false, "'A#1'")]
+  #[case::hash_without_digits( "A#x",       false, "A#x")]
+  #[case::empty(               "",          false, "''")]
+  #[case::numeric_leaf(        "123",       false, "123")]
+  #[case::numeric_internal(    "123",       true,  "'123'")]
+  #[case::support_shaped(      "80/95",     true,  "'80/95'")]
+  #[case::infinity_internal(   "inf",       true,  "inf")]
+  #[trace]
+  fn test_write_quotes_names_by_grammar(#[case] name: &str, #[case] internal: bool, #[case] expected: &str) {
+    let graph = if internal {
+      star(NewickNodeData::new().with_name(name), vec![NewickNodeData::new()])
+    } else {
+      NewickGraph::new(NewickNodeData::new().with_name(name))
     };
-    let s = newick_to_string(&g, &o).unwrap();
-    assert_eq!("(A:0.123,B:0.2);", s);
+
+    let written = newick_to_string(&graph, &NewickWriteOptions::default()).unwrap();
+
+    let expected_text = if internal { format!("(){expected};") } else { format!("{expected};") };
+    assert_eq!((expected_text, true), (written.clone(), graph.eq_ordered(&reread(&written, NewickDialect::Classic))));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::always(       NewickWriteOptions { quoting: Quoting::Always, ..NewickWriteOptions::default() },   "('a b','c');")]
+  #[case::underscores(  NewickWriteOptions { spaces: Spaces::Underscore, ..NewickWriteOptions::default() }, "(a_b,c);")]
+  #[trace]
+  fn test_write_quoting_options(#[case] options: NewickWriteOptions, #[case] expected: &str) {
+    let graph = star(NewickNodeData::new(), vec![NewickNodeData::new().with_name("a b"), NewickNodeData::new().with_name("c")]);
+
+    assert_eq!(expected, newick_to_string(&graph, &options).unwrap());
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::shortest(        NumberFormat::default(),                                                              "(A:0.123456789,B:1);")]
+  #[case::significant(     NumberFormat { significant_digits: Some(3), ..NumberFormat::default() },              "(A:0.123,B:1);")]
+  #[case::decimal(         NumberFormat { decimal_digits: Some(2), ..NumberFormat::default() },                  "(A:0.12,B:1);")]
+  #[case::point_zero(      NumberFormat { point_zero: true, ..NumberFormat::default() },                         "(A:0.123456789,B:1.0);")]
+  #[case::rounded_zeros(   NumberFormat { significant_digits: Some(3), ..NumberFormat::default() },              "(A:0.123,B:1);")]
+  #[trace]
+  fn test_write_number_format(#[case] numbers: NumberFormat, #[case] expected: &str) {
+    let options = NewickWriteOptions {
+      numbers,
+      ..NewickWriteOptions::default()
+    };
+
+    assert_eq!(expected, rewrite("(A:0.123456789,B:1);", NewickDialect::Classic, &options));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::positional(   0.10004,  Some(3), false, "0.1")]
+  #[case::positional_pz(0.10004,  Some(3), true,  "0.1")]
+  #[case::integer_pz(   2.0004,   Some(3), true,  "2.0")]
+  #[case::exponent(     6.0004e-5, Some(3), false, "6.00e-5")]
+  #[case::kept_digits(  0.1234,   Some(3), false, "0.123")]
+  #[trace]
+  fn test_write_number_format_trims_rounded_zeros(#[case] value: f64, #[case] digits: Option<u8>, #[case] point_zero: bool, #[case] expected: &str) {
+    let format = NumberFormat {
+      significant_digits: digits,
+      decimal_digits: None,
+      point_zero,
+    };
+
+    assert_eq!(expected, format.format(value).unwrap());
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::small_negative(  -0.00001,  "(:-0);")]
+  #[case::small_positive(  0.00049,   "(:0);")]
+  #[case::rounds_up(       0.0006,    "(:0.001);")]
+  #[trace]
+  fn test_write_decimal_digits_round_small_numbers(#[case] length: f64, #[case] expected: &str) {
+    let graph = star_with_edge(NewickEdgeData::new().with_length(length));
+    let options = NewickWriteOptions {
+      numbers: NumberFormat { decimal_digits: Some(3), ..NumberFormat::default() },
+      ..NewickWriteOptions::default()
+    };
+
+    assert_eq!(expected, newick_to_string(&graph, &options).unwrap());
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::label_to_field(    "((A,B)95,C);",          NewickDialect::Rich,    SupportPlacement::Field,                           "((A,B)::95,C);")]
+  #[case::field_to_label(    "((A,B):1:95,C);",       NewickDialect::Rich,    SupportPlacement::Label,                           "((A,B)95:1,C);")]
+  #[case::field_in_classic(  "((A,B):1:95,C);",       NewickDialect::Classic, SupportPlacement::Source,                          "((A,B):1,C);")]
+  #[case::annotation_beast(  "((A,B)0.9,C);",         NewickDialect::Beast,   SupportPlacement::Annotation("posterior".to_owned()), "((A,B)[&posterior=0.9],C);")]
+  #[case::annotation_nhx(    "((A,B)90/80,C);",       NewickDialect::Nhx,     SupportPlacement::Annotation("s".to_owned()),      "((A,B)[&&NHX:s=90>80],C);")]
+  #[trace]
+  fn test_write_support_placement(#[case] input: &str, #[case] dialect: NewickDialect, #[case] support: SupportPlacement, #[case] expected: &str) {
+    let options = NewickWriteOptions {
+      support,
+      ..NewickWriteOptions::new(dialect)
+    };
+
+    assert_eq!(expected, rewrite(input, NewickDialect::Rich, &options));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::leaf_label(       star_with_edge(NewickEdgeData::new().with_support(vec![0.9], SupportSource::Label)),  NewickWriteOptions::default(),  "When writing Newick: When writing the branch above node 1: A leaf cannot carry support in its label, because a leaf label is read as a name")]
+  #[case::named_label(      named_internal_with_support(),                                                       NewickWriteOptions::default(),  "When writing Newick: When writing the branch above node 1 ('X'): The label of the node holds its name, so it cannot also hold the support of the branch above")]
+  #[case::field_classic(    star_with_edge(NewickEdgeData::new()),                                               NewickWriteOptions { support: SupportPlacement::Field, ..NewickWriteOptions::default() }, "When writing Newick: Support in a colon field needs the rich dialect, not classic")]
+  #[case::annotation_rich(  star_with_edge(NewickEdgeData::new()),                                               NewickWriteOptions { support: SupportPlacement::Annotation("p".to_owned()), ..NewickWriteOptions::new(NewickDialect::Rich) }, "When writing Newick: Support in an annotation needs the beast or nhx dialect, not rich")]
+  #[case::two_in_field(     star_with_edge(NewickEdgeData::new().with_support(vec![1.0, 2.0], SupportSource::Field)), NewickWriteOptions::new(NewickDialect::Rich), "When writing Newick: When writing the branch above node 1: A colon field holds one support value, but the branch has 2")]
+  #[case::infinite_length(  star_with_edge(NewickEdgeData::new().with_length(f64::INFINITY)),                    NewickWriteOptions::default(),  "When writing Newick: When writing the branch above node 1: Newick cannot represent the number inf")]
+  #[case::nan_support(      named_root_support(f64::NAN),                                                        NewickWriteOptions::default(),  "When writing Newick: When writing node 0: Newick cannot represent the number NaN")]
+  #[case::zero_digits(      star_with_edge(NewickEdgeData::new().with_length(1.0)),                              NewickWriteOptions { numbers: NumberFormat { significant_digits: Some(0), ..NumberFormat::default() }, ..NewickWriteOptions::default() }, "When writing Newick: When writing the branch above node 1: The number of significant digits must be at least 1")]
+  #[trace]
+  fn test_write_rejects_unrepresentable(#[case] graph: NewickGraph, #[case] options: NewickWriteOptions, #[case] expected: &str) {
+    assert_eq!(expected, write_error(&graph, &options));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::before(   BranchAnnotations::BeforeLength, "(A:[c][&p=1]1,B:[&q=2]);")]
+  #[case::after(    BranchAnnotations::AfterLength,  "(A:[c]1[&p=1],B:[&q=2]);")]
+  #[case::recorded( BranchAnnotations::Recorded,     "(A:[c]1[&p=1],B:[&q=2]);")]
+  #[trace]
+  fn test_write_branch_annotation_position(#[case] branch_annotations: BranchAnnotations, #[case] expected: &str) {
+    let options = NewickWriteOptions {
+      branch_annotations,
+      ..NewickWriteOptions::new(NewickDialect::Beast)
+    };
+
+    assert_eq!(expected, rewrite("(A:[c]1[&p=1],B:[&q=2]);", NewickDialect::Beast, &options));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::string(       vec![("s", NewickValue::String("usa".to_owned()))],              "[&s=\"usa\"]")]
+  #[case::quote(        vec![("s", NewickValue::String("a\"b".to_owned()))],             "[&s=\"a\"\"b\"]")]
+  #[case::number_text(  vec![("d", NewickValue::NumberText("2020.50".to_owned()))],      "[&d=2020.50]")]
+  #[case::huge_number(  vec![("k", NewickValue::Number(1e300))],                         "[&k=1.0e300]")]
+  #[case::quoted_key(   vec![("posterior prob", NewickValue::Number(0.5))],              "[&\"posterior prob\"=0.5]")]
+  #[case::true_key(     vec![("TRUE", NewickValue::Boolean(false))],                     "[&TRUE=FALSE]")]
+  #[case::empty_key(    vec![("", NewickValue::Boolean(true))],                          "[&\"\"=TRUE]")]
+  #[case::caller_order( vec![("m", NewickValue::String("A55G".to_owned())), ("d", NewickValue::NumberText("2003.80".to_owned()))], "[&m=\"A55G\",d=2003.80]")]
+  #[trace]
+  fn test_write_beast_values(#[case] pairs: Vec<(&str, NewickValue)>, #[case] expected: &str) {
+    let graph = commented_leaf(NewickComment::Beast(helpers::pairs(pairs)));
+
+    let written = newick_to_string(&graph, &NewickWriteOptions::new(NewickDialect::Beast)).unwrap();
+
+    assert_eq!((format!("A{expected};"), true), (written.clone(), graph.eq_ordered(&reread(&written, NewickDialect::Beast))));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::reserved_colon(  vec![("k", NewickValue::String("a:b".to_owned()))],   "When writing Newick: When writing node 0 ('A'): NHX cannot hold the value \"a:b\" of the tag k: a value contains none of ':', '=', '[', ']', '>'")]
+  #[case::reserved_key(    vec![("a=b", NewickValue::String("x".to_owned()))],   "When writing Newick: When writing node 0 ('A'): NHX cannot hold the tag \"a=b\": a tag is not empty and contains none of ':', '=', '[', ']', '>'")]
+  #[case::false_value(     vec![("k", NewickValue::Boolean(false))],             "When writing Newick: When writing node 0 ('A'): The NHX tag k needs text, and NHX cannot hold the value Boolean(false) there")]
+  #[case::typed_mismatch(  vec![("B", NewickValue::String("high".to_owned()))],  "When writing Newick: When writing node 0 ('A'): The NHX tag B needs a decimal number, and NHX cannot hold the value String(\"high\") there")]
+  #[case::integer_tag(     vec![("T", NewickValue::Number(1.5))],                "When writing Newick: When writing node 0 ('A'): The NHX tag T needs an integer, but the value is 1.5")]
+  #[case::single_array(    vec![("k", NewickValue::Array(vec![NewickValue::String("x".to_owned())].into()))], "When writing Newick: When writing node 0 ('A'): The NHX tag k needs text, and NHX cannot hold the value Array(NewickArray([String(\"x\")])) there")]
+  #[trace]
+  fn test_write_nhx_rejects(#[case] pairs: Vec<(&str, NewickValue)>, #[case] expected: &str) {
+    let graph = commented_leaf(NewickComment::Nhx(helpers::pairs(pairs)));
+
+    assert_eq!(expected, write_error(&graph, &NewickWriteOptions::new(NewickDialect::Nhx)));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::unbalanced(       NewickDialect::Classic, "a]b",  "When writing Newick: When writing node 0 ('A'): The comment text \"a]b\" cannot be written as a comment, because its brackets do not balance")]
+  #[case::ampersand_beast(  NewickDialect::Beast,   "&a=1", "When writing Newick: When writing node 0 ('A'): The comment Plain(\"&a=1\") cannot be written in the beast dialect, which would read it as an annotation")]
+  #[case::ampersand_rich(   NewickDialect::Rich,    "&R",   "When writing Newick: When writing node 0 ('A'): The comment Plain(\"&R\") cannot be written in the rich dialect, which would read it as an annotation")]
+  #[trace]
+  fn test_write_rejects_plain_comment(#[case] dialect: NewickDialect, #[case] text: &str, #[case] expected: &str) {
+    let graph = commented_leaf(NewickComment::Plain(text.to_owned()));
+
+    assert_eq!(expected, write_error(&graph, &NewickWriteOptions::new(dialect)));
   }
 
   #[test]
-  fn test_write_empty_branches() {
-    let g = newick_from_string("(,);", &NewickReadOptions::default()).unwrap();
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    assert_eq!("(,);", s);
-  }
+  fn test_write_hybrid_name_ending_in_hash_is_quoted() {
+    let text = "(A,(B)'x#'#H1,('x#'#H1,C));";
 
-  #[test]
-  fn test_write_no_branch_length() {
-    let g = newick_from_string("(A,B);", &NewickReadOptions::default()).unwrap();
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    assert_eq!("(A,B);", s);
-  }
-
-  #[test]
-  fn test_write_enewick_hybrid() {
-    let g = newick_from_string("(A,B,((C,(Y)x#H1)c,(x#H1,D)d)e)f;", &NewickReadOptions::default()).unwrap();
-    let s = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    let count = s.matches("x#H1").count();
-    assert_eq!(count, 2, "hybrid marker should appear twice: {s}");
-  }
-
-  #[test]
-  fn test_write_beast_string_true_roundtrip() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert("val".to_owned(), NewickValue::String("TRUE".to_owned()));
-    let node = g.add_node(NewickNodeData {
-      label: Some(NewickLabel::Name("A".to_owned())),
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
-
-    let written = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
-    let a = parsed.nodes.iter().find(|n| n.name() == Some("A")).unwrap();
-    assert_eq!(Some(&NewickValue::String("TRUE".to_owned())), a.node_attrs.get("val"));
-  }
-
-  #[test]
-  fn test_write_beast_string_numeric_roundtrip() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert("id".to_owned(), NewickValue::String("123".to_owned()));
-    let node = g.add_node(NewickNodeData {
-      label: Some(NewickLabel::Name("A".to_owned())),
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
-
-    let written = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
-    let a = parsed.nodes.iter().find(|n| n.name() == Some("A")).unwrap();
-    assert_eq!(Some(&NewickValue::String("123".to_owned())), a.node_attrs.get("id"));
-  }
-
-  #[test]
-  fn test_write_beast_string_embedded_quote_roundtrip() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert("note".to_owned(), NewickValue::String("say \"hello\"".to_owned()));
-    let node = g.add_node(NewickNodeData {
-      label: Some(NewickLabel::Name("A".to_owned())),
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
-
-    let written = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
-    let a = parsed.nodes.iter().find(|n| n.name() == Some("A")).unwrap();
     assert_eq!(
-      Some(&NewickValue::String("say \"hello\"".to_owned())),
-      a.node_attrs.get("note")
+      text,
+      rewrite(
+        text,
+        NewickDialect::ENewick,
+        &NewickWriteOptions::new(NewickDialect::ENewick)
+      )
     );
   }
 
   #[test]
-  fn test_write_nhx_rejects_colon_in_value() {
-    let g = helpers::single_node_with_attr("key", NewickValue::String("a:b".to_owned()));
+  fn test_write_indent() {
+    let options = NewickWriteOptions {
+      indent: Some(2),
+      ..NewickWriteOptions::default()
+    };
 
-    let actual = format!("{:#}", newick_to_string(&g, &opts(NwkStyle::Nhx)).unwrap_err());
+    let written = rewrite("((A:1,B:2)C:3,D)E;", NewickDialect::Classic, &options);
 
     assert_eq!(
-      "When writing Newick: NHX cannot represent a value containing a reserved character (':', '=', '[', ']' or '\"'): a:b",
-      actual
-    );
-  }
-
-  #[test]
-  fn test_write_all_styles_differ() {
-    let g = newick_from_string("(A[&prob=0.9]:0.1,B:0.2);", &NewickReadOptions::default()).unwrap();
-    let plain = newick_to_string(&g, &opts(NwkStyle::Plain)).unwrap();
-    let beast = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    let nhx = newick_to_string(&g, &opts(NwkStyle::Nhx)).unwrap();
-    assert_ne!(plain, beast);
-    assert_ne!(beast, nhx);
-    assert_ne!(plain, nhx);
-  }
-
-  #[test]
-  fn test_write_beast_key_escaping() {
-    let mut g = NewickGraph::new();
-    let mut attrs = BTreeMap::new();
-    attrs.insert("posterior prob".to_owned(), NewickValue::Number(0.95));
-    let node = g.add_node(NewickNodeData {
-      label: Some(NewickLabel::Name("A".to_owned())),
-      node_attrs: attrs,
-      raw_comments: Vec::new(),
-      hybrid: None,
-      children: Vec::new(),
-    });
-    g.root = node;
-    let s = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
-    let parsed = newick_from_string(&s, &NewickReadOptions::default()).unwrap();
-    assert_eq!(
-      Some(&NewickValue::Number(0.95)),
-      parsed.nodes[0].node_attrs.get("posterior prob")
+      indoc::indoc! {"
+        (
+          (
+            A:1,
+            B:2
+          )C:3,
+          D
+        )E;"},
+      written
     );
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::beast_string(     (NwkStyle::Beast, NewickValue::String("usa".to_owned())),             r#"A[&value="usa"];"#)]
-  #[case::beast_quote(      (NwkStyle::Beast, NewickValue::String(r#"a"b"#.to_owned())),          r#"A[&value="a""b"];"#)]
-  #[case::beast_number_text((NwkStyle::Beast, NewickValue::NumberText("2020.50".to_owned())),     "A[&value=2020.50];")]
-  #[case::nhx_string(       (NwkStyle::Nhx,   NewickValue::String("usa".to_owned())),             "A[&&NHX:value=usa];")]
-  #[case::nhx_number_text(  (NwkStyle::Nhx,   NewickValue::NumberText("2020.50".to_owned())),     "A[&&NHX:value=2020.50];")]
+  #[case::kept(     true,  "(A,B)95:0.5;")]
+  #[case::dropped(  false, "(A,B);")]
   #[trace]
-  fn test_write_value_quoting_by_style(#[case] (style, value): (NwkStyle, NewickValue), #[case] expected: &str) {
-    let g = helpers::single_node_with_attr("value", value);
+  fn test_write_root_edge_option(#[case] root_edge: bool, #[case] expected: &str) {
+    let options = NewickWriteOptions {
+      root_edge,
+      ..NewickWriteOptions::default()
+    };
 
-    let actual = newick_to_string(&g, &opts(style)).unwrap();
-
-    assert_eq!(expected, actual);
+    assert_eq!(expected, rewrite("(A,B)95:0.5;", NewickDialect::Classic, &options));
   }
 
   #[test]
-  fn test_write_number_text_keeps_its_text() {
-    let g = helpers::single_node_with_attr("date", NewickValue::NumberText("2020.50".to_owned()));
+  fn test_write_several_trees_one_per_line() {
+    let first = reread("(A,B);", NewickDialect::Classic);
+    let second = reread("(C);", NewickDialect::Classic);
+    let mut buffer = Vec::new();
 
-    let written = newick_to_string(&g, &opts(NwkStyle::Beast)).unwrap();
+    write_newick_trees(&mut buffer, [&first, &second], &NewickWriteOptions::default()).unwrap();
 
-    let parsed = newick_from_string(&written, &NewickReadOptions::default()).unwrap();
-
-    assert_eq!(
-      Some(&NewickValue::NumberText("2020.50".to_owned())),
-      parsed.nodes[0].node_attrs.get("date")
-    );
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::same_text(     (NewickValue::NumberText("2020.50".to_owned()), NewickValue::NumberText("2020.50".to_owned())), true)]
-  #[case::other_text(    (NewickValue::NumberText("2020.50".to_owned()), NewickValue::NumberText("2020.5".to_owned())),  false)]
-  #[case::number(        (NewickValue::NumberText("2020.5".to_owned()),  NewickValue::Number(2020.5)),                    false)]
-  #[case::string(        (NewickValue::NumberText("1".to_owned()),       NewickValue::String("1".to_owned())),            false)]
-  #[trace]
-  fn test_write_number_text_equality(#[case] (left, right): (NewickValue, NewickValue), #[case] expected: bool) {
-    assert_eq!(expected, left == right);
+    assert_eq!("(A,B);\n(C);\n", String::from_utf8(buffer).unwrap());
   }
 
   #[test]
-  fn test_write_beast_attrs_in_caller_order() {
-    let date = NewickValue::NumberText("2003.84".to_owned());
-    let mutations = NewickValue::String("A55G".to_owned());
-    let mut actual = Vec::new();
+  fn test_write_deep_tree_on_small_stack() {
+    let input = caterpillar(100_000);
+    let expected = input.clone();
 
-    write_beast_attrs(&mut actual, [("mutations", &mutations), ("date", &date)]).unwrap();
+    let written = on_small_stack(move || {
+      let graph = read_with(&input, &NewickReadOptions::default()).graph;
+      newick_to_string(&graph, &NewickWriteOptions::default()).unwrap()
+    });
 
-    assert_eq!(
-      r#"[&mutations="A55G",date=2003.84]"#,
-      String::from_utf8(actual).unwrap()
-    );
+    assert!(written == expected, "the written deep tree differs from the input");
   }
 
   #[test]
-  fn test_write_nhx_attrs_in_caller_order() {
-    let date = NewickValue::NumberText("2003.84".to_owned());
-    let mutations = NewickValue::String("A55G".to_owned());
-    let mut actual = Vec::new();
+  fn test_write_deep_array_on_small_stack() {
+    let input = format!("A[&a={}1{}];", "{".repeat(100_000), "}".repeat(100_000));
+    let expected = input.clone();
 
-    write_nhx_attrs(&mut actual, [("mutations", &mutations), ("date", &date)]).unwrap();
+    let written = on_small_stack(move || {
+      rewrite(
+        &input,
+        NewickDialect::Beast,
+        &NewickWriteOptions::new(NewickDialect::Beast),
+      )
+    });
 
-    assert_eq!(
-      "[&&NHX:mutations=A55G:date=2003.84]",
-      String::from_utf8(actual).unwrap()
-    );
+    assert!(written == expected, "the written deep array differs from the input");
   }
 
   mod helpers {
-    use crate::types::{NewickGraph, NewickNodeData, NewickValue};
+    use crate::__tests__::test_read_basic::tests::helpers::read_with;
+    use crate::dialect::NewickDialect;
+    use crate::model::comment::{LabelSide, NewickComment, NodeComment};
+    use crate::model::data::{NewickEdgeData, NewickNodeData, SupportSource};
+    use crate::model::graph::NewickGraph;
+    use crate::model::value::NewickValue;
+    use crate::read::options::NewickReadOptions;
+    use crate::write::newick::newick_to_string;
+    use crate::write::options::NewickWriteOptions;
 
-    pub(super) fn single_node_with_attr(key: &str, value: NewickValue) -> NewickGraph {
-      let mut graph = NewickGraph::new();
-      let mut node = NewickNodeData::new().with_name("A");
-      node.node_attrs.insert(key.to_owned(), value);
-      graph.root = graph.add_node(node);
+    pub(super) fn reread(text: &str, dialect: NewickDialect) -> NewickGraph {
+      let options = NewickReadOptions {
+        dialects: vec![dialect],
+        ..NewickReadOptions::default()
+      };
+      read_with(text, &options).graph
+    }
+
+    pub(super) fn rewrite(text: &str, dialect: NewickDialect, options: &NewickWriteOptions) -> String {
+      newick_to_string(&reread(text, dialect), options).unwrap()
+    }
+
+    pub(super) fn write_error(graph: &NewickGraph, options: &NewickWriteOptions) -> String {
+      format!("{:#}", newick_to_string(graph, options).unwrap_err())
+    }
+
+    pub(super) fn star(root: NewickNodeData, leaves: Vec<NewickNodeData>) -> NewickGraph {
+      let mut graph = NewickGraph::new(root);
+      for leaf in leaves {
+        graph.add_child(0, NewickEdgeData::new(), leaf).unwrap();
+      }
       graph
+    }
+
+    pub(super) fn pairs(pairs: Vec<(&str, NewickValue)>) -> Vec<(String, NewickValue)> {
+      pairs.into_iter().map(|(key, value)| (key.to_owned(), value)).collect()
+    }
+
+    pub(super) fn star_with_edge(edge: NewickEdgeData) -> NewickGraph {
+      let mut graph = NewickGraph::new(NewickNodeData::new());
+      graph.add_child(0, edge, NewickNodeData::new()).unwrap();
+      graph
+    }
+
+    pub(super) fn named_internal_with_support() -> NewickGraph {
+      let mut graph = NewickGraph::new(NewickNodeData::new());
+      let inner = graph
+        .add_child(
+          0,
+          NewickEdgeData::new().with_support(vec![0.9], SupportSource::Label),
+          NewickNodeData::new().with_name("X"),
+        )
+        .unwrap();
+      graph
+        .add_child(inner, NewickEdgeData::new(), NewickNodeData::new())
+        .unwrap();
+      graph
+    }
+
+    pub(super) fn named_root_support(value: f64) -> NewickGraph {
+      let mut graph = star_with_edge(NewickEdgeData::new());
+      graph.root_edge_mut().set_support(vec![value], SupportSource::Label);
+      graph
+    }
+
+    pub(super) fn commented_leaf(comment: NewickComment) -> NewickGraph {
+      NewickGraph::new(
+        NewickNodeData::new()
+          .with_name("A")
+          .with_comment(NodeComment::new(LabelSide::AfterLabel, comment)),
+      )
     }
   }
 }

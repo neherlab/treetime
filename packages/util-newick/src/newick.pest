@@ -1,0 +1,174 @@
+// Newick dialects: classic Newick, BEAST, MrBayes, NHX, eNewick and Rich Newick.
+//
+// A tree is a flat sequence of tokens. Only the nesting of parentheses is left
+// to the reader, because a recursive rule would use stack in proportion to the
+// depth of the tree. Every dialect emits the same token kinds, so one mapping
+// step reads all of them.
+
+// Structure tokens
+
+open  = { "(" }
+close = { ")" }
+comma = { "," }
+colon = { ":" }
+end   = { ";" }
+
+number = @{ ("+" | "-")? ~ (ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)? | "." ~ ASCII_DIGIT+) ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
+
+// Labels
+
+delimiter  = _{ "(" | ")" | "[" | "]" | "," | ";" | ":" }
+label_end  = _{ WHITESPACE | delimiter | EOI }
+label_char = _{ !(delimiter | WHITESPACE) ~ ANY }
+
+// A support value, or several separated by '/' (IQ-TREE writes "80.5/95").
+support_label = ${ number ~ ("/" ~ number)* ~ &label_end }
+
+// The tag of an eNewick hybrid node: '#', a second '#' on the acceptor edge, a
+// type such as H, LGT or R, and an index.
+hybrid_tag    = ${ hybrid_marker ~ hybrid_kind? ~ hybrid_index ~ &label_end }
+hybrid_marker = @{ "#" ~ "#"? }
+hybrid_kind   = @{ ASCII_ALPHA+ }
+hybrid_index  = @{ ASCII_DIGIT+ }
+
+unquoted_label       = @{ !"'" ~ (!hybrid_tag ~ label_char)+ }
+unquoted_label_plain = @{ !"'" ~ label_char+ }
+
+label         = ${ support_label | quoted_label | unquoted_label_plain }
+network_label = ${ support_label | quoted_label ~ hybrid_tag? | hybrid_tag | unquoted_label ~ hybrid_tag? }
+
+// Comments
+
+malformed_annotation = @{ &"[&" ~ plain_comment }
+
+beast_comment   = ${ "[&" ~ beast_ws ~ (beast_pair ~ (beast_ws ~ "," ~ beast_ws ~ beast_pair)*)? ~ beast_ws ~ "]" }
+beast_pair      = ${ beast_key ~ (beast_ws ~ "=" ~ beast_ws ~ beast_value)? }
+beast_key       = _{ double_quoted | single_quoted | beast_bare_key }
+beast_bare_key  = @{ !"&" ~ (!("," | "=" | "[" | "]" | "{" | "}" | "\"" | "'" | WHITESPACE) ~ ANY)+ }
+beast_ws        = _{ WHITESPACE* }
+beast_value_end = _{ beast_ws ~ ("," | "]" | "}") }
+beast_value     = _{ beast_array | beast_scalar }
+beast_scalar    = _{ double_quoted | single_quoted | (color | boolean | number) ~ &beast_value_end | bare_string }
+single_quoted   = @{ "'" ~ ("''" | !"'" ~ ANY)* ~ "'" }
+color           = @{ "#" ~ ASCII_HEX_DIGIT{6} }
+boolean         = @{ ^"true" | ^"false" }
+bare_string     = @{ !("\"" | "'") ~ (!beast_value_end ~ !("[" | "{") ~ ANY)+ }
+
+// An array is a flat sequence of tokens as well. The parser stack counts the
+// open inner arrays, so an inner '}' closes the innermost one and the '}' found
+// with an empty stack closes the array.
+array_open  = { "{" }
+array_close = { "}" }
+beast_array = _{ array_open ~ beast_ws ~ (array_close | beast_array_first ~ (beast_ws ~ beast_array_next)* ~ beast_ws ~ array_close) }
+beast_array_first = _{ (PUSH(array_open) ~ beast_ws)* ~ (beast_scalar | array_close ~ DROP) }
+beast_array_next  = _{ "," ~ beast_ws ~ ((PUSH(array_open) ~ beast_ws)+ ~ (beast_scalar | array_close ~ DROP) | beast_scalar) | array_close ~ DROP }
+
+nhx_comment = ${ "[&&" ~ ^"nhx" ~ (":" ~ nhx_tag)* ~ ":"? ~ "]" }
+nhx_tag     = ${ nhx_key ~ ("=" ~ nhx_value)? }
+nhx_key     = @{ (!(":" | "=" | "[" | "]" | ">") ~ ANY)+ }
+nhx_value   = ${ nhx_part ~ (">" ~ nhx_part)* }
+nhx_part    = @{ (!(":" | "=" | "[" | "]" | ">") ~ ANY)* }
+
+mrbayes_comment = ${ "[&" ~ mrbayes_kind ~ " " ~ mrbayes_token ~ (WHITESPACE+ ~ mrbayes_token)* ~ WHITESPACE* ~ "]" }
+mrbayes_kind    = @{ "E" | "B" | "N" }
+mrbayes_token   = @{ (!(WHITESPACE | "[" | "]") ~ ANY)+ }
+
+// Comments before the first token of a tree
+
+rooting       = ${ "[&" ~ rooting_value ~ "]" }
+rooting_value = @{ ^"r" | ^"u" }
+weight        = ${ "[&" ~ ^"w" ~ " "+ ~ number ~ "]" }
+
+// Dialects. The composite rules are silent, so each dialect emits the tokens above.
+
+classic_comment = _{ plain_comment }
+classic_open    = _{ classic_comment* ~ open }
+classic_field   = _{ colon ~ classic_comment* ~ number? ~ classic_comment* }
+classic_tail    = _{ classic_comment* ~ label? ~ classic_comment* ~ classic_field? }
+classic_items   = _{ classic_open* ~ classic_tail ~ (comma ~ classic_open* ~ classic_tail | close ~ classic_tail)* }
+
+beast_any_comment = _{ beast_comment | malformed_annotation | plain_comment }
+beast_open        = _{ beast_any_comment* ~ open }
+beast_field       = _{ colon ~ beast_any_comment* ~ number? ~ beast_any_comment* }
+beast_tail        = _{ beast_any_comment* ~ label? ~ beast_any_comment* ~ beast_field? }
+beast_items       = _{ beast_open* ~ beast_tail ~ (comma ~ beast_open* ~ beast_tail | close ~ beast_tail)* }
+beast_preamble    = _{ (rooting | beast_any_comment)* }
+
+mrbayes_any_comment = _{ mrbayes_comment | malformed_annotation | plain_comment }
+mrbayes_open        = _{ mrbayes_any_comment* ~ open }
+mrbayes_field       = _{ colon ~ mrbayes_any_comment* ~ number? ~ mrbayes_any_comment* }
+mrbayes_tail        = _{ mrbayes_any_comment* ~ label? ~ mrbayes_any_comment* ~ mrbayes_field? }
+mrbayes_items       = _{ mrbayes_open* ~ mrbayes_tail ~ (comma ~ mrbayes_open* ~ mrbayes_tail | close ~ mrbayes_tail)* }
+mrbayes_preamble    = _{ (rooting | mrbayes_any_comment)* }
+
+nhx_any_comment = _{ nhx_comment | malformed_annotation | plain_comment }
+nhx_open        = _{ nhx_any_comment* ~ open }
+nhx_field       = _{ colon ~ nhx_any_comment* ~ number? ~ nhx_any_comment* }
+nhx_tail        = _{ nhx_any_comment* ~ label? ~ nhx_any_comment* ~ nhx_field? }
+nhx_items       = _{ nhx_open* ~ nhx_tail ~ (comma ~ nhx_open* ~ nhx_tail | close ~ nhx_tail)* }
+
+// eNewick and Rich Newick define no node annotations, so a comment that starts
+// with '[&' is a malformed annotation there.
+enewick_comment = _{ malformed_annotation | plain_comment }
+enewick_open    = _{ enewick_comment* ~ open }
+enewick_field   = _{ colon ~ enewick_comment* ~ number? ~ enewick_comment* }
+enewick_tail    = _{ enewick_comment* ~ network_label? ~ enewick_comment* ~ enewick_field? }
+enewick_items   = _{ enewick_open* ~ enewick_tail ~ (comma ~ enewick_open* ~ enewick_tail | close ~ enewick_tail)* }
+
+// Rich Newick has up to three colon fields: branch length, support and probability.
+rich_comment  = _{ malformed_annotation | plain_comment }
+rich_open     = _{ rich_comment* ~ open }
+rich_field    = _{ colon ~ rich_comment* ~ number? ~ rich_comment* }
+rich_tail     = _{ rich_comment* ~ network_label? ~ rich_comment* ~ (rich_field ~ rich_field? ~ rich_field?)? }
+rich_items    = _{ rich_open* ~ rich_tail ~ (comma ~ rich_open* ~ rich_tail | close ~ rich_tail)* }
+rich_preamble = _{ (rooting | weight | rich_comment)* }
+
+// Start rules: one strict and one tolerant form per dialect. The tolerant form
+// also accepts a byte order mark and a missing final ';'.
+
+classic_strict   = { SOI ~ !bom ~ classic_items ~ end ~ EOI }
+classic_tolerant = { SOI ~ bom? ~ classic_items ~ end? ~ EOI }
+beast_strict     = { SOI ~ !bom ~ beast_preamble ~ beast_items ~ end ~ EOI }
+beast_tolerant   = { SOI ~ bom? ~ beast_preamble ~ beast_items ~ end? ~ EOI }
+mrbayes_strict   = { SOI ~ !bom ~ mrbayes_preamble ~ mrbayes_items ~ end ~ EOI }
+mrbayes_tolerant = { SOI ~ bom? ~ mrbayes_preamble ~ mrbayes_items ~ end? ~ EOI }
+nhx_strict       = { SOI ~ !bom ~ nhx_items ~ end ~ EOI }
+nhx_tolerant     = { SOI ~ bom? ~ nhx_items ~ end? ~ EOI }
+enewick_strict   = { SOI ~ !bom ~ enewick_items ~ end ~ EOI }
+enewick_tolerant = { SOI ~ bom? ~ enewick_items ~ end? ~ EOI }
+rich_strict      = { SOI ~ !bom ~ rich_preamble ~ rich_items ~ end ~ EOI }
+rich_tolerant    = { SOI ~ bom? ~ rich_preamble ~ rich_items ~ end? ~ EOI }
+
+// One comment alone, in the comment rule of each dialect (NEXUS tree command comments)
+
+classic_comment_only = { SOI ~ classic_comment ~ EOI }
+beast_comment_only   = { SOI ~ beast_any_comment ~ EOI }
+mrbayes_comment_only = { SOI ~ mrbayes_any_comment ~ EOI }
+nhx_comment_only     = { SOI ~ nhx_any_comment ~ EOI }
+enewick_comment_only = { SOI ~ enewick_comment ~ EOI }
+rich_comment_only    = { SOI ~ rich_comment ~ EOI }
+
+// Exact rules: the writer quotes or rejects a text exactly when its rule fails.
+
+safe_name           = @{ (!("'" | hybrid_tag) ~ label_char)+ }
+safe_name_exact     = @{ SOI ~ safe_name ~ EOI }
+support_label_exact = ${ SOI ~ support_label ~ EOI }
+network_label_exact = ${ SOI ~ network_label ~ EOI }
+beast_bare_key_exact = @{ SOI ~ beast_bare_key ~ EOI }
+number_exact        = @{ SOI ~ number ~ EOI }
+nhx_key_exact       = @{ SOI ~ nhx_key ~ EOI }
+nhx_part_exact      = @{ SOI ~ nhx_part ~ EOI }
+mrbayes_token_exact = @{ SOI ~ mrbayes_token ~ EOI }
+integer_exact       = @{ SOI ~ ("+" | "-")? ~ ASCII_DIGIT+ ~ EOI }
+nhx_color_exact     = ${ SOI ~ color_channel ~ "." ~ color_channel ~ "." ~ color_channel ~ EOI }
+color_channel       = @{ ASCII_DIGIT{1, 3} }
+plain_comment_exact = @{ SOI ~ plain_comment ~ EOI }
+
+// Scanner rules for reading tree by tree: the text of one tree up to its ';',
+// and input that holds no tree. While more input may follow, a comment or a
+// quoted label must be complete, because its end may hide a ';'. At the end of
+// the input, an unclosed '[' or quote is read as an ordinary character.
+
+tree_extent       = @{ (quoted_label | scan_comment_strict | scan_word | !(";" | "[" | "'") ~ ANY)* ~ ";" }
+tree_extent_final = @{ (quoted_label | scan_comment | scan_word | !";" ~ ANY)* ~ ";" }
+trivia_only       = { SOI ~ bom? ~ scan_comment* ~ EOI }

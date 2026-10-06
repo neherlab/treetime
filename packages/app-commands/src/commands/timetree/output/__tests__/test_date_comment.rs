@@ -73,12 +73,16 @@ mod tests {
     let actual = read_file_to_string(&path)?;
     let expected = indoc! {r#"
       #NEXUS
+
       Begin Taxa;
         Dimensions NTax=1;
-        TaxLabels A;
+        TaxLabels
+          A
+        ;
       End;
+
       Begin Trees;
-        Tree tree1=(A[&mutations="A55G,T93C",date=2003.84])root;
+        Tree tree1 = (A[&mutations="A55G,T93C",date=2003.84])root;
       End;
     "#};
     assert_eq!(expected, actual);

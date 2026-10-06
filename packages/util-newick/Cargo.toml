@@ -20,16 +20,20 @@ eyre = { workspace = true }
 pest = { workspace = true }
 pest_derive = { workspace = true }
 pretty_dtoa = { workspace = true }
-regex = { workspace = true }
 smart-default = { workspace = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
+
+[[bench]]
+name = "read_dialects"
+harness = false
 
 [lints]
 workspace = true

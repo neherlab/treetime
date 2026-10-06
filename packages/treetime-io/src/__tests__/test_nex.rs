@@ -15,12 +15,17 @@ mod tests {
     "(A:0.1,B:0.2)root;",
     indoc! {r#"
       #NEXUS
+
       Begin Taxa;
         Dimensions NTax=2;
-        TaxLabels A B;
+        TaxLabels
+          A
+          B
+        ;
       End;
+
       Begin Trees;
-        Tree tree1=(A:0.1,B:0.2)root;
+        Tree tree1 = (A:0.1,B:0.2)root;
       End;
     "#},
   )]
@@ -28,12 +33,18 @@ mod tests {
     "((C:0.3,D:0.4)E:0.5,F:0.1)G;",
     indoc! {r#"
       #NEXUS
+
       Begin Taxa;
         Dimensions NTax=3;
-        TaxLabels C D F;
+        TaxLabels
+          C
+          D
+          F
+        ;
       End;
+
       Begin Trees;
-        Tree tree1=((C:0.3,D:0.4)E:0.5,F:0.1)G;
+        Tree tree1 = ((C:0.3,D:0.4)E:0.5,F:0.1)G;
       End;
     "#},
   )]
@@ -41,12 +52,16 @@ mod tests {
     "(A:0.1)root;",
     indoc! {r#"
       #NEXUS
+
       Begin Taxa;
         Dimensions NTax=1;
-        TaxLabels A;
+        TaxLabels
+          A
+        ;
       End;
+
       Begin Trees;
-        Tree tree1=(A:0.1)root;
+        Tree tree1 = (A:0.1)root;
       End;
     "#},
   )]
@@ -54,12 +69,34 @@ mod tests {
     "('A B':0.1,'C''D':0.2)root;",
     indoc! {r#"
       #NEXUS
+
       Begin Taxa;
         Dimensions NTax=2;
-        TaxLabels 'A B' 'C''D';
+        TaxLabels
+          'A B'
+          'C''D'
+        ;
       End;
+
       Begin Trees;
-        Tree tree1=('A B':0.1,'C''D':0.2)root;
+        Tree tree1 = ('A B':0.1,'C''D':0.2)root;
+      End;
+    "#},
+  )]
+  #[case::nexus_punctuation(
+    "('hCoV-19/USA/1':0.1,'hCoV-19/USA/1':0.2)root;",
+    indoc! {r#"
+      #NEXUS
+
+      Begin Taxa;
+        Dimensions NTax=1;
+        TaxLabels
+          'hCoV-19/USA/1'
+        ;
+      End;
+
+      Begin Trees;
+        Tree tree1 = (hCoV-19/USA/1:0.1,hCoV-19/USA/1:0.2)root;
       End;
     "#},
   )]
@@ -108,12 +145,16 @@ mod tests {
 
     let expected = indoc! {r#"
       #NEXUS
+
       Begin Taxa;
         Dimensions NTax=1;
-        TaxLabels A;
+        TaxLabels
+          A
+        ;
       End;
+
       Begin Trees;
-        Tree tree1=(A:0.1,:0.2)root;
+        Tree tree1 = (A:0.1,:0.2)root;
       End;
     "#};
     assert_eq!(expected, String::from_utf8(actual)?);

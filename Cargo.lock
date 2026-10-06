@@ -5350,6 +5350,7 @@ dependencies = [
 name = "util-newick"
 version = "1.0.0"
 dependencies = [
+ "criterion",
  "ctor",
  "deser",
  "eyre",
@@ -5360,7 +5361,6 @@ dependencies = [
  "pretty_dtoa",
  "proptest",
  "rayon",
- "regex",
  "rstest",
  "smart-default",
 ]

@@ -1,0 +1,62 @@
+// NEXUS files, read command by command. A command ends at the first ';' outside
+// quoted words and comments. The Newick text of a tree command is read by the
+// Newick grammar.
+
+COMMENT = _{ scan_comment }
+
+boundary = _{ !(ASCII_ALPHANUMERIC | "_") }
+
+header = @{ "#" ~ ^"nexus" ~ boundary }
+nexus_header = { SOI ~ bom? ~ WHITESPACE* ~ header }
+
+command_extent       = @{ (quoted_label | scan_comment_strict | scan_word | !(";" | "[" | "'") ~ ANY)* ~ ";" }
+command_extent_final = @{ (quoted_label | scan_comment | scan_word | !";" ~ ANY)* ~ ";" }
+trivia_only          = { SOI ~ EOI }
+
+begin_keyword      = @{ ^"begin" ~ boundary }
+end_keyword        = @{ (^"endblock" | ^"end") ~ boundary }
+tree_keyword       = @{ (^"utree" | ^"tree") ~ boundary }
+translate_keyword  = @{ ^"translate" ~ boundary }
+taxlabels_keyword  = @{ ^"taxlabels" ~ boundary }
+dimensions_keyword = @{ ^"dimensions" ~ boundary }
+properties_keyword = @{ ^"properties" ~ boundary }
+known_keyword      = _{ begin_keyword | end_keyword | tree_keyword | translate_keyword | taxlabels_keyword | dimensions_keyword | properties_keyword }
+
+word       = ${ quoted_label | plain_word }
+plain_word = @{ (!(";" | "=" | "," | "[" | "]" | "'" | WHITESPACE) ~ ANY)+ }
+
+// Unquoted text with spaces, read in tolerant mode only: 'tree my tree = ...'
+// and 'Translate 1 Homo sapiens, ...'.
+loose_text = @{ plain_word ~ ((" " | "\t")+ ~ plain_word)* }
+
+equals     = { "=" }
+separator  = { "," }
+terminator = { ";" }
+
+begin_command      = { begin_keyword ~ word }
+end_command        = { end_keyword }
+taxlabels_command  = { taxlabels_keyword ~ word* }
+dimensions_command = { dimensions_keyword ~ (word ~ equals ~ word)* }
+properties_command = { properties_keyword ~ (property ~ separator?)* }
+property           = { word ~ (equals ~ word)? }
+other_command      = { !known_keyword ~ word ~ command_text }
+command_text       = @{ (quoted_label | scan_comment | !";" ~ ANY)* }
+
+tree_command_ws  = _{ (WHITESPACE | scan_comment)* }
+tree_head_strict = _{ tree_keyword ~ tree_command_ws ~ ("*" ~ tree_command_ws)? ~ word }
+tree_head_loose  = _{ tree_keyword ~ tree_command_ws ~ ("*" ~ tree_command_ws)? ~ (quoted_label | loose_text) }
+tree_tail        = _{ WHITESPACE* ~ (scan_comment ~ WHITESPACE*)* ~ equals ~ newick_text }
+newick_text      = @{ (quoted_label | scan_comment | !";" ~ ANY)* }
+tree_strict      = ${ tree_head_strict ~ tree_tail }
+tree_tolerant    = ${ tree_head_loose ~ tree_tail }
+
+translate_strict        = { translate_keyword ~ (translate_pair ~ (separator ~ translate_pair)*)? ~ separator? }
+translate_pair          = { word ~ word }
+translate_tolerant      = { translate_keyword ~ (translate_pair_loose ~ (separator ~ translate_pair_loose)*)? ~ separator? }
+translate_pair_loose    = { word ~ (quoted_label | loose_text) }
+
+command_strict   = { SOI ~ (begin_command | end_command | tree_strict | translate_strict | taxlabels_command | dimensions_command | properties_command | other_command) ~ terminator ~ EOI }
+command_tolerant = { SOI ~ (begin_command | end_command | tree_tolerant | translate_tolerant | taxlabels_command | dimensions_command | properties_command | other_command) ~ terminator? ~ EOI }
+
+nexus_word_safe  = @{ (!("(" | ")" | "[" | "]" | "{" | "}" | "/" | "\\" | "," | ";" | ":" | "=" | "*" | "'" | "\"" | "`" | "+" | "-" | "<" | ">" | WHITESPACE) ~ ANY)+ }
+nexus_word_exact = @{ SOI ~ nexus_word_safe ~ EOI }

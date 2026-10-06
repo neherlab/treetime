@@ -85,7 +85,7 @@ mod tests {
     );
 
     assert_eq!(
-      "When writing Newick: The branch above node 'A' has the length inf, which Newick cannot represent",
+      "When writing Newick: When writing the branch above node 1 ('A'): Newick cannot represent the number inf",
       format!("{:#}", actual.unwrap_err())
     );
     Ok(())
