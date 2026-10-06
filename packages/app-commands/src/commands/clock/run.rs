@@ -1,4 +1,5 @@
 use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, TreetimeClockArgs};
+use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
@@ -7,7 +8,7 @@ use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates};
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use app_output::table_output::table_write_file;
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime::cancel::Cancel;
 use treetime::clock::clock_model::ClockModel;
@@ -21,7 +22,6 @@ use treetime::progress::{LogSink, StageSink};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::dates_csv::metadata_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 #[expect(
@@ -43,15 +43,14 @@ pub fn run_clock(
   let branch_lengths = nwk_parsed.branch_lengths;
   let input_order = leaf_order(&graph, &names)?;
 
-  let dates = metadata_read_file(
+  let dates = read_input_dates(
     clock_args.metadata(),
-    &clock_args.metadata_id.metadata_delimiters,
-    &clock_args.metadata_id.metadata_id_columns,
-    None,
+    &clock_args.metadata_id,
     clock_args.date_column.date_column.as_deref(),
-  )
-  .and_then(|table| table.dates())
-  .wrap_err("When reading dates")?;
+    &graph,
+    &names,
+    log,
+  )?;
 
   let resolved = clock_args.resolve_outputs()?;
 

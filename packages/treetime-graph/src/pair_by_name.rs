@@ -1,7 +1,7 @@
 use crate::node::GraphNodeKey;
 use indexmap::IndexMap;
 use indexmap::map::Entry;
-use itertools::Itertools;
+use itertools::izip;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub fn pair_by_name<T: Clone>(
@@ -22,20 +22,16 @@ pub fn pair_by_name<T: Clone>(
     }
   }
 
-  let mut matches = candidates
-    .into_iter()
-    .filter_map(|key| Some((by_name.get_index_of(names[&key].as_deref()?)?, key)))
-    .collect_vec();
-  matches.sort_by_key(|(index, _)| *index);
-  let mut matches = matches.into_iter().peekable();
+  let mut keys_by_entry: Vec<Vec<GraphNodeKey>> = vec![vec![]; by_name.len()];
+  for key in candidates {
+    if let Some(index) = names[&key].as_deref().and_then(|name| by_name.get_index_of(name)) {
+      keys_by_entry[index].push(key);
+    }
+  }
 
   let mut by_node = BTreeMap::new();
   let mut unmatched = vec![];
-  for (index, (name, value)) in by_name.into_iter().enumerate() {
-    let keys = matches
-      .peeking_take_while(|(match_index, _)| *match_index == index)
-      .map(|(_, key)| key)
-      .collect_vec();
+  for ((name, value), keys) in izip!(by_name, keys_by_entry) {
     let Some((last, others)) = keys.split_last() else {
       unmatched.push(name);
       continue;

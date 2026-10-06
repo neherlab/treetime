@@ -7,6 +7,7 @@ mod tests {
   use crate::coalescent::time_coordinate::CalendarTime;
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
+  use crate::test_utils::dates_by_node;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use maplit::btreemap;
@@ -15,18 +16,18 @@ mod tests {
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::dates_csv::{DateConstraint, DatesMap};
+  use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
   fn create_graph_with_dates(
     tree_nwk: &str,
-    dates: &DatesMap,
+    dates: &BTreeMap<String, Option<DateConstraint>>,
   ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
     let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let constraints = load_date_constraints(dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates.clone(), &graph, &names), &graph, &NoopProgress)?;
     Ok((graph, names, constraints))
   }
 

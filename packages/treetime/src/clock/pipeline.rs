@@ -19,7 +19,7 @@ use treetime_graph::assign_node_names::restrict_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::date::DatesMap;
+use treetime_primitives::date::DateConstraint;
 
 pub fn run(
   params: &ClockParams,
@@ -32,7 +32,7 @@ pub fn run(
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Assigning dates", 0.1, "");
   let mut inputs = ClockInputs::new(&input.graph);
-  assign_dates(&input.graph, &input.dates, &mut inputs, names).map_err(OperationError::InvalidInput)?;
+  assign_dates(&input.graph, &input.dates, &mut inputs).map_err(OperationError::InvalidInput)?;
 
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Clock regression", 0.3, "");
@@ -93,7 +93,7 @@ pub struct ClockParams {
 
 pub struct ClockInput {
   pub graph: Graph,
-  pub dates: DatesMap,
+  pub dates: BTreeMap<GraphNodeKey, DateConstraint>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 

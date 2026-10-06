@@ -9,16 +9,16 @@ mod tests {
   use maplit::btreemap;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_io::dates_csv::{DateConstraint, DatesMap};
+  use treetime_io::dates_csv::DateConstraint;
   use treetime_utils::assert_error;
 
   const SMALL_TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
 
-  fn small_tree_dates() -> DatesMap {
+  fn small_tree_dates() -> BTreeMap<String, Option<DateConstraint>> {
     scaled_small_tree_dates(1.0)
   }
 
-  fn scaled_small_tree_dates(s: f64) -> DatesMap {
+  fn scaled_small_tree_dates(s: f64) -> BTreeMap<String, Option<DateConstraint>> {
     let base = 2000.0;
     btreemap! {
       "root".to_owned() => Some(DateConstraint::exact(base)),

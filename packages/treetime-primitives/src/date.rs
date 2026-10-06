@@ -1,8 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-
-pub type DatesMap = BTreeMap<String, Option<DateConstraint>>;
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DateConstraint {
   pub raw: String,

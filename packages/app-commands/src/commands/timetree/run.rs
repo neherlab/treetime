@@ -31,7 +31,7 @@ use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::dates_csv::DatesMap;
+use treetime_io::dates_csv::DateConstraint;
 use treetime_io::fasta::FastaWriter;
 use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -318,7 +318,7 @@ struct TimetreeTrees<'a> {
   confidence_intervals: Option<&'a [NodeConfidenceInterval]>,
   outliers: &'a BTreeSet<GraphNodeKey>,
   bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
-  input_dates: Option<&'a DatesMap>,
+  input_dates: Option<&'a BTreeMap<GraphNodeKey, DateConstraint>>,
 }
 
 fn write_timetree_trees(

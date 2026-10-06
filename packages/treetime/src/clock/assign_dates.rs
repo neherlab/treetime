@@ -5,30 +5,26 @@ use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::date::DatesMap;
+use treetime_primitives::date::DateConstraint;
 
 const MIN_GOOD_LEAVES: usize = 3;
 
 pub(crate) fn assign_dates(
   graph: &Graph,
-  dates: &DatesMap,
+  dates: &BTreeMap<GraphNodeKey, DateConstraint>,
   inputs: &mut ClockInputs,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<(), Report> {
-  let n_dates = dates.iter().filter(|(_, d)| d.is_some()).count();
-  if n_dates == 0 {
-    return Err(input_error(format!(
-      "No valid date information found: none of the {} entries of the dates input has a usable date",
-      dates.len()
-    )));
+  if dates.is_empty() {
+    return Err(input_error(
+      "No valid date information found: no node of the tree has a usable date in the dates input",
+    ));
   }
 
   let mut n_bad_leaves = 0;
   graph.iter_depth_first_postorder_forward(|node| {
-    let name = names[&node.key].clone();
-    let time: Option<f64> = name
-      .and_then(|name| dates.get(&name))
-      .and_then(|d| d.as_ref().map(|c| c.mean()))
+    let time: Option<f64> = dates
+      .get(&node.key)
+      .map(DateConstraint::mean)
       .filter(|&d| d.is_finite());
 
     let bad_branch = time.is_none()

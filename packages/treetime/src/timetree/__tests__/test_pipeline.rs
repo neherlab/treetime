@@ -7,7 +7,7 @@ mod tests {
   use crate::optimize::params::BranchLengthMode;
   use crate::progress::NoopProgress;
   use crate::seq::sink::SeqSink;
-  use crate::test_utils::{RecordingSeqSink, find_node_key_by_name, marginal_timetree_params};
+  use crate::test_utils::{RecordingSeqSink, dates_by_node, find_node_key_by_name, marginal_timetree_params};
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
   use eyre::Report;
@@ -18,7 +18,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::csv::default_name_candidates;
-  use treetime_io::dates_csv::{DateConstraint, DatesMap, metadata_read_file};
+  use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
   use treetime_io::fasta::fasta_read_file;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -262,7 +262,7 @@ mod tests {
         .map_err(OperationError::into_report)
     }
 
-    pub(super) fn star_dates() -> DatesMap {
+    pub(super) fn star_dates() -> BTreeMap<String, Option<DateConstraint>> {
       btreemap! {
         "A".to_owned() => Some(DateConstraint::exact(2002.0)),
         "B".to_owned() => Some(DateConstraint::exact(2004.0)),
@@ -271,9 +271,10 @@ mod tests {
       }
     }
 
-    pub(super) fn star_input(dates: Option<DatesMap>) -> Result<TimetreeInput, Report> {
+    pub(super) fn star_input(dates: Option<BTreeMap<String, Option<DateConstraint>>>) -> Result<TimetreeInput, Report> {
       let nwk_parsed = nwk_read(STAR_TREE.as_bytes())?;
       let names = nwk_parsed.names();
+      let dates = dates.map(|dates| dates_by_node(dates, &nwk_parsed.graph, &names));
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
         names,
@@ -295,7 +296,7 @@ mod tests {
       Ok(format!("({body}:0.001){STEM_NAME};"))
     }
 
-    pub(super) fn zika_dates() -> Result<DatesMap, Report> {
+    pub(super) fn zika_dates() -> Result<BTreeMap<String, Option<DateConstraint>>, Report> {
       metadata_read_file(
         zika_path("metadata.tsv"),
         &['\t'],
@@ -304,9 +305,14 @@ mod tests {
         None,
       )
       .and_then(|table| table.dates())
+      .map(|rows| rows.into_iter().collect())
     }
 
-    pub(super) fn zika_input(newick: &str, dates: DatesMap, with_alignment: bool) -> Result<TimetreeInput, Report> {
+    pub(super) fn zika_input(
+      newick: &str,
+      dates: BTreeMap<String, Option<DateConstraint>>,
+      with_alignment: bool,
+    ) -> Result<TimetreeInput, Report> {
       let alphabet = Alphabet::default();
       let sequences = if with_alignment {
         let records = fasta_read_file(zika_path("aln.fasta.xz"), &alphabet)?;
@@ -316,6 +322,7 @@ mod tests {
       };
       let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
+      let dates = dates_by_node(dates, &nwk_parsed.graph, &names);
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
         names,

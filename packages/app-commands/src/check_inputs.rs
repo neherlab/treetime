@@ -8,12 +8,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use serde_with::skip_serializing_none;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use strum_macros::Display;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime_io::csv::{DELIMITED_EXTENSIONS, default_metadata_delimiters, default_name_candidates};
-use treetime_io::dates_csv::{DateValue, DatesMap, MetadataTable, metadata_read_file};
+use treetime_io::dates_csv::{DateConstraint, DateValue, MetadataTable, metadata_read_file};
 use treetime_io::fasta::FASTA_EXTENSIONS;
 use treetime_io::nwk::{NEWICK_EXTENSIONS, nwk_read_file};
 use treetime_utils::datetime::options::DateParserOptions;
@@ -380,27 +380,27 @@ pub(crate) fn metadata_summary(table: MetadataTable) -> MetadataRead {
   }
 }
 
-fn date_facts(dates: &DatesMap) -> DateFacts {
+fn date_facts(dates: &[(String, Option<DateConstraint>)]) -> DateFacts {
   let options = DateParserOptions::default();
-  let exact_days: BTreeMap<&String, u32> = dates
+  let exact_days = dates
     .iter()
-    .filter_map(|(name, date)| {
+    .filter_map(|(_, date)| {
       let date = date.as_ref()?;
       if !matches!(date.value, DateValue::Exact(_)) || date.raw.parse::<f64>().is_ok() {
         return None;
       }
-      parse_date(&date.raw, &options).ok().map(|parsed| (name, parsed.day()))
+      parse_date(&date.raw, &options).ok().map(|parsed| parsed.day())
     })
-    .collect();
+    .collect_vec();
   DateFacts {
-    readable: dates.values().filter(|date| date.is_some()).count(),
+    readable: dates.iter().filter(|(_, date)| date.is_some()).count(),
     unreadable: dates
       .iter()
       .filter(|(_, date)| date.is_none())
       .map(|(name, _)| name.clone())
       .collect(),
     exact_days: exact_days.len(),
-    on_day_1_or_15: exact_days.values().filter(|day| ROUND_DAYS.contains(day)).count(),
+    on_day_1_or_15: exact_days.iter().filter(|day| ROUND_DAYS.contains(day)).count(),
   }
 }
 

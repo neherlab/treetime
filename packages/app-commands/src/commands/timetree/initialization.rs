@@ -1,11 +1,11 @@
 use crate::commands::shared::alignment::read_alignment;
+use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::tree_input::read_input_tree;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::clock::date_constraints::load_date_constraints;
 use treetime::make_error;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::LogSink;
@@ -13,7 +13,7 @@ use treetime::seq::gap_fill::apply_gap_fill;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::dates_csv::{DatesMap, metadata_read_file};
+use treetime_io::dates_csv::DateConstraint;
 use treetime_io::fasta::FastaRecord;
 
 pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) -> Result<InputData, Report> {
@@ -41,21 +41,20 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
     None
   };
 
-  let dates = if let Some(dates_path) = &args.metadata {
-    let dates = metadata_read_file(
-      dates_path,
-      &args.metadata_id.metadata_delimiters,
-      &args.metadata_id.metadata_id_columns,
-      None,
-      args.date_column.date_column.as_deref(),
-    )
-    .and_then(|table| table.dates())
-    .wrap_err("When reading dates")?;
-    load_date_constraints(&dates, &graph, &names, log).wrap_err("Failed to load date constraints")?;
-    Some(dates)
-  } else {
-    None
-  };
+  let dates = args
+    .metadata
+    .as_deref()
+    .map(|path| {
+      read_input_dates(
+        path,
+        &args.metadata_id,
+        args.date_column.date_column.as_deref(),
+        &graph,
+        &names,
+        log,
+      )
+    })
+    .transpose()?;
 
   Ok(InputData {
     graph,
@@ -75,5 +74,5 @@ pub(crate) struct InputData {
   pub input_leaf_order: Vec<String>,
   pub alphabet: Alphabet,
   pub aln: Option<Vec<FastaRecord>>,
-  pub dates: Option<DatesMap>,
+  pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
 }

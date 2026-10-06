@@ -13,7 +13,7 @@ mod tests {
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeSet;
+  use std::collections::{BTreeMap, BTreeSet};
   use std::fs;
   use std::path::{Path, PathBuf};
   use treetime::cancel::NoopCancel;
@@ -79,7 +79,9 @@ mod tests {
       None,
       Some("date"),
     )
-    .and_then(|table| table.dates())?;
+    .and_then(|table| table.dates())?
+    .into_iter()
+    .collect::<BTreeMap<_, _>>();
 
     let listed: BTreeSet<String> = rows.iter().filter_map(|row| row.name.clone()).collect();
     assert_eq!(20, rows.len());

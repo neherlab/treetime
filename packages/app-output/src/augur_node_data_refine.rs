@@ -34,7 +34,7 @@ pub fn build_augur_node_data_refine(tree: &AnnotatedTreeView<'_>, run: &RefineRu
       let dates = graph
         .dates
         .as_ref()
-        .map(|dates| refine_dates(dates, key, &name, tree.tree().children(key).is_empty()))
+        .map(|dates| refine_dates(dates, key, tree.tree().children(key).is_empty()))
         .unwrap_or_default();
       let node = AugurNodeDataJsonRefineNode {
         branch_length: lengths.branch_length,
@@ -111,11 +111,8 @@ fn mutation_length(tree: &AnnotatedTreeView<'_>, edge_key: GraphEdgeKey) -> Opti
   }
 }
 
-fn refine_dates(dates: &TreeDates<'_>, key: GraphNodeKey, name: &str, is_leaf: bool) -> RefineDates {
-  let constraint = dates
-    .input_dates
-    .and_then(|input_dates| input_dates.get(name))
-    .and_then(Option::as_ref);
+fn refine_dates(dates: &TreeDates<'_>, key: GraphNodeKey, is_leaf: bool) -> RefineDates {
+  let constraint = dates.input_dates.and_then(|input_dates| input_dates.get(&key));
   let numdate = dates.num_date[&key];
   RefineDates {
     numdate,

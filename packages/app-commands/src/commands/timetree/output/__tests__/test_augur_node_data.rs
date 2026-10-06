@@ -142,7 +142,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
+    use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
     use treetime_primitives::Seq;
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
@@ -152,7 +152,7 @@ mod tests {
       names: BTreeMap<GraphNodeKey, Option<String>>,
       times: BTreeMap<GraphNodeKey, Option<f64>>,
       clock_model: ClockModel,
-      dates: DatesMap,
+      dates: BTreeMap<GraphNodeKey, DateConstraint>,
       intervals: Vec<NodeConfidenceInterval>,
       branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
     }
@@ -240,12 +240,12 @@ mod tests {
 
       let clock_model = sample_clock_model();
 
-      let dates: DatesMap = maplit::btreemap! {
-        "leaf_a".to_owned() => Some(DateConstraint::exact(2005.0)),
-        "leaf_b".to_owned() => Some(DateConstraint {
+      let dates: BTreeMap<GraphNodeKey, DateConstraint> = maplit::btreemap! {
+        leaf_a_key => DateConstraint::exact(2005.0),
+        leaf_b_key => DateConstraint {
           raw: "2010-XX-XX".to_owned(),
           value: DateValue::Uncertain(DateRange { start: 2010.0, end: 2011.0 }),
-        }),
+        },
       };
 
       let intervals = vec![

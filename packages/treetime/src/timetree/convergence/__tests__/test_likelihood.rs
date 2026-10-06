@@ -10,6 +10,7 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::progress::NoopProgress;
+  use crate::test_utils::dates_by_node;
   use crate::test_utils::{
     constraint_coalescent_node_times, dense_partition_with_constant_leaves, empty_time_inference, find_node_key_by_name,
   };
@@ -212,7 +213,7 @@ mod tests {
       let nwk_parsed = nwk_read(b"((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
-      let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+      let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
       Ok((graph, constraints))
     }
 

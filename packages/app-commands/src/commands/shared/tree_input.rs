@@ -9,7 +9,10 @@ pub fn read_input_tree(path: &Path, log: &dyn LogSink) -> Result<NwkParse, Repor
   warn_duplicate_names(
     log,
     RunWarningKind::DuplicateNodeNames,
-    &format!("The tree '{}' gives the same name to more than one node:", path.display()),
+    &format!(
+      "The tree '{}' gives the same name to more than one node:",
+      path.display()
+    ),
     "Nodes with the same name receive the same data from the other inputs, and augur node data keeps one entry per name.",
     &parse.duplicate_names,
   );

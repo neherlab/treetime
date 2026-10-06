@@ -4,6 +4,7 @@ mod tests {
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::progress::NoopProgress;
   use crate::test_utils::constraint_coalescent_node_times;
+  use crate::test_utils::dates_by_node;
   use crate::timetree::coalescent::{
     CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
   };
@@ -20,7 +21,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-  use treetime_io::dates_csv::{DateConstraint, DatesMap};
+  use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::{o, pretty_assert_array_eq};
 
@@ -188,7 +189,7 @@ mod tests {
   }
 
   fn dated_tree() -> Result<(Graph, DateConstraints), Report> {
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("root") => Some(DateConstraint::exact(2000.0)),
       o!("x")    => Some(DateConstraint::exact(2005.0)),
       o!("a")    => Some(DateConstraint::exact(2010.0)),
@@ -198,7 +199,7 @@ mod tests {
     let nwk_parsed = nwk_read(b"((a:1,b:1)x:1,c:1)root:0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
     Ok((graph, constraints))
   }
 

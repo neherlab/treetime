@@ -5,7 +5,7 @@ mod tests {
   };
   use crate::cancel::NoopCancel;
   use crate::progress::NoopProgress;
-  use crate::test_utils::marginal_timetree_params;
+  use crate::test_utils::{dates_by_node, marginal_timetree_params};
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline::{self, TimetreeInput};
   use eyre::Report;
@@ -23,6 +23,7 @@ mod tests {
     let case = &OUTPUTS[dataset];
     let nwk_parsed = nwk_read(case.rerooted_tree_nwk().as_bytes())?;
     let names = nwk_parsed.names();
+    let dates = dates_by_node(load_dates_for_dataset(dataset)?, &nwk_parsed.graph, &names);
     let input_branch_lengths = nwk_parsed.branch_lengths.clone();
     let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
       .into_iter()
@@ -33,7 +34,7 @@ mod tests {
       names,
       alphabet: ALPHABET.clone(),
       sequences: Some(aln),
-      dates: Some(load_dates_for_dataset(dataset)?),
+      dates: Some(dates),
       branch_lengths: nwk_parsed.branch_lengths,
     };
     let params = TimetreeParams {

@@ -4,6 +4,7 @@ mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::progress::NoopProgress;
+  use crate::test_utils::dates_by_node;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
@@ -28,7 +29,7 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
     Ok((graph, constraints))
   }
 

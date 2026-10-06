@@ -20,6 +20,7 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::constraint_coalescent_node_times;
+  use crate::test_utils::dates_by_node;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::result::given_times;
@@ -108,7 +109,7 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let dates = load_dates_for_dataset(dataset)?;
-      let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+      let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
       let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
         .into_iter()

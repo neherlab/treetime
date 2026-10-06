@@ -46,7 +46,7 @@ use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::date::DatesMap;
+use treetime_primitives::date::DateConstraint;
 use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::make_report;
 
@@ -69,7 +69,7 @@ pub fn run(
     branch_lengths,
     names,
   } = input;
-  let context = prepare_inputs(params, &graph, sequences.as_deref(), dates.as_ref(), &names, log)?;
+  let context = prepare_inputs(params, &graph, sequences.as_deref(), dates.as_ref(), log)?;
 
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Clock regression", 0.1, "");
@@ -137,7 +137,7 @@ fn assemble_output(
   gtr: Option<GTR>,
   model_name: Option<GtrModelName>,
   outliers: BTreeSet<GraphNodeKey>,
-  dates: Option<DatesMap>,
+  dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
   results: FinalResults,
   log: &dyn LogSink,
 ) -> Result<TimetreeOutput, OperationError> {
@@ -188,7 +188,7 @@ pub struct TimetreeInput {
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   pub alphabet: Alphabet,
   pub sequences: Option<Vec<AlignmentRecord>>,
-  pub dates: Option<DatesMap>,
+  pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
@@ -207,7 +207,7 @@ pub struct TimetreeOutput {
   pub gtr: Option<GTR>,
   pub model_name: Option<GtrModelName>,
   pub coalescent: Option<CoalescentOutput>,
-  pub dates: Option<DatesMap>,
+  pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
   pub sequences: Option<TimetreeSequences>,
 }
 
@@ -241,8 +241,7 @@ fn prepare_inputs(
   params: &TimetreeParams,
   graph: &Graph,
   sequences: Option<&[AlignmentRecord]>,
-  dates: Option<&DatesMap>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  dates: Option<&BTreeMap<GraphNodeKey, DateConstraint>>,
   log: &dyn LogSink,
 ) -> Result<TimetreeContext, OperationError> {
   debug!(
@@ -268,7 +267,7 @@ fn prepare_inputs(
   .map_err(OperationError::InvalidParams)?;
 
   let date_constraints = if let Some(dates) = dates {
-    load_date_constraints(dates, graph, names, log)
+    load_date_constraints(dates, graph, log)
       .wrap_err("Failed to load date constraints")
       .map_err(OperationError::InvalidInput)?
   } else {

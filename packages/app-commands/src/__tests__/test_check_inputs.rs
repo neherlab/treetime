@@ -220,8 +220,8 @@ mod tests {
       (
         "strain".to_owned(),
         Some("date".to_owned()),
-        command_dates.keys().cloned().collect::<BTreeSet<_>>(),
-        command_dates.values().filter(|date| date.is_some()).count(),
+        command_dates.iter().map(|(name, _)| name.clone()).collect::<BTreeSet<_>>(),
+        command_dates.iter().filter(|(_, date)| date.is_some()).count(),
         vec!["C".to_owned()],
         1,
       ),

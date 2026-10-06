@@ -2,7 +2,7 @@ use crate::csv::{delimiter_from_path, detect_csv_delimiter, get_col_name, normal
 use eyre::{Report, WrapErr};
 use std::io::BufRead;
 use std::path::Path;
-pub use treetime_primitives::date::{DateConstraint, DateExact, DateRange, DateValue, DatesMap};
+pub use treetime_primitives::date::{DateConstraint, DateExact, DateRange, DateValue};
 use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::datetime::parse_date::{parse_date, parse_date_range};
 use treetime_utils::datetime::parse_uncertain_date::parse_date_uncertain;
@@ -26,7 +26,7 @@ pub struct MetadataRow {
 }
 
 impl MetadataTable {
-  pub fn dates(&self) -> Result<DatesMap, Report> {
+  pub fn dates(&self) -> Result<Vec<(String, Option<DateConstraint>)>, Report> {
     let column = self.date_column.as_ref().map_err(|report| make_report!("{report}"))?;
     let options = DateParserOptions::default();
     self

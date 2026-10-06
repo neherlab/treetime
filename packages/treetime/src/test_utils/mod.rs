@@ -5,7 +5,7 @@ mod marginal;
 mod sparse;
 mod timetree;
 
-pub(crate) use clock::half_residual_sum_of_squares;
+pub(crate) use clock::{dates_by_node, half_residual_sum_of_squares};
 pub(crate) use graph_lookup::{find_edge_key, find_node_key_by_name};
 pub(crate) use indel::{deletion, insertion};
 pub(crate) use marginal::{

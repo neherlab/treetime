@@ -70,7 +70,9 @@ pub fn run(
     merge_shared_mutation_branches(&mut input.graph, &mut partitions, &mut branch_lengths)
       .map_err(OperationError::classify)?;
     input.graph.build().map_err(OperationError::classify)?;
-    names = assign_node_names(names, &input.graph).map_err(OperationError::classify)?.names;
+    names = assign_node_names(names, &input.graph)
+      .map_err(OperationError::classify)?
+      .names;
   }
 
   Ok(PruneOutput {

@@ -11,6 +11,7 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::dates_by_node;
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
@@ -23,7 +24,7 @@ mod tests {
   use proptest::prelude::*;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_grid::MaxGridPoints;
-  use treetime_io::dates_csv::{DateConstraint, DatesMap};
+  use treetime_io::dates_csv::DateConstraint;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -150,12 +151,12 @@ mod tests {
           .0,
       );
 
-      let dates: DatesMap = case
+      let dates: BTreeMap<String, Option<DateConstraint>> = case
         .dates
         .iter()
         .map(|(name, date)| (name.clone(), date.map(DateConstraint::exact)))
         .collect();
-      let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+      let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
       let outliers: BTreeSet<_> = case
         .outliers
         .iter()

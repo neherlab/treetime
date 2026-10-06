@@ -20,6 +20,7 @@ mod tests {
   use crate::pretty_assert_abs_diff_eq;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::dates_by_node;
   use crate::test_utils::{find_node_key_by_name, marginal_timetree_params, parent_edge_key};
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::convergence::sequence_changes::capture_ancestral_states;
@@ -42,7 +43,7 @@ mod tests {
   use treetime_graph::tree_view::TreeView;
   use treetime_grid::MaxGridPoints;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
-  use treetime_io::dates_csv::{DateConstraint, DatesMap};
+  use treetime_io::dates_csv::DateConstraint;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_primitives::AlignmentRecord;
@@ -342,7 +343,7 @@ mod tests {
     pub(super) fn create_state(
       newick: &str,
       fasta: &str,
-      dates: &DatesMap,
+      dates: &BTreeMap<String, Option<DateConstraint>>,
     ) -> Result<(RoundState, TimetreeContext), Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
@@ -362,7 +363,7 @@ mod tests {
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let branch_model = BranchModel::Marginal(partition);
 
-      let constraints = load_date_constraints(dates, &graph, &names, &NoopProgress)?;
+      let constraints = load_date_constraints(&dates_by_node(dates.clone(), &graph, &names), &graph, &NoopProgress)?;
 
       let times = given_times(&graph, &constraints)?;
       let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());

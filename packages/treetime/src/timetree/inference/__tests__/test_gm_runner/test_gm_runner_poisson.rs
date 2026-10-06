@@ -4,6 +4,7 @@ mod tests {
   use super::super::test_gm_runner_support::support::{create_poisson_branch_distributions, extract_node_times};
   use crate::clock::date_constraints::load_date_constraints;
   use crate::progress::NoopProgress;
+  use crate::test_utils::dates_by_node;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
@@ -42,7 +43,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let dates = load_dates_for_dataset(dataset)?;
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let branch_distributions = create_poisson_branch_distributions(
       &graph,

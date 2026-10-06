@@ -3,6 +3,7 @@ pub mod alphabet;
 pub mod ancestral_trees;
 pub mod branch_length_mode;
 pub mod config;
+pub mod dates_input;
 pub mod gap_fill;
 pub mod gtr_output;
 pub mod input_warnings;

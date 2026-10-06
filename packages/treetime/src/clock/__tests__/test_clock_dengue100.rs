@@ -114,6 +114,7 @@ mod tests {
     use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
     use crate::clock::reroot::RerootParams;
     use crate::progress::NoopProgress;
+    use crate::test_utils::dates_by_node;
     use eyre::Report;
     use itertools::Itertools;
     use std::collections::{BTreeMap, BTreeSet};
@@ -121,7 +122,7 @@ mod tests {
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::dates_csv::metadata_read_file;
     use treetime_io::nwk::{NwkParse, nwk_read_file};
-    use treetime_primitives::date::DatesMap;
+    use treetime_primitives::date::DateConstraint;
 
     const DATA_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/dengue/100");
 
@@ -160,7 +161,7 @@ mod tests {
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       let mut inputs = ClockInputs::new(&graph);
-      assign_dates(&graph, &dates, &mut inputs, &names)?;
+      assign_dates(&graph, &dates, &mut inputs)?;
       let (tree, result) = estimate_clock_model_with_reroot_policy(
         ClockTree {
           graph,
@@ -192,7 +193,7 @@ mod tests {
       sorted_names(&output.names, &output.outliers)
     }
 
-    fn load() -> Result<(NwkParse, DatesMap), Report> {
+    fn load() -> Result<(NwkParse, BTreeMap<GraphNodeKey, DateConstraint>), Report> {
       let data_dir = Path::new(DATA_DIR);
       let nwk_parsed = nwk_read_file(data_dir.join("tree.nwk"))?;
       let dates = metadata_read_file(
@@ -203,6 +204,7 @@ mod tests {
         Some("date"),
       )
       .and_then(|table| table.dates())?;
+      let dates = dates_by_node(dates, &nwk_parsed.graph, &nwk_parsed.names());
       Ok((nwk_parsed, dates))
     }
 

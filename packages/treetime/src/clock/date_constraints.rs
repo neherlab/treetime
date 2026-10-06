@@ -2,13 +2,12 @@ use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
-use itertools::Itertools;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::date::{DateConstraint, DateValue, DatesMap};
+use treetime_primitives::date::{DateConstraint, DateValue};
 
 #[allow(
   clippy::as_conversions,
@@ -16,30 +15,23 @@ use treetime_primitives::date::{DateConstraint, DateValue, DatesMap};
   reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
 )]
 pub fn load_date_constraints(
-  dates: &DatesMap,
+  dates: &BTreeMap<GraphNodeKey, DateConstraint>,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<DateConstraints, Report> {
   let mut good_leaf_count = 0;
   let mut bad_leaf_count = 0;
   let mut internal_constraint_count = 0;
-  let mut used_names = BTreeSet::new();
 
   let mut date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
 
   graph.iter_depth_first_postorder_forward(|node| {
     let key = node.key;
 
-    let constraint = names[&key]
-      .as_ref()
-      .and_then(|name| Some((name, dates.get(name.as_str())?.as_ref()?)));
-
-    if let Some((name, constraint)) = constraint {
+    if let Some(constraint) = dates.get(&key) {
       let dist = Arc::new(date_constraint_to_distribution(constraint));
 
       date_constraints.insert(key, Some(dist));
-      used_names.insert(name.clone());
 
       if node.is_leaf {
         good_leaf_count += 1;
@@ -54,8 +46,6 @@ pub fn load_date_constraints(
     }
     Ok(())
   })?;
-
-  warn_unused_date_constraints(dates, &used_names, log);
 
   let total_leaf_count = good_leaf_count + bad_leaf_count;
   let coverage_percent = if total_leaf_count > 0 {
@@ -96,30 +86,6 @@ fn date_constraint_to_distribution(constraint: &DateConstraint) -> Distribution<
   match &constraint.value {
     DateValue::Exact(d) => Distribution::point(d.value, 0.0),
     DateValue::Uncertain(r) | DateValue::Range(r) => Distribution::range((r.start, r.end), 0.0),
-  }
-}
-
-fn warn_unused_date_constraints(dates: &DatesMap, used_names: &BTreeSet<String>, log: &dyn LogSink) {
-  let unused_names: Vec<_> = dates
-    .keys()
-    .filter(|name| !used_names.contains(name.as_str()))
-    .collect();
-
-  if !unused_names.is_empty() {
-    let sample = unused_names
-      .iter()
-      .take(10)
-      .map(|s| s.as_str())
-      .collect_vec()
-      .join(", ");
-    let suffix = if unused_names.len() > 10 { "..." } else { "" };
-    progress_warn!(
-      log,
-      "Date constraints found for {} names not present in tree: {}{}",
-      unused_names.len(),
-      sample,
-      suffix
-    );
   }
 }
 

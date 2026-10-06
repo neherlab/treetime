@@ -6,20 +6,21 @@ mod tests {
   use crate::clock::pipeline::{self, ClockInput, ClockParams};
   use crate::error::OperationError;
   use crate::progress::NoopProgress;
+  use crate::test_utils::dates_by_node;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_io::nwk::nwk_read;
-  use treetime_primitives::date::{DateConstraint, DatesMap};
+  use treetime_primitives::date::DateConstraint;
   use treetime_utils::error::report_to_string;
   use treetime_utils::o;
 
   #[rustfmt::skip]
   #[rstest]
   #[case::same_dates(     btreemap! { o!("A") => 2000.0, o!("B") => 2000.0, o!("C") => 2000.0 }, "No variation in sampling dates! Please specify your clock rate explicitly.")]
-  #[case::no_dates(       btreemap! {},                                                             "No valid date information found: none of the 0 entries of the dates input has a usable date")]
+  #[case::no_dates(       btreemap! {},                                                             "No valid date information found: no node of the tree has a usable date in the dates input"   )]
   #[trace]
   fn test_pipeline_errors_classify_data_problems_as_invalid_input(
     #[case] dates: BTreeMap<String, f64>,
@@ -27,10 +28,11 @@ mod tests {
   ) -> Result<(), Report> {
     let parsed = nwk_read(b"((A:0.1,B:0.2)X:0.1,C:0.3)root;".as_slice())?;
     let names = parsed.names();
-    let dates: DatesMap = dates
-      .into_iter()
-      .map(|(name, date)| (name, Some(DateConstraint::exact(date))))
-      .collect();
+    let dates = dates_by_node(
+      dates.into_iter().map(|(name, date)| (name, Some(DateConstraint::exact(date)))),
+      &parsed.graph,
+      &names,
+    );
     let params = ClockParams {
       clock_params: ClockVarianceParams::default(),
       clock_filter: 3.0,

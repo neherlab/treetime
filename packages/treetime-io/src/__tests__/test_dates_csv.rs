@@ -3,7 +3,6 @@ mod tests {
   use crate::csv::delimiter_from_path;
   use crate::dates_csv::*;
   use eyre::Report;
-  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::datetime::options::DateParserOptions;
@@ -144,27 +143,84 @@ A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
     )?
     .dates()?;
 
-    let expected = btreemap! {
-      o!("A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409") => Some(DateConstraint::exact(2013.40520192)),
-      o!("A/Boston/DOA2_107/2012|CY148382|11/01/2012|USA|12_13|H3N2/1-1409") => Some(DateConstraint::exact(2012.83778234)),
-      o!("A/Oregon/15/2009|GQ895004|06/25/2009|USA|08_09|H3N2/1-1409") => Some(DateConstraint::exact(2009.48186174)),
-      o!("A/Hong_Kong/H090_695_V10/2009|CY115546|07/10/2009|Hong_Kong||H3N2/8-1416") => Some(DateConstraint::exact(2009.5229295)),
-      o!("A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409") => Some(DateConstraint::exact(2000.13415469)),
-      o!("A/Canterbury/58/2000|CY009150|09/05/2000|New_Zealand||H3N2/8-1416") => Some(DateConstraint::exact(2000.68172485)),
-      o!("A/Minab/797/2011|KC865620|12/24/2011|Iran||H3N2/20-1428") => Some(DateConstraint::exact(2011.98015058)),
-      o!("A/Nebraska/15/2011|KC892583|12/15/2011|USA|11_12|H3N2/1-1409") => Some(DateConstraint::exact(2011.95550992)),
-      o!("A/New_Hampshire/12/2012|KF790252|11/08/2012|USA|12_13|H3N2/1-1409") => Some(DateConstraint::exact(2012.8569473)),
-      o!("A/Scotland/76/2003|CY088128|11/03/2003|United_Kingdom|03_04|H3N2/1-1409") => Some(DateConstraint::exact(2003.84052019)),
-      o!("A/Managua/25/2007|CY032439|06/27/2007|Nicaragua||H3N2/1-1409") => Some(DateConstraint::exact(2007.48733744)),
-      o!("A/Boston/57/2008|CY044710|02/24/2008|USA|07_08|H3N2/1-1409") => Some(DateConstraint::exact(2008.15058179)),
-      o!("A/DaNang/DN434/2008|CY104616|11/11/2008|Viet_Nam||H3N2/4-1412") => Some(DateConstraint::exact(2008.86516085)),
-      o!("A/Mexico/InDRE940/2003|CY100628|2003|Mexico||H3N2/15-1423") => Some(DateConstraint::exact(2003.00273785)),
-      o!("A/Indiana/03/2012|KC892731|04/03/2012|USA|11_12|H3N2/1-1409") => Some(DateConstraint::exact(2012.25735797)),
-      o!("A/Maryland/21/2011|KC892695|12/26/2011|USA|11_12|H3N2/1-1409") => Some(DateConstraint::exact(2011.98562628)),
-      o!("A/Denmark/107/2003|EU103941|2003|Denmark||H3N2/1-1409") => Some(DateConstraint::exact(2003.00273785)),
-      o!("A/Peru/PER247/2011|CY162234|08/26/2011|Peru||H3N2/8-1416") => Some(DateConstraint::exact(2011.65160849)),
-      o!("A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409") => Some(DateConstraint::exact(2013.11225188)),
-    };
+    let expected = vec![
+      (
+        o!("A/Hawaii/02/2013|KF789866|05/28/2013|USA|12_13|H3N2/1-1409"),
+        Some(DateConstraint::exact(2013.40520192)),
+      ),
+      (
+        o!("A/Boston/DOA2_107/2012|CY148382|11/01/2012|USA|12_13|H3N2/1-1409"),
+        Some(DateConstraint::exact(2012.83778234)),
+      ),
+      (
+        o!("A/Oregon/15/2009|GQ895004|06/25/2009|USA|08_09|H3N2/1-1409"),
+        Some(DateConstraint::exact(2009.48186174)),
+      ),
+      (
+        o!("A/Hong_Kong/H090_695_V10/2009|CY115546|07/10/2009|Hong_Kong||H3N2/8-1416"),
+        Some(DateConstraint::exact(2009.5229295)),
+      ),
+      (
+        o!("A/New_York/182/2000|CY001279|02/18/2000|USA|99_00|H3N2/1-1409"),
+        Some(DateConstraint::exact(2000.13415469)),
+      ),
+      (
+        o!("A/Canterbury/58/2000|CY009150|09/05/2000|New_Zealand||H3N2/8-1416"),
+        Some(DateConstraint::exact(2000.68172485)),
+      ),
+      (
+        o!("A/Minab/797/2011|KC865620|12/24/2011|Iran||H3N2/20-1428"),
+        Some(DateConstraint::exact(2011.98015058)),
+      ),
+      (
+        o!("A/Nebraska/15/2011|KC892583|12/15/2011|USA|11_12|H3N2/1-1409"),
+        Some(DateConstraint::exact(2011.95550992)),
+      ),
+      (
+        o!("A/New_Hampshire/12/2012|KF790252|11/08/2012|USA|12_13|H3N2/1-1409"),
+        Some(DateConstraint::exact(2012.8569473)),
+      ),
+      (
+        o!("A/Scotland/76/2003|CY088128|11/03/2003|United_Kingdom|03_04|H3N2/1-1409"),
+        Some(DateConstraint::exact(2003.84052019)),
+      ),
+      (
+        o!("A/Managua/25/2007|CY032439|06/27/2007|Nicaragua||H3N2/1-1409"),
+        Some(DateConstraint::exact(2007.48733744)),
+      ),
+      (
+        o!("A/Boston/57/2008|CY044710|02/24/2008|USA|07_08|H3N2/1-1409"),
+        Some(DateConstraint::exact(2008.15058179)),
+      ),
+      (
+        o!("A/DaNang/DN434/2008|CY104616|11/11/2008|Viet_Nam||H3N2/4-1412"),
+        Some(DateConstraint::exact(2008.86516085)),
+      ),
+      (
+        o!("A/Mexico/InDRE940/2003|CY100628|2003|Mexico||H3N2/15-1423"),
+        Some(DateConstraint::exact(2003.00273785)),
+      ),
+      (
+        o!("A/Indiana/03/2012|KC892731|04/03/2012|USA|11_12|H3N2/1-1409"),
+        Some(DateConstraint::exact(2012.25735797)),
+      ),
+      (
+        o!("A/Maryland/21/2011|KC892695|12/26/2011|USA|11_12|H3N2/1-1409"),
+        Some(DateConstraint::exact(2011.98562628)),
+      ),
+      (
+        o!("A/Denmark/107/2003|EU103941|2003|Denmark||H3N2/1-1409"),
+        Some(DateConstraint::exact(2003.00273785)),
+      ),
+      (
+        o!("A/Peru/PER247/2011|CY162234|08/26/2011|Peru||H3N2/8-1416"),
+        Some(DateConstraint::exact(2011.65160849)),
+      ),
+      (
+        o!("A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409"),
+        Some(DateConstraint::exact(2013.11225188)),
+      ),
+    ];
 
     assert_eq!(actual, expected);
 

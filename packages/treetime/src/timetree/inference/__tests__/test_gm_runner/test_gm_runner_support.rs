@@ -15,7 +15,7 @@ pub(super) mod support {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::dates_csv::{DatesMap, metadata_read_file};
+  use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
   use treetime_io::fasta::{FastaRecord, fasta_read_file};
 
   const FIXTURES_DIR: &str = concat!(
@@ -85,7 +85,7 @@ pub(super) mod support {
     name_column: Option<String>,
   }
 
-  pub(crate) fn load_dates_for_dataset(dataset: &str) -> Result<DatesMap, Report> {
+  pub(crate) fn load_dates_for_dataset(dataset: &str) -> Result<Vec<(String, Option<DateConstraint>)>, Report> {
     let input = &INPUTS[dataset];
     let metadata_path = PROJECT_ROOT.join(&input.metadata_path);
     metadata_read_file(

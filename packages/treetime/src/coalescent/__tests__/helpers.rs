@@ -5,12 +5,13 @@ pub(crate) mod tests {
   use crate::coalescent::skyline::{SkylineParams, SkylineResult, optimize_skyline};
   use crate::progress::NoopProgress;
   use crate::test_utils::constraint_coalescent_node_times;
+  use crate::test_utils::dates_by_node;
   use eyre::Report;
   use maplit::btreemap;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::dates_csv::{DateConstraint, DatesMap};
+  use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::o;
 
@@ -28,7 +29,7 @@ pub(crate) mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
     Ok((graph, names, constraints))
   }
 
@@ -53,11 +54,14 @@ pub(crate) mod tests {
     result.tc_schedule.values()[0]
   }
 
-  pub(crate) fn graph_with_dates(tree_nwk: &str, dates: &DatesMap) -> Result<(Graph, DateConstraints), Report> {
+  pub(crate) fn graph_with_dates(
+    tree_nwk: &str,
+    dates: &BTreeMap<String, Option<DateConstraint>>,
+  ) -> Result<(Graph, DateConstraints), Report> {
     let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let constraints = load_date_constraints(dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates.clone(), &graph, &names), &graph, &NoopProgress)?;
     Ok((graph, constraints))
   }
 }

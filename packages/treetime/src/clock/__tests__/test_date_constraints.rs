@@ -3,6 +3,7 @@ mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::o;
   use crate::progress::NoopProgress;
+  use crate::test_utils::dates_by_node;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use eyre::Report;
   use itertools::Itertools;
@@ -15,7 +16,7 @@ mod tests {
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue, DatesMap};
+  use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::io::json::json_read_str;
 
@@ -24,13 +25,13 @@ mod tests {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
       o!("C") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -50,13 +51,13 @@ mod tests {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
       o!("C") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -77,13 +78,13 @@ mod tests {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => range(2020.0, 2020.25),
       o!("B") => exact(2020.5),
       o!("C") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -103,14 +104,14 @@ mod tests {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
       o!("C") => exact(2020.75),
       o!("AB") => exact(2019.5),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -131,13 +132,13 @@ mod tests {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
       o!("C") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -173,13 +174,13 @@ mod tests {
     let nwk_parsed = nwk_read(b"(((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)ABCD:0.1,E:0.2)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("C") => exact(2020.0),
       o!("D") => exact(2020.5),
       o!("E") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -219,13 +220,13 @@ mod tests {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
       o!("C") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     assert_eq!(actual.iter().filter(|n| n.date_constraint.is_some()).count(), 3);
@@ -237,14 +238,14 @@ mod tests {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => None,
       o!("C") => exact(2020.5),
       o!("D") => exact(2020.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -267,7 +268,7 @@ mod tests {
     )?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("C") => exact(2020.0),
       o!("D") => exact(2020.25),
       o!("E") => exact(2020.5),
@@ -275,7 +276,7 @@ mod tests {
       o!("G") => exact(2021.0),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -324,7 +325,7 @@ mod tests {
       nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1,G:0.1,H:0.1,I:0.1,J:0.1,K:0.1,L:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
       o!("C") => exact(2020.2),
       o!("E") => exact(2020.4),
@@ -333,7 +334,7 @@ mod tests {
       o!("K") => exact(2021.0),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -362,14 +363,14 @@ mod tests {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => range(2020.0, 2020.25),
       o!("B") => exact(2020.5),
       o!("C") => range(2020.6, 2020.8),
       o!("D") => exact(2021.0),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -390,14 +391,14 @@ mod tests {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
       o!("B") => exact(2020.5),
       o!("C") => exact(2020.75),
       o!("AB") => range(2019.0, 2019.75),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
@@ -418,13 +419,13 @@ mod tests {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let dates: DatesMap = btreemap! {
+    let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(-500.0),
       o!("B") => exact(-250.0),
       o!("C") => exact(0.0),
     };
 
-    let constraints = load_date_constraints(&dates, &graph, &names, &NoopProgress)?;
+    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
     let expected: Vec<LoadedNode> = json_read_str(
