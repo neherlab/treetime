@@ -30,4 +30,4 @@
 - [x] Insertions and deletions in their own lists
 - [x] Statistics JSON (`--output-homoplasy-stats`) and text report (`--output-homoplasy-report`)
 - [x] Tree outputs with branch mutations (Newick, Nexus, Auspice, MAT, graph JSON, Graphviz)
-- [ ] Web and desktop apps
+- [x] Web and desktop apps: results page with the recurrent mutations linked to the tree, the sites hit more than once along the genome, and the observed site counts against the Poisson expectation

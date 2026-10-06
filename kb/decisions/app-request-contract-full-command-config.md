@@ -1,6 +1,6 @@
 # App clients send the full command config
 
-The HTTP server and the desktop back end accept, for each of the six app commands (`timetree`, `optimize`, `prune`, `ancestral`, `clock`, `mugration`), the same config object that `treetime <command> --config` reads. Every setting the CLI offers is available to the web and desktop apps, and all three clients run a command through one runner in `packages/app-commands`.
+The HTTP server and the desktop back end accept, for each of the seven app commands (`timetree`, `optimize`, `prune`, `ancestral`, `homoplasy`, `clock`, `mugration`), the same config object that `treetime <command> --config` reads. Every setting the CLI offers is available to the web and desktop apps, and all three clients run a command through one runner in `packages/app-commands`.
 
 ## Behavior
 
