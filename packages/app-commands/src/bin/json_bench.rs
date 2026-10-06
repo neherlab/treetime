@@ -1,17 +1,18 @@
 use app_commands::results::homoplasy::HomoplasyStatsFile;
 use eyre::{Report, eyre};
+use serde::Serialize;
 use serde::de::{DeserializeOwned, IgnoredAny};
 use serde_json::{Deserializer, Value};
 use std::env;
 use std::fs::{self, File};
 use std::hint::black_box;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::thread;
 use std::time::{Duration, Instant};
 use treetime_io::auspice_types::AuspiceTree;
 use treetime_utils::io::compression::Decompressor;
 use treetime_utils::io::file::open_file_or_stdin;
-use treetime_utils::io::json::{json_read, json_read_file, json_read_slice};
+use treetime_utils::io::json::{JsonPretty, json_read, json_read_file, json_read_slice, json_write_file};
 
 fn main() -> Result<(), Report> {
   let args = env::args().skip(1).collect::<Vec<_>>();
@@ -47,6 +48,13 @@ fn main() -> Result<(), Report> {
 }
 
 fn measure(variant: &str, target: &str, file: &str) -> Result<Duration, Report> {
+  if let Some(mode) = variant.strip_prefix("write-") {
+    return match target {
+      "auspice" => measure_write::<AuspiceTree>(mode, file),
+      "value" => measure_write::<Value>(mode, file),
+      _ => Err(eyre!("unknown write target {target}")),
+    };
+  }
   match target {
     "stats" => measure_typed::<HomoplasyStatsFile>(variant, file),
     "auspice" => measure_typed::<AuspiceTree>(variant, file),
@@ -98,6 +106,27 @@ fn measure_typed<T: DeserializeOwned>(variant: &str, file: &str) -> Result<Durat
   } else {
     drop(black_box(value));
   }
+  Ok(elapsed)
+}
+
+fn measure_write<T: DeserializeOwned + Serialize>(mode: &str, file: &str) -> Result<Duration, Report> {
+  let value: T = json_read_slice(&fs::read(file)?)?;
+  let out = format!("tmp/json-bench/out/{mode}.json");
+  let start = Instant::now();
+  match mode {
+    "pretty" => json_write_file(&out, &value, JsonPretty(true))?,
+    "compact" => json_write_file(&out, &value, JsonPretty(false))?,
+    "vec-pretty" => fs::write(&out, serde_json::to_vec_pretty(&value)?)?,
+    "bufwriter-pretty" => {
+      let mut writer = BufWriter::with_capacity(256 * 1024, File::create(&out)?);
+      serde_json::to_writer_pretty(&mut writer, &value)?;
+      writer.flush()?;
+    },
+    "vec-compact" => fs::write(&out, serde_json::to_vec(&value)?)?,
+    _ => return Err(eyre!("unknown write mode {mode}")),
+  }
+  let elapsed = start.elapsed();
+  eprintln!("{mode}: {} bytes", fs::metadata(&out)?.len());
   Ok(elapsed)
 }
 
