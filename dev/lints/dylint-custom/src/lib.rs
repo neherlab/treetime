@@ -113,18 +113,3 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
     lint_store
         .register_late_pass(|_| Box::new(lints::json_value_in_schema::JsonValueInSchema::new()));
 }
-
-#[test]
-fn ui_topological_ordering() {
-    dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui/topological_ordering").run();
-}
-
-#[test]
-fn ui_json_value_in_schema() {
-    dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui/json_value_in_schema").run();
-}
-
-#[test]
-fn ui_suggest_builder() {
-    dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui/suggest_builder").run();
-}

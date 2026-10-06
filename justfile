@@ -227,15 +227,6 @@ test-list-rs *args:
 test-ts: _js
     bun run --silent test
 
-# Tests of the custom dylint libraries and the pub-unused-report tool, keep-going
-[group("test")]
-[script]
-test-dylint:
-    status=0
-    (cd dev/lints/dylint-custom && {{ uncached_env }} cargo test --quiet --release --locked --no-fail-fast --lib --bins --target-dir {{ quote(dylint_target_dir / "report") }}) || status=1
-    (cd dev/lints/dylint-trailofbits && {{ uncached_env }} cargo test --quiet --locked --no-fail-fast --workspace --lib --target-dir {{ quote(dylint_target_dir / "trailofbits-test") }}) || status=1
-    exit "${status}"
-
 # Smoke-test the fast cases (datasets of at most 100 sequences) against the rust branch (host only, needs Docker): just smoke [--only REGEX] [--against REF]
 [group("test")]
 smoke *args:

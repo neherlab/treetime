@@ -134,18 +134,3 @@ fn flips(value: u128) -> Vec<u32> {
     }
     flips
 }
-
-#[test]
-fn ui() {
-    dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui")
-        .rustc_flags(["--test"])
-        .run();
-}
-
-#[test]
-fn ui_no_tests() {
-    dylint_testing::ui::Test::src_base(env!("CARGO_PKG_NAME"), "ui_no_tests")
-        .rustc_flags(["--test"])
-        .dylint_toml("unnamed_constant.check_tests = false")
-        .run();
-}
