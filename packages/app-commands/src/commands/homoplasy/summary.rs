@@ -21,8 +21,10 @@ pub struct ResultContext<'a> {
 pub fn homoplasy_result(output: &HomoplasyOutput, context: &ResultContext<'_>) -> HomoplasyResult {
   let substitutions = &output.substitutions;
   let sub_name = |sub: &Sub| substitution_name(sub, context.zero_based);
+  let sub_position = |sub: &Sub| sub.pos() + offset(context.zero_based);
   let sub_drm = |sub: &Sub| substitution_drm(sub, context.drms);
   let indel_name = |key: &IndelKey| indel_name(key, context.zero_based);
+  let indel_position = |key: &IndelKey| key.range.0 + offset(context.zero_based);
   HomoplasyResult {
     zero_based: context.zero_based,
     drm_annotated: context.drms.is_some(),
@@ -30,8 +32,8 @@ pub fn homoplasy_result(output: &HomoplasyOutput, context: &ResultContext<'_>) -
       genome_length: substitutions.sites.genome_length,
       total_branch_length: substitutions.total_branch_length,
       terminal_branch_length: substitutions.terminal_branch_length,
-      all: mutation_table(&substitutions.all, context, sub_name, sub_drm),
-      terminal: mutation_table(&substitutions.terminal, context, sub_name, sub_drm),
+      all: mutation_table(&substitutions.all, context, sub_name, sub_position, sub_drm),
+      terminal: mutation_table(&substitutions.terminal, context, sub_name, sub_position, sub_drm),
       site_hits: substitutions
         .sites
         .rows
@@ -45,7 +47,7 @@ pub fn homoplasy_result(output: &HomoplasyOutput, context: &ResultContext<'_>) -
       log_likelihood_difference: substitutions.sites.log_likelihood_difference,
     },
     ambiguous: AmbiguousResult {
-      all: mutation_table(&output.ambiguous.all, context, sub_name, |_| None),
+      all: mutation_table(&output.ambiguous.all, context, sub_name, sub_position, |_| None),
       sites: output
         .ambiguous
         .sites
@@ -57,8 +59,8 @@ pub fn homoplasy_result(output: &HomoplasyOutput, context: &ResultContext<'_>) -
         .collect(),
     },
     indels: IndelResult {
-      all: mutation_table(&output.indels.all, context, indel_name, |_| None),
-      terminal: mutation_table(&output.indels.terminal, context, indel_name, |_| None),
+      all: mutation_table(&output.indels.all, context, indel_name, indel_position, |_| None),
+      terminal: mutation_table(&output.indels.terminal, context, indel_name, indel_position, |_| None),
     },
     taxa: taxa(output, context),
   }
@@ -90,6 +92,7 @@ fn mutation_table<K>(
   table: &RecurrenceTable<K>,
   context: &ResultContext<'_>,
   name: impl Fn(&K) -> String,
+  position: impl Fn(&K) -> usize,
   drm: impl Fn(&K) -> Option<DrmAnnotation>,
 ) -> MutationTable {
   MutationTable {
@@ -104,6 +107,7 @@ fn mutation_table<K>(
       .iter()
       .map(|recurrence| RankedMutation {
         mutation: name(&recurrence.mutation),
+        position: position(&recurrence.mutation),
         multiplicity: recurrence.multiplicity(),
         branches: recurrence
           .branches

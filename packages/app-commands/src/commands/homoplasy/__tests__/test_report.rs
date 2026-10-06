@@ -165,9 +165,9 @@ mod tests {
           all: table(
             7,
             &[(1, 2), (2, 1), (3, 1)],
-            &[("G10A", 3), ("T20C", 2), ("A30G", 1), ("C40T", 1)],
+            &[("G10A", 10, 3), ("T20C", 20, 2), ("A30G", 30, 1), ("C40T", 40, 1)],
           ),
-          terminal: table(3, &[(1, 1), (2, 1)], &[("G10A", 2), ("C40T", 1)]),
+          terminal: table(3, &[(1, 1), (2, 1)], &[("G10A", 10, 2), ("C40T", 40, 1)]),
           site_hits: vec![
             site_hits(0, 96, 93.244),
             site_hits(1, 2, 6.526),
@@ -177,7 +177,7 @@ mod tests {
           log_likelihood_difference: -7.077,
         },
         ambiguous: AmbiguousResult {
-          all: table(3, &[(1, 1), (2, 1)], &[("G5R", 2), ("A6N", 1)]),
+          all: table(3, &[(1, 1), (2, 1)], &[("G5R", 5, 2), ("A6N", 6, 1)]),
           sites: vec![
             SiteBranchesRow {
               position: 5,
@@ -190,8 +190,8 @@ mod tests {
           ],
         },
         indels: IndelResult {
-          all: table(2, &[(2, 1)], &[("del:3-4:AC", 2)]),
-          terminal: table(1, &[(1, 1)], &[("del:3-4:AC", 1)]),
+          all: table(2, &[(2, 1)], &[("del:3-4:AC", 3, 2)]),
+          terminal: table(1, &[(1, 1)], &[("del:3-4:AC", 3, 1)]),
         },
         taxa: vec![TaxonResult {
           name: o!("C"),
@@ -203,7 +203,7 @@ mod tests {
       }
     }
 
-    fn table(mutations: usize, multiplicities: &[(usize, usize)], ranked: &[(&str, usize)]) -> MutationTable {
+    fn table(mutations: usize, multiplicities: &[(usize, usize)], ranked: &[(&str, usize, usize)]) -> MutationTable {
       MutationTable {
         mutations,
         multiplicities: multiplicities
@@ -212,8 +212,9 @@ mod tests {
           .collect(),
         ranked: ranked
           .iter()
-          .map(|&(mutation, multiplicity)| RankedMutation {
+          .map(|&(mutation, position, multiplicity)| RankedMutation {
             mutation: mutation.to_owned(),
+            position,
             multiplicity,
             branches: vec![],
             drm: None,

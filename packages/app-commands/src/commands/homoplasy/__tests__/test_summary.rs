@@ -12,21 +12,23 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::one_based( false, ("G10A", "del:3-4:AC", 5))]
-  #[case::zero_based(true,  ("G9A",  "del:2-3:AC", 4))]
+  #[case::one_based( false, (("G10A", 10), ("del:3-4:AC", 3), 5))]
+  #[case::zero_based(true,  (("G9A",  9),  ("del:2-3:AC", 2), 4))]
   #[trace]
   fn test_summary_homoplasy_positions_follow_indexing(
     #[case] zero_based: bool,
-    #[case] (substitution, indel, ambiguous_site): (&str, &str, usize),
+    #[case] ((substitution, substitution_position), (indel, indel_position), ambiguous_site): ((&str, usize), (&str, usize), usize),
   ) -> Result<(), Report> {
     let names = names();
     let result = homoplasy_result(&output()?, &ResultContext { names: &names, drms: None, zero_based });
+    let first_substitution = &result.substitutions.all.ranked[0];
+    let first_indel = &result.indels.all.ranked[0];
 
     assert_eq!(
-      (o!(substitution), o!(indel), ambiguous_site),
+      ((o!(substitution), substitution_position), (o!(indel), indel_position), ambiguous_site),
       (
-        result.substitutions.all.ranked[0].mutation.clone(),
-        result.indels.all.ranked[0].mutation.clone(),
+        (first_substitution.mutation.clone(), first_substitution.position),
+        (first_indel.mutation.clone(), first_indel.position),
         result.ambiguous.sites[0].position
       )
     );
@@ -54,6 +56,7 @@ mod tests {
 
     let expected = RankedMutation {
       mutation: o!("G10A"),
+      position: 10,
       multiplicity: 2,
       branches: vec_of_owned!["A", "node_2"],
       drm: Some(DrmAnnotation {

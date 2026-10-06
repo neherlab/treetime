@@ -88,6 +88,9 @@ pub struct RankedMutation {
   /// The mutation: `G9343A` for a substitution, `del:100-102:ACG` or `ins:100-102:ACG` for a
   /// deletion or insertion of alignment columns 100 to 102.
   pub mutation: String,
+  /// Position of a substitution, or the first alignment column of an insertion or deletion, counted
+  /// like the other positions of the file.
+  pub position: usize,
   /// Number of branches the mutation occurs on.
   pub multiplicity: usize,
   /// Names of the nodes below the branches.
