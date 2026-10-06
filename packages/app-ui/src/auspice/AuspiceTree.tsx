@@ -48,7 +48,15 @@ const MAX_TREE_HEIGHT = 1100;
 
 const ENTROPY_HEIGHT = 300;
 
-export function AuspiceTree({ store, tips }: { store: AuspiceStore; tips: number }) {
+export function AuspiceTree({
+  store,
+  tips,
+  entropy = true,
+}: {
+  store: AuspiceStore;
+  tips: number;
+  entropy?: boolean | undefined;
+}) {
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   const toggleDownloads = useCallback(() => setDownloadsOpen((open) => !open), []);
   const showEntropy = useAuspiceSelector(store, selectShowEntropy);
@@ -92,7 +100,7 @@ export function AuspiceTree({ store, tips }: { store: AuspiceStore; tips: number
                   <DownloadButtons relevantPublications={RELEVANT_PUBLICATIONS} />
                 </div>
               )}
-              <SizedPanels tips={tips} showEntropy={showEntropy} />
+              <SizedPanels tips={tips} showEntropy={entropy && showEntropy} />
             </div>
           </div>
         </Provider>

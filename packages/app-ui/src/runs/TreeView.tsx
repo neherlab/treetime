@@ -16,15 +16,19 @@ export interface TreeData {
 export function TreeView({
   data,
   colorBy,
+  entropy,
   aside,
+  below,
 }: {
   data: TreeData;
   colorBy: string | undefined;
+  entropy?: boolean | undefined;
   aside?: ((link: TreeLink) => ReactNode) | undefined;
+  below?: ((link: TreeLink) => ReactNode) | undefined;
 }) {
   return (
     <Suspense fallback={<LoadingState text="Loading the tree view" />}>
-      <TreeWorkspace data={data} colorBy={colorBy} aside={aside} />
+      <TreeWorkspace data={data} colorBy={colorBy} entropy={entropy} aside={aside} below={below} />
     </Suspense>
   );
 }

@@ -35,6 +35,10 @@ export function focusNode(store: AuspiceStore, name: string): void {
   store.dispatch({ type: SELECT_NODE, name: node.name, idx: node.arrayIdx, isBranch: false, treeId: "LEFT" });
 }
 
+export function colorTreeBy(store: AuspiceStore, colorBy: string): void {
+  store.dispatch(changeColorBy(colorBy));
+}
+
 export function showWholeTree(store: AuspiceStore): void {
   store.dispatch(updateVisibleTipsAndBranchThicknesses({ root: [0, undefined] }));
 }
