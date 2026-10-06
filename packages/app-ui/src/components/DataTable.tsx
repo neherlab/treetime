@@ -85,10 +85,6 @@ export function DataTable<Data extends RowData>({
 
   const table = useTable(options);
 
-  const headers = table.getHeaderGroups().flatMap((group) => group.headers);
-  const items = table.getRowModel().rows;
-  const sort = sortDescriptor(table.state.sorting);
-
   const dependencies = useMemo(() => [columns, rowClassName], [columns, rowClassName]);
 
   const toggleSorting = useCallback(
@@ -96,65 +92,70 @@ export function DataTable<Data extends RowData>({
     [table],
   );
 
-  return (
-    <Virtualizer layout={TableLayout} layoutOptions={LAYOUT} shouldObserveItemSize>
-      <Table
-        aria-label={label}
-        {...(sort === undefined ? {} : { sortDescriptor: sort })}
-        onSortChange={toggleSorting}
-        className="max-h-[36rem] w-full overflow-auto overscroll-contain text-xs"
-      >
-        <TableHeader className="bg-card size-full border-b">
-          {headers.map((header, index) => (
-            <Column
-              key={header.id}
-              id={header.column.id}
-              isRowHeader={index === 0}
-              allowsSorting
-              defaultWidth={header.column.columnDef.meta?.width ?? DEFAULT_WIDTH}
-              minWidth={header.column.columnDef.meta?.minWidth ?? null}
-              className={cn(
-                "text-muted-foreground data-focus-visible:ring-ring data-hovered:text-foreground flex h-full cursor-default items-center gap-1 px-2 font-bold outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
-                header.column.columnDef.meta?.numeric === true && "justify-end",
-              )}
-            >
-              {({ sortDirection }) => (
-                <>
-                  <table.FlexRender header={header} />
-                  <SortIcon direction={sortDirection} />
-                </>
-              )}
-            </Column>
-          ))}
-        </TableHeader>
-        <TableBody items={items} dependencies={dependencies}>
-          {(row) => (
-            <Row
-              id={row.id}
-              className={cn(
-                "hover:bg-muted/50 data-focus-visible:ring-ring size-full border-b outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
-                rowClassName?.(row.original),
-              )}
-            >
-              {row.getAllCells().map((cell) => (
-                <Cell
-                  key={cell.id}
-                  className={cn(
-                    "data-focus-visible:ring-ring flex h-full items-center overflow-hidden p-2 whitespace-nowrap outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
-                    cell.column.columnDef.meta?.numeric === true && "justify-end",
-                  )}
-                >
-                  <div className="min-w-0 truncate">
-                    <table.FlexRender cell={cell} />
-                  </div>
-                </Cell>
-              ))}
-            </Row>
-          )}
-        </TableBody>
-      </Table>
-    </Virtualizer>
-  );
+  return useMemo(() => {
+    const headers = table.getHeaderGroups().flatMap((group) => group.headers);
+    const sort = sortDescriptor(table.state.sorting);
+
+    return (
+      <Virtualizer layout={TableLayout} layoutOptions={LAYOUT} shouldObserveItemSize>
+        <Table
+          aria-label={label}
+          {...(sort === undefined ? {} : { sortDescriptor: sort })}
+          onSortChange={toggleSorting}
+          className="max-h-[36rem] w-full overflow-auto overscroll-contain text-xs"
+        >
+          <TableHeader className="bg-card size-full border-b">
+            {headers.map((header, index) => (
+              <Column
+                key={header.id}
+                id={header.column.id}
+                isRowHeader={index === 0}
+                allowsSorting
+                defaultWidth={header.column.columnDef.meta?.width ?? DEFAULT_WIDTH}
+                minWidth={header.column.columnDef.meta?.minWidth ?? null}
+                className={cn(
+                  "text-muted-foreground data-focus-visible:ring-ring data-hovered:text-foreground flex h-full cursor-default items-center gap-1 px-2 font-bold outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                  header.column.columnDef.meta?.numeric === true && "justify-end",
+                )}
+              >
+                {({ sortDirection }) => (
+                  <>
+                    <table.FlexRender header={header} />
+                    <SortIcon direction={sortDirection} />
+                  </>
+                )}
+              </Column>
+            ))}
+          </TableHeader>
+          <TableBody items={table.getRowModel().rows} dependencies={dependencies}>
+            {(row) => (
+              <Row
+                id={row.id}
+                className={cn(
+                  "hover:bg-muted/50 data-focus-visible:ring-ring size-full border-b outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                  rowClassName?.(row.original),
+                )}
+              >
+                {row.getAllCells().map((cell) => (
+                  <Cell
+                    key={cell.id}
+                    className={cn(
+                      "data-focus-visible:ring-ring flex h-full items-center overflow-hidden p-2 whitespace-nowrap outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                      cell.column.columnDef.meta?.numeric === true && "justify-end",
+                    )}
+                  >
+                    <div className="min-w-0 truncate">
+                      <table.FlexRender cell={cell} />
+                    </div>
+                  </Cell>
+                ))}
+              </Row>
+            )}
+          </TableBody>
+        </Table>
+      </Virtualizer>
+    );
+  }, [dependencies, label, rowClassName, table, toggleSorting]);
 }
 
 export function CellText({ text }: { text: string }) {
