@@ -14,7 +14,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
 use treetime_io::name_list::name_list_read_file;
-use treetime_io::nwk::nwk_read_file;
+use treetime_io::tree::tree_read_file;
 use treetime_utils::{make_error, make_report};
 
 #[skip_serializing_none]
@@ -143,7 +143,7 @@ impl TopologyOrderArgs {
           .topology_order_target_file
           .as_ref()
           .ok_or_else(|| make_report!("--topology-order-target-file is required for reference-topology"))?;
-        let nwk_parsed = nwk_read_file(path).wrap_err("When reading target reference topology")?;
+        let nwk_parsed = tree_read_file(path).wrap_err("When reading target reference topology")?;
         let ref_names = nwk_parsed.names();
         leaf_order(&nwk_parsed.graph)
           .into_iter()

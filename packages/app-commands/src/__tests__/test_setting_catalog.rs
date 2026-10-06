@@ -287,8 +287,8 @@ mod tests {
           kind: InputKind::Tree,
           need: InputNeed::Required,
           label: o!("Tree"),
-          formats: o!("Newick"),
-          extensions: vec_of_owned!["nwk", "newick", "tree", "tre", "bz2", "xz", "zst", "gz"],
+          formats: o!("Newick or Nexus"),
+          extensions: vec_of_owned!["nwk", "newick", "tree", "tre", "nex", "nexus", "bz2", "xz", "zst", "gz"],
           list: false,
         },
         InputSlot {

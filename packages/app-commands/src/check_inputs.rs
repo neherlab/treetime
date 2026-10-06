@@ -15,7 +15,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime_io::csv::{DELIMITED_EXTENSIONS, default_metadata_delimiters, default_name_candidates};
 use treetime_io::dates_csv::{DateConstraint, DateValue, MetadataTable, metadata_read_file};
 use treetime_io::fasta::FASTA_EXTENSIONS;
-use treetime_io::nwk::{NEWICK_EXTENSIONS, nwk_read_file};
+use treetime_io::tree::{TREE_EXTENSIONS, tree_read_file};
 use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::datetime::parse_date::parse_date;
 use treetime_utils::io::compression::COMPRESSION_EXTENSIONS;
@@ -174,7 +174,7 @@ impl InputKind {
 
   pub const fn formats(self) -> &'static str {
     match self {
-      Self::Tree => "Newick",
+      Self::Tree => "Newick or Nexus",
       Self::Metadata => "CSV, TSV or SSV table",
       Self::Alignment => "Aligned FASTA",
     }
@@ -182,7 +182,7 @@ impl InputKind {
 
   pub fn extensions(self) -> Vec<String> {
     let formats: Vec<&str> = match self {
-      Self::Tree => NEWICK_EXTENSIONS.to_vec(),
+      Self::Tree => TREE_EXTENSIONS.to_vec(),
       Self::Metadata => DELIMITED_EXTENSIONS.iter().map(|(extension, _)| *extension).collect(),
       Self::Alignment => FASTA_EXTENSIONS.to_vec(),
     };
@@ -314,7 +314,7 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
 }
 
 fn read_tree(path: &Path) -> Result<(TreeFacts, Vec<String>), Report> {
-  let parsed = nwk_read_file(path)?;
+  let parsed = tree_read_file(path)?;
   let names = parsed.names();
   let graph = &parsed.graph;
   let tip_names = graph.get_leaves().map(|leaf| names[&leaf.key()].clone()).collect_vec();

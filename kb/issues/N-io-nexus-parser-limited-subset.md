@@ -1,35 +1,16 @@
-# Nexus parser handles a limited subset
+# Nexus parser reads trees only
 
 > [!IMPORTANT]
-> **Decision required.** The current tree-only subset is implemented deliberately, but its acceptance as the complete Nexus contract has not been approved. Keep this as an issue until the supported syntax and malformed-input behavior are explicitly decided.
+> **Decision required.** The parser reads the `Trees` blocks of a Nexus file and skips every other block. Whether the tree-only scope is the complete Nexus contract of TreeTime is not approved.
 
-The `util-newick` crate Nexus parser covers the TREES block subset needed for phylogenetic tree I/O. It does not implement a full Nexus grammar parser.
+`fn nexus_from_string()` in [packages/util-newick/src/nexus.rs](../../packages/util-newick/src/nexus.rs) parses the block and command structure of a Nexus file with a `pest` grammar that skips comments and quoted text. It reads `Translate` tables per `Trees` block and `Tree` and `UTree` commands. A block without its end, or a command without its `;`, is an error ([kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md)).
 
-## What is supported
+## Not read
 
-- `Begin Trees;` / `End;` block extraction (case-insensitive)
-- `Translate` integer-to-name tables with quote-aware comma splitting
-- `Tree name = [&R|U]? newick;` entries with quoted name handling
-- Multiple trees per TREES block
-- Unknown blocks silently skipped (FigTree, Data, Characters, etc.)
-
-## What is not supported
-
-- `Begin Characters;`, `Begin Data;`, `Begin Sets;`, `Begin Assumptions;` -- content ignored
-- Nexus comments `[...]` at the block level (only Newick-embedded comments are handled)
-- `UTREE`, `TREE * name =` syntax variants
-- Semicolons inside double-quoted labels in tree commands
-- Malformed blocks produce empty results rather than parse errors
-
-## Current scope rationale
-
-TreeTime currently needs tree content from `TREES` blocks. Supporting unrelated Nexus data matrices would expand the I/O boundary substantially, while silent acceptance of malformed tree blocks and unsupported tree-command variants remains observable within the current scope.
+- `Taxa` blocks: tree labels are not checked against `TaxLabels`
+- `Characters`, `Data`, `Sets`, `Assumptions` and program blocks (FigTree, MrBayes, PAUP*): skipped command by command
 
 ## Decision axes
 
-- **Documented subset vs broader grammar:** retain a tree-only parser or adopt a general Nexus grammar.
-- **Unsupported syntax:** reject unsupported tree syntax explicitly or continue skipping it.
-- **Malformed input:** return actionable parse errors or preserve empty-result behavior.
-- **Non-tree blocks:** ignore them as out of scope or represent them in a broader data model.
-
-Implementation waits until these axes are decided.
+- **Tree-only scope**: keep the tree-only reader, or read the `Taxa` block and check the tree labels against it
+- **Other blocks**: skip them, or read alignments from `Characters` and `Data` blocks as an alignment input

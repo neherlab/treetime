@@ -70,7 +70,9 @@ PAUP\*, MrBayes, Mesquite, MacClade, SplitsTree, BEAST, IQ-TREE all support Nexu
 
 `fn nex_write()` in [packages/treetime-io/src/nex.rs](../../packages/treetime-io/src/nex.rs) wraps the Newick text, in the same comment style, in a `#NEXUS` header with a `Taxa` block and a `Trees` block. `TaxLabels` lists the named leaves, and `NTax` counts the labels written. Every command writes `.nexus` output alongside `.nwk`.
 
-`util-newick` has a Nexus tree parser (`fn nexus_from_reader()` in [packages/util-newick/src/nexus.rs](../../packages/util-newick/src/nexus.rs)), but no command reads Nexus. v0 reads Nexus as a fallback when Newick parsing fails and the file extension is `.nexus` or `.nex`.
+Every command reads a Nexus tree file through `fn tree_read()` in [packages/treetime-io/src/tree.rs](../../packages/treetime-io/src/tree.rs). The file must contain exactly one tree, as `Bio.Phylo.read()` requires in v0; a file with several trees, for example a BEAST posterior sample, is an error that names the number of trees. v0 tries Newick first and reads Nexus only when Newick fails and the file extension is `.nexus` or `.nex`; v1 selects the reader by the `#NEXUS` header instead, so a Nexus file is read whatever its extension.
+
+The Nexus parser (`fn nexus_from_string()` in [packages/util-newick/src/nexus.rs](../../packages/util-newick/src/nexus.rs)) is a `pest` grammar over blocks and commands that skips comments and quoted text when it looks for keywords and `;`. It reads `Translate` tables per `Trees` block, `Tree` and `UTree` commands with an optional `*`, comments between the tree name and `=` (BEAST 1 writes `tree STATE_0 [&lnP=...] = ...`), quoted tree names, and `End;` or `EndBlock;`. Other blocks and commands are skipped. A block without its end, or a command without its `;`, is an error.
 
 ## NeXML
 

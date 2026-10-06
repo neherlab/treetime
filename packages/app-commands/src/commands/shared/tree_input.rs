@@ -2,10 +2,11 @@ use crate::commands::shared::input_warnings::warn_duplicate_names;
 use eyre::Report;
 use std::path::Path;
 use treetime::progress::{LogSink, RunWarningKind};
-use treetime_io::nwk::{NwkParse, nwk_read_file};
+use treetime_io::nwk::NwkParse;
+use treetime_io::tree::tree_read_file;
 
 pub fn read_input_tree(path: &Path, log: &dyn LogSink) -> Result<NwkParse, Report> {
-  let parse = nwk_read_file(path)?;
+  let parse = tree_read_file(path)?;
   warn_duplicate_names(
     log,
     RunWarningKind::DuplicateNodeNames,

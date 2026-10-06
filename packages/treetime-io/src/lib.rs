@@ -10,6 +10,7 @@ pub mod graphviz;
 pub mod name_list;
 pub mod nex;
 pub mod nwk;
+pub mod tree;
 pub mod usher_mat;
 
 #[cfg(test)]

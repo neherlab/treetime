@@ -8,4 +8,5 @@ mod test_name_list;
 mod test_nex;
 mod test_nwk_comments;
 mod test_nwk_read;
+mod test_tree_read;
 mod test_usher_mat;

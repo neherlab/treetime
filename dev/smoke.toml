@@ -295,13 +295,12 @@ fail = "kb/issues/M-io-gff3-rejects-unstranded-cds.md"
 variant = "input-nexus-tree"
 datasets = ["flu/h3n2/20"]
 args = "--tree={dataset}/tree.nex --method-anc=marginal"
-fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
 
 [[ancestral]]
 variant = "input-phylip-alignment"
 datasets = ["flu/h3n2/20"]
 args = "--aln={dataset}/aln.phylip --method-anc=marginal"
-fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
+fail = "kb/issues/M-io-phylip-alignment-input-unsupported.md"
 
 # Tree ordering and output options, shared by every command that writes a tree
 [[ancestral]]
@@ -997,7 +996,6 @@ fail = "stops at the grid point limit: kb/decisions/distribution-grid-point-limi
 variant = "input-nexus-tree"
 datasets = ["flu/h3n2/20"]
 args = "--tree={dataset}/tree.nex"
-fail = "kb/issues/M-io-nexus-and-phylip-input-unsupported.md"
 
 # Tree output styles and all output formats
 [[timetree]]
