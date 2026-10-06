@@ -63,7 +63,7 @@ mod tests {
     })?;
     let warnings = Mutex::new(vec![]);
     let log = JobProgress::new(|event: JobEvent| {
-      if let JobEvent::Log(event) = event
+      if let JobEvent::Log { data: event } = event
         && event.level == LogLevel::Warn
       {
         warnings.lock().push(event.message);

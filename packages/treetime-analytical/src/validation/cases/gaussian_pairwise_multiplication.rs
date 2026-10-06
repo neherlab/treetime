@@ -153,7 +153,7 @@ pub const GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES: &[GaussianPairwiseMultiplicati
   },
 ];
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize)]
 pub struct GaussianPairwiseMultiplicationTestCase {
   pub name: &'static str,
   pub description: &'static str,

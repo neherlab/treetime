@@ -7,7 +7,7 @@ pub fn version_info() -> VersionInfo {
   }
 }
 
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, deser::Serialize)]
 pub struct VersionInfo {
   pub version: &'static str,
 }

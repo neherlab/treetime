@@ -2,6 +2,7 @@ use crate::testing::metrics::config::SpatialConfig;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use treetime_utils::adapters::ArrayVec;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
 pub(super) fn compute_regional_metrics(
@@ -58,16 +59,18 @@ pub(super) fn compute_regional_metrics(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct RegionalMetrics {
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  #[deser(as = ArrayVec)]
   pub(crate) peak_region_errors: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  #[deser(as = ArrayVec)]
   pub(crate) tail_region_errors: Array1<f64>,
   pub(crate) summary: RegionalSummary,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct RegionalSummary {
   pub(crate) peak_region: RegionStats,
   pub(crate) tail_region: RegionStats,
@@ -101,7 +104,7 @@ fn compute_region_stats(errors: &[f64]) -> RegionStats {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct RegionStats {
   pub(crate) point_count: usize,
   pub(crate) mean_error: f64,

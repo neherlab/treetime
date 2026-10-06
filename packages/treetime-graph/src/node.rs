@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct Node {
   key: GraphNodeKey,
   outbound_edges: Vec<GraphEdgeKey>,
@@ -78,7 +78,21 @@ impl Node {
   }
 }
 
-#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(
+  Copy,
+  Clone,
+  Debug,
+  Display,
+  Eq,
+  PartialEq,
+  Ord,
+  PartialOrd,
+  Hash,
+  Serialize,
+  Deserialize,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 pub struct GraphNodeKey(pub usize);
 
 impl GraphNodeKey {

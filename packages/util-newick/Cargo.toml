@@ -15,6 +15,7 @@ version.workspace = true
 doctest = false
 
 [dependencies]
+deser = { workspace = true }
 eyre = { workspace = true }
 pest = { workspace = true }
 pest_derive = { workspace = true }

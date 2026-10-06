@@ -32,6 +32,7 @@ blas-src = { workspace = true }
 bon = { workspace = true }
 color-eyre = { workspace = true }
 derive_more = { workspace = true }
+deser = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
 indexmap = { workspace = true }

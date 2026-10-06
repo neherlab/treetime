@@ -8,7 +8,7 @@ const CITATION_DOI: &str = "10.1093/ve/vex042";
 const DOI_RESOLVER: &str = "https://doi.org/";
 
 /// The publication to cite for TreeTime.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct Citation {
   /// Reference in text form.
   pub text: String,

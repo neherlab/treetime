@@ -8133,12 +8133,12 @@
             "$ref": "#/components/schemas/RunError",
             "x-unset": true
           },
+          "config": {
+            "$ref": "#/components/schemas/TimetreeConfig"
+          },
           "command": {
             "type": "string",
             "const": "timetree"
-          },
-          "config": {
-            "$ref": "#/components/schemas/TimetreeConfig"
           }
         },
         "required": [
@@ -8242,12 +8242,12 @@
             "$ref": "#/components/schemas/RunError",
             "x-unset": true
           },
+          "config": {
+            "$ref": "#/components/schemas/OptimizeConfig"
+          },
           "command": {
             "type": "string",
             "const": "optimize"
-          },
-          "config": {
-            "$ref": "#/components/schemas/OptimizeConfig"
           }
         },
         "required": [
@@ -8351,12 +8351,12 @@
             "$ref": "#/components/schemas/RunError",
             "x-unset": true
           },
+          "config": {
+            "$ref": "#/components/schemas/PruneConfig"
+          },
           "command": {
             "type": "string",
             "const": "prune"
-          },
-          "config": {
-            "$ref": "#/components/schemas/PruneConfig"
           }
         },
         "required": [
@@ -8460,12 +8460,12 @@
             "$ref": "#/components/schemas/RunError",
             "x-unset": true
           },
+          "config": {
+            "$ref": "#/components/schemas/AncestralConfig"
+          },
           "command": {
             "type": "string",
             "const": "ancestral"
-          },
-          "config": {
-            "$ref": "#/components/schemas/AncestralConfig"
           }
         },
         "required": [
@@ -8569,12 +8569,12 @@
             "$ref": "#/components/schemas/RunError",
             "x-unset": true
           },
+          "config": {
+            "$ref": "#/components/schemas/HomoplasyConfig"
+          },
           "command": {
             "type": "string",
             "const": "homoplasy"
-          },
-          "config": {
-            "$ref": "#/components/schemas/HomoplasyConfig"
           }
         },
         "required": [
@@ -8678,12 +8678,12 @@
             "$ref": "#/components/schemas/RunError",
             "x-unset": true
           },
+          "config": {
+            "$ref": "#/components/schemas/ClockConfig"
+          },
           "command": {
             "type": "string",
             "const": "clock"
-          },
-          "config": {
-            "$ref": "#/components/schemas/ClockConfig"
           }
         },
         "required": [
@@ -8787,12 +8787,12 @@
             "$ref": "#/components/schemas/RunError",
             "x-unset": true
           },
+          "config": {
+            "$ref": "#/components/schemas/MugrationConfig"
+          },
           "command": {
             "type": "string",
             "const": "mugration"
-          },
-          "config": {
-            "$ref": "#/components/schemas/MugrationConfig"
           }
         },
         "required": [
@@ -9075,12 +9075,12 @@
             "description": "Time the event was recorded.",
             "type": "string"
           },
+          "data": {
+            "$ref": "#/components/schemas/JobStarted"
+          },
           "type": {
             "type": "string",
             "const": "started"
-          },
-          "data": {
-            "$ref": "#/components/schemas/JobStarted"
           }
         },
         "required": [
@@ -9104,12 +9104,12 @@
             "description": "Time the event was recorded.",
             "type": "string"
           },
+          "data": {
+            "$ref": "#/components/schemas/ProgressEvent"
+          },
           "type": {
             "type": "string",
             "const": "progress"
-          },
-          "data": {
-            "$ref": "#/components/schemas/ProgressEvent"
           }
         },
         "required": [
@@ -9133,12 +9133,12 @@
             "description": "Time the event was recorded.",
             "type": "string"
           },
+          "data": {
+            "$ref": "#/components/schemas/LogEvent"
+          },
           "type": {
             "type": "string",
             "const": "log"
-          },
-          "data": {
-            "$ref": "#/components/schemas/LogEvent"
           }
         },
         "required": [
@@ -9162,12 +9162,12 @@
             "description": "Time the event was recorded.",
             "type": "string"
           },
+          "data": {
+            "$ref": "#/components/schemas/IterationEvent"
+          },
           "type": {
             "type": "string",
             "const": "iteration"
-          },
-          "data": {
-            "$ref": "#/components/schemas/IterationEvent"
           }
         },
         "required": [
@@ -9191,12 +9191,12 @@
             "description": "Time the event was recorded.",
             "type": "string"
           },
+          "data": {
+            "$ref": "#/components/schemas/TerminalEvent"
+          },
           "type": {
             "type": "string",
             "const": "terminal"
-          },
-          "data": {
-            "$ref": "#/components/schemas/TerminalEvent"
           }
         },
         "required": [

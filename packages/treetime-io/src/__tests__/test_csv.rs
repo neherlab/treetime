@@ -180,7 +180,7 @@ mod tests {
   mod helpers {
     use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
     pub(super) struct Row {
       pub(super) name: String,
       pub(super) value: f64,

@@ -38,9 +38,10 @@ impl ConvolutionTestSuite for GaussianExponentialTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct GaussianExponentialTestCase {
   #[serde(flatten)]
+  #[deser(flatten)]
   base: TestCaseBase,
   a_f: f64,
   input_grid_domain: (f64, f64),

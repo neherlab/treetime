@@ -25,6 +25,7 @@ mod tests {
   use treetime::clock::rtt::ClockDateSource;
   use treetime::o;
   use treetime_utils::assert_error;
+  use treetime_utils::io::json::to_json_value;
 
   #[test]
   fn test_run_results_of_a_timetree_run_hold_estimates_and_regression() -> Result<(), Report> {
@@ -291,7 +292,7 @@ mod tests {
       }),
     );
 
-    let document = serde_json::to_value(run_auspice(&runs, &id)?)?;
+    let document = to_json_value(&run_auspice(&runs, &id)?)?;
 
     let tree = run_results(&runs, &id)?.tree.expect("the run wrote an Auspice tree");
     let region = tree
@@ -350,7 +351,7 @@ mod tests {
     let path = auspice_path(&runs, &id);
     let written = fs::read(&path)?;
 
-    let document = serde_json::to_value(run_auspice(&runs, &id)?)?;
+    let document = to_json_value(&run_auspice(&runs, &id)?)?;
 
     let colorings = run_results(&runs, &id)?.tree.expect("the run wrote an Auspice tree").colorings;
     let mut expected: Value = serde_json::from_slice(&written)?;

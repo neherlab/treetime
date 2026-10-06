@@ -56,7 +56,7 @@ pub(crate) fn count_transitions_dense(
   Ok(MutationCounts { nij, Ti, root_state })
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, deser::Serialize)]
 pub struct DenseInputs {
   pub(crate) min_branch_length: f64,
   pub(crate) filter_uninformative_root: bool,

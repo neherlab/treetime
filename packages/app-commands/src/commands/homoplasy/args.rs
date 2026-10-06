@@ -104,17 +104,21 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "HomoplasyConfig")]
 pub struct TreetimeHomoplasyArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
+  #[deser(skip)]
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
@@ -126,10 +130,12 @@ pub struct TreetimeHomoplasyArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub model_args: ModelArgs,
 
   /// Method used for reconstructing ancestral sequences, which places the mutations on the branches
@@ -145,6 +151,7 @@ pub struct TreetimeHomoplasyArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
 
   /// Report sequence positions counted from 0 instead of 1.
@@ -202,6 +209,7 @@ pub struct TreetimeHomoplasyArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub seed_args: SeedArgs,
 
   /// Number of constant sites that the alignment leaves out.
@@ -252,6 +260,7 @@ pub struct TreetimeHomoplasyArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub output: OutputCoreArgs,
 
   /// Path to output homoplasy statistics JSON.
@@ -286,5 +295,6 @@ pub struct TreetimeHomoplasyArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 }

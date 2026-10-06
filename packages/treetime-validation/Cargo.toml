@@ -28,6 +28,7 @@ approx = { workspace = true }
 bon = { workspace = true }
 clap = { workspace = true }
 csv = { workspace = true }
+deser = { workspace = true }
 eyre = { workspace = true }
 image = { workspace = true, optional = true }
 itertools = { workspace = true }

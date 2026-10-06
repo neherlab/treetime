@@ -218,17 +218,21 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "TimetreeConfig")]
 pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
+  #[deser(skip)]
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
@@ -255,10 +259,12 @@ pub struct TreetimeTimetreeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub metadata_id: MetadataIdArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub date_column: DateColumnArgs,
 
   /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
@@ -435,6 +441,7 @@ pub struct TreetimeTimetreeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub reroot: RerootArgs,
 
   /// don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
@@ -457,6 +464,7 @@ pub struct TreetimeTimetreeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub model_args: ModelArgs,
 
   /// Method used for reconstructing ancestral sequences
@@ -465,6 +473,7 @@ pub struct TreetimeTimetreeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   /// Use dense representation for sequences (store full probability distributions)
@@ -473,6 +482,7 @@ pub struct TreetimeTimetreeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
 
   /// Zero-based mutation indexing
@@ -606,6 +616,7 @@ pub struct TreetimeTimetreeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub output: OutputCoreArgs,
 
   /// Comma-separated list of outputs to produce with `--output-all`.
@@ -624,10 +635,12 @@ pub struct TreetimeTimetreeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub seed_args: SeedArgs,
 
   /// Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
@@ -658,9 +671,24 @@ pub struct TreetimeTimetreeArgsRaw {
   pub gen_per_year: f64,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Debug,
+  Clone,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  SmartDefault,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[schemars(rename = "TimeMarginalMode")]
 pub enum TimeMarginalModeCli {
   #[default]

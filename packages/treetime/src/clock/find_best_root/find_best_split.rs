@@ -39,7 +39,7 @@ pub(crate) fn find_best_split(
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct FindRootResult {
   pub(crate) edge: Option<GraphEdgeKey>,
 

@@ -227,12 +227,13 @@ fn search_root(
   )
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct ClockRerootResult {
   regression: Option<ClockRegression>,
   clock_model: Option<ClockModel>,
   reroot_result: Option<RerootResult>,
   #[serde(skip)]
+  #[deser(skip)]
   points: Vec<ClockRegressionPoint>,
 }
 
@@ -451,8 +452,9 @@ fn clock_regression_points(
   Ok(points)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 pub struct ClockVarianceParams {
   /// Variance scaling factor proportional to branch length
   #[default = 0.0]

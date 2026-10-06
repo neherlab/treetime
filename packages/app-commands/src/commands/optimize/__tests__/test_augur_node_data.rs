@@ -5,7 +5,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use treetime_primitives::AlignmentRecord;
-  use treetime_utils::io::json::json_read_str;
+  use treetime_utils::io::json::{json_read_str, json_value_read_str, to_json_value};
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
   #[test]
@@ -59,9 +59,9 @@ mod tests {
   fn test_augur_node_data_optimize_roundtrip() {
     let json_str = helpers::write_json("(leaf_a:0.005,leaf_b:0.010)root;");
 
-    let original: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    let original = json_value_read_str(&json_str).unwrap();
     let typed: AugurNodeDataJsonRefine = json_read_str(&json_str).unwrap();
-    let roundtripped: serde_json::Value = serde_json::to_value(&typed).unwrap();
+    let roundtripped = to_json_value(&typed).unwrap();
 
     assert_eq!(original, roundtripped);
   }
@@ -69,7 +69,7 @@ mod tests {
   #[test]
   fn test_augur_node_data_optimize_drops_input_support_label() {
     let json_str = helpers::write_json("((leaf_a:0.005,leaf_b:0.010)0.999:0.003,leaf_c:0.02)root;");
-    let data: serde_json::Value = json_read_str(&json_str).unwrap();
+    let data = json_value_read_str(&json_str).unwrap();
 
     assert_eq!(json!({ "branch_length": 0.003 }), data["nodes"]["NODE_0000000"]);
   }

@@ -28,3 +28,13 @@ impl Serialize for Jobs {
     serializer.serialize_u64(self.jobs as u64)
   }
 }
+
+impl deser::Serialize for Jobs {
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
+  fn serialize(&self, _state: &mut deser::State) -> Result<deser::ser::Chunk<'_>, deser::Error> {
+    Ok(deser::ser::Chunk::Atom(deser::Atom::U64(self.jobs as u64)))
+  }
+}

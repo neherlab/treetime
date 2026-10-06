@@ -28,7 +28,7 @@ use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_union::range_union;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, deser::Serialize)]
 pub struct PartitionMarginalDense {
   pub(crate) inputs: DenseInputs,
   pub(crate) index: usize,

@@ -65,7 +65,8 @@ pub struct ConfigRejection<'a> {
 
 /// A finding about a configuration and its input files, before a run.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct RunCheck {
   /// Identifier of the check, stable across calls for the same finding.
   pub id: String,
@@ -80,8 +81,11 @@ pub struct RunCheck {
 }
 
 /// How a finding affects the run.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum CheckLevel {
   /// The run cannot start.
   Block,
@@ -92,7 +96,7 @@ pub enum CheckLevel {
 }
 
 /// Change of settings that resolves a finding.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct CheckFix {
   /// Label of the action, for example `Use covariation`.
   pub label: String,
@@ -102,7 +106,8 @@ pub struct CheckFix {
 
 /// New value of one setting.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct SettingPatch {
   /// Key path of the setting.
   pub path: Vec<String>,

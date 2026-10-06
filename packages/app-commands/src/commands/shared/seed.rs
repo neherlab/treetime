@@ -6,8 +6,10 @@ use treetime::progress_info;
 
 /// Seed of the random number generator, shared by every command that has a random step.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct SeedArgs {
   /// Random seed

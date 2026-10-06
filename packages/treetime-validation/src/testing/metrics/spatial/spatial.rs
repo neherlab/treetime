@@ -5,7 +5,7 @@ use crate::testing::metrics::spatial::windowed::{WindowedMetrics, compute_window
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct SpatialMetrics {
   pub(crate) total_points: usize,
   pub(crate) dx: f64,

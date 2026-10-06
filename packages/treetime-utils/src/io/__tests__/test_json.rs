@@ -8,7 +8,7 @@ mod tests {
   use serde::{Deserialize, Serialize};
   use tempfile::tempdir;
 
-  #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+  #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
   struct Sample {
     name: String,
     count: u32,
@@ -33,7 +33,7 @@ mod tests {
   fn test_json_read_str_rejects_trailing_characters() {
     assert_error!(
       json_read_str::<Sample>(r#"{"name":"flu","count":1} x"#),
-      "When parsing JSON: trailing characters at line 1 column 26"
+      "When parsing JSON: Unexpected: garbage after input at line 1 column 26"
     );
   }
 

@@ -6,25 +6,32 @@ use ndarray_linalg::Eigh;
 use ndarray_linalg::UPLO::Lower;
 use num_traits::abs;
 use serde::Serialize;
+use treetime_utils::adapters::{Array2Rows, ArrayVec};
 use treetime_utils::array::ndarray::{clamp_min, outer};
 use treetime_utils::array::serde::{array1_as_vec, array2_as_vec, option_array1_as_vec};
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, deser::Serialize)]
 pub struct GTR {
   pub debug: bool,
   pub average_rate: f64,
   pub mu: f64,
   #[serde(serialize_with = "array2_as_vec")]
+  #[deser(serialize_as = Array2Rows)]
   pub W: Array2<f64>,
   #[serde(serialize_with = "array1_as_vec")]
+  #[deser(serialize_as = ArrayVec)]
   pub pi: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec")]
+  #[deser(serialize_as = ArrayVec)]
   pub eigvals: Array1<f64>,
   #[serde(serialize_with = "array2_as_vec")]
+  #[deser(serialize_as = Array2Rows)]
   pub v: Array2<f64>,
   #[serde(serialize_with = "array2_as_vec")]
+  #[deser(serialize_as = Array2Rows)]
   pub v_inv: Array2<f64>,
   #[serde(serialize_with = "option_array1_as_vec")]
+  #[deser(serialize_as = Option<ArrayVec>)]
   pub site_rates: Option<Array1<f64>>,
   pub unimodal_branch_likelihood: bool,
 }

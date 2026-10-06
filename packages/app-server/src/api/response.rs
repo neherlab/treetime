@@ -1,16 +1,16 @@
+use crate::api::extract::ApiJson;
 use crate::error::AppError;
 use aide::OperationOutput;
 use aide::generate::GenContext;
 use aide::openapi::{MediaType, Operation, Response as ApiResponse, SchemaObject, StatusCode as ApiStatusCode};
 use app_commands::bridge::error::ErrorResponse;
-use axum::Json;
 use axum::body::Body;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
+use deser::Serialize;
 use indexmap::IndexMap;
 use schemars::{JsonSchema, Schema, json_schema};
-use serde::Serialize;
 use std::convert::Infallible;
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -41,7 +41,7 @@ pub(crate) struct Accepted<T>(pub T);
 
 impl<T: Serialize> IntoResponse for Accepted<T> {
   fn into_response(self) -> Response {
-    (StatusCode::ACCEPTED, Json(self.0)).into_response()
+    (StatusCode::ACCEPTED, ApiJson(self.0)).into_response()
   }
 }
 

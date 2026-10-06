@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Getters, CopyGetters, MutGetters, Setters)]
+#[derive(
+  Clone, Debug, Serialize, Deserialize, Getters, CopyGetters, MutGetters, Setters, deser::Serialize, deser::Deserialize,
+)]
 pub struct Edge {
   #[getset(get_copy = "pub", get_mut = "pub", set = "pub")]
   key: GraphEdgeKey,
@@ -53,7 +55,21 @@ pub fn invert_edge(graph: &mut Graph, edge_key: GraphEdgeKey) {
   }
 }
 
-#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(
+  Copy,
+  Clone,
+  Debug,
+  Display,
+  Eq,
+  PartialEq,
+  Ord,
+  PartialOrd,
+  Hash,
+  Serialize,
+  Deserialize,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 pub struct GraphEdgeKey(pub usize);
 
 impl GraphEdgeKey {

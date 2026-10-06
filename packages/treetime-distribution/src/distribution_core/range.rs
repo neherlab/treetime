@@ -3,12 +3,13 @@ use getset::Getters;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Getters)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Getters, deser::Serialize, deser::Deserialize)]
 #[getset(get = "pub")]
 pub struct DistributionRange<T: Clone + Copy + Debug, Y: YAxisPolicy = Plain> {
   range: (T, T),
   ampl: T,
   #[serde(skip)]
+  #[deser(skip)]
   #[getset(skip)]
   _policy: PolicyMarker<Y>,
 }

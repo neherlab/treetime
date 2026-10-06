@@ -33,14 +33,14 @@ mod tests {
 
     const V0_ROOT_BRANCH_LENGTH: f64 = 0.001;
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct GmInputs {
       tree: String,
       aln: String,
       n: usize,
     }
 
-    #[derive(Debug, PartialEq, Eq, Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize, deser::Deserialize)]
     pub(super) struct V0Report {
       total_branch_length: String,
       mutations: usize,
@@ -104,14 +104,14 @@ mod tests {
       }
     }
 
-    #[derive(Debug, PartialEq, Eq, Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize, deser::Deserialize)]
     struct V0SiteHits {
       hits: usize,
       sites: usize,
       expected: String,
     }
 
-    #[derive(Debug, PartialEq, Eq, Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize, deser::Deserialize)]
     struct V0Row {
       name: String,
       count: usize,

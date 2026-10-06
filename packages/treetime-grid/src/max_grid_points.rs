@@ -8,8 +8,23 @@ use std::str::FromStr;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Serialize, Deserialize)]
+#[derive(
+  Clone,
+  Copy,
+  Debug,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Hash,
+  Display,
+  Serialize,
+  Deserialize,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(try_from = "usize", into = "usize")]
+#[deser(as = deser::adapters::TryFromInto<usize>)]
 pub struct MaxGridPoints(usize);
 
 impl MaxGridPoints {

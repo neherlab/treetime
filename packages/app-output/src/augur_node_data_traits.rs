@@ -1,10 +1,10 @@
 use crate::annotated_graph::{AnnotatedTreeView, TreeTraits};
 use crate::auspice::ensure_finite;
 use crate::trait_profile::{build_confidence_map, compute_entropy};
+use deser_value::{Value, to_value};
 use eyre::Report;
 use itertools::izip;
 use maplit::btreemap;
-use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::gtr::gtr::GTR;
@@ -33,7 +33,7 @@ pub fn build_augur_node_data_traits(
   let branches = trait_branches(tree, traits);
   let mut other = BTreeMap::new();
   if !branches.is_empty() {
-    other.insert("branches".to_owned(), serde_json::to_value(branches)?);
+    other.insert("branches".to_owned(), to_value(&branches)?);
   }
   Ok(AugurNodeDataJsonTraits {
     generated_by: Some(AugurNodeDataJsonGeneratedBy {
@@ -73,7 +73,7 @@ fn trait_nodes(
     let name = node_name_or_key(key, graph.names[&key].as_deref());
     let mut fields = BTreeMap::new();
     if let Some(value) = &traits.values[&key] {
-      fields.insert(traits.attribute.to_owned(), Value::String(value.clone()));
+      fields.insert(traits.attribute.to_owned(), Value::from(value.as_str()));
     }
     if let Some(profile) = &traits.profiles[&key] {
       for (state, probability) in izip!(traits.states.iter(), profile) {
@@ -83,9 +83,9 @@ fn trait_nodes(
       ensure_finite(entropy, &name, "trait entropy")?;
       let confidence = build_confidence_map(traits.states, profile);
       if !confidence.is_empty() {
-        fields.insert(confidence_key.clone(), serde_json::to_value(&confidence)?);
+        fields.insert(confidence_key.clone(), to_value(&confidence)?);
       }
-      fields.insert(entropy_key.clone(), json!(entropy));
+      fields.insert(entropy_key.clone(), Value::from(entropy));
     }
     nodes.insert(name, AugurNodeDataJsonTraitsNode { fields });
   }

@@ -195,7 +195,7 @@ mod tests {
     assert_error!(
       AppSettingsStore::open(dir.path()).unwrap().read(),
       format!(
-        "When reading the settings file '{}': When parsing JSON: unknown variant `blue`, expected one of `system`, `light`, `dark` at line 1 column 23",
+        "When reading the settings file '{}': When parsing JSON: Unexpected: unknown variant `blue` of UiTheme, expected one of `system`, `light`, `dark` at line 1 column 18 (path: ui.theme)",
         path.display()
       )
     );

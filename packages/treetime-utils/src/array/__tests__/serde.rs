@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::adapters::Array2Rows;
   use crate::array::serde::array2_as_vec;
   use crate::io::json::{JsonPretty, json_write_str};
   use ndarray::{Array2, array};
@@ -18,9 +19,10 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
-  #[derive(Serialize)]
+  #[derive(Serialize, deser::Serialize)]
   struct Matrix {
     #[serde(serialize_with = "array2_as_vec")]
+    #[deser(serialize_as = Array2Rows)]
     values: Array2<i32>,
   }
 }

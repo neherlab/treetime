@@ -25,7 +25,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::interval::range_union::range_union;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, deser::Serialize)]
 pub struct PartitionMarginalSparse {
   pub index: usize,
   pub alphabet: Alphabet,

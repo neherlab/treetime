@@ -2,7 +2,7 @@
 mod tests {
   use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
-  use treetime_utils::io::json::json_read_str;
+  use treetime_utils::io::json::{json_read_str, json_value_read_str, to_json_value};
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
   #[test]
@@ -86,9 +86,9 @@ mod tests {
     let case = helpers::sample_case();
     let json_str = case.write_json();
 
-    let original: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    let original = json_value_read_str(&json_str).unwrap();
     let typed: AugurNodeDataJsonRefine = json_read_str(&json_str).unwrap();
-    let roundtripped: serde_json::Value = serde_json::to_value(&typed).unwrap();
+    let roundtripped = to_json_value(&typed).unwrap();
 
     assert_eq!(original, roundtripped);
   }

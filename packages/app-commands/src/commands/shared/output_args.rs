@@ -12,8 +12,9 @@ use treetime_io::nwk::NwkStyle;
 
 macro_rules! per_command_output_selection {
   ($name:ident { $($extra:ident),* $(,)? }) => {
-    #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, schemars::JsonSchema, strum_macros::EnumIter)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, schemars::JsonSchema, strum_macros::EnumIter, deser::Serialize, deser::Deserialize)]
     #[serde(rename_all = "kebab-case")]
+    #[deser(rename_all = "kebab-case")]
     #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
     pub enum $name {
       All,
@@ -86,8 +87,10 @@ per_command_output_selection!(HomoplasyOutputSelection {
 /// chooses the directory, `--output-selection` restricts generated files, and
 /// per-file flags override or add paths. Style and topology order are separate.
 #[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct OutputCoreArgs {
   /// Write all default output files into this directory.
@@ -237,9 +240,12 @@ impl OutputCoreArgs {
 }
 
 /// CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum NwkStyleArg {
   Plain,
   Beast,
@@ -256,9 +262,12 @@ impl From<NwkStyleArg> for NwkStyle {
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum DivergenceUnits {
   #[default]
   MutationsPerSite,

@@ -98,7 +98,7 @@ impl NwkParse {
   }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct NwkNodeMeta {
   name: Option<String>,
 }

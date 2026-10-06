@@ -452,8 +452,11 @@ fn ensure_unique_destinations<'a>(
   AsRefStr,
   EnumString,
   EnumIter,
+  deser::Serialize,
+  deser::Deserialize,
 )]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum OutputSelection {
   All,

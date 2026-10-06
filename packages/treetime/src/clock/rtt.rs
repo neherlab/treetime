@@ -36,7 +36,7 @@ pub(crate) fn gather_clock_regression_results(
     .collect()
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, deser::Serialize, deser::Deserialize)]
 pub struct ClockRegressionResult {
   pub name: Option<String>,
   pub div: f64,
@@ -48,16 +48,22 @@ pub struct ClockRegressionResult {
     deserialize_with = "false_if_missing",
     default
   )]
+  #[deser(default, as = treetime_utils::adapters::TrueOrNull)]
   pub is_outlier: bool,
   #[serde(skip)]
+  #[deser(skip)]
   pub is_leaf: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
+  #[deser(default, skip_serializing_if = Option::is_none)]
   pub date_source: Option<ClockDateSource>,
 }
 
 /// Where the date a clock regression used for a sample came from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum ClockDateSource {
   /// The sampling date given in the input.
   Input,

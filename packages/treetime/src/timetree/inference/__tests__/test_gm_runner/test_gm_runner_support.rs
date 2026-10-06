@@ -47,7 +47,7 @@ pub(super) mod support {
       .to_path_buf()
   });
 
-  #[derive(Debug, Deserialize)]
+  #[derive(Debug, Deserialize, deser::Deserialize)]
   pub(crate) struct DatasetOutputs {
     rerooted_tree_nwk: String,
     clock_rate: f64,
@@ -78,7 +78,7 @@ pub(super) mod support {
     }
   }
 
-  #[derive(Debug, Deserialize)]
+  #[derive(Debug, Deserialize, deser::Deserialize)]
   struct DatasetInput {
     aln_path: String,
     metadata_path: String,

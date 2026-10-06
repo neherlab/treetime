@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_primitives::AsciiChar;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+  Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, deser::Serialize, deser::Deserialize,
+)]
 pub struct Composition {
   counts: BTreeMap<AsciiChar, usize>,
   gap: AsciiChar,

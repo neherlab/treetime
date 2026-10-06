@@ -217,7 +217,7 @@ pub(crate) fn select_root(
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, SmartDefault)]
+#[derive(Clone, Debug, Serialize, Deserialize, SmartDefault, deser::Serialize, deser::Deserialize)]
 pub struct RerootParams {
   pub(crate) spec: RerootSpec,
 

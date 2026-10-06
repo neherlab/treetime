@@ -21,8 +21,9 @@ use treetime_primitives::{AlphabetLike, Seq};
 /// One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
 /// accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
 /// input.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlignmentArgs {
   /// Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,

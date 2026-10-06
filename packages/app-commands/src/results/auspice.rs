@@ -7,13 +7,12 @@ use crate::runs::manager::RunManager;
 use eyre::{Report, WrapErr};
 use itertools::izip;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use treetime_io::auspice_types::AuspiceTree;
 
 /// Auspice JSON of a run, with the color scales the app displays.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
-#[serde(transparent)]
+#[derive(Clone, Debug, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[schemars(transparent)]
 pub struct AuspiceDocument(#[schemars(with = "Map<String, Value>")] pub AuspiceTree);
 
 pub fn run_auspice(manager: &RunManager, id: &JobId) -> Result<AuspiceDocument, Report> {

@@ -156,9 +156,11 @@ impl RunStore {
       }
       let events = EventLog::open(&self.events_path(&record.id))?;
       if !events.is_closed() {
-        events.append(JobEvent::Terminal(TerminalEvent::Interrupted {
-          job_id: record.id.clone(),
-        }))?;
+        events.append(JobEvent::Terminal {
+          data: TerminalEvent::Interrupted {
+            job_id: record.id.clone(),
+          },
+        })?;
       }
       record.status = RunStatus::Interrupted;
       record.finished_at = Some(Utc::now());

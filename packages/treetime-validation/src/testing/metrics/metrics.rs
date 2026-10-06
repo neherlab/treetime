@@ -7,7 +7,7 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct ValidationMetrics {
   pub(crate) aggregate: AggregateMetrics,
 

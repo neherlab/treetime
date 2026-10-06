@@ -69,8 +69,10 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
 
 /// Outcome of checking a configuration without running it.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(tag = "status", rename_all = "kebab-case")]
+#[deser(tag = "status", rename_all = "kebab-case")]
 pub enum CheckConfigResponse {
   /// The configuration is accepted.
   Valid {
@@ -109,8 +111,10 @@ pub enum CheckConfigResponse {
 
 /// Request to check a configuration.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
 pub struct CheckConfigRequest {
   /// Command the configuration is for, unless the text starts with the `yaml-language-server` schema directive of
   /// another command.
@@ -120,13 +124,16 @@ pub struct CheckConfigRequest {
   /// Input settings to add when the text does not set them, for example the inputs of a draft that the text is loaded
   /// into.
   #[serde(default)]
+  #[deser(default)]
   pub inputs: SparseConfig,
   /// Facts about the input files, from `check-inputs`, for the checks that depend on them.
   #[serde(default)]
+  #[deser(default)]
   pub input_facts: Option<InputFacts>,
   /// Absolute folder that relative paths in the text resolve from: the folder of the config file. Paths in `inputs`
   /// stay as they are. Unset: relative paths resolve from the working directory of the back end.
   #[serde(default)]
+  #[deser(default)]
   pub folder: Option<PathBuf>,
 }
 

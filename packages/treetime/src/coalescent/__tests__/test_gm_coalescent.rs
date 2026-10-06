@@ -19,6 +19,7 @@ mod tests {
   use treetime_grid::grid::Grid;
   use treetime_io::dates_csv::metadata_read_file;
   use treetime_io::nwk::nwk_read_file;
+  use treetime_utils::adapters::ArrayVec;
   use treetime_utils::array::serde::indexmap_array1_from_map;
   use treetime_utils::io::json::json_read_file;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
@@ -86,15 +87,16 @@ mod tests {
 
   const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/coalescent/__tests__/__fixtures__");
 
-  #[derive(Debug, Deserialize)]
+  #[derive(Debug, Deserialize, deser::Deserialize)]
   struct Snapshot {
     inputs: SnapshotInputs,
     tbp_grid: SnapshotTbpGrid,
     #[serde(deserialize_with = "indexmap_array1_from_map")]
+    #[deser(deserialize_as = IndexMap<_, ArrayVec>)]
     node_contributions: IndexMap<String, Array1<f64>>,
   }
 
-  #[derive(Debug, Deserialize)]
+  #[derive(Debug, Deserialize, deser::Deserialize)]
   struct SnapshotInputs {
     tree_path: String,
     metadata_path: String,
@@ -102,7 +104,7 @@ mod tests {
     present_time: f64,
   }
 
-  #[derive(Debug, Deserialize)]
+  #[derive(Debug, Deserialize, deser::Deserialize)]
   struct SnapshotTbpGrid {
     start: f64,
     end: f64,

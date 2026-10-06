@@ -3,6 +3,8 @@ use crate::commands::ancestral::aa_node_data::translation_input_paths;
 use crate::config::properties::{PathRole, leaf_properties};
 use crate::config::settings::{remove_setting, setting_mut, setting_ref};
 use crate::runs::record::RunInput;
+use deser::adapters::As;
+use deser_serde::Serde;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use serde_json::{Map, Value};
@@ -48,7 +50,10 @@ pub fn hash_inputs(command: AppCommand, config: &Map<String, Value>) -> Result<H
       None => {},
     }
   }
-  let canonical = json_write_str(&sorted_keys(&Value::Object(canonical)), JsonPretty(false))?;
+  let canonical = json_write_str(
+    &As::<_, Serde>::new(&sorted_keys(&Value::Object(canonical))),
+    JsonPretty(false),
+  )?;
   Ok(HashedInputs {
     inputs,
     config_hash: sha256_hex(canonical.as_bytes())?,

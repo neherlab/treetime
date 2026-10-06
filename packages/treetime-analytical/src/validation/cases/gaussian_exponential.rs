@@ -73,7 +73,7 @@ pub const GAUSSIAN_EXPONENTIAL_CASES: &[GaussianExponentialTestCase] = &[
   },
 ];
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize)]
 pub struct GaussianExponentialTestCase {
   pub name: &'static str,
   pub description: &'static str,

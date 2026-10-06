@@ -17,7 +17,7 @@ mod tests {
       .unwrap();
     let events = Mutex::new(vec![]);
     let progress = JobProgress::new(|event| {
-      if let JobEvent::Iteration(iteration) = event {
+      if let JobEvent::Iteration { data: iteration } = event {
         events.lock().push(iteration);
       }
     });
@@ -61,7 +61,7 @@ mod tests {
       .unwrap();
     let events: Mutex<Vec<IterationEvent>> = Mutex::new(vec![]);
     let progress = JobProgress::new(|event| {
-      if let JobEvent::Iteration(iteration) = event {
+      if let JobEvent::Iteration { data: iteration } = event {
         events.lock().push(iteration);
       }
     });
@@ -85,7 +85,7 @@ mod tests {
     let prepared = AppCommand::Timetree.prepare_value(&config).unwrap();
     let events: Mutex<Vec<IterationEvent>> = Mutex::new(vec![]);
     let progress = JobProgress::new(|event| {
-      if let JobEvent::Iteration(iteration) = event {
+      if let JobEvent::Iteration { data: iteration } = event {
         events.lock().push(iteration);
       }
     });

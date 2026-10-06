@@ -391,3 +391,27 @@ macro_rules! seq {
     }
   };
 }
+
+impl deser::Serialize for Seq {
+  fn serialize(&self, _state: &mut deser::State) -> Result<deser::ser::Chunk<'_>, deser::Error> {
+    Ok(deser::ser::Chunk::Atom(deser::Atom::Str(self.as_str().into())))
+  }
+}
+
+impl<'de> deser::Deserialize<'de> for Seq {
+  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut deser::State) -> deser::de::SinkHandle<'out, 'de> {
+    <deser::adapters::TryFromInto<String> as deser::adapters::DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
+  }
+}
+
+impl TryFrom<String> for Seq {
+  type Error = &'static str;
+
+  fn try_from(s: String) -> Result<Self, Self::Error> {
+    if s.is_ascii() {
+      Ok(Seq::from_ascii_str(&s))
+    } else {
+      Err("Seq: input contains non-ASCII characters")
+    }
+  }
+}

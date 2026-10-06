@@ -11,7 +11,7 @@ mod tests {
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
   use treetime::progress::NoopProgress;
   use treetime_io::nwk::nwk_read;
-  use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
+  use treetime_utils::io::json::{JsonPretty, json_read_str, json_value_read_str, json_write_str, to_json_value};
   use treetime_utils::o;
   use util_augur_node_data_json::AugurNodeDataJsonTraits;
 
@@ -101,9 +101,9 @@ mod tests {
       "(A:0.1,B:0.2)root;",
       &btreemap! { o!("A") => o!("usa"), o!("B") => o!("germany") },
     );
-    let original: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    let original = json_value_read_str(&json_str).unwrap();
     let typed: AugurNodeDataJsonTraits = json_read_str(&json_str).unwrap();
-    let roundtripped: serde_json::Value = serde_json::to_value(&typed).unwrap();
+    let roundtripped = to_json_value(&typed).unwrap();
     assert_eq!(original, roundtripped);
   }
 

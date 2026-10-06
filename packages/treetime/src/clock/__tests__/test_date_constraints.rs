@@ -443,7 +443,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, deser::Serialize, deser::Deserialize)]
     pub(super) struct LoadedNode {
       pub(super) name: Option<String>,
       pub(super) date_constraint: Option<Arc<Distribution<NegLog>>>,

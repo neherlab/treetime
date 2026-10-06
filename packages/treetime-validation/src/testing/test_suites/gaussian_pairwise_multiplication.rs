@@ -57,9 +57,10 @@ impl MultiplicationTestSuite for GaussianPairwiseMultiplicationTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct GaussianPairwiseMultiplicationTestCase {
   #[serde(flatten)]
+  #[deser(flatten)]
   base: TestCaseBase,
   mu_f: f64,
   sigma_f: f64,

@@ -1,5 +1,5 @@
+use crate::api::extract::ApiJson;
 use app_commands::bridge::error::{ErrorCode, ErrorResponse};
-use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use eyre::Report;
@@ -25,7 +25,7 @@ impl<E: Into<Report>> From<E> for AppError {
 }
 
 pub fn error_response(body: ErrorResponse) -> Response {
-  (http_status(body.code), Json(body)).into_response()
+  (http_status(body.code), ApiJson(body)).into_response()
 }
 
 pub(crate) fn plain_error(code: ErrorCode, message: impl Into<String>) -> Response {

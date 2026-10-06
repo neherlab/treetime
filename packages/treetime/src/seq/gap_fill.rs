@@ -38,8 +38,23 @@ pub fn apply_gap_fill(seq: &mut Seq, mode: GapFill, gap: AsciiChar, unknown: Asc
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Clone,
+  Debug,
+  Default,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum GapFill {
   #[default]
   OnlyTerminal,

@@ -23,7 +23,8 @@ use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
 /// Results of a finished run, read from its output files.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct RunResults {
   /// Tree of the run's Auspice file; absent when the run wrote none.
   pub tree: Option<ResultTree>,
@@ -36,8 +37,9 @@ pub struct RunResults {
 }
 
 /// Results specific to the command of a run.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(tag = "command", content = "data", rename_all = "kebab-case")]
+#[deser(tag = "command", content = "data", rename_all = "kebab-case")]
 pub enum CommandResults {
   Timetree(Box<TimetreeResults>),
   Clock(ClockResults),
@@ -50,7 +52,8 @@ pub enum CommandResults {
 
 /// Summary of a tree an `optimize` or `prune` run wrote.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct TreeSummary {
   /// Number of samples.
   pub samples: usize,
@@ -65,7 +68,7 @@ pub struct TreeSummary {
 }
 
 /// A fitted substitution model.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct SubstitutionModel {
   /// Name of the model.
   pub name: String,
@@ -104,7 +107,7 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
     problems,
   } = RunOutputs::read(record.config.command(), out_dir, &record.output_files);
   let results = match &record.config {
-    CommandConfig::Timetree(config) => CommandResults::Timetree(Box::new(timetree_results(
+    CommandConfig::Timetree { config } => CommandResults::Timetree(Box::new(timetree_results(
       &TimetreeOutputs {
         tree: tree.as_ref(),
         clock_model: clock_model.as_ref(),
@@ -115,27 +118,27 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
       },
       config,
     ))),
-    CommandConfig::Clock(_) => CommandResults::Clock(clock_results(
+    CommandConfig::Clock { .. } => CommandResults::Clock(clock_results(
       tree.as_ref(),
       clock_model.as_ref(),
       clock_rows.as_deref(),
     )),
-    CommandConfig::Ancestral(config) => CommandResults::Ancestral(ancestral_results(
+    CommandConfig::Ancestral { config } => CommandResults::Ancestral(ancestral_results(
       tree.as_ref(),
       &Alphabet::new(config.alphabet_args.alphabet_name().unwrap_or_default())?,
     )?),
-    CommandConfig::Homoplasy(_) => CommandResults::Homoplasy(Box::new(homoplasy_results(homoplasy.as_ref()))),
-    CommandConfig::Mugration(config) => {
+    CommandConfig::Homoplasy { .. } => CommandResults::Homoplasy(Box::new(homoplasy_results(homoplasy.as_ref()))),
+    CommandConfig::Mugration { config } => {
       let attribute = config
         .attribute
         .clone()
         .ok_or_else(|| make_report!("mugration run `{}` names no attribute", record.id.as_str()))?;
       CommandResults::Mugration(mugration_results(auspice.as_ref(), tree.as_ref(), &attribute)?)
     },
-    CommandConfig::Optimize(_) => {
+    CommandConfig::Optimize { .. } => {
       CommandResults::Optimize(tree_summary(tree.as_ref(), node_data.as_ref(), gtr.as_ref()))
     },
-    CommandConfig::Prune(_) => CommandResults::Prune(tree_summary(tree.as_ref(), None, None)),
+    CommandConfig::Prune { .. } => CommandResults::Prune(tree_summary(tree.as_ref(), None, None)),
   };
   Ok(RunResults {
     tree,

@@ -11,7 +11,7 @@ use treetime_primitives::{AsciiChar, StateSet};
 use treetime_utils::fmt::string::quote;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct AlphabetConfig {
   pub(crate) canonical: Vec<u8>,
   pub(crate) ambiguous: IndexMap<u8, Vec<u8>>,

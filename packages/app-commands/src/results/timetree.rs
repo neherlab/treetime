@@ -17,7 +17,8 @@ const INTERVAL_EDGE_FRACTION: f64 = 0.05;
 
 /// Results of a `timetree` run.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct TimetreeResults {
   /// Estimates of the time tree; absent when the run wrote no Auspice tree.
   pub estimates: Option<TimetreeEstimates>,
@@ -31,7 +32,8 @@ pub struct TimetreeResults {
 
 /// Estimates of a `timetree` run.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct TimetreeEstimates {
   /// Date of the root.
   pub root_date: Option<YearDate>,
@@ -64,8 +66,9 @@ pub struct TimetreeEstimates {
 }
 
 /// Coalescent prior of a `timetree` run.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
+#[deser(tag = "kind", rename_all = "kebab-case")]
 pub enum CoalescentPrior {
   /// No coalescent prior.
   None,
@@ -86,7 +89,7 @@ pub enum CoalescentPrior {
 }
 
 /// Parameters of a relaxed clock.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct RelaxedClock {
   /// Slack: how far the rate of a branch may vary.
   pub slack: f64,
@@ -96,7 +99,8 @@ pub struct RelaxedClock {
 
 /// Convergence values of one iteration.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct IterationRow {
   /// Iteration number, from 0.
   pub iteration: usize,
@@ -115,7 +119,7 @@ pub struct IterationRow {
 }
 
 /// One segment of the coalescent time scale.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct SkylineSegment {
   /// Start of the segment, as a decimal year.
   pub start: f64,
@@ -129,7 +133,8 @@ pub struct SkylineSegment {
 
 /// An estimate with an optional confidence band.
 #[skip_serializing_none]
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct Band {
   /// Point estimate.
   pub value: f64,

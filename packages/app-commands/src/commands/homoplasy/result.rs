@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
 /// Recurrent mutations of a `homoplasy` run: mutations that occur on more than one branch of the tree.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct HomoplasyResult {
   /// Whether positions count from 0 (`--zero-based`) instead of from 1.
   pub zero_based: bool,
@@ -21,7 +21,7 @@ pub struct HomoplasyResult {
 }
 
 /// Statistics of substitutions between determined states.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct SubstitutionResult {
   /// Number of sites of the genome: the alignment length plus `--const`.
   pub genome_length: usize,
@@ -44,7 +44,7 @@ pub struct SubstitutionResult {
 }
 
 /// Statistics of changes involving ambiguous characters.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct AmbiguousResult {
   /// Changes on all branches.
   pub all: MutationTable,
@@ -53,7 +53,7 @@ pub struct AmbiguousResult {
 }
 
 /// Statistics of insertions and deletions.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct IndelResult {
   /// Insertions and deletions on all branches.
   pub all: MutationTable,
@@ -62,7 +62,7 @@ pub struct IndelResult {
 }
 
 /// Mutations of one class with the number of branches each occurs on.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct MutationTable {
   /// Number of mutations, counted once per branch.
   pub mutations: usize,
@@ -73,7 +73,9 @@ pub struct MutationTable {
 }
 
 /// Number of distinct mutations that occur on the same number of branches.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 pub struct MultiplicityRow {
   /// Number of branches.
   pub branches: usize,
@@ -83,7 +85,8 @@ pub struct MultiplicityRow {
 
 /// A distinct mutation and the branches it occurs on.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct RankedMutation {
   /// The mutation: `G9343A` for a substitution, `del:100-102:ACG` or `ins:100-102:ACG` for a
   /// deletion or insertion of alignment columns 100 to 102.
@@ -101,7 +104,8 @@ pub struct RankedMutation {
 
 /// Drug resistance annotation of a substitution.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct DrmAnnotation {
   /// Gene of the position.
   pub gene: String,
@@ -112,7 +116,7 @@ pub struct DrmAnnotation {
 }
 
 /// Number of sites hit by the same number of substitutions.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct SiteHitsRow {
   /// Number of substitutions at a site.
   pub hits: usize,
@@ -123,7 +127,9 @@ pub struct SiteHitsRow {
 }
 
 /// A site and the number of branches with a change at it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 pub struct SiteBranchesRow {
   /// Position of the site.
   pub position: usize,
@@ -133,7 +139,8 @@ pub struct SiteBranchesRow {
 
 /// Recurrent and ambiguous changes on the terminal branch of one sample.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct TaxonResult {
   /// Name of the sample.
   pub name: String,

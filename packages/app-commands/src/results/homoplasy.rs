@@ -72,7 +72,7 @@ pub fn homoplasy_statistics(stats: &HomoplasyStatsFile) -> HomoplasyStatistics {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, deser::Deserialize)]
 pub struct HomoplasyStatsFile {
   pub zero_based: bool,
   pub drm_annotated: bool,
@@ -82,20 +82,21 @@ pub struct HomoplasyStatsFile {
   pub taxa: Vec<TaxonResult>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, deser::Deserialize)]
 pub struct AmbiguousStats {
   pub all: AmbiguousCount,
   pub sites: Vec<SiteBranchesRow>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, deser::Deserialize)]
 pub struct AmbiguousCount {
   pub mutations: usize,
 }
 
 /// Results of a `homoplasy` run.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct HomoplasyResults {
   /// Statistics of the run; absent when its statistics file is missing or unreadable.
   pub statistics: Option<HomoplasyStatistics>,
@@ -103,7 +104,8 @@ pub struct HomoplasyResults {
 
 /// Statistics of a `homoplasy` run: mutations that occur on more than one branch of the tree.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct HomoplasyStatistics {
   /// Whether `--drms` annotated the substitutions with drug resistance mutations.
   pub drm_annotated: bool,
@@ -157,7 +159,8 @@ pub struct HomoplasyStatistics {
 
 /// A mutation that occurs on two or more branches.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct RecurrentMutation {
   /// The mutation, such as `G9343A` or `del:100-102:ACG`.
   pub mutation: String,
@@ -177,7 +180,7 @@ pub struct RecurrentMutation {
 }
 
 /// A site with substitutions on two or more branches.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct HomoplasySite {
   /// Position counted from 1, as in the tree.
   pub position: usize,
@@ -191,7 +194,8 @@ pub struct HomoplasySite {
 
 /// A substitution at a site hit more than once.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct SiteSubstitution {
   /// The substitution, such as `G9343A`.
   pub mutation: String,
@@ -204,7 +208,9 @@ pub struct SiteSubstitution {
 }
 
 /// A site with changes involving ambiguous characters.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 pub struct AmbiguousSite {
   /// Position counted from 1, as in the tree.
   pub position: usize,

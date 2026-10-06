@@ -18,8 +18,10 @@ use treetime_io::tree::tree_read_file;
 use treetime_utils::{make_error, make_report};
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct TopologyOrderArgs {
   /// Order tree topology before writing output files.
@@ -174,18 +176,24 @@ pub(crate) fn target_positions(
   pair_by_name(graph.get_leaves().map(|leaf| leaf.key()), names, positions).by_node
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum LadderizeArg {
   None,
   Ascending,
   Descending,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum TopologyOrderArg {
   Keep,
   #[cfg_attr(feature = "clap", value(alias = "ladderize"))]
@@ -221,18 +229,24 @@ impl From<TopologyOrderArg> for TopologyOrderPreset {
   }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum TopologyOrderTargetSourceArg {
   Input,
   ReferenceTopology,
   List,
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum TopologyOrderTargetAggregateArg {
   #[default]
   Mean,

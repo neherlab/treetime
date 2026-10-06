@@ -5,7 +5,7 @@ use crate::testing::metrics::distribution::statistics::{StatisticalMetrics, comp
 use crate::testing::metrics::pointwise::errors::PointwiseErrors;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DistributionMetrics {
   pub(crate) histograms: HistogramMetrics,
   pub(crate) statistics: StatisticalMetrics,

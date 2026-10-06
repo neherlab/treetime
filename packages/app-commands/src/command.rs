@@ -32,6 +32,8 @@ use crate::config::source::render_and_bail;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 #[cfg(feature = "clap")]
 use clap::{Command, CommandFactory};
+use deser::adapters::As;
+use deser_serde::Serde;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
@@ -65,8 +67,11 @@ use treetime_utils::make_error;
   EnumIter,
   IntoStaticStr,
   VariantNames,
+  deser::Serialize,
+  deser::Deserialize,
 )]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum AppCommand {
   Timetree,
@@ -213,7 +218,7 @@ impl AppCommand {
   }
 
   pub fn prepare_value(self, config: &Value) -> Result<PreparedCommand, Report> {
-    let text = json_write_str(config, JsonPretty(true))?;
+    let text = json_write_str(&As::<_, Serde>::new(config), JsonPretty(true))?;
     self.prepare_text("config.json", &text)
   }
 
@@ -223,7 +228,7 @@ impl AppCommand {
       return make_error!("a command configuration must be a mapping of settings");
     };
     self.remove_output_paths(settings)?;
-    let text = json_write_str(&config, JsonPretty(true))?;
+    let text = json_write_str(&As::<_, Serde>::new(&config), JsonPretty(true))?;
     self.prepare_source("config.json", &text, Some(out_dir))
   }
 
@@ -319,7 +324,7 @@ impl CommandArgs {
 }
 
 /// Result of a command that ran to completion.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct CommandOutcome {
   /// Command that ran.
   pub command: AppCommand,
@@ -328,7 +333,9 @@ pub struct CommandOutcome {
 }
 
 /// One file a command wrote.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 pub struct OutputFile {
   /// Path of the file.
   pub path: PathBuf,
@@ -455,7 +462,7 @@ macro_rules! impl_raw_config {
       }
 
       fn into_config(self) -> CommandConfig {
-        CommandConfig::$variant(Box::new(self))
+        CommandConfig::$variant { config: Box::new(self) }
       }
 
       fn set_run_outputs(&mut self, out_dir: &Path) {

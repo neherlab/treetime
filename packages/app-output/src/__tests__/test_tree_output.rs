@@ -10,11 +10,11 @@ pub(super) mod tests {
   use crate::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
   use crate::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
   use approx::assert_ulps_eq;
+  use deser_value::Map;
   use eyre::{Report, WrapErr};
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use serde_json::Value;
   use serde_json::json;
   use std::collections::BTreeMap;
   use std::iter::once;
@@ -27,7 +27,7 @@ pub(super) mod tests {
   use treetime_io::nwk::{NwkStyle, nwk_read};
   use treetime_primitives::Seq;
   use treetime_utils::io::fs::read_file_to_string;
-  use treetime_utils::io::json::json_read_file;
+  use treetime_utils::io::json::{json_value_read_file, to_json_value};
   use treetime_utils::{assert_error, o};
 
   #[test]
@@ -216,7 +216,7 @@ pub(super) mod tests {
       &NoopProgress,
     )?;
 
-    let document: Value = json_read_file(&auspice_path)?;
+    let document = json_value_read_file(&auspice_path)?;
     let errors = helpers::auspice_validator()?
       .iter_errors(&document)
       .map(|error| error.to_string())
@@ -265,7 +265,7 @@ pub(super) mod tests {
 
     write_graph_outputs(&helpers::ancestral_graph(&setup), &outputs)?;
 
-    let actual: Value = json_read_file(&path)?;
+    let actual = json_value_read_file(&path)?;
     let nodes = actual["nodes"]
       .as_array()
       .expect("graph.json must carry the node topology");
@@ -374,7 +374,12 @@ pub(super) mod tests {
     let country = helpers::auspice(&helpers::mugration_graph(&setup, "country"), CommandKind::Mugration)?;
     let confidence = helpers::auspice(&helpers::mugration_graph(&setup, "confidence"), CommandKind::Mugration)?;
 
-    let expected = json!({ "confidence": helpers::auspice_child(&country, "A").node_attrs.other["country"] });
+    let country_trait = helpers::auspice_child(&country, "A")
+      .node_attrs
+      .other
+      .get("country")
+      .cloned();
+    let expected = Map::from_iter([("confidence", country_trait.expect("the country trait is written"))]);
     let actual = &helpers::auspice_child(&confidence, "A").node_attrs.other;
     assert_eq!(&expected, actual);
     Ok(())
@@ -423,12 +428,12 @@ pub(super) mod tests {
         end: 4,
         strand: Some(o!("+")),
         r#type: Some(o!("source")),
-        other: Value::default(),
+        other: Map::new(),
       }),
       annotations.nuc
     );
     assert!(annotations.cdses.is_empty());
-    let document = helpers::json_value(&auspice)?;
+    let document = to_json_value(&auspice)?;
     let errors = helpers::auspice_validator()?
       .iter_errors(&document)
       .map(|error| error.to_string())
@@ -563,7 +568,6 @@ pub(super) mod tests {
     use jsonschema::{Retrieve, Uri, Validator};
     use maplit::btreemap;
     use ndarray::{Array1, array};
-    use serde::Serialize;
     use serde_json::Value;
     use std::collections::{BTreeMap, BTreeSet};
     use std::error::Error;
@@ -580,7 +584,7 @@ pub(super) mod tests {
     use treetime_io::nwk::nwk_read;
     use treetime_io::usher_mat::UsherTree;
     use treetime_primitives::{AsciiChar, Seq};
-    use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
+    use treetime_utils::io::json::{json_value_read_str, to_json_value};
     use treetime_utils::{make_report, o};
     use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
@@ -877,12 +881,12 @@ pub(super) mod tests {
       let timetree = auspice(&dated_graph(&timetree, None), CommandKind::Timetree)?;
 
       Ok(btreemap! {
-        "ancestral" => json_value(&ancestral)?,
-        "optimize" => json_value(&optimize)?,
-        "prune" => json_value(&prune)?,
-        "clock" => json_value(&clock)?,
-        "mugration" => json_value(&mugration)?,
-        "timetree" => json_value(&timetree)?,
+        "ancestral" => to_json_value(&ancestral)?,
+        "optimize" => to_json_value(&optimize)?,
+        "prune" => to_json_value(&prune)?,
+        "clock" => to_json_value(&clock)?,
+        "mugration" => to_json_value(&mugration)?,
+        "timetree" => to_json_value(&timetree)?,
       })
     }
 
@@ -919,7 +923,7 @@ pub(super) mod tests {
     }
 
     pub(crate) fn auspice_validator() -> Result<Validator, Report> {
-      let schema = json_read_str(AUSPICE_SCHEMA)?;
+      let schema = json_value_read_str(AUSPICE_SCHEMA)?;
       Ok(
         jsonschema::draft6::options()
           .with_retriever(AuspiceSchemaRetriever::new()?)
@@ -985,10 +989,6 @@ pub(super) mod tests {
       })
     }
 
-    pub(crate) fn json_value(value: &impl Serialize) -> Result<Value, Report> {
-      json_write_str(value, JsonPretty(false)).and_then(|json| json_read_str(&json))
-    }
-
     struct AuspiceSchemaRetriever {
       schemas: BTreeMap<String, Value>,
     }
@@ -999,7 +999,7 @@ pub(super) mod tests {
           schemas: [AUSPICE_CONFIG_SCHEMA, ANNOTATIONS_SCHEMA, ROOT_SEQUENCE_SCHEMA]
             .into_iter()
             .map(|schema| {
-              let schema: Value = json_read_str(schema)?;
+              let schema = json_value_read_str(schema)?;
               let id = schema["$id"]
                 .as_str()
                 .ok_or_else(|| make_report!("Vendored schema has no $id"))?

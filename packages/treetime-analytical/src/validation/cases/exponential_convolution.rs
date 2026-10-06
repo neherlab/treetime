@@ -146,7 +146,7 @@ pub const EXPONENTIAL_CONVOLUTION_CASES: &[ExponentialConvolutionTestCase] = &[
   },
 ];
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize)]
 pub struct ExponentialConvolutionTestCase {
   pub name: &'static str,
   pub description: &'static str,

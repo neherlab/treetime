@@ -18,8 +18,22 @@ use treetime_utils::make_error;
 const JOB_ID_MAX_LEN: usize = 128;
 
 /// Identifier of one command run, unique among the jobs of a process.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone,
+  Debug,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Hash,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(try_from = "String")]
+#[deser(deserialize_as = deser::adapters::TryFromInto<String>)]
 pub struct JobId(String);
 
 impl JobId {
@@ -52,26 +66,28 @@ impl TryFrom<String> for JobId {
 }
 
 /// Event of a running job, in the order the job emits them.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, IntoStaticStr)]
-#[serde(tag = "type", content = "data", rename_all = "kebab-case")]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, IntoStaticStr, deser::Serialize, deser::Deserialize)]
+#[serde(tag = "type", rename_all = "kebab-case")]
+#[deser(tag = "type", rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum JobEvent {
   /// The job was accepted; always the first event.
-  Started(JobStarted),
+  Started { data: JobStarted },
   /// A stage of the computation began or advanced.
-  Progress(ProgressEvent),
+  Progress { data: ProgressEvent },
   /// A diagnostic message of the computation.
-  Log(LogEvent),
+  Log { data: LogEvent },
   /// Convergence values of one timetree optimization iteration.
-  Iteration(IterationEvent),
+  Iteration { data: IterationEvent },
   /// The job ended; always the last event, exactly once per job.
-  Terminal(TerminalEvent),
+  Terminal { data: TerminalEvent },
 }
 
 /// Convergence values of one timetree optimization iteration, as the tracelog records them, with the clock model the
 /// iteration used.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct IterationEvent {
   /// Iteration number, starting at 1.
   pub iteration: usize,
@@ -117,15 +133,16 @@ impl From<&IterationRecord> for IterationEvent {
 }
 
 /// Identity of an accepted job.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct JobStarted {
   pub job_id: JobId,
   pub command: AppCommand,
 }
 
 /// How a job ended.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(tag = "status", rename_all = "kebab-case")]
+#[deser(tag = "status", rename_all = "kebab-case")]
 pub enum TerminalEvent {
   /// The command ran to completion.
   Ok { job_id: JobId, result: CommandOutcome },
@@ -209,24 +226,30 @@ impl<F: Fn(JobEvent) + Send + Sync> JobProgress<F> {
 
 impl<F: Fn(JobEvent) + Send + Sync> StageSink for JobProgress<F> {
   fn report(&self, stage: &str, fraction: f64, message: &str) {
-    (self.emit)(JobEvent::Progress(ProgressEvent {
-      stage: stage.to_owned(),
-      fraction,
-      message: message.to_owned(),
-    }));
+    (self.emit)(JobEvent::Progress {
+      data: ProgressEvent {
+        stage: stage.to_owned(),
+        fraction,
+        message: message.to_owned(),
+      },
+    });
   }
 
   fn iteration(&self, record: &IterationRecord) {
-    (self.emit)(JobEvent::Iteration(IterationEvent::from(record)));
+    (self.emit)(JobEvent::Iteration {
+      data: IterationEvent::from(record),
+    });
   }
 }
 
 impl<F: Fn(JobEvent) + Send + Sync> LogSink for JobProgress<F> {
   fn log(&self, level: LogLevel, message: &str) {
-    (self.emit)(JobEvent::Log(LogEvent {
-      level,
-      message: message.to_owned(),
-    }));
+    (self.emit)(JobEvent::Log {
+      data: LogEvent {
+        level,
+        message: message.to_owned(),
+      },
+    });
   }
 
   fn log_enabled(&self, _level: LogLevel) -> bool {

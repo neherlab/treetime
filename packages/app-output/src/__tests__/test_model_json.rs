@@ -2,10 +2,10 @@
 mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
-  use serde_json::{Value, json};
+  use serde_json::json;
   use treetime::clock::clock_model::ClockModel;
   use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, JC69Params, jc69};
-  use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
+  use treetime_utils::io::json::{JsonPretty, json_read_str, json_value_read_str, json_write_str};
 
   #[test]
   fn test_model_json_gtr_output_round_trips() -> Result<(), Report> {
@@ -16,7 +16,7 @@ mod tests {
     let read: GtrOutput = json_read_str(&written)?;
 
     assert_eq!(written, json_write_str(&read, JsonPretty(true))?);
-    let fields: Vec<String> = json_read_str::<Value>(&written)?
+    let fields: Vec<String> = json_value_read_str(&written)?
       .as_object()
       .expect("GTR JSON is an object")
       .keys()
@@ -42,7 +42,7 @@ mod tests {
     });
 
     let read: ClockModel = json_read_str(expected.to_string())?;
-    let written: Value = json_read_str(&json_write_str(&read, JsonPretty(true))?)?;
+    let written = json_value_read_str(&json_write_str(&read, JsonPretty(true))?)?;
 
     assert_eq!(expected, written);
     Ok(())

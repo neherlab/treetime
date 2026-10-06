@@ -2,6 +2,7 @@ use crate::testing::metrics::config::PointwiseConfig;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use treetime_utils::adapters::ArrayVec;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
 pub(super) fn compute_pointwise_errors(
@@ -68,20 +69,24 @@ pub(super) fn compute_pointwise_errors(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct PointwiseErrors {
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  #[deser(as = ArrayVec)]
   pub(crate) absolute: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  #[deser(as = ArrayVec)]
   pub(crate) relative: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  #[deser(as = ArrayVec)]
   pub(crate) signed: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  #[deser(as = ArrayVec)]
   pub(crate) logarithmic: Array1<f64>,
   pub(crate) summary: PointwiseErrorSummary,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct PointwiseErrorSummary {
   pub(crate) abs_mean: f64,
   pub(crate) abs_max: f64,

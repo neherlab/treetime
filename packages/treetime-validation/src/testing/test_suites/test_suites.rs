@@ -16,8 +16,23 @@ use strum_macros::{Display, EnumIter};
 use treetime_ops::ScaledArray;
 use treetime_utils::make_error;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Display, ValueEnum, Serialize, Deserialize, EnumIter)]
+#[derive(
+  Copy,
+  Clone,
+  Debug,
+  Default,
+  PartialEq,
+  Eq,
+  Display,
+  ValueEnum,
+  Serialize,
+  Deserialize,
+  EnumIter,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum TestSuiteName {

@@ -131,9 +131,10 @@ pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)
   (ci_lower, ci_upper)
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, deser::Serialize)]
 pub struct NodeConfidenceInterval {
   #[serde(skip)]
+  #[deser(skip)]
   pub key: GraphNodeKey,
   pub name: String,
   pub date: f64,

@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
 
 #[must_use]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize, CopyGetters)]
+#[derive(
+  Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize, CopyGetters, deser::Serialize, deser::Deserialize,
+)]
 #[getset(get_copy = "pub")]
 pub struct DivStats {
   pub(crate) count: f64,

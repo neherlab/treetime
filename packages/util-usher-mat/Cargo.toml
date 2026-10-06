@@ -18,6 +18,7 @@ doctest = false
 ignored = ["serde"]
 
 [dependencies]
+deser = { workspace = true }
 eyre = { workspace = true }
 prost = { workspace = true }
 serde = { workspace = true }

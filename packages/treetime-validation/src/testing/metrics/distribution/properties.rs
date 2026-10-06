@@ -39,7 +39,7 @@ pub(super) fn compute_distribution_properties(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DistributionProperties {
   dynamic_range: f64,
   symmetry_measure: f64,
@@ -73,8 +73,9 @@ fn classify_tail_behavior(errors: &Array1<f64>) -> TailBehavior {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum TailBehavior {
   Light,
   Heavy,
@@ -112,7 +113,7 @@ fn compute_outlier_statistics(errors: &Array1<f64>) -> OutlierStatistics {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct OutlierStatistics {
   count_3sigma: usize,
   count_5sigma: usize,

@@ -51,8 +51,9 @@ where
   })
 }
 
-#[derive(Parser, Clone, Serialize, Deserialize)]
+#[derive(Parser, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[command(
   name = "validation-test",
   about = "Validation test framework for convolution and multiplication algorithms",

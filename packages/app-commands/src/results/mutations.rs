@@ -10,7 +10,7 @@ use treetime::homoplasy::site_branches::sites_by_branch_count;
 use treetime::seq::mutation::{MutationEvent, Sub};
 
 /// Results of an `ancestral` run.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct AncestralResults {
   /// Number of nucleotide mutations on all branches.
   pub mutations: usize,
@@ -22,7 +22,7 @@ pub struct AncestralResults {
 }
 
 /// Mutations on the branch above one node.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct BranchMutations {
   /// Name of the node below the branch.
   pub name: String,
@@ -33,7 +33,9 @@ pub struct BranchMutations {
 }
 
 /// A sequence position that mutates on several branches.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 pub struct RecurrentSite {
   /// Position in the sequence, from 1.
   pub position: usize,

@@ -2,9 +2,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use treetime::ancestral::params::MethodAncestral;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[schemars(rename = "MethodAncestral")]
 pub enum MethodAncestralCli {
   #[default]

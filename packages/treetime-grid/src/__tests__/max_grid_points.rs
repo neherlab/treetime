@@ -51,7 +51,7 @@ mod tests {
   fn test_max_grid_points_serde_rejects_below_minimum() {
     assert_error!(
       json_read_str::<MaxGridPoints>("999"),
-      "When parsing JSON: the grid point limit must be at least 1000 points, got 999"
+      "When parsing JSON: Unexpected: invalid value: the grid point limit must be at least 1000 points, got 999 at line 1 column 1"
     );
   }
 

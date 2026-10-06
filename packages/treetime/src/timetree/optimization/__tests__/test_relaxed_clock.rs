@@ -354,7 +354,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, deser::Deserialize)]
     pub(super) struct GmInput {
       pub(crate) name: String,
       pub(crate) newick: String,
@@ -365,12 +365,12 @@ mod tests {
       pub(crate) branches: BTreeMap<String, GmBranchInput>,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, deser::Deserialize)]
     pub(super) struct GmBranchInput {
       pub(crate) clock_length: f64,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, deser::Deserialize)]
     pub(super) struct GmOutput {
       pub(crate) name: String,
       pub(crate) gammas: BTreeMap<String, f64>,

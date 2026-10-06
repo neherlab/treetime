@@ -21,6 +21,7 @@ treetime-utils = { workspace = true }
 # [external]
 approx = { workspace = true }
 derive_more = { workspace = true }
+deser = { workspace = true }
 eyre = { workspace = true }
 itertools = { workspace = true }
 ndarray = { workspace = true }

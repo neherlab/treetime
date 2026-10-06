@@ -63,7 +63,7 @@ fn resolve_args(mut args: TreetimeArgs, matches: &ArgMatches) -> Result<Treetime
   Ok(args)
 }
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, Serialize, deser::Serialize)]
 #[clap(name = "treetime")]
 #[clap(author, version = LONG_VERSION)]
 #[clap(verbatim_doc_comment)]
@@ -96,9 +96,10 @@ fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) 
   }
 }
 
-#[derive(Subcommand, Debug, Serialize)]
+#[derive(Subcommand, Debug, Serialize, deser::Serialize)]
 #[clap(verbatim_doc_comment)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub(crate) enum TreetimeCommands {
   /// Generate shell completions.
   ///
@@ -164,7 +165,7 @@ pub(crate) enum TreetimeCommands {
   Debug,
 }
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, Serialize, deser::Serialize)]
 pub(crate) struct TreetimePipelineArgs {
   /// Pipeline configuration file (JSON or YAML) describing an ordered list of steps.
   ///
@@ -189,8 +190,9 @@ pub(crate) struct TreetimePipelineArgs {
   pub check: bool,
 }
 
-#[derive(Subcommand, Debug, Serialize)]
+#[derive(Subcommand, Debug, Serialize, deser::Serialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub(crate) enum TreetimeExamplesCommands {
   /// Download the example datasets of this TreeTime release from GitHub and unpack them into a folder.
   ///
@@ -203,7 +205,7 @@ pub(crate) enum TreetimeExamplesCommands {
   Get(TreetimeExamplesGetArgs),
 }
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, Serialize, deser::Serialize)]
 pub(crate) struct TreetimeExamplesGetArgs {
   /// Folder to unpack the example datasets into. It must be empty or missing.
   #[clap(long, value_hint = ValueHint::DirPath)]
@@ -214,7 +216,7 @@ pub(crate) struct TreetimeExamplesGetArgs {
   pub url: Option<String>,
 }
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, Serialize, deser::Serialize)]
 pub(crate) struct TreetimeSchemaArgs {
   /// Which schema to generate
   #[clap(long = "for", value_enum, default_value_t = SchemaTarget::default())]
@@ -225,7 +227,7 @@ pub(crate) struct TreetimeSchemaArgs {
   pub output: Option<PathBuf>,
 }
 
-#[derive(Parser, Debug, Serialize)]
+#[derive(Parser, Debug, Serialize, deser::Serialize)]
 pub(crate) struct TreetimeAncestralReassortmentGraphArgs;
 
 fn resolve<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>

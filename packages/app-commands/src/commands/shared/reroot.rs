@@ -11,8 +11,10 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pair_by_name::first_key_by_name;
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct RerootArgs {
   /// Reroot the tree by temporal-signal optimization.
@@ -69,9 +71,24 @@ pub fn resolve_reroot_tips(
     .collect()
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Debug,
+  Clone,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  SmartDefault,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[schemars(rename = "RerootMethod")]
 pub enum RerootMethodCli {
   #[default]

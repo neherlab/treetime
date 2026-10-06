@@ -39,7 +39,10 @@ pub fn run_headline(record: &RunRecord, out_dir: &Path) -> Result<RunHeadline, R
 
 /// Key results of a finished run, for run lists; the same values the run's results show.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
+#[deser(skip_serializing_optionals)]
 pub struct RunHeadline {
   /// Date of the root of a time tree.
   pub root_date: Option<YearDate>,

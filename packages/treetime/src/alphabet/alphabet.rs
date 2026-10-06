@@ -16,8 +16,9 @@ pub(crate) const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
 pub(crate) const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
 pub(crate) const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, deser::Deserialize)]
 #[serde(try_from = "AlphabetConfig")]
+#[deser(deserialize_as = deser::adapters::TryFromInto<AlphabetConfig>)]
 pub struct Alphabet {
   all: StateSet,
   canonical: StateSet,
@@ -35,6 +36,13 @@ pub struct Alphabet {
 impl Serialize for Alphabet {
   fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     self.config.serialize(serializer)
+  }
+}
+impl deser::Serialize for Alphabet {
+  fn serialize(&self, _state: &mut deser::State) -> Result<deser::ser::Chunk<'_>, deser::Error> {
+    Ok(deser::ser::Chunk::Forward(deser::ser::SerializeHandle::to(
+      &self.config,
+    )))
   }
 }
 impl TryFrom<AlphabetConfig> for Alphabet {
@@ -298,9 +306,23 @@ impl AlphabetLike for Alphabet {
 }
 
 #[derive(
-  Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, Serialize, Deserialize, JsonSchema,
+  Copy,
+  Clone,
+  Debug,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  SmartDefault,
+  Display,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
 )]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum AlphabetName {
   #[default]
   Nuc,

@@ -5,7 +5,7 @@ use eyre::Result;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct AggregateMetrics {
   pub(crate) domain_agreement: DomainAgreementMetrics,
   pub(crate) performance: PerformanceMetrics,

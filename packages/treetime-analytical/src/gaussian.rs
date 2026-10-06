@@ -67,7 +67,7 @@ pub(crate) fn gaussian_convolution_pdf(sigma_f: f64, sigma_g: f64, mu: f64, x: f
   (-(0.5 * (x - mu).powi(2) / variance_sum)).exp() / (2.0 * PI * variance_sum).sqrt()
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct GaussianParams {
   pub mu: f64,
   pub sigma: f64,

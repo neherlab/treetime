@@ -15,8 +15,8 @@ version.workspace = true
 doctest = false
 
 [dependencies]
-serde = { workspace = true }
-serde_json = { workspace = true }
+deser = { workspace = true }
+deser-value = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }

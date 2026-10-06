@@ -19,6 +19,7 @@ doctest = false
 treetime-ops = { workspace = true }
 
 # [external]
+deser = { workspace = true }
 ndarray = { workspace = true }
 serde = { workspace = true }
 statrs = { workspace = true }

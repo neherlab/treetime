@@ -168,7 +168,7 @@ mod tests {
     use treetime_primitives::AlignmentRecord;
     use treetime_primitives::LogLh;
 
-    #[derive(Clone, Deserialize)]
+    #[derive(Clone, Deserialize, deser::Deserialize)]
     pub(super) struct GmOptimizeCase {
       pub(crate) tree: String,
       pub(crate) aln: String,
@@ -176,7 +176,7 @@ mod tests {
       pub(crate) max_iter: usize,
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, deser::Deserialize)]
     pub(super) struct GmOptimizeExpected {
       pub(crate) final_total_branch_length: f64,
       pub(crate) final_branch_lengths: BTreeMap<String, f64>,

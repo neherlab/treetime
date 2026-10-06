@@ -7,6 +7,7 @@ use getset::Getters;
 use log::debug;
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
+use treetime_utils::adapters::Array2Rows;
 use treetime_utils::array::serde::{array2_as_vec, array2_from_vec};
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
@@ -18,7 +19,7 @@ pub trait ClockLine {
 }
 
 #[must_use]
-#[derive(Debug, Clone, Serialize, Deserialize, Getters)]
+#[derive(Debug, Clone, Serialize, Deserialize, Getters, deser::Serialize, deser::Deserialize)]
 pub struct ClockModel {
   clock_rate: f64,
 
@@ -183,15 +184,17 @@ impl ClockLine for ClockModel {
 }
 
 #[must_use]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct ClockRegression {
   clock_rate: f64,
   intercept: f64,
   chisq: f64,
   r_val: f64,
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+  #[deser(as = Array2Rows)]
   hessian: Array2<f64>,
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+  #[deser(as = Array2Rows)]
   cov: Array2<f64>,
 }
 
@@ -260,20 +263,23 @@ impl ClockRegression {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum ClockModelStats {
   Estimated(RegressionStats),
   Fixed,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct RegressionStats {
   pub(crate) chisq: f64,
   pub(crate) r_val: f64,
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+  #[deser(as = Array2Rows)]
   pub(crate) hessian: Array2<f64>,
   #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
+  #[deser(as = Array2Rows)]
   pub(crate) cov: Array2<f64>,
 }
 

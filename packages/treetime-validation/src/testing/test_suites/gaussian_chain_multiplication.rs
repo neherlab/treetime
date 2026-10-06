@@ -43,9 +43,10 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct GaussianChainTestCase {
   #[serde(flatten)]
+  #[deser(flatten)]
   base: TestCaseBase,
   factors: Vec<GaussianParams>,
   input_grid_domain: (f64, f64),

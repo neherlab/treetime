@@ -12,8 +12,23 @@ pub struct TopologyOps {
   pub flip_parent_child: bool,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Debug,
+  Clone,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  SmartDefault,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum BranchLengthMode {
   Input,
   #[default]
@@ -22,8 +37,21 @@ pub enum BranchLengthMode {
 
 /// Per-edge maximum-likelihood branch-length optimizer. Variants combine an
 /// algorithm with a parameterization ($t$, $\sqrt{t}$, or $\ln(t)$).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Clone,
+  Debug,
+  PartialEq,
+  Eq,
+  SmartDefault,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum BranchOptMethod {
   /// Brent's derivative-free method in $t$ space, with a bracket from the grid
   /// bounds. Its convergence does not depend on Hessian conditioning.
@@ -56,8 +84,23 @@ pub enum BranchOptMethod {
 /// Controls whether marginal reconstruction estimates initial branch lengths
 /// from substitutions divided by effective alignment length. Preserving valid
 /// input lengths can provide a better Newton starting point.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Debug,
+  Clone,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Default,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum InitialGuessMode {
   /// Estimate only edges with missing or invalid branch lengths, preserve
   /// valid input values. No-op when all edges have finite branch lengths.

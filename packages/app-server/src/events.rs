@@ -5,12 +5,13 @@ use app_commands::job::JobId;
 use app_commands::runs::app_events::AppEvent;
 use app_commands::runs::events::RunEvent;
 use axum::response::sse::Event;
-use serde::Serialize;
+use deser::Serialize;
 use std::convert;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::{self as stream, Stream, StreamExt as _};
 use tokio_util::sync::CancellationToken;
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[allow(
   clippy::disallowed_methods,
@@ -64,8 +65,8 @@ fn app_sse_event(event: &AppEvent) -> Event {
 }
 
 fn sse_event(name: &'static str, seq: usize, event: &impl Serialize) -> Event {
-  match Event::default().json_data(event) {
-    Ok(sse) => sse.event(name).id(seq.to_string()),
+  match json_write_str(event, JsonPretty(false)) {
+    Ok(data) => Event::default().data(data).event(name).id(seq.to_string()),
     Err(err) => Event::default().comment(format!("When serializing a {name} event: {err}")),
   }
 }

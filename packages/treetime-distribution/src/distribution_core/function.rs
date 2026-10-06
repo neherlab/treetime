@@ -10,14 +10,17 @@ use treetime_grid::grid::Grid;
 use treetime_grid::{BoundaryBehavior, GridFn, InterpElem, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
   grid_fn: GridFn<T>,
   #[serde(skip)]
+  #[deser(skip)]
   left_extrap: BoundaryBehavior,
   #[serde(skip)]
+  #[deser(skip)]
   right_extrap: BoundaryBehavior,
   #[serde(skip)]
+  #[deser(skip)]
   _policy: PolicyMarker<Y>,
 }
 

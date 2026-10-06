@@ -4,7 +4,9 @@ use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 
 #[must_use]
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize, CopyGetters)]
+#[derive(
+  Debug, Default, Clone, PartialEq, Serialize, Deserialize, CopyGetters, deser::Serialize, deser::Deserialize,
+)]
 #[getset(get_copy = "pub")]
 pub struct ClockSet {
   t_sum: f64,

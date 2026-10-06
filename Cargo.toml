@@ -148,6 +148,13 @@ crossterm = "=0.29.0"
 csv = "=1.4.0"
 ctor = "=1.0.13"
 derive_more = { version = "=2.1.1", features = ["full"] }
+deser = { version = "=0.9.0", features = ["derive", "indexmap", "chrono"] }
+deser-json = { version = "=0.9.0", features = ["speedups"] }
+deser-path = "=0.9.0"
+deser-serde = "=0.9.0"
+deser-urlencoded = "=0.9.0"
+deser-value = "=0.9.0"
+deser-xml = "=0.9.0"
 dirs = "=6.0.0"
 env_logger = "=0.11.11"
 eyre = "=0.6.14"
@@ -165,6 +172,7 @@ jsonschema = { version = "=0.48.1", default-features = false }
 log = "=0.4.34"
 maplit = "=1.0.2"
 miette = { version = "=7.6.0", features = ["fancy"] }
+mime = "=0.3.17"
 minijinja = { version = "=2.24.0", features = ["debug", "deserialization"] }
 napi = { version = "=3.12.6", features = ["napi4", "serde-json"] }
 napi-build = "=2.4.3"
@@ -183,7 +191,6 @@ pretty_dtoa = "=0.3.0"
 proptest = "=1.6.0"
 prost = { version = "=0.14.1", features = ["no-recursion-limit"] }
 prost-build = "=0.14.1"
-quick-xml = { version = "=0.42.0", features = ["serde", "serialize"] }
 rand = { version = "=0.8.8", features = ["serde", "log"] }
 rand_distr = { version = "=0.4.3", features = ["serde", "std_math"] }
 rand_isaac = { version = "=0.3.0", features = ["serde"] }
@@ -350,6 +357,9 @@ tests_outside_test_module = "warn"
 unwrap_used = "warn"
 
 # Disable some of the Clippy lints
+# The deser derive initializes deserialized fields with `let` followed by `if`, which this nursery lint reports on
+# every derived type.
+useless_let_if_seq = "allow"
 absolute_paths = "allow"
 allow_attributes = "allow"
 arbitrary_source_item_ordering = "allow"

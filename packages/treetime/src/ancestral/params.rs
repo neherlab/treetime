@@ -3,8 +3,23 @@ use crate::partition::marginal::sample::SampleMode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Debug,
+  Clone,
+  Default,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum MethodAncestral {
   #[default]
   Marginal,

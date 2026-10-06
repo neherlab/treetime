@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 const R2_PASS_THRESHOLD: f64 = 0.95;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct TestSummary {
   pub(crate) test_suite_name: String,
   pub(crate) total_tests: usize,
@@ -18,7 +18,7 @@ pub struct TestSummary {
   pub(crate) algorithm_summaries: Vec<AlgorithmSummary>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct AlgorithmSummary {
   pub(crate) algorithm_name: String,
   pub(crate) test_cases_count: usize,

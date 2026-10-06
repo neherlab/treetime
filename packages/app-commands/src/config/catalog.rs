@@ -103,14 +103,14 @@ fn conflicts(cli: &Command, leaves: &[LeafProperty], args: &[&Arg], arg: &Arg) -
 }
 
 /// Settings of every command the app runs, as the settings form shows them.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct SettingCatalog {
   /// Settings of each command.
   pub commands: Vec<CommandSettings>,
 }
 
 /// Settings of one command.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct CommandSettings {
   /// The command.
   pub command: AppCommand,
@@ -134,7 +134,8 @@ pub struct CommandSettings {
 
 /// One setting of a command.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct SettingSpec {
   /// Key path of the setting joined with `.`, for example `branch_split.method`.
   pub key: String,
@@ -174,8 +175,11 @@ pub struct SettingSpec {
 }
 
 /// What a setting names.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum SettingRole {
   /// A value that controls the analysis.
   Setting,
@@ -199,8 +203,11 @@ impl From<Option<PathRole>> for SettingRole {
 }
 
 /// Form of a setting's value.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum SettingKind {
   /// On or off.
   Switch,
@@ -221,8 +228,11 @@ pub enum SettingKind {
 }
 
 /// Type of the items of a list setting.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum ListItemKind {
   String,
   Number,
@@ -230,7 +240,7 @@ pub enum ListItemKind {
 }
 
 /// One allowed value of a setting.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct SettingOption {
   /// The value, as the configuration spells it.
   pub value: String,

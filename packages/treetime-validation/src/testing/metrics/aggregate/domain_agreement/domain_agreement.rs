@@ -20,7 +20,7 @@ use strum_macros::Display;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DomainAgreementMetrics {
   pub(crate) total_points: usize,
   pub(crate) abs_error_stats: AbsoluteErrorStats,
@@ -280,8 +280,9 @@ fn compute_overall_assessment(r2: f64, thresholds: &[f64; 3]) -> AgreementAssess
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum AgreementAssessment {
   #[strum(to_string = "EXCELLENT: Near-perfect agreement")]
   Excellent,

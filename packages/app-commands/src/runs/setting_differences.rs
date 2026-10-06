@@ -36,8 +36,10 @@ pub fn setting_differences(first: &RunRecord, second: &RunRecord) -> Result<Vec<
 
 /// A setting whose value differs between two runs.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
+#[deser(tag = "kind", rename_all = "kebab-case")]
 pub enum SettingDifference {
   /// A value that controls the analysis.
   Setting {

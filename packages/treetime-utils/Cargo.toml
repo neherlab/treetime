@@ -22,6 +22,11 @@ chrono = { workspace = true }
 chronoutil = { workspace = true }
 clap = { workspace = true }
 color-eyre = { workspace = true }
+deser = { workspace = true }
+deser-json = { workspace = true }
+deser-path = { workspace = true }
+deser-serde = { workspace = true }
+deser-value = { workspace = true }
 env_logger = { workspace = true }
 eyre = { workspace = true }
 flate2 = { workspace = true }

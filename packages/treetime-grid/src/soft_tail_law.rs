@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use treetime_utils::least_squares::LineFit;
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct SoftTailLaw {
   pub slope: f64,
 }

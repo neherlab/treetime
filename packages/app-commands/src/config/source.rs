@@ -53,7 +53,17 @@ pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawD
 }
 
 /// Configuration rejected by parsing or by the schema check.
-#[derive(Clone, Debug, derive_more::Display, derive_more::Error, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone,
+  Debug,
+  derive_more::Display,
+  derive_more::Error,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[display("{message}")]
 pub struct InvalidConfig {
   /// One-line summary of every problem, as the CLI prints it.
@@ -75,7 +85,8 @@ impl InvalidConfig {
 
 /// One problem found in a configuration.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct ConfigProblem {
   /// Stable diagnostic code, for example `config::unknown-field`.
   pub code: String,
@@ -88,7 +99,9 @@ pub struct ConfigProblem {
 }
 
 /// Location of a problem in the configuration text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 pub struct ConfigSpan {
   /// Byte offset of the first character.
   pub offset: usize,

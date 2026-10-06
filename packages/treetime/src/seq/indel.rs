@@ -313,7 +313,9 @@ pub(crate) fn resolve_indels_forward(
   (deletions.into_iter().chain(insertions).collect(), new_node_gaps)
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(
+  Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, deser::Serialize, deser::Deserialize,
+)]
 pub struct InDel {
   pub(crate) range: (usize, usize),
   pub(crate) seq: Seq,
@@ -351,8 +353,11 @@ impl fmt::Display for InDel {
   }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(
+  Clone, Copy, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum InDelKind {
   Insertion,
   Deletion,

@@ -207,7 +207,7 @@ pub const GAUSSIAN_CONVOLUTION_CASES: &[GaussianConvolutionTestCase] = &[
   },
 ];
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize)]
 pub struct GaussianConvolutionTestCase {
   pub name: &'static str,
   pub description: &'static str,

@@ -16,7 +16,8 @@ use zip::write::SimpleFileOptions;
 
 /// One file in a run's `out/` folder.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct RunFile {
   /// Path relative to the run's `out/` folder, with `/` separators.
   pub path: String,

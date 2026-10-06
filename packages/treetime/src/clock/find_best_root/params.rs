@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime_graph::node::GraphNodeKey;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum RerootSpec {
   Method(RerootMethod),
   Tips(Vec<GraphNodeKey>),
@@ -17,8 +18,23 @@ impl Default for RerootSpec {
   }
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Debug,
+  Clone,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  SmartDefault,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum RerootMethod {
   #[default]
   LeastSquares,
@@ -27,8 +43,9 @@ pub enum RerootMethod {
   ClockFilter,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, SmartDefault, Serialize, Deserialize)]
+#[derive(Copy, Debug, Clone, PartialEq, SmartDefault, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum RootObjective {
   #[default]
   EstimatedRate,
@@ -54,8 +71,9 @@ impl RootObjective {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum BranchPointOptimizationParams {
   #[default]
   Grid(GridSearchParams),
@@ -80,8 +98,9 @@ impl BranchPointOptimizationParams {
 }
 
 /// Optimization method selection
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum OptimizationMethod {
   /// Grid search with equally-spaced evaluation points
   #[default]
@@ -93,8 +112,9 @@ pub enum OptimizationMethod {
 }
 
 /// Configuration for grid search optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 pub struct GridSearchParams {
   /// Number of equally-spaced points to evaluate (grid method only)
   #[default = 11]
@@ -102,8 +122,9 @@ pub struct GridSearchParams {
 }
 
 /// Configuration for Brent's method optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 pub struct BrentParams {
   /// Maximum number of iterations for Brent's method
   #[default = 50]
@@ -114,8 +135,9 @@ pub struct BrentParams {
 }
 
 /// Configuration for golden section search optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 pub struct GoldenSectionParams {
   /// Maximum number of iterations for golden section search
   #[default = 50]

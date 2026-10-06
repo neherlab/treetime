@@ -40,7 +40,7 @@ impl From<AsciiChar> for char {
   }
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, deser::Serialize)]
 #[repr(transparent)]
 pub struct AsciiChar(u8);
 
@@ -141,5 +141,19 @@ impl core::fmt::Display for AsciiChar {
 impl core::fmt::Debug for AsciiChar {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     core::fmt::Display::fmt(self, f)
+  }
+}
+
+impl<'de> deser::Deserialize<'de> for AsciiChar {
+  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut deser::State) -> deser::de::SinkHandle<'out, 'de> {
+    <deser::adapters::TryFromInto<u8> as deser::adapters::DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
+  }
+}
+
+impl TryFrom<u8> for AsciiChar {
+  type Error = Report;
+
+  fn try_from(value: u8) -> Result<Self, Report> {
+    Self::try_new(value)
   }
 }

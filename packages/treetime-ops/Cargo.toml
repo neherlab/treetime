@@ -19,6 +19,7 @@ doctest = false
 treetime-utils = { workspace = true }
 
 # [external]
+deser = { workspace = true }
 eyre = { workspace = true }
 ndarray = { workspace = true }
 ndarray-conv = { workspace = true }

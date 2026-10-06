@@ -3,6 +3,7 @@ use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use treetime_utils::adapters::ArrayVec;
 use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
 
 pub(super) fn compute_structural_errors(
@@ -57,20 +58,24 @@ pub(super) fn compute_structural_errors(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct StructuralErrors {
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  #[deser(as = ArrayVec)]
   pub(crate) first_derivative: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  #[deser(as = ArrayVec)]
   pub(crate) second_derivative: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  #[deser(as = ArrayVec)]
   pub(crate) symmetry_residual: Array1<f64>,
   #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
+  #[deser(as = ArrayVec)]
   pub(crate) monotonicity_violations: Array1<f64>,
   pub(crate) summary: StructuralErrorSummary,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct StructuralErrorSummary {
   pub(crate) d1_max: f64,
   pub(crate) d1_mean: f64,

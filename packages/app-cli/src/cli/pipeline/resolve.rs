@@ -329,7 +329,7 @@ mod tests {
 
   fn tree_of(step: &ResolvedStep) -> String {
     match &step.command {
-      CommandConfig::Ancestral(args) => args
+      CommandConfig::Ancestral { config: args } => args
         .tree
         .as_deref()
         .expect("ancestral step has a tree")

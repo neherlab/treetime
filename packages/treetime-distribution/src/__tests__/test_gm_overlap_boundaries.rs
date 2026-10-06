@@ -55,15 +55,17 @@ mod tests {
     use ndarray::Array1;
     use serde::Deserialize;
 
-    #[derive(Clone, Copy, Debug, Deserialize)]
+    #[derive(Clone, Copy, Debug, Deserialize, deser::Deserialize)]
     #[serde(rename_all = "lowercase")]
+    #[deser(rename_all = "lowercase")]
     pub(super) enum Operation {
       Divide,
       Multiply,
     }
 
-    #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+    #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, deser::Deserialize)]
     #[serde(rename_all = "lowercase")]
+    #[deser(rename_all = "lowercase")]
     pub(super) enum DistributionKind {
       Function,
       Point,
@@ -83,7 +85,7 @@ mod tests {
       }
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, deser::Deserialize)]
     pub(super) struct GoldenInput {
       operation: Operation,
       left: GoldenOperand,
@@ -104,7 +106,7 @@ mod tests {
       }
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, deser::Deserialize)]
     pub(super) struct GoldenOperand {
       kind: DistributionKind,
       x: Vec<f64>,
@@ -126,7 +128,7 @@ mod tests {
       }
     }
 
-    #[derive(Deserialize)]
+    #[derive(Deserialize, deser::Deserialize)]
     pub(super) struct GoldenOutput {
       kind: DistributionKind,
       bounds: [f64; 2],

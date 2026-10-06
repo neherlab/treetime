@@ -10,13 +10,15 @@ use treetime_utils::{make_error, make_internal_error};
 
 const FORMULA_GRID_SIZE: usize = 200;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DistributionFormula<Y: YAxisPolicy = Plain> {
   #[serde(skip, default = "default_eval_fn")]
+  #[deser(skip, default = default_eval_fn())]
   eval_fn: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
   t_min: f64,
   t_max: f64,
   #[serde(skip)]
+  #[deser(skip)]
   _policy: PolicyMarker<Y>,
 }
 

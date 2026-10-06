@@ -27,8 +27,9 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootResult;
 use treetime_primitives::{LogLh, Seq};
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, deser::Serialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum MarginalReconstruction {
   Dense(DenseReconstruction),
   Sparse(SparseReconstruction),
@@ -303,7 +304,7 @@ impl MarginalReconstruction {
   }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, deser::Serialize)]
 pub struct SparseReconstruction {
   pub(crate) partition: PartitionMarginalSparse,
   pub(crate) gtr: GTR,
@@ -354,7 +355,7 @@ impl SparseReconstruction {
   }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, deser::Serialize)]
 pub struct DenseReconstruction {
   pub(crate) partition: PartitionMarginalDense,
   pub(crate) gtr: GTR,

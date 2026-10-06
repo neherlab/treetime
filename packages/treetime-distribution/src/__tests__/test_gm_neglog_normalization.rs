@@ -48,14 +48,14 @@ mod tests {
     Ok(())
   }
 
-  #[derive(Deserialize)]
+  #[derive(Deserialize, deser::Deserialize)]
   struct GoldenInput {
     time_points: Vec<f64>,
     child_neglog: Vec<f64>,
     coalescent_neglog: Vec<f64>,
   }
 
-  #[derive(Deserialize)]
+  #[derive(Deserialize, deser::Deserialize)]
   struct GoldenOutput {
     time_points: Vec<f64>,
     probabilities_relative: Vec<f64>,

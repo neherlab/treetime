@@ -1982,8 +1982,8 @@ export const zRunRecordTimetree = z.object({
   output_files: z.array(zOutputFile),
   warnings: z.array(zRunWarning),
   error: zRunError.optional(),
-  command: z.literal('timetree'),
-  config: zTimetreeConfig
+  config: zTimetreeConfig,
+  command: z.literal('timetree')
 });
 
 export const zRunRecordOptimize = z.object({
@@ -2003,8 +2003,8 @@ export const zRunRecordOptimize = z.object({
   output_files: z.array(zOutputFile),
   warnings: z.array(zRunWarning),
   error: zRunError.optional(),
-  command: z.literal('optimize'),
-  config: zOptimizeConfig
+  config: zOptimizeConfig,
+  command: z.literal('optimize')
 });
 
 export const zRunRecordPrune = z.object({
@@ -2024,8 +2024,8 @@ export const zRunRecordPrune = z.object({
   output_files: z.array(zOutputFile),
   warnings: z.array(zRunWarning),
   error: zRunError.optional(),
-  command: z.literal('prune'),
-  config: zPruneConfig
+  config: zPruneConfig,
+  command: z.literal('prune')
 });
 
 export const zRunRecordAncestral = z.object({
@@ -2045,8 +2045,8 @@ export const zRunRecordAncestral = z.object({
   output_files: z.array(zOutputFile),
   warnings: z.array(zRunWarning),
   error: zRunError.optional(),
-  command: z.literal('ancestral'),
-  config: zAncestralConfig
+  config: zAncestralConfig,
+  command: z.literal('ancestral')
 });
 
 export const zRunRecordHomoplasy = z.object({
@@ -2066,8 +2066,8 @@ export const zRunRecordHomoplasy = z.object({
   output_files: z.array(zOutputFile),
   warnings: z.array(zRunWarning),
   error: zRunError.optional(),
-  command: z.literal('homoplasy'),
-  config: zHomoplasyConfig
+  config: zHomoplasyConfig,
+  command: z.literal('homoplasy')
 });
 
 export const zRunRecordClock = z.object({
@@ -2087,8 +2087,8 @@ export const zRunRecordClock = z.object({
   output_files: z.array(zOutputFile),
   warnings: z.array(zRunWarning),
   error: zRunError.optional(),
-  command: z.literal('clock'),
-  config: zClockConfig
+  config: zClockConfig,
+  command: z.literal('clock')
 });
 
 export const zRunRecordMugration = z.object({
@@ -2108,8 +2108,8 @@ export const zRunRecordMugration = z.object({
   output_files: z.array(zOutputFile),
   warnings: z.array(zRunWarning),
   error: zRunError.optional(),
-  command: z.literal('mugration'),
-  config: zMugrationConfig
+  config: zMugrationConfig,
+  command: z.literal('mugration')
 });
 
 /**
@@ -2320,8 +2320,8 @@ export const zRunComparison = z.object({
 export const zRunEventStarted = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  type: z.literal('started'),
-  data: zJobStarted
+  data: zJobStarted,
+  type: z.literal('started')
 });
 
 /**
@@ -2330,8 +2330,8 @@ export const zRunEventStarted = z.object({
 export const zRunEventProgress = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  type: z.literal('progress'),
-  data: zProgressEvent
+  data: zProgressEvent,
+  type: z.literal('progress')
 });
 
 /**
@@ -2340,8 +2340,8 @@ export const zRunEventProgress = z.object({
 export const zRunEventLog = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  type: z.literal('log'),
-  data: zLogEvent
+  data: zLogEvent,
+  type: z.literal('log')
 });
 
 /**
@@ -2350,8 +2350,8 @@ export const zRunEventLog = z.object({
 export const zRunEventIteration = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  type: z.literal('iteration'),
-  data: zIterationEvent
+  data: zIterationEvent,
+  type: z.literal('iteration')
 });
 
 /**
@@ -2405,8 +2405,8 @@ export const zTerminalEvent = z.discriminatedUnion('status', [
 export const zRunEventTerminal = z.object({
   seq: z.int().gte(0),
   time: z.string(),
-  type: z.literal('terminal'),
-  data: zTerminalEvent
+  data: zTerminalEvent,
+  type: z.literal('terminal')
 });
 
 /**

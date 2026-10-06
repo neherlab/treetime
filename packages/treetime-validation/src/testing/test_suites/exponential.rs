@@ -38,9 +38,10 @@ impl ConvolutionTestSuite for ExponentialTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct ExponentialTestCase {
   #[serde(flatten)]
+  #[deser(flatten)]
   base: TestCaseBase,
   a: f64,
   b: f64,

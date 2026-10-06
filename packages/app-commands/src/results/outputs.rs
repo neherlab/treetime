@@ -25,7 +25,7 @@ pub fn read_auspice(out_dir: &Path, output_files: &[OutputFile]) -> Result<Optio
 }
 
 /// An output file of a run that could not be read.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct OutputProblem {
   /// Path of the file relative to the run's `out/` folder.
   pub path: String,

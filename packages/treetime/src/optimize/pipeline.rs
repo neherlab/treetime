@@ -183,18 +183,23 @@ pub struct OptimizeInput {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, deser::Serialize)]
 pub struct OptimizeOutput {
   #[serde(skip)]
+  #[deser(skip)]
   pub graph: Graph,
   #[serde(skip)]
+  #[deser(skip)]
   pub gtr: GTR,
   pub model_name: GtrModelName,
   #[serde(skip)]
+  #[deser(skip)]
   pub reconstruction: MarginalReconstruction,
   #[serde(skip)]
+  #[deser(skip)]
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   #[serde(skip)]
+  #[deser(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 

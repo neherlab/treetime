@@ -4,7 +4,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_utils::io::json::json_read_str;
+  use treetime_utils::io::json::{json_read_str, json_value_read_str, to_json_value};
   use treetime_utils::o;
   use util_augur_node_data_json::AugurNodeDataJsonAncestral;
 
@@ -59,9 +59,9 @@ mod tests {
     let (graph, names, maps) = helpers::mutation_case();
     let json_str = helpers::write_json(&graph, &names, maps, &[false, false, false, false]);
 
-    let original: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    let original = json_value_read_str(&json_str).unwrap();
     let typed: AugurNodeDataJsonAncestral = json_read_str(&json_str).unwrap();
-    let roundtripped: serde_json::Value = serde_json::to_value(&typed).unwrap();
+    let roundtripped = to_json_value(&typed).unwrap();
 
     assert_eq!(original, roundtripped);
   }

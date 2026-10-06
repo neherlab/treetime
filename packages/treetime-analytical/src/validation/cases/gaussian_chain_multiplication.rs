@@ -331,7 +331,7 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
   cases
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize)]
 pub struct GaussianChainMultiplicationTestCase {
   pub name: &'static str,
   pub description: &'static str,

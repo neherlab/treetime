@@ -3,6 +3,8 @@ use app_commands::command::AppCommand;
 use app_commands::config::cli_flags::annotated_config_schema;
 use app_commands::config::schema::draft2020_generator;
 use clap::ValueEnum;
+use deser::adapters::As;
+use deser_serde::Serde;
 use eyre::Report;
 use log::info;
 use schemars::Schema;
@@ -71,8 +73,9 @@ fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
   write_schema(&schema, output)
 }
 
-#[derive(Debug, Clone, Copy, Default, ValueEnum, serde::Serialize)]
+#[derive(Debug, Clone, Copy, Default, ValueEnum, serde::Serialize, deser::Serialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub(crate) enum SchemaTarget {
   #[default]
   All,
@@ -128,7 +131,7 @@ pub(crate) fn command_schema_for(tag: &str) -> Option<Schema> {
 }
 
 fn write_schema(schema: &Schema, output: &Path) -> Result<(), Report> {
-  json_write_file(output, schema, JsonPretty(true))?;
+  json_write_file(output, &As::<_, Serde>::new(schema), JsonPretty(true))?;
   if !is_path_stdout(output) {
     info!("Wrote JSON schema to '{}'", output.display());
   }

@@ -126,7 +126,7 @@ pub fn active_choices(settings: &[SettingSpec], config: &Map<String, Value>) -> 
 }
 
 /// Settings that the form shows as one choice between options, for example the coalescent prior.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct SettingChoice {
   pub choice: ChoiceName,
   /// Keys of the settings the choice controls.
@@ -136,7 +136,7 @@ pub struct SettingChoice {
 }
 
 /// One option of a choice.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct ChoiceOption {
   pub option: ChoiceOptionName,
   /// Changes that picking the option makes: settings it writes, and settings it removes so that they take their
@@ -147,15 +147,20 @@ pub struct ChoiceOption {
 }
 
 /// The option of a choice that a configuration selects.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 pub struct ActiveChoice {
   pub choice: ChoiceName,
   pub option: ChoiceOptionName,
 }
 
 /// A group of settings that the form shows as one choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum ChoiceName {
   /// Estimate the clock rate, or fix it.
   ClockRate,
@@ -166,8 +171,11 @@ pub enum ChoiceName {
 }
 
 /// An option of a choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum ChoiceOptionName {
   /// Estimate the clock rate from the data.
   Estimate,

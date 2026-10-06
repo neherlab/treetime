@@ -2,9 +2,10 @@ use serde::{Deserialize, Serialize};
 use std::iter::Sum;
 use std::ops::{Add, AddAssign, Neg, Sub};
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[repr(transparent)]
 #[serde(transparent)]
+#[deser(transparent)]
 pub struct LogLh(f64);
 
 impl LogLh {

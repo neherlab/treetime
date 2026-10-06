@@ -168,61 +168,67 @@ mod tests {
     use ndarray::{Array1, Array2};
     use serde::Deserialize;
     use std::fs::read_to_string;
+    use treetime_utils::adapters::{Array2Rows, ArrayVec};
     use treetime_utils::array::ndarray::sorted;
     use treetime_utils::array::serde::{array1_from_vec, array2_from_vec, option_array1_from_vec};
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct JC69Input {
       pub(crate) mu: f64,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct K80Input {
       pub(crate) mu: f64,
       pub(crate) kappa: f64,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct F81Input {
       pub(crate) mu: f64,
       #[serde(default, deserialize_with = "option_array1_from_vec")]
+      #[deser(default, deserialize_as = Option<ArrayVec>)]
       pub(crate) pi: Option<Array1<f64>>,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct HKY85Input {
       pub(crate) mu: f64,
       pub(crate) kappa: f64,
       #[serde(default, deserialize_with = "option_array1_from_vec")]
+      #[deser(default, deserialize_as = Option<ArrayVec>)]
       pub(crate) pi: Option<Array1<f64>>,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct T92Input {
       pub(crate) mu: f64,
       pub(crate) kappa: f64,
       pub(crate) pi_gc: f64,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct TN93Input {
       pub(crate) mu: f64,
       pub(crate) kappa1: f64,
       pub(crate) kappa2: f64,
       #[serde(default, deserialize_with = "option_array1_from_vec")]
+      #[deser(default, deserialize_as = Option<ArrayVec>)]
       pub(crate) pi: Option<Array1<f64>>,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct CustomInput {
       pub(crate) mu: f64,
       #[serde(deserialize_with = "array1_from_vec")]
+      #[deser(deserialize_as = ArrayVec)]
       pub(crate) pi: Array1<f64>,
       #[serde(rename = "W", deserialize_with = "array2_from_vec")]
+      #[deser(rename = "W", deserialize_as = Array2Rows)]
       pub(crate) w: Array2<f64>,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct AllInputs {
       pub(crate) jc69: IndexMap<String, JC69Input>,
       pub(crate) k80: IndexMap<String, K80Input>,
@@ -233,29 +239,35 @@ mod tests {
       pub(crate) custom: IndexMap<String, CustomInput>,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct ExpQtEntry {
       time: f64,
       #[serde(rename = "expQt", deserialize_with = "array2_from_vec")]
+      #[deser(rename = "expQt", deserialize_as = Array2Rows)]
       exp_qt: Array2<f64>,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct GtrOutput {
       mu: f64,
       #[serde(deserialize_with = "array1_from_vec")]
+      #[deser(deserialize_as = ArrayVec)]
       pi: Array1<f64>,
       #[serde(rename = "W", deserialize_with = "array2_from_vec")]
+      #[deser(rename = "W", deserialize_as = Array2Rows)]
       w: Array2<f64>,
       #[serde(rename = "Q", deserialize_with = "array2_from_vec")]
+      #[deser(rename = "Q", deserialize_as = Array2Rows)]
       q: Array2<f64>,
       #[serde(deserialize_with = "array1_from_vec")]
+      #[deser(deserialize_as = ArrayVec)]
       eigenvals: Array1<f64>,
       #[serde(rename = "expQts")]
+      #[deser(rename = "expQts")]
       exp_qts: Vec<ExpQtEntry>,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct AllOutputs {
       pub(crate) jc69: IndexMap<String, GtrOutput>,
       pub(crate) k80: IndexMap<String, GtrOutput>,

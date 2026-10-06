@@ -374,3 +374,18 @@ impl_op_ex!(&=|a: &mut BitSet128, b: AsciiChar| { *a = a.intersection(&BitSet128
 
 impl_op_ex_commutative!(^|a: &BitSet128, b: AsciiChar| -> BitSet128 { a.symmetric_difference(&BitSet128::from_char(b)) });
 impl_op_ex!(^=|a: &mut BitSet128, b: AsciiChar| { *a = a.symmetric_difference(&BitSet128::from_char(b)); });
+
+impl deser::Serialize for BitSet128 {
+  fn serialize(&self, state: &mut deser::State) -> Result<deser::ser::Chunk<'_>, deser::Error> {
+    let chars: Vec<char> = self.iter().map(char::from).collect();
+    Ok(deser::ser::Chunk::Forward(deser::ser::SerializeHandle::arena(
+      chars, state,
+    )))
+  }
+}
+
+impl<'de> deser::Deserialize<'de> for BitSet128 {
+  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut deser::State) -> deser::de::SinkHandle<'out, 'de> {
+    <deser::adapters::FromInto<Vec<char>> as deser::adapters::DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
+  }
+}

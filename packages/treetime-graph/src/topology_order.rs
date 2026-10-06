@@ -10,7 +10,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use treetime_utils::{make_error, make_report};
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct TopologyOrderSpec {
   pub preset: TopologyOrderPreset,
   pub target_order: BTreeMap<GraphNodeKey, usize>,
@@ -86,8 +86,9 @@ impl TopologyOrderSpec {
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum TopologyOrderPreset {
   Keep,
   #[default]
@@ -289,8 +290,9 @@ fn compute_target_scores(
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum TopologyOrderTargetAggregate {
   #[default]
   Mean,

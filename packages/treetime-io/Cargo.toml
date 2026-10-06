@@ -27,6 +27,8 @@ util-usher-mat = { workspace = true }
 
 # [external]
 csv = { workspace = true }
+deser = { workspace = true }
+deser-value = { workspace = true }
 eyre = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }

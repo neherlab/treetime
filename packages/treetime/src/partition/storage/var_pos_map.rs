@@ -5,8 +5,9 @@ use std::iter::Map;
 use std::ops::Index;
 use std::slice::Iter;
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(from = "BTreeMap<usize, VarPos>", into = "BTreeMap<usize, VarPos>")]
+#[deser(as = deser::adapters::FromInto<BTreeMap<usize, VarPos>>)]
 pub struct VarPosMap {
   entries: Vec<(usize, VarPos)>,
 }

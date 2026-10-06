@@ -1,10 +1,10 @@
 use crate::annotated_graph::{AnnotatedTreeView, Divergence, TreeSequences, TreeTraits};
 use crate::output_plan::CommandKind;
 use crate::trait_profile::{build_confidence_map, compute_entropy};
+use deser_value::{Map, Value, to_value};
 use eyre::{Report, WrapErr};
 use itertools::izip;
 use maplit::btreemap;
-use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 use treetime::clock::divergence::root_to_node_divergences_where_known;
 use treetime::homoplasy::classify::MutationClass;
@@ -15,7 +15,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
   AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeBranchAttrsLabels,
-  AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs, Segments, StartEnd,
+  AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs, StartEnd,
 };
 use treetime_utils::{make_error, make_internal_report, make_report};
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
@@ -164,7 +164,7 @@ fn auspice_data(
       ..AuspiceTreeMeta::default()
     },
     root_sequence: (!root_sequences.is_empty()).then_some(root_sequences),
-    other: Value::default(),
+    other: Map::new(),
   })
 }
 
@@ -213,7 +213,7 @@ fn genome_annotations(
         end: isize::try_from(sequence.len()).wrap_err("Nucleotide sequence length does not fit Auspice coordinates")?,
         strand: Some("+".to_owned()),
         r#type: Some("source".to_owned()),
-        other: Value::default(),
+        other: Map::new(),
       })
     })
     .transpose()?;
@@ -223,7 +223,7 @@ fn genome_annotations(
   Ok(Some(AuspiceGenomeAnnotations {
     nuc,
     cdses,
-    other: Value::default(),
+    other: Map::new(),
   }))
 }
 
@@ -251,7 +251,7 @@ fn auspice_node(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey, div: Option<f64
       node_transition(tree, traits, key).map(|transition| AuspiceTreeBranchAttrsLabels {
         aa: None,
         clade: None,
-        other: json!({ traits.attribute: transition }),
+        other: Map::from_iter([(traits.attribute, Value::from(transition))]),
       }),
     ),
     None => (None, None),
@@ -260,7 +260,7 @@ fn auspice_node(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey, div: Option<f64
     branch_attrs: AuspiceTreeBranchAttrs {
       mutations: node_mutations(tree, key)?,
       labels,
-      other: Value::default(),
+      other: Map::new(),
     },
     node_attrs: AuspiceTreeNodeAttrs {
       div,
@@ -276,11 +276,11 @@ fn auspice_node(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey, div: Option<f64
       region: None,
       country: None,
       division: None,
-      other: Value::Object(traits.into_iter().collect()),
+      other: traits.into_iter().collect(),
     },
     name,
     children: vec![],
-    other: Value::default(),
+    other: Map::new(),
   })
 }
 
@@ -324,7 +324,7 @@ fn node_trait(traits: &TreeTraits<'_>, key: GraphNodeKey, node_name: &str) -> Re
     return Ok(None);
   };
   let mut fields = Map::new();
-  fields.insert("value".to_owned(), json!(value));
+  fields.insert("value", value);
   if let Some(profile) = &traits.profiles[&key] {
     for (state, probability) in izip!(traits.states.iter(), profile) {
       ensure_finite(*probability, node_name, &format!("trait state '{state}' probability"))?;
@@ -336,11 +336,11 @@ fn node_trait(traits: &TreeTraits<'_>, key: GraphNodeKey, node_name: &str) -> Re
     let entropy = compute_entropy(profile);
     ensure_finite(entropy, node_name, "trait entropy")?;
     if !confidence.is_empty() {
-      fields.insert("confidence".to_owned(), json!(confidence));
+      fields.insert("confidence", to_value(&confidence)?);
     }
-    fields.insert("entropy".to_owned(), json!(format_number(entropy, 3)));
+    fields.insert("entropy", format_number(entropy, 3));
   }
-  Ok(Some((traits.attribute.to_owned(), Value::Object(fields))))
+  Ok(Some((traits.attribute.to_owned(), Value::from(fields))))
 }
 
 fn node_transition(tree: &AnnotatedTreeView<'_>, traits: &TreeTraits<'_>, key: GraphNodeKey) -> Option<String> {
@@ -383,24 +383,22 @@ fn auspice_cds_annotation(
     .strand
     .clone()
     .ok_or_else(|| make_report!("CDS annotation '{name}' has no strand for Auspice output"))?;
-  let other = Value::Object(annotation.other.clone().into_iter().collect());
-  let segments = if let Some(segments) = annotation.segments.as_ref() {
+  let other = annotation.other.clone().into_iter().collect();
+  let (start, end, segments) = if let Some(segments) = annotation.segments.as_ref() {
     if segments.is_empty() {
       return make_error!("CDS annotation '{name}' has no segments for Auspice output");
     }
-    Segments::MultipleSegments {
-      segments: segments
-        .iter()
-        .map(|segment| {
-          Ok(StartEnd {
-            start: auspice_coordinate(segment.start, name, "segment start")?,
-            end: auspice_coordinate(segment.end, name, "segment end")?,
-            other: Value::Object(segment.other.clone().into_iter().collect()),
-          })
+    let segments = segments
+      .iter()
+      .map(|segment| {
+        Ok(StartEnd {
+          start: auspice_coordinate(segment.start, name, "segment start")?,
+          end: auspice_coordinate(segment.end, name, "segment end")?,
+          other: segment.other.clone().into_iter().collect(),
         })
-        .collect::<Result<Vec<_>, Report>>()?,
-      other,
-    }
+      })
+      .collect::<Result<Vec<_>, Report>>()?;
+    (None, None, Some(segments))
   } else {
     let start = annotation
       .start
@@ -408,11 +406,11 @@ fn auspice_cds_annotation(
     let end = annotation
       .end
       .ok_or_else(|| make_report!("CDS annotation '{name}' has no end for Auspice output"))?;
-    Segments::OneSegment(StartEnd {
-      start: auspice_coordinate(start, name, "start")?,
-      end: auspice_coordinate(end, name, "end")?,
-      other,
-    })
+    (
+      Some(auspice_coordinate(start, name, "start")?),
+      Some(auspice_coordinate(end, name, "end")?),
+      None,
+    )
   };
   Ok(AuspiceGenomeAnnotationCds {
     r#type: annotation.entry_type.clone(),
@@ -421,7 +419,10 @@ fn auspice_cds_annotation(
     display_name: None,
     description: None,
     strand: Some(strand),
+    start,
+    end,
     segments,
+    other,
   })
 }
 

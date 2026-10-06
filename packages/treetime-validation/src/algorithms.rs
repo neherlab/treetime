@@ -24,8 +24,11 @@ use treetime_utils::make_error;
   EnumString,
   EnumIter,
   ValueEnum,
+  deser::Serialize,
+  deser::Deserialize,
 )]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
 pub enum ConvolutionAlgorithm {
@@ -73,8 +76,11 @@ impl ConvolutionAlgorithm {
   EnumString,
   EnumIter,
   ValueEnum,
+  deser::Serialize,
+  deser::Deserialize,
 )]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
 pub enum MultiplicationAlgorithm {

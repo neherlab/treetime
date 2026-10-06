@@ -14,7 +14,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{Seq, seq};
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, deser::Serialize)]
 pub struct PartitionFitch {
   pub index: usize,
   pub alphabet: Alphabet,

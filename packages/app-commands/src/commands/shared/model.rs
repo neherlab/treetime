@@ -8,8 +8,9 @@ use treetime::gtr::get_gtr::GtrModelName;
 /// One flag name (`--model`, short `-g`, alias `--gtr`) serves every command; the value set includes
 /// non-GTR models (for example `jtt92`). `--model-params` (alias `--gtr-params`) carries
 /// model-specific `key=value` parameters.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ModelArgs {
   /// Substitution model to use
@@ -43,22 +44,40 @@ impl ModelArgs {
   }
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Debug,
+  Clone,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  SmartDefault,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[schemars(rename = "GtrModelName")]
 pub enum GtrModelNameCli {
   /// Infer GTR parameters from data via Fitch parsimony substitution counts.
   #[default]
   Infer,
   #[serde(rename = "jc69")]
+  #[deser(rename = "jc69")]
   JC69,
   K80,
   F81,
   #[serde(rename = "hky85")]
+  #[deser(rename = "hky85")]
   HKY85,
   T92,
   #[serde(rename = "tn93")]
+  #[deser(rename = "tn93")]
   TN93,
   #[cfg_attr(feature = "clap", value(name = "jtt92"))]
   Jtt92,

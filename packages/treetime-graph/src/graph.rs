@@ -9,7 +9,7 @@ use treetime_utils::{make_internal_error, make_internal_report};
   clippy::field_scoped_visibility_modifiers,
   reason = "graph storage stays crate-internal behind accessor methods"
 )]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct Graph {
   pub(crate) nodes: Vec<Option<Node>>,
   pub(crate) edges: Vec<Option<Edge>>,

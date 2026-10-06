@@ -179,7 +179,9 @@ pub(crate) fn combine_edge_mutations(
     .collect()
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(
+  Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, deser::Serialize, deser::Deserialize,
+)]
 pub struct Mutation {
   pub track: MutationTrack,
   pub event: MutationEvent,
@@ -203,8 +205,11 @@ impl Mutation {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(
+  Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum MutationTrack {
   Nucleotide,
   AminoAcid(String),
@@ -237,15 +242,20 @@ pub fn mutation_event_strings(event: &MutationEvent) -> Result<Vec<String>, Repo
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(
+  Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum MutationEvent {
   Substitution(Sub),
   Insertion(AlignedMutation),
   Deletion(AlignedMutation),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(
+  Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, deser::Serialize, deser::Deserialize,
+)]
 pub struct AlignedMutation {
   pub range: (usize, usize),
   pub sequence: Seq,
@@ -334,13 +344,27 @@ pub(crate) fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> 
   Ok(result)
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, CopyGetters, Display)]
+#[derive(
+  Clone,
+  Debug,
+  Serialize,
+  Deserialize,
+  Ord,
+  PartialOrd,
+  Eq,
+  PartialEq,
+  CopyGetters,
+  Display,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[getset(get_copy = "pub")]
 #[display("{reff}{}{qry}", pos + 1)]
 pub struct Sub {
   pos: usize,
   qry: AsciiChar,
   #[serde(rename = "ref")]
+  #[deser(rename = "ref")]
   reff: AsciiChar,
 }
 

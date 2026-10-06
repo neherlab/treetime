@@ -41,8 +41,9 @@ pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigR
 }
 
 /// Request to resolve a configuration as a run resolves it, without running it.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
 pub struct RunConfigRequest {
   /// Command the configuration is for.
   pub command: AppCommand,
@@ -52,8 +53,10 @@ pub struct RunConfigRequest {
 
 /// Outcome of resolving a configuration as a run resolves it.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(tag = "status", rename_all = "kebab-case")]
+#[deser(tag = "status", rename_all = "kebab-case")]
 pub enum RunConfigResponse {
   /// The configuration is accepted.
   Valid {

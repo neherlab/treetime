@@ -6,15 +6,16 @@ use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use treetime_primitives::{LogLh, Seq};
+use treetime_utils::adapters::Array2Rows;
 use treetime_utils::interval::range_union::range_union;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DenseNodeState {
   pub seq: DenseSeqInfo,
   pub profile: DenseSeqDistribution,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub(crate) struct DenseLeafObs {
   sequence: Seq,
   gaps: Vec<(usize, usize)>,
@@ -56,7 +57,7 @@ impl MarginalNodeState for DenseNodeState {
   }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DenseSeqInfo {
   pub(crate) gaps: Vec<(usize, usize)>,
   pub(crate) unknown: Vec<(usize, usize)>,
@@ -65,24 +66,25 @@ pub struct DenseSeqInfo {
   pub(crate) sequence: Seq,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DenseEdgeBackward {
   pub(crate) msg_to_parent: DenseSeqDistribution,
   pub(crate) msg_from_child: DenseSeqDistribution,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DenseEdgeForward {
   pub(crate) msg_to_child: DenseSeqDistribution,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DenseEdgeEstimate {
   pub(crate) indels: Vec<InDel>,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DenseSeqDistribution {
+  #[deser(as = Array2Rows)]
   pub(crate) dis: Array2<f64>,
 
   pub(crate) log_lh: LogLh,

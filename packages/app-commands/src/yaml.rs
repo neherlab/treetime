@@ -1,3 +1,5 @@
+use deser::adapters::As;
+use deser_serde::Serde;
 use eyre::Report;
 use itertools::Itertools;
 use saphyr::{Mapping, Scalar, ScalarStyle, Yaml, YamlEmitter};
@@ -44,7 +46,7 @@ fn yaml_node(value: &Value) -> Result<Yaml<'static>, Report> {
     Value::Null => plain("null".to_owned()),
     Value::Bool(_) | Value::Number(_) => plain(value.to_string()),
     Value::String(_) => {
-      let quoted = json_write_str(value, JsonPretty(false))?;
+      let quoted = json_write_str(&As::<_, Serde>::new(value), JsonPretty(false))?;
       let escaped = quoted
         .strip_prefix('"')
         .and_then(|text| text.strip_suffix('"'))

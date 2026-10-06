@@ -6,7 +6,7 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct PointwiseMetrics {
   pub(crate) total_points: usize,
   pub(crate) dx: f64,

@@ -299,7 +299,7 @@ fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
 
 fn save_results_json<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>], summary: &TestSummary) -> Result<(), Report>
 where
-  T: Serialize + TestCase,
+  T: deser::Serialize + TestCase,
 {
   fs::create_dir_all(output_dir).wrap_err_with(|| format!("When creating directory '{output_dir}'"))?;
   let results = ResultsJson { summary, outcomes };
@@ -307,7 +307,7 @@ where
   json_write_file(&json_path, &results, JsonPretty(true))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, deser::Serialize)]
 struct ResultsJson<'a, T: TestCase> {
   summary: &'a TestSummary,
   outcomes: &'a [TestRunOutcome<T>],

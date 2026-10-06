@@ -150,7 +150,7 @@ mod tests {
         &first.id,
         0,
         Box::new(move |event: &RunEvent| {
-          if matches!(event.event, JobEvent::Progress(_)) && !*flag.lock() {
+          if matches!(event.event, JobEvent::Progress { .. }) && !*flag.lock() {
             *flag.lock() = true;
             manager.cancel(&first_id).unwrap();
           }
@@ -168,7 +168,7 @@ mod tests {
       read_events(&runs.store().events_path(id), 0)
         .unwrap()
         .iter()
-        .filter(|event| matches!(event.event, JobEvent::Progress(_)))
+        .filter(|event| matches!(event.event, JobEvent::Progress { .. }))
         .count()
     };
     assert_eq!(
@@ -204,7 +204,9 @@ mod tests {
     );
     assert!(matches!(
       events.last().unwrap().event,
-      JobEvent::Terminal(TerminalEvent::Interrupted { .. })
+      JobEvent::Terminal {
+        data: TerminalEvent::Interrupted { .. }
+      }
     ));
   }
 

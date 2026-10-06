@@ -1,13 +1,28 @@
 use derive_more::{Deref, DerefMut, From, Into};
+use deser_serde::Serde;
 use schemars::generate::SchemaGenerator;
 use schemars::{JsonSchema, Schema, json_schema};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::borrow::Cow;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Deref, DerefMut, From, Into)]
+#[derive(
+  Clone,
+  Debug,
+  Default,
+  PartialEq,
+  Eq,
+  Serialize,
+  Deserialize,
+  Deref,
+  DerefMut,
+  From,
+  Into,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(transparent)]
-pub struct JsonValue(pub Value);
+pub struct JsonValue(#[deser(as = Serde)] pub Value);
 
 impl JsonSchema for JsonValue {
   fn schema_name() -> Cow<'static, str> {
@@ -29,9 +44,23 @@ impl JsonSchema for JsonValue {
   }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Deref, DerefMut, From, Into)]
+#[derive(
+  Clone,
+  Debug,
+  Default,
+  PartialEq,
+  Eq,
+  Serialize,
+  Deserialize,
+  Deref,
+  DerefMut,
+  From,
+  Into,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[serde(transparent)]
-pub struct SparseConfig(pub Map<String, Value>);
+pub struct SparseConfig(#[deser(as = Serde)] pub Map<String, Value>);
 
 impl SparseConfig {
   pub fn into_value(self) -> Value {

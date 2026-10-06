@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DateConstraint {
   pub raw: String,
   pub value: DateValue,
@@ -30,8 +30,9 @@ impl DateConstraint {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum DateValue {
   Exact(DateExact),
   Uncertain(DateRange),
@@ -52,12 +53,12 @@ impl DateValue {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DateExact {
   pub value: f64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DateRange {
   pub start: f64,
   pub end: f64,

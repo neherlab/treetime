@@ -569,7 +569,7 @@ pub(crate) mod tests {
         400,
         json!({
           "code": "invalid_request",
-          "message": "Failed to parse the request body as JSON: command: EOF while parsing a value at line 1 column 11",
+          "message": "Failed to parse the request body as JSON: EndOfFile: unexpected end of file at line 1 column 12",
           "causes": [],
         })
       ),
@@ -586,7 +586,7 @@ pub(crate) mod tests {
         400,
         json!({
           "code": "invalid_request",
-          "message": "Failed to deserialize query string: from: invalid digit found in string",
+          "message": "Failed to deserialize query string: Unexpected: invalid value \"x\", expected usize at line 1 column 6 (path: from)",
           "causes": [],
         })
       ),

@@ -34,7 +34,7 @@ use axum::error_handling::HandleErrorLayer;
 use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, Uri, header};
 use axum::response::{IntoResponse, Response};
-use axum::{BoxError, Json, Router};
+use axum::{BoxError, Router};
 use eyre::{Report, eyre};
 use itertools::Itertools;
 use schemars::JsonSchema;
@@ -332,7 +332,7 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
 }
 
 /// Liveness of the server.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 struct HealthStatus {
   /// Always `ok`.
   status: String,
@@ -341,7 +341,7 @@ struct HealthStatus {
 }
 
 /// Path of a run.
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, deser::Deserialize)]
 #[schemars(inline)]
 pub(crate) struct RunPath {
   /// Id of the run.
@@ -349,7 +349,7 @@ pub(crate) struct RunPath {
 }
 
 /// Path of two runs.
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, deser::Deserialize)]
 #[schemars(inline)]
 struct RunPairPath {
   /// Id of the first run.
@@ -359,7 +359,7 @@ struct RunPairPath {
 }
 
 /// Path of an input file of a run.
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, deser::Deserialize)]
 #[schemars(inline)]
 struct InputPath {
   /// Id of a run that has not started.
@@ -369,7 +369,7 @@ struct InputPath {
 }
 
 /// Query of the run event stream.
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, deser::Deserialize)]
 #[schemars(inline)]
 struct EventsQuery {
   /// Sequence number of the first event to send.
@@ -377,118 +377,118 @@ struct EventsQuery {
 }
 
 /// Query of a run file.
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, deser::Deserialize)]
 #[schemars(inline)]
 struct FileQuery {
   /// Path of the file relative to the run's `out/` folder.
   path: String,
 }
 
-async fn health() -> Json<HealthStatus> {
-  Json(HealthStatus {
+async fn health() -> ApiJson<HealthStatus> {
+  ApiJson(HealthStatus {
     status: HEALTH_STATUS.to_owned(),
     version: version_info().version.to_owned(),
   })
 }
 
-async fn openapi(State(state): State<Arc<AppState>>) -> Json<Value> {
-  Json(state.openapi.clone())
+async fn openapi(State(state): State<Arc<AppState>>) -> axum::Json<Value> {
+  axum::Json(state.openapi.clone())
 }
 
-async fn version(State(state): State<Arc<AppState>>) -> Result<Json<VersionInfo>, AppError> {
-  call(&state, AppService::version).await.map(Json)
+async fn version(State(state): State<Arc<AppState>>) -> Result<ApiJson<VersionInfo>, AppError> {
+  call(&state, AppService::version).await.map(ApiJson)
 }
 
-async fn datasets(State(state): State<Arc<AppState>>) -> Result<Json<DatasetCatalog>, AppError> {
-  call(&state, AppService::datasets).await.map(Json)
+async fn datasets(State(state): State<Arc<AppState>>) -> Result<ApiJson<DatasetCatalog>, AppError> {
+  call(&state, AppService::datasets).await.map(ApiJson)
 }
 
 async fn config_check(
   State(state): State<Arc<AppState>>,
   ApiJson(request): ApiJson<CheckConfigRequest>,
-) -> Result<Json<CheckConfigResponse>, AppError> {
+) -> Result<ApiJson<CheckConfigResponse>, AppError> {
   call(&state, move |service| service.check_config(&request))
     .await
-    .map(Json)
+    .map(ApiJson)
 }
 
 async fn run_config(
   State(state): State<Arc<AppState>>,
   ApiJson(request): ApiJson<RunConfigRequest>,
-) -> Result<Json<RunConfigResponse>, AppError> {
+) -> Result<ApiJson<RunConfigResponse>, AppError> {
   call(&state, move |service| service.run_config(&request))
     .await
-    .map(Json)
+    .map(ApiJson)
 }
 
 async fn inputs_check(
   State(state): State<Arc<AppState>>,
   ApiJson(request): ApiJson<CheckInputsRequest>,
-) -> Result<Json<InputFacts>, AppError> {
+) -> Result<ApiJson<InputFacts>, AppError> {
   call(&state, move |service| service.check_inputs(request))
     .await
-    .map(Json)
+    .map(ApiJson)
 }
 
-async fn runs_list(State(state): State<Arc<AppState>>) -> Result<Json<RunList>, AppError> {
-  call(&state, AppService::list_runs).await.map(Json)
+async fn runs_list(State(state): State<Arc<AppState>>) -> Result<ApiJson<RunList>, AppError> {
+  call(&state, AppService::list_runs).await.map(ApiJson)
 }
 
 async fn runs_create(
   State(state): State<Arc<AppState>>,
   ApiJson(request): ApiJson<CreateRunRequest>,
-) -> Result<Json<RunRecord>, AppError> {
+) -> Result<ApiJson<RunRecord>, AppError> {
   call(&state, move |service| service.create_run(&request))
     .await
-    .map(Json)
+    .map(ApiJson)
 }
 
 async fn runs_get(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
-) -> Result<Json<RunRecord>, AppError> {
-  call(&state, move |service| service.get_run(&id)).await.map(Json)
+) -> Result<ApiJson<RunRecord>, AppError> {
+  call(&state, move |service| service.get_run(&id)).await.map(ApiJson)
 }
 
 async fn runs_start(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
   ApiJson(request): ApiJson<StartRunRequest>,
-) -> Result<Json<RunRecord>, AppError> {
+) -> Result<ApiJson<RunRecord>, AppError> {
   call(&state, move |service| service.start_run(&id, &request))
     .await
-    .map(Json)
+    .map(ApiJson)
 }
 
 async fn runs_update(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
   ApiJson(request): ApiJson<UpdateRunRequest>,
-) -> Result<Json<RunSummary>, AppError> {
+) -> Result<ApiJson<RunSummary>, AppError> {
   call(&state, move |service| service.update_run(&id, request))
     .await
-    .map(Json)
+    .map(ApiJson)
 }
 
 async fn runs_cancel(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
-) -> Result<Json<CancelRunResponse>, AppError> {
-  call(&state, move |service| service.cancel_run(&id)).await.map(Json)
+) -> Result<ApiJson<CancelRunResponse>, AppError> {
+  call(&state, move |service| service.cancel_run(&id)).await.map(ApiJson)
 }
 
 async fn runs_files(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
-) -> Result<Json<Vec<RunFile>>, AppError> {
-  call(&state, move |service| service.run_files(&id)).await.map(Json)
+) -> Result<ApiJson<Vec<RunFile>>, AppError> {
+  call(&state, move |service| service.run_files(&id)).await.map(ApiJson)
 }
 
 async fn runs_results(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
   headers: HeaderMap,
-) -> Result<Revalidated<Json<RunResults>>, AppError> {
+) -> Result<Revalidated<ApiJson<RunResults>>, AppError> {
   revalidated(&state, &headers, vec![id.clone()], move |service| {
     service.run_results(&id)
   })
@@ -499,7 +499,7 @@ async fn runs_auspice(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
   headers: HeaderMap,
-) -> Result<Revalidated<Json<AuspiceDocument>>, AppError> {
+) -> Result<Revalidated<ApiJson<AuspiceDocument>>, AppError> {
   revalidated(&state, &headers, vec![id.clone()], move |service| {
     service.run_auspice(&id)
   })
@@ -510,7 +510,7 @@ async fn runs_compare(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPairPath { id, other }): ApiPath<RunPairPath>,
   headers: HeaderMap,
-) -> Result<Revalidated<Json<RunComparison>>, AppError> {
+) -> Result<Revalidated<ApiJson<RunComparison>>, AppError> {
   revalidated(&state, &headers, vec![id.clone(), other.clone()], move |service| {
     service.compare_runs(&id, &other)
   })
@@ -520,10 +520,10 @@ async fn runs_compare(
 async fn clade_in_runs(
   State(state): State<Arc<AppState>>,
   ApiJson(request): ApiJson<CladeRequest>,
-) -> Result<Json<CladeInRuns>, AppError> {
+) -> Result<ApiJson<CladeInRuns>, AppError> {
   call(&state, move |service| service.clade_in_runs(&request))
     .await
-    .map(Json)
+    .map(ApiJson)
 }
 
 async fn runs_events(
@@ -556,13 +556,13 @@ async fn runs_upload_input(
   State(state): State<Arc<AppState>>,
   ApiPath(InputPath { id, name }): ApiPath<InputPath>,
   OctetStream(body): OctetStream,
-) -> Result<Json<UploadedInput>, AppError> {
+) -> Result<ApiJson<UploadedInput>, AppError> {
   let stream = body.into_data_stream().map(|chunk| chunk.map_err(io::Error::other));
   let mut reader = SyncIoBridge::new(StreamReader::new(stream));
   let runs = Arc::clone(&state.runs);
   let limit = state.config.max_upload_size;
   let uploaded = tokio::task::spawn_blocking(move || runs.upload_input(&id, &name, &mut reader, limit)).await??;
-  Ok(Json(uploaded))
+  Ok(ApiJson(uploaded))
 }
 
 async fn runs_file(
@@ -589,7 +589,7 @@ async fn revalidated<T, F>(
   headers: &HeaderMap,
   ids: Vec<JobId>,
   operation: F,
-) -> Result<Revalidated<Json<T>>, AppError>
+) -> Result<Revalidated<ApiJson<T>>, AppError>
 where
   T: Send + 'static,
   F: FnOnce(&AppService) -> Result<T, Report> + Send + 'static,
@@ -607,7 +607,7 @@ where
     return Ok(Revalidated::Unchanged(tag));
   }
   let value = call(state, operation).await?;
-  Ok(Revalidated::Fresh(tag, Json(value)))
+  Ok(Revalidated::Fresh(tag, ApiJson(value)))
 }
 
 async fn call<T, F>(state: &AppState, operation: F) -> Result<T, AppError>

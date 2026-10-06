@@ -8,6 +8,7 @@ mod tests {
   use rstest::rstest;
   use serde_json::{Value, json};
   use treetime::o;
+  use treetime_utils::io::json::to_json_value;
 
   #[rustfmt::skip]
   #[rstest]
@@ -89,12 +90,12 @@ mod tests {
   #[test]
   fn test_display_auspice_changes_nothing_but_the_color_scales() -> Result<(), Report> {
     let input = auspice("country", "categorical", 2, None);
-    let mut expected = serde_json::to_value(&input)?;
+    let mut expected = to_json_value(&input)?;
     expected["meta"]["colorings"][0]["scale"] = json!([["s0", "#332288"], ["s1", "#88ccee"]]);
 
     let document = display_auspice(input)?;
 
-    assert_eq!(expected, serde_json::to_value(&document)?);
+    assert_eq!(expected, to_json_value(&document)?);
     Ok(())
   }
 
@@ -102,6 +103,7 @@ mod tests {
     use crate::results::tree::StateColor;
     use serde_json::{Value, json};
     use treetime_io::auspice_types::AuspiceTree;
+    use treetime_utils::io::json::from_json_value;
 
     pub(super) const MUTED: [&str; 9] = [
       "#332288", "#88ccee", "#44aa99", "#117733", "#999933", "#ddcc77", "#cc6677", "#882255", "#aa4499",
@@ -115,7 +117,7 @@ mod tests {
       if let Some(scale) = scale {
         coloring["scale"] = scale;
       }
-      serde_json::from_value(json!({
+      from_json_value(&json!({
         "version": "v2",
         "meta": { "colorings": [coloring], "display_defaults": { "color_by": key } },
         "tree": { "name": "root", "node_attrs": { "div": 0.0 }, "children": children }

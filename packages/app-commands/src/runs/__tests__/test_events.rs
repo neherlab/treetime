@@ -20,7 +20,7 @@ mod tests {
     let persisted: Vec<(usize, bool)> = read_events(&path, 0)
       .unwrap()
       .iter()
-      .map(|event| (event.seq, matches!(event.event, JobEvent::Terminal(_))))
+      .map(|event| (event.seq, matches!(event.event, JobEvent::Terminal { .. })))
       .collect();
     assert_eq!(vec![(0, false), (1, false), (2, true)], persisted);
   }
@@ -88,16 +88,20 @@ mod tests {
     use treetime::progress::{LogEvent, LogLevel};
 
     pub(super) fn message(text: &str) -> JobEvent {
-      JobEvent::Log(LogEvent {
-        level: LogLevel::Info,
-        message: text.to_owned(),
-      })
+      JobEvent::Log {
+        data: LogEvent {
+          level: LogLevel::Info,
+          message: text.to_owned(),
+        },
+      }
     }
 
     pub(super) fn terminal() -> JobEvent {
-      JobEvent::Terminal(TerminalEvent::Cancelled {
-        job_id: JobId::parse("run").unwrap(),
-      })
+      JobEvent::Terminal {
+        data: TerminalEvent::Cancelled {
+          job_id: JobId::parse("run").unwrap(),
+        },
+      }
     }
   }
 }

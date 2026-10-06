@@ -89,13 +89,16 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "MugrationConfig")]
 pub struct TreetimeMugrationArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
+  #[deser(skip)]
   pub config_args: ConfigArgs,
 
   /// Tree in Newick format.
@@ -130,6 +133,7 @@ pub struct TreetimeMugrationArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub metadata_id: MetadataIdArgs,
 
   /// Path to output state-probability-profile CSV.
@@ -214,6 +218,7 @@ pub struct TreetimeMugrationArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub output: OutputCoreArgs,
 
   /// Comma-separated list of outputs to produce with `--output-all`.
@@ -232,5 +237,6 @@ pub struct TreetimeMugrationArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 }

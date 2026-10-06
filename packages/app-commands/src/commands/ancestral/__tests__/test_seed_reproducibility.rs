@@ -70,7 +70,10 @@ mod tests {
       })?;
       let messages = Mutex::new(vec![]);
       let log = JobProgress::new(|event: JobEvent| {
-        if let JobEvent::Log(LogEvent { message, .. }) = event {
+        if let JobEvent::Log {
+          data: LogEvent { message, .. },
+        } = event
+        {
           messages.lock().push(message);
         }
       });

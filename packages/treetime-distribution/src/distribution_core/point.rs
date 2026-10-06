@@ -2,11 +2,12 @@ use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct DistributionPoint<T: Clone + Copy + Debug, Y: YAxisPolicy = Plain> {
   t: T,
   ampl: T,
   #[serde(skip)]
+  #[deser(skip)]
   _policy: PolicyMarker<Y>,
 }
 

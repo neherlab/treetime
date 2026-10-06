@@ -12,7 +12,7 @@ use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use treetime_utils::make_error;
 
 /// Event of a run, as stored in the run's `events.jsonl` and sent to subscribers.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct RunEvent {
   /// Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
   pub seq: usize,
@@ -20,6 +20,7 @@ pub struct RunEvent {
   #[schemars(with = "String")]
   pub time: DateTime<Utc>,
   #[serde(flatten)]
+  #[deser(flatten)]
   pub event: JobEvent,
 }
 
@@ -61,7 +62,7 @@ impl EventLog {
       .wrap_err_with(|| format!("When opening the event log '{}'", path.display()))?;
     let closed = events
       .last()
-      .is_some_and(|event| matches!(event.event, JobEvent::Terminal(_)));
+      .is_some_and(|event| matches!(event.event, JobEvent::Terminal { .. }));
     Ok(Self {
       path: path.to_path_buf(),
       state: Mutex::new(EventLogState {
@@ -78,7 +79,7 @@ impl EventLog {
     if state.closed {
       return make_error!("the event log '{}' already holds a terminal event", self.path.display());
     }
-    let is_terminal = matches!(event, JobEvent::Terminal(_));
+    let is_terminal = matches!(event, JobEvent::Terminal { .. });
     let event = RunEvent {
       seq: state.events.len(),
       time: Utc::now(),

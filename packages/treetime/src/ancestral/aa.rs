@@ -131,7 +131,7 @@ fn validate_cds_length(
   Ok(())
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, deser::Serialize)]
 pub struct AaNodeData {
   pub reference: BTreeMap<String, String>,
   pub node_aa_mutations: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<MutationEvent>>>,
@@ -200,7 +200,7 @@ pub(crate) fn collect_aa_cds_node_data(
   })
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, deser::Serialize)]
 pub struct AaCdsNodeData {
   pub reference: String,
   pub root_sequence: String,

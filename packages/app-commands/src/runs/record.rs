@@ -13,7 +13,8 @@ use treetime::progress::RunWarning;
 
 /// Durable record of one command run, stored as `run.json` in the run's folder.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct RunRecord {
   /// Identifier of the run, also the name of its folder.
   pub id: JobId,
@@ -22,6 +23,7 @@ pub struct RunRecord {
   /// Command of the run and its configuration, with every default filled in. After the run starts, the configuration
   /// also holds the outputs the run layer adds.
   #[serde(flatten)]
+  #[deser(flatten)]
   pub config: CommandConfig,
   /// State of the run.
   pub status: RunStatus,
@@ -76,8 +78,11 @@ impl RunRecord {
 }
 
 /// State of a run.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Display)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Display, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum RunStatus {
   /// Created and waiting to be started, for example while its inputs upload.
@@ -95,7 +100,7 @@ pub enum RunStatus {
 }
 
 /// One input file of a run.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct RunInput {
   /// Dot-separated key path of the setting that names the file.
   pub setting: String,
@@ -108,7 +113,7 @@ pub struct RunInput {
 }
 
 /// Error of a failed run.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct RunError {
   /// The error, as the CLI prints it.
   pub message: String,
@@ -118,7 +123,8 @@ pub struct RunError {
 
 /// Entry of a run list.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct RunSummary {
   /// Identifier of the run.
   pub id: JobId,
@@ -147,7 +153,7 @@ pub struct RunSummary {
 }
 
 /// Runs, newest first, and the number of runs computing now.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct RunList {
   /// Runs, newest first.
   pub runs: Vec<RunSummary>,
@@ -156,8 +162,9 @@ pub struct RunList {
 }
 
 /// Request to create a run.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
 pub struct CreateRunRequest {
   /// Command the run executes.
   pub command: AppCommand,
@@ -166,25 +173,30 @@ pub struct CreateRunRequest {
   pub config: SparseConfig,
   /// Whether to wait for an explicit start instead of starting at once, for example to upload inputs first.
   #[serde(default)]
+  #[deser(default)]
   pub defer_start: bool,
 }
 
 /// Request to start a created run.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
 pub struct StartRunRequest {
   /// Command that replaces the one given at creation, for example when the user chose another analysis after
   /// uploading its inputs.
   #[serde(default)]
+  #[deser(default)]
   pub command: Option<AppCommand>,
   /// Configuration that replaces the one given at creation, for example to point at uploaded inputs.
   #[serde(default)]
+  #[deser(default)]
   pub config: Option<SparseConfig>,
 }
 
 /// Answer to a cancellation request.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct CancelRunResponse {
   /// Whether cancellation was requested; the run ends with a `cancelled` terminal event.
   pub cancelled: bool,
@@ -192,11 +204,14 @@ pub struct CancelRunResponse {
 
 /// Where to save an output file of a run, or the archive of all its outputs.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
 pub struct SaveRunRequest {
   /// Path of the file relative to the run's `out/` folder. Unset: a zip archive of the whole `out/` folder.
   #[serde(default)]
+  #[deser(default)]
   pub path: Option<String>,
   /// Absolute path of the file to write.
   pub destination: PathBuf,
@@ -204,13 +219,17 @@ pub struct SaveRunRequest {
 
 /// Changes to the presentation of a run.
 #[skip_serializing_none]
-#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
 pub struct UpdateRunRequest {
   /// New title.
   #[serde(default)]
+  #[deser(default)]
   pub title: Option<String>,
   /// New pinned state.
   #[serde(default)]
+  #[deser(default)]
   pub pinned: Option<bool>,
 }

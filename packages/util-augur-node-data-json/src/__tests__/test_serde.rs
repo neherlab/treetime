@@ -3,7 +3,7 @@ mod tests {
   use crate::*;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use treetime_utils::io::json::{JsonPretty, json_write_str};
+  use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
   #[test]
   fn test_ancestral_serialization_minimal() {
@@ -57,7 +57,7 @@ mod tests {
     assert!(json.contains("\"muts\": []"));
     assert!(json.contains("\"sequence\": \"ACGT\""));
 
-    let roundtrip: AugurNodeDataJsonAncestral = serde_json::from_str(&json).unwrap();
+    let roundtrip: AugurNodeDataJsonAncestral = json_read_str(&json).unwrap();
     assert_eq!(2, roundtrip.nodes.len());
     assert_eq!(Vec::<String>::new(), roundtrip.nodes["root"].muts);
     assert_eq!(Some("ACGT".to_owned()), roundtrip.nodes["root"].sequence);
@@ -127,9 +127,9 @@ mod tests {
       nodes: btreemap! {
         "root".to_owned() => AugurNodeDataJsonTraitsNode {
           fields: btreemap! {
-            "region".to_owned() => serde_json::Value::String("North America".to_owned()),
-            "region_confidence".to_owned() => serde_json::json!({"North America": 0.95, "Oceania": 0.05}),
-            "region_entropy".to_owned() => serde_json::json!(0.286),
+            "region".to_owned() => deser_value::Value::from("North America".to_owned()),
+            "region_confidence".to_owned() => deser_value::value!({"North America": 0.95, "Oceania": 0.05}),
+            "region_entropy".to_owned() => deser_value::value!(0.286),
           },
         },
       },
@@ -166,7 +166,7 @@ mod tests {
     };
 
     let json = json_write_str(&data, JsonPretty(false)).unwrap();
-    let roundtrip: AugurNodeDataJsonAncestral = serde_json::from_str(&json).unwrap();
+    let roundtrip: AugurNodeDataJsonAncestral = json_read_str(&json).unwrap();
 
     assert_eq!(
       data.generated_by.unwrap().program,
@@ -184,11 +184,11 @@ mod tests {
       "future_top_level_key": "preserved"
     }"#;
 
-    let parsed: AugurNodeDataJsonAncestral = serde_json::from_str(json).unwrap();
-    assert_eq!(parsed.nodes["n1"].other["extra_field"], serde_json::json!(42));
+    let parsed: AugurNodeDataJsonAncestral = json_read_str(json).unwrap();
+    assert_eq!(parsed.nodes["n1"].other["extra_field"], deser_value::value!(42));
     assert_eq!(
       parsed.metadata.other["future_top_level_key"],
-      serde_json::json!("preserved")
+      deser_value::value!("preserved")
     );
   }
 

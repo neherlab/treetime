@@ -1,27 +1,18 @@
 pub mod types;
 
 use crate::types::Phyloxml;
-use quick_xml::DeError;
-use quick_xml::de::from_reader;
-use quick_xml::se::Serializer;
-use serde::Serialize;
+use deser::Error;
+use deser_xml::{Indent, SerializerConfig};
 use std::io;
 
-pub fn phyloxml_read(reader: impl io::Read) -> Result<Phyloxml, DeError> {
-  let reader = io::BufReader::new(reader);
-  from_reader(reader)
+const DOCUMENT: SerializerConfig = SerializerConfig::new().declaration(true).indent(Indent::Spaces(2));
+
+pub fn phyloxml_read(reader: impl io::Read) -> Result<Phyloxml, Error> {
+  deser_xml::from_reader(reader)
 }
 
-pub fn phyloxml_write(mut writer: impl io::Write, phyloxml: &Phyloxml) -> io::Result<()> {
-  writer.write_all(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")?;
-
-  let mut document = String::new();
-  let mut serializer = Serializer::with_root(&mut document, Some("phyloxml")).map_err(io::Error::other)?;
-  serializer.indent(' ', 2);
-  serializer.expand_empty_elements(true);
-  phyloxml.serialize(serializer).map_err(io::Error::other)?;
-
-  writer.write_all(document.as_bytes())
+pub fn phyloxml_write(writer: impl io::Write, phyloxml: &Phyloxml) -> Result<(), Error> {
+  DOCUMENT.to_writer(writer, phyloxml)
 }
 
 #[cfg(test)]

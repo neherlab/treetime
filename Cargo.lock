@@ -166,6 +166,9 @@ dependencies = [
  "comfy-table",
  "crossterm",
  "ctor",
+ "deser",
+ "deser-serde",
+ "deser-value",
  "eyre",
  "indicatif",
  "indoc",
@@ -211,6 +214,9 @@ dependencies = [
  "color-eyre",
  "ctor",
  "derive_more",
+ "deser",
+ "deser-serde",
+ "deser-value",
  "dirs 6.0.0",
  "eyre",
  "image",
@@ -224,7 +230,7 @@ dependencies = [
  "plotters",
  "pretty_assertions",
  "proptest",
- "rand",
+ "rand 0.8.8",
  "rayon",
  "reqwest",
  "rstest",
@@ -304,6 +310,8 @@ dependencies = [
  "chrono",
  "ctor",
  "derive_more",
+ "deser",
+ "deser-value",
  "eyre",
  "itertools",
  "jsonschema",
@@ -335,6 +343,12 @@ dependencies = [
  "axum",
  "clap",
  "ctor",
+ "deser",
+ "deser-json",
+ "deser-path",
+ "deser-serde",
+ "deser-urlencoded",
+ "deser-value",
  "eyre",
  "headers",
  "heck",
@@ -342,6 +356,7 @@ dependencies = [
  "indoc",
  "itertools",
  "log",
+ "mime",
  "percent-encoding",
  "pretty_assertions",
  "rayon",
@@ -391,7 +406,7 @@ dependencies = [
  "argmin-math",
  "num-traits",
  "paste",
- "rand",
+ "rand 0.8.8",
  "rand_xoshiro",
  "thiserror 1.0.69",
  "web-time",
@@ -409,7 +424,7 @@ dependencies = [
  "num-complex",
  "num-integer",
  "num-traits",
- "rand",
+ "rand 0.8.8",
  "thiserror 1.0.69",
 ]
 
@@ -418,6 +433,12 @@ name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
+
+[[package]]
+name = "arrayvec"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
 
 [[package]]
 name = "async-compression"
@@ -530,6 +551,19 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
+name = "bigdecimal"
+version = "0.4.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fa3f3d8cbf4dffcfe4991de61d012bef509a409ecbe9dd41049bfe32b4d4653"
+dependencies = [
+ "autocfg",
+ "libm",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+]
 
 [[package]]
 name = "bindgen"
@@ -655,6 +689,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc0b364ead1874514c8c2855ab558056ebfeb775653e7ae45ff72f28f8f3166c"
 
 [[package]]
+name = "borsh"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "553c5d846a6ba5150c65e3b1b8ec073bcf1abc20f9b7220de384a4443ea4e20a"
+dependencies = [
+ "borsh-derive",
+ "bytes",
+ "cfg_aliases",
+]
+
+[[package]]
+name = "borsh-derive"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12cdfe656708a01f89b451a7d36466e6fe6c414de0aa18fc54f864f6f9ca9f56"
+dependencies = [
+ "once_cell",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 3.0.6",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -727,7 +785,7 @@ checksum = "9ff11ddd2af3b5e80dd0297fee6e56ac038d9bdc549573cdb51bd6d2efe7f05e"
 dependencies = [
  "num-complex",
  "num-traits",
- "rand",
+ "rand 0.8.8",
  "serde",
 ]
 
@@ -766,6 +824,12 @@ name = "cfg-if"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
+
+[[package]]
+name = "cfg_aliases"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 
 [[package]]
 name = "chrono"
@@ -1350,6 +1414,100 @@ dependencies = [
  "rustc_version",
  "syn 2.0.119",
  "unicode-xid",
+]
+
+[[package]]
+name = "deser"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "695f020ba3710a4662457a0c99ea47aee734977d1f09223688cb54cf68e51d45"
+dependencies = [
+ "deser-core",
+ "deser-derive",
+]
+
+[[package]]
+name = "deser-core"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05a7e9ec24731c17431f4f8abf0b8140ef9b1ea2f195e94a4f89e6676c41be4c"
+dependencies = [
+ "bigdecimal",
+ "chrono",
+ "indexmap",
+ "jiff",
+ "num-bigint",
+ "rust_decimal",
+]
+
+[[package]]
+name = "deser-derive"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd7fa009d5d1869f63ed26f98954441604415844cce8136006c82f203f544c09"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.6",
+]
+
+[[package]]
+name = "deser-json"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d0f96c08dc710ab9aacf639f40f3eed2fbd23a537319201634dd1dd4a916b98"
+dependencies = [
+ "deser-core",
+ "simdutf8",
+ "zmij",
+]
+
+[[package]]
+name = "deser-path"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cbc9e9179042717b65aec494b97aae4f42c537f483bc60b73dfab1340dd564d4"
+dependencies = [
+ "deser-core",
+]
+
+[[package]]
+name = "deser-serde"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "484bc85df26657a8ceda316827f09d7b2497de50f450bfaab45ce7a2f0161eef"
+dependencies = [
+ "deser-core",
+ "serde",
+]
+
+[[package]]
+name = "deser-urlencoded"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "184cf8b7f8901b4c7cf5304e8fa1deedeb4b02969158d4cc757c4de9a949f0af"
+dependencies = [
+ "deser-core",
+]
+
+[[package]]
+name = "deser-value"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3644dfbce0c6f7531b245e27cbc0cd7f2704b7b493ec291e70860a7d5c280b10"
+dependencies = [
+ "deser-core",
+ "indexmap",
+]
+
+[[package]]
+name = "deser-xml"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ae5f652a409de7a5f6879492540ade8f8f0677064cafaeaf97b3feb24d157fa"
+dependencies = [
+ "deser-core",
+ "quick-xml",
 ]
 
 [[package]]
@@ -2829,7 +2987,7 @@ dependencies = [
  "num-complex",
  "num-rational",
  "num-traits",
- "rand",
+ "rand 0.8.8",
  "rand_distr",
  "simba",
  "typenum",
@@ -2939,7 +3097,7 @@ dependencies = [
  "ndarray",
  "num-complex",
  "num-traits",
- "rand",
+ "rand 0.8.8",
  "thiserror 2.0.20",
 ]
 
@@ -2950,7 +3108,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f093b3db6fd194718dcdeea6bd8c829417deae904e3fcc7732dabcd4416d25d8"
 dependencies = [
  "ndarray",
- "rand",
+ "rand 0.8.8",
  "rand_distr",
 ]
 
@@ -2966,7 +3124,7 @@ dependencies = [
  "noisy_float",
  "num-integer",
  "num-traits",
- "rand",
+ "rand 0.8.8",
 ]
 
 [[package]]
@@ -3031,7 +3189,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
 dependencies = [
  "num-traits",
- "rand",
+ "rand 0.8.8",
  "serde",
 ]
 
@@ -3419,8 +3577,8 @@ dependencies = [
  "bitflags 2.13.2",
  "lazy_static",
  "num-traits",
- "rand",
- "rand_chacha",
+ "rand 0.8.8",
+ "rand_chacha 0.3.1",
  "rand_xorshift",
  "regex-syntax",
  "rusty-fork",
@@ -3509,7 +3667,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41b1177fdf999d2321d3fb46ff47159d9c1fb9ad66a4879f8c50a0b504615e9b"
 dependencies = [
  "memchr",
- "serde",
 ]
 
 [[package]]
@@ -3534,9 +3691,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e058c7de0b26af77780c769414d6257830bb240f3c38477dbc2c16e5f54d6d4c"
 dependencies = [
  "libc",
- "rand_chacha",
- "rand_core",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.4",
  "serde",
+]
+
+[[package]]
+name = "rand"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9ef1d0d795eb7d84685bca4f72f3649f064e6641543d3a8c415898726a57b41"
+dependencies = [
+ "rand_chacha 0.9.0",
+ "rand_core 0.9.5",
 ]
 
 [[package]]
@@ -3546,7 +3713,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
 dependencies = [
  "ppv-lite86",
- "rand_core",
+ "rand_core 0.6.4",
+]
+
+[[package]]
+name = "rand_chacha"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3022b5f1df60f26e1ffddd6c66e8aa15de382ae63b3a0c1bfc0e4d3e3f325cb"
+dependencies = [
+ "ppv-lite86",
+ "rand_core 0.9.5",
 ]
 
 [[package]]
@@ -3559,13 +3736,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_core"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76afc826de14238e6e8c374ddcc1fa19e374fd8dd986b0d2af0d02377261d83c"
+dependencies = [
+ "getrandom 0.3.4",
+]
+
+[[package]]
 name = "rand_distr"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
 dependencies = [
  "num-traits",
- "rand",
+ "rand 0.8.8",
  "serde",
 ]
 
@@ -3575,7 +3761,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fac4373cd91b4f55722c553fb0f286edbb81ef3ff6eec7b99d1898a4110a0b28"
 dependencies = [
- "rand_core",
+ "rand_core 0.6.4",
  "serde",
 ]
 
@@ -3585,7 +3771,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
 dependencies = [
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -3594,7 +3780,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f97cdb2a36ed4183de61b2f824cc45c9f1037f28afe0a322e9fff4c108b5aaa"
 dependencies = [
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -3820,6 +4006,23 @@ dependencies = [
  "rustc_version",
  "syn 2.0.119",
  "unicode-ident",
+]
+
+[[package]]
+name = "rust_decimal"
+version = "1.43.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7653272e75dcac41dc199fbea6f5797633994fafd339943c06c9af16bf29cd3a"
+dependencies = [
+ "arrayvec",
+ "borsh",
+ "bytes",
+ "num-traits",
+ "rand 0.8.8",
+ "rand 0.9.5",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -4392,7 +4595,7 @@ dependencies = [
  "approx",
  "nalgebra",
  "num-traits",
- "rand",
+ "rand 0.8.8",
 ]
 
 [[package]]
@@ -4870,6 +5073,7 @@ dependencies = [
  "criterion",
  "ctor",
  "derive_more",
+ "deser",
  "eyre",
  "getset",
  "indexmap",
@@ -4887,7 +5091,7 @@ dependencies = [
  "parking_lot",
  "pretty_assertions",
  "proptest",
- "rand",
+ "rand 0.8.8",
  "rand_distr",
  "rayon",
  "regex",
@@ -4913,6 +5117,7 @@ version = "1.0.0"
 dependencies = [
  "approx",
  "ctor",
+ "deser",
  "ndarray",
  "rayon",
  "serde",
@@ -4927,6 +5132,7 @@ version = "1.0.0"
 dependencies = [
  "approx",
  "ctor",
+ "deser",
  "eyre",
  "getset",
  "itertools",
@@ -4952,6 +5158,7 @@ dependencies = [
  "crossbeam-channel",
  "ctor",
  "derive_more",
+ "deser",
  "eyre",
  "getset",
  "indexmap",
@@ -4974,6 +5181,7 @@ dependencies = [
  "approx",
  "ctor",
  "derive_more",
+ "deser",
  "eyre",
  "itertools",
  "ndarray",
@@ -4997,6 +5205,8 @@ dependencies = [
  "bytes",
  "csv",
  "ctor",
+ "deser",
+ "deser-value",
  "eyre",
  "indoc",
  "itertools",
@@ -5023,6 +5233,7 @@ version = "1.0.0"
 dependencies = [
  "approx",
  "ctor",
+ "deser",
  "eyre",
  "ndarray",
  "ndarray-conv",
@@ -5038,6 +5249,7 @@ dependencies = [
  "approx",
  "auto_ops",
  "ctor",
+ "deser",
  "eyre",
  "itertools",
  "pretty_assertions",
@@ -5053,6 +5265,8 @@ name = "treetime-schema"
 version = "1.0.0"
 dependencies = [
  "clap",
+ "deser",
+ "deser-serde",
  "eyre",
  "log",
  "schemars",
@@ -5075,6 +5289,11 @@ dependencies = [
  "clap",
  "color-eyre",
  "ctor",
+ "deser",
+ "deser-json",
+ "deser-path",
+ "deser-serde",
+ "deser-value",
  "env_logger",
  "eyre",
  "flate2",
@@ -5096,7 +5315,7 @@ dependencies = [
  "pretty_assertions",
  "pretty_dtoa",
  "proptest",
- "rand",
+ "rand 0.8.8",
  "rand_isaac",
  "rayon",
  "regex",
@@ -5120,6 +5339,7 @@ dependencies = [
  "clap",
  "csv",
  "ctor",
+ "deser",
  "eyre",
  "image",
  "itertools",
@@ -5262,11 +5482,11 @@ name = "util-augur-node-data-json"
 version = "1.0.0"
 dependencies = [
  "ctor",
+ "deser",
+ "deser-value",
  "maplit",
  "pretty_assertions",
  "rayon",
- "serde",
- "serde_json",
  "treetime-utils",
 ]
 
@@ -5275,6 +5495,7 @@ name = "util-newick"
 version = "1.0.0"
 dependencies = [
  "ctor",
+ "deser",
  "eyre",
  "indoc",
  "pest",
@@ -5294,11 +5515,12 @@ name = "util-phyloxml"
 version = "1.0.0"
 dependencies = [
  "ctor",
+ "deser",
+ "deser-value",
+ "deser-xml",
  "indoc",
  "pretty_assertions",
- "quick-xml",
  "rayon",
- "serde",
  "serde_json",
 ]
 
@@ -5306,6 +5528,7 @@ dependencies = [
 name = "util-usher-mat"
 version = "1.0.0"
 dependencies = [
+ "deser",
  "eyre",
  "prost",
  "prost-build",

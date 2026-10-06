@@ -19,9 +19,10 @@ const TIME_LIMIT: f64 = 1e10;
 const FORMULA_GRID_SIZE: usize = 200;
 
 #[must_use]
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Display)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Display, deser::Serialize, deser::Deserialize)]
 #[strum(serialize_all = "kebab-case")]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum Distribution<Y: YAxisPolicy = Plain> {
   #[default]
   Empty,

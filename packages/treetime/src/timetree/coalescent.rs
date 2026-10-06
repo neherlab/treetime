@@ -3,7 +3,7 @@ use eyre::Report;
 use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct CoalescentOutput {
   pub inputs: CoalescentInputs,
   pub outputs: CoalescentOutputs,
@@ -67,51 +67,64 @@ impl CoalescentOutput {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct CoalescentInputs {
   pub mode: CoalescentOutputMode,
   #[serde(skip_serializing_if = "Option::is_none")]
+  #[deser(skip_serializing_if = Option::is_none)]
   pub n_points: Option<usize>,
   #[serde(skip_serializing_if = "Option::is_none")]
+  #[deser(skip_serializing_if = Option::is_none)]
   pub stiffness: Option<f64>,
   #[serde(skip_serializing_if = "Option::is_none")]
+  #[deser(skip_serializing_if = Option::is_none)]
   pub confidence_n_std: Option<f64>,
   pub gen_per_year: f64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum CoalescentOutputMode {
   Fixed,
   Constant,
   Skyline,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct CoalescentOutputs {
   #[serde(skip_serializing_if = "Option::is_none")]
+  #[deser(skip_serializing_if = Option::is_none)]
   pub log_likelihood: Option<f64>,
   pub segments: Vec<CoalescentSegment>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct CoalescentSegmentRow {
   pub index: usize,
   #[serde(rename = "segment.start")]
+  #[deser(rename = "segment.start")]
   pub segment_start: f64,
   #[serde(rename = "segment.end")]
+  #[deser(rename = "segment.end")]
   pub segment_end: f64,
   #[serde(rename = "T_c.value")]
+  #[deser(rename = "T_c.value")]
   pub tc_value: f64,
   #[serde(rename = "T_c.lower")]
+  #[deser(rename = "T_c.lower")]
   pub tc_lower: Option<f64>,
   #[serde(rename = "T_c.upper")]
+  #[deser(rename = "T_c.upper")]
   pub tc_upper: Option<f64>,
   #[serde(rename = "N_e.value")]
+  #[deser(rename = "N_e.value")]
   pub ne_value: f64,
   #[serde(rename = "N_e.lower")]
+  #[deser(rename = "N_e.lower")]
   pub ne_lower: Option<f64>,
   #[serde(rename = "N_e.upper")]
+  #[deser(rename = "N_e.upper")]
   pub ne_upper: Option<f64>,
 }
 
@@ -131,28 +144,32 @@ impl From<&CoalescentSegment> for CoalescentSegmentRow {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct CoalescentSegment {
   pub index: usize,
   pub segment: SegmentInterval,
   #[serde(rename = "T_c")]
+  #[deser(rename = "T_c")]
   pub tc: Estimate,
   #[serde(rename = "N_e")]
+  #[deser(rename = "N_e")]
   pub ne: Estimate,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct SegmentInterval {
   pub start: f64,
   pub end: f64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct Estimate {
   value: f64,
   #[serde(skip_serializing_if = "Option::is_none")]
+  #[deser(skip_serializing_if = Option::is_none)]
   lower: Option<f64>,
   #[serde(skip_serializing_if = "Option::is_none")]
+  #[deser(skip_serializing_if = Option::is_none)]
   upper: Option<f64>,
 }
 

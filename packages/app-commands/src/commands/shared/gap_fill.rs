@@ -6,8 +6,9 @@ use treetime::seq::gap_fill::GapFill;
 /// Gap-handling policy shared by every command that reads sequences.
 ///
 /// The hidden `--keep-overhangs` flag, which v0 invocations use, overrides `--gap-fill` to `none`.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GapFillArgs {
   /// How to handle gap characters in input sequences
@@ -36,9 +37,24 @@ impl GapFillArgs {
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Clone,
+  Debug,
+  Default,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[schemars(rename = "GapFill")]
 pub enum GapFillCli {
   #[default]

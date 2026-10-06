@@ -13,8 +13,9 @@ const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
 /// identifier that links a metadata row to a tree tip; the first column present in the header wins.
 /// Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
 /// candidate field separators; the delimiter actually present in the file is used.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct MetadataIdArgs {
   /// Candidate column name(s) holding the taxon identifier that links metadata to tree tips
@@ -51,8 +52,10 @@ pub struct MetadataIdArgs {
 /// leftmost column whose name contains `date` (case-insensitive) is used. `--date-format` controls
 /// parsing of string dates; numeric, ISO, and uncertain dates parse regardless.
 #[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct DateColumnArgs {
   /// Label of the column to be used as sampling date (auto-detected when omitted)

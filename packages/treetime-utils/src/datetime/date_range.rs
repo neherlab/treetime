@@ -4,7 +4,9 @@ use getset::Getters;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(Debug, SmartDefault, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, Getters)]
+#[derive(
+  Debug, SmartDefault, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, Getters, deser::Serialize, deser::Deserialize,
+)]
 #[getset(get = "pub")]
 pub struct DateRange {
   begin: DateTime<Utc>,

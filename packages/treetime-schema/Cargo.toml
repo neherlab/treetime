@@ -19,6 +19,8 @@ doctest = false
 treetime-utils = { workspace = true }
 
 clap = { workspace = true, optional = true }
+deser = { workspace = true }
+deser-serde = { workspace = true }
 eyre = { workspace = true }
 log = { workspace = true }
 schemars = { workspace = true }

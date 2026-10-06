@@ -97,21 +97,27 @@ pub struct ClockInput {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, deser::Serialize)]
 pub struct ClockOutput {
   #[serde(skip)]
+  #[deser(skip)]
   pub graph: Graph,
   #[serde(skip)]
+  #[deser(skip)]
   pub inputs: ClockInputs,
   #[serde(skip)]
+  #[deser(skip)]
   pub divergences: BTreeMap<GraphNodeKey, f64>,
   #[serde(skip)]
+  #[deser(skip)]
   pub outliers: BTreeSet<GraphNodeKey>,
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
   #[serde(skip)]
+  #[deser(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   #[serde(skip)]
+  #[deser(skip)]
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 

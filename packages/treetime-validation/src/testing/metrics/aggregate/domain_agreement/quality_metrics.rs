@@ -2,7 +2,7 @@ use itertools::izip;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct QualityMetrics {
   pub(crate) rmse: f64,
   pub(crate) r_squared: f64,

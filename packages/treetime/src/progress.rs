@@ -31,14 +31,14 @@ impl LogSink for NoopProgress {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct LogEvent {
   pub level: LogLevel,
   pub message: String,
 }
 
 /// A problem of the inputs that the run found and continued past, which makes its results less reliable.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct RunWarning {
   /// Kind of the problem.
   pub kind: RunWarningKind,
@@ -49,8 +49,11 @@ pub struct RunWarning {
 }
 
 /// Kind of a run warning.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum RunWarningKind {
   /// More than one node of the input tree has the same name.
   DuplicateNodeNames,
@@ -60,9 +63,24 @@ pub enum RunWarningKind {
   DuplicateMetadataNames,
 }
 
-#[derive(Debug, Clone, Copy, Display, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Debug,
+  Clone,
+  Copy,
+  Display,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[strum(serialize_all = "UPPERCASE")]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum LogLevel {
   Trace,
   Debug,

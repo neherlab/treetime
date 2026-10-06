@@ -10,9 +10,24 @@ use treetime::gtr::get_gtr::GtrModelName;
 /// The default `infer` matches augur, which reconstructs amino acids with a JC69-seeded inferred
 /// GTR over the stop-inclusive alphabet (`augur ancestral` calls `TreeAnc(..., gtr='JC69',
 /// alphabet='aa')` with `infer_gtr=True`). Empirical matrices are opt-in.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Clone,
+  Debug,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  SmartDefault,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum AaModelName {
   /// Infer an amino-acid GTR from the data over the stop-inclusive alphabet. Matches augur.
   #[default]

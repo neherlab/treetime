@@ -121,7 +121,7 @@ mod tests {
     use treetime_io::nwk::nwk_read_file;
     use treetime_utils::io::json::json_read_file;
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct GmMugrationInput {
       tree_path: String,
       metadata_path: String,
@@ -130,7 +130,7 @@ mod tests {
       parameters: GmMugrationParameters,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct GmMugrationParameters {
       missing_data: String,
       pc: Option<f64>,
@@ -139,7 +139,7 @@ mod tests {
       iterations: usize,
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, Deserialize, deser::Deserialize)]
     pub(super) struct GmMugrationOutput {
       pub(crate) states: Vec<String>,
       pub(crate) trait_assignments: BTreeMap<String, String>,

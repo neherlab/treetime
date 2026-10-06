@@ -64,17 +64,21 @@ impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "PruneConfig")]
 pub struct TreetimePruneArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
+  #[deser(skip)]
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
@@ -86,10 +90,12 @@ pub struct TreetimePruneArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub output: OutputCoreArgs,
 
   /// Path to output GTR model JSON.
@@ -115,6 +121,7 @@ pub struct TreetimePruneArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 
   /// Threshold value for pruning of branches

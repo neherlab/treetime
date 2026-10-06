@@ -7,20 +7,21 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct NewickReadOptions {
   pub enewick: bool,
 }
 
-#[derive(Clone, Debug, SmartDefault, Serialize, Deserialize)]
+#[derive(Clone, Debug, SmartDefault, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct NewickWriteOptions {
   pub style: NwkStyle,
   pub significant_digits: Option<u8>,
   pub decimal_digits: Option<i8>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SmartDefault, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SmartDefault, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum NwkStyle {
   Plain,
   #[default]
@@ -28,13 +29,13 @@ pub enum NwkStyle {
   Nhx,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct NexusTree {
   pub name: String,
   pub graph: NewickGraph,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct NewickGraph {
   pub nodes: Vec<NewickNodeData>,
   pub edges: Vec<NewickEdgeEntry>,
@@ -88,14 +89,14 @@ impl PartialEq for NewickGraph {
 
 impl Eq for NewickGraph {}
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct NewickEdgeEntry {
   pub parent: usize,
   pub child: usize,
   pub data: NewickEdgeData,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct NewickNodeData {
   pub label: Option<NewickLabel>,
   pub node_attrs: BTreeMap<String, NewickValue>,
@@ -148,8 +149,9 @@ impl Default for NewickNodeData {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum NewickLabel {
   Name(String),
   Support(f64),
@@ -194,13 +196,13 @@ impl Hash for NewickLabel {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct NewickHybrid {
   pub kind: Option<String>,
   pub index: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct NewickEdgeData {
   pub branch_length: Option<f64>,
   pub branch_attrs: BTreeMap<String, NewickValue>,
@@ -231,8 +233,9 @@ impl Default for NewickEdgeData {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum NewickValue {
   Boolean(bool),
   Number(f64),

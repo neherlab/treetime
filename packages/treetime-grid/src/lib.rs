@@ -14,7 +14,7 @@ pub mod soft_tail_law;
 use num_traits::{Num, NumCast};
 use std::fmt::Debug;
 
-pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy {}
+pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy + 'static {}
 
 impl InterpElem for f64 {}
 

@@ -13,12 +13,14 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_utils::adapters::Array2Rows;
 use treetime_utils::array::ndarray::argmax_first;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, deser::Serialize)]
 pub struct PartitionMarginalDiscrete {
   pub(crate) inputs: DenseInputs,
   pub(crate) states: DiscreteStates,
+  #[deser(as = BTreeMap<_, Array2Rows>)]
   pub(crate) obs_leaves: BTreeMap<GraphNodeKey, Array2<f64>>,
 }
 

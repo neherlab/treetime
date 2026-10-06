@@ -144,7 +144,7 @@ fn apply_root_at_edge(
   })
 }
 
-#[derive(Debug, Clone, Copy, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, SmartDefault, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct RerootTopologyParams {
   #[default = true]
   pub(crate) split_edge: bool,

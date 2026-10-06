@@ -48,7 +48,7 @@ pub(crate) fn compute_performance_metrics(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct PerformanceMetrics {
   signal_to_noise_ratio: f64,
   normalized_rmse: f64,

@@ -9,7 +9,6 @@ use app_commands::app_settings::settings::{AnalysisSettings, AppSettings, UiSett
 use app_commands::app_settings::workspace::{active_workspace, prepare_workspace};
 use app_commands::examples_download::ExamplesDownloadStatus;
 use app_commands::runs::record::SaveRunRequest;
-use axum::Json;
 use axum::extract::State;
 use eyre::Report;
 use std::sync::Arc;
@@ -88,41 +87,41 @@ pub(crate) fn app_settings_routes() -> ApiRouter<Arc<AppState>> {
     )
 }
 
-async fn app_settings(State(state): State<Arc<AppState>>) -> Result<Json<AppSettings>, AppError> {
-  blocking(&state, |local| local.store.read()).await.map(Json)
+async fn app_settings(State(state): State<Arc<AppState>>) -> Result<ApiJson<AppSettings>, AppError> {
+  blocking(&state, |local| local.store.read()).await.map(ApiJson)
 }
 
 async fn app_settings_ui(
   State(state): State<Arc<AppState>>,
   ApiJson(ui): ApiJson<UiSettings>,
-) -> Result<Json<UiSettings>, AppError> {
+) -> Result<ApiJson<UiSettings>, AppError> {
   blocking(&state, move |local| {
     Ok(local.store.update(|settings| settings.ui = ui)?.ui)
   })
   .await
-  .map(Json)
+  .map(ApiJson)
 }
 
 async fn app_settings_analysis(
   State(state): State<Arc<AppState>>,
   ApiJson(analysis): ApiJson<AnalysisSettings>,
-) -> Result<Json<AnalysisSettings>, AppError> {
+) -> Result<ApiJson<AnalysisSettings>, AppError> {
   blocking(&state, move |local| {
     Ok(local.store.update(|settings| settings.analysis = analysis)?.analysis)
   })
   .await
-  .map(Json)
+  .map(ApiJson)
 }
 
-async fn workspace(State(state): State<Arc<AppState>>) -> Result<Json<Workspace>, AppError> {
+async fn workspace(State(state): State<Arc<AppState>>) -> Result<ApiJson<Workspace>, AppError> {
   let local = local_settings(&state)?;
-  Ok(Json(active_workspace(&local.paths, local.runs_error.as_deref())))
+  Ok(ApiJson(active_workspace(&local.paths, local.runs_error.as_deref())))
 }
 
 async fn workspace_update(
   State(state): State<Arc<AppState>>,
   ApiJson(WorkspaceUpdate { path }): ApiJson<WorkspaceUpdate>,
-) -> Result<Json<AppSettings>, AppError> {
+) -> Result<ApiJson<AppSettings>, AppError> {
   blocking(&state, move |local| {
     let runs = path
       .as_deref()
@@ -131,11 +130,11 @@ async fn workspace_update(
     local.store.update(|settings| settings.paths.runs = runs)
   })
   .await
-  .map(Json)
+  .map(ApiJson)
 }
 
-async fn examples_download(State(state): State<Arc<AppState>>) -> Result<Json<ExamplesDownloadStatus>, AppError> {
-  Ok(Json(local_settings(&state)?.examples.status()))
+async fn examples_download(State(state): State<Arc<AppState>>) -> Result<ApiJson<ExamplesDownloadStatus>, AppError> {
+  Ok(ApiJson(local_settings(&state)?.examples.status()))
 }
 
 async fn examples_download_start(

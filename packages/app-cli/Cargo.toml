@@ -34,6 +34,9 @@ clap_complete_fig = { workspace = true }
 comfy-table = { workspace = true }
 crossterm = { workspace = true }
 ctor = { workspace = true }
+deser = { workspace = true }
+deser-serde = { workspace = true }
+deser-value = { workspace = true }
 eyre = { workspace = true }
 indicatif = { workspace = true }
 indoc = { workspace = true }

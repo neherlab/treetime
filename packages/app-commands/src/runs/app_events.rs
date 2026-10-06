@@ -34,7 +34,7 @@ pub fn resync_stale_paths() -> Vec<StalePath> {
 }
 
 /// Change of the app's runs, sent on the app-wide event stream.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct AppEvent {
   /// Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
   /// restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
@@ -46,11 +46,12 @@ pub struct AppEvent {
   /// REST paths whose answers the change made stale.
   pub stale: Vec<StalePath>,
   #[serde(flatten)]
+  #[deser(flatten)]
   pub change: AppChange,
 }
 
 /// REST path whose answers a change made stale.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct StalePath {
   /// Path of the API, without query string.
   pub path: String,
@@ -75,8 +76,11 @@ impl StalePath {
 }
 
 /// Which answers a stale path covers.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum StaleScope {
   /// The answers of the path itself, for every query string and request body, and none below it: `/api/runs` covers
   /// the run list but not `/api/runs/abc`.
@@ -86,8 +90,9 @@ pub enum StaleScope {
 }
 
 /// What changed.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, IntoStaticStr)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, IntoStaticStr, deser::Serialize, deser::Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
+#[deser(tag = "kind", rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum AppChange {
   /// A run was created.

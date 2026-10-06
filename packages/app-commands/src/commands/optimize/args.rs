@@ -116,17 +116,21 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "OptimizeConfig")]
 pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
+  #[deser(skip)]
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
@@ -138,10 +142,12 @@ pub struct TreetimeOptimizeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub model_args: ModelArgs,
 
   /// Use dense representation of sequences on the tree
@@ -154,6 +160,7 @@ pub struct TreetimeOptimizeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub output: OutputCoreArgs,
 
   /// Units for divergence values in augur node data JSON output.
@@ -198,6 +205,7 @@ pub struct TreetimeOptimizeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 
   /// Maximum number of iterations
@@ -303,6 +311,7 @@ pub struct TreetimeOptimizeArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
 }
 
@@ -311,9 +320,12 @@ pub struct TreetimeOptimizeArgsRaw {
 /// Only date-free methods are valid here because optimize has no sampling dates.
 /// Date-dependent methods (least-squares, oldest, clock-filter) are available
 /// in the timetree and clock commands.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum OptimizeRerootMethod {
   MinDev,
 }
@@ -331,9 +343,22 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 /// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
 /// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
 /// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Clone,
+  Debug,
+  PartialEq,
+  Eq,
+  SmartDefault,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[schemars(rename = "BranchOptMethod")]
 pub enum BranchOptMethodCli {
   /// Brent's method in $t$ space (derivative-free, bracket-based).
@@ -397,9 +422,24 @@ impl From<BranchOptMethodCli> for BranchOptMethod {
 /// Controls whether marginal reconstruction estimates initial branch lengths
 /// from substitutions divided by effective alignment length. Preserving valid
 /// input lengths can provide a better Newton starting point.
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Copy,
+  Debug,
+  Clone,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Default,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[schemars(rename = "InitialGuessMode")]
 pub enum InitialGuessModeCli {
   /// Estimate only edges with missing or invalid branch lengths, preserve

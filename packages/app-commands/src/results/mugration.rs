@@ -11,7 +11,8 @@ pub const UNCERTAIN_STATE_PROBABILITY: f64 = 0.8;
 
 /// Results of a `mugration` run.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct MugrationResults {
   /// The reconstructed attribute.
   pub attribute: String,
@@ -30,7 +31,7 @@ pub struct MugrationResults {
 }
 
 /// A change of state along branches.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct StateChange {
   /// State of the parent.
   pub from: String,
@@ -41,7 +42,7 @@ pub struct StateChange {
 }
 
 /// Most probable state of an ancestor.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct AncestorState {
   /// Name of the ancestor.
   pub name: String,

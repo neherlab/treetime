@@ -1,6 +1,6 @@
 use app_output::output_plan::OutputSelection;
+use deser_value::Value;
 use eyre::Report;
-use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf, is_separator};
@@ -230,7 +230,7 @@ fn select_cds_features(
 
 fn gff_cds_to_annotation(feature: &GffCdsFeature) -> AugurNodeDataJsonAnnotationEntry {
   let mut other = BTreeMap::new();
-  other.insert("seqid".to_owned(), json!(feature.seqid));
+  other.insert("seqid".to_owned(), Value::from(feature.seqid.as_str()));
 
   if feature.segments.len() == 1 {
     let seg = &feature.segments[0];

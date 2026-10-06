@@ -1,5 +1,7 @@
 use crate::no_null::NoNull;
 use crate::{ErrorResponse, ProgressEvent, VersionInfo};
+use deser::adapters::As;
+use deser_serde::Serde;
 use eyre::Report;
 use log::info;
 use schemars::JsonSchema;
@@ -40,9 +42,10 @@ pub fn generate_schema(format: &TreetimeSchemaFormat, output: Option<&PathBuf>) 
   Ok(())
 }
 
-#[derive(Debug, Clone, Default, EnumIter, serde::Serialize)]
+#[derive(Debug, Clone, Default, EnumIter, serde::Serialize, deser::Serialize)]
 #[cfg_attr(feature = "clap", derive(ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum TreetimeSchemaFormat {
   #[default]
   All,
@@ -65,7 +68,7 @@ impl TreetimeSchemaFormat {
 fn generate_schema_for<T: JsonSchema>(output: &Path) -> Result<(), Report> {
   let settings = SchemaSettings::draft07().with_transform(NoNull);
   let schema = settings.into_generator().into_root_schema_for::<T>();
-  json_write_file(output, &schema, JsonPretty(true))?;
+  json_write_file(output, &As::<_, Serde>::new(&schema), JsonPretty(true))?;
   if !is_path_stdout(output) {
     info!("Wrote JSON schema to '{}'", output.display());
   }

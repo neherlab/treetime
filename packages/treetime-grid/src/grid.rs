@@ -22,7 +22,7 @@ where
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct Grid<T: InterpElem> {
   x_min: T,
   dx: T,

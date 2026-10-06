@@ -54,7 +54,7 @@ mod tests {
           },
         }),
         json!(["seq", "time", "type", "data"]),
-        json!(["seq", "time", "type", "data"]),
+        json!(["seq", "time", "data", "type"]),
       ),
       (
         schemas["RunEvent"]["discriminator"].clone(),

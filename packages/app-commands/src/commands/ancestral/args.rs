@@ -143,17 +143,21 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(default, deny_unknown_fields)]
+#[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "AncestralConfig")]
 pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(skip)]
+  #[deser(skip)]
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
@@ -171,10 +175,12 @@ pub struct TreetimeAncestralArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub model_args: ModelArgs,
 
   /// Method used for reconstructing ancestral sequences
@@ -190,6 +196,7 @@ pub struct TreetimeAncestralArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
 
   /// Zero-based mutation indexing
@@ -316,6 +323,7 @@ pub struct TreetimeAncestralArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub output: OutputCoreArgs,
 
   /// Comma-separated list of outputs to produce with `--output-all`.
@@ -334,6 +342,7 @@ pub struct TreetimeAncestralArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 
   /// Number of outer GTR refinement iterations.
@@ -357,6 +366,7 @@ pub struct TreetimeAncestralArgsRaw {
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[serde(flatten)]
+  #[deser(flatten)]
   pub seed_args: SeedArgs,
 
   /// Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
@@ -385,9 +395,22 @@ pub struct TreetimeAncestralArgsRaw {
   pub sample_from_profile: SampleModeCli,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault, Serialize, Deserialize, JsonSchema)]
+#[derive(
+  Clone,
+  Copy,
+  Debug,
+  PartialEq,
+  Eq,
+  SmartDefault,
+  Serialize,
+  Deserialize,
+  JsonSchema,
+  deser::Serialize,
+  deser::Deserialize,
+)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 #[schemars(rename = "SampleMode")]
 pub enum SampleModeCli {
   #[default]

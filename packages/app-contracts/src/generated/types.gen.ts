@@ -5084,8 +5084,8 @@ export type RunRecordTimetree = {
    * The error of a failed run.
    */
   error?: RunError;
-  command: 'timetree';
   config: TimetreeConfig;
+  command: 'timetree';
 };
 
 export type RunRecordOptimize = {
@@ -5154,8 +5154,8 @@ export type RunRecordOptimize = {
    * The error of a failed run.
    */
   error?: RunError;
-  command: 'optimize';
   config: OptimizeConfig;
+  command: 'optimize';
 };
 
 export type RunRecordPrune = {
@@ -5224,8 +5224,8 @@ export type RunRecordPrune = {
    * The error of a failed run.
    */
   error?: RunError;
-  command: 'prune';
   config: PruneConfig;
+  command: 'prune';
 };
 
 export type RunRecordAncestral = {
@@ -5294,8 +5294,8 @@ export type RunRecordAncestral = {
    * The error of a failed run.
    */
   error?: RunError;
-  command: 'ancestral';
   config: AncestralConfig;
+  command: 'ancestral';
 };
 
 export type RunRecordHomoplasy = {
@@ -5364,8 +5364,8 @@ export type RunRecordHomoplasy = {
    * The error of a failed run.
    */
   error?: RunError;
-  command: 'homoplasy';
   config: HomoplasyConfig;
+  command: 'homoplasy';
 };
 
 export type RunRecordClock = {
@@ -5434,8 +5434,8 @@ export type RunRecordClock = {
    * The error of a failed run.
    */
   error?: RunError;
-  command: 'clock';
   config: ClockConfig;
+  command: 'clock';
 };
 
 export type RunRecordMugration = {
@@ -5504,8 +5504,8 @@ export type RunRecordMugration = {
    * The error of a failed run.
    */
   error?: RunError;
-  command: 'mugration';
   config: MugrationConfig;
+  command: 'mugration';
 };
 
 export type CommandResultsTimetree = {
@@ -5637,8 +5637,8 @@ export type RunEventStarted = {
    * Time the event was recorded.
    */
   time: string;
-  type: 'started';
   data: JobStarted;
+  type: 'started';
 };
 
 /**
@@ -5653,8 +5653,8 @@ export type RunEventProgress = {
    * Time the event was recorded.
    */
   time: string;
-  type: 'progress';
   data: ProgressEvent;
+  type: 'progress';
 };
 
 /**
@@ -5669,8 +5669,8 @@ export type RunEventLog = {
    * Time the event was recorded.
    */
   time: string;
-  type: 'log';
   data: LogEvent;
+  type: 'log';
 };
 
 /**
@@ -5685,8 +5685,8 @@ export type RunEventIteration = {
    * Time the event was recorded.
    */
   time: string;
-  type: 'iteration';
   data: IterationEvent;
+  type: 'iteration';
 };
 
 /**
@@ -5701,8 +5701,8 @@ export type RunEventTerminal = {
    * Time the event was recorded.
    */
   time: string;
-  type: 'terminal';
   data: TerminalEvent;
+  type: 'terminal';
 };
 
 /**

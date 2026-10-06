@@ -168,8 +168,10 @@ impl ExampleDownloads {
 
 /// Stage of the download of the example datasets.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 #[serde(tag = "state", rename_all = "kebab-case")]
+#[deser(tag = "state", rename_all = "kebab-case")]
 pub enum ExamplesDownload {
   /// No download started since the back end started.
   Idle,
@@ -194,7 +196,8 @@ pub enum ExamplesDownload {
 
 /// The download of the example datasets, with the app event that reported it last.
 #[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[deser(skip_serializing_optionals)]
 pub struct ExamplesDownloadStatus {
   pub download: ExamplesDownload,
   /// Sequence number of the last app event about the download. A client keeps whichever of this answer and the

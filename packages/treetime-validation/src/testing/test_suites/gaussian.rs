@@ -40,9 +40,10 @@ impl ConvolutionTestSuite for GaussianTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct GaussianTestCase {
   #[serde(flatten)]
+  #[deser(flatten)]
   base: TestCaseBase,
   sigma_f: f64,
   sigma_g: f64,

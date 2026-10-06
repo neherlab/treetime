@@ -43,7 +43,10 @@ mod tests {
     pub(super) fn resolve(seed: Option<u64>, random_step: Option<&str>) -> (u64, Vec<String>) {
       let events = Mutex::new(vec![]);
       let log = JobProgress::new(|event: JobEvent| {
-        if let JobEvent::Log(LogEvent { level, message }) = event {
+        if let JobEvent::Log {
+          data: LogEvent { level, message },
+        } = event
+        {
           assert_eq!(LogLevel::Info, level);
           events.lock().push(message);
         }

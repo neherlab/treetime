@@ -158,9 +158,9 @@ impl RunManager {
       Some(run) => run,
       None => Arc::new(ActiveRun::open(&self.store.events_path(id))?),
     };
-    run
-      .events
-      .append(JobEvent::Terminal(TerminalEvent::Cancelled { job_id: id.clone() }))?;
+    run.events.append(JobEvent::Terminal {
+      data: TerminalEvent::Cancelled { job_id: id.clone() },
+    })?;
     self.modify(id, |record| {
       record.status = RunStatus::Cancelled;
       record.finished_at = Some(Utc::now());
@@ -327,7 +327,7 @@ impl RunManager {
 }
 
 /// A file uploaded into a run's `inputs/` folder.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
 pub struct UploadedInput {
   /// File name inside the run's `inputs/` folder.
   pub name: String,
@@ -366,10 +366,12 @@ impl StartedRun {
         error!("When recording an event of run {}: {err:#}", id.as_str());
       }
     };
-    emit(JobEvent::Started(JobStarted {
-      job_id: id.clone(),
-      command,
-    }));
+    emit(JobEvent::Started {
+      data: JobStarted {
+        job_id: id.clone(),
+        command,
+      },
+    });
     let progress = JobProgress::new(emit);
     let log = WarningCollector::new(&progress);
     let clock = Instant::now();
@@ -424,7 +426,7 @@ impl StartedRun {
     if let Err(err) = finished {
       error!("When recording the end of run {}: {err:#}", id.as_str());
     }
-    emit(JobEvent::Terminal(terminal.clone()));
+    emit(JobEvent::Terminal { data: terminal.clone() });
     manager.finish(&id);
     terminal
   }

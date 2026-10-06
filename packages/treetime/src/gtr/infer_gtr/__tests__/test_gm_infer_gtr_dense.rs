@@ -91,25 +91,25 @@ mod tests {
 
   const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/gtr/infer_gtr/__tests__/__fixtures__");
 
-  #[derive(Debug, Deserialize)]
+  #[derive(Debug, Deserialize, deser::Deserialize)]
   struct Inputs {
     synthetic: BTreeMap<String, SyntheticCase>,
     real: BTreeMap<String, RealCase>,
   }
 
-  #[derive(Debug, Deserialize)]
+  #[derive(Debug, Deserialize, deser::Deserialize)]
   struct SyntheticCase {
     tree: String,
     alignment: BTreeMap<String, String>,
   }
 
-  #[derive(Debug, Deserialize)]
+  #[derive(Debug, Deserialize, deser::Deserialize)]
   struct RealCase {
     tree_path: String,
     alignment_path: String,
   }
 
-  #[derive(Debug, Deserialize)]
+  #[derive(Debug, Deserialize, deser::Deserialize)]
   struct Outputs {
     synthetic: BTreeMap<String, InferGtrResult>,
     real: BTreeMap<String, InferGtrResult>,

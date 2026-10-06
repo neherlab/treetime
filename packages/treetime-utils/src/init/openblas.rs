@@ -53,7 +53,7 @@ pub fn get_openblas_info() -> OpenBlasInfo {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct OpenBlasInfo {
   pub config: Option<String>,
   pub core_name: Option<String>,
@@ -62,8 +62,9 @@ pub struct OpenBlasInfo {
   pub num_procs: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
 pub enum ParallelMode {
   Sequential,
   ParallelPlatform,

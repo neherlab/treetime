@@ -31,7 +31,7 @@ pub(crate) fn compute_peak_metrics(
   })
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, deser::Serialize, deser::Deserialize)]
 pub struct PeakMetrics {
   pub(crate) value_error: f64,
   pub(crate) location_error: f64,
