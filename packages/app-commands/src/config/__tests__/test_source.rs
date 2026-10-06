@@ -9,7 +9,7 @@ mod tests {
   #[test]
   fn test_source_parse_rejects_duplicate_mapping_key() {
     assert_eq!(
-      "invalid configuration: could not parse config: error: line 2 column 1: duplicate mapping key: a, set DuplicateKeyPolicy in Options if acceptable",
+      "invalid configuration: could not parse config: Unexpected: duplicate map key \"a\" at line 2 column 1 (path: a)",
       parse_error_headline("a: 1\na: 2\n")
     );
   }
@@ -17,7 +17,7 @@ mod tests {
   #[test]
   fn test_source_parse_rejects_infinity() {
     assert_eq!(
-      "invalid configuration: could not parse config: error: line 1 column 4: non-finite float `.inf` rejected by reject_non_finite_typeless_float",
+      "invalid configuration: could not parse config: the number inf has no JSON representation at line 1 column 4",
       parse_error_headline("x: .inf\n")
     );
   }
@@ -25,7 +25,7 @@ mod tests {
   #[test]
   fn test_source_parse_rejects_nan() {
     assert_eq!(
-      "invalid configuration: could not parse config: error: line 1 column 4: non-finite float `.nan` rejected by reject_non_finite_typeless_float",
+      "invalid configuration: could not parse config: the number NaN has no JSON representation at line 1 column 4",
       parse_error_headline("x: .nan\n")
     );
   }
@@ -34,6 +34,12 @@ mod tests {
   fn test_source_parse_yaml11_booleans_no_and_on() {
     let value = parse("first: no\nsecond: on\n").unwrap();
     assert_eq!(json!({ "first": false, "second": true }), value);
+  }
+
+  #[test]
+  fn test_source_parse_keeps_quoted_boolean_words_as_text() {
+    let value = parse("first: \"no\"\nsecond: 'on'\n").unwrap();
+    assert_eq!(json!({ "first": "no", "second": "on" }), value);
   }
 
   #[test]

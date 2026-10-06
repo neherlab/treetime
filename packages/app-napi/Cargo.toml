@@ -39,7 +39,6 @@ napi-build = { workspace = true }
 [dev-dependencies]
 app-output = { workspace = true }
 ctor = { workspace = true }
-indoc = { workspace = true }
 parking_lot = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }

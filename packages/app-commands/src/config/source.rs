@@ -1,4 +1,4 @@
-use crate::yaml::yaml_read_str;
+use crate::yaml::yaml_value_read_str;
 use bon::bon;
 use color_eyre::Section;
 use eyre::Report;
@@ -14,7 +14,7 @@ use std::fmt::Display;
 use treetime_utils::make_report;
 
 pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
-  match yaml_read_str::<Value>(text) {
+  match yaml_value_read_str(text) {
     Ok(value) => Ok(value),
     Err(err) => {
       render_and_bail(

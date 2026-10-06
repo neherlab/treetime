@@ -278,7 +278,7 @@ pub(crate) mod tests {
     };
     assert_eq!(
       (
-        "invalid configuration: could not parse config: error: line 2 column 1: duplicate mapping key: tree, set DuplicateKeyPolicy in Options if acceptable",
+        "invalid configuration: could not parse config: Unexpected: duplicate map key \"tree\" at line 2 column 1 (path: tree)",
         vec!["config::syntax".to_owned()]
       ),
       (

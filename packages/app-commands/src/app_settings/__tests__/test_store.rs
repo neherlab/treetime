@@ -154,12 +154,8 @@ mod tests {
     let dir = tempdir().unwrap();
     let path = dir.path().join(SETTINGS_YAML);
     fs::write(&path, "theme: dark\n").unwrap();
-    let expected = indoc! {"
-      error: line 1 column 1: unknown field `theme`, expected one of paths, ui, analysis
-       --> <input>:1:1
-        |
-      1 | theme: dark
-        | ^ unknown field `theme`, expected one of paths, ui, analysis"};
+    let expected =
+      "Unexpected: unknown field `theme`, expected one of `paths`, `ui`, `analysis` at line 1 column 1 (path: theme)";
     assert_error!(
       AppSettingsStore::open(dir.path()).unwrap().read(),
       format!("When reading the settings file '{}': {expected}", path.display())
@@ -171,16 +167,7 @@ mod tests {
     let dir = tempdir().unwrap();
     let path = dir.path().join(SETTINGS_YAML);
     fs::write(&path, "ui:\n  theme: dark\nui:\n  theme: light\n").unwrap();
-    let expected = indoc! {"
-      error: line 3 column 1: duplicate mapping key: ui, set DuplicateKeyPolicy in Options if acceptable
-       --> <input>:3:1
-        |
-      1 | ui:
-      2 |   theme: dark
-      3 | ui:
-        | ^ duplicate mapping key: ui, set DuplicateKeyPolicy in Options if acceptable
-      4 |   theme: light
-        |"};
+    let expected = "Unexpected: duplicate field `ui` at line 4 column 3 (path: ui)";
     assert_error!(
       AppSettingsStore::open(dir.path()).unwrap().read(),
       format!("When reading the settings file '{}': {expected}", path.display())

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::yaml::yaml_document;
+  use crate::yaml::{yaml_document, yaml_value_read_str};
   use generators::json_value;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -38,7 +38,7 @@ mod tests {
   #[trace]
   fn test_yaml_document_reads_back_keys_that_look_like_other_scalars(#[case] value: Value) {
     let text = yaml_document(&value).unwrap();
-    let actual: Value = serde_saphyr::from_str(&text).unwrap();
+    let actual = yaml_value_read_str(&text).unwrap();
     assert_eq!(value, actual);
   }
 
@@ -46,7 +46,7 @@ mod tests {
     #[test]
     fn test_prop_yaml_document_roundtrip(value in json_value()) {
       let text = yaml_document(&value).unwrap();
-      let actual: Value = serde_saphyr::from_str(&text).unwrap();
+      let actual = yaml_value_read_str(&text).unwrap();
       prop_assert_eq!(value, actual);
     }
   }

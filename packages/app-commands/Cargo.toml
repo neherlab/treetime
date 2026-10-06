@@ -32,8 +32,10 @@ clap = { workspace = true, optional = true }
 color-eyre = { workspace = true }
 derive_more = { workspace = true }
 deser = { workspace = true }
+deser-path = { workspace = true }
 deser-serde = { workspace = true }
 deser-value = { workspace = true }
+deser-yaml = { workspace = true }
 dirs = { workspace = true }
 eyre = { workspace = true }
 image = { workspace = true, optional = true }
@@ -50,7 +52,6 @@ rustls = { workspace = true }
 saphyr = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
-serde-saphyr = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 sha2 = { workspace = true }

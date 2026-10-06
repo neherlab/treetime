@@ -10,7 +10,6 @@ mod tests {
     Ended, ancestral_request, archive_contents, event_ids, fetch, fetch_bytes, fetch_json, fetch_json_in, header,
     open_fetch, wait_for_terminal,
   };
-  use indoc::indoc;
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
@@ -550,12 +549,7 @@ mod tests {
     let root = tempdir().unwrap();
     let file = root.path().join("settings.yaml");
     fs::write(&file, "paths: [1]\n").unwrap();
-    let expected = indoc! {"
-      error: line 1 column 8: expected mapping start
-       --> <input>:1:8
-        |
-      1 | paths: [1]
-        |        ^ expected mapping start"};
+    let expected = "Unexpected: unexpected sequence, expected AppPathSettings at line 1 column 8 (path: paths)";
     assert_error!(
       DesktopService::open(root.path(), &AppFolderEnv::default()),
       format!("When reading the settings file '{}': {expected}", file.display())
