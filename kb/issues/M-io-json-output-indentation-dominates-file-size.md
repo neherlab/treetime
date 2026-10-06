@@ -18,7 +18,9 @@ The mean indentation in the Auspice JSON of `sc2/4500` is 332 spaces per line.
 - **Writing**: `json_write_file()` writes the `mpox/clade-ii/500` Auspice tree with 5.9 billion CPU instructions indented and 0.66 billion without indentation (about 0.6 s and 0.06 s in the `profiling` profile). The pretty printer writes the indentation as one 2-byte `write_all()` per nesting level. `FileWriter` in `packages/treetime-utils/src/io/file.rs` implements only `write()`, so each piece goes through the default `write_all()` loop and a call to `BufWriter::write()`; a plain `BufWriter<File>` writes the same indented file with 3.4 billion instructions
 - **Disk and transfer**: the run folders of the apps and the downloads of their outputs carry the whitespace
 
-augur `export v2` writes without indentation when the JSON without indentation is larger than 5 MB, since augur 24.0.0 (nextstrain/augur#1352); `--minify-json` and `--no-minify-json` override the threshold (`write_json()` in `augur/io/json.py`). Auspice reads both forms.
+augur `export v2` writes without indentation when the indented JSON would be larger than 5 MB, since augur 24.0.0 (nextstrain/augur#1352); `--minify-json` and `--no-minify-json` override the threshold. augur does not know the size in advance: `json_size()` in `augur/io/json.py` serializes the data once with indentation into a stream that only counts bytes, and `write_json()` then serializes it again into the file. The threshold applies to the indented size, so a deep tree that is small without indentation is still written without indentation. Auspice reads both forms.
+
+The same counting pass in Rust, `serde_json::to_writer()` into a `Write` that only adds up the buffer lengths, costs 0.14 billion instructions for the `mpox/clade-ii/500` Auspice tree in the `profiling` profile, the same for the indented and the compact form, against 0.66 billion for writing the compact file and 5.9 billion for writing the indented file.
 
 A change of the format changes every affected JSON output byte for byte, so the smoke baseline and the JSON reference fixtures change with it.
 
@@ -26,7 +28,7 @@ A change of the format changes every affected JSON output byte for byte, so the 
 > **Decision required.** Options for the JSON output files:
 >
 > - **No indentation for all JSON outputs**: smallest files and fastest reads and writes; the files are harder to read without a formatter such as `jq`
-> - **No indentation above a size threshold**: the augur rule (5 MB), so small outputs stay readable; the format of a file then depends on its size
+> - **No indentation above a size threshold**: the augur rule (indented size above 5 MB), so small outputs stay readable; it needs a counting pass before each write, and the format of an output then depends on the size of the dataset
 > - **No indentation for tree files only**: Auspice JSON and the other files whose size grows with the tree depth; the statistics file keeps its indentation and stays about 2 times larger than needed
 > - **Keep the indentation**: the costs above remain; a narrower indentation unit only shrinks the files by a constant factor
 >
