@@ -22,7 +22,7 @@ pub fn write_graph_outputs(
 ) -> Result<(), Report> {
   for (kind, path) in outputs {
     match kind {
-      TreeWriteKind::GraphJson => json_write_file(path, graph.graph, JsonPretty(true))?,
+      TreeWriteKind::GraphJson => json_write_file(path, graph.graph, JsonPretty(false))?,
       TreeWriteKind::Dot => graphviz_write_file(path, graph.graph, graph.names, graph.divergence_branch_lengths)?,
       TreeWriteKind::Nwk(_)
       | TreeWriteKind::Nexus(_)
@@ -93,7 +93,7 @@ fn write_tree_formats(
       TreeWriteKind::Auspice => json_write_file(
         path,
         &auspice_tree(tree, command, &generation_date())?,
-        JsonPretty(true),
+        JsonPretty(false),
       )?,
       TreeWriteKind::MatPb | TreeWriteKind::MatJson | TreeWriteKind::GraphJson | TreeWriteKind::Dot => {},
     }
@@ -141,7 +141,7 @@ fn write_mat_outputs(
     usher_mat_pb_write_file(path, &mat.tree)?;
   }
   if let Some(path) = json_path {
-    json_write_file(path, &mat.tree, JsonPretty(true))?;
+    json_write_file(path, &mat.tree, JsonPretty(false))?;
   }
   Ok(())
 }

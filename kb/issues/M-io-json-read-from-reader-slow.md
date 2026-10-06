@@ -1,6 +1,6 @@
 # JSON files are read through a slow streaming parser
 
-`json_read_file()` in `packages/treetime-utils/src/io/json.rs` parses JSON with `serde_json::Deserializer::from_reader()` over the `Box<dyn BufRead>` that `read_file_with()` passes to it. This reader does a large amount of work for each input byte, and the output files that the apps read are large because they are indented ([M-io-json-output-indentation-dominates-file-size.md](M-io-json-output-indentation-dominates-file-size.md)). On the dev server, the results page of a `homoplasy` run of `sc2/4500` waits 15.0 s for `GET /api/runs/{id}/results`, then 4.3 s for `GET /api/runs/{id}/auspice`. A perf profile of the server during the first request attributes at least 70% of the samples to parsing the statistics file with the stream reader.
+`json_read_file()` in `packages/treetime-utils/src/io/json.rs` parses JSON with `serde_json::Deserializer::from_reader()` over the `Box<dyn BufRead>` that `read_file_with()` passes to it. This reader does a large amount of work for each input byte, including every byte of whitespace. Tree JSON outputs are written without indentation ([kb/decisions/io-tree-json-outputs-without-indentation.md](../decisions/io-tree-json-outputs-without-indentation.md)), but the other JSON outputs are indented, and JSON files from other tools can have any layout. On the dev server, the results page of a `homoplasy` run of `sc2/4500` waits 15.0 s for `GET /api/runs/{id}/results`, then 4.3 s for `GET /api/runs/{id}/auspice`. A perf profile of the server during the first request attributes at least 70% of the samples to parsing the statistics file with the stream reader.
 
 ## Cause
 
@@ -62,7 +62,7 @@ A serde_json build with the opt-in `BufferedIoRead` of serde-rs/json#1294, which
 
 ## Fix direction
 
-The largest change is outside the reader: compact output files and a statistics file without the ranked list of ambiguous changes reduce the bytes to parse by 10 to 37 times ([M-io-json-output-indentation-dominates-file-size.md](M-io-json-output-indentation-dominates-file-size.md), [N-homoplasy-stats-json-size.md](N-homoplasy-stats-json-size.md)). With those, the current reader takes 0.4 s instead of 9.8 s for the `sc2/4500` statistics in the dev profile.
+Tree outputs without indentation reduce the bytes to parse by 10 to 37 times. A statistics file without the ranked list of ambiguous changes and without whitespace would take 0.4 s instead of 9.8 s to read for `sc2/4500` in the dev profile ([N-homoplasy-stats-json-size.md](N-homoplasy-stats-json-size.md)). Files that users supply, or that other tools write, can still be indented and large, so the reader options below apply to every input.
 
 > [!IMPORTANT]
 > **Decision required.** Options for the reader, alone or combined:
