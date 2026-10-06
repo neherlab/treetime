@@ -1,6 +1,6 @@
 # Multi-format tree I/O
 
-v0 reads trees from Newick and Nexus (via `Bio.Phylo.read()` in [packages/legacy/treetime/treetime/treeanc.py#L328-L332](../../packages/legacy/treetime/treetime/treeanc.py#L328-L332)) and writes Newick, Nexus, and a basic Auspice JSON ([packages/legacy/treetime/treetime/CLI_io.py#L211-L226](../../packages/legacy/treetime/treetime/CLI_io.py#L211-L226)). v1 reads Newick and writes Newick in three comment styles, Nexus, Auspice v2 JSON, UShER MAT (protobuf and JSON), a graph JSON and Graphviz DOT. Every writer reads one struct of per-node facts. Parsers for Nexus, UShER MAT and PhyloXML exist as library crates, and no command reads these formats yet.
+v0 reads trees from Newick and Nexus (via `Bio.Phylo.read()` in [packages/legacy/treetime/treetime/treeanc.py#L328-L332](../../packages/legacy/treetime/treetime/treeanc.py#L328-L332)) and writes Newick, Nexus, and a basic Auspice JSON ([packages/legacy/treetime/treetime/CLI_io.py#L211-L226](../../packages/legacy/treetime/treetime/CLI_io.py#L211-L226)). v1 reads Newick and Nexus, and writes Newick in three comment styles, Nexus, Auspice v2 JSON, UShER MAT (protobuf and JSON), a graph JSON and Graphviz DOT. Every writer reads one struct of per-node facts. Parsers for UShER MAT and PhyloXML exist as library crates, and no command reads these formats yet.
 
 The motivation is interoperability with the phylogenetics tool landscape. TreeTime sits at the center of multiple workflows: it receives trees from phylogenetic inference tools (IQ-TREE, RAxML, FastTree) and produces timed trees consumed by downstream visualization and surveillance systems. Each of these systems has its own format:
 
@@ -42,21 +42,20 @@ These extensions all reuse the comment mechanism `[...]` with different internal
 
 ### v1 implementation
 
-The `util-newick` crate reads Newick in two steps (`fn newick_from_reader()` in [packages/util-newick/src/parse.rs](../../packages/util-newick/src/parse.rs)). A flat `pest` grammar splits the input into tokens (`(`, `)`, `,`, `:` with a branch length, label, comment), and a loop builds the graph with an explicit stack of open parentheses. Neither step calls itself once per nesting level, so the depth of a tree is limited by memory, not by the thread stack: a ladder tree 100,000 levels deep reads on a 2 MiB stack. Nested `[` inside a comment are counted on the stack of the `pest` grammar (`PUSH`/`DROP`), which is also not recursive.
+The `util-newick` crate ([packages/util-newick/README.md](../../packages/util-newick/README.md)) reads and writes six Newick dialects: classic Newick, BEAST (also FigTree, TreeAnnotator, MrBayes consensus and IQ-TREE annotations), MrBayes sampling comments, NHX, eNewick and Rich Newick. A `pest` grammar ([packages/util-newick/src/newick.pest](../../packages/util-newick/src/newick.pest)) defines the syntax of every dialect, including where each label, colon field and comment of a node may stand. The Rust code builds the nesting of parentheses and of BEAST arrays with explicit stacks, so the depth of a tree is limited by memory, not by the thread stack: a ladder tree 100,000 levels deep and an array nested 100,000 levels deep read and write on a 2 MiB stack.
 
-The reader accepts every input that v0 (Biopython) accepts in the cases below, and errors name the line and column:
+The library takes the dialects as an option, so each caller decides what a label such as `EPI_ISL#402124` means:
 
-- A missing final `;`, branch lengths such as `.5` and `+1`, a byte order mark, and comments between any two tokens, including before the first `(` and after the rooting comment `[&R]`. Comments after the final `;` are ignored; any other text after it is an error, as in v0
-- A comment before `:` belongs to the node, and a comment after `:` belongs to the branch, also for unnamed nodes. `A:[&rate=1.5]` is a branch annotation without a branch length
-- Inside comments, text in double quotes may contain `[`, `]` and `;`, so BEAST values such as `[&a="x]y"]` read correctly (v0 ends the comment at the first `]`). A single `"` in a free-text comment pairs with the next `"` in the file
-- A numeric label on an internal node is read as a branch support value, not as a name, also when it is quoted (as in v0)
-- A label is a plain name, also when it ends in `#` and digits, as in v0. eNewick hybrid nodes are read only when `NewickReadOptions::enewick` is set; the commands do not set it, so `EPI_ISL#402124` stays one sample name. With the option, a quoted label is never a hybrid node, and a quoted name takes its hybrid tag after the closing quote (`'x y'#H1`). Two occurrences of a hybrid node with different labels or with children in both, two edges between the same nodes, and cycles are errors
+- **Dialect selection**: the reader takes an ordered list of dialects, by default classic Newick only, and returns the first dialect whose grammar reads the tree and whose mapping to the graph succeeds; any failure, also a broken network, moves on to the next dialect. `NewickDialect::ALL` lists the six dialects from the most specific to the least specific (Rich, eNewick, NHX, MrBayes, BEAST, classic), because a less specific dialect also reads richer input and keeps its annotations only as text. The writer takes exactly one dialect, by default classic Newick
+- **Strict and tolerant modes**: strict mode, the default, rejects a byte order mark, a missing final `;`, malformed annotations and NHX values that do not fit their tag type. Tolerant mode accepts them and returns a warning with the line and column; it tries every dialect in strict form before any dialect in tolerant form
+- **Hybrid tags**: only the eNewick and Rich Newick dialects read a tag at the end of an unquoted label as a hybrid node, decided by the label alone. A quoted name takes its tag after the closing quote (`'x y'#H1`). Two copies of a hybrid node with different names or with children in both, two edges between the same nodes, and cycles are errors
+- **Support**: a label of an internal node made of numbers separated by `/` (`95`, `80.5/95`) is the support of the branch above it, and the edge stores it. A quoted label is always a name. A Rich Newick support field is stored on the edge as well, with its source, so it is written back where it was read
+- **Comments**: every comment keeps its kind, its position (before or after the label, before or after the value of a colon field) and its order; BEAST and NHX annotations keep repeated keys. An unquoted number is kept as a `Number` when its text is the shortest form of its value and as `NumberText` with its original text otherwise (`0123`, `2020.50`, `1e5`), so writing it again gives the same text
+- **Lossless writing**: a write followed by a read in the same dialect gives an equal graph. The root branch length is kept. Data that the chosen dialect cannot hold is dropped by one documented table of conversions (for example BEAST annotations in classic Newick), except hybrid nodes, which are an error in dialects without hybrid tags
 
-BEAST and NHX comments are kept as node and branch attributes (`fn classify_comment()` in [packages/util-newick/src/annotation.rs](../../packages/util-newick/src/annotation.rs)). Values in single or double quotes may contain commas. An unquoted number is kept as a `Number` when its text is the shortest form of its value and as `NumberText` with its original text otherwise (`0123`, `2020.50`, `1e5`), so writing it again gives the same text.
+TreeTime reads every input tree (`fn tree_read()` in [packages/treetime-io/src/tree.rs](../../packages/treetime-io/src/tree.rs)) with the dialects BEAST, NHX, MrBayes and classic Newick in tolerant mode. The commands therefore keep accepting a missing final `;` and a byte order mark, read annotated outputs of other tools, and keep `#` as part of sample names such as `EPI_ISL#402124`; warnings are logged. A file that starts with `#NEXUS` is read as Nexus, any other file as Newick. `fn graph_from_newick()` in [packages/treetime-io/src/nwk.rs](../../packages/treetime-io/src/nwk.rs) builds the graph, the node names and the branch lengths; it does not use support values ([kb/issues/M-io-branch-support-dropped-from-outputs.md](../issues/M-io-branch-support-dropped-from-outputs.md)).
 
-`fn tree_read()` in [packages/treetime-io/src/tree.rs](../../packages/treetime-io/src/tree.rs) reads the tree input of every command: a file that starts with `#NEXUS` is read as Nexus, any other file as Newick. `fn nwk_read()` in [packages/treetime-io/src/nwk.rs](../../packages/treetime-io/src/nwk.rs) builds the graph and the node names from the parse.
-
-`fn nwk_write()` in the same file writes a checked rooted tree (`TreeView`), the node names, the branch lengths and an ordered list of `(key, value)` comments per node in one of three styles, selected with `--output-nwk-style`: `plain` (no comments, the default), `beast` (`[&key=value]`, strings in double quotes) and `nhx` (`[&&NHX:key=value]`). `fn nwk_node_comments()` in [packages/app-output/src/nwk_comments.rs](../../packages/app-output/src/nwk_comments.rs) builds the comments from the facts that the run has, in v0 order: branch mutations, then the date with two decimals, then the trait value. With more than one style, the files get the secondary extensions `.annotated` (beast) and `.nhx`.
+`fn nwk_write()` in the same file converts a checked rooted tree (`TreeView`), the node names, the branch lengths and an ordered list of `(key, value)` comments per node into a `NewickGraph` and writes it with `util-newick`, which is the only Newick and Nexus writer. `--output-nwk-style` selects the dialect: `plain` (classic Newick, no comments, the default), `beast` (`[&key=value]`, strings in double quotes) and `nhx` (`[&&NHX:key=value]`). Branch lengths are written with 3 significant digits. `fn nwk_node_comments()` in [packages/app-output/src/nwk_comments.rs](../../packages/app-output/src/nwk_comments.rs) builds the comments from the facts that the run has, in v0 order: branch mutations, then the date with two decimals, then the trait value. With more than one style, the files get the secondary extensions `.annotated` (beast) and `.nhx`.
 
 Newick is the tree input format of every command (ancestral, clock, timetree, optimize, prune, mugration, homoplasy) and a tree output of every command.
 
@@ -68,11 +67,16 @@ PAUP\*, MrBayes, Mesquite, MacClade, SplitsTree, BEAST, IQ-TREE all support Nexu
 
 ### v1 implementation
 
-`fn nex_write()` in [packages/treetime-io/src/nex.rs](../../packages/treetime-io/src/nex.rs) wraps the Newick text, in the same comment style, in a `#NEXUS` header with a `Taxa` block and a `Trees` block. `TaxLabels` lists the named leaves, and `NTax` counts the labels written. Every command writes `.nexus` output alongside `.nwk`.
+`fn nex_write()` in [packages/treetime-io/src/nex.rs](../../packages/treetime-io/src/nex.rs) writes the tree with the Nexus writer of `util-newick`, in the same dialect as the Newick output, in a `#NEXUS` file with a `Taxa` block and a `Trees` block. `TaxLabels` lists each named leaf once, and labels are quoted by the Nexus rules, which also treat `{ } / \ = * " ` + - < >` as punctuation (`'hCoV-19/USA/1'`). Every command writes `.nexus` output alongside `.nwk`.
 
-Every command reads a Nexus tree file through `fn tree_read()` in [packages/treetime-io/src/tree.rs](../../packages/treetime-io/src/tree.rs). The file must contain exactly one tree, as `Bio.Phylo.read()` requires in v0; a file with several trees, for example a BEAST posterior sample, is an error that names the number of trees. v0 tries Newick first and reads Nexus only when Newick fails and the file extension is `.nexus` or `.nex`; v1 selects the reader by the `#NEXUS` header instead, so a Nexus file is read whatever its extension.
+The Nexus reader of `util-newick` (`fn nexus_trees()` in [packages/util-newick/src/nexus/read.rs](../../packages/util-newick/src/nexus/read.rs)) reads a file command by command with the grammar [packages/util-newick/src/nexus.pest](../../packages/util-newick/src/nexus.pest), and reads each tree with the dialect selection of the Newick reader:
 
-The Nexus parser (`fn nexus_from_string()` in [packages/util-newick/src/nexus.rs](../../packages/util-newick/src/nexus.rs)) is a `pest` grammar over blocks and commands that skips comments and quoted text when it looks for keywords and `;`. It reads `Translate` tables per `Trees` block, `Tree` and `UTree` commands with an optional `*`, comments between the tree name and `=` (BEAST 1 writes `tree STATE_0 [&lnP=...] = ...`), quoted tree names, and `End;` or `EndBlock;`. Other blocks and commands are skipped. A block without its end, or a command without its `;`, is an error.
+- **Trees blocks**: `Tree` and `UTree` commands with an optional `*`, quoted tree names, comments between the tree name and `=` (BEAST 1 writes `tree STATE_0 [&lnP=...] = ...`), `Translate` tables per block, and `PROPERTIES rooted=yes|no` for the following trees of the block
+- **Taxa blocks**: `TaxLabels` and `Dimensions NTax`. When a taxon set is declared, a leaf label must be a taxon label, a `Translate` key or a taxon number
+- **Other blocks and commands** are skipped and returned with their block and line
+- Strict mode rejects a tree or `Translate` command that does not follow its syntax, an unknown leaf label, a command outside a block, a block without its end and a command without its `;`. Tolerant mode accepts them with a warning, and also reads unquoted names with spaces (`tree my tree = ...`)
+
+Every command reads a Nexus tree file through `fn tree_read()`. The file must contain exactly one tree, as `Bio.Phylo.read()` requires in v0; a file with several trees, for example a BEAST posterior sample, is an error that names the number of trees. v0 tries Newick first and reads Nexus only when Newick fails and the file extension is `.nexus` or `.nex`; v1 selects the reader by the `#NEXUS` header instead, so a Nexus file is read whatever its extension.
 
 ## NeXML
 
@@ -220,8 +224,8 @@ The tree readers and writers open files through `read_file_with()` and `write_fi
 
 ### Current limitations
 
-- The commands read trees from Newick only. UShER MAT, Auspice JSON, Nexus and PhyloXML input need conversion to Newick (and FASTA for sequences) first
-- The Newick reader rejects eNewick hybrid nodes, although the graph can hold networks
+- The commands read trees from Newick and Nexus only. UShER MAT, Auspice JSON and PhyloXML input need conversion to Newick (and FASTA for sequences) first
+- The commands do not read eNewick or Rich Newick networks, although `util-newick` reads them and the graph can hold networks: the commands select the dialects without hybrid tags, so that `#` stays part of sample names
 - Graphviz DOT output grows with the square of the number of leaves, because of the invisible edges ([kb/issues/M-io-output-layer-scaling-naming-and-duplication.md](../issues/M-io-output-layer-scaling-naming-and-duplication.md))
 
 ## Practical impact
@@ -229,7 +233,7 @@ The tree readers and writers open files through `read_file_with()` and `write_fi
 - TreeTime results load into Auspice and into later augur steps without conversion
 - UShER tools such as matUtils can load TreeTime trees with their mutations
 - BEAST-style tools (FigTree) read the dates, mutations and traits from the annotated Newick and Nexus files
-- Trees from UShER, Auspice datasets and Nexus files need conversion to Newick before TreeTime can analyze them
+- Trees from UShER and Auspice datasets need conversion to Newick before TreeTime can analyze them
 
 ## References
 

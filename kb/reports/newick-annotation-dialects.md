@@ -343,29 +343,26 @@ No extension reliably distinguishes annotated from plain Newick. Auto-detection 
 
 ## Implications for v1 parser and writer
 
-### Reader requirements
+The `util-newick` crate implements the dialects above ([packages/util-newick/README.md](../../packages/util-newick/README.md)). Content-based detection alone cannot tell the dialects apart, because the same text means different things in different dialects: `EPI_ISL#402124` is a sample name in classic Newick and a hybrid node in eNewick, and `[&rate=1]` is an annotation in BEAST and a comment in classic Newick. The crate therefore makes the dialect an option.
 
-A superset parser that handles all dialects via content-based auto-detection:
+### Reader
 
-- `[&&NHX` prefix -> NHX mode (colon-separated tags)
-- `[&` prefix -> BEAST mode (comma-separated key=value)
-- `#` in label -> eNewick hybrid markers
-- `[&R]`/`[&U]`/`[&W]` before tree -> Rich Newick rooting/weight markers
-- Plain `[...]` without `&` prefix -> standard comment (strip and ignore)
+The reader takes an ordered list of dialects and returns the first one that reads the tree; the result records which one it was:
 
-### Writer requirements
+- `Classic`: standard Newick. Every comment is plain text, so a BEAST tree read as classic keeps its annotations only as text
+- `Beast`: `[&key=value,...]` annotations with arrays, colors, booleans and quoted strings, plus `[&R]`/`[&U]` (BEAST, FigTree, TreeAnnotator, MrBayes consensus, IQ-TREE)
+- `MrBayes`: the MrBayes sampling comments `[&E ...]`, `[&B ...]`, `[&N ...]`, plus `[&R]`/`[&U]`
+- `Nhx`: `[&&NHX:key=value:...]` with the typed standard tags
+- `ENewick`: hybrid tags `#H1`, `##LGT1` read from the label alone
+- `Rich`: eNewick plus `[&R]`/`[&U]`, the tree weight `[&W x]` and the colon fields length, support and probability
 
-Configurable output dialect per `--nwk-style` flag:
+The annotation dialects and the network dialects read a comment that starts with `[&` and does not follow their syntax as a malformed annotation, which is an error in strict mode. This keeps the dialects apart when a caller lists several of them: reading a BEAST tree with all dialects, from the most specific to the least specific, fails in Rich Newick, eNewick, NHX and MrBayes and succeeds in BEAST.
 
-- `plain`: no annotations, no comments. Maximum compatibility. Round-trips through every tool
-- `annotated`: BEAST-style `[&key=value,...]`. Compatible with BEAST, FigTree, MrBayes consensus, IQ-TREE, DendroPy, BioPython
-- `nhx`: NHX `[&&NHX:key=value:...]`. Compatible with Forester, ETE, DendroPy
+### Writer
 
-Default `plain` because: the `bio` crate (current v1 reader) cannot parse annotations; annotated Newick from `optimize` output causes parse failure in `ancestral` (the bug that triggered this research); `.nexus` output provides no additional annotation capability.
+The writer takes one dialect and writes every annotation, comment and field that the dialect can hold, at its recorded position. Data that the dialect cannot hold is dropped by one table of conversions; hybrid nodes in a dialect without hybrid tags are an error.
 
-The `--nwk-style` flag should apply to both `.nwk` and `.nexus` output because both embed the same Newick string. The `.nexus` container adds TAXA/TREES blocks but no annotation capability.
-
-eNewick and Rich Newick are structural (DAG topology, extra colon fields), not just comment conventions. These belong on a separate `--output-tree-format` axis when network algorithms ship.
+TreeTime writes `--output-nwk-style plain` (classic Newick, the default), `beast` and `nhx`, for both `.nwk` and `.nexus` output, and reads its tree input with the BEAST, NHX, MrBayes and classic dialects ([kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md)). eNewick and Rich Newick output belong on a separate axis when network algorithms ship.
 
 ## Glossary
 

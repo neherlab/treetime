@@ -531,7 +531,7 @@ Key observations:
 
 - Auspice JSON and PhyloXML are fully self-contained: sequences, dates, and traits are all node/edge attributes. No name matching needed. The reader populates the graph directly
 - UShER MAT carries only mutations. If a timetree analysis needs dates, a separate TSV is still required, and name matching applies to the dates-to-tree reconciliation even though sequences are embedded
-- The Nexus TRANSLATE table is a name-mapping mechanism built into the format: numeric tokens in the Newick string map to full taxon names. The v1 Nexus parser (`util-newick/src/nexus.rs`) already resolves these during parsing. This is not the same as the proposal's normalization (axis 4) -- it's format-level aliasing, handled before matching begins
+- The Nexus TRANSLATE table is a name-mapping mechanism built into the format: numeric tokens in the Newick string map to full taxon names. The v1 Nexus parser (`packages/util-newick/src/nexus/read.rs`) already resolves these during parsing. This is not the same as the proposal's normalization (axis 4) -- it's format-level aliasing, handled before matching begins
 - The proposed config file format could include explicit name mappings, making reconciliation configurable per-partition
 
 The reconciliation function from Option B fits naturally: it runs only when the input path requires name matching (Newick+FASTA, or UShER MAT + dates TSV). Unified-format readers skip it entirely. This makes the function a component of the Newick+separate-files input path, not a universal pipeline stage.

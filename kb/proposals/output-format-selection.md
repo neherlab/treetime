@@ -115,7 +115,7 @@ Transparent compression from output path extension (`.gz`, `.bz2`, `.xz`, `.zst`
 
 ## Writer dispatch
 
-`fn nwk_node_comments()` produces typed, dialect-agnostic data per node: an ordered list of `(key, NewickValue)` (`NwkNodeComments` in `packages/treetime-io/src/nwk.rs`). The style (`NwkStyle`) selects the serialization in `packages/util-newick/src/write.rs`: BEAST `[&key="value"]`, NHX `[&&NHX:key=value:...]`, or none (plain).
+`fn nwk_node_comments()` produces typed, dialect-agnostic data per node: an ordered list of `(key, NewickValue)` (`NwkNodeComments` in `packages/treetime-io/src/nwk.rs`). The style (`NwkStyle` in `packages/treetime-io/src/nwk.rs`) selects the `util-newick` writer dialect: BEAST `[&key="value"]`, NHX `[&&NHX:key=value:...]`, or classic Newick without comments (plain).
 
 ## Impact
 
