@@ -58,10 +58,20 @@ export function carryOverConfig(
   for (const spec of specs) {
     const value = getAt(previous, spec.path);
 
-    if (carried.has(spec.key) && value !== undefined) {
+    if (carried.has(spec.key) && value !== undefined && acceptsValue(spec, value)) {
       config = setAt(config, spec.path, cloneJson(value));
     }
   }
 
   return config;
+}
+
+function acceptsValue(spec: SettingSpec, value: JsonValue): boolean {
+  if (spec.options.length === 0) {
+    return true;
+  }
+
+  return (Array.isArray(value) ? value : [value]).every((item) =>
+    spec.options.some((option) => sameJson(option.value, item)),
+  );
 }

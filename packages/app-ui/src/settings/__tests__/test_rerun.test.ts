@@ -39,6 +39,7 @@ const ANCESTRAL: RunRecord = {
     gap_fill: "all",
     reconstruct_tip_states: true,
     output_all: "/runs/r2/out",
+    output_selection: ["nwk", "augur-node-data", "gtr", "auspice"],
   },
   status: "ok",
   pinned: false,
@@ -91,6 +92,7 @@ describe("analyze homoplasy from an ancestral run", () => {
       gapFill: draft.config["gap_fill"],
       tipStates: draft.config["reconstruct_tip_states"],
       outputAll: draft.config["output_all"],
+      selection: draft.config["output_selection"],
       labels: draft.inputLabels,
     }).toStrictEqual({
       tree: "/data/zika/86/tree.nwk",
@@ -99,6 +101,7 @@ describe("analyze homoplasy from an ancestral run", () => {
       gapFill: "all",
       tipStates: undefined,
       outputAll: undefined,
+      selection: [],
       labels: { tree: "tree.nwk", alignment: "aln.fasta.xz" },
     });
   });

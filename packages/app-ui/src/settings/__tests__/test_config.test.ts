@@ -120,4 +120,22 @@ describe("form config", () => {
       changed: changedSpecs(clock, config).map((found) => found.key),
     }).toStrictEqual({ tree: "t.nwk", keepRoot: true, confidence: undefined, changed: ["keep_root"] });
   });
+
+  test("switching the command keeps a shared choice only when the target command offers its value", () => {
+    const ancestral = commandSettings("ancestral").settings;
+    const homoplasy = commandSettings("homoplasy").settings;
+
+    const previous = setAt(
+      setAt(defaultConfig(ancestral), ["output_selection"], ["nwk", "gtr"]),
+      ["output_nwk_style"],
+      ["nhx"],
+    );
+
+    const config = carryOverConfig(homoplasy, ancestral, previous);
+
+    expect({ selection: config["output_selection"], style: config["output_nwk_style"] }).toStrictEqual({
+      selection: [],
+      style: ["nhx"],
+    });
+  });
 });
