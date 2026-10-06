@@ -7,7 +7,7 @@ use std::sync::Arc;
 use treetime_grid::MaxGridPoints;
 use treetime_utils::make_error;
 
-pub const MAX_GRID_POINTS_KEY: &str = "max_grid_points";
+const MAX_GRID_POINTS_KEY: &str = "max_grid_points";
 
 pub enum RunLimits {
   Unset,

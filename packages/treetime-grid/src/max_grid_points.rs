@@ -15,7 +15,7 @@ pub struct MaxGridPoints(usize);
 impl MaxGridPoints {
   pub const MIN: usize = 1_000;
 
-  pub const DEFAULT: usize = 1_000_000;
+  const DEFAULT: usize = 1_000_000;
 
   pub fn new(points: usize) -> Result<Self, InvalidMaxGridPoints> {
     if points < Self::MIN {
