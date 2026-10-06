@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { useToastManager } from "../ui/toast";
 import { AncestralResultsView } from "./AncestralResultsView";
 import { ClockResultsView } from "./ClockResultsView";
+import { HomoplasyResultsView } from "./HomoplasyResultsView";
 import { LogTab } from "./LogTab";
 import { MugrationResultsView } from "./MugrationResultsView";
 import { RunningView } from "./RunningView";
@@ -221,6 +222,10 @@ function CommandResults({
 
   if (view.command === "ancestral") {
     return <AncestralResultsView record={record} results={results} data={view.data} tree={tree} />;
+  }
+
+  if (view.command === "homoplasy") {
+    return <HomoplasyResultsView record={record} results={results} data={view.data} tree={tree} />;
   }
 
   if (view.command === "mugration") {

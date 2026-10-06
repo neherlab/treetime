@@ -62,7 +62,9 @@ export function headlineText(headline: RunHeadline): string {
     return Number.isFinite(value) ? `rate ${formatRate(value)}` : `rate ${rate}`;
   }
 
-  return "";
+  const recurrent = headline.recurrent_substitutions;
+
+  return recurrent === undefined ? "" : `${recurrent} recurrent`;
 }
 
 export function formatRate(rate: number): string {

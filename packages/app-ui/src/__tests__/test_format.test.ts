@@ -47,6 +47,10 @@ describe("format", () => {
     expect(headlineText({ clock_rate: 0.00081234, r_squared: 0.9 })).toStrictEqual("rate 8.12e-4");
   });
 
+  test("the headline shows the recurrent substitutions of a homoplasy run", () => {
+    expect([headlineText({ recurrent_substitutions: 42 }), headlineText({})]).toStrictEqual(["42 recurrent", ""]);
+  });
+
   test("a non-finite headline value is shown as written", () => {
     expect(headlineText({ clock_rate: "nan" })).toStrictEqual("rate nan");
   });
