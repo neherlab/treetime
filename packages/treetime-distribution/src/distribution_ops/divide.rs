@@ -10,12 +10,13 @@ use crate::distribution_ops::time_bounds::{SupportIntersection, distribution_sup
 use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::{Array1, Zip};
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side};
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side};
 use treetime_utils::make_error;
 
 pub fn distribution_division<Y: YAxisPolicy>(
   dividend: &Distribution<Y>,
   divisor: &Distribution<Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   match (dividend, divisor) {
     (Distribution::Formula(_), _) | (_, Distribution::Formula(_)) => {
@@ -32,8 +33,8 @@ pub fn distribution_division<Y: YAxisPolicy>(
       Distribution::Point(_) | Distribution::Range(_),
     ) => make_error!("Cannot divide {dividend} by {divisor}: operation not well-defined"),
     (Distribution::Point(a), Distribution::Function(b)) => divide_point_by_function::<Y>(a, b),
-    (Distribution::Range(a), Distribution::Function(b)) => divide_range_by_function::<Y>(a, b),
-    (Distribution::Function(a), Distribution::Function(b)) => divide_function_by_function::<Y>(a, b),
+    (Distribution::Range(a), Distribution::Function(b)) => divide_range_by_function::<Y>(a, b, max_points),
+    (Distribution::Function(a), Distribution::Function(b)) => divide_function_by_function::<Y>(a, b, max_points),
   }
 }
 
@@ -75,6 +76,7 @@ fn divide_point_by_function<Y: YAxisPolicy>(
 fn divide_range_by_function<Y: YAxisPolicy>(
   range: &DistributionRange<f64, Y>,
   divisor: &DistributionFunction<f64, Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   let range_domain = range_hard_domain(range);
   let divisor_domain = function_hard_domain(divisor);
@@ -89,7 +91,7 @@ fn divide_range_by_function<Y: YAxisPolicy>(
       Y::divide(range.amplitude(), Y::safe_divisor(divisor.interp(t)?)),
     )),
     SupportIntersection::Interval(bounds) => {
-      let n_points = distribution_support_n_points(bounds, divisor.dx())?;
+      let n_points = distribution_support_n_points(bounds, divisor.dx(), max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
       let values = divisor
         .interp_many(&grid)?
@@ -105,6 +107,7 @@ fn divide_range_by_function<Y: YAxisPolicy>(
 fn divide_function_by_function<Y: YAxisPolicy>(
   dividend: &DistributionFunction<f64, Y>,
   divisor: &DistributionFunction<f64, Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   let dividend_domain = function_hard_domain(dividend);
   let divisor_domain = function_hard_domain(divisor);
@@ -119,7 +122,7 @@ fn divide_function_by_function<Y: YAxisPolicy>(
       Y::divide(dividend.interp(t)?, Y::safe_divisor(divisor.interp(t)?)),
     )),
     SupportIntersection::Interval(bounds) => {
-      let n_points = distribution_support_n_points(bounds, dividend.dx().min(divisor.dx()))?;
+      let n_points = distribution_support_n_points(bounds, dividend.dx().min(divisor.dx()), max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
       let dividend_values = dividend.interp_many(&grid)?;
       let divisor_values = divisor.interp_many(&grid)?;

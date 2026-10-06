@@ -22,12 +22,22 @@ use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_grid::{GridPointLimitExceeded, MaxGridPoints};
+use treetime_utils::fmt::float::float_to_significant_digits;
 
 pub(crate) const GRID_POINTS: usize = 300;
 
 pub(crate) const EPS: f64 = 5e-4;
 
 pub(crate) fn run_timetree(
+  inputs: &TimeInferenceInputs<'_>,
+  coalescent: Option<&CoalescentModel>,
+  log: &dyn LogSink,
+) -> Result<TimeInference, Report> {
+  infer_times(inputs, coalescent, log).map_err(|report| explain_grid_point_limit(report, inputs))
+}
+
+fn infer_times(
   inputs: &TimeInferenceInputs<'_>,
   coalescent: Option<&CoalescentModel>,
   log: &dyn LogSink,
@@ -42,6 +52,8 @@ pub(crate) fn run_timetree(
     names,
     clock_model,
     no_indels,
+    max_grid_points,
+    ..
   } = *inputs;
   progress_info!(log, "# Running timetree inference");
 
@@ -58,15 +70,39 @@ pub(crate) fn run_timetree(
     },
     BranchModel::Marginal(partition) => {
       progress_info!(log, "## Computing branch distributions from partitions");
-      compute_branch_distributions_marginal_mode(graph, partition, branch_lengths, gammas, clock_rate, no_indels, log)?
+      compute_branch_distributions_marginal_mode(
+        graph,
+        partition,
+        branch_lengths,
+        gammas,
+        clock_rate,
+        no_indels,
+        max_grid_points,
+        log,
+      )?
     },
   };
 
   progress_info!(log, "## Propagating distributions backward");
-  let backward = propagate_distributions_backward(graph, date_constraints, coalescent, &bad_branches, &branches)?;
+  let backward = propagate_distributions_backward(
+    graph,
+    date_constraints,
+    coalescent,
+    &bad_branches,
+    &branches,
+    max_grid_points,
+  )?;
 
   progress_info!(log, "## Propagating distributions forward");
-  let posterior = propagate_distributions_forward(graph, date_constraints, names, &branches, &backward, log)?;
+  let posterior = propagate_distributions_forward(
+    graph,
+    date_constraints,
+    names,
+    &branches,
+    &backward,
+    max_grid_points,
+    log,
+  )?;
 
   progress_info!(log, "# Timetree inference completed");
   Ok(TimeInference {
@@ -85,7 +121,41 @@ pub(crate) struct TimeInferenceInputs<'a> {
   pub branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   pub clock_model: &'a ClockModel,
+  pub clock_rate_fixed: bool,
   pub no_indels: bool,
+  pub max_grid_points: MaxGridPoints,
+}
+
+fn explain_grid_point_limit(report: Report, inputs: &TimeInferenceInputs<'_>) -> Report {
+  let Some(exceeded) = report
+    .chain()
+    .find_map(|cause| cause.downcast_ref::<GridPointLimitExceeded>())
+    .copied()
+  else {
+    return report;
+  };
+  let limit = exceeded.limit;
+  let needs = match exceeded.required_points() {
+    Some(points) => format!("a grid of {points} points, more than"),
+    None => "a grid with more points than".to_owned(),
+  };
+  let rate = float_to_significant_digits(inputs.clock_model.clock_rate(), 3);
+  let cause = if inputs.clock_rate_fixed {
+    format!(
+      "The fixed --clock-rate {rate} may be far from the rate the data supports, which makes branch-time \
+       distributions very narrow. Check --clock-rate"
+    )
+  } else {
+    format!(
+      "The estimated clock rate {rate} may be far from the true rate, which makes branch-time distributions very \
+       narrow; errors in the input dates and weak temporal signal cause such estimates. Check the input dates, set \
+       --clock-rate"
+    )
+  };
+  report.wrap_err(format!(
+    "Time inference needs {needs} the limit of {limit} (--max-grid-points). {cause}, or raise --max-grid-points \
+     when enough memory is available."
+  ))
 }
 
 pub(crate) const CLOCK_BRANCH_LENGTH_DAMPING: f64 = 0.5;
@@ -155,6 +225,7 @@ fn compute_branch_distributions_marginal_mode(
   gammas: &BTreeMap<GraphEdgeKey, f64>,
   clock_rate: f64,
   no_indels: bool,
+  max_grid_points: MaxGridPoints,
   log: &dyn LogSink,
 ) -> Result<BTreeMap<GraphEdgeKey, BranchLikelihood>, Report> {
   let total_sites = partition.sequence_length();
@@ -196,6 +267,7 @@ fn compute_branch_distributions_marginal_mode(
         GRID_POINTS,
         clock_rate,
         gamma,
+        max_grid_points,
       )?;
 
       let time_length = distribution.likely_time()?;

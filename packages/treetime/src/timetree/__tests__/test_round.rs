@@ -40,6 +40,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::tree_view::TreeView;
+  use treetime_grid::MaxGridPoints;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::fasta_read;
@@ -401,7 +402,9 @@ mod tests {
           branch_lengths: &branch_lengths,
           names: &names,
           clock_model: &clock_model,
+          clock_rate_fixed: false,
           no_indels: false,
+          max_grid_points: MaxGridPoints::default(),
         },
         None,
         &NoopProgress,

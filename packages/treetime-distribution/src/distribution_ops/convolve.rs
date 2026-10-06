@@ -7,7 +7,7 @@ use crate::policy::SupportsConvolution;
 use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, array, s};
-use treetime_grid::BoundaryBehavior;
+use treetime_grid::{BoundaryBehavior, MaxGridPoints};
 use treetime_ops::convolve_fft;
 use treetime_utils::array::ndarray::{has_uniform_spacing, max_or, min_or};
 use treetime_utils::make_error;
@@ -19,16 +19,18 @@ const CONV_TAIL_MARGIN: usize = 3;
 pub(crate) fn distribution_convolution_fine<Y: SupportsConvolution>(
   a: &Distribution<Y>,
   b: &Distribution<Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   match (a, b) {
-    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function_fine::<Y>(a, b),
-    _ => distribution_convolution(a, b),
+    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function_fine::<Y>(a, b, max_points),
+    _ => distribution_convolution(a, b, max_points),
   }
 }
 
 pub(crate) fn distribution_convolution<Y: SupportsConvolution>(
   a: &Distribution<Y>,
   b: &Distribution<Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   match (a, b) {
     (Distribution::Formula(_), _) | (_, Distribution::Formula(_)) => {
@@ -43,14 +45,14 @@ pub(crate) fn distribution_convolution<Y: SupportsConvolution>(
     (Distribution::Point(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Point(a)) => {
       Ok(convolution_point_range::<Y>(a, b))
     },
-    (Distribution::Range(a), Distribution::Range(b)) => convolution_range_range::<Y>(a, b),
+    (Distribution::Range(a), Distribution::Range(b)) => convolution_range_range::<Y>(a, b, max_points),
     (Distribution::Point(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Point(a)) => {
       Ok(Distribution::Function(convolution_point_function::<Y>(a, b)?))
     },
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
       convolution_range_function::<Y>(a, b)
     },
-    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function::<Y>(a, b),
+    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function::<Y>(a, b, max_points),
   }
 }
 
@@ -66,6 +68,7 @@ fn convolution_point_point<Y: SupportsConvolution>(
 fn convolution_range_range<Y: SupportsConvolution>(
   a: &DistributionRange<f64, Y>,
   b: &DistributionRange<f64, Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   let start = a.start() + b.start();
   let end = a.end() + b.end();
@@ -86,7 +89,7 @@ fn convolution_range_range<Y: SupportsConvolution>(
     if has_uniform_spacing(&x) {
       Distribution::function(x, y)
     } else {
-      DistributionFunction::from_arrays_nonuniform(&x, &y).map(Distribution::Function)
+      DistributionFunction::from_arrays_nonuniform(&x, &y, max_points).map(Distribution::Function)
     }
   }
 }
@@ -140,10 +143,11 @@ fn convolution_point_function<Y: SupportsConvolution>(
 fn convolution_function_function<Y: SupportsConvolution>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   let coarse_dx = a.dx().max(b.dx());
-  match convolution_function_function_fine(a, b)? {
-    Distribution::Function(conv_distr) => coarsen_convolution(conv_distr, coarse_dx),
+  match convolution_function_function_fine(a, b, max_points)? {
+    Distribution::Function(conv_distr) => coarsen_convolution(conv_distr, coarse_dx, max_points),
     other => Ok(other),
   }
 }
@@ -155,6 +159,7 @@ fn convolution_function_function<Y: SupportsConvolution>(
 fn convolution_function_function_fine<Y: SupportsConvolution>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   if a.is_empty() || b.is_empty() {
     let a_domain = conv_operand_domain(!a.is_empty());
@@ -169,8 +174,8 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
     return make_error!("Invalid grid spacing detected during convolution: {dx}");
   }
 
-  let a = a.resample_dx(dx)?;
-  let b = b.resample_dx(dx)?;
+  let a = a.resample_dx(dx, max_points)?;
+  let b = b.resample_dx(dx, max_points)?;
   if a.is_empty() || b.is_empty() {
     let a_domain = conv_operand_domain(!a.is_empty());
     let b_domain = conv_operand_domain(!b.is_empty());
@@ -192,6 +197,8 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
     return guarded_empty_result("convolution", a_domain, b_domain);
   }
 
+  let result_range = (a.x_min() + b.x_min(), a.x_max() + b.x_max());
+  max_points.point_count((a.len() + b.len() - 1) as f64, result_range, dx)?;
   let conv = convolve_fft(dx, &pa, &pb)?;
 
   let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx)? else {
@@ -227,13 +234,14 @@ fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
 pub(super) fn coarsen_convolution<Y: SupportsConvolution>(
   conv_distr: DistributionFunction<f64, Y>,
   coarse_dx: f64,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   let range = conv_distr.x_max() - conv_distr.x_min();
   let coarse_points = (range / coarse_dx).round() as usize + 1;
   if coarse_points < 2 {
     return Ok(Distribution::Function(conv_distr));
   }
-  Ok(Distribution::Function(conv_distr.resample_dx(coarse_dx)?))
+  Ok(Distribution::Function(conv_distr.resample_dx(coarse_dx, max_points)?))
 }
 
 fn to_peak_normalized_plain<Y: SupportsConvolution>(y: &Array1<f64>) -> (Array1<f64>, f64) {

@@ -15,6 +15,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::node::GraphNodeKey;
+  use treetime_grid::MaxGridPoints;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
@@ -544,6 +545,7 @@ mod tests {
         coalescent_model,
         &inputs.bad_branches,
         &inputs.branches,
+        MaxGridPoints::default(),
       )
     }
 

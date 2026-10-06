@@ -9,7 +9,7 @@ use eyre::Report;
 use itertools::izip;
 use ndarray::{Array1, Zip};
 use ordered_float::OrderedFloat;
-use treetime_grid::{BoundaryBehavior, Side};
+use treetime_grid::{BoundaryBehavior, MaxGridPoints, Side};
 use treetime_utils::make_internal_error;
 
 const FORMULA_GRID_SIZE: usize = 200;
@@ -17,6 +17,7 @@ const FORMULA_GRID_SIZE: usize = 200;
 pub fn distribution_multiplication<Y: YAxisPolicy>(
   a: &Distribution<Y>,
   b: &Distribution<Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   match (a, b) {
     (Distribution::Empty, _) | (_, Distribution::Empty) => {
@@ -33,12 +34,12 @@ pub fn distribution_multiplication<Y: YAxisPolicy>(
     },
     (Distribution::Range(a), Distribution::Range(b)) => multiply_range_range::<Y>(a, b),
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
-      multiply_range_function::<Y>(a, b)
+      multiply_range_function::<Y>(a, b, max_points)
     },
-    (Distribution::Function(a), Distribution::Function(b)) => multiply_function_function::<Y>(a, b),
+    (Distribution::Function(a), Distribution::Function(b)) => multiply_functions(&[a, b], max_points),
     (Distribution::Formula(a), Distribution::Formula(b)) => multiply_formula_formula::<Y>(a, b),
     (Distribution::Formula(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Formula(a)) => {
-      multiply_formula_function::<Y>(a, b)
+      multiply_formula_function::<Y>(a, b, max_points)
     },
     (Distribution::Formula(a), Distribution::Point(b)) | (Distribution::Point(b), Distribution::Formula(a)) => {
       multiply_formula_point::<Y>(a, b)
@@ -127,6 +128,7 @@ fn multiply_range_range<Y: YAxisPolicy>(
 fn multiply_range_function<Y: YAxisPolicy>(
   range: &DistributionRange<f64, Y>,
   func: &DistributionFunction<f64, Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   let a_bounds = (range.start(), range.end());
   let a_tails = (BoundaryBehavior::Hard, BoundaryBehavior::Hard);
@@ -143,7 +145,7 @@ fn multiply_range_function<Y: YAxisPolicy>(
       Ok(Distribution::point(t, amplitude))
     },
     SupportIntersection::Interval(bounds) => {
-      let n_points = distribution_support_n_points(bounds, func.dx())?;
+      let n_points = distribution_support_n_points(bounds, func.dx(), max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
       let values = func
         .interp_many(&grid)?
@@ -158,19 +160,13 @@ fn multiply_range_function<Y: YAxisPolicy>(
   }
 }
 
-fn multiply_function_function<Y: YAxisPolicy>(
-  a: &DistributionFunction<f64, Y>,
-  b: &DistributionFunction<f64, Y>,
-) -> Result<Distribution<Y>, Report> {
-  multiply_functions(&[a, b])
-}
-
 #[allow(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
 pub(crate) fn multiply_functions<Y: YAxisPolicy>(
   functions: &[&DistributionFunction<f64, Y>],
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   let ordered = canonical_operand_order(functions);
   let (&first, rest) = ordered
@@ -193,7 +189,7 @@ pub(crate) fn multiply_functions<Y: YAxisPolicy>(
         .map(|f| f.dx())
         .reduce(f64::min)
         .expect("multiply_functions requires at least one operand");
-      let n_points = distribution_support_n_points(bounds, dx)?;
+      let n_points = distribution_support_n_points(bounds, dx, max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
 
       let mut values = first.interp_many(&grid)?;
@@ -273,6 +269,7 @@ fn multiply_formula_formula<Y: YAxisPolicy>(
 fn multiply_formula_function<Y: YAxisPolicy>(
   a: &DistributionFormula<Y>,
   b: &DistributionFunction<f64, Y>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   let a_bounds = (a.t_min(), a.t_max());
   let a_tails = (BoundaryBehavior::Error, BoundaryBehavior::Error);
@@ -286,7 +283,7 @@ fn multiply_formula_function<Y: YAxisPolicy>(
     },
     SupportIntersection::Point(t) => Ok(Distribution::point(t, Y::multiply(a.eval_single(t)?, b.interp(t)?))),
     SupportIntersection::Interval(bounds) => {
-      let n_points = distribution_support_n_points(bounds, b.dx())?;
+      let n_points = distribution_support_n_points(bounds, b.dx(), max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
       let formula_values = a.eval_many(&grid)?;
       let function_values = b.interp_many(&grid)?;

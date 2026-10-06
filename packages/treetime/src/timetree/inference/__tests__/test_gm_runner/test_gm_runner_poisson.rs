@@ -14,6 +14,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
@@ -61,8 +62,8 @@ mod tests {
       })
       .collect();
     let bad_branches = derive_bad_branches(&graph, &constraints, &bad_leaves(&graph, &constraints, &BTreeSet::new()))?;
-    let backward = propagate_distributions_backward(&graph, &constraints, None, &bad_branches, &branches)?;
-    let posterior = propagate_distributions_forward(&graph, &constraints, &names, &branches, &backward, &NoopProgress)?;
+    let backward = propagate_distributions_backward(&graph, &constraints, None, &bad_branches, &branches, MaxGridPoints::default())?;
+    let posterior = propagate_distributions_forward(&graph, &constraints, &names, &branches, &backward, MaxGridPoints::default(), &NoopProgress)?;
 
     let actual = extract_node_times(&graph, &names, &posterior);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);

@@ -159,6 +159,7 @@ fn timetree_params(args: &TreetimeTimetreeArgs, sequence_outputs_requested: bool
     impute_missing_data: args.impute_missing_data,
     sequence_outputs_requested,
     seed,
+    max_grid_points: args.max_grid_points,
   }
 }
 

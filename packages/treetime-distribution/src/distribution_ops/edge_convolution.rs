@@ -5,7 +5,7 @@ use crate::distribution_ops::mass_domain::{
 };
 use crate::policy::NegLog;
 use eyre::Report;
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side};
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side};
 
 pub fn convolve_across_edge(
   a: &Distribution<NegLog>,
@@ -13,8 +13,9 @@ pub fn convolve_across_edge(
   soft: Side,
   eps: f64,
   grid_points: usize,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<NegLog>, Report> {
-  let conv = distribution_convolution_fine(a, b)?.fit_soft_tail(soft, DEFAULT_TAIL_FIT_POINTS)?;
+  let conv = distribution_convolution_fine(a, b, max_points)?.fit_soft_tail(soft, DEFAULT_TAIL_FIT_POINTS)?;
   let conv = match soft {
     Side::Left => conv.with_right_extrap(BoundaryBehavior::Hard)?,
     Side::Right => conv.with_left_extrap(BoundaryBehavior::Hard)?,
@@ -38,7 +39,7 @@ pub fn convolve_across_edge(
     None => sized.bounded_domain(eps)?,
   };
 
-  resample_to_mass_window(normalized, lo, hi, grid_points)
+  resample_to_mass_window(normalized, lo, hi, grid_points, max_points)
 }
 
 fn convolution_output_window(

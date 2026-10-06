@@ -12,6 +12,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::Debug;
+use treetime_grid::MaxGridPoints;
 use treetime_primitives::AlignmentRecord;
 
 pub(crate) fn compute_effective_time_marginal(
@@ -125,6 +126,7 @@ pub struct TimetreeParams {
   pub impute_missing_data: bool,
   pub sequence_outputs_requested: bool,
   pub seed: u64,
+  pub max_grid_points: MaxGridPoints,
 }
 
 pub(crate) struct TimetreeContext {

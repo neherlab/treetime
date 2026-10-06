@@ -10,6 +10,7 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
   use rstest::rstest;
+  use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, Side, SoftTailLaw};
   use treetime_utils::assert_error;
 
@@ -127,7 +128,7 @@ mod tests {
     let function = Distribution::Function(f);
     let point = Distribution::point(t, 2.0);
 
-    let actual = distribution_multiplication(&point, &function)?;
+    let actual = distribution_multiplication(&point, &function, MaxGridPoints::default())?;
     let expected = expected_amplitude.map_or_else(Distribution::empty, |amplitude| Distribution::point(t, amplitude));
     assert_eq!(expected, actual);
     Ok(())
@@ -141,7 +142,11 @@ mod tests {
     let fb: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 1.5, 2.5])?
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: slope_b }))?;
 
-    let product = distribution_multiplication(&Distribution::Function(fa), &Distribution::Function(fb))?;
+    let product = distribution_multiplication(
+      &Distribution::Function(fa),
+      &Distribution::Function(fb),
+      MaxGridPoints::default(),
+    )?;
 
     let expected = 5.0 + f64::midpoint(slope_a, slope_b);
     assert_ulps_eq!(expected, product.eval(2.5)?, max_ulps = 8);
@@ -153,7 +158,7 @@ mod tests {
     let f: DistFnPlain = DistributionFunction::from_range_values((0.0, 2.0), array![1.0, 2.0, 3.0])?;
     let function = Distribution::Function(f);
     let point_inside = Distribution::point(1.0, 2.0);
-    let actual = distribution_multiplication(&point_inside, &function)?;
+    let actual = distribution_multiplication(&point_inside, &function, MaxGridPoints::default())?;
     assert_eq!(Distribution::point(1.0, 4.0), actual);
     Ok(())
   }

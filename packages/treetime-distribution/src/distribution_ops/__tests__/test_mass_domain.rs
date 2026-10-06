@@ -12,6 +12,7 @@ mod tests {
   use crate::{Distribution, DistributionFunction};
   use approx::assert_abs_diff_eq;
   use ndarray::Array1;
+  use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
 
   const EPS: f64 = 5e-4;
@@ -55,7 +56,9 @@ mod tests {
   #[test]
   fn test_mass_domain_rewindow_conserves_mass_and_mode() {
     let f = helpers::exponential_neglog(1.0, 5.0, 4001);
-    let once = helpers::as_function(rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS).unwrap());
+    let once = helpers::as_function(
+      rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS, MaxGridPoints::default()).unwrap(),
+    );
 
     let mass_once = mass_profile(&once).unwrap().z;
     let mode_once = once.likely_time().unwrap().unwrap();
@@ -63,7 +66,15 @@ mod tests {
 
     let mut current = once;
     for _ in 0..100 {
-      current = helpers::as_function(rewindow_to_mass(&Distribution::Function(current), EPS, GRID_POINTS).unwrap());
+      current = helpers::as_function(
+        rewindow_to_mass(
+          &Distribution::Function(current),
+          EPS,
+          GRID_POINTS,
+          MaxGridPoints::default(),
+        )
+        .unwrap(),
+      );
     }
 
     let mass_100 = mass_profile(&current).unwrap().z;
@@ -79,7 +90,9 @@ mod tests {
   #[test]
   fn test_mass_domain_rewindow_keeps_mode_on_hard_bound() {
     let f = helpers::hard_bound_mode_neglog(1.0, 5.0, 500);
-    let rewindowed = helpers::as_function(rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS).unwrap());
+    let rewindowed = helpers::as_function(
+      rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS, MaxGridPoints::default()).unwrap(),
+    );
 
     assert_abs_diff_eq!(rewindowed.x_min(), 0.0, epsilon = 1e-12);
     let mode_index =
@@ -102,14 +115,16 @@ mod tests {
   #[test]
   fn test_mass_domain_rewindow_holds_at_least_grid_points() {
     let f = helpers::exponential_neglog(1.0, 5.0, 50);
-    let rewindowed = helpers::as_function(rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS).unwrap());
+    let rewindowed = helpers::as_function(
+      rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS, MaxGridPoints::default()).unwrap(),
+    );
     assert!(rewindowed.len() >= GRID_POINTS, "got {} points", rewindowed.len());
   }
 
   #[test]
   fn test_mass_domain_rewindow_point_is_shift_only_normalize() {
     let point: Distribution<NegLog> = Distribution::point(3.0, 7.5);
-    let rewindowed = rewindow_to_mass(&point, EPS, GRID_POINTS).unwrap();
+    let rewindowed = rewindow_to_mass(&point, EPS, GRID_POINTS, MaxGridPoints::default()).unwrap();
     assert_eq!(rewindowed, point.normalize().unwrap());
   }
 

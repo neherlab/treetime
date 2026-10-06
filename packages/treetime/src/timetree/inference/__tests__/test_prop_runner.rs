@@ -22,6 +22,7 @@ mod tests {
   use itertools::Itertools;
   use proptest::prelude::*;
   use std::collections::{BTreeMap, BTreeSet};
+  use treetime_grid::MaxGridPoints;
   use treetime_io::dates_csv::{DateConstraint, DatesMap};
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
@@ -174,7 +175,9 @@ mod tests {
           branch_lengths: &branch_lengths,
           names: &names,
           clock_model: &clock_model,
+          clock_rate_fixed: false,
           no_indels: false,
+          max_grid_points: MaxGridPoints::default(),
         },
         None,
         &NoopProgress,

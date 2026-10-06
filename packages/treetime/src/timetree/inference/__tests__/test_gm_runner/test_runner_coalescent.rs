@@ -33,6 +33,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
 
@@ -61,7 +62,9 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
         branch_lengths: &branch_lengths,
         names: &run_names,
         clock_model: &clock_model,
+        clock_rate_fixed: false,
         no_indels: false,
+        max_grid_points: MaxGridPoints::default(),
       },
       Some(&coalescent),
       &NoopProgress,

@@ -7,7 +7,7 @@ use ndarray_stats::errors::MinMaxError;
 use num::Float;
 use serde::{Deserialize, Serialize};
 use treetime_grid::grid::Grid;
-use treetime_grid::{BoundaryBehavior, GridFn, InterpElem, Side, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, GridFn, InterpElem, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -30,11 +30,11 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(Self::from_grid_fn(grid_fn))
   }
 
-  pub(crate) fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>) -> Result<Self, Report>
+  pub(crate) fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>, max_points: MaxGridPoints) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
-    let grid_fn = GridFn::from_arrays_nonuniform(x, y)?;
+    let grid_fn = GridFn::from_arrays_nonuniform(x, y, max_points)?;
     Ok(Self::from_grid_fn(grid_fn))
   }
 
@@ -205,19 +205,19 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
       reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
     )
   )]
-  pub fn resample_range_dx(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  pub fn resample_range_dx(&self, x_range: (T, T), dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
-    let grid = Grid::from_range_dx(x_range.0, x_range.1, dx)?;
+    let grid = Grid::from_range_dx(x_range.0, x_range.1, dx, max_points)?;
     self.resample(&grid)
   }
 
-  fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
-    let grid_fn = self.grid_fn.resample_range_dx_clamped(x_range, dx)?;
+    let grid_fn = self.grid_fn.resample_range_dx_clamped(x_range, dx, max_points)?;
     Ok(Self::from_grid_fn_with_extrap(
       grid_fn,
       self.left_extrap,
@@ -225,11 +225,11 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     ))
   }
 
-  pub(crate) fn resample_dx(&self, dx: T) -> Result<Self, Report>
+  pub(crate) fn resample_dx(&self, dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
-    self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx)
+    self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx, max_points)
   }
 
   pub(crate) fn len(&self) -> usize {

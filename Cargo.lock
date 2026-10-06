@@ -245,6 +245,7 @@ dependencies = [
  "tokio",
  "treetime",
  "treetime-graph",
+ "treetime-grid",
  "treetime-io",
  "treetime-primitives",
  "treetime-schema",
@@ -4971,6 +4972,7 @@ version = "1.0.0"
 dependencies = [
  "approx",
  "ctor",
+ "derive_more",
  "eyre",
  "itertools",
  "ndarray",
@@ -4980,6 +4982,7 @@ dependencies = [
  "pretty_assertions",
  "rayon",
  "rstest",
+ "schemars",
  "serde",
  "treetime-utils",
 ]

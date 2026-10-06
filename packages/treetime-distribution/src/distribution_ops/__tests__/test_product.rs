@@ -4,6 +4,7 @@ mod tests {
   use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::distribution_ops::product::distribution_product;
   use ndarray::array;
+  use treetime_grid::MaxGridPoints;
   use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
@@ -12,7 +13,7 @@ mod tests {
     let b = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![5.0, 4.0, 3.0, 2.0, 1.0]).unwrap();
     let c = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
 
-    let actual = distribution_product(&[&a, &b, &c]).unwrap();
+    let actual = distribution_product(&[&a, &b, &c], MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
@@ -28,10 +29,12 @@ mod tests {
     let b = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![5.0, 4.0, 3.0, 2.0, 1.0]).unwrap();
     let c = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 3.0, 5.0, 3.0, 2.0]).unwrap();
 
-    let DistributionPlain::Function(abc) = distribution_product(&[&a, &b, &c]).unwrap() else {
+    let DistributionPlain::Function(abc) = distribution_product(&[&a, &b, &c], MaxGridPoints::default()).unwrap()
+    else {
       panic!("Expected Function variant");
     };
-    let DistributionPlain::Function(cab) = distribution_product(&[&c, &a, &b]).unwrap() else {
+    let DistributionPlain::Function(cab) = distribution_product(&[&c, &a, &b], MaxGridPoints::default()).unwrap()
+    else {
       panic!("Expected Function variant");
     };
     pretty_assert_ulps_eq!(abc.y(), cab.y(), max_ulps = 8);
@@ -42,7 +45,7 @@ mod tests {
     let a = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
     let b = DistributionPlain::function(array![0.0, 1.0, 2.0], array![3.0, 2.0, 1.0]).unwrap();
 
-    let actual = distribution_product(&[&a, &DistributionPlain::Empty, &b]).unwrap();
+    let actual = distribution_product(&[&a, &DistributionPlain::Empty, &b], MaxGridPoints::default()).unwrap();
     assert_eq!(DistributionPlain::Empty, actual);
   }
 
@@ -51,7 +54,7 @@ mod tests {
     let function = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
     let point = DistributionPlain::point(1.0, 2.0);
 
-    let actual = distribution_product(&[&function, &point]).unwrap();
+    let actual = distribution_product(&[&function, &point], MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::point(1.0, 4.0);
     assert_eq!(expected, actual);
   }
@@ -61,8 +64,8 @@ mod tests {
     let a = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
     let b = DistributionPlain::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
 
-    let pairwise = distribution_multiplication(&a, &b).unwrap();
-    let nary = distribution_product(&[&a, &b]).unwrap();
+    let pairwise = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
+    let nary = distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap();
     assert_eq!(pairwise, nary);
   }
 
@@ -71,7 +74,7 @@ mod tests {
     let a = DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
     let b = DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
 
-    let actual = distribution_product(&[&a, &b]).unwrap();
+    let actual = distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::point(1.0, 15.0);
     assert_eq!(expected, actual);
   }
@@ -82,7 +85,7 @@ mod tests {
     let b = DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
     let c = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 1.0]).unwrap();
 
-    let actual = distribution_product(&[&a, &b, &c]).unwrap();
+    let actual = distribution_product(&[&a, &b, &c], MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::point(1.0, 60.0);
     assert_eq!(expected, actual);
   }
@@ -92,7 +95,10 @@ mod tests {
     let a = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
     let b = DistributionPlain::function(array![5.0, 6.0, 7.0], array![3.0, 2.0, 1.0]).unwrap();
 
-    assert_eq!(DistributionPlain::Empty, distribution_product(&[&a, &b]).unwrap());
+    assert_eq!(
+      DistributionPlain::Empty,
+      distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap()
+    );
   }
 
   #[test]
@@ -100,7 +106,7 @@ mod tests {
     let a = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
     let b = DistributionPlain::function(array![1.0, 1.5, 2.0, 2.5, 3.0], array![2.0, 2.0, 2.0, 2.0, 2.0]).unwrap();
 
-    let DistributionPlain::Function(f) = distribution_product(&[&a, &b]).unwrap() else {
+    let DistributionPlain::Function(f) = distribution_product(&[&a, &b], MaxGridPoints::default()).unwrap() else {
       panic!("Expected Function variant");
     };
     let t = f.t();
@@ -114,9 +120,9 @@ mod tests {
     let b = DistributionPlain::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
     let c = DistributionPlain::function(array![0.5, 1.25, 2.0, 2.75, 3.5], array![5.0, 4.0, 3.0, 2.0, 1.0]).unwrap();
 
-    let abc = distribution_product(&[&a, &b, &c]).unwrap();
-    let cba = distribution_product(&[&c, &b, &a]).unwrap();
-    let bca = distribution_product(&[&b, &c, &a]).unwrap();
+    let abc = distribution_product(&[&a, &b, &c], MaxGridPoints::default()).unwrap();
+    let cba = distribution_product(&[&c, &b, &a], MaxGridPoints::default()).unwrap();
+    let bca = distribution_product(&[&b, &c, &a], MaxGridPoints::default()).unwrap();
     assert_eq!(abc, cba);
     assert_eq!(abc, bca);
   }

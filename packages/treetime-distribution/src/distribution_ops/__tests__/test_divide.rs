@@ -9,6 +9,7 @@ mod tests {
   use crate::policy::NegLog;
   use ndarray::{Array1, array};
   use rstest::rstest;
+  use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
@@ -32,7 +33,7 @@ mod tests {
     #[case] expected: &str,
   ) {
     assert_error!(
-      distribution_division(&distribution(dividend), &distribution(divisor)),
+      distribution_division(&distribution(dividend), &distribution(divisor), MaxGridPoints::default()),
       expected
     );
   }
@@ -41,7 +42,7 @@ mod tests {
   fn test_divide_empty_by_any() {
     let empty = DistributionPlain::empty();
     let point = DistributionPlain::point(1.0, 2.0);
-    let actual = distribution_division(&empty, &point).unwrap();
+    let actual = distribution_division(&empty, &point, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::empty();
     assert_eq!(expected, actual);
   }
@@ -51,7 +52,7 @@ mod tests {
     let point = DistributionPlain::point(1.0, 2.0);
     let empty = DistributionPlain::empty();
     assert_error!(
-      distribution_division(&point, &empty),
+      distribution_division(&point, &empty, MaxGridPoints::default()),
       "Cannot divide by empty distribution"
     );
   }
@@ -63,7 +64,7 @@ mod tests {
     let y = array![1.0, 2.0, 5.0, 4.0, 3.0];
     let func = DistributionPlain::function(t, y).unwrap();
 
-    let actual = distribution_division(&point, &func).unwrap();
+    let actual = distribution_division(&point, &func, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::point(2.0, 2.0);
     assert_eq!(expected, actual);
   }
@@ -77,7 +78,7 @@ mod tests {
     let dividend = DistributionPlain::function(t.clone(), y1).unwrap();
     let divisor = DistributionPlain::function(t.clone(), y2).unwrap();
 
-    let actual = distribution_division(&dividend, &divisor).unwrap();
+    let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
 
     let expected_y = array![5.0, 5.0, 6.0, 5.0, 5.0];
     let expected = DistributionPlain::function(t, expected_y).unwrap();
@@ -93,7 +94,7 @@ mod tests {
     let dividend = DistributionPlain::function(t.clone(), y1).unwrap();
     let divisor = DistributionPlain::function(t.clone(), y2).unwrap();
 
-    let actual = distribution_division(&dividend, &divisor).unwrap();
+    let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
 
     let expected_y = array![5.0, 20.0 / TINY_NUMBER, 6.0];
     let expected = DistributionPlain::function(t, expected_y).unwrap();
@@ -107,7 +108,7 @@ mod tests {
     let y = array![1.0, 2.0, 5.0, 4.0, 3.0];
     let func = DistributionPlain::function(t, y).unwrap();
 
-    let actual = distribution_division(&range, &func).unwrap();
+    let actual = distribution_division(&range, &func, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::Function(
       DistributionFunction::from_arrays(&array![1.0, 2.0, 3.0], array![5.0, 2.0, 2.5])
         .unwrap()
@@ -138,7 +139,7 @@ mod tests {
     )
     .unwrap();
 
-    let actual = distribution_division(&range, &function).unwrap();
+    let actual = distribution_division(&range, &function, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
@@ -151,7 +152,7 @@ mod tests {
     let range = DistributionPlain::range((2.0, 3.0), 12.0);
     let function = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
 
-    let actual = distribution_division(&range, &function).unwrap();
+    let actual = distribution_division(&range, &function, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::point(2.0, 4.0);
     assert_eq!(expected, actual);
   }
@@ -163,7 +164,7 @@ mod tests {
     let y = array![1.0, 2.0, 4.0, 8.0];
     let func = DistributionPlain::function(t, y).unwrap();
 
-    let actual = distribution_division(&range, &func).unwrap();
+    let actual = distribution_division(&range, &func, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::empty();
     assert_eq!(expected, actual);
   }
@@ -177,7 +178,7 @@ mod tests {
     let dividend = DistributionPlain::function(t.clone(), y1).unwrap();
     let divisor = DistributionPlain::function(t.clone(), y2).unwrap();
 
-    let actual = distribution_division(&dividend, &divisor).unwrap();
+    let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
 
     let expected = DistributionPlain::function(t, array![5.0, 5.0, 6.0, 5.0, 5.0]).unwrap();
     assert_eq!(expected, actual);
@@ -193,7 +194,7 @@ mod tests {
     let y2 = array![2.0, 5.0, 10.0];
     let divisor = DistributionPlain::function(t2, y2).unwrap();
 
-    let actual = distribution_division(&dividend, &divisor).unwrap();
+    let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
 
     let expected = DistributionPlain::function(t1, array![5.0, 20.0 / 3.5, 6.0, 40.0 / 7.5, 5.0]).unwrap();
     assert_eq!(expected, actual);
@@ -210,7 +211,7 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
 
-    let actual = distribution_division(&dividend, &divisor).unwrap();
+    let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
 
     let crate::Distribution::Function(function) = actual else {
       panic!("expected Function, got {actual:?}");
@@ -230,7 +231,7 @@ mod tests {
       DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![2.0, 4.0, 6.0, 8.0, 10.0]).unwrap();
     let divisor = DistributionPlain::function(array![1.5, 2.5, 3.5], array![2.0, 2.0, 2.0]).unwrap();
 
-    let actual = distribution_division(&dividend, &divisor).unwrap();
+    let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::function(array![1.5, 2.5, 3.5], array![2.5, 3.5, 4.5]).unwrap();
     assert_eq!(expected, actual);
   }
@@ -246,7 +247,7 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 0.5 }))
       .unwrap();
 
-    let actual = distribution_division(&dividend, &divisor).unwrap();
+    let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
     let expected =
       DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![4.0, 10.0, 15.0, 20.0, 20.0]).unwrap();
     assert_eq!(expected, actual);
@@ -257,7 +258,7 @@ mod tests {
     let dividend = DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
     let divisor = DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
 
-    let actual = distribution_division(&dividend, &divisor).unwrap();
+    let actual = distribution_division(&dividend, &divisor, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::point(1.0, 0.6);
     assert_eq!(expected, actual);
   }
@@ -281,6 +282,7 @@ mod tests {
     let actual = distribution_division(
       &DistributionPlain::Function(dividend),
       &DistributionPlain::Function(divisor),
+      MaxGridPoints::default(),
     )
     .unwrap();
 
@@ -314,6 +316,7 @@ mod tests {
     let actual = distribution_division(
       &DistributionPlain::Function(dividend),
       &DistributionPlain::Function(divisor),
+      MaxGridPoints::default(),
     )
     .unwrap();
 
@@ -345,9 +348,10 @@ mod tests {
     let product = distribution_multiplication(
       &DistributionNegLog::Function(a.clone()),
       &DistributionNegLog::Function(b.clone()),
+      MaxGridPoints::default(),
     )
     .unwrap();
-    let quotient = distribution_division(&product, &DistributionNegLog::Function(b)).unwrap();
+    let quotient = distribution_division(&product, &DistributionNegLog::Function(b), MaxGridPoints::default()).unwrap();
 
     let DistributionNegLog::Function(q) = quotient else {
       panic!("expected a Function quotient");

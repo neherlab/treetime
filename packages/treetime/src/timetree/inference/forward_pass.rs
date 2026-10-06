@@ -19,7 +19,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphMapOutputs, GraphPass, GraphPassForwardContext, GraphPassNodeOutput};
-use treetime_grid::Side;
+use treetime_grid::{MaxGridPoints, Side};
 use treetime_utils::make_internal_report;
 
 pub(crate) fn propagate_distributions_forward(
@@ -28,6 +28,7 @@ pub(crate) fn propagate_distributions_forward(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
   backward: &TimeBackward,
+  max_points: MaxGridPoints,
   log: &dyn LogSink,
 ) -> Result<BTreeMap<GraphNodeKey, NodePosterior>, Report> {
   let pass = GraphPass::new(graph)?;
@@ -35,7 +36,7 @@ pub(crate) fn propagate_distributions_forward(
     &backward.subtree,
     branches,
     |key| Err(make_internal_report!("Backward pass output is missing node {key}")),
-    |context| propagate_distributions_forward_node(constraints, names, &backward.messages, &context, log),
+    |context| propagate_distributions_forward_node(constraints, names, &backward.messages, &context, max_points, log),
   )?;
 
   let contradicted = posterior.values().filter(|node| node.contradicted).count();
@@ -58,6 +59,7 @@ fn propagate_distributions_forward_node(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   messages: &BTreeMap<GraphEdgeKey, TimeDistribution>,
   context: &GraphPassForwardContext<'_, &TimeDistribution, BranchLikelihood, NodePosterior>,
+  max_points: MaxGridPoints,
   log: &dyn LogSink,
 ) -> Result<GraphPassNodeOutput<NodePosterior, ()>, Report> {
   let date_constraint = constraints.date_constraint(context.key);
@@ -74,6 +76,7 @@ fn propagate_distributions_forward_node(
     context.parent,
     parent_edge,
     subtree.as_deref(),
+    max_points,
   )?;
   let (distribution, contradicted) = match refinement {
     ForwardRefinement::Refined(distribution) => (Some(Arc::new(distribution)), false),
@@ -120,6 +123,7 @@ fn refine_distribution_from_parent(
   parent: Option<&NodePosterior>,
   edge: Option<ParentEdge<'_>>,
   subtree: Option<&Distribution<NegLog>>,
+  max_points: MaxGridPoints,
 ) -> Result<ForwardRefinement, Report> {
   let Some(parent) = parent else {
     return Ok(ForwardRefinement::Unrefined);
@@ -135,18 +139,26 @@ fn refine_distribution_from_parent(
   };
 
   let Some(subtree_dist) = subtree else {
-    let dist_from_parent = convolve_across_edge(parent_time_dist, branch_dist, Side::Right, EPS, GRID_POINTS)?;
+    let dist_from_parent =
+      convolve_across_edge(parent_time_dist, branch_dist, Side::Right, EPS, GRID_POINTS, max_points)?;
     log_refinement(names, key, parent_time_dist, &dist_from_parent);
     return Ok(ForwardRefinement::Refined(dist_from_parent));
   };
 
   let parent_except_subtree = match edge.msg_to_parent {
-    Some(msg_to_parent) => distribution_division(parent_time_dist, msg_to_parent)?,
+    Some(msg_to_parent) => distribution_division(parent_time_dist, msg_to_parent, max_points)?,
     None => parent_time_dist.as_ref().clone(),
   };
-  let dist_from_parent = convolve_across_edge(&parent_except_subtree, branch_dist, Side::Right, EPS, GRID_POINTS)?;
+  let dist_from_parent = convolve_across_edge(
+    &parent_except_subtree,
+    branch_dist,
+    Side::Right,
+    EPS,
+    GRID_POINTS,
+    max_points,
+  )?;
 
-  let combined = distribution_multiplication(&dist_from_parent, subtree_dist)?
+  let combined = distribution_multiplication(&dist_from_parent, subtree_dist, max_points)?
     .normalize()
     .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))?;
   log_refinement(names, key, parent_time_dist, &combined);

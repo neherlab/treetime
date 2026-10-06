@@ -5,6 +5,7 @@ pub mod grid_fn;
 pub mod grid_iter;
 pub mod hard_approach_law;
 pub(crate) mod interp_nonuniform;
+pub mod max_grid_points;
 pub mod piecewise_constant_fn;
 pub mod piecewise_fn;
 pub mod piecewise_linear_fn;
@@ -22,6 +23,7 @@ pub use grid::Grid;
 pub use grid_edge::GridEdge;
 pub use grid_fn::GridFn;
 pub use hard_approach_law::{HardApproachLaw, Side};
+pub use max_grid_points::{GridPointLimitExceeded, MaxGridPoints};
 pub use soft_tail_law::SoftTailLaw;
 
 #[cfg(test)]

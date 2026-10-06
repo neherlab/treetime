@@ -19,6 +19,7 @@ app-datasets = { workspace = true }
 app-output = { workspace = true }
 treetime = { workspace = true }
 treetime-graph = { workspace = true }
+treetime-grid = { workspace = true }
 treetime-io = { workspace = true }
 treetime-primitives = { workspace = true }
 treetime-schema = { workspace = true }

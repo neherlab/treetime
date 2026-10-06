@@ -17,7 +17,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{
   GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassChildBackward, GraphPassNodeOutput,
 };
-use treetime_grid::Side;
+use treetime_grid::{MaxGridPoints, Side};
 use treetime_utils::make_internal_report;
 
 pub(crate) fn propagate_distributions_backward(
@@ -26,13 +26,14 @@ pub(crate) fn propagate_distributions_backward(
   coalescent_model: Option<&CoalescentModel>,
   bad_branches: &BTreeMap<GraphNodeKey, bool>,
   branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  max_points: MaxGridPoints,
 ) -> Result<TimeBackward, Report> {
   let pass = GraphPass::new(graph)?;
   let GraphMapOutputs { nodes, edges } = pass.map_backward(
     bad_branches,
     branches,
     |key| Err(make_internal_report!("Bad-branch flags are missing node {key}")),
-    |context| propagate_distributions_backward_node(constraints, coalescent_model, &context),
+    |context| propagate_distributions_backward_node(constraints, coalescent_model, &context, max_points),
   )?;
   Ok(TimeBackward {
     subtree: nodes,
@@ -44,12 +45,13 @@ fn propagate_distributions_backward_node(
   constraints: &DateConstraints,
   coalescent_model: Option<&CoalescentModel>,
   context: &GraphPassBackwardContext<'_, &bool, BranchLikelihood, TimeDistribution, TimeDistribution>,
+  max_points: MaxGridPoints,
 ) -> Result<GraphPassNodeOutput<TimeDistribution, TimeDistribution>, Report> {
   let date_constraint = constraints.date_constraint(context.key);
   let messages = gather_child_messages(context.children);
-  let distribution = combine_child_messages(&messages)?;
+  let distribution = combine_child_messages(&messages, max_points)?;
   let distribution = apply_coalescent_prior(coalescent_model, context.is_root, context.children.len(), distribution)?;
-  let distribution = apply_date_constraint(date_constraint.as_ref(), distribution)?;
+  let distribution = apply_date_constraint(date_constraint.as_ref(), distribution, max_points)?;
 
   let subtree = if matches!(distribution, Distribution::Empty) {
     None
@@ -71,6 +73,7 @@ fn propagate_distributions_backward_node(
         subtree.as_deref(),
         edge_key,
         branch,
+        max_points,
       )
     })
     .transpose()?;
@@ -98,7 +101,10 @@ fn gather_child_messages(
     .collect()
 }
 
-fn combine_child_messages(messages: &[Arc<Distribution<NegLog>>]) -> Result<Distribution<NegLog>, Report> {
+fn combine_child_messages(
+  messages: &[Arc<Distribution<NegLog>>],
+  max_points: MaxGridPoints,
+) -> Result<Distribution<NegLog>, Report> {
   let factors: Vec<&Distribution<NegLog>> = messages
     .iter()
     .map(Arc::as_ref)
@@ -107,7 +113,7 @@ fn combine_child_messages(messages: &[Arc<Distribution<NegLog>>]) -> Result<Dist
   if factors.is_empty() {
     return Ok(Distribution::Empty);
   }
-  distribution_product(&factors)
+  distribution_product(&factors, max_points)
 }
 
 fn apply_coalescent_prior(
@@ -134,6 +140,7 @@ fn apply_coalescent_prior(
 fn apply_date_constraint(
   date_constraint: Option<&Arc<Distribution<NegLog>>>,
   distribution: Distribution<NegLog>,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<NegLog>, Report> {
   let Some(constraint) = date_constraint else {
     return Ok(distribution);
@@ -141,7 +148,7 @@ fn apply_date_constraint(
   if matches!(distribution, Distribution::Empty) {
     return Ok(constraint.as_ref().clone());
   }
-  distribution_multiplication(&distribution, constraint)
+  distribution_multiplication(&distribution, constraint, max_points)
 }
 
 fn send_backward_message(
@@ -151,6 +158,7 @@ fn send_backward_message(
   subtree: Option<&Distribution<NegLog>>,
   edge_key: GraphEdgeKey,
   branch: &BranchLikelihood,
+  max_points: MaxGridPoints,
 ) -> Result<TimeDistribution, Report> {
   if bad_branch {
     return Ok(None);
@@ -169,7 +177,7 @@ fn send_backward_message(
   let outgoing = leaf_weighted.as_ref().unwrap_or(distribution);
 
   let negated_branch = branch_length_distribution.negate()?;
-  let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS)
+  let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS, max_points)
     .wrap_err_with(|| format!("When sending the time message backward along edge {edge_key}"))?;
 
   Ok(Some(Arc::new(message)))

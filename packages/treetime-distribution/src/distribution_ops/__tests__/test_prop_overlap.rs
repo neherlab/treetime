@@ -4,6 +4,7 @@ mod tests {
   use crate::{distribution_division, distribution_multiplication};
   use ndarray::{Array1, array};
   use proptest::prelude::*;
+  use treetime_grid::MaxGridPoints;
   use treetime_utils::{prop_assert_array_ulps_eq, prop_assert_ulps_eq};
 
   proptest! {
@@ -17,7 +18,7 @@ mod tests {
       let range = DistributionPlain::range((start, end), 3.0);
       let function = linear_function();
 
-      let actual = distribution_multiplication(&range, &function).unwrap();
+      let actual = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
       assert_intersection(&actual, (start.max(0.0), end.min(4.0)))?;
     }
 
@@ -31,8 +32,8 @@ mod tests {
       let range = DistributionPlain::range((start, end), 3.0);
       let function = linear_function();
 
-      let range_function = distribution_multiplication(&range, &function).unwrap();
-      let function_range = distribution_multiplication(&function, &range).unwrap();
+      let range_function = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
+      let function_range = distribution_multiplication(&function, &range, MaxGridPoints::default()).unwrap();
       prop_assert_eq!(range_function, function_range);
     }
 
@@ -46,8 +47,8 @@ mod tests {
       let left = linear_function_n_points(left_points, f64::from(left_width_hundredths) / 100.0);
       let right = linear_function_n_points(right_points, f64::from(right_width_hundredths) / 100.0);
 
-      let left_right = distribution_multiplication(&left, &right).unwrap();
-      let right_left = distribution_multiplication(&right, &left).unwrap();
+      let left_right = distribution_multiplication(&left, &right, MaxGridPoints::default()).unwrap();
+      let right_left = distribution_multiplication(&right, &left, MaxGridPoints::default()).unwrap();
       prop_assert_eq!(left_right, right_left);
     }
 
@@ -60,9 +61,9 @@ mod tests {
       let end = start + f64::from(width_hundredths) / 100.0;
       let range = DistributionPlain::range((start, end), 3.0);
       let function = linear_function();
-      let product = distribution_multiplication(&range, &function).unwrap();
+      let product = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
 
-      let actual = distribution_division(&product, &function).unwrap();
+      let actual = distribution_division(&product, &function, MaxGridPoints::default()).unwrap();
       let expected = Array1::from_elem(actual.y().unwrap().len(), 3.0);
       prop_assert_array_ulps_eq!(expected, actual.y().unwrap(), max_ulps = 4);
       assert_intersection(&actual, (start, end.min(4.0)))?;

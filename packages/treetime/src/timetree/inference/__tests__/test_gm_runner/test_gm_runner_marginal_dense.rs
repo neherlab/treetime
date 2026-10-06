@@ -23,6 +23,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
+  use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
@@ -101,7 +102,9 @@ mod tests {
         branch_lengths: &branch_lengths,
         names: &run_names,
         clock_model: &clock_model,
+        clock_rate_fixed: false,
         no_indels: false,
+        max_grid_points: MaxGridPoints::default(),
       },
       None,
       &NoopProgress,

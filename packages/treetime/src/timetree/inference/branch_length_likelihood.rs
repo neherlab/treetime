@@ -10,7 +10,7 @@ use treetime_distribution::DistributionFunction;
 use treetime_distribution::NegLog;
 use treetime_distribution::rewindow_to_mass;
 use treetime_grid::GridFn;
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::{first, last};
 
 pub(crate) fn compute_branch_length_distribution(
@@ -22,6 +22,7 @@ pub(crate) fn compute_branch_length_distribution(
   n_grid_points: usize,
   clock_rate: f64,
   gamma: f64,
+  max_points: MaxGridPoints,
 ) -> Result<Arc<Distribution<NegLog>>, Report> {
   debug_assert!(clock_rate > 0.0, "clock_rate must be positive, got {clock_rate:.6e}");
   debug_assert!(gamma > 0.0);
@@ -61,7 +62,7 @@ pub(crate) fn compute_branch_length_distribution(
     .with_right_extrap(BoundaryBehavior::Linear(right_boundary))?;
 
   let distribution = Distribution::Function(distribution_fn);
-  let distribution = rewindow_to_mass(&distribution, EPS, n_grid_points)?;
+  let distribution = rewindow_to_mass(&distribution, EPS, n_grid_points, max_points)?;
   Ok(Arc::new(distribution))
 }
 

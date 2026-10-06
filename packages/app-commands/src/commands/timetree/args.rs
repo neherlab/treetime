@@ -22,6 +22,7 @@ use std::path::PathBuf;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::timetree::params::TimeMarginalMode;
+use treetime_grid::MaxGridPoints;
 use treetime_utils::make_error;
 
 #[cfg(feature = "clap")]
@@ -51,6 +52,7 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) branch_length_mode: BranchLengthMode,
   pub(crate) time_marginal: TimeMarginalMode,
   pub(crate) confidence: bool,
+  pub(crate) max_grid_points: MaxGridPoints,
   #[expect(
     dead_code,
     reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
@@ -161,6 +163,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       branch_length_mode: raw.branch_length_mode.into(),
       time_marginal: raw.time_marginal.into(),
       confidence: raw.confidence,
+      max_grid_points: raw.max_grid_points.unwrap_or_default(),
       keep_polytomies: raw.keep_polytomies,
       resolve_polytomies: raw.resolve_polytomies,
       relax: raw.relax,
@@ -294,6 +297,14 @@ pub struct TreetimeTimetreeArgsRaw {
   /// When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Dating"))]
   pub confidence: bool,
+
+  /// Largest number of points of one probability grid during time inference.
+  ///
+  /// A run stops with an error when a grid would need more points. The value bounds single grids, not the total
+  /// memory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000.
+  #[schemars(example = 1000000)]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Dating"))]
+  pub max_grid_points: Option<MaxGridPoints>,
 
   /// Don't resolve polytomies using temporal information.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Polytomies"))]

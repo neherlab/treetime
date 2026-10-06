@@ -10,6 +10,7 @@ mod tests {
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_grid::MaxGridPoints;
   use treetime_grid::grid::Grid;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
@@ -21,7 +22,7 @@ mod tests {
       DistributionNegLog::function(t, y)
     };
 
-    let result = distribution_convolution(&gaussian(1.0)?, &gaussian(1.0)?)?;
+    let result = distribution_convolution(&gaussian(1.0)?, &gaussian(1.0)?, MaxGridPoints::default())?;
 
     let y0 = result.eval(0.0)?;
     assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = 0.05);
@@ -47,14 +48,14 @@ mod tests {
     #[case] right: DistributionVariant,
     #[case] expected: &str,
   ) {
-    assert_error!(distribution_convolution(&distribution(left), &distribution(right)), expected);
+    assert_error!(distribution_convolution(&distribution(left), &distribution(right), MaxGridPoints::default()), expected);
   }
 
   #[test]
   fn test_convolution_empty() {
     let a: DistributionPlain = DistributionPlain::empty();
     let b: DistributionPlain = DistributionPlain::function(array![], array![]).unwrap();
-    let actual: DistributionPlain = distribution_convolution(&a, &b).unwrap();
+    let actual: DistributionPlain = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
     let expected: DistributionPlain = DistributionPlain::empty();
     assert_eq!(expected, actual);
   }
@@ -63,7 +64,7 @@ mod tests {
   fn test_convolution_point_point() {
     let a: DistributionPlain = DistributionPlain::point(2.0, 3.0);
     let b: DistributionPlain = DistributionPlain::point(5.0, 4.0);
-    let actual: DistributionPlain = distribution_convolution(&a, &b).unwrap();
+    let actual: DistributionPlain = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
     let expected: DistributionPlain = DistributionPlain::point(7.0, 12.0);
     assert_eq!(expected, actual);
   }
@@ -72,7 +73,7 @@ mod tests {
   fn test_convolution_range_range_triangle() {
     let a = DistributionPlain::range((2.0, 4.0), 3.0);
     let b = DistributionPlain::range((6.0, 8.0), 2.0);
-    let actual = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
     let expected = {
       let x = array![8.0, 10.0, 12.0];
       let y = array![0.0, 6.0, 0.0];
@@ -85,7 +86,7 @@ mod tests {
   fn test_convolution_range_range_trapezoid_non_uniform() {
     let a = DistributionPlain::range((2.0, 4.0), 3.0);
     let b = DistributionPlain::range((6.0, 9.0), 2.0);
-    let actual = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
     let expected = {
       let x = array![8.0, 9.0, 10.0, 11.0, 12.0, 13.0];
       let y = array![0.0, 3.0, 6.0, 6.0, 3.0, 0.0];
@@ -98,7 +99,7 @@ mod tests {
   fn test_convolution_range_range_trapezoid_uniform() {
     let a = DistributionPlain::range((0.0, 2.0), 1.0);
     let b = DistributionPlain::range((3.0, 7.0), 2.0);
-    let actual = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
     let expected = {
       let x = array![3.0, 5.0, 7.0, 9.0];
       let y = array![0.0, 2.0, 2.0, 0.0];
@@ -114,7 +115,7 @@ mod tests {
     let x = array![0.0, 1.0, 2.0, 3.0, 4.0];
     let y = array![1.0, 2.0, 3.0, 4.0, 5.0];
     let f = DistributionPlain::function(x, y).unwrap();
-    let actual = distribution_convolution(&p, &f).unwrap();
+    let actual = distribution_convolution(&p, &f, MaxGridPoints::default()).unwrap();
 
     let x = array![3.0, 4.0, 5.0, 6.0, 7.0];
     let y = array![2.0, 4.0, 6.0, 8.0, 10.0];
@@ -130,7 +131,7 @@ mod tests {
     let x = array![0.0, 2.0, 4.0, 6.0, 8.0, 10.0];
     let y = array![0.0, 1.0, 0.0, 2.0, 1.0, 0.0];
     let f = DistributionPlain::function(x, y).unwrap();
-    let actual = distribution_convolution(&r, &f).unwrap();
+    let actual = distribution_convolution(&r, &f, MaxGridPoints::default()).unwrap();
 
     let expected_t = array![4.0, 6.0, 8.0, 10.0, 12.0, 14.0];
     let expected_y = array![1.0, 1.0, 3.0, 3.0, 3.0, 1.0];
@@ -142,7 +143,7 @@ mod tests {
   fn test_convolution_point_range() {
     let p = DistributionPlain::point(3.0, 2.0);
     let r = DistributionPlain::range((1.0, 4.0), 1.5);
-    let actual = distribution_convolution(&p, &r).unwrap();
+    let actual = distribution_convolution(&p, &r, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::range((4.0, 7.0), 3.0);
     assert_eq!(expected, actual);
   }
@@ -151,7 +152,7 @@ mod tests {
   fn test_convolution_range_point() {
     let r = DistributionPlain::range((1.0, 4.0), 1.5);
     let p = DistributionPlain::point(3.0, 2.0);
-    let actual = distribution_convolution(&r, &p).unwrap();
+    let actual = distribution_convolution(&r, &p, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::range((4.0, 7.0), 3.0);
     assert_eq!(expected, actual);
   }
@@ -166,7 +167,7 @@ mod tests {
     let b_y = array![1.0, 2.0];
     let b = DistributionPlain::function(b_x, b_y).unwrap();
 
-    let actual = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
 
     let expected_t = array![0.0, 1.0, 2.0, 3.0];
     let expected_y = array![1.0, 4.0, 5.0, 2.0];
@@ -184,7 +185,7 @@ mod tests {
     let b_y = array![4.0];
     let b = DistributionPlain::function(b_x, b_y).unwrap();
 
-    let actual = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::point(7.0, 12.0);
     assert_eq!(expected, actual);
   }
@@ -196,7 +197,7 @@ mod tests {
     let b_y = array![1.0, 1.0];
     let b = DistributionPlain::function(b_x, b_y).unwrap();
 
-    let actual = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::empty();
     assert_eq!(expected, actual);
   }
@@ -206,7 +207,7 @@ mod tests {
     let a = DistributionPlain::function(array![0.0, 1.0], array![1.0, 1.0]).unwrap();
     let b = DistributionPlain::function(array![10.0, 11.0], array![1.0, 1.0]).unwrap();
 
-    let actual = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
     assert!(!matches!(actual, DistributionPlain::Empty));
   }
 
@@ -220,7 +221,7 @@ mod tests {
     let b_y = array![1.0, 1.0, 1.0];
     let b = DistributionPlain::function(b_x, b_y).unwrap();
 
-    let actual = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
 
     let expected_t = array![0.0, 1.0, 2.0, 3.0];
     let expected_y = array![0.5, 2.0, 2.0, 0.5];
@@ -236,7 +237,7 @@ mod tests {
     let b_y = array![2.0, 3.0];
     let b = DistributionPlain::function(b_x, b_y).unwrap();
 
-    let actual = distribution_convolution(&a, &b).unwrap();
+    let actual = distribution_convolution(&a, &b, MaxGridPoints::default()).unwrap();
 
     let expected_x = array![6.0, 7.0];
     let expected_y = array![2.0, 3.0];
@@ -251,7 +252,7 @@ mod tests {
     let branch_length_dist = DistributionPlain::point(2.5, 1.0);
 
     let negated_branch = branch_length_dist.negate()?;
-    let actual = distribution_convolution(&child_time_dist, &negated_branch)?;
+    let actual = distribution_convolution(&child_time_dist, &negated_branch, MaxGridPoints::default())?;
 
     let expected = DistributionPlain::point(2010.5, 1.0);
     assert_eq!(expected, actual);
@@ -263,7 +264,7 @@ mod tests {
     let parent_time_dist = DistributionPlain::point(2010.0, 1.0);
     let branch_length_dist = DistributionPlain::point(1.5, 1.0);
 
-    let actual = distribution_convolution(&parent_time_dist, &branch_length_dist).unwrap();
+    let actual = distribution_convolution(&parent_time_dist, &branch_length_dist, MaxGridPoints::default()).unwrap();
 
     let expected = DistributionPlain::point(2011.5, 1.0);
     assert_eq!(expected, actual);
@@ -279,7 +280,7 @@ mod tests {
     let branch_y = array![0.3, 0.4, 0.3];
     let branch_dist = DistributionPlain::function(branch_x, branch_y).unwrap();
 
-    let actual = distribution_convolution(&parent_dist, &branch_dist).unwrap();
+    let actual = distribution_convolution(&parent_dist, &branch_dist, MaxGridPoints::default()).unwrap();
 
     let expected_t = array![2011.0, 2011.5, 2012.0, 2012.5, 2013.0];
     let expected_y = array![0.03, 0.13, 0.18, 0.13, 0.03];
@@ -297,7 +298,7 @@ mod tests {
     let dist_b: DistributionPlain =
       DistributionPlain::Function(DistributionFunction::from_start_dx_values(0.0, dx, values)?);
 
-    let actual = distribution_convolution(&dist_a, &dist_b)?;
+    let actual = distribution_convolution(&dist_a, &dist_b, MaxGridPoints::default())?;
     assert!(matches!(actual, DistributionPlain::Function(_)));
 
     let DistributionPlain::Function(result_fn) = actual else {
@@ -319,7 +320,7 @@ mod tests {
 
     let range = DistributionPlain::range((0.0, 2e-7), 1.0);
 
-    let actual = distribution_convolution(&range, &func)?;
+    let actual = distribution_convolution(&range, &func, MaxGridPoints::default())?;
     assert!(matches!(actual, DistributionPlain::Function(_)));
 
     let DistributionPlain::Function(f) = actual else {
@@ -334,11 +335,11 @@ mod tests {
   fn test_coarsen_convolution_narrow_range_keeps_fine_grid() -> Result<(), Report> {
     let fine = DistributionFunction::<f64, _>::from_start_dx_values(0.0, 0.01, array![1.0, 2.0, 1.0])?;
     assert_error!(
-      Grid::from_range_dx(0.0, 0.02, 1.0),
+      Grid::from_range_dx(0.0, 0.02, 1.0, MaxGridPoints::default()),
       "Grid must have at least 2 points, got 1"
     );
 
-    let actual: DistributionPlain = coarsen_convolution(fine.clone(), 1.0)?;
+    let actual: DistributionPlain = coarsen_convolution(fine.clone(), 1.0, MaxGridPoints::default())?;
 
     assert_eq!(DistributionPlain::Function(fine), actual);
     Ok(())
@@ -347,10 +348,10 @@ mod tests {
   #[test]
   fn test_coarsen_convolution_half_cell_range_resamples_to_two_points() -> Result<(), Report> {
     let fine = DistributionFunction::<f64, _>::from_start_dx_values(0.0, 0.25, array![1.0, 2.0, 1.0])?;
-    let expected_points = Grid::from_range_dx(0.0, 0.5, 1.0)?.n_points();
+    let expected_points = Grid::from_range_dx(0.0, 0.5, 1.0, MaxGridPoints::default())?.n_points();
     assert_eq!(2, expected_points);
 
-    let DistributionPlain::Function(actual) = coarsen_convolution(fine, 1.0)? else {
+    let DistributionPlain::Function(actual) = coarsen_convolution(fine, 1.0, MaxGridPoints::default())? else {
       return Err(eyre::eyre!("expected Function variant"));
     };
 
@@ -362,10 +363,10 @@ mod tests {
   #[test]
   fn test_coarsen_convolution_wide_range_resamples_to_coarse_spacing() -> Result<(), Report> {
     let fine = DistributionFunction::<f64, _>::from_start_dx_values(0.0, 0.5, Array1::from_elem(9, 1.0))?;
-    let expected_points = Grid::from_range_dx(0.0, 4.0, 1.0)?.n_points();
+    let expected_points = Grid::from_range_dx(0.0, 4.0, 1.0, MaxGridPoints::default())?.n_points();
     assert_eq!(5, expected_points);
 
-    let DistributionPlain::Function(actual) = coarsen_convolution(fine, 1.0)? else {
+    let DistributionPlain::Function(actual) = coarsen_convolution(fine, 1.0, MaxGridPoints::default())? else {
       return Err(eyre::eyre!("expected Function variant"));
     };
 

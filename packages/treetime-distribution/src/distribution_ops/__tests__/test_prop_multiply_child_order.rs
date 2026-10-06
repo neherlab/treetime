@@ -12,6 +12,7 @@ mod tests {
   use itertools::Itertools;
   use ndarray::Array1;
   use proptest::prelude::*;
+  use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, SoftTailLaw};
   use treetime_utils::{pretty_assert_ulps_eq, prop_assert_ulps_eq};
 
@@ -80,7 +81,7 @@ mod tests {
   fn fold_children(children: &[&DistributionPlain]) -> DistributionPlain {
     let mut accum = children[0].clone();
     for child in &children[1..] {
-      accum = distribution_multiplication(&accum, child).unwrap();
+      accum = distribution_multiplication(&accum, child, MaxGridPoints::default()).unwrap();
     }
     accum
   }

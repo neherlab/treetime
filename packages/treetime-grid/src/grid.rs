@@ -1,5 +1,6 @@
 use crate::InterpElem;
 use crate::grid_iter::GridIter;
+use crate::max_grid_points::MaxGridPoints;
 use approx::UlpsEq;
 use eyre::Report;
 use ndarray::Array1;
@@ -60,11 +61,7 @@ impl<T: InterpElem> Grid<T> {
     Ok(Self { x_min, dx, n_points })
   }
 
-  #[allow(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
-  pub fn from_range_dx(x_min: T, x_max: T, dx: T) -> Result<Self, Report>
+  pub fn from_range_dx(x_min: T, x_max: T, dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
   where
     T: Float,
   {
@@ -74,7 +71,8 @@ impl<T: InterpElem> Grid<T> {
     if x_max <= x_min {
       return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
     }
-    let n_points = ((x_max - x_min) / dx + T::one()).round().to_usize().unwrap();
+    let required = ((x_max - x_min) / dx + T::one()).round();
+    let n_points = max_points.point_count(to_f64(required), (to_f64(x_min), to_f64(x_max)), to_f64(dx))?;
     if n_points < 2 {
       return make_error!("Grid must have at least 2 points, got {n_points}");
     }
@@ -166,4 +164,8 @@ impl<T: InterpElem> Grid<T> {
   {
     GridIter::new(*self)
   }
+}
+
+pub(crate) fn to_f64<T: Float>(value: T) -> f64 {
+  value.to_f64().unwrap_or(f64::NAN)
 }

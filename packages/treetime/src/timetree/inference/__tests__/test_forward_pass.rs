@@ -16,6 +16,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
@@ -196,7 +197,11 @@ mod tests {
     let Distribution::Function(wide_function) = &wide_parent else {
       return Err(eyre::eyre!("the wide parent must be a distribution function"));
     };
-    let windowed = Distribution::Function(wide_function.resample_range_dx((2009.4, 2009.7), wide_function.dx())?);
+    let windowed = Distribution::Function(wide_function.resample_range_dx(
+      (2009.4, 2009.7),
+      wide_function.dx(),
+      MaxGridPoints::default(),
+    )?);
 
     pretty_assert_ulps_eq!(refine(wide_parent)?, refine(windowed)?, max_ulps = 4);
 
@@ -315,6 +320,7 @@ mod tests {
         names,
         &inputs.branches,
         &inputs.backward,
+        MaxGridPoints::default(),
         log,
       )
     }

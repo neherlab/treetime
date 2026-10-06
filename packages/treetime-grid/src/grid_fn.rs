@@ -1,9 +1,10 @@
 use crate::InterpElem;
 use crate::boundary_behavior::BoundaryBehavior;
-use crate::grid::Grid;
+use crate::grid::{Grid, to_f64};
 use crate::grid_edge::GridEdge;
 use crate::hard_approach_law::Side;
 use crate::interp_nonuniform::interp_nonuniform;
+use crate::max_grid_points::MaxGridPoints;
 use approx::{UlpsEq, ulps_eq};
 use eyre::Report;
 use ndarray::{Array1, s};
@@ -54,7 +55,11 @@ impl<T: InterpElem> GridFn<T> {
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
-  pub fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>) -> Result<Self, Report>
+  #[expect(
+    clippy::as_conversions,
+    reason = "an array length is far below 2^53, so the conversion to f64 is exact"
+  )]
+  pub fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>, max_points: MaxGridPoints) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
@@ -69,20 +74,21 @@ impl<T: InterpElem> GridFn<T> {
       );
     }
 
+    let x_min = x[0];
+    let x_max = x[x.len() - 1];
+    let range = (to_f64(x_min), to_f64(x_max));
+    let input_dx = (range.1 - range.0) / (x.len() - 1) as f64;
+    max_points.point_count(x.len() as f64, range, input_dx)?;
+
     if has_uniform_spacing(x) {
       let grid = Grid::from_array(x)?;
       return Self::from_grid_array(grid, y.clone());
     }
 
-    let x_min = x[0];
-    let x_max = x[x.len() - 1];
     let dx = find_min_spacing(x)?;
-    let n_points = ((x_max - x_min) / dx).ceil().to_usize().unwrap() + 1;
+    let required = ((x_max - x_min) / dx).ceil() + T::one();
+    let n_points = max_points.point_count(to_f64(required), range, to_f64(dx))?;
     let dx = (x_max - x_min) / T::from(n_points - 1).unwrap();
-
-    if n_points > 1_000_000 {
-      return make_error!("Resampling would require {n_points} points, which exceeds safety limit");
-    }
 
     let grid = Grid::from_start_dx(x_min, dx, n_points)?;
     let y_uniform = interp_nonuniform(x, y, n_points, |i| grid.x_at(i))?;
@@ -307,11 +313,11 @@ impl<T: InterpElem> GridFn<T> {
     Self::from_grid_array(*grid, Array1::from_vec(y_new))
   }
 
-  pub fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T) -> Result<Self, Report>
+  pub fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
   {
-    let grid = Grid::from_range_dx(x_range.0, x_range.1, dx)?;
+    let grid = Grid::from_range_dx(x_range.0, x_range.1, dx, max_points)?;
     let x_min = self.grid.x_min();
     let x_max = self.grid.x_max();
     let y_new = (0..grid.n_points())

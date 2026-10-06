@@ -5,6 +5,7 @@ mod tests {
   use crate::policy::{NegLog, Plain};
   use eyre::Report;
   use ndarray::array;
+  use treetime_grid::MaxGridPoints;
   use treetime_grid::{HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
@@ -58,7 +59,7 @@ mod tests {
       .with_left_extrap(left)?
       .with_right_extrap(right)?;
 
-    let actual = function.resample_range_dx((1.0, 3.0), 0.25)?;
+    let actual = function.resample_range_dx((1.0, 3.0), 0.25, MaxGridPoints::default())?;
 
     assert_eq!(left, actual.left_extrap());
     assert_eq!(right, actual.right_extrap());

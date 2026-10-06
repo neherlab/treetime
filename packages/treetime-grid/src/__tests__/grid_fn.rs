@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::MaxGridPoints;
   use crate::*;
   use approx::assert_ulps_eq;
   use eyre::Report;
@@ -53,7 +54,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_range_dx_clamped_holds_boundary_on_overshoot() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
-    let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.4)?;
+    let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.4, MaxGridPoints::default())?;
     assert_ulps_eq!(clamped.y(), &array![0.0, 4.0, 8.0, 10.0], max_ulps = 4);
     Ok(())
   }
@@ -61,7 +62,7 @@ mod tests {
   #[test]
   fn test_gridfn_resample_range_dx_clamped_interpolates_within_support() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
-    let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.5)?;
+    let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.5, MaxGridPoints::default())?;
     assert_ulps_eq!(clamped.y(), &array![0.0, 5.0, 10.0], max_ulps = 4);
     Ok(())
   }

@@ -13,6 +13,7 @@ mod tests {
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use rstest::rstest;
+  use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
@@ -27,7 +28,7 @@ mod tests {
     let y = array![1.0, 2.0, 3.0, 4.0, 5.0];
     let function_dist = DistributionPlain::function(t, y).unwrap();
 
-    let result = distribution_multiplication(&formula_dist, &function_dist).unwrap();
+    let result = distribution_multiplication(&formula_dist, &function_dist, MaxGridPoints::default()).unwrap();
 
     let DistributionPlain::Function(result_fn) = result else {
       panic!("Expected Function variant, got {result:?}");
@@ -46,8 +47,8 @@ mod tests {
     let y = array![1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
     let function_dist = DistributionPlain::function(t, y).unwrap();
 
-    let result_ff = distribution_multiplication(&formula_dist, &function_dist).unwrap();
-    let result_fxf = distribution_multiplication(&function_dist, &formula_dist).unwrap();
+    let result_ff = distribution_multiplication(&formula_dist, &function_dist, MaxGridPoints::default()).unwrap();
+    let result_fxf = distribution_multiplication(&function_dist, &formula_dist, MaxGridPoints::default()).unwrap();
 
     let (DistributionPlain::Function(ff_fn), DistributionPlain::Function(fxf_fn)) = (&result_ff, &result_fxf) else {
       panic!("Both results should be Function variants");
@@ -62,7 +63,7 @@ mod tests {
     let function =
       DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
 
-    let actual = distribution_multiplication(&formula, &function).unwrap();
+    let actual = distribution_multiplication(&formula, &function, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
@@ -92,7 +93,7 @@ mod tests {
     )
     .unwrap();
 
-    let actual = distribution_multiplication(&range, &function).unwrap();
+    let actual = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
@@ -105,7 +106,7 @@ mod tests {
     let range = DistributionPlain::range((5.0, 6.0), 2.0);
     let function = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
 
-    let actual = distribution_multiplication(&range, &function).unwrap();
+    let actual = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::Empty;
     assert_eq!(expected, actual);
   }
@@ -115,7 +116,7 @@ mod tests {
     let range = DistributionPlain::range((2.0, 3.0), 2.0);
     let function = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 2.0, 3.0]).unwrap();
 
-    let actual = distribution_multiplication(&range, &function).unwrap();
+    let actual = distribution_multiplication(&range, &function, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::point(2.0, 6.0);
     assert_eq!(expected, actual);
   }
@@ -125,7 +126,7 @@ mod tests {
     let left = DistributionPlain::function(array![0.0, 1.0], array![2.0, 3.0]).unwrap();
     let right = DistributionPlain::function(array![1.0, 2.0], array![5.0, 7.0]).unwrap();
 
-    let actual = distribution_multiplication(&left, &right).unwrap();
+    let actual = distribution_multiplication(&left, &right, MaxGridPoints::default()).unwrap();
     let expected = DistributionPlain::point(1.0, 15.0);
     assert_eq!(expected, actual);
   }
@@ -135,7 +136,7 @@ mod tests {
     let coarse = DistributionPlain::function(array![0.0, 1.0, 2.0, 3.0, 4.0], array![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
     let fine = DistributionPlain::function(array![1.2, 1.7, 2.2, 2.7], array![2.0, 3.0, 4.0, 5.0]).unwrap();
 
-    let actual = distribution_multiplication(&coarse, &fine).unwrap();
+    let actual = distribution_multiplication(&coarse, &fine, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(actual) = actual else {
       panic!("Expected Function variant, got {actual:?}");
     };
@@ -163,7 +164,7 @@ mod tests {
     let a = make_gaussian(0.0, 1.0, 101);
     let b = make_gaussian(20.0, 1.0, 101);
 
-    let result = distribution_multiplication(&a, &b).unwrap();
+    let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     assert!(matches!(result, DistributionPlain::Empty));
   }
 
@@ -172,7 +173,7 @@ mod tests {
     let a = make_gaussian(0.0, 1.0, 101);
     let b = make_gaussian(2.0, 1.0, 101);
 
-    let result = distribution_multiplication(&a, &b).unwrap();
+    let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
 
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function variant");
@@ -202,7 +203,7 @@ mod tests {
   fn test_multiply_tail_c1_overlapping_no_tails() {
     let a = DistributionPlain::Function(make_function(0.0, 10.0, 101, 5.0, 2.0));
     let b = DistributionPlain::Function(make_function(3.0, 13.0, 101, 8.0, 2.0));
-    let result = distribution_multiplication(&a, &b).unwrap();
+    let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
@@ -216,7 +217,7 @@ mod tests {
   fn test_multiply_tail_c2_overlapping_with_tails() {
     let a = DistributionPlain::Function(make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(SOFT).unwrap());
     let b = DistributionPlain::Function(make_function(3.0, 13.0, 101, 8.0, 2.0).with_left_extrap(SOFT).unwrap());
-    let result = distribution_multiplication(&a, &b).unwrap();
+    let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
@@ -232,7 +233,7 @@ mod tests {
         .unwrap(),
     );
     let b = DistributionPlain::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
-    let result = distribution_multiplication(&a, &b).unwrap();
+    let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function, got {result:?}")
     };
@@ -257,7 +258,7 @@ mod tests {
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let result = distribution_multiplication(&leaf_msg, &subtree_msg).unwrap();
+    let result = distribution_multiplication(&leaf_msg, &subtree_msg, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function (non-empty product), got {result:?}")
     };
@@ -275,7 +276,7 @@ mod tests {
         .unwrap(),
     );
     let b = DistributionPlain::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
-    let result = distribution_multiplication(&a, &b).unwrap();
+    let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     assert!(
       matches!(result, DistributionPlain::Empty),
       "Hard tail should not prevent Empty"
@@ -286,7 +287,7 @@ mod tests {
   fn test_multiply_tail_c6_endpoint_contact_with_constant() {
     let a = DistributionPlain::Function(make_function(5.0, 10.0, 51, 7.5, 2.0).with_left_extrap(SOFT).unwrap());
     let b = DistributionPlain::Function(make_function(0.0, 5.0, 51, 2.5, 2.0));
-    let result = distribution_multiplication(&a, &b).unwrap();
+    let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function (interval, not point contact), got {result:?}")
     };
@@ -298,7 +299,7 @@ mod tests {
   fn test_multiply_tail_c7_contained_with_tails() {
     let outer = DistributionPlain::Function(make_function(0.0, 20.0, 201, 10.0, 5.0).with_left_extrap(SOFT).unwrap());
     let inner = DistributionPlain::Function(make_function(5.0, 15.0, 101, 10.0, 3.0));
-    let result = distribution_multiplication(&outer, &inner).unwrap();
+    let result = distribution_multiplication(&outer, &inner, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
@@ -322,7 +323,7 @@ mod tests {
         .with_right_extrap(BoundaryBehavior::Hard)
         .unwrap(),
     );
-    let result = distribution_multiplication(&a, &b).unwrap();
+    let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
@@ -339,8 +340,8 @@ mod tests {
         .unwrap(),
     );
     let b = DistributionPlain::Function(make_function(0.0, 8.0, 101, 4.0, 2.0));
-    let ab = distribution_multiplication(&a, &b).unwrap();
-    let ba = distribution_multiplication(&b, &a).unwrap();
+    let ab = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
+    let ba = distribution_multiplication(&b, &a, MaxGridPoints::default()).unwrap();
     let (DistributionPlain::Function(fab), DistributionPlain::Function(fba)) = (&ab, &ba) else {
       panic!("Both results should be Function")
     };
@@ -382,7 +383,7 @@ mod tests {
 
     let mut accum = msg1;
     for msg in [&msg2, &msg3, &msg4] {
-      accum = distribution_multiplication(&accum, msg).unwrap();
+      accum = distribution_multiplication(&accum, msg, MaxGridPoints::default()).unwrap();
     }
 
     let DistributionPlain::Function(f) = &accum else {
@@ -412,14 +413,14 @@ mod tests {
     let a = DistributionPlain::Function(make_function(0.0, 10.0, 101, 5.0, 2.0).with_left_extrap(a_left).unwrap());
     let b = DistributionPlain::Function(make_function(2.0, 12.0, 101, 7.0, 2.0).with_left_extrap(b_left).unwrap());
 
-    let ab = distribution_multiplication(&a, &b).unwrap();
+    let ab = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(fab) = &ab else {
       panic!("Expected Function, got {ab:?}")
     };
     assert_eq!(expected_left, fab.left_extrap());
     assert_eq!(BoundaryBehavior::Error, fab.right_extrap());
 
-    let ba = distribution_multiplication(&b, &a).unwrap();
+    let ba = distribution_multiplication(&b, &a, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(fba) = &ba else {
       panic!("Expected Function, got {ba:?}")
     };
@@ -439,7 +440,7 @@ mod tests {
         .unwrap(),
     );
 
-    let ab = distribution_multiplication(&a, &b).unwrap();
+    let ab = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(fab) = &ab else {
       panic!("Expected Function, got {ab:?}")
     };
@@ -467,7 +468,7 @@ mod tests {
     );
 
     assert_error!(
-      distribution_multiplication(&a, &b),
+      distribution_multiplication(&a, &b, MaxGridPoints::default()),
       "Cannot multiply two HardApproach tails: their product is not representable by a single-parameter hard-approach law, and this composition is unreachable in the inference pipeline. This is an internal error. Please report it to developers."
     );
   }
@@ -487,7 +488,7 @@ mod tests {
         .unwrap(),
     );
 
-    let result = distribution_multiplication(&a, &b).unwrap();
+    let result = distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap();
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
@@ -516,7 +517,9 @@ mod tests {
   fn test_multiply_point_on_function_zero_raises_internal_error() {
     let point = DistributionPlain::point(1.0, 5.0);
     let func = DistributionPlain::function(array![0.0, 1.0, 2.0], array![1.0, 0.0, 1.0]).unwrap();
-    let error = distribution_multiplication(&point, &func).unwrap_err().to_string();
+    let error = distribution_multiplication(&point, &func, MaxGridPoints::default())
+      .unwrap_err()
+      .to_string();
     assert!(error.contains("hard domains overlap"), "unexpected error: {error}");
   }
 
@@ -524,7 +527,10 @@ mod tests {
   fn test_multiply_disjoint_points_return_empty() {
     let a = DistributionPlain::point(1.0, 2.0);
     let b = DistributionPlain::point(5.0, 3.0);
-    assert_eq!(DistributionPlain::Empty, distribution_multiplication(&a, &b).unwrap());
+    assert_eq!(
+      DistributionPlain::Empty,
+      distribution_multiplication(&a, &b, MaxGridPoints::default()).unwrap()
+    );
   }
 
   #[rstest]

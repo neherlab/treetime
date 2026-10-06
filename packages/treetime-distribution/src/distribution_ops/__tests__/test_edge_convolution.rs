@@ -8,11 +8,19 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
+  use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
 
   #[test]
   fn test_edge_convolution_variances_add_on_mass_window() -> Result<(), Report> {
-    let result = convolve_across_edge(&gaussian(1.0)?, &gaussian(1.0)?, Side::Right, 1e-6, 400)?;
+    let result = convolve_across_edge(
+      &gaussian(1.0)?,
+      &gaussian(1.0)?,
+      Side::Right,
+      1e-6,
+      400,
+      MaxGridPoints::default(),
+    )?;
 
     let y0 = result.eval(0.0)?;
     assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = 0.05);
@@ -24,7 +32,14 @@ mod tests {
   #[test]
   fn test_edge_convolution_sets_soft_and_hard_tails() -> Result<(), Report> {
     for (soft, hard_side) in [(Side::Left, Side::Right), (Side::Right, Side::Left)] {
-      let result = convolve_across_edge(&gaussian(1.0)?, &gaussian(1.0)?, soft, 1e-6, 200)?;
+      let result = convolve_across_edge(
+        &gaussian(1.0)?,
+        &gaussian(1.0)?,
+        soft,
+        1e-6,
+        200,
+        MaxGridPoints::default(),
+      )?;
       let Distribution::Function(f) = &result else {
         panic!("expected a gridded Function message");
       };
@@ -51,7 +66,14 @@ mod tests {
     let untailed = Distribution::Function(gaussian_grid(1.0)?);
     assert!(peak_normalized_if_mass_sizable(&gaussian_grid(1.0)?).is_none());
 
-    let result = convolve_across_edge(&untailed, &gaussian(1.0)?, Side::Right, 1e-6, 400)?;
+    let result = convolve_across_edge(
+      &untailed,
+      &gaussian(1.0)?,
+      Side::Right,
+      1e-6,
+      400,
+      MaxGridPoints::default(),
+    )?;
 
     let Distribution::Function(f) = &result else {
       panic!("expected a gridded Function message");

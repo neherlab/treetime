@@ -27,6 +27,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_grid::MaxGridPoints;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -244,7 +245,9 @@ mod tests {
           branch_lengths: &self.branch_lengths,
           names: &self.names,
           clock_model: &self.clock_model,
+          clock_rate_fixed: false,
           no_indels: false,
+          max_grid_points: MaxGridPoints::default(),
         }
       }
     }

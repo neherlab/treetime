@@ -8,6 +8,7 @@ mod tests {
   use serde::Deserialize;
   use std::collections::BTreeMap;
   use std::path::Path;
+  use treetime_grid::MaxGridPoints;
   use treetime_utils::io::json::json_read_file;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
@@ -30,7 +31,11 @@ mod tests {
       Array1::from_vec(input.time_points.clone()),
       Array1::from_vec(input.coalescent_neglog.clone()),
     )?;
-    let actual = neglog_to_plain_normalized(&distribution_multiplication(&child, &coalescent)?);
+    let actual = neglog_to_plain_normalized(&distribution_multiplication(
+      &child,
+      &coalescent,
+      MaxGridPoints::default(),
+    )?);
 
     pretty_assert_ulps_eq!(Array1::from_vec(expected.time_points.clone()), actual.t(), max_ulps = 4);
     pretty_assert_abs_diff_eq!(

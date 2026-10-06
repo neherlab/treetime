@@ -2,13 +2,14 @@ use crate::policy::{NegLog, YAxisPolicy};
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
 use ndarray::Array1;
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, Side, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
 pub fn rewindow_to_mass(
   dist: &Distribution<NegLog>,
   eps: f64,
   grid_points: usize,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<NegLog>, Report> {
   let Distribution::Function(f) = dist else {
     return dist.normalize();
@@ -17,7 +18,7 @@ pub fn rewindow_to_mass(
     return dist.normalize();
   };
   let (lo, hi) = sized.bounded_domain(eps)?;
-  resample_to_mass_window(&sized.normalized, lo, hi, grid_points)
+  resample_to_mass_window(&sized.normalized, lo, hi, grid_points, max_points)
 }
 
 pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64, NegLog>) -> Option<MassSized> {
@@ -75,6 +76,7 @@ pub(crate) fn resample_to_mass_window(
   lo: f64,
   hi: f64,
   grid_points: usize,
+  max_points: MaxGridPoints,
 ) -> Result<Distribution<NegLog>, Report> {
   if hi <= lo {
     return make_error!("Mass window collapsed to an empty interval [{lo}, {hi}]");
@@ -83,7 +85,8 @@ pub(crate) fn resample_to_mass_window(
   let floor_dx = normalized.dx();
   let target_dx = mass_width / (grid_points.saturating_sub(1).max(1) as f64);
   let dx = target_dx.min(floor_dx);
-  let n_points = ((mass_width / dx).ceil() as usize + 1).max(grid_points).max(2);
+  let required = ((mass_width / dx).ceil() + 1.0).max(grid_points as f64).max(2.0);
+  let n_points = max_points.point_count(required, (lo, hi), dx)?;
   let resampled = normalized.resample_range_n_points((lo, hi), n_points)?;
   let resampled = refit_soft_tails(resampled)?;
   Ok(Distribution::Function(resampled))

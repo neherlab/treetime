@@ -17,6 +17,7 @@ use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_grid::MaxGridPoints;
 
 pub(crate) fn constraint_coalescent_node_times(
   graph: &Graph,
@@ -81,6 +82,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     impute_missing_data: false,
     sequence_outputs_requested: false,
     seed: 0,
+    max_grid_points: MaxGridPoints::default(),
   }
 }
 

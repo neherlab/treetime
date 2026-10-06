@@ -12,6 +12,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use treetime_distribution::{BoundaryBehavior, Distribution, NegLog};
+  use treetime_grid::MaxGridPoints;
   use treetime_utils::array::ndarray::has_uniform_spacing;
 
   #[rustfmt::skip]
@@ -32,6 +33,7 @@ mod tests {
       GRID_POINTS,
  1.0,
  1.0,
+ MaxGridPoints::default(),
     )?;
 
     assert_abs_diff_eq!(helpers::eval(&distribution, t), 0.0, epsilon = 1e-12);
@@ -130,6 +132,7 @@ mod tests {
       GRID_POINTS,
       clock_rate,
       gamma,
+      MaxGridPoints::default(),
     )?;
 
     let t_mle_bl = indel_count as f64 / indel_rate;
@@ -158,6 +161,7 @@ mod tests {
       GRID_POINTS,
       clock_rate,
       gamma,
+      MaxGridPoints::default(),
     )?;
 
     let t_mle_bl = indel_count as f64 / indel_rate;
@@ -186,6 +190,7 @@ mod tests {
       GRID_POINTS,
  1.0,
  1.0,
+ MaxGridPoints::default(),
     )?;
 
     assert_abs_diff_eq!(helpers::eval(&with_zero_indels, t), 0.0, epsilon = 1e-12);
@@ -195,7 +200,17 @@ mod tests {
   #[test]
   fn test_branch_length_likelihood_grid_extent_scales_with_branch_length() -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
-    let distribution = compute_branch_length_distribution(&contributions, 0, 0.0, 0.1, 1e-3, GRID_POINTS, 1.0, 1.0)?;
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      0,
+      0.0,
+      0.1,
+      1e-3,
+      GRID_POINTS,
+      1.0,
+      1.0,
+      MaxGridPoints::default(),
+    )?;
 
     let (_t_min, t_max) = distribution.time_bounds().unwrap();
     assert_abs_diff_eq!(t_max, 0.5, epsilon = 1e-12);
@@ -205,7 +220,17 @@ mod tests {
   #[test]
   fn test_branch_length_likelihood_grid_extent_capped_at_max_branch_length() -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
-    let distribution = compute_branch_length_distribution(&contributions, 0, 0.0, 2.0, 1e-3, GRID_POINTS, 1.0, 1.0)?;
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      0,
+      0.0,
+      2.0,
+      1e-3,
+      GRID_POINTS,
+      1.0,
+      1.0,
+      MaxGridPoints::default(),
+    )?;
 
     let (_t_min, t_max) = distribution.time_bounds().unwrap();
     assert_abs_diff_eq!(t_max, 5.0, epsilon = 1e-12);
@@ -216,8 +241,17 @@ mod tests {
   fn test_branch_length_likelihood_divergent_boundary_floors_grid_above_zero() -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
     let one_mutation = 1e-3;
-    let distribution =
-      compute_branch_length_distribution(&contributions, 1, 1.0, 1.0, one_mutation, GRID_POINTS, 1.0, 1.0)?;
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      1,
+      1.0,
+      1.0,
+      one_mutation,
+      GRID_POINTS,
+      1.0,
+      1.0,
+      MaxGridPoints::default(),
+    )?;
 
     let (t_min, _t_max) = distribution.time_bounds().unwrap();
     assert_abs_diff_eq!(t_min, one_mutation * 0.01, epsilon = 1e-12);
@@ -235,7 +269,17 @@ mod tests {
   #[test]
   fn test_branch_length_likelihood_flat_distribution_keeps_pilot_grid() -> Result<(), Report> {
     let contributions: Vec<OptimizationContribution> = vec![];
-    let distribution = compute_branch_length_distribution(&contributions, 0, 0.0, 0.1, 1e-3, GRID_POINTS, 1.0, 1.0)?;
+    let distribution = compute_branch_length_distribution(
+      &contributions,
+      0,
+      0.0,
+      0.1,
+      1e-3,
+      GRID_POINTS,
+      1.0,
+      1.0,
+      MaxGridPoints::default(),
+    )?;
 
     let t = distribution.t();
     assert_eq!(GRID_POINTS, t.len());
@@ -256,6 +300,7 @@ mod tests {
       GRID_POINTS,
       1.0,
       1.0,
+      MaxGridPoints::default(),
     )?;
 
     assert!(
@@ -303,7 +348,17 @@ mod tests {
 
     pub(super) fn build_indel_rate_only_distribution() -> Result<Arc<Distribution<NegLog>>, Report> {
       let contributions: Vec<OptimizationContribution> = vec![];
-      compute_branch_length_distribution(&contributions, 0, 1.0, 1.0, 1e-3, GRID_POINTS, 1.0, 1.0)
+      compute_branch_length_distribution(
+        &contributions,
+        0,
+        1.0,
+        1.0,
+        1e-3,
+        GRID_POINTS,
+        1.0,
+        1.0,
+        MaxGridPoints::default(),
+      )
     }
   }
 }

@@ -77,7 +77,9 @@ pub(crate) fn run_initial_round(
     branch_lengths: &branch_lengths,
     names: &names,
     clock_model: &clock_model,
+    clock_rate_fixed: params.clock_rate.is_some(),
     no_indels: params.no_indels,
+    max_grid_points: params.max_grid_points,
   };
   let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, log);
   let time_inference = run(None)?;
@@ -182,7 +184,9 @@ impl RoundState {
       branch_lengths: &self.branch_lengths,
       names: &self.names,
       clock_model: &self.clock_model,
+      clock_rate_fixed: inputs.params.clock_rate.is_some(),
       no_indels: inputs.params.no_indels,
+      max_grid_points: inputs.params.max_grid_points,
     }
   }
 

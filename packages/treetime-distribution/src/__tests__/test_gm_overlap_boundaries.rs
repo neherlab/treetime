@@ -5,6 +5,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::path::Path;
+  use treetime_grid::MaxGridPoints;
   use treetime_utils::io::json::json_read_file;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_eq, pretty_assert_ulps_eq};
 
@@ -29,8 +30,8 @@ mod tests {
     let left = input.left().to_distribution()?;
     let right = input.right().to_distribution()?;
     let actual = match input.operation() {
-      Operation::Divide => distribution_division(&left, &right)?,
-      Operation::Multiply => distribution_multiplication(&left, &right)?,
+      Operation::Divide => distribution_division(&left, &right, MaxGridPoints::default())?,
+      Operation::Multiply => distribution_multiplication(&left, &right, MaxGridPoints::default())?,
     };
 
     pretty_assert_eq!(expected.kind(), DistributionKind::from_distribution(&actual));
