@@ -54,7 +54,6 @@ These tests assert `err.to_string().contains(...)` instead of the exact message 
 
 - `packages/app-commands/src/commands/ancestral/__tests__/test_aa_node_data.rs`: `test_validate_aa_args_requires_cds_placeholder`, `test_validate_aa_args_empty_cdses_no_annotation_errors`, `test_validate_aa_root_sequence_cdses_requires_every_cds`
 - `packages/treetime-io/src/__tests__/test_gff.rs`: `test_parse_gff3_cds_features_rejects_non_multiple_of_three`, `test_parse_gff3_cds_features_rejects_mixed_seqids`
-- `packages/treetime-graph/src/__tests__/test_topology_order.rs`: `topology_order_rejects_cycles`, `topology_order_target_order_rejects_empty`, `topology_order_target_order_rejects_duplicate_ranking_labels`, `topology_order_target_order_rejects_duplicate_final_leaf_labels`
 
 ### Missing test coverage for specific entities
 
