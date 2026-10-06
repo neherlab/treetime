@@ -17,6 +17,10 @@ services:
       - --examples-dir=/app/data
       - --runs-dir=/runs
       - --max-upload-size=52428800
+      # Largest grid of one run, in points. With two processing threads, a run on
+      # mpox/clade-ii/1000 at this limit stays below 1.5 GB, half of mem_limit
+      # (kb/decisions/distribution-grid-point-limit.md).
+      - --max-grid-points=1000000
       # The server answers only the hosts it knows: `app` for the health check of
       # treetime-deploy, and the public domain that Caddy forwards.
       - --allowed-host=app
