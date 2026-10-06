@@ -22,6 +22,14 @@ pub fn json_read<T: DeserializeOwned>(reader: impl Read) -> Result<T, Report> {
   Ok(value)
 }
 
+pub fn json_read_slice<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, Report> {
+  let mut de = Deserializer::from_slice(bytes);
+  de.disable_recursion_limit();
+  let value = T::deserialize(serde_stacker::Deserializer::new(&mut de)).wrap_err("When parsing JSON")?;
+  de.end().wrap_err("When parsing JSON")?;
+  Ok(value)
+}
+
 pub fn json_write_file<T: Serialize>(filepath: impl AsRef<Path>, obj: &T, pretty: JsonPretty) -> Result<(), Report> {
   write_file_with(filepath, |writer| {
     json_write(&mut *writer, obj, pretty)?;
