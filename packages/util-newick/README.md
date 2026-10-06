@@ -71,7 +71,7 @@ The reader tries the dialects in the given order and returns the first one whose
 
 Strict mode is an error on any malformed annotation or NHX tag value that does not fit its type. Tolerant mode keeps them as text and adds a `NewickWarning` with the line and column.
 
-`newick_from_str()` and `newick_from_reader()` read exactly one tree and fail when another tree follows. `newick_trees()` reads tree by tree from any `Read`: it finds the `;` of each tree with the scanner rule `tree_extent` and reads more input when a comment, a quoted label or a BEAST string may still hide the end of the tree. Comments between two trees belong to the root of the next tree; comments after the last tree are ignored. Input that is not valid UTF-8 is an error at the first invalid byte.
+`newick_from_str()` and `newick_from_reader()` read exactly one tree and fail when another tree follows. `newick_trees()` reads tree by tree from any `Read`: it finds the `;` of each tree with the scanner rule `tree_scan`, which stops before a comment, quoted label or BEAST string that is not complete yet and resumes there once more input has arrived. Comments between two trees belong to the root of the next tree; comments after the last tree are ignored. Input that is not valid UTF-8 is an error at the first invalid byte.
 
 Errors (`NewickError`) carry the kind, the byte offset, the line and the column of the problem.
 
