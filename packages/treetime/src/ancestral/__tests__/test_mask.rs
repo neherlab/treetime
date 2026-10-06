@@ -55,12 +55,39 @@ mod tests {
   }
 
   #[test]
-  fn test_mask_gaps_treated_as_ambiguous() {
+  fn test_mask_gaps_are_observed_states() {
     let alphabet = nuc_alphabet();
     let aln = [record("A", "----"), record("B", "----")];
 
     let mask = create_mask(aln.iter().map(|record| &record.seq), 4, &alphabet);
-    assert_eq!(vec![true, true, true, true], mask);
+    assert_eq!(vec![false, false, false, false], mask);
+  }
+
+  #[test]
+  fn test_mask_column_of_unknowns_and_gaps_is_not_masked() {
+    let alphabet = nuc_alphabet();
+    let aln = [record("A", "N-N"), record("B", "NN-"), record("C", "N-N")];
+
+    let mask = create_mask(aln.iter().map(|record| &record.seq), 3, &alphabet);
+    assert_eq!(vec![true, false, false], mask);
+  }
+
+  #[test]
+  fn test_mask_partial_ambiguity_codes_are_not_masked() {
+    let alphabet = nuc_alphabet();
+    let aln = [record("A", "RNY"), record("B", "NNN")];
+
+    let mask = create_mask(aln.iter().map(|record| &record.seq), 3, &alphabet);
+    assert_eq!(vec![false, true, false], mask);
+  }
+
+  #[test]
+  fn test_mask_amino_acids_uses_x_as_unknown() {
+    let alphabet = Alphabet::new(AlphabetName::Aa).unwrap();
+    let aln = [record("A", "XM-X"), record("B", "XXX-")];
+
+    let mask = create_mask(aln.iter().map(|record| &record.seq), 4, &alphabet);
+    assert_eq!(vec![true, false, false, false], mask);
   }
 
   #[test]

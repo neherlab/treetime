@@ -8,17 +8,13 @@ pub fn create_mask<'a>(
   alphabet: &Alphabet,
 ) -> Vec<bool> {
   let ambiguous = alphabet.unknown();
-  let gap = alphabet.gap();
   let seqs = seqs.into_iter().collect_vec();
 
   (0..alignment_length)
     .map(|pos| {
-      !seqs.iter().any(|seq| {
-        seq
-          .as_slice()
-          .get(pos)
-          .is_some_and(|&state| state != ambiguous && state != gap)
-      })
+      !seqs
+        .iter()
+        .any(|seq| seq.as_slice().get(pos).is_some_and(|&state| state != ambiguous))
     })
     .collect()
 }
