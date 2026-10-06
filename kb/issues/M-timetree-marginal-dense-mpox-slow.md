@@ -54,6 +54,8 @@ The performance bottleneck is in the backward pass (`propagate_distributions_bac
 
 For mpox with its low clock rate, the time-domain grid spacings can differ by large factors across edges, causing repeated expensive resamplings during the backward pass tree traversal.
 
+The resampled operands and the convolution result are bounded by the grid point limit (`--max-grid-points`, default 1 000 000): a run that needs a larger grid stops with an error ([kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md)). The slowdown from spacing ratios below the limit remains.
+
 ### Compounding factors
 
 Two properties of mpox compound the grid blow-up:

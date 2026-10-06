@@ -23,6 +23,22 @@ After these requests the run continued into the backward pass, with convolution 
 > - Whether those requests allocated memory or failed, given that `rewindow_to_mass()` propagates errors with `?` and the run still continued; and which allocation reached 55 GB
 > - The v0 result for the same input with `--time-marginal always`, on the decompressed alignment
 
+## Behavior with the grid point limit
+
+The grid point limit ([kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md)) turns the termination into an error within about 10 s, at about 435 MB. With the limit in place, the first exceeded grid is the resampled operand of a backward-message convolution ("When sending the time message backward along edge"), whose input node distribution reaches far into the past:
+
+| Clock rate | Range of the operand (years) | Spacing (years) | Points needed |
+| --- | --- | --- | --- |
+| `7e-4` | [-6.98e11, 2024.29] | 1.13e-4 | 6.2e15 |
+| `1e-3` | [-1.73e12, 2024.54] | 1.04e-4 | 1.7e16 |
+| `2e-3` | [-3.85e6, 2023.04] | 5.10e-5 | 7.6e10 |
+| `0.5` | [-1.22e9, 2022.37] | 2.08e-7 | 5.9e15 |
+
+The point counts match the windows of 2.2e15 to 2.1e16 points that the logging found, but the wide support belongs to node distributions that enter the convolution, which suggests that the support of a distribution grows across the backward pass, not only the resolution of a branch distribution.
+
+> [!IMPORTANT]
+> **Investigation required.** Find the operation that first gives a node distribution a support reaching more than a few years before the root date, at `7e-4` on `data/mpox/clade-ii/1000` with `--max-iter=1`.
+
 ## Related
 
 - [M-timetree-marginal-dense-mpox-slow.md](M-timetree-marginal-dense-mpox-slow.md): grid growth from spacing ratios in the convolution on the same organism

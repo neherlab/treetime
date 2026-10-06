@@ -216,7 +216,7 @@ Addition is exact and associative with no intermediate normalization, so each me
 
 ### Point budget
 
-Fixed `n` with adaptive `dx`, plus a resolution floor so that multiplying a narrow distribution by a wide one cannot ratchet `dx` coarser than the narrow operand had. The `MAX_GRID_POINTS = 1_000_000` ceiling stops being load-bearing once domains are mass-bounded rather than support-bounded.
+Fixed `n` with adaptive `dx`, plus a resolution floor so that multiplying a narrow distribution by a wide one cannot ratchet `dx` coarser than the narrow operand had. The grid point limit (`--max-grid-points`, default 1 000 000, [kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md)) stops being load-bearing once domains are mass-bounded rather than support-bounded.
 
 ## Design axes
 

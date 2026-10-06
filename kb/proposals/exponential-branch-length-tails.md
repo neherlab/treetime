@@ -24,7 +24,7 @@ This matches v0's `convolve_fft` behavior, which constructs slope-based tails (l
 
 ## Grid size consideration
 
-Exponential tails require discretizing the tail onto additional grid points before convolution. The grid grows by the number of tail points. For well-behaved exponential decays, the tail reaches negligible values within a few multiples of the boundary slope, so the extension is modest. The 1M point safety cap prevents unbounded growth.
+Exponential tails require discretizing the tail onto additional grid points before convolution. The grid grows by the number of tail points. For well-behaved exponential decays, the tail reaches negligible values within a few multiples of the boundary slope, so the extension is modest. The grid point limit (`--max-grid-points`, default 1 000 000) stops a run with an error before a grid grows beyond it ([kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md)).
 
 Previous grid explosion issues (fixed in `94a519a3`) were caused by a units mixup between years and divergence, not by tail extension.
 

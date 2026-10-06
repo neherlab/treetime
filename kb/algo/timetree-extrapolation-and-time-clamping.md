@@ -63,8 +63,10 @@ For spacing-derived grids, choose `n_points` from the intersection width and the
 
 ```
 dx       = min(a.dx, b.dx)  # Function-Function; use function.dx for Range-Function or Formula-Function
-n_points = clamp(round((overlap_max - overlap_min) / dx) + 1, 2, 1_000_000)
+n_points = max(round((overlap_max - overlap_min) / dx) + 1, 2)
 ```
+
+A count above the grid point limit (`--max-grid-points`, default 1 000 000) stops the operation with an error instead of using a coarser grid ([kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md)).
 
 Both multiplication and division honor operand tails when computing the support intersection. A `Constant` tail extends the evaluable domain on that side to the other operand's grid boundary. `Hard` and `Error` tails keep the grid boundary as-is (intersection is correct when the value outside support is zero or undefined). This keeps generic `GridFn` evaluation erroring by default and makes every extrapolated arithmetic path explicit. See [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) for the per-side extension rules.
 
