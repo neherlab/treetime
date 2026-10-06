@@ -47,8 +47,8 @@ export function DataTable<Row extends RowData>({
 }) {
   const table = useTable({
     features: FEATURES,
-    columns: [...columns],
-    data: [...rows],
+    columns,
+    data: rows,
     getRowId: rowId,
     initialState: { sorting: initialSorting },
     enableMultiSort: false,
