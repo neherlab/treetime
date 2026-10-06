@@ -117,21 +117,18 @@ Consumed by `augur export v2` as `root_sequence` in auspice JSON (inline or side
 
 #### `mask` (top-level, optional)
 
-String of `"0"` and `"1"` characters, length = alignment length. `"1"` = masked (every tip is ambiguous at this position). Built by [`create_mask()`](https://github.com/nextstrain/augur/blob/024292af6daf/augur/ancestral.py#L139-L183):
+String of `"0"` and `"1"` characters, length = alignment length. `"1"` = masked: every tip of the tree has the ambiguous character (`N` for nucleotides) at this position. Built by [`create_mask()`](https://github.com/nextstrain/augur/blob/024292af6daf/augur/ancestral.py#L139-L183); the FASTA branch is:
 
 ```python
-def create_mask(tt, is_vcf):
-    if is_vcf:
-        mask = np.zeros(tt.data.full_length, dtype=bool)
-        # VCF: mask non-variable positions
-    else:
-        mask = np.ones(tt.data.full_length, dtype=bool)
-        for leaf in tt.tree.get_terminals():
-            for pos, state in enumerate(tt.sequence(leaf, reconstructed=False)):
-                if state not in [tt.gtr.ambiguous, '-']:
-                    mask[pos] = False
-    return mask
+num_tips = len(tt.tree.get_terminals())
+ambiguous_count = np.zeros(tt.sequence_length, dtype=int)
+...
+for n in tt.tree.get_terminals():
+    ambiguous_count += np.array(tt.sequence(n,reconstructed=False, as_string=False)==tt.gtr.ambiguous, dtype=int)
+mask = ambiguous_count==num_tips
 ```
+
+Only the tree's tips count, so alignment records without a tip do not affect the mask. Only the ambiguous character counts as missing: a gap is an observed state, and a column of gaps (or of gaps and `N`) is not masked. Leading and trailing gaps become `N` before this check, because `augur ancestral` fills overhangs unless `--keep-overhangs` is set.
 
 The boolean numpy array is converted to a string in `_to_ancestral_json()`:
 
@@ -593,7 +590,7 @@ For generic read/merge (no typed access), `AugurNodeDataJson<BTreeMap<String, Va
 | ---------------------- | --------------------------------------------------------------- | --------- |
 | `annotations.nuc.end`  | `partition.length` or `get_sequence_length()`                   | Available |
 | `reference.nuc`        | `PartitionMarginalSparse.root_sequence` or dense root MAP       | Available |
-| `mask`                 | Not implemented                                                 | Missing   |
+| `mask`                 | `LeafSequences::mask()` over the tree's leaf sequences         | Available |
 | `nodes.*.muts`         | `PartitionBranchOps::edge_subs()` -> `Vec<Sub>`, `Sub::Display` | Available |
 | `nodes.*.sequence`     | `SparseNodePartition.seq.sequence` or dense MAP state           | Available |
 | `nodes.*.aa_muts`      | Not implemented (v1 has no AA reconstruction)                   | Missing   |
@@ -667,7 +664,7 @@ Decision: [../decisions/ancestral-sample-mode-default-argmax.md](../decisions/an
 
 ### Mask computation
 
-Implemented. `create_mask()` identifies positions where all tips are ambiguous, allowing mutation filtering and the ancestral node-data `"mask"` field [packages/treetime/src/ancestral/mask.rs#L4-L36](../../packages/treetime/src/ancestral/mask.rs#L4-L36).
+Implemented. `create_mask()` marks the positions where every leaf of the tree has the unknown character, the same rule as augur [packages/treetime/src/ancestral/mask.rs](../../packages/treetime/src/ancestral/mask.rs). `LeafSequences::mask()` passes it the leaf sequences after missing leaves are filled with unknown characters, and leaves out alignment records that match no leaf [packages/treetime/src/seq/alignment.rs](../../packages/treetime/src/seq/alignment.rs). The augur node data writer sets masked positions to the unknown character in every node sequence and drops substitutions at masked positions [packages/app-output/src/augur_node_data_ancestral.rs](../../packages/app-output/src/augur_node_data_ancestral.rs).
 
 ### AA reconstruction
 

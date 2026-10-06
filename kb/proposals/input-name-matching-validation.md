@@ -126,7 +126,7 @@ Replacing `Vec<FastaRecord>` with `HashMap<String, FastaRecord>` destroys insert
 - All leaf-to-sequence matching is by name, not position (`.find()` by `seq_name`)
 - `FastaRecord.index` (set during reading) is unused -- never read in production
 - `complete_alignment_for_leaves` builds a `BTreeSet` from names internally, then appends synthetic records; append position is irrelevant since downstream lookup is by name
-- `create_mask` ORs non-ambiguous positions across all records -- commutative, order-independent
+- `create_mask` ORs non-ambiguous positions across the leaf sequences -- commutative, order-independent
 - `get_common_length` checks all records have equal length -- set check, order-independent
 - Output FASTA order is determined by tree traversal (preorder), not input FASTA order
 - Node data JSON is keyed by `GraphNodeKey`, not by FASTA position
