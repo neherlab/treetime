@@ -4985,6 +4985,7 @@ dependencies = [
  "rstest",
  "schemars",
  "serde",
+ "serde_json",
  "treetime-utils",
 ]
 

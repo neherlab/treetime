@@ -1,6 +1,7 @@
 mod test_convolve;
 mod test_divide;
 mod test_edge_convolution;
+mod test_grid_point_limit;
 mod test_mass_domain;
 mod test_multiply;
 mod test_multiply_by_fn;

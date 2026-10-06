@@ -35,6 +35,7 @@ ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
+serde_json = { workspace = true }
 
 [lints]
 workspace = true
