@@ -134,7 +134,7 @@ mod tests {
     let fixture = setup_reroot_test_graph()?;
     let names = fixture.names.clone();
     let reroot_params = RerootParams {
-      spec: RerootSpec::Tips(vec![o!("A"), o!("B")]),
+      spec: RerootSpec::Tips(helpers::tip_keys(&fixture.tree.graph, &names, &["A", "B"])),
       ..RerootParams::default()
     };
 
@@ -150,15 +150,15 @@ mod tests {
   }
 
   #[test]
-  fn test_reroot_tips_reports_missing_tip() -> Result<(), Report> {
+  fn test_reroot_tips_rejects_an_empty_tip_list() -> Result<(), Report> {
     let reroot_params = RerootParams {
-      spec: RerootSpec::Tips(vec![o!("missing")]),
+      spec: RerootSpec::Tips(vec![]),
       ..RerootParams::default()
     };
 
     let result = helpers::reroot(setup_reroot_test_graph()?, &reroot_params);
 
-    assert_error!(result, "Reroot tip not found: missing");
+    assert_error!(result, "--reroot-tips requires at least one tip name");
     Ok(())
   }
 
@@ -219,7 +219,7 @@ mod tests {
     let names = fixture.names.clone();
     let stem_key = find_node_key_by_name(&fixture.tree.graph, &names, "STEM").expect("STEM exists");
     let reroot_params = RerootParams {
-      spec: RerootSpec::Tips(vec![o!("A"), o!("B")]),
+      spec: RerootSpec::Tips(helpers::tip_keys(&fixture.tree.graph, &names, &["A", "B"])),
       ..RerootParams::default()
     };
 
@@ -268,7 +268,7 @@ mod tests {
     let fixture = helpers::setup_stem_graph(&dates)?;
     let names = fixture.names.clone();
     let reroot_params = RerootParams {
-      spec: RerootSpec::Tips(vec![o!("A"), o!("B")]),
+      spec: RerootSpec::Tips(helpers::tip_keys(&fixture.tree.graph, &names, &["A", "B"])),
       ..RerootParams::default()
     };
 
@@ -307,6 +307,7 @@ mod tests {
     use crate::clock::reroot::RerootParams;
     use crate::o;
     use crate::progress::NoopProgress;
+    use crate::test_utils::find_node_key_by_name;
     use eyre::Report;
     use itertools::Itertools;
     use maplit::btreemap;
@@ -328,6 +329,17 @@ mod tests {
     pub(super) struct RerootFixture {
       pub tree: ClockTree,
       pub names: BTreeMap<GraphNodeKey, Option<String>>,
+    }
+
+    pub(super) fn tip_keys(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      tips: &[&str],
+    ) -> Vec<GraphNodeKey> {
+      tips
+        .iter()
+        .map(|tip| find_node_key_by_name(graph, names, tip).expect("the tip exists"))
+        .collect()
     }
 
     pub(super) fn leaf_dates() -> BTreeMap<String, f64> {

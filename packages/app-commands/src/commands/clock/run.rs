@@ -76,7 +76,7 @@ pub fn run_clock(
     keep_root: clock_args.keep_root,
     allow_negative_rate: clock_args.allow_negative_rate,
     branch_params: branch_split_to_params(&clock_args.branch_split),
-    reroot_spec: clock_args.reroot.spec(),
+    reroot_spec: clock_args.reroot.spec(&graph, &names)?,
   };
 
   let input = ClockInput {

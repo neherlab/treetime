@@ -2,12 +2,13 @@ use crate::clock::clock_set::ClockSet;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use treetime_graph::node::GraphNodeKey;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum RerootSpec {
   Method(RerootMethod),
-  Tips(Vec<String>),
+  Tips(Vec<GraphNodeKey>),
 }
 
 impl Default for RerootSpec {

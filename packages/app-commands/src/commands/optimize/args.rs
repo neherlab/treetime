@@ -5,6 +5,7 @@ use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
+use crate::commands::shared::reroot::resolve_reroot_tips;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -13,9 +14,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
+use treetime_graph::graph::Graph;
+use treetime_graph::node::GraphNodeKey;
 
 #[derive(Debug, Clone)]
 pub struct TreetimeOptimizeArgs {
@@ -48,20 +52,28 @@ impl TreetimeOptimizeArgs {
     &self.tree
   }
 
-  pub fn reroot_spec(&self) -> Option<RerootSpec> {
+  pub fn reroot_spec(
+    &self,
+    graph: &Graph,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+  ) -> Result<Option<RerootSpec>, Report> {
     if self.keep_root {
-      return None;
+      return Ok(None);
     }
 
     if let Some(method) = self.reroot {
-      return Some(RerootSpec::Method(RerootMethod::from(method)));
+      return Ok(Some(RerootSpec::Method(RerootMethod::from(method))));
     }
 
     if !self.reroot_tips.is_empty() {
-      return Some(RerootSpec::Tips(self.reroot_tips.clone()));
+      return Ok(Some(RerootSpec::Tips(resolve_reroot_tips(
+        &self.reroot_tips,
+        graph,
+        names,
+      )?)));
     }
 
-    None
+    Ok(None)
   }
 }
 

@@ -2,7 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
-use crate::error::{OperationError, input_error};
+use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
@@ -257,8 +257,7 @@ fn reroot_optimize(
       reroot_min_dev(graph, &variance, &opt_params, topo, branch_lengths, names)?
     },
     RerootSpec::Tips(tips) => {
-      let tip_keys = resolve_tip_keys(graph, tips, names)?;
-      let mrca = common_ancestor(graph, &tip_keys)?;
+      let mrca = common_ancestor(graph, tips)?;
       reroot_at_node(graph, mrca, topo, branch_lengths, names)?
     },
     RerootSpec::Method(method) => {
@@ -272,21 +271,4 @@ fn reroot_optimize(
       .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?
       .0,
   )
-}
-
-fn resolve_tip_keys(
-  graph: &Graph,
-  tips: &[String],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<Vec<GraphNodeKey>, Report> {
-  tips
-    .iter()
-    .map(|tip| {
-      names
-        .iter()
-        .find(|(_, name)| name.as_deref() == Some(tip.as_str()))
-        .map(|(key, _)| *key)
-        .ok_or_else(|| input_error(format!("Reroot tip not found: {tip}")))
-    })
-    .collect()
 }

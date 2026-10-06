@@ -10,6 +10,7 @@ mod tests {
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_graph::node::GraphNodeKey;
 
   #[test]
   fn test_optimize_pipeline_reroot_min_dev_changes_root() -> Result<(), Report> {
@@ -45,7 +46,7 @@ mod tests {
     let (graph, names, alphabet, sequences, branch_lengths) = load()?;
     let leaves_before = graph.get_leaves().count();
     let root_before = root_key(&graph);
-    let tips: Vec<String> = leaf_names(&graph, &names).into_iter().take(2).collect();
+    let tips: Vec<GraphNodeKey> = graph.get_leaves().map(|leaf| leaf.key()).take(2).collect();
     let output = run(
       &params_with(Some(RerootSpec::Tips(tips))),
       OptimizeInput {

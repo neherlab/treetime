@@ -9,7 +9,6 @@ use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves};
 use eyre::Report;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
@@ -214,7 +213,6 @@ pub(crate) fn select_root(
       tips,
       branch_lengths,
       reroot_params.objective,
-      names,
     ),
   }
 }
@@ -285,26 +283,15 @@ fn find_tip_group_root(
   inputs: &ClockInputs,
   state: &ClockState,
   options: &ClockVarianceParams,
-  tips: &[String],
+  tips: &[GraphNodeKey],
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<FindRootResult, Report> {
   if tips.is_empty() {
     return Err(input_error("--reroot-tips requires at least one tip name"));
   }
 
-  let tip_keys = tips
-    .iter()
-    .map(|tip| {
-      names
-        .iter()
-        .find(|(_, name)| name.as_deref() == Some(tip.as_str()))
-        .map(|(key, _)| *key)
-        .ok_or_else(|| input_error(format!("Reroot tip not found: {tip}")))
-    })
-    .try_collect::<_, Vec<_>, _>()?;
-  let mrca_key = common_ancestor(graph, &tip_keys)?;
+  let mrca_key = common_ancestor(graph, tips)?;
   find_named_root_point(graph, inputs, state, options, mrca_key, branch_lengths, objective)
 }
 
