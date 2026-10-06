@@ -1,6 +1,7 @@
 use crate::commands::shared::alignment::{AlignmentArgs, read_alignment, sequence_descriptions};
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
+use crate::commands::shared::tree_input::read_input_tree;
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -12,7 +13,6 @@ use treetime::make_error;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
 use treetime::seq::gap_fill::apply_gap_fill;
-use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::AlignmentRecord;
 
 pub(crate) struct SequenceInputArgs<'a> {
@@ -53,7 +53,7 @@ pub(crate) fn read_nwk_fasta(
 
   cancel.check()?;
   stages.report("Parsing tree", 0.1, "");
-  let parse = nwk_read_file(args.tree)?;
+  let parse = read_input_tree(args.tree, log)?;
 
   let names = parse.names();
   let aln = aln.into_iter().map(AlignmentRecord::from).collect();

@@ -78,7 +78,7 @@ describe("inputs", () => {
 
 describe("slot facts", () => {
   const facts = {
-    tree: { tips: 86, internal_nodes: 61, polytomies: 15, unnamed_tips: 0, duplicate_tip_names: [] },
+    tree: { tips: 86, internal_nodes: 61, polytomies: 15, unnamed_tips: 0, duplicate_node_names: [] },
     alignment: { sequences: 86, min_length: 10807, max_length: 10807, duplicate_names: [] },
     metadata: { rows: 86, columns: ["name", "date"], id_column: "name", date_column: "date" },
     problems: [{ input: "tree" as const, message: "bad" }],

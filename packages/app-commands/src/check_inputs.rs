@@ -90,8 +90,8 @@ pub struct TreeFacts {
   pub polytomies: usize,
   /// Number of tips without a name.
   pub unnamed_tips: usize,
-  /// Tip names that occur more than once.
-  pub duplicate_tip_names: Vec<String>,
+  /// Node names that occur more than once, tips and internal nodes alike, sorted.
+  pub duplicate_node_names: Vec<String>,
 }
 
 /// Facts about an alignment.
@@ -325,7 +325,7 @@ fn read_tree(path: &Path) -> Result<(TreeFacts, Vec<String>), Report> {
     internal_nodes: internal.len(),
     polytomies: internal.iter().filter(|node| node.outbound().len() > 2).count(),
     unnamed_tips: tip_names.iter().filter(|name| name.is_none()).count(),
-    duplicate_tip_names: duplicates(&named_tips),
+    duplicate_node_names: parsed.duplicate_names.clone(),
   };
   Ok((facts, named_tips))
 }

@@ -398,7 +398,7 @@ mod tests {
       let fixture = setup_reroot_test_graph_with_dates(dates)?;
       let names = fixture.names.clone();
       let (tree, _) = reroot(fixture, reroot_params)?;
-      let names = assign_node_names(names, &tree.graph)?;
+      let names = assign_node_names(names, &tree.graph)?.names;
       nwk_write_str(
         &TreeView::new(&tree.graph)?,
         &names,

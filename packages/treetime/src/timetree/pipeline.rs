@@ -491,7 +491,7 @@ fn gather_results(
   let divergences = root_to_node_divergences(&state.graph, |edge_key| {
     branch_length_or_zero(&state.branch_lengths, edge_key)
   })?;
-  let names = assign_node_names(state.names, &state.graph)?;
+  let names = assign_node_names(state.names, &state.graph)?.names;
 
   let clock_regression = clock_fit_regression_results(&state.clock_model, &state.clock_points, &names, |key| {
     if context.date_constraints.date_constraint(key).is_some() {

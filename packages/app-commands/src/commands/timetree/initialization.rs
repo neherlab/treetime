@@ -1,5 +1,6 @@
 use crate::commands::shared::alignment::read_alignment;
 use crate::commands::shared::leaf_order::leaf_order;
+use crate::commands::shared::tree_input::read_input_tree;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
@@ -14,10 +15,9 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::{DatesMap, metadata_read_file};
 use treetime_io::fasta::FastaRecord;
-use treetime_io::nwk::nwk_read_file;
 
 pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) -> Result<InputData, Report> {
-  let nwk_parsed = nwk_read_file(&args.tree).wrap_err("Failed to load tree from file")?;
+  let nwk_parsed = read_input_tree(&args.tree, log).wrap_err("Failed to load tree from file")?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;

@@ -1,6 +1,7 @@
 use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, TreetimeClockArgs};
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::tree_input::read_input_tree;
 use crate::rtt_chart::{write_clock_regression_chart_png, write_clock_regression_chart_svg};
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates};
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
@@ -21,7 +22,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::metadata_read_file;
-use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 #[expect(
@@ -37,7 +37,7 @@ pub fn run_clock(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
-  let nwk_parsed = nwk_read_file(&clock_args.tree)?;
+  let nwk_parsed = read_input_tree(&clock_args.tree, log)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;

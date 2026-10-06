@@ -2,6 +2,7 @@ use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::shared::alignment::read_alignment;
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::augur_node_data_refine::{RefineRun, write_augur_node_data_refine};
 use app_output::mutation_filter::UnknownMutationFilter;
@@ -22,7 +23,6 @@ use treetime::seq::mutation::{Mutation, MutationTrack, edge_state_change_counts}
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
@@ -41,7 +41,7 @@ pub fn run_optimize(
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
   }
-  let nwk_parsed = nwk_read_file(args.tree())?;
+  let nwk_parsed = read_input_tree(args.tree(), log)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;

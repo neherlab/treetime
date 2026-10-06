@@ -1,5 +1,6 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeTraits};
 use app_output::augur_node_data_traits::write_augur_node_data_traits;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
@@ -16,7 +17,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::discrete_states_csv::discrete_attrs_read_file;
-use treetime_io::nwk::nwk_read_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_mugration(
@@ -27,7 +27,7 @@ pub fn run_mugration(
 ) -> Result<(), Report> {
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
-  let parse = nwk_read_file(&mugration_args.tree)?;
+  let parse = read_input_tree(&mugration_args.tree, log)?;
   let names = parse.names();
   let graph: Graph = parse.graph;
   let branch_lengths = parse.branch_lengths;

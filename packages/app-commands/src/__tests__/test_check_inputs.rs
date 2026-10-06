@@ -30,7 +30,7 @@ mod tests {
         internal_nodes: facts.tree.as_ref().unwrap().internal_nodes,
         polytomies: 15,
         unnamed_tips: 0,
-        duplicate_tip_names: vec![],
+        duplicate_node_names: vec![],
       }),
       facts.tree
     );

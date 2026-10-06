@@ -202,7 +202,7 @@ mod tests {
     let (graph, created) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
     assert_eq!(created, 1);
 
-    let names = assign_node_names(names, &graph)?;
+    let names = assign_node_names(names, &graph)?.names;
 
     let mut name_list: Vec<String> = names.values().filter_map(Clone::clone).collect();
     name_list.sort();

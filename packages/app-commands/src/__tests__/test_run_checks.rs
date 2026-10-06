@@ -379,7 +379,7 @@ mod tests {
           internal_nodes: tips - 1,
           polytomies: 0,
           unnamed_tips: 0,
-          duplicate_tip_names: vec![],
+          duplicate_node_names: vec![],
         }),
         ..InputFacts::default()
       }

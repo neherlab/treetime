@@ -3,6 +3,7 @@ use crate::commands::shared::alignment::read_alignment;
 use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
@@ -23,7 +24,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::name_list::{name_list_read_file, name_list_read_str};
-use treetime_io::nwk::{NwkStyle, nwk_read_file};
+use treetime_io::nwk::NwkStyle;
 use treetime_primitives::{AlignmentRecord, Seq};
 
 pub fn run_prune(
@@ -37,7 +38,7 @@ pub fn run_prune(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
-  let parse = nwk_read_file(args.tree())?;
+  let parse = read_input_tree(args.tree(), log)?;
   let names = parse.names();
   let graph: Graph = parse.graph;
   let branch_lengths_input = parse.branch_lengths;

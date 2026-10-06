@@ -7,14 +7,17 @@ use std::collections::{BTreeMap, BTreeSet};
 pub fn assign_node_names(
   mut names: BTreeMap<GraphNodeKey, Option<String>>,
   graph: &Graph,
-) -> Result<BTreeMap<GraphNodeKey, Option<String>>, Report> {
+) -> Result<AssignedNodeNames, Report> {
   let mut result: BTreeMap<GraphNodeKey, Option<String>> = BTreeMap::new();
   let mut used: BTreeSet<String> = BTreeSet::new();
+  let mut duplicate_names: BTreeSet<String> = BTreeSet::new();
   for node in graph.get_nodes() {
     let key = node.key();
     let name = names.remove(&key).flatten().filter(|name| !name.is_empty());
-    if let Some(name) = &name {
-      used.insert(name.clone());
+    if let Some(name) = &name
+      && !used.insert(name.clone())
+    {
+      duplicate_names.insert(name.clone());
     }
     result.insert(key, name);
   }
@@ -36,7 +39,15 @@ pub fn assign_node_names(
     Ok(())
   })?;
 
-  Ok(result)
+  Ok(AssignedNodeNames {
+    names: result,
+    duplicate_names: duplicate_names.into_iter().collect(),
+  })
+}
+
+pub struct AssignedNodeNames {
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub duplicate_names: Vec<String>,
 }
 
 pub fn restrict_node_names(

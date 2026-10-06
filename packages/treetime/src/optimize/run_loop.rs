@@ -315,7 +315,7 @@ pub(crate) fn prune_and_merge_in_loop(
   }
 
   graph.build()?;
-  *names = assign_node_names(std::mem::take(names), graph)?;
+  *names = assign_node_names(std::mem::take(names), graph)?.names;
   let reconstruction = match reconstruction {
     MarginalReconstruction::Sparse(sparse) => MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       sparse.partition,

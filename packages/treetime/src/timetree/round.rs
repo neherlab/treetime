@@ -318,7 +318,7 @@ fn refine_topology(
   if resolved_nodes > 0 {
     progress_info!(log, "Resolved polytomies, introduced {resolved_nodes} new nodes");
   }
-  let names = assign_node_names(state.names, &graph)?;
+  let names = assign_node_names(state.names, &graph)?.names;
   node_times.extend(merger_times.into_iter().map(|(key, time)| (key, Some(time))));
   require_internal_node_times(&graph, &node_times)
     .wrap_err("Polytomy resolution left an internal node without an inferred time")?;

@@ -17,6 +17,7 @@ pub mod resolve_outputs;
 pub mod seed;
 pub mod sequence_inputs;
 pub mod topology_order_args;
+pub mod tree_input;
 
 #[cfg(test)]
 mod __tests__;

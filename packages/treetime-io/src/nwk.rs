@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::io::{Read, Write};
 use std::path::Path;
-use treetime_graph::assign_node_names::assign_node_names;
+use treetime_graph::assign_node_names::{AssignedNodeNames, assign_node_names};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -80,7 +80,7 @@ fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
   graph.build()?;
 
   let names = nodes.iter().map(|(key, meta)| (*key, meta.name.clone())).collect();
-  let names = assign_node_names(names, &graph)?;
+  let AssignedNodeNames { names, duplicate_names } = assign_node_names(names, &graph)?;
   for (key, name) in names {
     if let Some(meta) = nodes.get_mut(&key) {
       meta.name = name;
@@ -91,6 +91,7 @@ fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
     graph,
     nodes,
     branch_lengths,
+    duplicate_names,
   })
 }
 
@@ -99,6 +100,7 @@ pub struct NwkParse {
   pub graph: Graph,
   pub nodes: BTreeMap<GraphNodeKey, NwkNodeMeta>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub duplicate_names: Vec<String>,
 }
 
 impl NwkParse {

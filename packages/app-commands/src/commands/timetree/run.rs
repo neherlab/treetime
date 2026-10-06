@@ -415,7 +415,7 @@ impl ReconstructedNucSink {
 
 impl SeqSink for ReconstructedNucSink {
   fn on_topology(&mut self, graph: &Graph) -> Result<(), Report> {
-    self.names = assign_node_names(self.parse_names.clone(), graph)?;
+    self.names = assign_node_names(self.parse_names.clone(), graph)?.names;
     self.descs = self
       .names
       .iter()
