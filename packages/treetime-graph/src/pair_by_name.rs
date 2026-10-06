@@ -47,6 +47,22 @@ pub fn pair_by_name<T: Clone>(
   }
 }
 
+pub fn first_key_by_name(
+  candidates: impl IntoIterator<Item = GraphNodeKey>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> BTreeMap<&str, GraphNodeKey> {
+  let mut first_key_of: BTreeMap<&str, GraphNodeKey> = BTreeMap::new();
+  for key in candidates {
+    if let Some(name) = names[&key].as_deref() {
+      first_key_of
+        .entry(name)
+        .and_modify(|first| *first = (*first).min(key))
+        .or_insert(key);
+    }
+  }
+  first_key_of
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamePairing<T> {
   pub by_node: BTreeMap<GraphNodeKey, T>,

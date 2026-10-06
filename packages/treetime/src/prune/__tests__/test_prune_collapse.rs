@@ -9,10 +9,11 @@ mod tests {
   use crate::prune::__tests__::test_prune::tests::helpers::*;
   use crate::prune::prune::{collapse_sparse_edges_from_leaf_recursive, get_edge_num_muts, prune_nodes};
   use crate::seq::mutation::Sub;
+  use crate::test_utils::node_keys_named;
   use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion, sparse_edge_obs};
   use approx::assert_relative_eq;
   use eyre::Report;
-  use maplit::{btreemap, btreeset};
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -177,8 +178,7 @@ mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
 
@@ -249,8 +249,7 @@ mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
 
@@ -312,8 +311,7 @@ mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
 
@@ -396,8 +394,7 @@ mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
 
@@ -435,8 +432,7 @@ mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
 
@@ -471,8 +467,7 @@ mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
 
@@ -521,8 +516,7 @@ mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
 
@@ -571,8 +565,7 @@ mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
 
@@ -621,8 +614,7 @@ mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
 
@@ -683,8 +675,7 @@ mod tests {
       &mut partitions,
       Some(1e-6),
       false,
-      &btreeset! {},
-      &names,
+      &node_keys_named(&names, &[]),
       &mut branch_lengths,
     )?;
     assert!(
@@ -746,8 +737,7 @@ mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
 

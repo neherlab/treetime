@@ -62,7 +62,7 @@ mod tests {
         prune_short: None,
         prune_empty: true,
         merge_shared_mutations: false,
-        node_names: btreeset! {},
+        node_keys: btreeset! {},
       };
       let sequences = leaf_seq_inputs(&parsed.graph, &names, sequences);
       let input = PruneInput {

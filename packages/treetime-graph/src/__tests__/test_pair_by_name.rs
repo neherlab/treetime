@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::node::GraphNodeKey;
-  use crate::pair_by_name::{NamePairing, pair_by_name};
+  use crate::pair_by_name::{NamePairing, first_key_by_name, pair_by_name};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_utils::{o, vec_of_owned};
@@ -91,5 +91,15 @@ mod tests {
       },
       actual
     );
+  }
+
+  #[test]
+  fn test_pair_by_name_first_key_by_name_keeps_the_smallest_key_of_each_name() {
+    let (b, a1, a2, unnamed) = (GraphNodeKey(0), GraphNodeKey(1), GraphNodeKey(2), GraphNodeKey(3));
+    let names = btreemap! { b => Some(o!("B")), a1 => Some(o!("A")), a2 => Some(o!("A")), unnamed => None };
+
+    let actual = first_key_by_name([a2, unnamed, b, a1], &names);
+
+    assert_eq!(btreemap! { "A" => a1, "B" => b }, actual);
   }
 }

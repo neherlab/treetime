@@ -58,8 +58,7 @@ pub fn run(
     &mut partitions,
     params.prune_short,
     params.prune_empty,
-    &params.node_names,
-    &names,
+    &params.node_keys,
     &mut branch_lengths,
   )
   .map_err(OperationError::classify)?;
@@ -86,7 +85,7 @@ pub struct PruneParams {
   pub prune_short: Option<f64>,
   pub prune_empty: bool,
   pub merge_shared_mutations: bool,
-  pub node_names: BTreeSet<String>,
+  pub node_keys: BTreeSet<GraphNodeKey>,
 }
 
 pub struct PruneInput {

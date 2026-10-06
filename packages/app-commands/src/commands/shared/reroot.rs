@@ -8,6 +8,7 @@ use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use treetime::make_report;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::pair_by_name::first_key_by_name;
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema)]
@@ -56,15 +57,7 @@ pub fn resolve_reroot_tips(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<Vec<GraphNodeKey>, Report> {
-  let mut first_leaf_of: BTreeMap<&str, GraphNodeKey> = BTreeMap::new();
-  for key in graph.get_leaves().map(|leaf| leaf.key()) {
-    if let Some(name) = names[&key].as_deref() {
-      first_leaf_of
-        .entry(name)
-        .and_modify(|first| *first = (*first).min(key))
-        .or_insert(key);
-    }
-  }
+  let first_leaf_of = first_key_by_name(graph.get_leaves().map(|leaf| leaf.key()), names);
   tips
     .iter()
     .map(|tip| {

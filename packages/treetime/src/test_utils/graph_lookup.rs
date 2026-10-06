@@ -1,7 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::pair_by_name::first_key_by_name;
 
 pub(crate) fn find_node_key_by_name(
   graph: &Graph,
@@ -32,4 +33,15 @@ pub(crate) fn find_edge_key(
     }
   }
   None
+}
+
+pub(crate) fn node_keys_named(
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  wanted: &[&str],
+) -> BTreeSet<GraphNodeKey> {
+  let first_key_of = first_key_by_name(names.keys().copied(), names);
+  wanted
+    .iter()
+    .filter_map(|name| first_key_of.get(name).copied())
+    .collect()
 }

@@ -23,6 +23,7 @@ use treetime::{make_error, make_report};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::pair_by_name::first_key_by_name;
 use treetime_io::name_list::{name_list_read_file, name_list_read_str};
 use treetime_io::nwk::NwkStyle;
 use treetime_primitives::Seq;
@@ -70,7 +71,7 @@ pub fn run_prune(
     prune_short: args.prune_short,
     prune_empty: args.prune_empty,
     merge_shared_mutations: args.merge_shared_mutations,
-    node_names,
+    node_keys: resolve_node_names(&node_names, &graph, &names),
   };
 
   let unknown = alphabet.unknown();
@@ -231,6 +232,18 @@ fn parse_node_names(
   }
 
   Ok(node_names)
+}
+
+pub(crate) fn resolve_node_names(
+  node_names: &BTreeSet<String>,
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> BTreeSet<GraphNodeKey> {
+  let first_node_of = first_key_by_name(graph.get_nodes().map(|node| node.key()), names);
+  node_names
+    .iter()
+    .filter_map(|name| first_node_of.get(name.as_str()).copied())
+    .collect()
 }
 
 fn ascii_delimiter(delimiter: char) -> Result<u8, Report> {

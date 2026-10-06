@@ -5,6 +5,7 @@ pub(super) mod tests {
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs};
   use crate::prune::prune::prune_nodes;
   use crate::seq::mutation::Sub;
+  use crate::test_utils::node_keys_named;
   use crate::test_utils::{find_edge_key, fitch_edge_obs};
   use eyre::Report;
   use helpers::*;
@@ -31,7 +32,6 @@ pub(super) mod tests {
       Some(0.0),
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -55,7 +55,6 @@ pub(super) mod tests {
       Some(0.05),
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -79,7 +78,6 @@ pub(super) mod tests {
       Some(0.01),
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -105,7 +103,6 @@ pub(super) mod tests {
       Some(0.0),
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
     assert!(graph.get_nodes().next().is_none());
@@ -122,7 +119,6 @@ pub(super) mod tests {
       Some(0.0),
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -146,7 +142,6 @@ pub(super) mod tests {
       Some(0.001),
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -172,7 +167,6 @@ pub(super) mod tests {
       Some(0.01),
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -201,7 +195,6 @@ pub(super) mod tests {
       None,
       true,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
 
@@ -227,7 +220,6 @@ pub(super) mod tests {
       None,
       true,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
 
@@ -247,7 +239,6 @@ pub(super) mod tests {
       None,
       true,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
 
@@ -267,7 +258,6 @@ pub(super) mod tests {
       None,
       true,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
 
@@ -294,7 +284,6 @@ pub(super) mod tests {
       Some(0.01),
       true,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
 
@@ -314,7 +303,6 @@ pub(super) mod tests {
       Some(0.05),
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -338,7 +326,6 @@ pub(super) mod tests {
       Some(0.05),
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -372,7 +359,6 @@ pub(super) mod tests {
       None,
       true,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
 
@@ -394,7 +380,6 @@ pub(super) mod tests {
       None,
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
 
@@ -413,8 +398,7 @@ pub(super) mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "B".to_owned() },
-      &names,
+      &node_keys_named(&names, &["B"]),
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -437,8 +421,7 @@ pub(super) mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "A".to_owned(), "C".to_owned() },
-      &names,
+      &node_keys_named(&names, &["A", "C"]),
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -461,8 +444,7 @@ pub(super) mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "nonexistent".to_owned() },
-      &names,
+      &node_keys_named(&names, &["nonexistent"]),
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -485,8 +467,7 @@ pub(super) mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal"]),
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -509,8 +490,7 @@ pub(super) mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "internal".to_owned(), "D".to_owned() },
-      &names,
+      &node_keys_named(&names, &["internal", "D"]),
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -534,7 +514,6 @@ pub(super) mod tests {
       None,
       false,
       &btreeset! {},
-      &names,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -557,8 +536,7 @@ pub(super) mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "A".to_owned(), "B".to_owned() },
-      &names,
+      &node_keys_named(&names, &["A", "B"]),
       &mut branch_lengths,
     )?;
     assert_eq!(graph.get_nodes().count(), 1);
@@ -574,8 +552,7 @@ pub(super) mod tests {
       &mut partitions,
       None,
       false,
-      &btreeset! { "A".to_owned() },
-      &names,
+      &node_keys_named(&names, &["A"]),
       &mut branch_lengths,
     )?;
 

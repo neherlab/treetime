@@ -13,21 +13,12 @@ pub(crate) fn prune_nodes(
   partitions: &mut [PartitionMarginalSparse],
   prune_short: Option<f64>,
   prune_empty: bool,
-  node_names: &BTreeSet<String>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  node_keys: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  prune_internal_nodes(
-    graph,
-    partitions,
-    prune_short,
-    prune_empty,
-    node_names,
-    names,
-    branch_lengths,
-  )?;
+  prune_internal_nodes(graph, partitions, prune_short, prune_empty, node_keys, branch_lengths)?;
   graph.build()?;
-  prune_leaves(graph, partitions, node_names, names, branch_lengths)?;
+  prune_leaves(graph, partitions, node_keys, branch_lengths)?;
   graph.build()?;
   Ok(())
 }
@@ -37,8 +28,7 @@ fn prune_internal_nodes(
   partitions: &mut [PartitionMarginalSparse],
   prune_short: Option<f64>,
   prune_empty: bool,
-  node_names: &BTreeSet<String>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  node_keys: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   #[expect(
@@ -59,11 +49,9 @@ fn prune_internal_nodes(
 
       let should_prune_empty = prune_empty && get_edge_num_muts(partitions, edge.key())? == Some(0);
 
-      let should_prune_by_name = names[&edge.target()]
-        .as_deref()
-        .is_some_and(|name| node_names.contains(name));
+      let should_prune_by_key = node_keys.contains(&edge.target());
 
-      let should_prune = should_prune_short || should_prune_empty || should_prune_by_name;
+      let should_prune = should_prune_short || should_prune_empty || should_prune_by_key;
       Ok(should_prune.then(|| edge.key()))
     })
     .collect::<Result<Vec<_>, Report>>()?
@@ -97,8 +85,7 @@ pub(crate) fn get_edge_num_muts(
 fn prune_leaves(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
-  node_names: &BTreeSet<String>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  node_keys: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   let edges_to_collapse = graph
@@ -110,11 +97,7 @@ fn prune_leaves(
         return None;
       }
 
-      let should_prune_by_name = names[&edge.target()]
-        .as_deref()
-        .is_some_and(|name| node_names.contains(name));
-
-      should_prune_by_name.then(|| edge.key())
+      node_keys.contains(&edge.target()).then(|| edge.key())
     })
     .collect_vec();
 
