@@ -6,7 +6,7 @@ Crate: `util-newick`
 
 ## Description
 
-The Newick parser accepts root-level branch lengths (`(A:0.1,B:0.2):0.5;`) but silently discards the root's `:0.5`. `NewickGraph` has no field to represent root branch lengths since the root node has no incoming edge.
+The Newick parser accepts root-level branch lengths (`(A:0.1,B:0.2):0.5;`) but silently discards the root's `:0.5`. `NewickGraph` has no field to represent root branch lengths since the root node has no incoming edge. Comments after the root's `:` become attributes of the root node.
 
 Round-trip of trees with root branch lengths loses data: `(A:0.1,B:0.2):0.5;` parses and writes back as `(A:0.1,B:0.2);`.
 
@@ -17,9 +17,9 @@ Root branch lengths appear in some tool outputs (IQ-TREE, BEAST) and can carry e
 ## Fix
 
 1. Add `root_branch_length: Option<f64>` to `NewickGraph`
-2. Store the parsed root branch length in `fn visit_root_branch()` instead of discarding it
-3. Emit the stored value after the root subtree in the Newick writer `fn newick_to_writer()` [`packages/util-newick/src/write.rs#L7`](../../packages/util-newick/src/write.rs#L7)
-4. Carry the field through `NexusTree` records and every conversion that constructs or consumes `NewickGraph`
+2. Store the root's branch length in `fn Builder::finish()` in [packages/util-newick/src/parse.rs](../../packages/util-newick/src/parse.rs) instead of discarding it
+3. Write the stored value after the root subtree in `fn write_newick()` in [packages/util-newick/src/write.rs](../../packages/util-newick/src/write.rs)
+4. Carry the value through `fn graph_from_newick()` in [packages/treetime-io/src/nwk.rs](../../packages/treetime-io/src/nwk.rs) and decide whether the command outputs, written by `fn write_nwk_tree()` in the same file, keep it
 
 ## Validation
 
@@ -30,5 +30,5 @@ Root branch lengths appear in some tool outputs (IQ-TREE, BEAST) and can carry e
 
 ## Location
 
-- Parser: `fn visit_root_branch()` [`packages/util-newick/src/parse.rs#L77-L105`](../../packages/util-newick/src/parse.rs#L77-L105)
-- Data model: `struct NewickGraph` [`packages/util-newick/src/types.rs#L30-L35`](../../packages/util-newick/src/types.rs#L30-L35), `struct NexusTree` [`packages/util-newick/src/types.rs#L24-L27`](../../packages/util-newick/src/types.rs#L24-L27)
+- Parser: `fn Builder::finish()` in [packages/util-newick/src/parse.rs](../../packages/util-newick/src/parse.rs)
+- Data model: `struct NewickGraph` and `struct NexusTree` in [packages/util-newick/src/types.rs](../../packages/util-newick/src/types.rs)

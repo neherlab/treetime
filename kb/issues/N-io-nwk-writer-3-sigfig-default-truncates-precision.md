@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **Decision required.** The default branch-length precision of the Newick exchange format is not approved. The tool survey and the options are in [kb/proposals/newick-branch-length-precision.md](../proposals/newick-branch-length-precision.md).
 
-`format_weight` at `packages/treetime-io/src/nwk.rs#L274` defaults to 3 significant digits:
+`fn format_weight()` at [packages/treetime-io/src/nwk.rs#L199-L205](../../packages/treetime-io/src/nwk.rs#L199-L205) defaults to 3 significant digits:
 
 ```rust
 float_to_digits(
@@ -25,7 +25,8 @@ A public mugration report describes small branch lengths being written as zero i
 
 ## Locations
 
-- `packages/treetime-io/src/nwk.rs#L268-L277`
+- [packages/treetime-io/src/nwk.rs#L199-L205](../../packages/treetime-io/src/nwk.rs#L199-L205)
 - `NwkWriteOptions.weight_significant_digits` defaults to `None` but `format_weight` overrides with `Some(3)`
+- `fn float_to_digits()` in [packages/treetime-utils/src/fmt/float.rs#L45-L47](../../packages/treetime-utils/src/fmt/float.rs#L45-L47) sets the same 3-digit default again when no limit is given
 
 Implementation waits until the exchange-format default is approved.

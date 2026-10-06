@@ -23,14 +23,14 @@ A support value alone does not tell which method produced it. Readers use it to 
 
 ### How Newick stores it
 
-Newick has no field for branch data. Tree builders write the value as the label of the node below the branch: `(C,(D,E)70)80`. A reader must guess: Biopython ([[src](https://github.com/biopython/biopython/blob/d7e4b8b19399668b09442a5b35765d9186b5f665/Bio/Phylo/NewickIO.py#L231-L241)]) and v1 (`fn visit_internal()` [packages/util-newick/src/parse.rs#L151-L157](../../packages/util-newick/src/parse.rs#L151-L157)) both read an internal label as support when the whole label parses as a number, and as a name otherwise.
+Newick has no field for branch data. Tree builders write the value as the label of the node below the branch: `(C,(D,E)70)80`. A reader must guess: Biopython ([[src](https://github.com/biopython/biopython/blob/d7e4b8b19399668b09442a5b35765d9186b5f665/Bio/Phylo/NewickIO.py#L231-L241)]) and v1 (`fn parse_label()` [packages/util-newick/src/parse.rs#L350-L377](../../packages/util-newick/src/parse.rs#L350-L377)) both read an internal label as support when the whole label parses as a number, and as a name otherwise.
 
 Because the format stores the value on a node, tools that reroot a tree often leave the value on its node and so on the wrong split. [Czech et al. 2017](https://doi.org/10.1093/molbev/msx055) [[6](#ref-6)] found this defect in many tree viewers and toolkits.
 
 The label rule has two traps:
 
 - IQ-TREE run with several support methods writes them in one label separated by `/`, for example `80.5/95` ([[src](https://github.com/iqtree/iqtree3/blob/63c330d90dd02241dbbbaf1e9f9e9cc6dadbd1de/main/phyloanalysis.cpp#L1100-L1115)]). The label is not a number, so v1 keeps it as the node name
-- `fn parse_support_value()` uses `f64::from_str` ([packages/util-newick/src/parse.rs#L275-L277](../../packages/util-newick/src/parse.rs#L275-L277)), which accepts `inf` and `nan`. An internal node labelled `inf` or `NaN` is read as support, loses its label, and gets a generated `NODE_` name
+- `fn parse_support()` uses `f64::from_str` ([packages/util-newick/src/parse.rs#L412-L414](../../packages/util-newick/src/parse.rs#L412-L414)), which accepts `inf` and `nan`. An internal node labelled `inf` or `NaN` is read as support, loses its label, and gets a generated `NODE_` name
 
 ### Example data
 
