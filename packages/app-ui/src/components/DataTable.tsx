@@ -104,16 +104,17 @@ export function DataTable<Data extends RowData>({
         onSortChange={toggleSorting}
         className="max-h-[36rem] w-full overflow-auto overscroll-contain text-xs"
       >
-        <TableHeader className="bg-card border-b">
-          {headers.map((header) => (
+        <TableHeader className="bg-card size-full border-b">
+          {headers.map((header, index) => (
             <Column
               key={header.id}
               id={header.column.id}
+              isRowHeader={index === 0}
               allowsSorting
               defaultWidth={header.column.columnDef.meta?.width ?? DEFAULT_WIDTH}
               minWidth={header.column.columnDef.meta?.minWidth ?? null}
               className={cn(
-                "text-muted-foreground data-focus-visible:ring-ring data-hovered:text-foreground flex cursor-default items-center gap-1 px-2 font-bold outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                "text-muted-foreground data-focus-visible:ring-ring data-hovered:text-foreground flex h-full cursor-default items-center gap-1 px-2 font-bold outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
                 header.column.columnDef.meta?.numeric === true && "justify-end",
               )}
             >
@@ -131,7 +132,7 @@ export function DataTable<Data extends RowData>({
             <Row
               id={row.id}
               className={cn(
-                "hover:bg-muted/50 data-focus-visible:ring-ring border-b outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                "hover:bg-muted/50 data-focus-visible:ring-ring size-full border-b outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
                 rowClassName?.(row.original),
               )}
             >
@@ -139,7 +140,7 @@ export function DataTable<Data extends RowData>({
                 <Cell
                   key={cell.id}
                   className={cn(
-                    "data-focus-visible:ring-ring flex items-center p-2 whitespace-nowrap outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                    "data-focus-visible:ring-ring flex h-full items-center p-2 whitespace-nowrap outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
                     cell.column.columnDef.meta?.numeric === true && "justify-end",
                   )}
                 >
