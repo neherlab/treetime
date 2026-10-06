@@ -27,6 +27,11 @@ use treetime_utils::fmt::float::float_to_significant_digits;
 
 pub(crate) const GRID_POINTS: usize = 300;
 
+const _: () = assert!(
+  GRID_POINTS < MaxGridPoints::MIN,
+  "every grid point limit must admit the grids of GRID_POINTS points that every run creates"
+);
+
 pub(crate) const EPS: f64 = 5e-4;
 
 pub(crate) fn run_timetree(
@@ -34,7 +39,8 @@ pub(crate) fn run_timetree(
   coalescent: Option<&CoalescentModel>,
   log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
-  infer_times(inputs, coalescent, log).map_err(|report| explain_grid_point_limit(report, inputs))
+  infer_times(inputs, coalescent, log)
+    .map_err(|report| explain_grid_point_limit(report, inputs.clock_model.clock_rate(), inputs.clock_rate_fixed))
 }
 
 fn infer_times(
@@ -126,7 +132,7 @@ pub(crate) struct TimeInferenceInputs<'a> {
   pub max_grid_points: MaxGridPoints,
 }
 
-fn explain_grid_point_limit(report: Report, inputs: &TimeInferenceInputs<'_>) -> Report {
+pub(super) fn explain_grid_point_limit(report: Report, clock_rate: f64, clock_rate_fixed: bool) -> Report {
   let Some(exceeded) = report
     .chain()
     .find_map(|cause| cause.downcast_ref::<GridPointLimitExceeded>())
@@ -139,8 +145,8 @@ fn explain_grid_point_limit(report: Report, inputs: &TimeInferenceInputs<'_>) ->
     Some(points) => format!("a grid of {points} points, more than"),
     None => "a grid with more points than".to_owned(),
   };
-  let rate = float_to_significant_digits(inputs.clock_model.clock_rate(), 3);
-  let cause = if inputs.clock_rate_fixed {
+  let rate = float_to_significant_digits(clock_rate, 3);
+  let cause = if clock_rate_fixed {
     format!(
       "The fixed --clock-rate {rate} may be far from the rate the data supports, which makes branch-time \
        distributions very narrow. Check --clock-rate"

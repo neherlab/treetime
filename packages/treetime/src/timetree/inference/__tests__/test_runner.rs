@@ -6,6 +6,7 @@ mod tests {
   use crate::timetree::inference::result::{BranchLikelihood, NodeTimes};
   use crate::timetree::inference::runner::{
     CLOCK_BRANCH_LENGTH_DAMPING, blended_clock_branch_lengths, create_branch_distributions_input_mode,
+    explain_grid_point_limit,
   };
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use eyre::Report;
@@ -18,11 +19,56 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::tree_view::TreeView;
+  use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
+  use treetime_utils::error::report_to_string;
+  use treetime_utils::make_report;
 
   const DYADIC_CLOCK_RATE: f64 = 0.5;
 
   const BLEND_TREE: &str = "((A:1,B:1)AB:1,C:1,D:1)root;";
+
+  #[test]
+  fn test_runner_grid_point_limit_error_names_the_fixed_clock_rate() {
+    let exceeded = MaxGridPoints::default()
+      .point_count(15_583_861.0, (2019.0, 2022.4), 2.2e-7)
+      .unwrap_err()
+      .wrap_err("When sending the time message backward along edge 3");
+    let expected = "Time inference needs a grid of 15583861 points, more than the limit of 1000000 \
+      (--max-grid-points). The fixed --clock-rate 0.5 may be far from the rate the data supports, which makes \
+      branch-time distributions very narrow. Check --clock-rate, or raise --max-grid-points when enough memory is \
+      available.: When sending the time message backward along edge 3: A grid over [2019, 2022.4] with spacing \
+      2.2e-7 needs 15583861 points, more than the limit of 1000000";
+    assert_eq!(
+      expected,
+      report_to_string(&explain_grid_point_limit(exceeded, 0.5, true))
+    );
+  }
+
+  #[test]
+  fn test_runner_grid_point_limit_error_names_the_estimated_clock_rate() {
+    let exceeded = MaxGridPoints::default()
+      .point_count(f64::INFINITY, (0.0, 1.0), 1e-320)
+      .unwrap_err();
+    let expected = "Time inference needs a grid with more points than the limit of 1000000 (--max-grid-points). \
+      The estimated clock rate 0.00123 may be far from the true rate, which makes branch-time distributions very \
+      narrow; errors in the input dates and weak temporal signal cause such estimates. Check the input dates, set \
+      --clock-rate, or raise --max-grid-points when enough memory is available.: A grid over [0, 1] with spacing \
+      1.0e-320 needs more points than the limit of 1000000";
+    assert_eq!(
+      expected,
+      report_to_string(&explain_grid_point_limit(exceeded, 1.234e-3, false))
+    );
+  }
+
+  #[test]
+  fn test_runner_grid_point_limit_explanation_leaves_other_errors_unchanged() {
+    let other = make_report!("Clock rate is negative");
+    assert_eq!(
+      "Clock rate is negative",
+      report_to_string(&explain_grid_point_limit(other, 0.5, true))
+    );
+  }
 
   #[test]
   fn test_create_branch_distributions_input_mode_gives_each_edge_a_point_at_its_time_length() -> Result<(), Report> {
