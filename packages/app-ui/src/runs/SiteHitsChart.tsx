@@ -1,10 +1,10 @@
 import type { MultiplicityRow, SiteHitsRow } from "@neherlab/app-contracts";
 import { memo, useMemo } from "react";
-import { Bar, BarChart, CartesianGrid, ComposedChart, Label, Line, XAxis, YAxis, type ActiveLabel } from "recharts";
+import { Bar, BarChart, CartesianGrid, ComposedChart, Line, XAxis, YAxis, type ActiveLabel } from "recharts";
 
 import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { logAxis, multiplicityPoints, siteHitsPoints } from "./homoplasy";
-import { CHART, PLOT_MARGIN, TICK_STYLE } from "./palette";
+import { bottomAxisLabel, CHART, leftAxisLabel, PLOT_MARGIN, TICK_STYLE } from "./palette";
 
 const EXPECTED_DOT = { r: 2.5, fill: CHART.ink, strokeWidth: 0 };
 
@@ -17,15 +17,12 @@ export const SiteHitsChart = memo(function SiteHitsChart({ rows }: { rows: reado
     <ChartContainer className="aspect-auto h-[260px] w-full">
       <ComposedChart data={points} margin={PLOT_MARGIN} title="Substitutions per site">
         <CartesianGrid vertical={false} stroke={CHART.grid} />
-        <XAxis dataKey="hits" tick={TICK_STYLE} stroke={CHART.muted}>
-          <Label
-            value="Substitutions at a site"
-            position="bottom"
-            offset={4}
-            {...TICK_STYLE}
-            className="fill-muted-foreground"
-          />
-        </XAxis>
+        <XAxis
+          dataKey="hits"
+          tick={TICK_STYLE}
+          stroke={CHART.muted}
+          label={bottomAxisLabel("Substitutions at a site")}
+        />
         <YAxis
           scale="log"
           domain={yAxis.domain}
@@ -35,9 +32,8 @@ export const SiteHitsChart = memo(function SiteHitsChart({ rows }: { rows: reado
           tick={TICK_STYLE}
           stroke={CHART.muted}
           width={56}
-        >
-          <Label value="Sites" angle={-90} position="insideLeft" {...TICK_STYLE} className="fill-muted-foreground" />
-        </YAxis>
+          label={leftAxisLabel("Sites")}
+        />
         <ChartTooltip content={<SiteHitsTooltip byHits={byHits} />} isAnimationActive={false} />
         <Bar dataKey="sitesShown" name="Observed" fill={CHART.accent} isAnimationActive={false} />
         <Line
@@ -63,9 +59,7 @@ export const MultiplicityChart = memo(function MultiplicityChart({ rows }: { row
     <ChartContainer className="aspect-auto h-[260px] w-full">
       <BarChart data={points} margin={PLOT_MARGIN} title="Branches per mutation">
         <CartesianGrid vertical={false} stroke={CHART.grid} />
-        <XAxis dataKey="branches" tick={TICK_STYLE} stroke={CHART.muted}>
-          <Label value="Branches" position="bottom" offset={4} {...TICK_STYLE} className="fill-muted-foreground" />
-        </XAxis>
+        <XAxis dataKey="branches" tick={TICK_STYLE} stroke={CHART.muted} label={bottomAxisLabel("Branches")} />
         <YAxis
           scale="log"
           domain={yAxis.domain}
@@ -75,15 +69,8 @@ export const MultiplicityChart = memo(function MultiplicityChart({ rows }: { row
           tick={TICK_STYLE}
           stroke={CHART.muted}
           width={56}
-        >
-          <Label
-            value="Distinct substitutions"
-            angle={-90}
-            position="insideLeft"
-            {...TICK_STYLE}
-            className="fill-muted-foreground"
-          />
-        </YAxis>
+          label={leftAxisLabel("Distinct substitutions")}
+        />
         <ChartTooltip content={<MultiplicityTooltip byBranches={byBranches} />} isAnimationActive={false} />
         <Bar dataKey="mutationsShown" name="Distinct substitutions" fill={CHART.accent} isAnimationActive={false} />
       </BarChart>

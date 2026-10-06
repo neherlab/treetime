@@ -1,7 +1,6 @@
 import { useCallback, useId, useMemo, useState } from "react";
 import {
   CartesianGrid,
-  Label,
   ReferenceLine,
   Scatter,
   ScatterChart,
@@ -15,7 +14,7 @@ import * as z from "zod";
 import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { Label as FieldLabel } from "../ui/label";
 import { Switch } from "../ui/switch";
-import { CHART, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
+import { bottomAxisLabel, CHART, leftAxisLabel, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
 import { type PlacedPoint, type PlotFrame, placePoints, plotFrame } from "./rttFrame";
 
 export type RttPoint = z.infer<typeof zRttPoint>;
@@ -109,9 +108,8 @@ export function RootToTipPlot({
             tick={TICK_STYLE}
             tickFormatter={yearTick}
             stroke={CHART.muted}
-          >
-            <Label value="Date" position="bottom" offset={4} {...TICK_STYLE} className="fill-muted-foreground" />
-          </XAxis>
+            label={bottomAxisLabel("Date")}
+          />
           <YAxis
             type="number"
             dataKey="y"
@@ -121,15 +119,8 @@ export function RootToTipPlot({
             tickFormatter={divergenceTick}
             stroke={CHART.muted}
             width={56}
-          >
-            <Label
-              value="Divergence from the root"
-              angle={-90}
-              position="insideLeft"
-              {...TICK_STYLE}
-              className="fill-muted-foreground"
-            />
-          </YAxis>
+            label={leftAxisLabel("Divergence from the root")}
+          />
           <ZAxis zAxisId="tip" range={TIP_SIZE} />
           <ZAxis zAxisId="ring" range={RING_SIZE} />
           <ChartTooltip content={<PointTooltip />} isAnimationActive={false} />

@@ -1,4 +1,5 @@
 import { scaleLinear } from "d3-scale";
+import type { LabelProps } from "recharts";
 
 export const CHART = {
   ink: "var(--foreground)",
@@ -15,6 +16,16 @@ export const TICK_STYLE = { fontSize: 11 } as const;
 export const THINNED_TICKS = { interval: "equidistantPreserveStart", minTickGap: 56 } as const;
 
 export const PLOT_MARGIN = { top: 8, right: 16, bottom: 24, left: 16 } as const;
+
+const AXIS_LABEL = { ...TICK_STYLE, className: "fill-muted-foreground" } as const;
+
+export function bottomAxisLabel(value: string): LabelProps {
+  return { ...AXIS_LABEL, value, position: "bottom", offset: 4 };
+}
+
+export function leftAxisLabel(value: string): LabelProps {
+  return { ...AXIS_LABEL, value, angle: -90, position: "insideLeft" };
+}
 
 const TICK_COUNT = 6;
 

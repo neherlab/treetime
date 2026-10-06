@@ -1,10 +1,19 @@
 import { zAncestorShift, type AncestorShift } from "@neherlab/app-contracts";
 import { useMemo } from "react";
-import { CartesianGrid, Label, ReferenceLine, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from "recharts";
+import { CartesianGrid, ReferenceLine, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from "recharts";
 
 import { formatSignedDays } from "../format";
 import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
-import { CHART, niceAxis, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE, yearTick } from "./palette";
+import {
+  bottomAxisLabel,
+  CHART,
+  leftAxisLabel,
+  niceAxis,
+  PLOT_MARGIN,
+  THINNED_TICKS,
+  TICK_STYLE,
+  yearTick,
+} from "./palette";
 
 const CLADE_SIZE: [number, number] = [16, 160];
 
@@ -28,24 +37,9 @@ export function ShiftPlot({ shifts, firstLabel }: { shifts: readonly AncestorShi
           {...THINNED_TICKS}
           tick={TICK_STYLE}
           tickFormatter={yearTick}
-        >
-          <Label
-            value={`Date in ${firstLabel}`}
-            position="bottom"
-            offset={4}
-            {...TICK_STYLE}
-            className="fill-muted-foreground"
-          />
-        </XAxis>
-        <YAxis type="number" dataKey="y" tick={TICK_STYLE} width={56}>
-          <Label
-            value="Shift in days"
-            angle={-90}
-            position="insideLeft"
-            {...TICK_STYLE}
-            className="fill-muted-foreground"
-          />
-        </YAxis>
+          label={bottomAxisLabel(`Date in ${firstLabel}`)}
+        />
+        <YAxis type="number" dataKey="y" tick={TICK_STYLE} width={56} label={leftAxisLabel("Shift in days")} />
         <ZAxis type="number" dataKey="z" range={CLADE_SIZE} />
         <ReferenceLine y={0} stroke={CHART.muted} strokeDasharray="3 3" />
         <ChartTooltip content={<ShiftTooltip />} isAnimationActive={false} />

@@ -4,7 +4,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Label,
   Rectangle,
   ReferenceLine,
   XAxis,
@@ -16,7 +15,7 @@ import {
 
 import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { siteText } from "./homoplasy";
-import { CHART, niceAxis, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE } from "./palette";
+import { bottomAxisLabel, CHART, leftAxisLabel, niceAxis, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE } from "./palette";
 
 const MIN_BAR_WIDTH = 1;
 
@@ -82,18 +81,15 @@ export const GenomeSitesChart = memo(function GenomeSitesChart({
             tick={TICK_STYLE}
             tickFormatter={tick}
             stroke={CHART.muted}
-          >
-            <Label value="Position" position="bottom" offset={4} {...TICK_STYLE} className="fill-muted-foreground" />
-          </XAxis>
-          <YAxis allowDecimals={false} tick={TICK_STYLE} stroke={CHART.muted} width={48}>
-            <Label
-              value="Branches"
-              angle={-90}
-              position="insideLeft"
-              {...TICK_STYLE}
-              className="fill-muted-foreground"
-            />
-          </YAxis>
+            label={bottomAxisLabel("Position")}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={TICK_STYLE}
+            stroke={CHART.muted}
+            width={48}
+            label={leftAxisLabel("Branches")}
+          />
           <ChartTooltip content={<SiteTooltip byPosition={byPosition} />} isAnimationActive={false} />
           <Bar
             dataKey="branches"
