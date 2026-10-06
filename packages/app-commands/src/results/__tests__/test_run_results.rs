@@ -13,13 +13,13 @@ mod tests {
   use crate::runs::manager::RunManager;
   use crate::runs::record::CreateRunRequest;
   use crate::runs::setting_differences::SettingDifference;
-  use eyre::Report;
   use app_output::output_plan::OutputSelection;
+  use eyre::Report;
   use helpers::{auspice_path, clock_model, dataset, finished_run, homoplasy_config, timetree_config, zika};
-  use std::collections::BTreeSet;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
+  use std::collections::BTreeSet;
   use std::fs;
   use tempfile::tempdir;
   use treetime::clock::rtt::ClockDateSource;
@@ -115,7 +115,11 @@ mod tests {
 
     let record = runs.get(&id)?;
     let homoplasy = homoplasy.statistics.expect("the run wrote its statistics file");
-    let kinds = record.output_files.iter().map(|file| file.kind).collect::<BTreeSet<_>>();
+    let kinds = record
+      .output_files
+      .iter()
+      .map(|file| file.kind)
+      .collect::<BTreeSet<_>>();
     assert_eq!(
       (
         (true, true),
@@ -125,7 +129,10 @@ mod tests {
         Some(homoplasy.recurrent_substitutions),
       ),
       (
-        (kinds.contains(&OutputSelection::Auspice), kinds.contains(&OutputSelection::HomoplasyStats)),
+        (
+          kinds.contains(&OutputSelection::Auspice),
+          kinds.contains(&OutputSelection::HomoplasyStats)
+        ),
         problems.into_iter().map(|problem| problem.message).collect(),
         tree.expect("the run wrote an Auspice tree").tips().count(),
         homoplasy.sites.len(),
@@ -159,7 +166,10 @@ mod tests {
 
     assert_eq!(
       (None, vec![stats.path.to_string_lossy().into_owned()]),
-      (homoplasy.statistics, problems.into_iter().map(|problem| problem.path).collect::<Vec<_>>())
+      (
+        homoplasy.statistics,
+        problems.into_iter().map(|problem| problem.path).collect::<Vec<_>>()
+      )
     );
     Ok(())
   }

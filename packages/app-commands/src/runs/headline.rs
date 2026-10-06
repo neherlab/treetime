@@ -27,9 +27,7 @@ pub fn run_headline(record: &RunRecord, out_dir: &Path) -> Result<RunHeadline, R
       ..RunHeadline::default()
     },
     CommandResults::Homoplasy(results) => RunHeadline {
-      recurrent_substitutions: results
-        .statistics
-        .map(|statistics| statistics.recurrent_substitutions),
+      recurrent_substitutions: results.statistics.map(|statistics| statistics.recurrent_substitutions),
       ..RunHeadline::default()
     },
     CommandResults::Ancestral(_)

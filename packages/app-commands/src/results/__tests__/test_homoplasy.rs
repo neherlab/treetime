@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::homoplasy::result::{DrmAnnotation, MultiplicityRow, SiteBranchesRow, TaxonResult};
   use crate::results::homoplasy::{
-    AMBIGUOUS_SITES_SHOWN, AmbiguousSite, HomoplasyStatistics, RecurrentMutation, HomoplasySite, SiteSubstitution,
+    AMBIGUOUS_SITES_SHOWN, AmbiguousSite, HomoplasySite, HomoplasyStatistics, RecurrentMutation, SiteSubstitution,
     homoplasy_statistics,
   };
   use helpers::{drm, poisson_expected, site_hits, stats};
@@ -34,9 +34,18 @@ mod tests {
       indels: 3,
       site_hits: site_hits(),
       multiplicities: vec![
-        MultiplicityRow { branches: 1, mutations: 2 },
-        MultiplicityRow { branches: 2, mutations: 1 },
-        MultiplicityRow { branches: 3, mutations: 1 },
+        MultiplicityRow {
+          branches: 1,
+          mutations: 2,
+        },
+        MultiplicityRow {
+          branches: 2,
+          mutations: 1,
+        },
+        MultiplicityRow {
+          branches: 3,
+          mutations: 1,
+        },
       ],
       recurrent: vec![
         RecurrentMutation {
@@ -101,8 +110,16 @@ mod tests {
       }],
       taxa: stats.taxa,
       ambiguous_sites: vec![
-        AmbiguousSite { position: 5, display_position: 5, branches: 3 },
-        AmbiguousSite { position: 6, display_position: 6, branches: 1 },
+        AmbiguousSite {
+          position: 5,
+          display_position: 5,
+          branches: 3,
+        },
+        AmbiguousSite {
+          position: 6,
+          display_position: 6,
+          branches: 1,
+        },
       ],
       ambiguous_site_count: 2,
     };
@@ -138,10 +155,7 @@ mod tests {
     let rate: f64 = 0.07;
     let expected = 100.0 * (1.0 - (-rate).exp() * (1.0 + rate));
     pretty_assert_abs_diff_eq!(expected, results.expected_sites_hit_more_than_once, epsilon = 1e-13);
-    assert!(
-      results.expected_sites_hit_more_than_once
-        > (2..=4).map(poisson_expected).sum::<f64>()
-    );
+    assert!(results.expected_sites_hit_more_than_once > (2..=4).map(poisson_expected).sum::<f64>());
   }
 
   #[test]
@@ -150,7 +164,10 @@ mod tests {
 
     assert_eq!(
       (results.sites_hit_more_than_once, vec![4, 2]),
-      (results.sites.len(), results.sites.iter().map(|site| site.branches).collect::<Vec<_>>())
+      (
+        results.sites.len(),
+        results.sites.iter().map(|site| site.branches).collect::<Vec<_>>()
+      )
     );
   }
 
@@ -159,7 +176,10 @@ mod tests {
     let mut stats = stats(false);
     stats.ambiguous.sites = (1..=AMBIGUOUS_SITES_SHOWN + 50)
       .rev()
-      .map(|position| SiteBranchesRow { position, branches: position })
+      .map(|position| SiteBranchesRow {
+        position,
+        branches: position,
+      })
       .collect();
 
     let results = homoplasy_statistics(&stats);
@@ -190,7 +210,11 @@ mod tests {
       (
         results.drm_annotated,
         results.recurrent_drm_substitutions,
-        results.recurrent.iter().map(|row| row.drm.clone()).collect::<Vec<Option<DrmAnnotation>>>()
+        results
+          .recurrent
+          .iter()
+          .map(|row| row.drm.clone())
+          .collect::<Vec<Option<DrmAnnotation>>>()
       )
     );
   }
@@ -255,8 +279,14 @@ mod tests {
         ambiguous: AmbiguousStats {
           all: AmbiguousCount { mutations: 4 },
           sites: vec![
-            SiteBranchesRow { position: 5, branches: 3 },
-            SiteBranchesRow { position: 6, branches: 1 },
+            SiteBranchesRow {
+              position: 5,
+              branches: 3,
+            },
+            SiteBranchesRow {
+              position: 6,
+              branches: 1,
+            },
           ],
         },
         indels: IndelResult {
@@ -300,10 +330,7 @@ mod tests {
         .collect()
     }
 
-    #[expect(
-      clippy::as_conversions,
-      reason = "hit counts below 5 convert to f64 exactly"
-    )]
+    #[expect(clippy::as_conversions, reason = "hit counts below 5 convert to f64 exactly")]
     pub(super) fn poisson_expected(hits: usize) -> f64 {
       let factorial: f64 = (1..=hits).map(|k| k as f64).product();
       GENOME_LENGTH * (-RATE).exp() * RATE.powi(hits as i32) / factorial

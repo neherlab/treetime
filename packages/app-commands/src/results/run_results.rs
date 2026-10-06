@@ -124,9 +124,7 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
       tree.as_ref(),
       &Alphabet::new(config.alphabet_args.alphabet_name().unwrap_or_default())?,
     )?),
-    CommandConfig::Homoplasy(_) => {
-      CommandResults::Homoplasy(Box::new(homoplasy_results(homoplasy.as_ref())))
-    },
+    CommandConfig::Homoplasy(_) => CommandResults::Homoplasy(Box::new(homoplasy_results(homoplasy.as_ref()))),
     CommandConfig::Mugration(config) => {
       let attribute = config
         .attribute

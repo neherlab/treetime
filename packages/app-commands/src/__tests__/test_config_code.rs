@@ -195,8 +195,8 @@ mod tests {
   mod helpers {
     use crate::command::AppCommand;
     use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
-    use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
     use crate::commands::clock::args::TreetimeClockArgsRaw;
+    use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
     use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
     use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
     use crate::commands::prune::args::TreetimePruneArgsRaw;
