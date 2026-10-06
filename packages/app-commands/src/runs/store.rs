@@ -89,6 +89,7 @@ impl RunStore {
       changed_settings: vec![],
       headline: RunHeadline::default(),
       output_files: vec![],
+      warnings: vec![],
       error: None,
     };
     self.write(&record)?;

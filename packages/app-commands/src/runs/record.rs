@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::path::PathBuf;
 use strum_macros::Display;
+use treetime::progress::RunWarning;
 
 /// Durable record of one command run, stored as `run.json` in the run's folder.
 #[skip_serializing_none]
@@ -50,6 +51,8 @@ pub struct RunRecord {
   pub headline: RunHeadline,
   /// Files the run wrote, with paths relative to the run's `out/` folder.
   pub output_files: Vec<OutputFile>,
+  /// Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.
+  pub warnings: Vec<RunWarning>,
   /// The error of a failed run.
   pub error: Option<RunError>,
 }

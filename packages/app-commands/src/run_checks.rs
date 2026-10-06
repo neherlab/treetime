@@ -1,5 +1,6 @@
 use crate::check_inputs::{InputFacts, InputKind, InputNeed};
 use crate::command::AppCommand;
+use crate::commands::shared::input_warnings::name_list;
 use crate::config::settings::{has_path, setting_ref};
 use crate::config::source::ConfigProblem;
 use crate::json_value::JsonValue;
@@ -10,8 +11,6 @@ use serde_json::{Map, Value};
 use serde_with::skip_serializing_none;
 use std::iter;
 use treetime_utils::vec_of_owned;
-
-const NAMES_SHOWN: usize = 3;
 
 const MONTH_ROUNDING_FACTOR: usize = 4;
 
@@ -300,15 +299,6 @@ const fn article(kind: InputKind) -> &'static str {
   match kind {
     InputKind::Alignment => "an",
     InputKind::Tree | InputKind::Metadata => "a",
-  }
-}
-
-fn name_list(names: &[String]) -> String {
-  let shown = names.iter().take(NAMES_SHOWN).join(", ");
-  if names.len() > NAMES_SHOWN {
-    format!("{shown}, and {} more", names.len() - NAMES_SHOWN)
-  } else {
-    shown
   }
 }
 

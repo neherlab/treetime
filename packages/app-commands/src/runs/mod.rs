@@ -12,3 +12,4 @@ pub mod record;
 #[cfg(feature = "clap")]
 pub mod setting_differences;
 pub mod store;
+pub mod warnings;

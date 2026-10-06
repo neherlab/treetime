@@ -11,6 +11,11 @@ pub trait StageSink: Send + Sync {
 pub trait LogSink: Send + Sync {
   fn log(&self, level: LogLevel, message: &str);
   fn log_enabled(&self, level: LogLevel) -> bool;
+  fn warning(&self, warning: &RunWarning) {
+    if self.log_enabled(LogLevel::Warn) {
+      self.log(LogLevel::Warn, &warning.message);
+    }
+  }
 }
 
 pub struct NoopProgress;
@@ -30,6 +35,29 @@ impl LogSink for NoopProgress {
 pub struct LogEvent {
   pub level: LogLevel,
   pub message: String,
+}
+
+/// A problem of the inputs that the run found and continued past, which makes its results less reliable.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct RunWarning {
+  /// Kind of the problem.
+  pub kind: RunWarningKind,
+  /// The problem, as a sentence; the run log shows the same text.
+  pub message: String,
+  /// Every name the problem concerns, sorted; the message may show only some of them.
+  pub names: Vec<String>,
+}
+
+/// Kind of a run warning.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum RunWarningKind {
+  /// More than one node of the input tree has the same name.
+  DuplicateNodeNames,
+  /// More than one sequence of an alignment has the same name.
+  DuplicateSequenceNames,
+  /// More than one row of the metadata table has the same name.
+  DuplicateMetadataNames,
 }
 
 #[derive(Debug, Clone, Copy, Display, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]

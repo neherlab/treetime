@@ -5,6 +5,7 @@ pub mod branch_length_mode;
 pub mod config;
 pub mod gap_fill;
 pub mod gtr_output;
+pub mod input_warnings;
 pub mod leaf_order;
 pub mod metadata;
 pub mod method_anc;

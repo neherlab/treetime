@@ -14,6 +14,7 @@ use crate::runs::record::{
   UpdateRunRequest,
 };
 use crate::runs::store::RunStore;
+use crate::runs::warnings::WarningCollector;
 use chrono::{TimeDelta, Utc};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -370,6 +371,7 @@ impl StartedRun {
       command,
     }));
     let progress = JobProgress::new(emit);
+    let log = WarningCollector::new(&progress);
     let clock = Instant::now();
 
     let terminal = run_job(&id, &run.token, || {
@@ -386,12 +388,14 @@ impl StartedRun {
         Ok(())
       })?;
       run.token.check()?;
-      prepared.args.run(&run.token, &progress, &progress)
+      prepared.args.run(&run.token, &progress, &log)
     });
 
     let duration = clock.elapsed().as_secs_f64();
+    let warnings = log.into_warnings();
     let finished = manager.modify(&id, |record| {
       record.finished_at = Some(Utc::now());
+      record.warnings = warnings;
       record.duration_seconds = Some(duration);
       match &terminal {
         TerminalEvent::Ok { result, .. } => {
