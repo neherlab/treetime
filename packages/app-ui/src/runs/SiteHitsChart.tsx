@@ -1,5 +1,5 @@
 import type { MultiplicityRow, SiteHitsRow } from "@neherlab/app-contracts";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ComposedChart, Label, Line, XAxis, YAxis, type ActiveLabel } from "recharts";
 
 import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
@@ -8,7 +8,7 @@ import { CHART, PLOT_MARGIN, TICK_STYLE } from "./palette";
 
 const EXPECTED_DOT = { r: 2.5, fill: CHART.ink, strokeWidth: 0 };
 
-export function SiteHitsChart({ rows }: { rows: readonly SiteHitsRow[] }) {
+export const SiteHitsChart = memo(function SiteHitsChart({ rows }: { rows: readonly SiteHitsRow[] }) {
   const points = useMemo(() => siteHitsPoints(rows), [rows]);
   const byHits = useMemo(() => new Map(rows.map((row) => [row.hits, row])), [rows]);
   const yAxis = useMemo(() => logAxis(rows.flatMap((row) => [row.sites, row.expected])), [rows]);
@@ -52,9 +52,9 @@ export function SiteHitsChart({ rows }: { rows: readonly SiteHitsRow[] }) {
       </ComposedChart>
     </ChartContainer>
   );
-}
+});
 
-export function MultiplicityChart({ rows }: { rows: readonly MultiplicityRow[] }) {
+export const MultiplicityChart = memo(function MultiplicityChart({ rows }: { rows: readonly MultiplicityRow[] }) {
   const points = useMemo(() => multiplicityPoints(rows), [rows]);
   const byBranches = useMemo(() => new Map(rows.map((row) => [row.branches, row])), [rows]);
   const yAxis = useMemo(() => logAxis(rows.map((row) => row.mutations)), [rows]);
@@ -89,7 +89,7 @@ export function MultiplicityChart({ rows }: { rows: readonly MultiplicityRow[] }
       </BarChart>
     </ChartContainer>
   );
-}
+});
 
 function SiteHitsTooltip({
   byHits,

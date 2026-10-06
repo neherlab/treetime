@@ -1,10 +1,11 @@
 import type { HomoplasySite } from "@neherlab/app-contracts";
-import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Label,
+  Rectangle,
   ReferenceLine,
   XAxis,
   YAxis,
@@ -17,11 +18,11 @@ import { ChartContainer, ChartTooltip, ChartTooltipFrame } from "../ui/chart";
 import { siteText } from "./homoplasy";
 import { CHART, niceAxis, PLOT_MARGIN, THINNED_TICKS, TICK_STYLE } from "./palette";
 
-const BAR_WIDTH = 2;
+const MIN_BAR_WIDTH = 1;
 
 const CHART_TITLE = "Sites hit more than once along the genome";
 
-export function GenomeSitesChart({
+export const GenomeSitesChart = memo(function GenomeSitesChart({
   sites,
   genomeLength,
   zeroBased,
@@ -94,15 +95,34 @@ export function GenomeSitesChart({
             />
           </YAxis>
           <ChartTooltip content={<SiteTooltip byPosition={byPosition} />} isAnimationActive={false} />
-          <Bar dataKey="branches" barSize={BAR_WIDTH} fill={CHART.accent} isAnimationActive={false} />
+          <Bar
+            dataKey="branches"
+            fill={CHART.accent}
+            isAnimationActive={false}
+            // oxlint-disable-next-line anti-slop/no-shape-in-symbol-names -- `shape` is the Recharts prop that draws each bar
+            shape={SiteBar}
+          />
           {selectedBar !== undefined && (
-            <ReferenceLine segment={selectedBar} stroke={CHART.selection} strokeWidth={BAR_WIDTH + 1} />
+            <ReferenceLine segment={selectedBar} stroke={CHART.selection} strokeWidth={MIN_BAR_WIDTH + 1} />
           )}
           <SelectOnEnter container={container} onSelect={select} />
         </BarChart>
       </ChartContainer>
     </div>
   );
+});
+
+function SiteBar({ x, y, width, height }: BarGeometry) {
+  const drawn = Math.max(MIN_BAR_WIDTH, width);
+
+  return <Rectangle x={x + (width - drawn) / 2} y={y} width={drawn} height={height} fill={CHART.accent} />;
+}
+
+interface BarGeometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 function barSegment(site: HomoplasySite) {

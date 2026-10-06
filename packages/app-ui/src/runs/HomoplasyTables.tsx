@@ -1,5 +1,5 @@
 import type { AmbiguousSite, GapFill, HomoplasyStatistics, TaxonResult } from "@neherlab/app-contracts";
-import { useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import ChevronRight from "~icons/lucide/chevron-right";
 
 import { DataTable, dataColumns } from "../components/DataTable";
@@ -73,7 +73,7 @@ export function HomoplasyTables({
   );
 }
 
-function TaxaTable({
+const TaxaTable = memo(function TaxaTable({
   taxa,
   drmAnnotated,
   onSelect,
@@ -94,7 +94,7 @@ function TaxaTable({
       numeric={TAXON_NUMERIC}
     />
   );
-}
+});
 
 function SampleButton({ name, onSelect }: { name: string; onSelect: (name: string) => void }) {
   const select = useCallback(() => onSelect(name), [name, onSelect]);
