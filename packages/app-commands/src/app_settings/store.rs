@@ -7,6 +7,7 @@ use std::fs;
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use treetime_utils::io::fs::read_file_to_string_if_exists;
+use treetime_utils::io::json::to_json_value;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use treetime_utils::make_error;
 
@@ -98,7 +99,7 @@ impl SettingsFormat {
 
   fn write(self, settings: &AppSettings) -> Result<String, Report> {
     match self {
-      Self::Yaml => yaml_document(&serde_json::to_value(settings)?),
+      Self::Yaml => yaml_document(&to_json_value(&settings)?),
       Self::Json => Ok(format!("{}\n", json_write_str(settings, JsonPretty(true))?)),
     }
   }

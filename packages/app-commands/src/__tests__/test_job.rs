@@ -13,6 +13,8 @@ mod tests {
   use treetime::cancel::{Cancel, NoopCancel};
   use treetime::progress::{LogSink, NoopProgress, StageSink};
   use treetime_utils::assert_error;
+  use treetime_utils::io::json::json_read_str;
+  use treetime_utils::io::json::to_json_value;
 
   #[test]
   fn test_job_success_ends_ok_with_output_files() {
@@ -56,7 +58,7 @@ mod tests {
         "message": "invalid configuration: unknown field `no_such_setting`",
         "causes": [],
       }),
-      serde_json::to_value(terminal).unwrap()
+      to_json_value(&terminal).unwrap()
     );
   }
 
@@ -95,7 +97,7 @@ mod tests {
     });
     assert_eq!(
       json!({ "status": "cancelled", "job_id": "job-4" }),
-      serde_json::to_value(terminal).unwrap()
+      to_json_value(&terminal).unwrap()
     );
   }
 
@@ -109,7 +111,7 @@ mod tests {
         "message": "internal error: the computation panicked: boom",
         "causes": [],
       }),
-      serde_json::to_value(terminal).unwrap()
+      to_json_value(&terminal).unwrap()
     );
   }
 
@@ -125,7 +127,7 @@ mod tests {
         "message": "input path is outside the examples folder",
         "causes": [],
       }),
-      serde_json::to_value(terminal).unwrap()
+      to_json_value(&terminal).unwrap()
     );
   }
 
@@ -183,12 +185,15 @@ mod tests {
   #[case::empty(    r#""""#,          "invalid job id ``: expected 1 to 128 ASCII letters, digits, `-` or `_`")]
   #[trace]
   fn test_job_id_deserialization_rejects_invalid_ids(#[case] json: &str, #[case] expected: &str) {
-    assert_error!(serde_json::from_str::<JobId>(json).map_err(Report::new), expected);
+    assert_error!(
+      json_read_str::<JobId>(json),
+      format!("When parsing JSON: Unexpected: invalid value: {expected} at line 1 column 1")
+    );
   }
 
   #[test]
   fn test_job_id_deserialization_accepts_a_valid_id() {
-    let id: JobId = serde_json::from_str(r#""run_1-a""#).unwrap();
+    let id: JobId = json_read_str(r#""run_1-a""#).unwrap();
     assert_eq!("run_1-a", id.as_str());
   }
 
@@ -200,7 +205,7 @@ mod tests {
   #[test]
   fn test_job_progress_forwards_progress_and_log_events() {
     let events = Mutex::new(vec![]);
-    let progress = JobProgress::new(|event: JobEvent| events.lock().push(serde_json::to_value(event).unwrap()));
+    let progress = JobProgress::new(|event: JobEvent| events.lock().push(to_json_value(&event).unwrap()));
     progress.report("Reading input", 0.0, "");
     treetime::progress_warn!(progress, "tip {} has no date", "A");
     assert_eq!(

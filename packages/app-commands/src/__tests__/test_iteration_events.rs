@@ -8,6 +8,8 @@ mod tests {
   use serde_json::json;
   use tempfile::tempdir;
   use treetime::cancel::NoopCancel;
+  use treetime_utils::io::json::from_json_value;
+  use treetime_utils::io::json::to_json_value;
 
   #[test]
   fn test_iteration_events_match_the_tracelog_rows() {
@@ -27,7 +29,7 @@ mod tests {
     let from_events: Vec<Vec<String>> = events
       .iter()
       .map(|event| {
-        let value = serde_json::to_value(event).unwrap();
+        let value = to_json_value(&event).unwrap();
         [
           "n_diff",
           "n_resolved",
@@ -100,7 +102,7 @@ mod tests {
 
   #[test]
   fn test_iteration_event_serializes_non_finite_values_as_strings() {
-    let event: IterationEvent = serde_json::from_value(json!({
+    let event: IterationEvent = from_json_value(&json!({
       "iteration": 3,
       "n_diff": 0,
       "n_resolved": 0,
@@ -122,7 +124,7 @@ mod tests {
       "log_lh_total": "inf",
       "clock_rate": 0.001,
       }),
-      serde_json::to_value(&event).unwrap()
+      to_json_value(&&event).unwrap()
     );
   }
 

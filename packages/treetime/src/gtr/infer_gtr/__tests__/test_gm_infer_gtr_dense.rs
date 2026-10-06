@@ -10,9 +10,9 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
+  use deser::Deserialize;
   use eyre::Report;
   use rstest::rstest;
-  use serde::Deserialize;
   use std::collections::BTreeMap;
   use std::fs;
   use std::path::{Path, PathBuf};
@@ -22,6 +22,7 @@ mod tests {
   use treetime_io::fasta::{fasta_read, fasta_read_file};
   use treetime_io::nwk::{nwk_read, nwk_read_file};
   use treetime_primitives::AlignmentRecord;
+  use treetime_utils::io::json::json_read_str;
 
   #[rstest]
   #[case::simple_4taxa("simple_4taxa")]
@@ -91,25 +92,25 @@ mod tests {
 
   const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/gtr/infer_gtr/__tests__/__fixtures__");
 
-  #[derive(Debug, Deserialize, deser::Deserialize)]
+  #[derive(Debug, Deserialize)]
   struct Inputs {
     synthetic: BTreeMap<String, SyntheticCase>,
     real: BTreeMap<String, RealCase>,
   }
 
-  #[derive(Debug, Deserialize, deser::Deserialize)]
+  #[derive(Debug, Deserialize)]
   struct SyntheticCase {
     tree: String,
     alignment: BTreeMap<String, String>,
   }
 
-  #[derive(Debug, Deserialize, deser::Deserialize)]
+  #[derive(Debug, Deserialize)]
   struct RealCase {
     tree_path: String,
     alignment_path: String,
   }
 
-  #[derive(Debug, Deserialize, deser::Deserialize)]
+  #[derive(Debug, Deserialize)]
   struct Outputs {
     synthetic: BTreeMap<String, InferGtrResult>,
     real: BTreeMap<String, InferGtrResult>,
@@ -118,12 +119,12 @@ mod tests {
   static INPUTS: LazyLock<Inputs> = LazyLock::new(|| {
     let path = Path::new(FIXTURES_DIR).join("gm_infer_gtr_dense_inputs.json");
     let content = fs::read_to_string(&path).expect("Failed to read inputs JSON");
-    serde_json::from_str(&content).expect("Failed to parse inputs JSON")
+    json_read_str(&content).expect("Failed to parse inputs JSON")
   });
   static OUTPUTS: LazyLock<Outputs> = LazyLock::new(|| {
     let path = Path::new(FIXTURES_DIR).join("gm_infer_gtr_dense_outputs.json");
     let content = fs::read_to_string(&path).expect("Failed to read outputs JSON");
-    serde_json::from_str(&content).expect("Failed to parse outputs JSON")
+    json_read_str(&content).expect("Failed to parse outputs JSON")
   });
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(|| Alphabet::new(AlphabetName::Nuc).unwrap());
   static PROJECT_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {

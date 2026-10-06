@@ -1,12 +1,10 @@
 use auto_ops::impl_op_ex;
+use deser::{Deserialize, Serialize};
 use getset::CopyGetters;
 use ndarray::Array2;
-use serde::{Deserialize, Serialize};
 
 #[must_use]
-#[derive(
-  Debug, Default, Clone, PartialEq, Serialize, Deserialize, CopyGetters, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Debug, Default, Clone, PartialEq, CopyGetters, Serialize, Deserialize)]
 #[getset(get_copy = "pub")]
 pub struct ClockSet {
   t_sum: f64,

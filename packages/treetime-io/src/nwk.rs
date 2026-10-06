@@ -1,5 +1,5 @@
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
@@ -98,7 +98,7 @@ impl NwkParse {
   }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NwkNodeMeta {
   name: Option<String>,
 }

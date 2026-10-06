@@ -1,7 +1,6 @@
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
@@ -9,11 +8,13 @@ use treetime::make_report;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pair_by_name::first_key_by_name;
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
-#[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(default, deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct RerootArgs {
@@ -71,23 +72,9 @@ pub fn resolve_reroot_tips(
     .collect()
 }
 
-#[derive(
-  Copy,
-  Debug,
-  Clone,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  SmartDefault,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "RerootMethod")]
 pub enum RerootMethodCli {

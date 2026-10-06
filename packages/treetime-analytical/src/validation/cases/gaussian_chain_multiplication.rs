@@ -4,7 +4,7 @@
 )]
 
 use crate::gaussian::GaussianParams;
-use serde::{Deserialize, Serialize};
+use deser::Serialize;
 
 pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicationTestCase> {
   let mut cases = Vec::new();
@@ -331,7 +331,7 @@ pub fn get_gaussian_chain_multiplication_cases() -> Vec<GaussianChainMultiplicat
   cases
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GaussianChainMultiplicationTestCase {
   pub name: &'static str,
   pub description: &'static str,

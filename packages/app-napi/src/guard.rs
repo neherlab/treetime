@@ -1,6 +1,7 @@
 use app_commands::bridge::error::ErrorResponse;
 use eyre::Report;
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 pub(crate) fn guarded<T>(operation: impl FnOnce() -> Result<T, Report>) -> Result<T, ErrorResponse> {
   match catch_unwind(AssertUnwindSafe(operation)) {
@@ -11,6 +12,6 @@ pub(crate) fn guarded<T>(operation: impl FnOnce() -> Result<T, Report>) -> Resul
 }
 
 pub(crate) fn to_napi(response: &ErrorResponse) -> napi::Error {
-  let reason = serde_json::to_string(response).unwrap_or_else(|err| format!("{}: {err}", response.message));
+  let reason = json_write_str(response, JsonPretty(false)).unwrap_or_else(|err| format!("{}: {err}", response.message));
   napi::Error::new(napi::Status::GenericFailure, reason)
 }

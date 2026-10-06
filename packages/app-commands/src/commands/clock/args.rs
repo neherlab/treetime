@@ -10,17 +10,17 @@ use crate::commands::shared::reroot::RerootArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use std::path::{Path, PathBuf};
 use treetime::ancestral::params::MethodAncestral;
 use treetime::clock::clock_regression::ClockVarianceParams;
 use treetime::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
 use treetime::optimize::params::BranchLengthMode;
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 #[derive(Debug, Clone)]
 pub struct TreetimeClockArgs {
@@ -145,21 +145,22 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
   }
 }
 
-#[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(default, deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "ClockConfig")]
 pub struct TreetimeClockArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(skip)]
+  #[schemars(skip)]
   #[deser(skip)]
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
@@ -186,12 +187,12 @@ pub struct TreetimeClockArgsRaw {
   pub metadata: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub metadata_id: MetadataIdArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub date_column: DateColumnArgs,
 
@@ -200,7 +201,7 @@ pub struct TreetimeClockArgsRaw {
   pub sequence_length: Option<usize>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub model_args: ModelArgs,
 
@@ -221,7 +222,7 @@ pub struct TreetimeClockArgsRaw {
   pub clock_filter: f64,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub reroot: RerootArgs,
 
@@ -247,7 +248,7 @@ pub struct TreetimeClockArgsRaw {
   pub allow_negative_rate: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
@@ -294,7 +295,7 @@ pub struct TreetimeClockArgsRaw {
   pub output_selection: Vec<ClockOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 
@@ -322,8 +323,9 @@ pub struct TreetimeClockArgsRaw {
 }
 
 /// Branch split optimization parameters
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct BranchSplitArgs {
@@ -334,27 +336,27 @@ pub struct BranchSplitArgs {
 
   /// Grid search parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub grid_params: GridSearchParamsCli,
 
   /// Brent's method parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub brent_params: BrentParamsCli,
 
   /// Golden section search parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub golden_params: GoldenSectionParamsCli,
 }
 
 /// Optimization method selection
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "OptimizationMethod")]
 pub enum OptimizationMethodCli {
@@ -379,8 +381,9 @@ impl From<OptimizationMethodCli> for OptimizationMethod {
 }
 
 /// Configuration for grid search optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 #[schemars(rename = "GridSearchParams")]
@@ -400,8 +403,9 @@ impl From<GridSearchParamsCli> for GridSearchParams {
 }
 
 /// Configuration for Brent's method optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 #[schemars(rename = "BrentParams")]
@@ -426,8 +430,9 @@ impl From<BrentParamsCli> for BrentParams {
 }
 
 /// Configuration for golden section search optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 #[schemars(rename = "GoldenSectionParams")]
@@ -452,21 +457,23 @@ impl From<GoldenSectionParamsCli> for GoldenSectionParams {
 }
 
 /// Clock regression model parameters
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClockRegressionArgs {
   /// Clock regression model parameters
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub clock_params: ClockParamsCli,
 }
 
 /// Variance parameters of the clock regression, as core `ClockVarianceParams` takes them.
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 #[schemars(rename = "ClockVarianceParams")]

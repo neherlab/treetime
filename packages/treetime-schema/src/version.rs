@@ -1,5 +1,5 @@
+use deser::Serialize;
 use schemars::JsonSchema;
-use serde::Serialize;
 
 pub fn version_info() -> VersionInfo {
   VersionInfo {
@@ -7,7 +7,7 @@ pub fn version_info() -> VersionInfo {
   }
 }
 
-#[derive(Clone, Debug, Serialize, JsonSchema, deser::Serialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 pub struct VersionInfo {
   pub version: &'static str,
 }

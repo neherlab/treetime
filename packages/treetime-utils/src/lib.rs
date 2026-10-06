@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod __tests__;
 pub mod adapters;
 pub mod array;
 pub mod collections;

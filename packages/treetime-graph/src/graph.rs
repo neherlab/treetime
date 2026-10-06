@@ -1,7 +1,7 @@
 use crate::edge::{Edge, GraphEdgeKey};
 use crate::node::{GraphNodeKey, Node};
+use deser::{Deserialize, Serialize};
 use eyre::Report;
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use treetime_utils::{make_internal_error, make_internal_report};
 
@@ -9,7 +9,7 @@ use treetime_utils::{make_internal_error, make_internal_report};
   clippy::field_scoped_visibility_modifiers,
   reason = "graph storage stays crate-internal behind accessor methods"
 )]
-#[derive(Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Graph {
   pub(crate) nodes: Vec<Option<Node>>,
   pub(crate) edges: Vec<Option<Edge>>,

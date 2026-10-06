@@ -35,11 +35,11 @@ use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, Uri, header};
 use axum::response::{IntoResponse, Response};
 use axum::{BoxError, Router};
+use deser::{Deserialize, Serialize};
 use eyre::{Report, eyre};
 use itertools::Itertools;
 use schemars::JsonSchema;
 use schemars::generate::SchemaSettings;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::any::Any;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -332,7 +332,7 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
 }
 
 /// Liveness of the server.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 struct HealthStatus {
   /// Always `ok`.
   status: String,
@@ -341,7 +341,7 @@ struct HealthStatus {
 }
 
 /// Path of a run.
-#[derive(Clone, Debug, Deserialize, JsonSchema, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(inline)]
 pub(crate) struct RunPath {
   /// Id of the run.
@@ -349,7 +349,7 @@ pub(crate) struct RunPath {
 }
 
 /// Path of two runs.
-#[derive(Clone, Debug, Deserialize, JsonSchema, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(inline)]
 struct RunPairPath {
   /// Id of the first run.
@@ -359,7 +359,7 @@ struct RunPairPath {
 }
 
 /// Path of an input file of a run.
-#[derive(Clone, Debug, Deserialize, JsonSchema, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(inline)]
 struct InputPath {
   /// Id of a run that has not started.
@@ -369,7 +369,7 @@ struct InputPath {
 }
 
 /// Query of the run event stream.
-#[derive(Clone, Debug, Deserialize, JsonSchema, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(inline)]
 struct EventsQuery {
   /// Sequence number of the first event to send.
@@ -377,7 +377,7 @@ struct EventsQuery {
 }
 
 /// Query of a run file.
-#[derive(Clone, Debug, Deserialize, JsonSchema, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(inline)]
 struct FileQuery {
   /// Path of the file relative to the run's `out/` folder.

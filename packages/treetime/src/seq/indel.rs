@@ -1,5 +1,5 @@
+use deser::{Deserialize, Serialize};
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::fmt;
 use treetime_primitives::Seq;
@@ -313,9 +313,7 @@ pub(crate) fn resolve_indels_forward(
   (deletions.into_iter().chain(insertions).collect(), new_node_gaps)
 }
 
-#[derive(
-  Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub struct InDel {
   pub(crate) range: (usize, usize),
   pub(crate) seq: Seq,
@@ -353,10 +351,7 @@ impl fmt::Display for InDel {
   }
 }
 
-#[derive(
-  Clone, Copy, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum InDelKind {
   Insertion,

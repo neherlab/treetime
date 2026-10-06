@@ -1,6 +1,7 @@
+use deser::adapters::{DeserializeAs, TryFromInto};
+use deser::de::SinkHandle;
+use deser::{Deserialize, Serialize, State};
 use eyre::Report;
-use serde::de::{self, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Write as _;
 use treetime_utils::error::make_error;
 
@@ -40,54 +41,9 @@ impl From<AsciiChar> for char {
   }
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, deser::Serialize)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[repr(transparent)]
 pub struct AsciiChar(u8);
-
-impl<'de> Deserialize<'de> for AsciiChar {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-  where
-    D: Deserializer<'de>,
-  {
-    struct AsciiCharVisitor;
-
-    impl Visitor<'_> for AsciiCharVisitor {
-      type Value = AsciiChar;
-
-      fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("an ASCII byte value (0-127)")
-      }
-
-      fn visit_u8<E>(self, value: u8) -> Result<Self::Value, E>
-      where
-        E: de::Error,
-      {
-        if value < 128 {
-          Ok(AsciiChar(value))
-        } else {
-          Err(E::custom(format!("value {value} is not ASCII (must be < 128)")))
-        }
-      }
-
-      #[allow(
-        clippy::as_conversions,
-        reason = "narrowing to u8 is exact after the guard proves value < 128"
-      )]
-      fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-      where
-        E: de::Error,
-      {
-        if value < 128 {
-          Ok(AsciiChar(value as u8))
-        } else {
-          Err(E::custom(format!("value {value} is not ASCII (must be < 128)")))
-        }
-      }
-    }
-
-    deserializer.deserialize_u8(AsciiCharVisitor)
-  }
-}
 
 impl AsciiChar {
   pub fn try_new(value: u8) -> Result<Self, Report> {
@@ -144,9 +100,9 @@ impl core::fmt::Debug for AsciiChar {
   }
 }
 
-impl<'de> deser::Deserialize<'de> for AsciiChar {
-  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut deser::State) -> deser::de::SinkHandle<'out, 'de> {
-    <deser::adapters::TryFromInto<u8> as deser::adapters::DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
+impl<'de> Deserialize<'de> for AsciiChar {
+  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut State) -> SinkHandle<'out, 'de> {
+    <TryFromInto<u8> as DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
   }
 }
 

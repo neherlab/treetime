@@ -2,11 +2,11 @@ use crate::json_float::JsonFloat;
 use crate::results::run_results::{CommandResults, results_of_record};
 use crate::results::year_date::YearDate;
 use crate::runs::record::RunRecord;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use std::path::Path;
+use treetime_schema::skip_serializing_optionals;
 
 pub fn run_headline(record: &RunRecord, out_dir: &Path) -> Result<RunHeadline, Report> {
   let results = results_of_record(record, out_dir)?;
@@ -38,11 +38,9 @@ pub fn run_headline(record: &RunRecord, out_dir: &Path) -> Result<RunHeadline, R
 }
 
 /// Key results of a finished run, for run lists; the same values the run's results show.
-#[skip_serializing_none]
-#[derive(
-  Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Clone, Debug, Default, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct RunHeadline {
   /// Date of the root of a time tree.
   pub root_date: Option<YearDate>,

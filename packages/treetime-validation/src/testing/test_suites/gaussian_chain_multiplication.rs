@@ -1,8 +1,8 @@
 use crate::testing::framework::test_case::{TestCase, TestCaseBase};
 use crate::testing::test_suites::test_suites::ChainMultiplicationTestSuite;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
 use treetime_analytical::validation::cases::gaussian_chain_multiplication;
 use treetime_analytical::validation::cases::gaussian_chain_multiplication::get_gaussian_chain_multiplication_cases;
 use treetime_analytical::{GaussianParams, gaussian_product};
@@ -43,9 +43,8 @@ impl ChainMultiplicationTestSuite for GaussianChainMultiplicationTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianChainTestCase {
-  #[serde(flatten)]
   #[deser(flatten)]
   base: TestCaseBase,
   factors: Vec<GaussianParams>,

@@ -1,9 +1,9 @@
 use crate::command::{AppCommand, CommandOutcome};
 use crate::json_float::JsonFloat;
+use deser::adapters::TryFromInto;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use std::any::Any;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -12,28 +12,16 @@ use treetime::cancel::{Cancel, CancelledError};
 use treetime::progress::{LogEvent, LogLevel, LogSink, StageSink};
 use treetime::timetree::convergence::metrics::IterationRecord;
 use treetime_schema::ProgressEvent;
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::error::{ReportChain, panic_message};
 use treetime_utils::make_error;
 
 const JOB_ID_MAX_LEN: usize = 128;
 
 /// Identifier of one command run, unique among the jobs of a process.
-#[derive(
-  Clone,
-  Debug,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  Hash,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
-#[serde(try_from = "String")]
-#[deser(deserialize_as = deser::adapters::TryFromInto<String>)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, Serialize, Deserialize)]
+#[schemars(try_from = "String")]
+#[deser(deserialize_as = TryFromInto<String>)]
 pub struct JobId(String);
 
 impl JobId {
@@ -66,8 +54,8 @@ impl TryFrom<String> for JobId {
 }
 
 /// Event of a running job, in the order the job emits them.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, IntoStaticStr, deser::Serialize, deser::Deserialize)]
-#[serde(tag = "type", rename_all = "kebab-case")]
+#[derive(Clone, Debug, JsonSchema, IntoStaticStr, Serialize, Deserialize)]
+#[schemars(tag = "type", rename_all = "kebab-case")]
 #[deser(tag = "type", rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum JobEvent {
@@ -85,9 +73,9 @@ pub enum JobEvent {
 
 /// Convergence values of one timetree optimization iteration, as the tracelog records them, with the clock model the
 /// iteration used.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct IterationEvent {
   /// Iteration number, starting at 1.
   pub iteration: usize,
@@ -133,15 +121,15 @@ impl From<&IterationRecord> for IterationEvent {
 }
 
 /// Identity of an accepted job.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 pub struct JobStarted {
   pub job_id: JobId,
   pub command: AppCommand,
 }
 
 /// How a job ended.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(tag = "status", rename_all = "kebab-case")]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[schemars(tag = "status", rename_all = "kebab-case")]
 #[deser(tag = "status", rename_all = "kebab-case")]
 pub enum TerminalEvent {
   /// The command ran to completion.

@@ -1,14 +1,15 @@
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use treetime::progress::LogSink;
 use treetime::progress_info;
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 /// Seed of the random number generator, shared by every command that has a random step.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(default, deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct SeedArgs {

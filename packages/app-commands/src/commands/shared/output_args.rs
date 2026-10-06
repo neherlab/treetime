@@ -1,19 +1,19 @@
 use app_output::output_plan::{self, CommandKind, OutputPlanRequest, OutputSelection, ResolvedOutputs};
-#[cfg(feature = "clap")]
 use clap::ValueHint;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime_io::nwk::NwkStyle;
+#[cfg(feature = "clap")]
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 macro_rules! per_command_output_selection {
   ($name:ident { $($extra:ident),* $(,)? }) => {
-    #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, schemars::JsonSchema, strum_macros::EnumIter, deser::Serialize, deser::Deserialize)]
-    #[serde(rename_all = "kebab-case")]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, schemars::JsonSchema, strum_macros::EnumIter, Serialize, Deserialize)]
+    #[schemars(rename_all = "kebab-case")]
     #[deser(rename_all = "kebab-case")]
     #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
     pub enum $name {
@@ -86,10 +86,11 @@ per_command_output_selection!(HomoplasyOutputSelection {
 /// Output selection shared by every tree-writing command. `--output-all`
 /// chooses the directory, `--output-selection` restricts generated files, and
 /// per-file flags override or add paths. Style and topology order are separate.
-#[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(default, deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct OutputCoreArgs {
@@ -240,11 +241,9 @@ impl OutputCoreArgs {
 }
 
 /// CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
-#[derive(
-  Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum NwkStyleArg {
   Plain,
@@ -262,11 +261,9 @@ impl From<NwkStyleArg> for NwkStyle {
   }
 }
 
-#[derive(
-  Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum DivergenceUnits {
   #[default]

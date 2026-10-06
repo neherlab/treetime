@@ -3,11 +3,11 @@ use crate::testing::metrics::config::MetricsConfig;
 use crate::testing::metrics::distribution::distribution::DistributionMetrics;
 use crate::testing::metrics::pointwise::pointwise::PointwiseMetrics;
 use crate::testing::metrics::spatial::spatial::SpatialMetrics;
+use deser::{Deserialize, Serialize};
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationMetrics {
   pub(crate) aggregate: AggregateMetrics,
 

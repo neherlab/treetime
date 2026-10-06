@@ -2,10 +2,10 @@
 pub(super) mod support {
   use crate::alphabet::alphabet::Alphabet;
   use crate::timetree::inference::result::NodePosterior;
+  use deser::Deserialize;
   use eyre::Report;
   use ndarray::Array1;
   use ordered_float::OrderedFloat;
-  use serde::Deserialize;
   use std::collections::BTreeMap;
   use std::fs;
   use std::path::{Path, PathBuf};
@@ -17,6 +17,7 @@ pub(super) mod support {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
   use treetime_io::fasta::{FastaRecord, fasta_read_file};
+  use treetime_utils::io::json::json_read_str;
 
   const FIXTURES_DIR: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -28,7 +29,7 @@ pub(super) mod support {
   pub(crate) static OUTPUTS: LazyLock<BTreeMap<String, DatasetOutputs>> = LazyLock::new(|| {
     let path = Path::new(FIXTURES_DIR).join("gm_runner_outputs.json");
     let content = fs::read_to_string(&path).expect("Failed to read gm_runner_outputs.json");
-    serde_json::from_str(&content).expect("Failed to parse gm_runner_outputs.json")
+    json_read_str(&content).expect("Failed to parse gm_runner_outputs.json")
   });
 
   pub(crate) static ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -36,7 +37,7 @@ pub(super) mod support {
   static INPUTS: LazyLock<BTreeMap<String, DatasetInput>> = LazyLock::new(|| {
     let path = Path::new(FIXTURES_DIR).join("gm_runner_inputs.json");
     let content = fs::read_to_string(&path).expect("Failed to read gm_runner_inputs.json");
-    serde_json::from_str(&content).expect("Failed to parse gm_runner_inputs.json")
+    json_read_str(&content).expect("Failed to parse gm_runner_inputs.json")
   });
 
   static PROJECT_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
@@ -47,7 +48,7 @@ pub(super) mod support {
       .to_path_buf()
   });
 
-  #[derive(Debug, Deserialize, deser::Deserialize)]
+  #[derive(Debug, Deserialize)]
   pub(crate) struct DatasetOutputs {
     rerooted_tree_nwk: String,
     clock_rate: f64,
@@ -78,7 +79,7 @@ pub(super) mod support {
     }
   }
 
-  #[derive(Debug, Deserialize, deser::Deserialize)]
+  #[derive(Debug, Deserialize)]
   struct DatasetInput {
     aln_path: String,
     metadata_path: String,

@@ -1,6 +1,6 @@
 use clap::ValueEnum;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
-use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 pub use treetime_ops::traits::{ConvolveAlgo, MultiplyAlgo};
@@ -18,16 +18,13 @@ use treetime_utils::make_error;
   PartialOrd,
   Ord,
   Hash,
-  Serialize,
-  Deserialize,
   Display,
   EnumString,
   EnumIter,
   ValueEnum,
-  deser::Serialize,
-  deser::Deserialize,
+  Serialize,
+  Deserialize,
 )]
-#[serde(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
@@ -70,16 +67,13 @@ impl ConvolutionAlgorithm {
   PartialOrd,
   Ord,
   Hash,
-  Serialize,
-  Deserialize,
   Display,
   EnumString,
   EnumIter,
   ValueEnum,
-  deser::Serialize,
-  deser::Deserialize,
+  Serialize,
+  Deserialize,
 )]
-#[serde(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]

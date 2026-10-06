@@ -1,8 +1,8 @@
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use treetime::alphabet::alphabet::AlphabetName;
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 /// Alphabet selection shared by every command that reads sequences.
 ///
@@ -10,10 +10,11 @@ use treetime::alphabet::alphabet::AlphabetName;
 /// nucleotide alphabet when detection is ambiguous (see `detect_alphabet`).
 ///
 /// The flag has no short form: `-a` is reserved for `--alignment`.
-#[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(default, deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlphabetArgs {
@@ -31,23 +32,9 @@ impl AlphabetArgs {
   }
 }
 
-#[derive(
-  Copy,
-  Clone,
-  Debug,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  SmartDefault,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "AlphabetName")]
 pub enum AlphabetNameCli {

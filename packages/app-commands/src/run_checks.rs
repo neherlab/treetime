@@ -4,12 +4,12 @@ use crate::commands::shared::input_warnings::name_list;
 use crate::config::settings::{has_path, setting_ref};
 use crate::config::source::ConfigProblem;
 use crate::json_value::JsonValue;
+use deser::{Deserialize, Serialize};
 use itertools::Itertools;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use serde_with::skip_serializing_none;
 use std::iter;
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::vec_of_owned;
 
 const MONTH_ROUNDING_FACTOR: usize = 4;
@@ -64,9 +64,9 @@ pub struct ConfigRejection<'a> {
 }
 
 /// A finding about a configuration and its input files, before a run.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct RunCheck {
   /// Identifier of the check, stable across calls for the same finding.
   pub id: String,
@@ -81,10 +81,8 @@ pub struct RunCheck {
 }
 
 /// How a finding affects the run.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum CheckLevel {
   /// The run cannot start.
@@ -96,7 +94,7 @@ pub enum CheckLevel {
 }
 
 /// Change of settings that resolves a finding.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct CheckFix {
   /// Label of the action, for example `Use covariation`.
   pub label: String,
@@ -105,9 +103,9 @@ pub struct CheckFix {
 }
 
 /// New value of one setting.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct SettingPatch {
   /// Key path of the setting.
   pub path: Vec<String>,

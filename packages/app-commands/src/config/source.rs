@@ -1,16 +1,16 @@
 use crate::yaml::yaml_value_read_str;
 use bon::bon;
 use color_eyre::Section;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan, NamedSource, Severity, SourceCode, SourceSpan};
 use saphyr::{LoadableYamlNode, MarkedYaml, Scalar, YamlData};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde_with::skip_serializing_none;
 use std::collections::BTreeMap;
 use std::fmt::Display;
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
 
 pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
@@ -53,17 +53,7 @@ pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawD
 }
 
 /// Configuration rejected by parsing or by the schema check.
-#[derive(
-  Clone,
-  Debug,
-  derive_more::Display,
-  derive_more::Error,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
+#[derive(Clone, Debug, derive_more::Display, derive_more::Error, JsonSchema, Serialize, Deserialize)]
 #[display("{message}")]
 pub struct InvalidConfig {
   /// One-line summary of every problem, as the CLI prints it.
@@ -84,9 +74,9 @@ impl InvalidConfig {
 }
 
 /// One problem found in a configuration.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct ConfigProblem {
   /// Stable diagnostic code, for example `config::unknown-field`.
   pub code: String,
@@ -99,9 +89,7 @@ pub struct ConfigProblem {
 }
 
 /// Location of a problem in the configuration text.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct ConfigSpan {
   /// Byte offset of the first character.
   pub offset: usize,

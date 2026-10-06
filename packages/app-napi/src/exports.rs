@@ -12,6 +12,7 @@ use serde_json::Value;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::task::AbortHandle;
+use treetime_utils::io::json::to_json_value;
 use treetime_utils::{make_internal_report, make_report};
 
 #[napi]
@@ -60,7 +61,7 @@ pub fn app_startup() -> napi::Result<AppStartup> {
     let root = app_root()?;
     let settings = AppSettingsStore::open(&root)?.read()?;
     let paths = AppPaths::resolve(&root, &AppFolderEnv::from_env()?, &settings.paths);
-    let Value::String(theme) = serde_json::to_value(settings.ui.theme.unwrap_or(UiTheme::System))? else {
+    let Value::String(theme) = to_json_value(&settings.ui.theme.unwrap_or(UiTheme::System))? else {
       return Err(make_internal_report!("a theme serializes to a JSON string"));
     };
     Ok(AppStartup {

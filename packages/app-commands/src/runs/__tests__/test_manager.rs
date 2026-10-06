@@ -22,6 +22,7 @@ mod tests {
   use treetime::o;
   use treetime::progress::{RunWarning, RunWarningKind};
   use treetime_utils::assert_error;
+  use treetime_utils::io::json::json_read_str;
 
   #[test]
   fn test_manager_run_records_its_lifecycle_and_outputs() {
@@ -311,7 +312,7 @@ mod tests {
       .collect::<BTreeSet<_>>()
       .into_iter()
       .collect();
-    let reread: RunRecord = serde_json::from_str(&fs::read_to_string(dir.join("run.json")).unwrap()).unwrap();
+    let reread: RunRecord = json_read_str(fs::read_to_string(dir.join("run.json")).unwrap()).unwrap();
     assert_eq!(
       (
         vec!["inputs", "out", "run.json"],
@@ -408,6 +409,7 @@ mod tests {
     use crate::runs::record::{CreateRunRequest, RunRecord};
     use serde_json::{Value, json};
     use std::path::Path;
+    use treetime_utils::io::json::to_json_value;
 
     pub(super) fn accept() -> ConfigHook {
       Box::new(|_config: &mut Value| Ok(()))
@@ -451,16 +453,14 @@ mod tests {
     pub(super) fn event_types(events: &[RunEvent]) -> Vec<&'static str> {
       events
         .iter()
-        .map(
-          |event| match serde_json::to_value(event).unwrap()["type"].as_str().unwrap() {
-            "started" => "started",
-            "progress" => "progress",
-            "log" => "log",
-            "iteration" => "iteration",
-            "terminal" => "terminal",
-            other => panic!("unknown event type {other}"),
-          },
-        )
+        .map(|event| match to_json_value(&event).unwrap()["type"].as_str().unwrap() {
+          "started" => "started",
+          "progress" => "progress",
+          "log" => "log",
+          "iteration" => "iteration",
+          "terminal" => "terminal",
+          other => panic!("unknown event type {other}"),
+        })
         .collect()
     }
   }

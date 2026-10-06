@@ -1,15 +1,17 @@
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime::gtr::get_gtr::GtrModelName;
+use treetime_schema::schema_defaults;
 
 /// Substitution model selection shared by every command that infers or applies a rate matrix.
 ///
 /// One flag name (`--model`, short `-g`, alias `--gtr`) serves every command; the value set includes
 /// non-GTR models (for example `jtt92`). `--model-params` (alias `--gtr-params`) carries
 /// model-specific `key=value` parameters.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ModelArgs {
@@ -44,39 +46,25 @@ impl ModelArgs {
   }
 }
 
-#[derive(
-  Copy,
-  Debug,
-  Clone,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  SmartDefault,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "GtrModelName")]
 pub enum GtrModelNameCli {
   /// Infer GTR parameters from data via Fitch parsimony substitution counts.
   #[default]
   Infer,
-  #[serde(rename = "jc69")]
+  #[schemars(rename = "jc69")]
   #[deser(rename = "jc69")]
   JC69,
   K80,
   F81,
-  #[serde(rename = "hky85")]
+  #[schemars(rename = "hky85")]
   #[deser(rename = "hky85")]
   HKY85,
   T92,
-  #[serde(rename = "tn93")]
+  #[schemars(rename = "tn93")]
   #[deser(rename = "tn93")]
   TN93,
   #[cfg_attr(feature = "clap", value(name = "jtt92"))]

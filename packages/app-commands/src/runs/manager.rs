@@ -16,12 +16,12 @@ use crate::runs::record::{
 use crate::runs::store::RunStore;
 use crate::runs::warnings::WarningCollector;
 use chrono::{TimeDelta, Utc};
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::error;
 use parking_lot::Mutex;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
@@ -327,7 +327,7 @@ impl RunManager {
 }
 
 /// A file uploaded into a run's `inputs/` folder.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 pub struct UploadedInput {
   /// File name inside the run's `inputs/` folder.
   pub name: String,

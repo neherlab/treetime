@@ -11,15 +11,15 @@ use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
 use treetime::ancestral::params::{AncestralParams, MethodAncestral};
 use treetime::make_error;
 use treetime::partition::marginal::sample::SampleMode;
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 pub fn homoplasy_ancestral_params(args: &TreetimeHomoplasyArgs, seed: u64) -> AncestralParams {
   AncestralParams {
@@ -103,21 +103,22 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
   }
 }
 
-#[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(default, deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "HomoplasyConfig")]
 pub struct TreetimeHomoplasyArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(skip)]
+  #[schemars(skip)]
   #[deser(skip)]
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
@@ -129,12 +130,12 @@ pub struct TreetimeHomoplasyArgsRaw {
   pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub model_args: ModelArgs,
 
@@ -150,7 +151,7 @@ pub struct TreetimeHomoplasyArgsRaw {
   pub dense: Option<bool>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
 
@@ -208,7 +209,7 @@ pub struct TreetimeHomoplasyArgsRaw {
   pub sample_from_profile: SampleModeCli,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub seed_args: SeedArgs,
 
@@ -259,7 +260,7 @@ pub struct TreetimeHomoplasyArgsRaw {
   pub num_mut: usize,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
@@ -294,7 +295,7 @@ pub struct TreetimeHomoplasyArgsRaw {
   pub output_selection: Vec<HomoplasyOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 }

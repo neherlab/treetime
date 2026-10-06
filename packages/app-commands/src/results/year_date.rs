@@ -1,9 +1,9 @@
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use treetime_utils::datetime::year_fraction::year_fraction_to_datestring;
 
 /// A date as a decimal year and as a calendar day.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 pub struct YearDate {
   /// The date as a decimal year, for example `2015.47`.
   pub year: f64,

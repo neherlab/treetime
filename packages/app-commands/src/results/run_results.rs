@@ -11,20 +11,20 @@ use crate::results::tree::ResultTree;
 use crate::runs::errors::conflict;
 use crate::runs::manager::RunManager;
 use crate::runs::record::{RunRecord, RunStatus};
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::gtr::get_gtr::GtrOutput;
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
 use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
 /// Results of a finished run, read from its output files.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct RunResults {
   /// Tree of the run's Auspice file; absent when the run wrote none.
   pub tree: Option<ResultTree>,
@@ -37,8 +37,8 @@ pub struct RunResults {
 }
 
 /// Results specific to the command of a run.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(tag = "command", content = "data", rename_all = "kebab-case")]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[schemars(tag = "command", content = "data", rename_all = "kebab-case")]
 #[deser(tag = "command", content = "data", rename_all = "kebab-case")]
 pub enum CommandResults {
   Timetree(Box<TimetreeResults>),
@@ -51,9 +51,9 @@ pub enum CommandResults {
 }
 
 /// Summary of a tree an `optimize` or `prune` run wrote.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct TreeSummary {
   /// Number of samples.
   pub samples: usize,
@@ -68,7 +68,7 @@ pub struct TreeSummary {
 }
 
 /// A fitted substitution model.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 pub struct SubstitutionModel {
   /// Name of the model.
   pub name: String,

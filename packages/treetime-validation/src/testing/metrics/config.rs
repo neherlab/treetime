@@ -1,14 +1,14 @@
-use serde::{Deserialize, Serialize};
+use deser::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MetricsConfig {
   pub(crate) pointwise: PointwiseConfig,
   pub(crate) spatial: SpatialConfig,
   pub(crate) distribution: DistributionConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
 pub struct PointwiseConfig {
   #[default = 1e-15]
   pub(crate) epsilon: f64,
@@ -22,7 +22,7 @@ pub struct PointwiseConfig {
   pub(crate) rel_tolerances: [f64; 3],
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
 pub struct SpatialConfig {
   #[default = 1e-15]
   pub(crate) epsilon: f64,
@@ -36,7 +36,7 @@ pub struct SpatialConfig {
   pub(crate) window_half_width: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
 pub struct DistributionConfig {
   #[default = 50]
   pub(crate) histogram_bins: usize,
@@ -44,7 +44,7 @@ pub struct DistributionConfig {
   pub(crate) log_min_value: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
 pub struct ToleranceThresholds {
   #[default(_code = "[1e-6, 1e-9, 1e-12]")]
   pub(crate) abs_tolerances: [f64; 3],

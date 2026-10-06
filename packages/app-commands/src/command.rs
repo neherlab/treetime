@@ -33,12 +33,12 @@ use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 #[cfg(feature = "clap")]
 use clap::{Command, CommandFactory};
 use deser::adapters::As;
+use deser::de::DeserializeOwned;
+use deser::{Deserialize, Serialize};
 use deser_serde::Serde;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -46,6 +46,8 @@ use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr, VariantNames};
 use treetime::cancel::Cancel;
 use treetime::progress::{LogSink, StageSink};
+use treetime_utils::io::json::from_json_value;
+use treetime_utils::io::json::to_json_value;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_error;
 
@@ -59,18 +61,16 @@ use treetime_utils::make_error;
   PartialOrd,
   Ord,
   Hash,
-  Serialize,
-  Deserialize,
   JsonSchema,
   Display,
   EnumString,
   EnumIter,
   IntoStaticStr,
   VariantNames,
-  deser::Serialize,
-  deser::Deserialize,
+  Serialize,
+  Deserialize,
 )]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum AppCommand {
@@ -324,7 +324,7 @@ impl CommandArgs {
 }
 
 /// Result of a command that ran to completion.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct CommandOutcome {
   /// Command that ran.
   pub command: AppCommand,
@@ -333,9 +333,7 @@ pub struct CommandOutcome {
 }
 
 /// One file a command wrote.
-#[derive(
-  Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]
 pub struct OutputFile {
   /// Path of the file.
   pub path: PathBuf,
@@ -421,7 +419,7 @@ impl RawConfigVisitor for ConfigOf<'_> {
   type Output = Result<CommandConfig, Report>;
 
   fn visit<R: RawConfig>(self) -> Self::Output {
-    Ok(R::deserialize(self.settings)?.into_config())
+    Ok(from_json_value::<R>(self.settings)?.into_config())
   }
 }
 
@@ -547,7 +545,7 @@ fn prepare<R: RawConfig>(
   let schema = command_schema::<R>();
   let merged = load_config_document::<R>(source, text, None)?;
   check_command_config(source, &merged, &schema)?;
-  let mut raw: R = serde_json::from_value(merged)?;
+  let mut raw: R = from_json_value(&merged)?;
   let mut defaults = R::default();
   if let Some(out_dir) = run_out {
     raw.set_run_outputs(out_dir);
@@ -575,7 +573,7 @@ fn check_cli_rules(_command: AppCommand, _source: &ConfigSource, _config: &Map<S
 }
 
 fn settings_map<R: Serialize>(raw: &R) -> Result<Map<String, Value>, Report> {
-  match serde_json::to_value(raw)? {
+  match to_json_value(&raw)? {
     Value::Object(settings) => Ok(settings),
     _ => make_error!("a command configuration must serialize to a mapping of settings"),
   }

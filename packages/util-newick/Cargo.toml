@@ -21,7 +21,6 @@ pest = { workspace = true }
 pest_derive = { workspace = true }
 pretty_dtoa = { workspace = true }
 regex = { workspace = true }
-serde = { workspace = true }
 smart-default = { workspace = true }
 
 [dev-dependencies]

@@ -5,18 +5,18 @@ use crate::results::tree::{DateInterval, ResultTree};
 use crate::results::year_date::YearDate;
 use crate::runs::manager::RunManager;
 use crate::runs::record::RunStatus;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use std::collections::BTreeMap;
 use std::path::Path;
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
 
 /// Request to find a clade of one run in the other time-tree runs.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct CladeRequest {
   /// Run whose tree holds the clade.
@@ -26,7 +26,7 @@ pub struct CladeRequest {
 }
 
 /// A clade of one run found in the other finished time-tree runs.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 pub struct CladeInRuns {
   /// Runs whose tree has a node with the same set of samples below it.
   pub matches: Vec<CladeMatch>,
@@ -37,9 +37,9 @@ pub struct CladeInRuns {
 }
 
 /// The node of another run with the same set of samples below it.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct CladeMatch {
   /// Id of the run.
   pub run: JobId,
@@ -54,7 +54,7 @@ pub struct CladeMatch {
 }
 
 /// A run whose tree could not be read.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct UnreadableRun {
   /// Id of the run.
   pub run: JobId,

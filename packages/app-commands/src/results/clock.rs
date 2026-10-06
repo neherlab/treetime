@@ -1,17 +1,17 @@
 use crate::results::tree::ResultTree;
 use crate::results::year_date::YearDate;
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use std::collections::BTreeSet;
 use treetime::clock::clock_model::{ClockModel, ClockModelStats};
 use treetime::clock::rtt::{ClockDateSource, ClockRegressionResult};
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
 /// Results of a `clock` run.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct ClockResults {
   /// Estimates of the clock model.
   pub estimates: ClockEstimates,
@@ -20,9 +20,9 @@ pub struct ClockResults {
 }
 
 /// Estimates of a `clock` run.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct ClockEstimates {
   /// Clock rate in substitutions per site per year; absent when the run wrote no clock model.
   pub clock_rate: Option<f64>,
@@ -39,9 +39,9 @@ pub struct ClockEstimates {
 }
 
 /// The points and line of a root-to-tip regression, as TreeTime fitted it.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct RootToTip {
   /// Samples as the regression saw them.
   pub points: Vec<RootToTipPoint>,
@@ -50,7 +50,7 @@ pub struct RootToTip {
 }
 
 /// Line of a clock model: divergence = rate * date + intercept.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 pub struct ClockLine {
   /// Clock rate in substitutions per site per year.
   pub rate: f64,
@@ -59,9 +59,9 @@ pub struct ClockLine {
 }
 
 /// One sample of a root-to-tip regression.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct RootToTipPoint {
   /// Name of the sample.
   pub name: String,

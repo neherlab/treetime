@@ -1,11 +1,13 @@
 use crate::alphabet::alphabet_config::AlphabetConfig;
 use crate::{make_report, vec_u8};
+use deser::adapters::TryFromInto;
+use deser::ser::{Chunk, SerializeHandle};
+use deser::{Deserialize, Error, Serialize, State};
 use eyre::Report;
 use indexmap::{IndexMap, indexmap};
 use itertools::Itertools;
 use ndarray::{Array1, Array2, Axis, stack};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::borrow::Borrow;
 use std::fmt::Display;
@@ -16,9 +18,8 @@ pub(crate) const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
 pub(crate) const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
 pub(crate) const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
-#[derive(Clone, Debug, Deserialize, deser::Deserialize)]
-#[serde(try_from = "AlphabetConfig")]
-#[deser(deserialize_as = deser::adapters::TryFromInto<AlphabetConfig>)]
+#[derive(Clone, Debug, Deserialize)]
+#[deser(deserialize_as = TryFromInto<AlphabetConfig>)]
 pub struct Alphabet {
   all: StateSet,
   canonical: StateSet,
@@ -34,15 +35,8 @@ pub struct Alphabet {
   config: AlphabetConfig,
 }
 impl Serialize for Alphabet {
-  fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    self.config.serialize(serializer)
-  }
-}
-impl deser::Serialize for Alphabet {
-  fn serialize(&self, _state: &mut deser::State) -> Result<deser::ser::Chunk<'_>, deser::Error> {
-    Ok(deser::ser::Chunk::Forward(deser::ser::SerializeHandle::to(
-      &self.config,
-    )))
+  fn serialize(&self, _state: &mut State) -> Result<Chunk<'_>, Error> {
+    Ok(Chunk::Forward(SerializeHandle::to(&self.config)))
   }
 }
 impl TryFrom<AlphabetConfig> for Alphabet {
@@ -306,22 +300,9 @@ impl AlphabetLike for Alphabet {
 }
 
 #[derive(
-  Copy,
-  Clone,
-  Debug,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  SmartDefault,
-  Display,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
+  Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, JsonSchema, Serialize, Deserialize,
 )]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum AlphabetName {
   #[default]

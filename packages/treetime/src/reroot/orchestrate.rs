@@ -5,8 +5,8 @@ use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves, 
 use crate::reroot::search::find_best_root;
 use crate::reroot::split::FindRootResult;
 use crate::reroot::variance::VarianceModel;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -144,7 +144,7 @@ fn apply_root_at_edge(
   })
 }
 
-#[derive(Debug, Clone, Copy, SmartDefault, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Copy, SmartDefault, Serialize, Deserialize)]
 pub struct RerootTopologyParams {
   #[default = true]
   pub(crate) split_edge: bool,

@@ -1,5 +1,5 @@
+use deser::{Deserialize, Serialize};
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
 
 pub(crate) fn compute_performance_metrics(
   actual: &Array1<f64>,
@@ -48,7 +48,7 @@ pub(crate) fn compute_performance_metrics(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
   signal_to_noise_ratio: f64,
   normalized_rmse: f64,

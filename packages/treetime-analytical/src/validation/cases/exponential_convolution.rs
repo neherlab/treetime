@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use deser::Serialize;
 
 pub const EXPONENTIAL_CONVOLUTION_CASES: &[ExponentialConvolutionTestCase] = &[
   ExponentialConvolutionTestCase {
@@ -146,7 +146,7 @@ pub const EXPONENTIAL_CONVOLUTION_CASES: &[ExponentialConvolutionTestCase] = &[
   },
 ];
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExponentialConvolutionTestCase {
   pub name: &'static str,
   pub description: &'static str,

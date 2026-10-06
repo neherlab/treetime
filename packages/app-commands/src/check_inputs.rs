@@ -2,12 +2,11 @@ use crate::command::AppCommand;
 use crate::commands::shared::alignment::read_alignment;
 use crate::json_value::SparseConfig;
 use chrono::Datelike;
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use serde_with::skip_serializing_none;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use strum_macros::Display;
@@ -16,15 +15,17 @@ use treetime_io::csv::{DELIMITED_EXTENSIONS, default_metadata_delimiters, defaul
 use treetime_io::dates_csv::{DateConstraint, DateValue, MetadataTable, metadata_read_file};
 use treetime_io::fasta::FASTA_EXTENSIONS;
 use treetime_io::tree::{TREE_EXTENSIONS, tree_read_file};
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::datetime::parse_date::parse_date;
 use treetime_utils::io::compression::COMPRESSION_EXTENSIONS;
+use treetime_utils::io::json::from_json_value;
 
 const ROUND_DAYS: [u32; 2] = [1, 15];
 
 /// A command configuration whose input files to inspect before a run.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct CheckInputsRequest {
   /// Command the configuration is for.
@@ -33,8 +34,7 @@ pub struct CheckInputsRequest {
   pub config: SparseConfig,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, deser::Deserialize)]
-#[serde(default)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[deser(default)]
 struct InputSettings {
   tree: Option<PathBuf>,
@@ -47,8 +47,7 @@ struct InputSettings {
 
 impl InputSettings {
   fn of(command: AppCommand, config: &Map<String, Value>) -> Result<Self, Report> {
-    let settings: Self =
-      serde_json::from_value(Value::Object(config.clone())).wrap_err("When reading the input settings")?;
+    let settings: Self = from_json_value(&Value::Object(config.clone())).wrap_err("When reading the input settings")?;
     let reads = |kind: InputKind| command.inputs().iter().any(|input| input.kind == kind);
     Ok(Self {
       tree: settings.tree.filter(|_| reads(InputKind::Tree)),
@@ -64,9 +63,9 @@ impl InputSettings {
 }
 
 /// Facts about the input files of a run, read with the readers the commands use.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Default, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct InputFacts {
   /// Facts about the tree, when it could be read.
   pub tree: Option<TreeFacts>,
@@ -83,7 +82,7 @@ pub struct InputFacts {
 }
 
 /// Facts about a tree.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct TreeFacts {
   /// Number of tips.
   pub tips: usize,
@@ -98,7 +97,7 @@ pub struct TreeFacts {
 }
 
 /// Facts about an alignment.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct AlignmentFacts {
   /// Number of sequences.
   pub sequences: usize,
@@ -111,9 +110,9 @@ pub struct AlignmentFacts {
 }
 
 /// Facts about a metadata table.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct MetadataFacts {
   /// Number of data rows.
   pub rows: usize,
@@ -128,7 +127,7 @@ pub struct MetadataFacts {
 }
 
 /// Facts about the sampling dates of a metadata table.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct DateFacts {
   /// Samples with a date the date parser reads.
   pub readable: usize,
@@ -141,7 +140,7 @@ pub struct DateFacts {
 }
 
 /// An input that could not be read.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 pub struct InputProblem {
   /// Input the problem concerns.
   pub input: InputKind,
@@ -150,10 +149,8 @@ pub struct InputProblem {
 }
 
 /// Kind of input file.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Display, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Display, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum InputKind {
@@ -202,9 +199,7 @@ impl InputKind {
 }
 
 /// An input file an app command reads.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct CommandInput {
   /// Kind of the file; also the setting that names it.
   pub kind: InputKind,
@@ -219,7 +214,7 @@ impl CommandInput {
 }
 
 /// An input file of a command, as the form asks for it.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct InputSlot {
   /// Kind of the file; also the setting that names it.
   pub kind: InputKind,
@@ -249,10 +244,8 @@ impl InputSlot {
 }
 
 /// How much a run of the app needs an input file.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum InputNeed {
   /// The run does not start without the file.

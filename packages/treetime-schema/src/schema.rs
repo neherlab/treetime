@@ -1,5 +1,6 @@
 use crate::no_null::NoNull;
 use crate::{ErrorResponse, ProgressEvent, VersionInfo};
+use deser::Serialize;
 use deser::adapters::As;
 use deser_serde::Serde;
 use eyre::Report;
@@ -42,9 +43,8 @@ pub fn generate_schema(format: &TreetimeSchemaFormat, output: Option<&PathBuf>) 
   Ok(())
 }
 
-#[derive(Debug, Clone, Default, EnumIter, serde::Serialize, deser::Serialize)]
+#[derive(Debug, Clone, Default, EnumIter, Serialize)]
 #[cfg_attr(feature = "clap", derive(ValueEnum))]
-#[serde(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum TreetimeSchemaFormat {
   #[default]

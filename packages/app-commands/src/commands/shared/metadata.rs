@@ -1,8 +1,8 @@
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
 
@@ -13,8 +13,9 @@ const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
 /// identifier that links a metadata row to a tree tip; the first column present in the header wins.
 /// Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
 /// candidate field separators; the delimiter actually present in the file is used.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct MetadataIdArgs {
@@ -51,10 +52,11 @@ pub struct MetadataIdArgs {
 /// `--date-column` overrides auto-detection of the column holding sampling dates; when omitted, the
 /// leftmost column whose name contains `date` (case-insensitive) is used. `--date-format` controls
 /// parsing of string dates; numeric, ISO, and uncertain dates parse regardless.
-#[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(default, deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct DateColumnArgs {

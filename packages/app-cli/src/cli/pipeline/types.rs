@@ -18,19 +18,19 @@ use treetime_utils::{make_error, make_report};
 /// after which the typed steps are assembled. This type fixes the on-disk shape that the staged pass
 /// and the generated schema must agree on.
 #[derive(Debug, JsonSchema)]
-#[serde(deny_unknown_fields)]
+#[schemars(deny_unknown_fields)]
 #[expect(
   dead_code,
   reason = "the type only describes the file shape for the generated schema; the loader reads files in a staged pass"
 )]
 pub(crate) struct Pipeline {
-  #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
+  #[schemars(rename = "$schema", skip_serializing_if = "Option::is_none")]
   schema_ref: Option<String>,
 
-  #[serde(default, skip_serializing_if = "Map::is_empty")]
+  #[schemars(default, skip_serializing_if = "Map::is_empty")]
   vars: Map<String, Value>,
 
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[schemars(skip_serializing_if = "Option::is_none")]
   output_all: Option<String>,
 
   steps: Vec<PipelineStep>,
@@ -47,7 +47,7 @@ pub(crate) struct Pipeline {
 )]
 pub(crate) struct PipelineStep {
   name: String,
-  #[serde(flatten)]
+  #[schemars(flatten)]
   command: PipelineStepCommand,
 }
 

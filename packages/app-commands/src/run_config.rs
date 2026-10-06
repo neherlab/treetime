@@ -4,12 +4,12 @@ use crate::config::source::{ConfigProblem, InvalidConfig};
 use crate::json_value::SparseConfig;
 use crate::runs::inputs::hash_inputs;
 use crate::runs::manager::ConfigHook;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use serde_with::skip_serializing_none;
 use std::path::Path;
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::error::ReportChain;
 use treetime_utils::make_error;
 
@@ -41,8 +41,8 @@ pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigR
 }
 
 /// Request to resolve a configuration as a run resolves it, without running it.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct RunConfigRequest {
   /// Command the configuration is for.
@@ -52,10 +52,10 @@ pub struct RunConfigRequest {
 }
 
 /// Outcome of resolving a configuration as a run resolves it.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(tag = "status", rename_all = "kebab-case")]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(tag = "status", rename_all = "kebab-case")]
 #[deser(tag = "status", rename_all = "kebab-case")]
 pub enum RunConfigResponse {
   /// The configuration is accepted.

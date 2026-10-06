@@ -10,15 +10,16 @@ use crate::json_value::SparseConfig;
 use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, rejection_messages, run_checks};
 use crate::yaml::yaml_text;
 use app_datasets::text_schema_command;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use serde_with::skip_serializing_none;
 use std::collections::BTreeSet;
 use std::mem;
 use std::path::{Path, PathBuf};
 use strum::IntoEnumIterator;
+use treetime_schema::field_default;
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::error::ReportChain;
 
 const SOURCE_NAME: &str = "config.yaml";
@@ -68,10 +69,10 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
 }
 
 /// Outcome of checking a configuration without running it.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(tag = "status", rename_all = "kebab-case")]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(tag = "status", rename_all = "kebab-case")]
 #[deser(tag = "status", rename_all = "kebab-case")]
 pub enum CheckConfigResponse {
   /// The configuration is accepted.
@@ -110,10 +111,10 @@ pub enum CheckConfigResponse {
 }
 
 /// Request to check a configuration.
-#[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct CheckConfigRequest {
   /// Command the configuration is for, unless the text starts with the `yaml-language-server` schema directive of
@@ -123,16 +124,16 @@ pub struct CheckConfigRequest {
   pub text: String,
   /// Input settings to add when the text does not set them, for example the inputs of a draft that the text is loaded
   /// into.
-  #[serde(default)]
+  #[schemars(default, transform = field_default::<SparseConfig>)]
   #[deser(default)]
   pub inputs: SparseConfig,
   /// Facts about the input files, from `check-inputs`, for the checks that depend on them.
-  #[serde(default)]
+  #[schemars(default)]
   #[deser(default)]
   pub input_facts: Option<InputFacts>,
   /// Absolute folder that relative paths in the text resolve from: the folder of the config file. Paths in `inputs`
   /// stay as they are. Unset: relative paths resolve from the working directory of the back end.
-  #[serde(default)]
+  #[schemars(default)]
   #[deser(default)]
   pub folder: Option<PathBuf>,
 }

@@ -1,8 +1,8 @@
 use crate::testing::framework::test_case::{TestCase, TestCaseBase};
 use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
 use treetime_analytical::validation::cases::exponential_convolution::{
   EXPONENTIAL_CONVOLUTION_CASES, ExponentialConvolutionTestCase,
 };
@@ -38,9 +38,8 @@ impl ConvolutionTestSuite for ExponentialTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExponentialTestCase {
-  #[serde(flatten)]
   #[deser(flatten)]
   base: TestCaseBase,
   a: f64,

@@ -104,6 +104,7 @@ mod tests {
     use crate::command::AppCommand;
     use crate::run_config::{RunConfigRequest, run_config};
     use serde_json::Value;
+    use treetime_utils::io::json::to_json_value;
 
     pub(super) const ZIKA_TREE: &str = "../../data/zika/20/tree.nwk";
 
@@ -117,7 +118,7 @@ mod tests {
         },
         Box::new(|_config: &mut Value| Ok(())),
       );
-      serde_json::to_value(response).unwrap()
+      to_json_value(&response).unwrap()
     }
   }
 }

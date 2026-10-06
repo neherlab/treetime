@@ -1,6 +1,6 @@
 use crate::commands::homoplasy::result::DrmAnnotation;
+use deser::Deserialize;
 use eyre::{Report, WrapErr};
-use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::make_error;
@@ -51,21 +51,16 @@ impl DrmTable {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct DrmRow {
-  #[serde(rename = "GENOMIC_POSITION")]
   #[deser(rename = "GENOMIC_POSITION")]
   pub genomic_position: usize,
-  #[serde(rename = "ALT_BASE")]
   #[deser(rename = "ALT_BASE")]
   pub alt_base: String,
-  #[serde(rename = "DRUG")]
   #[deser(rename = "DRUG")]
   pub drug: String,
-  #[serde(rename = "GENE")]
   #[deser(rename = "GENE")]
   pub gene: String,
-  #[serde(rename = "SUBSTITUTION")]
   #[deser(rename = "SUBSTITUTION")]
   pub substitution: String,
 }

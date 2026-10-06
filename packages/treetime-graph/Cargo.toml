@@ -29,7 +29,6 @@ itertools = { workspace = true }
 ordered-float = { workspace = true }
 parking_lot = { workspace = true }
 rayon = { workspace = true }
-serde = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }

@@ -1,6 +1,8 @@
+use deser::adapters::{DeserializeAs, TryFromInto};
+use deser::de::SinkHandle;
+use deser::ser::Chunk;
+use deser::{Atom, Deserialize, Error, Serialize, State};
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
-use serde::de::Error as _;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Cow;
 use treetime_primitives::LogLh;
 
@@ -17,39 +19,7 @@ impl From<LogLh> for JsonFloat {
   }
 }
 
-impl Serialize for JsonFloat {
-  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let value = self.0;
-    if value.is_finite() {
-      serializer.serialize_f64(value)
-    } else if value.is_nan() {
-      serializer.serialize_str(NOT_A_NUMBER)
-    } else if value.is_sign_positive() {
-      serializer.serialize_str(POSITIVE_INFINITY)
-    } else {
-      serializer.serialize_str(NEGATIVE_INFINITY)
-    }
-  }
-}
-
-impl<'de> Deserialize<'de> for JsonFloat {
-  fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-    match JsonFloatRepr::deserialize(deserializer)? {
-      JsonFloatRepr::Number(value) => Ok(Self(value)),
-      JsonFloatRepr::Text(text) => match text.as_str() {
-        POSITIVE_INFINITY => Ok(Self(f64::INFINITY)),
-        NEGATIVE_INFINITY => Ok(Self(f64::NEG_INFINITY)),
-        NOT_A_NUMBER => Ok(Self(f64::NAN)),
-        other => Err(D::Error::custom(format!(
-          "expected a number, \"{POSITIVE_INFINITY}\", \"{NEGATIVE_INFINITY}\" or \"{NOT_A_NUMBER}\", found \"{other}\""
-        ))),
-      },
-    }
-  }
-}
-
-#[derive(Deserialize, deser::Deserialize)]
-#[serde(untagged)]
+#[derive(Deserialize)]
 #[deser(untagged)]
 enum JsonFloatRepr {
   Number(f64),
@@ -72,27 +42,25 @@ impl JsonSchema for JsonFloat {
   }
 }
 
-impl deser::Serialize for JsonFloat {
-  fn serialize(&self, _state: &mut deser::State) -> Result<deser::ser::Chunk<'_>, deser::Error> {
+impl Serialize for JsonFloat {
+  fn serialize(&self, _state: &mut State) -> Result<Chunk<'_>, Error> {
     let value = self.0;
     let atom = if value.is_finite() {
-      deser::Atom::F64(value)
+      Atom::F64(value)
     } else if value.is_nan() {
-      deser::Atom::Str(NOT_A_NUMBER.into())
+      Atom::Str(NOT_A_NUMBER.into())
     } else if value.is_sign_positive() {
-      deser::Atom::Str(POSITIVE_INFINITY.into())
+      Atom::Str(POSITIVE_INFINITY.into())
     } else {
-      deser::Atom::Str(NEGATIVE_INFINITY.into())
+      Atom::Str(NEGATIVE_INFINITY.into())
     };
-    Ok(deser::ser::Chunk::Atom(atom))
+    Ok(Chunk::Atom(atom))
   }
 }
 
-impl<'de> deser::Deserialize<'de> for JsonFloat {
-  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut deser::State) -> deser::de::SinkHandle<'out, 'de> {
-    <deser::adapters::TryFromInto<JsonFloatRepr> as deser::adapters::DeserializeAs<'de, Self>>::deserialize_into_as(
-      out, state,
-    )
+impl<'de> Deserialize<'de> for JsonFloat {
+  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut State) -> SinkHandle<'out, 'de> {
+    <TryFromInto<JsonFloatRepr> as DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
   }
 }
 

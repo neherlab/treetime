@@ -5,11 +5,11 @@ use crate::distribution_core::range::DistributionRange;
 use crate::distribution_ops::negate::distribution_negation;
 use crate::policy::{NegLog, Plain, YAxisPolicy};
 use approx::ulps_eq;
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use strum_macros::Display;
 use treetime_grid::{BoundaryBehavior, Side};
@@ -19,9 +19,8 @@ const TIME_LIMIT: f64 = 1e10;
 const FORMULA_GRID_SIZE: usize = 200;
 
 #[must_use]
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Display, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Display, Serialize, Deserialize)]
 #[strum(serialize_all = "kebab-case")]
-#[serde(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum Distribution<Y: YAxisPolicy = Plain> {
   #[default]

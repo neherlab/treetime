@@ -3,9 +3,9 @@ use crate::testing::metrics::distribution::histograms::{HistogramMetrics, comput
 use crate::testing::metrics::distribution::properties::{DistributionProperties, compute_distribution_properties};
 use crate::testing::metrics::distribution::statistics::{StatisticalMetrics, compute_statistical_metrics};
 use crate::testing::metrics::pointwise::errors::PointwiseErrors;
-use serde::{Deserialize, Serialize};
+use deser::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DistributionMetrics {
   pub(crate) histograms: HistogramMetrics,
   pub(crate) statistics: StatisticalMetrics,

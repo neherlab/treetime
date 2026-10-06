@@ -58,6 +58,7 @@ mod tests {
     use tokio_util::sync::CancellationToken;
     use tower::ServiceExt;
     use treetime::progress::NoopProgress;
+    use treetime_utils::io::json::to_json_value;
 
     pub(super) fn examples_dir() -> PathBuf {
       Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -140,7 +141,9 @@ mod tests {
       .unwrap();
       let request = Request::post("/api/runs")
         .header("content-type", "application/json")
-        .body(Body::from(json!({ "command": command, "config": config }).to_string()))
+        .body(Body::from(
+          json!({ "command": to_json_value(&command).unwrap(), "config": config }).to_string(),
+        ))
         .unwrap();
       let record = response_json(router.clone().oneshot(request).await.unwrap()).await;
       let id = record["id"].as_str().unwrap().to_owned();
@@ -170,7 +173,7 @@ mod tests {
         &service,
         "POST",
         "/api/runs",
-        Some(json!({ "command": command, "config": config }).to_string()),
+        Some(json!({ "command": to_json_value(&command).unwrap(), "config": config }).to_string()),
       );
       assert_eq!(200, status, "N-API run was not created: {record}");
       let id = serde_json::from_str::<Value>(&record).unwrap()["id"]

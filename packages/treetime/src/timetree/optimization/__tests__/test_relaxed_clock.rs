@@ -4,12 +4,12 @@ mod tests {
   use crate::test_utils::{find_node_key_by_name, unknown_branches};
   use crate::timetree::inference::result::BranchLikelihood;
   use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
+  use deser::Deserialize;
   use eyre::Report;
   use helpers::{
     GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance, scaled_time_branches, time_branch,
   };
   use rstest::rstest;
-  use serde::Deserialize;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -354,7 +354,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    #[derive(Deserialize, deser::Deserialize)]
+    #[derive(Deserialize)]
     pub(super) struct GmInput {
       pub(crate) name: String,
       pub(crate) newick: String,
@@ -365,12 +365,12 @@ mod tests {
       pub(crate) branches: BTreeMap<String, GmBranchInput>,
     }
 
-    #[derive(Deserialize, deser::Deserialize)]
+    #[derive(Deserialize)]
     pub(super) struct GmBranchInput {
       pub(crate) clock_length: f64,
     }
 
-    #[derive(Deserialize, deser::Deserialize)]
+    #[derive(Deserialize)]
     pub(super) struct GmOutput {
       pub(crate) name: String,
       pub(crate) gammas: BTreeMap<String, f64>,

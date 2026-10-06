@@ -7,6 +7,7 @@ mod tests {
   use indoc::indoc;
   use ndarray::array;
   use pretty_assertions::assert_eq;
+  use treetime_utils::io::json::json_read_str;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   fn clock_set_with_rate(target_rate: f64) -> ClockSet {
@@ -202,7 +203,7 @@ mod tests {
   #[test]
   fn test_clock_model_stats_matrices_json_roundtrip() -> Result<(), Report> {
     let json = json_write_str(&estimated_model(), JsonPretty(true))?;
-    let restored: ClockModel = serde_json::from_str(&json)?;
+    let restored: ClockModel = json_read_str(&json)?;
     let ClockModelStats::Estimated(stats) = restored.stats() else {
       panic!("expected Estimated stats after round-trip");
     };

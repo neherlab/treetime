@@ -1,7 +1,8 @@
 use clap::builder::{PossibleValuesParser, TypedValueParser};
 use clap::{ArgAction, Args};
+use deser::ser::Chunk;
+use deser::{Atom, Error, Serialize, State};
 use log::LevelFilter;
-use serde::Serialize;
 use treetime::progress::LogLevel;
 
 #[derive(Args, Debug, Clone)]
@@ -39,18 +40,9 @@ pub(crate) struct Verbosity {
 }
 
 impl Serialize for Verbosity {
-  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-  where
-    S: serde::Serializer,
-  {
-    serializer.serialize_str(&self.get_filter_level().to_string().to_lowercase())
-  }
-}
-
-impl deser::Serialize for Verbosity {
-  fn serialize(&self, _state: &mut deser::State) -> Result<deser::ser::Chunk<'_>, deser::Error> {
+  fn serialize(&self, _state: &mut State) -> Result<Chunk<'_>, Error> {
     let level = self.get_filter_level().to_string().to_lowercase();
-    Ok(deser::ser::Chunk::Atom(deser::Atom::Str(level.into())))
+    Ok(Chunk::Atom(Atom::Str(level.into())))
   }
 }
 

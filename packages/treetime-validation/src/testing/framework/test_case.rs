@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+use deser::{Deserialize, Serialize};
 
-pub trait TestCase: Clone + Send + Sync + Serialize + deser::Serialize {
+pub trait TestCase: Clone + Send + Sync + Serialize {
   fn base(&self) -> &TestCaseBase;
 
   fn name(&self) -> &str {
@@ -28,7 +28,7 @@ pub trait TestCase: Clone + Send + Sync + Serialize + deser::Serialize {
   fn input_grid_n_points(&self) -> usize;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestCaseBase {
   pub(crate) name: String,
   pub(crate) description: String,

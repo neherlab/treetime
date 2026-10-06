@@ -6,8 +6,8 @@
   reason = "OpenBLAS returns C integer types that differ by platform; calls OpenBLAS introspection functions through FFI; each block reads one C string returned by OpenBLAS; the OpenBLAS introspection functions take no arguments and return static data"
 )]
 
-use serde::{Deserialize, Serialize};
-use serde_json::to_string_pretty;
+use crate::io::json::{JsonPretty, json_write_str};
+use deser::{Deserialize, Serialize};
 use std::ffi::{CStr, c_char, c_int};
 
 unsafe extern "C" {
@@ -23,7 +23,7 @@ unsafe extern "C" {
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
 pub fn get_openblas_info_str() -> String {
-  to_string_pretty(&get_openblas_info()).unwrap()
+  json_write_str(&get_openblas_info(), JsonPretty(true)).unwrap()
 }
 
 #[allow(
@@ -53,7 +53,7 @@ pub fn get_openblas_info() -> OpenBlasInfo {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenBlasInfo {
   pub config: Option<String>,
   pub core_name: Option<String>,
@@ -62,8 +62,7 @@ pub struct OpenBlasInfo {
   pub num_procs: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum ParallelMode {
   Sequential,

@@ -1,13 +1,15 @@
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime::seq::gap_fill::GapFill;
+use treetime_schema::schema_defaults;
 
 /// Gap-handling policy shared by every command that reads sequences.
 ///
 /// The hidden `--keep-overhangs` flag, which v0 invocations use, overrides `--gap-fill` to `none`.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GapFillArgs {
@@ -37,23 +39,9 @@ impl GapFillArgs {
   }
 }
 
-#[derive(
-  Copy,
-  Clone,
-  Debug,
-  Default,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "GapFill")]
 pub enum GapFillCli {

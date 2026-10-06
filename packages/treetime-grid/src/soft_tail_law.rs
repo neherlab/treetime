@@ -1,11 +1,11 @@
 use crate::hard_approach_law::Side;
 use crate::{GridEdge, GridFn};
+use deser::{Deserialize, Serialize};
 use eyre::Report;
-use serde::{Deserialize, Serialize};
 use treetime_utils::least_squares::LineFit;
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SoftTailLaw {
   pub slope: f64,
 }

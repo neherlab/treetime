@@ -1,9 +1,9 @@
 use crate::job::JobEvent;
 use chrono::{DateTime, Utc};
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use parking_lot::Mutex;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -12,14 +12,14 @@ use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use treetime_utils::make_error;
 
 /// Event of a run, as stored in the run's `events.jsonl` and sent to subscribers.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 pub struct RunEvent {
   /// Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
   pub seq: usize,
   /// Time the event was recorded.
   #[schemars(with = "String")]
   pub time: DateTime<Utc>,
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub event: JobEvent,
 }

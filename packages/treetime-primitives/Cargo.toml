@@ -26,7 +26,6 @@ auto_ops = { workspace = true }
 deser = { workspace = true }
 eyre = { workspace = true }
 itertools = { workspace = true }
-serde = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }
@@ -34,7 +33,6 @@ ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
-serde_json = { workspace = true }
 
 [lints]
 workspace = true

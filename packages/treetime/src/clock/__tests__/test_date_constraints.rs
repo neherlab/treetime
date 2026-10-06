@@ -5,11 +5,11 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
+  use deser::{Deserialize, Serialize};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use serde::{Deserialize, Serialize};
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
   use std::sync::Arc;
@@ -443,7 +443,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, deser::Serialize, deser::Deserialize)]
+    #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
     pub(super) struct LoadedNode {
       pub(super) name: Option<String>,
       pub(super) date_constraint: Option<Arc<Distribution<NegLog>>>,

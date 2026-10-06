@@ -2,12 +2,12 @@ use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_regression::ClockRegressionPoint;
 use crate::clock::clock_state::ClockInputs;
 use deser::adapters::SkipBlank;
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::array::serde::{false_if_missing, skip_serializing_if_false};
+use treetime_utils::adapters::TrueOrNull;
 
 pub(crate) fn gather_clock_regression_results(
   graph: &Graph,
@@ -37,7 +37,7 @@ pub(crate) fn gather_clock_regression_results(
     .collect()
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClockRegressionResult {
   #[deser(as = SkipBlank<Option<_>>)]
   pub name: Option<String>,
@@ -45,26 +45,17 @@ pub struct ClockRegressionResult {
   pub date: Option<f64>,
   pub predicted_date: f64,
   pub clock_deviation: Option<f64>,
-  #[serde(
-    serialize_with = "skip_serializing_if_false",
-    deserialize_with = "false_if_missing",
-    default
-  )]
-  #[deser(default, as = treetime_utils::adapters::TrueOrNull)]
+  #[deser(default, as = TrueOrNull)]
   pub is_outlier: bool,
-  #[serde(skip)]
   #[deser(skip)]
   pub is_leaf: bool,
-  #[serde(default, skip_serializing_if = "Option::is_none")]
   #[deser(default, skip_serializing_if = Option::is_none)]
   pub date_source: Option<ClockDateSource>,
 }
 
 /// Where the date a clock regression used for a sample came from.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum ClockDateSource {
   /// The sampling date given in the input.

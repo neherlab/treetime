@@ -18,7 +18,6 @@ doctest = false
 deser = { workspace = true }
 deser-value = { workspace = true }
 deser-xml = { workspace = true }
-serde_json = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }

@@ -1,25 +1,11 @@
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime::optimize::params::BranchLengthMode;
 
-#[derive(
-  Copy,
-  Debug,
-  Clone,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  SmartDefault,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "BranchLengthMode")]
 pub enum BranchLengthModeCli {

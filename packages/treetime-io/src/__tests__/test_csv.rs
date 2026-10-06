@@ -215,15 +215,15 @@ mod tests {
 
   mod helpers {
     use deser::adapters::SkipBlank;
-    use serde::{Deserialize, Serialize};
+    use deser::{Deserialize, Serialize};
 
-    #[derive(Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+    #[derive(Debug, PartialEq, Serialize, Deserialize)]
     pub(super) struct Row {
       pub(super) name: String,
       pub(super) value: f64,
     }
 
-    #[derive(Debug, PartialEq, deser::Serialize, deser::Deserialize)]
+    #[derive(Debug, PartialEq, Serialize, Deserialize)]
     pub(super) struct OptionalRow {
       pub(super) name: String,
       #[deser(as = SkipBlank<Option<_>>)]

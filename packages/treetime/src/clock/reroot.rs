@@ -8,8 +8,8 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, Reroot
 use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves};
+use deser::{Deserialize, Serialize};
 use eyre::Report;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use treetime_graph::common_ancestor::common_ancestor;
@@ -217,7 +217,7 @@ pub(crate) fn select_root(
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, SmartDefault, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct RerootParams {
   pub(crate) spec: RerootSpec,
 

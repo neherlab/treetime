@@ -1,11 +1,11 @@
 use crate::clock::clock_set::ClockSet;
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime_graph::node::GraphNodeKey;
+use treetime_schema::schema_defaults;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum RerootSpec {
   Method(RerootMethod),
@@ -18,22 +18,8 @@ impl Default for RerootSpec {
   }
 }
 
-#[derive(
-  Copy,
-  Debug,
-  Clone,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  SmartDefault,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum RerootMethod {
   #[default]
@@ -43,8 +29,7 @@ pub enum RerootMethod {
   ClockFilter,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, SmartDefault, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, SmartDefault, Serialize, Deserialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum RootObjective {
   #[default]
@@ -71,8 +56,7 @@ impl RootObjective {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, deser::Serialize, deser::Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum BranchPointOptimizationParams {
   #[default]
@@ -98,8 +82,8 @@ impl BranchPointOptimizationParams {
 }
 
 /// Optimization method selection
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum OptimizationMethod {
   /// Grid search with equally-spaced evaluation points
@@ -112,8 +96,9 @@ pub enum OptimizationMethod {
 }
 
 /// Configuration for grid search optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 pub struct GridSearchParams {
   /// Number of equally-spaced points to evaluate (grid method only)
@@ -122,8 +107,9 @@ pub struct GridSearchParams {
 }
 
 /// Configuration for Brent's method optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 pub struct BrentParams {
   /// Maximum number of iterations for Brent's method
@@ -135,8 +121,9 @@ pub struct BrentParams {
 }
 
 /// Configuration for golden section search optimization
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 pub struct GoldenSectionParams {
   /// Maximum number of iterations for golden section search

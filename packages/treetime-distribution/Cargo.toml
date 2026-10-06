@@ -30,7 +30,6 @@ ndarray = { workspace = true }
 ndarray-stats = { workspace = true }
 num = { workspace = true }
 ordered-float = { workspace = true }
-serde = { workspace = true }
 strum_macros = { workspace = true }
 
 [dev-dependencies]

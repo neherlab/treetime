@@ -1,4 +1,5 @@
 use approx::ulps_eq;
+use deser::{Deserialize, Serialize};
 use eyre::WrapErr;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
@@ -31,7 +32,7 @@ pub(crate) fn compute_peak_metrics(
   })
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PeakMetrics {
   pub(crate) value_error: f64,
   pub(crate) location_error: f64,

@@ -2,13 +2,13 @@ use crate::config::catalog::{SettingRole, SettingSpec, command_settings};
 use crate::config::settings::setting_ref;
 use crate::json_value::JsonValue;
 use crate::runs::record::{RunInput, RunRecord};
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use serde_with::skip_serializing_none;
 use std::path::PathBuf;
+use treetime_schema::skip_serializing_optionals;
 
 pub fn setting_differences(first: &RunRecord, second: &RunRecord) -> Result<Vec<SettingDifference>, Report> {
   let first_settings = first.config.settings()?;
@@ -35,10 +35,10 @@ pub fn setting_differences(first: &RunRecord, second: &RunRecord) -> Result<Vec<
 }
 
 /// A setting whose value differs between two runs.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(tag = "kind", rename_all = "kebab-case")]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(tag = "kind", rename_all = "kebab-case")]
 #[deser(tag = "kind", rename_all = "kebab-case")]
 pub enum SettingDifference {
   /// A value that controls the analysis.

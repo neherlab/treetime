@@ -1,8 +1,8 @@
 use crate::testing::framework::test_case::{TestCase, TestCaseBase};
 use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 use treetime_analytical::validation::cases::gaussian_exponential;
 use treetime_analytical::validation::cases::gaussian_exponential::GAUSSIAN_EXPONENTIAL_CASES;
@@ -38,9 +38,8 @@ impl ConvolutionTestSuite for GaussianExponentialTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianExponentialTestCase {
-  #[serde(flatten)]
   #[deser(flatten)]
   base: TestCaseBase,
   a_f: f64,

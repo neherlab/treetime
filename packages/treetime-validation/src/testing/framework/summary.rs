@@ -1,13 +1,13 @@
 use crate::testing::framework::results::{TestFailure, TestResult};
 use crate::testing::framework::test_case::TestCase;
 use bon::bon;
+use deser::{Deserialize, Serialize};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
 
 const R2_PASS_THRESHOLD: f64 = 0.95;
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestSummary {
   pub(crate) test_suite_name: String,
   pub(crate) total_tests: usize,
@@ -18,7 +18,7 @@ pub struct TestSummary {
   pub(crate) algorithm_summaries: Vec<AlgorithmSummary>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlgorithmSummary {
   pub(crate) algorithm_name: String,
   pub(crate) test_cases_count: usize,

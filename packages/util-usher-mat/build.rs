@@ -3,10 +3,7 @@ use eyre::{Report, WrapErr};
 fn main() -> Result<(), Report> {
   prost_build::Config::new()
     .type_attribute(".", "#[must_use]")
-    .type_attribute(
-      ".",
-      "#[derive(serde::Serialize,serde::Deserialize, deser::Serialize, deser::Deserialize)]",
-    )
+    .type_attribute(".", "#[derive(deser::Serialize, deser::Deserialize)]")
     .compile_protos(
       &[
         "schemas/mutation_detailed.proto",

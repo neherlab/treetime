@@ -1,10 +1,10 @@
 use crate::clock::clock_model::ClockModel;
-use serde::{Deserialize, Serialize};
+use deser::{Deserialize, Serialize};
 use treetime_primitives::LogLh;
 
 pub(crate) const NODE_TIME_TOLERANCE_YEARS: f64 = 1e-2;
 
-#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConvergenceMetrics {
   pub n_diff: usize,
   pub n_resolved: usize,
@@ -25,7 +25,7 @@ impl ConvergenceMetrics {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct IterationClock {
   pub clock_rate: f64,
   pub r_squared: Option<f64>,
@@ -40,7 +40,7 @@ impl IterationClock {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IterationRecord {
   pub iteration: usize,
   pub metrics: ConvergenceMetrics,

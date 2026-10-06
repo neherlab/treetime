@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use deser::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
@@ -19,7 +19,7 @@ pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync 
   fn from_neg_log(nl: f64) -> f64;
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Plain;
 
 impl SupportsConvolution for Plain {}
@@ -66,7 +66,7 @@ impl YAxisPolicy for Plain {
     (-nl).exp()
   }
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NegLog;
 
 impl SupportsConvolution for NegLog {}
@@ -115,12 +115,8 @@ impl YAxisPolicy for NegLog {
 
 pub(crate) trait SupportsConvolution: YAxisPolicy {}
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
-pub struct PolicyMarker<Y: YAxisPolicy>(
-  #[serde(skip)]
-  #[deser(skip)]
-  PhantomData<Y>,
-);
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PolicyMarker<Y: YAxisPolicy>(#[deser(skip)] PhantomData<Y>);
 
 impl<Y: YAxisPolicy> PolicyMarker<Y> {
   pub(crate) fn new() -> Self {

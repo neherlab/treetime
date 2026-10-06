@@ -4,10 +4,10 @@ use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::{Sub, compose_substitutions};
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use maplit::btreemap;
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_primitives::AlphabetLike;
@@ -19,7 +19,7 @@ const AMBIGUOUS: u8 = 1;
 const UNKNOWN: u8 = 2;
 const GAP: u8 = 4;
 
-#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseNodeObs {
   pub(crate) unknown: Vec<(usize, usize)>,
   pub(crate) gaps: Vec<(usize, usize)>,
@@ -61,7 +61,7 @@ impl SparseNodeObs {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseNodeState {
   pub(crate) sequence: Arc<Seq>,
   pub(crate) profile: SparseSeqDistribution,
@@ -89,7 +89,7 @@ impl MarginalNodeState for SparseNodeState {
   }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[expect(
   clippy::partial_pub_fields,
   reason = "private fields hold derived state that only the constructor keeps consistent"
@@ -132,22 +132,21 @@ impl SparseEdgeObs {
   }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseEdgeBackward {
   pub(crate) msg_to_parent: SparseSeqDistribution,
   pub(crate) msg_from_child: SparseSeqDistribution,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct SparseEdgeForward {
   pub(crate) msg_to_child: SparseSeqDistribution,
 
-  #[serde(default)]
   #[deser(default)]
   pub(crate) msg_from_parent: SparseSeqDistribution,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SparseSeqDistribution {
   pub(crate) variable: VarPosMap,
 
@@ -173,7 +172,7 @@ impl Default for SparseSeqDistribution {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FitchNodeData {
   pub(crate) seq: FitchSeqInfo,
 }
@@ -217,7 +216,7 @@ impl FitchNodeData {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FitchSeqInfo {
   pub(crate) unknown: Vec<(usize, usize)>,
   pub(crate) gaps: Vec<(usize, usize)>,
@@ -227,7 +226,7 @@ pub struct FitchSeqInfo {
   pub(crate) fitch: FitchSeqDistribution,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FitchSeqDistribution {
   pub(crate) variable: BTreeMap<usize, StateSet>,
 
@@ -236,7 +235,7 @@ pub struct FitchSeqDistribution {
   pub(crate) chosen_state: BTreeMap<usize, AsciiChar>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VarPos {
   #[deser(as = ArrayVec)]
   pub(crate) dis: Array1<f64>,

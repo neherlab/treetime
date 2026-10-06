@@ -1,8 +1,8 @@
 use derive_more::{Display, Error};
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use maplit::btreeset;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
@@ -446,16 +446,14 @@ fn ensure_unique_destinations<'a>(
   Hash,
   Ord,
   PartialOrd,
-  Serialize,
-  Deserialize,
   JsonSchema,
   AsRefStr,
   EnumString,
   EnumIter,
-  deser::Serialize,
-  deser::Deserialize,
+  Serialize,
+  Deserialize,
 )]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum OutputSelection {

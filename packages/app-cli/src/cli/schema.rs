@@ -3,6 +3,7 @@ use app_commands::command::AppCommand;
 use app_commands::config::cli_flags::annotated_config_schema;
 use app_commands::config::schema::draft2020_generator;
 use clap::ValueEnum;
+use deser::Serialize;
 use deser::adapters::As;
 use deser_serde::Serde;
 use eyre::Report;
@@ -73,8 +74,7 @@ fn generate_one(target: SchemaTarget, output: &Path) -> Result<(), Report> {
   write_schema(&schema, output)
 }
 
-#[derive(Debug, Clone, Copy, Default, ValueEnum, serde::Serialize, deser::Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Clone, Copy, Default, ValueEnum, Serialize)]
 #[deser(rename_all = "kebab-case")]
 pub(crate) enum SchemaTarget {
   #[default]

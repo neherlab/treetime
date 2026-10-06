@@ -1,12 +1,10 @@
 use crate::reroot::traits::RootStats;
+use deser::{Deserialize, Serialize};
 use getset::CopyGetters;
-use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
 
 #[must_use]
-#[derive(
-  Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize, CopyGetters, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, CopyGetters, Serialize, Deserialize)]
 #[getset(get_copy = "pub")]
 pub struct DivStats {
   pub(crate) count: f64,

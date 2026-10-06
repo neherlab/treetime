@@ -2,10 +2,10 @@ use crate::InterpElem;
 use crate::grid_iter::GridIter;
 use crate::max_grid_points::MaxGridPoints;
 use approx::UlpsEq;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::Array1;
 use num_traits::Float;
-use serde::{Deserialize, Serialize};
 use std::cmp::min;
 use treetime_utils::array::ndarray::has_uniform_spacing;
 use treetime_utils::make_error;
@@ -22,7 +22,7 @@ where
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Grid<T: InterpElem> {
   x_min: T,
   dx: T,

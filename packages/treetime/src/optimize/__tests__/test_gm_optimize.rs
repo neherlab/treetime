@@ -143,6 +143,7 @@ mod tests {
   }
 
   mod helpers {
+
     use crate::alphabet::alphabet::Alphabet;
     use crate::branch_lengths::branch_lengths_or_zero;
     use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -154,9 +155,9 @@ mod tests {
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
     use crate::test_utils::leaf_seq_inputs;
+    use deser::Deserialize;
     use eyre::Report;
     use itertools::Itertools;
-    use serde::Deserialize;
     use std::collections::BTreeMap;
     use std::fs::read_to_string;
     use std::path::Path;
@@ -167,8 +168,9 @@ mod tests {
     use treetime_io::nwk::nwk_read_file;
     use treetime_primitives::AlignmentRecord;
     use treetime_primitives::LogLh;
+    use treetime_utils::io::json::json_read_str;
 
-    #[derive(Clone, Deserialize, deser::Deserialize)]
+    #[derive(Clone, Deserialize)]
     pub(super) struct GmOptimizeCase {
       pub(crate) tree: String,
       pub(crate) aln: String,
@@ -176,7 +178,7 @@ mod tests {
       pub(crate) max_iter: usize,
     }
 
-    #[derive(Deserialize, deser::Deserialize)]
+    #[derive(Deserialize)]
     pub(super) struct GmOptimizeExpected {
       pub(crate) final_total_branch_length: f64,
       pub(crate) final_branch_lengths: BTreeMap<String, f64>,
@@ -194,14 +196,14 @@ mod tests {
       let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("src/optimize/__tests__/__fixtures__/gm_optimize_inputs.json");
       let content = read_to_string(&path).unwrap_or_else(|e| panic!("Failed to read {}: {e}", path.display()));
-      serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {}: {e}", path.display()))
+      json_read_str(&content).unwrap_or_else(|e| panic!("Failed to parse {}: {e}", path.display()))
     }
 
     pub(super) fn load_gm_outputs() -> BTreeMap<String, GmOptimizeExpected> {
       let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("src/optimize/__tests__/__fixtures__/gm_optimize_outputs.json");
       let content = read_to_string(&path).unwrap_or_else(|e| panic!("Failed to read {}: {e}", path.display()));
-      serde_json::from_str(&content).unwrap_or_else(|e| panic!("Failed to parse {}: {e}", path.display()))
+      json_read_str(&content).unwrap_or_else(|e| panic!("Failed to parse {}: {e}", path.display()))
     }
 
     pub(super) fn setup_and_run(

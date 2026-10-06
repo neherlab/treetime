@@ -2,13 +2,13 @@
 mod tests {
   use crate::assert_error;
   use crate::io::json::{JsonPretty, json_read_file, json_read_str, json_write_file, json_write_str};
+  use deser::{Deserialize, Serialize};
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use serde::{Deserialize, Serialize};
   use tempfile::tempdir;
 
-  #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+  #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
   struct Sample {
     name: String,
     count: u32,

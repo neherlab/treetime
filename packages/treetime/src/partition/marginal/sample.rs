@@ -1,24 +1,12 @@
+use deser::{Deserialize, Serialize};
 use ndarray::ArrayView1;
 use rand::{Rng, RngCore};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::argmax_first;
 
-#[derive(
-  Clone,
-  Copy,
-  Debug,
-  PartialEq,
-  Eq,
-  SmartDefault,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum SampleMode {
   #[default]

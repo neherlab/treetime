@@ -5,12 +5,12 @@ use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use std::path::{Path, PathBuf};
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 #[derive(Debug, Clone)]
 pub struct TreetimeMugrationArgs {
@@ -88,16 +88,17 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
   }
 }
 
-#[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(default, deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "MugrationConfig")]
 pub struct TreetimeMugrationArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(skip)]
+  #[schemars(skip)]
   #[deser(skip)]
   pub config_args: ConfigArgs,
 
@@ -132,7 +133,7 @@ pub struct TreetimeMugrationArgsRaw {
   pub weights: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub metadata_id: MetadataIdArgs,
 
@@ -217,7 +218,7 @@ pub struct TreetimeMugrationArgsRaw {
   pub output_traits_csv: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
@@ -236,7 +237,7 @@ pub struct TreetimeMugrationArgsRaw {
   pub output_selection: Vec<MugrationOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 }

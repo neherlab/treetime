@@ -5,10 +5,10 @@ use crate::progress::LogSink;
 use crate::timetree::inference::result::{NodePosterior, TimeInference};
 use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
 use crate::{progress_info, progress_warn};
+use deser::Serialize;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use serde::Serialize;
 use statrs::function::erf::erf_inv;
 use std::collections::BTreeMap;
 use std::f64::consts::SQRT_2;
@@ -131,9 +131,8 @@ pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)
   (ci_lower, ci_upper)
 }
 
-#[derive(Debug, Clone, Serialize, deser::Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct NodeConfidenceInterval {
-  #[serde(skip)]
   #[deser(skip)]
   pub key: GraphNodeKey,
   pub name: String,

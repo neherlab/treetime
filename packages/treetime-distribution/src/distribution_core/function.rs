@@ -1,25 +1,22 @@
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
 use approx::UlpsEq;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
 use num::Float;
-use serde::{Deserialize, Serialize};
 use treetime_grid::grid::Grid;
 use treetime_grid::{BoundaryBehavior, GridFn, InterpElem, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
   grid_fn: GridFn<T>,
-  #[serde(skip)]
   #[deser(skip)]
   left_extrap: BoundaryBehavior,
-  #[serde(skip)]
   #[deser(skip)]
   right_extrap: BoundaryBehavior,
-  #[serde(skip)]
   #[deser(skip)]
   _policy: PolicyMarker<Y>,
 }

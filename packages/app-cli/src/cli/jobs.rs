@@ -1,5 +1,6 @@
 use clap::Args;
-use serde::Serialize;
+use deser::ser::Chunk;
+use deser::{Atom, Error, Serialize, State};
 use treetime_utils::init::thread_pool::available_jobs;
 
 #[derive(Args, Debug, Clone)]
@@ -21,20 +22,7 @@ impl Serialize for Jobs {
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
-  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-  where
-    S: serde::Serializer,
-  {
-    serializer.serialize_u64(self.jobs as u64)
-  }
-}
-
-impl deser::Serialize for Jobs {
-  #[allow(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
-  fn serialize(&self, _state: &mut deser::State) -> Result<deser::ser::Chunk<'_>, deser::Error> {
-    Ok(deser::ser::Chunk::Atom(deser::Atom::U64(self.jobs as u64)))
+  fn serialize(&self, _state: &mut State) -> Result<Chunk<'_>, Error> {
+    Ok(Chunk::Atom(Atom::U64(self.jobs as u64)))
   }
 }

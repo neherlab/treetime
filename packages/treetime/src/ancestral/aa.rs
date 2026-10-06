@@ -12,8 +12,8 @@ use crate::seq::alignment::LeafSequences;
 use crate::seq::mutation::{MutationEvent, MutationTrack, SequenceMutations, Sub};
 use crate::seq::sink::SeqSink;
 use crate::{make_error, make_internal_report};
+use deser::Serialize;
 use eyre::Report;
-use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -131,7 +131,7 @@ fn validate_cds_length(
   Ok(())
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, deser::Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct AaNodeData {
   pub reference: BTreeMap<String, String>,
   pub node_aa_mutations: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<MutationEvent>>>,
@@ -200,7 +200,7 @@ pub(crate) fn collect_aa_cds_node_data(
   })
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, deser::Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct AaCdsNodeData {
   pub reference: String,
   pub root_sequence: String,

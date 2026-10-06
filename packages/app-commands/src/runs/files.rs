@@ -1,23 +1,23 @@
 use crate::command::OutputFile;
 use crate::runs::errors::{invalid, not_found};
 use app_output::output_plan::OutputSelection;
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::{self, Seek, Write};
 use std::path::{Component, Path, PathBuf};
+use treetime_schema::skip_serializing_optionals;
 use zip::CompressionMethod;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
 /// One file in a run's `out/` folder.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct RunFile {
   /// Path relative to the run's `out/` folder, with `/` separators.
   pub path: String,

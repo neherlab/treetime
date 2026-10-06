@@ -5,8 +5,8 @@ use crate::partition::storage::sparse::{
   FitchNodeData, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution,
 };
 use crate::seq::alignment::NodeSeqInput;
+use deser::Serialize;
 use eyre::Report;
-use serde::Serialize;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
@@ -14,7 +14,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{Seq, seq};
 
-#[derive(Clone, Debug, Serialize, deser::Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct PartitionFitch {
   pub index: usize,
   pub alphabet: Alphabet,

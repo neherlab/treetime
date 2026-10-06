@@ -17,9 +17,9 @@ mod tests {
     use crate::commands::homoplasy::result::{HomoplasyResult, MutationTable};
     use crate::commands::homoplasy::run::run_homoplasy;
     use clap::Parser;
+    use deser::Deserialize;
     use eyre::Report;
     use itertools::Itertools;
-    use serde::Deserialize;
     use std::cmp::Reverse;
     use std::collections::BTreeMap;
     use std::path::{Path, PathBuf};
@@ -33,14 +33,14 @@ mod tests {
 
     const V0_ROOT_BRANCH_LENGTH: f64 = 0.001;
 
-    #[derive(Debug, Deserialize, deser::Deserialize)]
+    #[derive(Debug, Deserialize)]
     pub(super) struct GmInputs {
       tree: String,
       aln: String,
       n: usize,
     }
 
-    #[derive(Debug, PartialEq, Eq, Deserialize, deser::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize)]
     pub(super) struct V0Report {
       total_branch_length: String,
       mutations: usize,
@@ -104,14 +104,14 @@ mod tests {
       }
     }
 
-    #[derive(Debug, PartialEq, Eq, Deserialize, deser::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize)]
     struct V0SiteHits {
       hits: usize,
       sites: usize,
       expected: String,
     }
 
-    #[derive(Debug, PartialEq, Eq, Deserialize, deser::Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize)]
     struct V0Row {
       name: String,
       count: usize,

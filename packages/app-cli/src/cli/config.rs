@@ -3,16 +3,18 @@ use app_commands::config::schema::command_schema;
 use app_commands::config::source::ConfigSource;
 use clap::ArgMatches;
 use clap::parser::ValueSource;
+use deser::Serialize;
+use deser::de::DeserializeOwned;
 use eyre::{Report, WrapErr};
 use schemars::JsonSchema;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::env;
 use std::path::{Path, PathBuf};
 use treetime_utils::io::file::is_path_stdin;
 use treetime_utils::io::fs::{absolute_path, read_file_to_string};
+use treetime_utils::io::json::from_json_value;
+use treetime_utils::io::json::to_json_value;
 
 pub(crate) fn overlay_config<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
 where
@@ -32,12 +34,12 @@ where
   let source = ConfigSource::new(config_path.display().to_string(), text.clone());
   let base = config_folder(config_path)?;
   let mut merged = load_config_document::<T>(&source, &text, Some(&base))?;
-  let cli = serde_json::to_value(&*args)?;
+  let cli = to_json_value(&&*args)?;
   apply_cli_overrides(&mut merged, &cli, &explicit);
 
   check_command_config(&source, &merged, &command_schema::<T>())?;
 
-  *args = serde_json::from_value(merged)?;
+  *args = from_json_value(&merged)?;
   Ok(())
 }
 
@@ -590,55 +592,55 @@ mod tests {
     use app_commands::commands::prune::args::TreetimePruneArgsRaw;
     use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use pretty_assertions::assert_eq;
-    use serde_json::{Value, to_value};
+    use treetime_utils::io::json::{from_json_value, to_json_value};
 
     #[test]
     fn test_config_round_trip_ancestral() {
-      let value: Value = to_value(TreetimeAncestralArgsRaw::default()).unwrap();
-      let back: TreetimeAncestralArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
-      assert_eq!(value, to_value(back).unwrap());
+      let value = to_json_value(&TreetimeAncestralArgsRaw::default()).unwrap();
+      let back: TreetimeAncestralArgsRaw = from_json_value(&value).unwrap();
+      assert_eq!(value, to_json_value(&back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_clock() {
-      let value: Value = to_value(TreetimeClockArgsRaw::default()).unwrap();
-      let back: TreetimeClockArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
-      assert_eq!(value, to_value(back).unwrap());
+      let value = to_json_value(&TreetimeClockArgsRaw::default()).unwrap();
+      let back: TreetimeClockArgsRaw = from_json_value(&value).unwrap();
+      assert_eq!(value, to_json_value(&back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_homoplasy() {
-      let value: Value = to_value(TreetimeHomoplasyArgsRaw::default()).unwrap();
-      let back: TreetimeHomoplasyArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
-      assert_eq!(value, to_value(back).unwrap());
+      let value = to_json_value(&TreetimeHomoplasyArgsRaw::default()).unwrap();
+      let back: TreetimeHomoplasyArgsRaw = from_json_value(&value).unwrap();
+      assert_eq!(value, to_json_value(&back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_mugration() {
-      let value: Value = to_value(TreetimeMugrationArgsRaw::default()).unwrap();
-      let back: TreetimeMugrationArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
-      assert_eq!(value, to_value(back).unwrap());
+      let value = to_json_value(&TreetimeMugrationArgsRaw::default()).unwrap();
+      let back: TreetimeMugrationArgsRaw = from_json_value(&value).unwrap();
+      assert_eq!(value, to_json_value(&back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_optimize() {
-      let value: Value = to_value(TreetimeOptimizeArgsRaw::default()).unwrap();
-      let back: TreetimeOptimizeArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
-      assert_eq!(value, to_value(back).unwrap());
+      let value = to_json_value(&TreetimeOptimizeArgsRaw::default()).unwrap();
+      let back: TreetimeOptimizeArgsRaw = from_json_value(&value).unwrap();
+      assert_eq!(value, to_json_value(&back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_prune() {
-      let value: Value = to_value(TreetimePruneArgsRaw::default()).unwrap();
-      let back: TreetimePruneArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
-      assert_eq!(value, to_value(back).unwrap());
+      let value = to_json_value(&TreetimePruneArgsRaw::default()).unwrap();
+      let back: TreetimePruneArgsRaw = from_json_value(&value).unwrap();
+      assert_eq!(value, to_json_value(&back).unwrap());
     }
 
     #[test]
     fn test_config_round_trip_timetree() {
-      let value: Value = to_value(TreetimeTimetreeArgsRaw::default()).unwrap();
-      let back: TreetimeTimetreeArgsRaw = serde::Deserialize::deserialize(&value).unwrap();
-      assert_eq!(value, to_value(back).unwrap());
+      let value = to_json_value(&TreetimeTimetreeArgsRaw::default()).unwrap();
+      let back: TreetimeTimetreeArgsRaw = from_json_value(&value).unwrap();
+      assert_eq!(value, to_json_value(&back).unwrap());
     }
   }
 }

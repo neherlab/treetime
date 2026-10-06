@@ -1,8 +1,8 @@
 use crate::testing::framework::test_case::{TestCase, TestCaseBase};
 use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
 use treetime_analytical::validation::cases::gaussian_pairwise_multiplication;
 use treetime_analytical::validation::cases::gaussian_pairwise_multiplication::GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES;
 use treetime_analytical::{GaussianParams, gaussian_product};
@@ -57,9 +57,8 @@ impl MultiplicationTestSuite for GaussianPairwiseMultiplicationTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianPairwiseMultiplicationTestCase {
-  #[serde(flatten)]
   #[deser(flatten)]
   base: TestCaseBase,
   mu_f: f64,

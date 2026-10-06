@@ -16,8 +16,8 @@ use crate::partition::storage::sparse::{
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use crate::seq::overlay::SeqOverlay;
 use crate::{make_error, make_internal_report};
+use deser::Serialize;
 use eyre::{Report, WrapErr};
-use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -25,7 +25,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::interval::range_union::range_union;
 
-#[derive(Clone, Debug, Serialize, deser::Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalSparse {
   pub index: usize,
   pub alphabet: Alphabet,

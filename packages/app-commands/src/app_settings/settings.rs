@@ -1,64 +1,60 @@
 use crate::command::AppCommand;
 use crate::job::JobId;
 use crate::json_value::SparseConfig;
+use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime_grid::MaxGridPoints;
+use treetime_schema::skip_serializing_optionals;
 
 /// Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
 /// setting is optional.
-#[derive(
-  Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct AppSettings {
   /// Folders of the app. Each defaults to a folder of the same name in the app folder.
-  #[serde(default, skip_serializing_if = "AppPathSettings::is_unset")]
+  #[schemars(default, skip_serializing_if = "AppPathSettings::is_unset")]
   #[deser(default, skip_serializing_if = AppPathSettings::is_unset)]
   pub paths: AppPathSettings,
 
   /// Preferences of the user interface.
-  #[serde(default, skip_serializing_if = "UiSettings::is_unset")]
+  #[schemars(default, skip_serializing_if = "UiSettings::is_unset")]
   #[deser(default, skip_serializing_if = UiSettings::is_unset)]
   pub ui: UiSettings,
 
   /// Settings of the analyses that the app runs.
-  #[serde(default, skip_serializing_if = "AnalysisSettings::is_unset")]
+  #[schemars(default, skip_serializing_if = "AnalysisSettings::is_unset")]
   #[deser(default, skip_serializing_if = AnalysisSettings::is_unset)]
   pub analysis: AnalysisSettings,
 }
 
 /// Folders of the app. A relative path is relative to the app folder. The environment variables
 /// `TREETIME_PROFILE_DIR`, `TREETIME_RUNS_DIR`, `TREETIME_LOGS_DIR`, and `TREETIME_EXAMPLES_DIR` take precedence.
-#[skip_serializing_none]
-#[derive(
-  Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct AppPathSettings {
   /// Browser profile of the desktop app: cache, local storage, and crash reports. Default: `profile`.
-  #[serde(default)]
+  #[schemars(default)]
   #[deser(default)]
   pub profile: Option<PathBuf>,
 
   /// Runs, each in its own folder. Default: `runs`.
-  #[serde(default)]
+  #[schemars(default)]
   #[deser(default)]
   pub runs: Option<PathBuf>,
 
   /// Logs and crash diagnostics. Default: `logs`.
-  #[serde(default)]
+  #[schemars(default)]
   #[deser(default)]
   pub logs: Option<PathBuf>,
 
   /// Example datasets and configurations that the app lists. Default: `examples`.
-  #[serde(default)]
+  #[schemars(default)]
   #[deser(default)]
   pub examples: Option<PathBuf>,
 }
@@ -70,26 +66,24 @@ impl AppPathSettings {
 }
 
 /// Preferences of the user interface. Unset preferences take the defaults of the user interface.
-#[skip_serializing_none]
-#[derive(
-  Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct UiSettings {
   /// Color theme.
-  #[serde(default)]
+  #[schemars(default)]
   #[deser(default)]
   pub theme: Option<UiTheme>,
 
   /// Width of the sidebar in pixels.
-  #[serde(default)]
+  #[schemars(default)]
   #[deser(default)]
   pub sidebar_width: Option<u32>,
 
   /// The unfinished analysis form.
-  #[serde(default)]
+  #[schemars(default)]
   #[deser(default)]
   pub draft: Option<UiDraft>,
 }
@@ -102,17 +96,15 @@ impl UiSettings {
 
 /// Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set
 /// it.
-#[skip_serializing_none]
-#[derive(
-  Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct AnalysisSettings {
   /// Largest number of points of one probability grid during time inference, for runs whose configuration does not
   /// set `max_grid_points`. Unset: 1000000.
-  #[serde(default)]
+  #[schemars(default)]
   #[deser(default)]
   pub max_grid_points: Option<MaxGridPoints>,
 }
@@ -124,10 +116,8 @@ impl AnalysisSettings {
 }
 
 /// Color theme of the user interface.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "lowercase")]
 #[deser(rename_all = "lowercase")]
 pub enum UiTheme {
   /// Follow the theme of the operating system.
@@ -137,10 +127,10 @@ pub enum UiTheme {
 }
 
 /// The unfinished analysis form: the command, its settings, and how the form is shown.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct UiDraft {
   pub command: AppCommand,
@@ -169,10 +159,10 @@ pub struct UiDraft {
 }
 
 /// Origin of an input file of the form.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct UiDraftSource {
   /// Name of the file shown in the form.
@@ -183,10 +173,8 @@ pub struct UiDraftSource {
 }
 
 /// Where an input file of the form came from.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "lowercase")]
 #[deser(rename_all = "lowercase")]
 pub enum UiDraftOrigin {
   /// An example dataset.
@@ -202,10 +190,8 @@ pub enum UiDraftOrigin {
 }
 
 /// Which settings the form shows.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "lowercase")]
 #[deser(rename_all = "lowercase")]
 pub enum UiSettingsView {
   /// The main settings of the command.
@@ -215,10 +201,8 @@ pub enum UiSettingsView {
 }
 
 /// Format of the code that reproduces the form.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "lowercase")]
 #[deser(rename_all = "lowercase")]
 pub enum UiCodeFormat {
   /// A command line.
@@ -228,9 +212,9 @@ pub enum UiCodeFormat {
 }
 
 /// The runs folder of the running back end, and the folder used when the settings name none.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct Workspace {
   /// The runs folder in use.
   pub path: PathBuf,
@@ -243,10 +227,10 @@ pub struct Workspace {
 }
 
 /// A new runs folder. It takes effect when the back end starts again.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct WorkspaceUpdate {
   /// Absolute path of the folder. Unset: `runs` in the app folder.

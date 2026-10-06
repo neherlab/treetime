@@ -2,10 +2,10 @@
 mod tests {
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_multiplication;
+  use deser::Deserialize;
   use eyre::Report;
   use helpers::neglog_to_plain_normalized;
   use ndarray::Array1;
-  use serde::Deserialize;
   use std::collections::BTreeMap;
   use std::path::Path;
   use treetime_grid::MaxGridPoints;
@@ -48,14 +48,14 @@ mod tests {
     Ok(())
   }
 
-  #[derive(Deserialize, deser::Deserialize)]
+  #[derive(Deserialize)]
   struct GoldenInput {
     time_points: Vec<f64>,
     child_neglog: Vec<f64>,
     coalescent_neglog: Vec<f64>,
   }
 
-  #[derive(Deserialize, deser::Deserialize)]
+  #[derive(Deserialize)]
   struct GoldenOutput {
     time_points: Vec<f64>,
     probabilities_relative: Vec<f64>,

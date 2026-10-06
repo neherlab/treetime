@@ -1,18 +1,18 @@
 use crate::results::tree::{ResultTree, preorder};
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_io::auspice_types::AuspiceTree;
+use treetime_schema::skip_serializing_optionals;
 
 pub const UNCERTAIN_STATE_PROBABILITY: f64 = 0.8;
 
 /// Results of a `mugration` run.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct MugrationResults {
   /// The reconstructed attribute.
   pub attribute: String,
@@ -31,7 +31,7 @@ pub struct MugrationResults {
 }
 
 /// A change of state along branches.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct StateChange {
   /// State of the parent.
   pub from: String,
@@ -42,7 +42,7 @@ pub struct StateChange {
 }
 
 /// Most probable state of an ancestor.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 pub struct AncestorState {
   /// Name of the ancestor.
   pub name: String,

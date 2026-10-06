@@ -2,10 +2,10 @@ use crate::testing::metrics::config::SpatialConfig;
 use crate::testing::metrics::spatial::cumulative::{CumulativeMetrics, compute_cumulative_metrics};
 use crate::testing::metrics::spatial::regional::{RegionalMetrics, compute_regional_metrics};
 use crate::testing::metrics::spatial::windowed::{WindowedMetrics, compute_windowed_metrics};
+use deser::{Deserialize, Serialize};
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpatialMetrics {
   pub(crate) total_points: usize,
   pub(crate) dx: f64,

@@ -11,15 +11,15 @@ use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use std::path::{Path, PathBuf};
 use treetime::ancestral::params::AncestralParams;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::partition::marginal::sample::SampleMode;
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralParams {
   AncestralParams {
@@ -142,21 +142,22 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
   }
 }
 
-#[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(default, deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "AncestralConfig")]
 pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(skip)]
+  #[schemars(skip)]
   #[deser(skip)]
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
@@ -174,12 +175,12 @@ pub struct TreetimeAncestralArgsRaw {
   pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub model_args: ModelArgs,
 
@@ -195,7 +196,7 @@ pub struct TreetimeAncestralArgsRaw {
   pub dense: Option<bool>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
 
@@ -322,7 +323,7 @@ pub struct TreetimeAncestralArgsRaw {
   pub output_reconstructed_aa_fasta: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
@@ -341,7 +342,7 @@ pub struct TreetimeAncestralArgsRaw {
   pub output_selection: Vec<AncestralOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 
@@ -365,7 +366,7 @@ pub struct TreetimeAncestralArgsRaw {
   pub site_specific_gtr: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub seed_args: SeedArgs,
 
@@ -395,21 +396,9 @@ pub struct TreetimeAncestralArgsRaw {
   pub sample_from_profile: SampleModeCli,
 }
 
-#[derive(
-  Clone,
-  Copy,
-  Debug,
-  PartialEq,
-  Eq,
-  SmartDefault,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "SampleMode")]
 pub enum SampleModeCli {

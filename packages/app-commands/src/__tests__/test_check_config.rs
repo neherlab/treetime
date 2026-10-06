@@ -7,7 +7,9 @@ pub(crate) mod tests {
   use crate::json_value::SparseConfig;
   use crate::run_checks::CheckLevel;
   use app_datasets::schema_directive;
-  use eyre::Report;
+  use treetime_utils::io::json::from_json_value;
+  use treetime_utils::io::json::to_json_value;
+
   use helpers::fresh_draft;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -297,7 +299,7 @@ pub(crate) mod tests {
       input_facts: None,
       folder: None,
     });
-    let value = serde_json::to_value(response).unwrap();
+    let value = to_json_value(&response).unwrap();
     assert_eq!(
       (json!("valid"), json!("prune")),
       (value["status"].clone(), value["command"].clone())
@@ -306,11 +308,10 @@ pub(crate) mod tests {
 
   #[test]
   fn test_check_config_request_rejects_unknown_command() {
-    let result = serde_json::from_value::<CheckConfigRequest>(json!({ "command": "transmission", "text": "" }))
-      .map_err(Report::from);
+    let result = from_json_value::<CheckConfigRequest>(&json!({ "command": "transmission", "text": "" }));
     assert_error!(
       result,
-      "unknown variant `transmission`, expected one of `timetree`, `clock`, `ancestral`, `homoplasy`, `mugration`, `optimize`, `prune`"
+      "When converting a JSON value: Unexpected: unknown variant `transmission` of AppCommand, expected one of `timetree`, `clock`, `ancestral`, `homoplasy`, `mugration`, `optimize`, `prune`"
     );
   }
 

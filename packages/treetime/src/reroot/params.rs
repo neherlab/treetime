@@ -1,8 +1,7 @@
-use serde::{Deserialize, Serialize};
+use deser::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(Debug, Clone, Serialize, Deserialize, SmartDefault, deser::Serialize, deser::Deserialize)]
-#[serde(default)]
+#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
 #[deser(default)]
 pub struct BrentParams {
   #[default = 50]

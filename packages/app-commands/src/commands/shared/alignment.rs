@@ -1,10 +1,9 @@
 use crate::commands::shared::input_warnings::warn_duplicate_names;
-#[cfg(feature = "clap")]
 use clap::ValueHint;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -15,14 +14,17 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_io::fasta::{FastaRecord, fasta_read_file};
 use treetime_primitives::{AlphabetLike, Seq};
+#[cfg(feature = "clap")]
+use treetime_schema::schema_defaults;
 
 /// Sequence alignment input shared by all commands that read sequences.
 ///
 /// One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
 /// accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
 /// input.
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlignmentArgs {

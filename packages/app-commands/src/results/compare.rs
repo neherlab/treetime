@@ -8,16 +8,16 @@ use crate::results::year_date::YearDate;
 use crate::runs::manager::RunManager;
 use crate::runs::record::{RunRecord, RunStatus};
 use crate::runs::setting_differences::{SettingDifference, setting_differences};
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
 /// Comparison of two runs: their settings and their results.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct RunComparison {
   /// Settings and inputs that differ; absent when the runs execute different commands.
   pub settings: Option<SettingsComparison>,
@@ -28,7 +28,7 @@ pub struct RunComparison {
 }
 
 /// Settings and inputs that differ between two runs of the same command.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct SettingsComparison {
   /// Settings and inputs whose values differ.
   pub differences: Vec<SettingDifference>,
@@ -39,9 +39,9 @@ pub struct SettingsComparison {
 }
 
 /// Estimates of two time-tree runs and their differences, second minus first.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct EstimateComparison {
   /// Estimates of the first run.
   pub first: TimetreeEstimates,
@@ -60,9 +60,9 @@ pub struct EstimateComparison {
 }
 
 /// Date shifts of the ancestors two trees share, matched by their set of samples.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct AncestorComparison {
   /// Ancestors dated in both trees, with the shift of their date.
   pub shifts: Vec<AncestorShift>,
@@ -73,7 +73,7 @@ pub struct AncestorComparison {
 }
 
 /// Date shift of one ancestor between two trees.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 pub struct AncestorShift {
   /// Name of the ancestor in the first tree.
   pub name: String,

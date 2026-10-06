@@ -115,7 +115,7 @@ ignored = ["blas-src", "openblas-src", "argmin-math"]
 
 [workspace.dependencies]
 blas-src = { version = "=0.12.1", features = ["openblas-src"] }
-ndarray = { version = "=0.16.1", features = ["rayon", "serde", "approx", "blas"] }
+ndarray = { version = "=0.16.1", features = ["rayon", "approx", "blas"] }
 ndarray-linalg = { version = "=0.17.0", features = ["openblas-system"] }
 ndarray-rand = "=0.15.0"
 ndarray-stats = "=0.6.0"
@@ -133,8 +133,8 @@ argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg
 auto_ops = "=0.3.0"
 axum = { version = "=0.8.9", features = ["json"] }
 bon = "=3.9.3"
-bytes = { version = "=1.12.1", features = ["serde"] }
-chrono = { version = "=0.4.45", default-features = false, features = ["clock", "alloc", "std", "serde"] }
+bytes = "=1.12.1"
+chrono = { version = "=0.4.45", default-features = false, features = ["clock", "alloc", "std"] }
 chronoutil = "=0.2.7"
 clap = { version = "=4.6.7", features = ["derive"] }
 clap-markdown = "=0.1.5"
@@ -164,7 +164,7 @@ getset = "=0.1.7"
 headers = "=0.4.1"
 heck = "=0.5.0"
 image = { version = "=0.25.10", default-features = false, features = ["png"] }
-indexmap = { version = "=2.14.2", features = ["rayon", "serde"] }
+indexmap = { version = "=2.14.2", features = ["rayon"] }
 indicatif = "=0.18.6"
 indoc = "=2.0.7"
 intervallum = { version = "=1.4.4", package = "intervallum" }
@@ -175,14 +175,14 @@ maplit = "=1.0.2"
 miette = { version = "=7.6.0", features = ["fancy"] }
 mime = "=0.3.17"
 minijinja = { version = "=2.24.0", features = ["debug", "deserialization"] }
-napi = { version = "=3.12.6", features = ["napi4", "serde-json"] }
+napi = { version = "=3.12.6", features = ["napi4"] }
 napi-build = "=2.4.3"
 napi-derive = "=3.6.7"
 ndarray-conv = "=0.5.0"
 num = "=0.4.3"
 num-traits = "=0.2.19"
 ordered-float = { version = "=5.5.0", default-features = false }
-parking_lot = { version = "=0.12.5", features = ["arc_lock", "serde"] }
+parking_lot = { version = "=0.12.5", features = ["arc_lock"] }
 percent-encoding = "=2.3.2"
 pest = "=2.9.1"
 pest_derive = "=2.9.1"
@@ -192,9 +192,9 @@ pretty_dtoa = "=0.3.0"
 proptest = "=1.6.0"
 prost = { version = "=0.14.1", features = ["no-recursion-limit"] }
 prost-build = "=0.14.1"
-rand = { version = "=0.8.8", features = ["serde", "log"] }
-rand_distr = { version = "=0.4.3", features = ["serde", "std_math"] }
-rand_isaac = { version = "=0.3.0", features = ["serde"] }
+rand = { version = "=0.8.8", features = ["log"] }
+rand_distr = { version = "=0.4.3", features = ["std_math"] }
+rand_isaac = "=0.3.0"
 rayon = "=1.12.0"
 regex = "=1.13.1"
 reqwest = { version = "=0.13.4", default-features = false, features = ["blocking", "rustls-no-provider"] }
@@ -203,10 +203,7 @@ rstest = "=0.26.1"
 rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
 saphyr = "=0.0.12"
 schemars = { version = "=1.2.2", features = ["derive"] }
-serde = { version = "=1.0.229", features = ["derive", "rc"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order", "indexmap", "unbounded_depth"] }
-serde_stacker = "=0.1.14"
-serde_with = { version = "=3.22.0", default-features = false, features = ["macros"] }
 sha2 = "=0.11.0"
 shlex = "=1.3.0"
 smart-default = "=0.7.1"

@@ -50,10 +50,9 @@ mod tests {
 
   #[test]
   fn test_deserialize_invalid_fails() {
-    let result: Result<AsciiChar, _> = serde_json::from_str("200");
-    assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
-    assert!(err.contains("200"), "error should mention the value: {err}");
-    assert!(err.contains("128"), "error should mention the limit: {err}");
+    assert_error!(
+      json_read_str::<AsciiChar>("200"),
+      "When parsing JSON: Unexpected: invalid value: AsciiChar: value 200 is not ASCII (>= 128) at line 1 column 1"
+    );
   }
 }

@@ -12,19 +12,20 @@ use crate::config::source::ConfigSource;
 use crate::json_value::SparseConfig;
 use crate::runs::errors::invalid;
 use app_output::output_plan::ResolvedOutputs;
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::path::Path;
 use treetime_utils::error::report_to_string;
+use treetime_utils::io::json::to_json_value;
 use treetime_utils::make_error;
 
 const REQUEST_SOURCE: &str = "config.json";
 
 /// A command with its complete configuration: every setting, defaults included.
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
-#[serde(tag = "command", rename_all = "kebab-case")]
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[schemars(tag = "command", rename_all = "kebab-case")]
 #[deser(tag = "command", rename_all = "kebab-case")]
 pub enum CommandConfig {
   Timetree { config: Box<TreetimeTimetreeArgsRaw> },
@@ -103,13 +104,13 @@ impl CommandConfig {
 
   pub fn settings(&self) -> Result<Map<String, Value>, Report> {
     let value = match self {
-      Self::Timetree { config } => serde_json::to_value(config),
-      Self::Optimize { config } => serde_json::to_value(config),
-      Self::Prune { config } => serde_json::to_value(config),
-      Self::Ancestral { config } => serde_json::to_value(config),
-      Self::Homoplasy { config } => serde_json::to_value(config),
-      Self::Clock { config } => serde_json::to_value(config),
-      Self::Mugration { config } => serde_json::to_value(config),
+      Self::Timetree { config } => to_json_value(&config),
+      Self::Optimize { config } => to_json_value(&config),
+      Self::Prune { config } => to_json_value(&config),
+      Self::Ancestral { config } => to_json_value(&config),
+      Self::Homoplasy { config } => to_json_value(&config),
+      Self::Clock { config } => to_json_value(&config),
+      Self::Mugration { config } => to_json_value(&config),
     }?;
     match value {
       Value::Object(settings) => Ok(settings),

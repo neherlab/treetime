@@ -1,30 +1,16 @@
 use derive_more::{Display, Error};
+use deser::adapters::TryFromInto;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use num_traits::ToPrimitive;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
-use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::str::FromStr;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
-#[derive(
-  Clone,
-  Copy,
-  Debug,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  Hash,
-  Display,
-  Serialize,
-  Deserialize,
-  deser::Serialize,
-  deser::Deserialize,
-)]
-#[serde(try_from = "usize", into = "usize")]
-#[deser(as = deser::adapters::TryFromInto<usize>)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Serialize, Deserialize)]
+#[deser(as = TryFromInto<usize>)]
 pub struct MaxGridPoints(usize);
 
 impl MaxGridPoints {

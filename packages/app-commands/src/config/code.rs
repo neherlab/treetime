@@ -6,11 +6,11 @@ use crate::yaml::yaml_text;
 use app_datasets::schema_directive;
 use clap::{Arg, Command};
 use deser::adapters::As;
+use deser::{Deserialize, Serialize};
 use deser_serde::Serde;
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::{make_error, make_report};
@@ -61,7 +61,7 @@ pub fn setting_tokens(arg: &Arg, flag: &str, value: &Value) -> Option<Vec<String
 }
 
 /// A command line and a YAML config that reproduce a configuration.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct ConfigCode {
   /// The command line, one flag per line.
   pub command_line: Vec<CodeLine>,
@@ -78,7 +78,7 @@ pub struct ConfigCode {
 }
 
 /// One line of a command line or a YAML config.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct CodeLine {
   /// Text of the line.
   pub text: String,
@@ -87,10 +87,8 @@ pub struct CodeLine {
 }
 
 /// What a line of a command line or a YAML config sets.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum CodeLineKind {
   /// The command.

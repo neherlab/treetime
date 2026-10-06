@@ -1,12 +1,10 @@
 use crate::datetime::datetime::{LAST_NANOSECOND_OF_DAY, iso};
 use chrono::{DateTime, Duration, NaiveDate, Utc};
+use deser::{Deserialize, Serialize};
 use getset::Getters;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(
-  Debug, SmartDefault, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, Getters, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Debug, SmartDefault, Clone, Copy, Eq, PartialEq, Getters, Serialize, Deserialize)]
 #[getset(get = "pub")]
 pub struct DateRange {
   begin: DateTime<Utc>,

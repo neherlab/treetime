@@ -1,17 +1,17 @@
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, ProfileMap, VARIABLE_CHAR};
 use crate::make_error;
 use color_eyre::{Section, SectionExt};
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use indexmap::IndexMap;
 use itertools::{Itertools, chain};
 use ndarray::{Array1, Array2};
-use serde::{Deserialize, Serialize};
 use std::iter::once;
 use treetime_primitives::{AsciiChar, StateSet};
 use treetime_utils::fmt::string::quote;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AlphabetConfig {
   pub(crate) canonical: Vec<u8>,
   pub(crate) ambiguous: IndexMap<u8, Vec<u8>>,

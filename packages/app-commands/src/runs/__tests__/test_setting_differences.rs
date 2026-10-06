@@ -8,6 +8,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use std::path::PathBuf;
+  use treetime_utils::io::json::to_json_value;
   use treetime_utils::o;
 
   #[test]
@@ -127,7 +128,7 @@ mod tests {
     };
     assert_eq!(
       json!({ "kind": "input", "key": "tree", "first": ["a.nwk"], "second": ["b.nwk"], "same_content": false }),
-      serde_json::to_value(difference).unwrap()
+      to_json_value(&difference).unwrap()
     );
   }
 

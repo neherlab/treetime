@@ -14,7 +14,10 @@ pub(crate) mod tests {
   pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   pub(crate) fn sparse(value: Value) -> SparseConfig {
-    serde_json::from_value(value).expect("a test config is a mapping of settings")
+    let Value::Object(settings) = value else {
+      panic!("a test config is a mapping of settings");
+    };
+    SparseConfig(settings)
   }
 
   pub(crate) fn project_root() -> PathBuf {

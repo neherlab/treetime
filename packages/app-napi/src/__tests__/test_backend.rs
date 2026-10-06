@@ -20,6 +20,7 @@ mod tests {
   use std::time::Duration;
   use tempfile::tempdir;
   use treetime_schema::version_info;
+  use treetime_utils::io::json::to_json_value;
   use treetime_utils::{assert_error, o};
 
   #[test]
@@ -43,7 +44,7 @@ mod tests {
       (
         json!("ok"),
         json!("ok"),
-        vec![serde_json::to_value(OutputSelection::Auspice).unwrap()]
+        vec![to_json_value(&OutputSelection::Auspice).unwrap()]
       ),
       (terminal["data"]["status"].clone(), record["status"].clone(), auspice)
     );

@@ -4,14 +4,13 @@ use crate::make_error;
 use crate::progress::LogSink;
 use crate::progress_info;
 use bon::bon;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::{Array1, Array2, array};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use strum_macros::Display;
 use treetime_utils::adapters::{Array2Rows, ArrayVec};
-use treetime_utils::array::serde::{array1_as_vec, array1_from_vec, array2_as_vec, array2_from_vec};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 #[allow(
@@ -24,24 +23,19 @@ pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName, log: &dyn LogSink) {
   progress_info!(log, "GTR model initialized:\n{json}");
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GtrOutput {
   pub(crate) model_type: GtrModelType,
   pub(crate) model_name: GtrModelName,
   pub(crate) mu: f64,
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   #[deser(as = ArrayVec)]
   pub(crate) pi: Array1<f64>,
-  #[serde(serialize_with = "array2_as_vec", deserialize_with = "array2_from_vec")]
   #[deser(as = Array2Rows)]
-  #[serde(rename = "W")]
   #[deser(rename = "W")]
   pub(crate) w: Array2<f64>,
   pub(crate) n_states: usize,
-  #[serde(skip_serializing_if = "Option::is_none")]
   #[deser(skip_serializing_if = Option::is_none)]
   pub(crate) attribute: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
   #[deser(skip_serializing_if = Option::is_none)]
   pub(crate) states: Option<Vec<String>>,
 }
@@ -80,8 +74,7 @@ impl GtrOutput {
   }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum GtrModelType {
   Named,
@@ -103,37 +96,24 @@ pub(crate) fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
 }
 
 #[derive(
-  Copy,
-  Debug,
-  Clone,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  SmartDefault,
-  Display,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
+  Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, JsonSchema, Serialize, Deserialize,
 )]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum GtrModelName {
   /// Infer GTR parameters from data via Fitch parsimony substitution counts.
   #[default]
   Infer,
-  #[serde(rename = "jc69")]
+  #[schemars(rename = "jc69")]
   #[deser(rename = "jc69")]
   JC69,
   K80,
   F81,
-  #[serde(rename = "hky85")]
+  #[schemars(rename = "hky85")]
   #[deser(rename = "hky85")]
   HKY85,
   T92,
-  #[serde(rename = "tn93")]
+  #[schemars(rename = "tn93")]
   #[deser(rename = "tn93")]
   TN93,
   Jtt92,

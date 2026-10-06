@@ -10,8 +10,8 @@ use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
 use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
 use crate::testing::test_suites::test_suites::TestSuiteName;
 use clap::Parser;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
-use serde::{Deserialize, Serialize};
 
 pub fn run_validation_tests() -> Result<(), Report> {
   let mut args = Args::parse();
@@ -51,8 +51,7 @@ where
   })
 }
 
-#[derive(Parser, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Parser, Clone, Serialize, Deserialize)]
 #[deser(rename_all = "kebab-case")]
 #[command(
   name = "validation-test",

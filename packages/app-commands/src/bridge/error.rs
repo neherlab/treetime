@@ -1,12 +1,12 @@
 use crate::runs::errors::{InvalidRunRequest, RunConflict, RunNotFound, UploadTooLarge};
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use std::any::Any;
 use treetime_utils::error::{ReportChain, panic_message};
 
 /// Error of a back-end operation, as the web server and the desktop back end report it.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct ErrorResponse {
   /// Class of the error.
   pub code: ErrorCode,
@@ -37,10 +37,8 @@ impl ErrorResponse {
 }
 
 /// Class of a back-end error. The web server answers each class with its own HTTP status.
-#[derive(
-  Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
-#[serde(rename_all = "snake_case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[schemars(rename_all = "snake_case")]
 #[deser(rename_all = "snake_case")]
 pub enum ErrorCode {
   /// The run or file does not exist.

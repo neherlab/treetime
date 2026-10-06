@@ -1,10 +1,10 @@
 use crate::edge::GraphEdgeKey;
 use derive_more::Display;
-use serde::{Deserialize, Serialize};
+use deser::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Debug, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Node {
   key: GraphNodeKey,
   outbound_edges: Vec<GraphEdgeKey>,
@@ -78,21 +78,7 @@ impl Node {
   }
 }
 
-#[derive(
-  Copy,
-  Clone,
-  Debug,
-  Display,
-  Eq,
-  PartialEq,
-  Ord,
-  PartialOrd,
-  Hash,
-  Serialize,
-  Deserialize,
-  deser::Serialize,
-  deser::Deserialize,
-)]
+#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct GraphNodeKey(pub usize);
 
 impl GraphNodeKey {

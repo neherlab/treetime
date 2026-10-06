@@ -6,11 +6,11 @@ mod tests {
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
+  use deser::Deserialize;
   use eyre::{Report, WrapErr};
   use indexmap::IndexMap;
   use ndarray::Array1;
   use rstest::rstest;
-  use serde::Deserialize;
   use std::collections::BTreeMap;
   use std::path::Path;
   use treetime_distribution::Distribution;
@@ -20,7 +20,6 @@ mod tests {
   use treetime_io::dates_csv::metadata_read_file;
   use treetime_io::nwk::nwk_read_file;
   use treetime_utils::adapters::ArrayVec;
-  use treetime_utils::array::serde::indexmap_array1_from_map;
   use treetime_utils::io::json::json_read_file;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
 
@@ -87,16 +86,15 @@ mod tests {
 
   const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/coalescent/__tests__/__fixtures__");
 
-  #[derive(Debug, Deserialize, deser::Deserialize)]
+  #[derive(Debug, Deserialize)]
   struct Snapshot {
     inputs: SnapshotInputs,
     tbp_grid: SnapshotTbpGrid,
-    #[serde(deserialize_with = "indexmap_array1_from_map")]
     #[deser(deserialize_as = IndexMap<_, ArrayVec>)]
     node_contributions: IndexMap<String, Array1<f64>>,
   }
 
-  #[derive(Debug, Deserialize, deser::Deserialize)]
+  #[derive(Debug, Deserialize)]
   struct SnapshotInputs {
     tree_path: String,
     metadata_path: String,
@@ -104,7 +102,7 @@ mod tests {
     present_time: f64,
   }
 
-  #[derive(Debug, Deserialize, deser::Deserialize)]
+  #[derive(Debug, Deserialize)]
   struct SnapshotTbpGrid {
     start: f64,
     end: f64,

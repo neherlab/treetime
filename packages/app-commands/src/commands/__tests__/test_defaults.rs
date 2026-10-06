@@ -67,15 +67,16 @@ mod tests {
 
   mod helpers {
     use clap::Parser;
-    use serde::Serialize;
+    use deser::Serialize;
     use serde_json::Value;
+    use treetime_utils::io::json::to_json_value;
 
     pub(super) fn config_defaults<T: Default + Serialize>() -> Value {
-      serde_json::to_value(T::default()).unwrap()
+      to_json_value(&T::default()).unwrap()
     }
 
     pub(super) fn clap_defaults<T: Parser + Serialize>() -> Value {
-      serde_json::to_value(T::try_parse_from(["treetime"]).unwrap()).unwrap()
+      to_json_value(&T::try_parse_from(["treetime"]).unwrap()).unwrap()
     }
   }
 }

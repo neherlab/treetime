@@ -109,10 +109,10 @@ mod tests {
     use crate::mugration::pipeline::{MugrationInput, MugrationOutput, MugrationParams, run};
     use crate::progress::NoopProgress;
     use crate::test_utils::{TraitsByNode, traits_by_node};
+    use deser::Deserialize;
     use eyre::Report;
     use indexmap::IndexMap;
     use ndarray::Array1;
-    use serde::Deserialize;
     use std::collections::BTreeMap;
     use std::path::PathBuf;
     use treetime_graph::node::GraphNodeKey;
@@ -121,7 +121,7 @@ mod tests {
     use treetime_io::nwk::nwk_read_file;
     use treetime_utils::io::json::json_read_file;
 
-    #[derive(Debug, Deserialize, deser::Deserialize)]
+    #[derive(Debug, Deserialize)]
     pub(super) struct GmMugrationInput {
       tree_path: String,
       metadata_path: String,
@@ -130,7 +130,7 @@ mod tests {
       parameters: GmMugrationParameters,
     }
 
-    #[derive(Debug, Deserialize, deser::Deserialize)]
+    #[derive(Debug, Deserialize)]
     pub(super) struct GmMugrationParameters {
       missing_data: String,
       pc: Option<f64>,
@@ -139,7 +139,7 @@ mod tests {
       iterations: usize,
     }
 
-    #[derive(Debug, Deserialize, deser::Deserialize)]
+    #[derive(Debug, Deserialize)]
     pub(super) struct GmMugrationOutput {
       pub(crate) states: Vec<String>,
       pub(crate) trait_assignments: BTreeMap<String, String>,

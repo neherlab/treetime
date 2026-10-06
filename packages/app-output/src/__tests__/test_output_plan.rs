@@ -10,12 +10,13 @@ mod tests {
   use std::str::FromStr;
   use strum::IntoEnumIterator;
   use treetime::progress::LogLevel;
+  use treetime_utils::io::json::to_json_value;
   use treetime_utils::{assert_error, o};
 
   #[test]
   fn test_output_plan_selection_tag_matches_serde_name() {
     let serde_names = OutputSelection::iter()
-      .map(|selection| serde_json::to_value(selection).unwrap())
+      .map(|selection| to_json_value(&selection).unwrap())
       .collect_vec();
     let tag_names = OutputSelection::iter()
       .map(|selection| serde_json::Value::String(selection.as_ref().to_owned()))

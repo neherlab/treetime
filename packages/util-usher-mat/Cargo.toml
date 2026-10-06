@@ -15,13 +15,12 @@ version.workspace = true
 doctest = false
 
 [package.metadata.cargo-shear]
-ignored = ["serde"]
+ignored = ["deser"]
 
 [dependencies]
 deser = { workspace = true }
 eyre = { workspace = true }
 prost = { workspace = true }
-serde = { workspace = true }
 [build-dependencies]
 eyre = { workspace = true }
 prost-build = { workspace = true }

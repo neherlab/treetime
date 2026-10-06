@@ -2,14 +2,13 @@ use crate::runs::app_events::{AppChange, DATASETS_PATH, EXAMPLES_DOWNLOAD_PATH, 
 use crate::runs::errors::conflict;
 use crate::runs::manager::RunManager;
 use crate::version::{BUILD_MODE, LONG_VERSION, NIGHTLY_BUILD_MODE};
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use parking_lot::Mutex;
 use reqwest::blocking::Client;
 use rustls::crypto::CryptoProvider;
 use rustls::crypto::ring::default_provider;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use std::fs::{self, File};
 use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -17,6 +16,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 use tempfile::Builder;
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::error::report_to_string;
 use treetime_utils::{make_error, make_report};
 use zip::ZipArchive;
@@ -167,10 +167,10 @@ impl ExampleDownloads {
 }
 
 /// Stage of the download of the example datasets.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(tag = "state", rename_all = "kebab-case")]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(tag = "state", rename_all = "kebab-case")]
 #[deser(tag = "state", rename_all = "kebab-case")]
 pub enum ExamplesDownload {
   /// No download started since the back end started.
@@ -195,9 +195,9 @@ pub enum ExamplesDownload {
 }
 
 /// The download of the example datasets, with the app event that reported it last.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct ExamplesDownloadStatus {
   pub download: ExamplesDownload,
   /// Sequence number of the last app event about the download. A client keeps whichever of this answer and the

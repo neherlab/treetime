@@ -16,9 +16,9 @@ use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use crate::seq::overlay::SeqOverlay;
 use crate::{make_internal_report, make_report};
+use deser::Serialize;
 use eyre::Report;
 use itertools::izip;
-use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -28,7 +28,7 @@ use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_union::range_union;
 
-#[derive(Clone, Debug, Serialize, deser::Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalDense {
   pub(crate) inputs: DenseInputs,
   pub(crate) index: usize,

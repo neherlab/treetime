@@ -17,9 +17,9 @@ use crate::seq::mutation::{
 };
 use crate::seq::overlay::SeqOverlay;
 use crate::seq::sink::SeqSink;
+use deser::Serialize;
 use eyre::Report;
 use rand::RngCore;
-use serde::Serialize;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -27,8 +27,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootResult;
 use treetime_primitives::{LogLh, Seq};
 
-#[derive(Clone, Debug, Serialize, deser::Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Debug, Serialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum MarginalReconstruction {
   Dense(DenseReconstruction),
@@ -304,7 +303,7 @@ impl MarginalReconstruction {
   }
 }
 
-#[derive(Clone, Debug, Serialize, deser::Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct SparseReconstruction {
   pub(crate) partition: PartitionMarginalSparse,
   pub(crate) gtr: GTR,
@@ -355,7 +354,7 @@ impl SparseReconstruction {
   }
 }
 
-#[derive(Clone, Debug, Serialize, deser::Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct DenseReconstruction {
   pub(crate) partition: PartitionMarginalDense,
   pub(crate) gtr: GTR,

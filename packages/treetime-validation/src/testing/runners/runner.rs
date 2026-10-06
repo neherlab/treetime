@@ -5,10 +5,10 @@ use crate::testing::framework::test_case::TestCase;
 use crate::testing::framework::tsv_output::generate_tsv_outputs;
 use crate::testing::plots::plots::generate_plot_outputs;
 use crate::testing::run::Args;
+use deser::Serialize;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use serde::Serialize;
 use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::fs;
@@ -299,7 +299,7 @@ fn build_algorithm_summaries_generic<T: TestCase, A: Display>(
 
 fn save_results_json<T>(output_dir: &str, outcomes: &[TestRunOutcome<T>], summary: &TestSummary) -> Result<(), Report>
 where
-  T: deser::Serialize + TestCase,
+  T: Serialize + TestCase,
 {
   fs::create_dir_all(output_dir).wrap_err_with(|| format!("When creating directory '{output_dir}'"))?;
   let results = ResultsJson { summary, outcomes };
@@ -307,7 +307,7 @@ where
   json_write_file(&json_path, &results, JsonPretty(true))
 }
 
-#[derive(Serialize, deser::Serialize)]
+#[derive(Serialize)]
 struct ResultsJson<'a, T: TestCase> {
   summary: &'a TestSummary,
   outcomes: &'a [TestRunOutcome<T>],

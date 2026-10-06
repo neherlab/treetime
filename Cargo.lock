@@ -157,7 +157,6 @@ dependencies = [
  "ctor",
  "deser",
  "deser-serde",
- "deser-value",
  "eyre",
  "indicatif",
  "indoc",
@@ -174,9 +173,7 @@ dependencies = [
  "rgb",
  "rstest",
  "schemars",
- "serde",
  "serde_json",
- "serde_with",
  "strum",
  "tempfile",
  "textplots",
@@ -228,9 +225,7 @@ dependencies = [
  "rustls",
  "saphyr",
  "schemars",
- "serde",
  "serde_json",
- "serde_with",
  "sha2",
  "shlex",
  "smart-default",
@@ -310,7 +305,6 @@ dependencies = [
  "rayon",
  "rstest",
  "schemars",
- "serde",
  "serde_json",
  "strum",
  "strum_macros",
@@ -351,7 +345,6 @@ dependencies = [
  "rayon",
  "rstest",
  "schemars",
- "serde",
  "serde_json",
  "strum",
  "tempfile",
@@ -375,15 +368,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cab112f0a86d568ea0e627cc1d6be74a1e9cd55214684db5561995f6dad897c6"
 dependencies = [
  "num-traits",
-]
-
-[[package]]
-name = "ar_archive_writer"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4087686b4b0a3427190bae57a1d9a478dbb2d40c5dc1bd6e2b6d797913bdd348"
-dependencies = [
- "object",
 ]
 
 [[package]]
@@ -736,9 +720,6 @@ name = "bytes"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "bzip2"
@@ -828,7 +809,6 @@ checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
  "num-traits",
- "serde",
  "windows-link",
 ]
 
@@ -2756,7 +2736,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "224399e74b87b5f3557511d98dff8b14089b3dadafcab6bb93eab67d3aace965"
 dependencies = [
  "scopeguard",
- "serde",
 ]
 
 [[package]]
@@ -2974,8 +2953,6 @@ dependencies = [
  "napi-sys",
  "nohash-hasher",
  "rustc-hash 2.1.3",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -3037,7 +3014,6 @@ dependencies = [
  "portable-atomic-util",
  "rawpointer",
  "rayon",
- "serde",
 ]
 
 [[package]]
@@ -3606,16 +3582,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "psm"
-version = "0.1.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dcd034599e63b970727f70d79e02d62390a4a84f7c6b827c27c46d5ac3fa622"
-dependencies = [
- "ar_archive_writer",
- "cc",
-]
-
-[[package]]
 name = "pxfm"
 version = "0.1.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3660,7 +3626,6 @@ dependencies = [
  "libc",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
- "serde",
 ]
 
 [[package]]
@@ -3719,7 +3684,6 @@ checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
 dependencies = [
  "num-traits",
  "rand 0.8.8",
- "serde",
 ]
 
 [[package]]
@@ -3729,7 +3693,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fac4373cd91b4f55722c553fb0f286edbb81ef3ff6eec7b99d1898a4110a0b28"
 dependencies = [
  "rand_core 0.6.4",
- "serde",
 ]
 
 [[package]]
@@ -4340,17 +4303,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_stacker"
-version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4936375d50c4be7eff22293a9344f8e46f323ed2b3c243e52f89138d9bb0f4a"
-dependencies = [
- "serde",
- "serde_core",
- "stacker",
-]
-
-[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4360,28 +4312,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "serde_with"
-version = "3.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee78f1fbe43ac4a0e47aadb3dbd357b69eb0d3793e948624cd03dd2750ab1c0a"
-dependencies = [
- "serde_core",
- "serde_with_macros",
-]
-
-[[package]]
-name = "serde_with_macros"
-version = "3.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8705578779c2b6bd90d84d66eb2e206b708b1a4d7b9f17641b293545bf1c7e46"
-dependencies = [
- "darling",
- "proc-macro2",
- "quote",
- "syn 2.0.119",
 ]
 
 [[package]]
@@ -4525,19 +4455,6 @@ name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
-
-[[package]]
-name = "stacker"
-version = "0.1.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "707f49d46706bacf8a2b00d51dace3f9de527c13eec3778f570c411f89e69967"
-dependencies = [
- "cc",
- "cfg-if",
- "libc",
- "psm",
- "windows-sys 0.61.2",
-]
 
 [[package]]
 name = "statrs"
@@ -5050,7 +4967,6 @@ dependencies = [
  "regex",
  "rstest",
  "schemars",
- "serde",
  "serde_json",
  "smart-default",
  "statrs",
@@ -5060,6 +4976,7 @@ dependencies = [
  "treetime-grid",
  "treetime-io",
  "treetime-primitives",
+ "treetime-schema",
  "treetime-utils",
  "util-augur-node-data-json",
 ]
@@ -5073,7 +4990,6 @@ dependencies = [
  "deser",
  "ndarray",
  "rayon",
- "serde",
  "statrs",
  "treetime-ops",
  "treetime-utils",
@@ -5097,7 +5013,6 @@ dependencies = [
  "proptest",
  "rayon",
  "rstest",
- "serde",
  "strum_macros",
  "treetime-grid",
  "treetime-ops",
@@ -5123,7 +5038,6 @@ dependencies = [
  "proptest",
  "rayon",
  "rstest",
- "serde",
  "treetime-utils",
 ]
 
@@ -5145,7 +5059,6 @@ dependencies = [
  "rayon",
  "rstest",
  "schemars",
- "serde",
  "serde_json",
  "treetime-utils",
 ]
@@ -5169,8 +5082,6 @@ dependencies = [
  "pretty_assertions",
  "rayon",
  "rstest",
- "serde",
- "serde_json",
  "smart-default",
  "tempfile",
  "treetime-graph",
@@ -5186,12 +5097,10 @@ version = "1.0.0"
 dependencies = [
  "approx",
  "ctor",
- "deser",
  "eyre",
  "ndarray",
  "ndarray-conv",
  "rayon",
- "serde",
  "treetime-utils",
 ]
 
@@ -5208,8 +5117,6 @@ dependencies = [
  "pretty_assertions",
  "rayon",
  "rstest",
- "serde",
- "serde_json",
  "treetime-utils",
 ]
 
@@ -5223,7 +5130,6 @@ dependencies = [
  "eyre",
  "log",
  "schemars",
- "serde",
  "serde_json",
  "strum",
  "strum_macros",
@@ -5273,9 +5179,7 @@ dependencies = [
  "rayon",
  "regex",
  "rstest",
- "serde",
  "serde_json",
- "serde_stacker",
  "smart-default",
  "strum_macros",
  "tempfile",
@@ -5300,7 +5204,6 @@ dependencies = [
  "ordered-float",
  "plotters",
  "rayon",
- "serde",
  "smart-default",
  "strum",
  "strum_macros",
@@ -5459,7 +5362,6 @@ dependencies = [
  "rayon",
  "regex",
  "rstest",
- "serde",
  "smart-default",
 ]
 
@@ -5474,7 +5376,6 @@ dependencies = [
  "indoc",
  "pretty_assertions",
  "rayon",
- "serde_json",
 ]
 
 [[package]]
@@ -5485,7 +5386,6 @@ dependencies = [
  "eyre",
  "prost",
  "prost-build",
- "serde",
 ]
 
 [[package]]

@@ -1,12 +1,12 @@
 use crate::results::year_date::YearDate;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::{Itertools, izip};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use std::collections::BTreeSet;
 use treetime::timetree::confidence::CI_FRACTION;
 use treetime_io::auspice_types::{AuspiceColoring, AuspiceTree, AuspiceTreeNode};
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
 const CATEGORICAL: &str = "categorical";
@@ -35,9 +35,9 @@ pub fn preorder(root: &AuspiceTreeNode) -> Vec<(&AuspiceTreeNode, Option<usize>)
 }
 
 /// A tree a run wrote, read from its Auspice file.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct ResultTree {
   /// Nodes in preorder; the root comes first and every parent precedes its children.
   pub nodes: Vec<ResultNode>,
@@ -89,9 +89,9 @@ impl ResultTree {
 }
 
 /// One node of a result tree.
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct ResultNode {
   /// Name of the node.
   pub name: String,
@@ -120,7 +120,7 @@ impl ResultNode {
 }
 
 /// Confidence interval of a date.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
 pub struct DateInterval {
   /// Earliest date.
   pub lower: YearDate,
@@ -144,7 +144,7 @@ impl DateInterval {
 }
 
 /// A coloring of the Auspice tree.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct ResultColoring {
   /// Node attribute the coloring reads.
   pub key: String,
@@ -159,7 +159,7 @@ pub struct ResultColoring {
 }
 
 /// Color of one state of a categorical coloring.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct StateColor {
   /// Value of the node attribute.
   pub state: String,

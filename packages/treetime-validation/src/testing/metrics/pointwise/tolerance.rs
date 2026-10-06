@@ -1,39 +1,7 @@
 use crate::testing::metrics::config::PointwiseConfig;
+use deser::{Deserialize, Serialize};
 use ndarray::Array1;
-use serde::ser::SerializeSeq;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use treetime_utils::adapters::ArrayVec;
-use treetime_utils::array::serde::{array1_as_vec, array1_from_vec};
-
-fn serialize_array_of_array1<S>(arrays: &[Array1<f64>; 3], serializer: S) -> Result<S::Ok, S::Error>
-where
-  S: Serializer,
-{
-  let mut seq = serializer.serialize_seq(Some(3))?;
-  for array in arrays {
-    let vec: Vec<f64> = array.to_vec();
-    seq.serialize_element(&vec)?;
-  }
-  seq.end()
-}
-
-fn deserialize_array_of_array1<'de, D>(deserializer: D) -> Result<[Array1<f64>; 3], D::Error>
-where
-  D: Deserializer<'de>,
-{
-  let vecs: Vec<Vec<f64>> = Vec::deserialize(deserializer)?;
-  if vecs.len() != 3 {
-    return Err(serde::de::Error::custom(format!(
-      "Expected 3 arrays, got {}",
-      vecs.len()
-    )));
-  }
-  Ok([
-    Array1::from_vec(vecs[0].clone()),
-    Array1::from_vec(vecs[1].clone()),
-    Array1::from_vec(vecs[2].clone()),
-  ])
-}
 
 #[allow(
   clippy::as_conversions,
@@ -98,21 +66,16 @@ pub(super) fn compute_tolerance_metrics(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToleranceMetrics {
-  #[serde(
-    serialize_with = "serialize_array_of_array1",
-    deserialize_with = "deserialize_array_of_array1"
-  )]
   #[deser(as = [ArrayVec; 3])]
   pub(crate) pass_masks: [Array1<f64>; 3],
-  #[serde(serialize_with = "array1_as_vec", deserialize_with = "array1_from_vec")]
   #[deser(as = ArrayVec)]
   pub(crate) support_coverage_mask: Array1<f64>,
   pub(crate) summary: ToleranceSummary,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToleranceSummary {
   pub(crate) pass_fractions: [f64; 3],
   pub(crate) support_mismatch_count: usize,

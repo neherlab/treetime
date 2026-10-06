@@ -9,10 +9,9 @@ use crate::commands::shared::reroot::resolve_reroot_tips;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -20,6 +19,7 @@ use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 #[derive(Debug, Clone)]
 pub struct TreetimeOptimizeArgs {
@@ -115,21 +115,22 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
   }
 }
 
-#[skip_serializing_none]
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize)]
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
-#[serde(default, deny_unknown_fields)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[schemars(rename = "OptimizeConfig")]
 pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(skip)]
+  #[schemars(skip)]
   #[deser(skip)]
   pub config_args: ConfigArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
@@ -141,12 +142,12 @@ pub struct TreetimeOptimizeArgsRaw {
   pub tree: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub model_args: ModelArgs,
 
@@ -159,7 +160,7 @@ pub struct TreetimeOptimizeArgsRaw {
   pub dense: Option<bool>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
@@ -204,7 +205,7 @@ pub struct TreetimeOptimizeArgsRaw {
   pub output_selection: Vec<OptimizeOutputSelection>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 
@@ -310,7 +311,7 @@ pub struct TreetimeOptimizeArgsRaw {
   pub no_flip_parent_child: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[serde(flatten)]
+  #[schemars(flatten)]
   #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
 }
@@ -320,11 +321,9 @@ pub struct TreetimeOptimizeArgsRaw {
 /// Only date-free methods are valid here because optimize has no sampling dates.
 /// Date-dependent methods (least-squares, oldest, clock-filter) are available
 /// in the timetree and clock commands.
-#[derive(
-  Copy, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, deser::Serialize, deser::Deserialize,
-)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum OptimizeRerootMethod {
   MinDev,
@@ -343,21 +342,9 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 /// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
 /// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
 /// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
-#[derive(
-  Copy,
-  Clone,
-  Debug,
-  PartialEq,
-  Eq,
-  SmartDefault,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "BranchOptMethod")]
 pub enum BranchOptMethodCli {
@@ -422,23 +409,9 @@ impl From<BranchOptMethodCli> for BranchOptMethod {
 /// Controls whether marginal reconstruction estimates initial branch lengths
 /// from substitutions divided by effective alignment length. Preserving valid
 /// input lengths can provide a better Newton starting point.
-#[derive(
-  Copy,
-  Debug,
-  Clone,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  Default,
-  Serialize,
-  Deserialize,
-  JsonSchema,
-  deser::Serialize,
-  deser::Deserialize,
-)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[serde(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "InitialGuessMode")]
 pub enum InitialGuessModeCli {

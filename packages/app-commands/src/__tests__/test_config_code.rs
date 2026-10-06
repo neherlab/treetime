@@ -205,8 +205,9 @@ mod tests {
     use crate::config::load::load_config_document;
     use crate::config::source::ConfigSource;
     use clap::FromArgMatches;
-    use serde::Serialize;
+    use deser::Serialize;
     use serde_json::{Map, Value, json};
+    use treetime_utils::io::json::to_json_value;
 
     fn default_of(spec: &SettingSpec) -> Option<&Value> {
       spec.default_value.as_deref()
@@ -302,7 +303,7 @@ mod tests {
     }
 
     fn settings(raw: &impl Serialize) -> Map<String, Value> {
-      serde_json::to_value(raw).unwrap().as_object().unwrap().clone()
+      to_json_value(&raw).unwrap().as_object().unwrap().clone()
     }
   }
 }

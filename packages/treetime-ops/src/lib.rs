@@ -1,5 +1,4 @@
 use ndarray::Array1;
-use serde::{Deserialize, Serialize};
 
 pub mod convolution;
 pub mod multiplication;
@@ -12,7 +11,7 @@ pub use convolution::{FftConvolve, NdarrayConvolve, RiemannConvolve, convolve_ff
 pub use multiplication::{AggressiveMultiply, LogScaleMultiply, PointwiseMultiply};
 pub use traits::{ConvolveAlgo, MultiplyAlgo};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct ScaledArray {
   pub normalized: Array1<f64>,
   pub log_scale: f64,

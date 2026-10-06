@@ -1,7 +1,6 @@
 use eyre::Report;
 use itertools::Itertools;
 use minijinja::{Environment, UndefinedBehavior};
-use serde::Deserialize;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 use treetime_utils::{make_error, make_report};
@@ -119,7 +118,7 @@ impl Interpolator {
       let value = compiled
         .eval(context)
         .map_err(|err| minijinja_error("expression", leaf, &err))?;
-      let value = Value::deserialize(value).map_err(|err| make_report!("evaluating `{leaf}`: {err}"))?;
+      let value = serde_json::to_value(value).map_err(|err| make_report!("evaluating `{leaf}`: {err}"))?;
       Ok(value)
     } else {
       let rendered = self

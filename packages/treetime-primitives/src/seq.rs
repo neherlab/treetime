@@ -1,4 +1,8 @@
 use crate::seq_char::AsciiChar;
+use deser::adapters::{DeserializeAs, TryFromInto};
+use deser::de::SinkHandle;
+use deser::ser::Chunk;
+use deser::{Atom, Deserialize, Error, Serialize, State};
 use eyre::Report;
 use std::mem::ManuallyDrop;
 use treetime_utils::error::make_error;
@@ -353,30 +357,6 @@ impl std::io::Write for Seq {
   }
 }
 
-impl serde::Serialize for Seq {
-  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-  where
-    S: serde::Serializer,
-  {
-    serializer
-      .serialize_str(self.as_str())
-      .map_err(serde::ser::Error::custom)
-  }
-}
-
-impl<'de> serde::Deserialize<'de> for Seq {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-  where
-    D: serde::Deserializer<'de>,
-  {
-    let s = String::deserialize(deserializer)?;
-    if !s.is_ascii() {
-      return Err(serde::de::Error::custom("Seq: input contains non-ASCII characters"));
-    }
-    Ok(Seq::from_ascii_str(&s))
-  }
-}
-
 #[macro_export]
 macro_rules! seq {
   () => (
@@ -392,15 +372,15 @@ macro_rules! seq {
   };
 }
 
-impl deser::Serialize for Seq {
-  fn serialize(&self, _state: &mut deser::State) -> Result<deser::ser::Chunk<'_>, deser::Error> {
-    Ok(deser::ser::Chunk::Atom(deser::Atom::Str(self.as_str().into())))
+impl Serialize for Seq {
+  fn serialize(&self, _state: &mut State) -> Result<Chunk<'_>, Error> {
+    Ok(Chunk::Atom(Atom::Str(self.as_str().into())))
   }
 }
 
-impl<'de> deser::Deserialize<'de> for Seq {
-  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut deser::State) -> deser::de::SinkHandle<'out, 'de> {
-    <deser::adapters::TryFromInto<String> as deser::adapters::DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
+impl<'de> Deserialize<'de> for Seq {
+  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut State) -> SinkHandle<'out, 'de> {
+    <TryFromInto<String> as DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
   }
 }
 

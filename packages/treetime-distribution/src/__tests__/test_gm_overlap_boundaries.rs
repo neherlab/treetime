@@ -51,20 +51,18 @@ mod tests {
 
   mod helpers {
     use crate::__tests__::aliases::DistributionNegLog;
+    use deser::Deserialize;
     use eyre::Report;
     use ndarray::Array1;
-    use serde::Deserialize;
 
-    #[derive(Clone, Copy, Debug, Deserialize, deser::Deserialize)]
-    #[serde(rename_all = "lowercase")]
+    #[derive(Clone, Copy, Debug, Deserialize)]
     #[deser(rename_all = "lowercase")]
     pub(super) enum Operation {
       Divide,
       Multiply,
     }
 
-    #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, deser::Deserialize)]
-    #[serde(rename_all = "lowercase")]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
     #[deser(rename_all = "lowercase")]
     pub(super) enum DistributionKind {
       Function,
@@ -85,7 +83,7 @@ mod tests {
       }
     }
 
-    #[derive(Deserialize, deser::Deserialize)]
+    #[derive(Deserialize)]
     pub(super) struct GoldenInput {
       operation: Operation,
       left: GoldenOperand,
@@ -106,7 +104,7 @@ mod tests {
       }
     }
 
-    #[derive(Deserialize, deser::Deserialize)]
+    #[derive(Deserialize)]
     pub(super) struct GoldenOperand {
       kind: DistributionKind,
       x: Vec<f64>,
@@ -128,7 +126,7 @@ mod tests {
       }
     }
 
-    #[derive(Deserialize, deser::Deserialize)]
+    #[derive(Deserialize)]
     pub(super) struct GoldenOutput {
       kind: DistributionKind,
       bounds: [f64; 2],
