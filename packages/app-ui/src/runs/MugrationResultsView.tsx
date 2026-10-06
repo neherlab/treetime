@@ -11,10 +11,6 @@ const BRANCHES_SORT = [{ id: "branches", desc: true }];
 
 const PROBABILITY_SORT = [{ id: "probability", desc: false }];
 
-const CHANGE_NUMERIC = new Set(["branches"]);
-
-const ANCESTOR_NUMERIC = new Set(["probability"]);
-
 type StateColors = ReadonlyMap<string, string>;
 
 const changeColumn = dataColumns<StateChange>();
@@ -26,14 +22,20 @@ function changeColumns(colors: StateColors) {
     changeColumn.accessor((row) => row.from, {
       id: "from",
       header: "From",
+      meta: { width: "1fr", minWidth: 120 },
       cell: ({ getValue }) => <StateLabel state={getValue()} colors={colors} />,
     }),
     changeColumn.accessor((row) => row.to, {
       id: "to",
       header: "To",
+      meta: { width: "1fr", minWidth: 120 },
       cell: ({ getValue }) => <StateLabel state={getValue()} colors={colors} />,
     }),
-    changeColumn.accessor((row) => row.branches, { id: "branches", header: "Branches" }),
+    changeColumn.accessor((row) => row.branches, {
+      id: "branches",
+      header: "Branches",
+      meta: { width: 90, numeric: true },
+    }),
   ]);
 }
 
@@ -42,16 +44,19 @@ function ancestorColumns(colors: StateColors) {
     ancestorColumn.accessor((row) => row.name, {
       id: "name",
       header: "Ancestor",
+      meta: { width: "2fr", minWidth: 160 },
       cell: ({ row }) => `${row.original.name} (${row.original.tips} samples)`,
     }),
     ancestorColumn.accessor((row) => row.state, {
       id: "state",
       header: "Most probable state",
+      meta: { width: "1fr", minWidth: 140 },
       cell: ({ getValue }) => <StateLabel state={getValue()} colors={colors} />,
     }),
     ancestorColumn.accessor((row) => row.probability, {
       id: "probability",
       header: "Probability",
+      meta: { width: 110, numeric: true },
       cell: ({ getValue }) => getValue().toFixed(3),
     }),
   ]);
@@ -118,7 +123,6 @@ export function MugrationResultsView({
             columns={changeCols}
             rows={changes}
             rowId={changeKey}
-            numeric={CHANGE_NUMERIC}
             initialSorting={BRANCHES_SORT}
           />
         </Panel>
@@ -133,7 +137,6 @@ export function MugrationResultsView({
               columns={ancestorCols}
               rows={uncertain}
               rowId={ancestorKey}
-              numeric={ANCESTOR_NUMERIC}
               initialSorting={PROBABILITY_SORT}
             />
           )}

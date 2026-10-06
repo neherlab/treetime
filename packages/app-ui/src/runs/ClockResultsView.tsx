@@ -25,26 +25,31 @@ const RESIDUAL_SORT = [{ id: "residual", desc: true }];
 const sampleColumn = dataColumns<SampleRow>();
 
 const SAMPLE_COLUMNS = sampleColumn.columns([
-  sampleColumn.accessor((row) => row.name, { id: "name", header: "Sample" }),
+  sampleColumn.accessor((row) => row.name, { id: "name", header: "Sample", meta: { width: "1fr", minWidth: 160 } }),
   sampleColumn.accessor((row) => row.date.year, {
     id: "date",
     header: "Date",
+    meta: { width: 110, numeric: true },
     cell: ({ row }) => row.original.date.date,
   }),
   sampleColumn.accessor((row) => row.predictedDate.year, {
     id: "predicted",
     header: "Clock prediction",
+    meta: { width: 130, numeric: true },
     cell: ({ row }) => row.original.predictedDate.date,
   }),
   sampleColumn.accessor((row) => Math.abs(row.residualDays), {
     id: "residual",
     header: "Residual",
+    meta: { width: 100, numeric: true },
     cell: ({ row }) => formatSignedDays(row.original.residualDays),
   }),
-  sampleColumn.accessor((row) => (row.outlier ? "outlier" : "kept"), { id: "outlier", header: "Clock filter" }),
+  sampleColumn.accessor((row) => (row.outlier ? "outlier" : "kept"), {
+    id: "outlier",
+    header: "Clock filter",
+    meta: { width: 110 },
+  }),
 ]);
-
-const SAMPLE_NUMERIC = new Set(["date", "predicted", "residual"]);
 
 export function ClockResultsView({
   record,
@@ -96,7 +101,6 @@ export function ClockResultsView({
           columns={SAMPLE_COLUMNS}
           rows={samples}
           rowId={sampleKey}
-          numeric={SAMPLE_NUMERIC}
           initialSorting={RESIDUAL_SORT}
           rowClassName={sampleTone}
         />

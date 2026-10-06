@@ -20,14 +20,15 @@ const AMBIGUOUS_COLUMNS = ambiguousColumn.columns([
   ambiguousColumn.accessor((row) => row.display_position, {
     id: "position",
     header: "Position",
+    meta: { width: "1fr", minWidth: 96 },
     cell: ({ row }) => <AmbiguousPositionCell row={row.original} />,
   }),
-  ambiguousColumn.accessor((row) => row.branches, { id: "branches", header: "Branches" }),
+  ambiguousColumn.accessor((row) => row.branches, {
+    id: "branches",
+    header: "Branches",
+    meta: { width: 80, numeric: true },
+  }),
 ]);
-
-const TAXON_NUMERIC = new Set(["homoplasic", "drm", "ambiguous", "indels"]);
-
-const AMBIGUOUS_NUMERIC = new Set(["branches"]);
 
 const HOMOPLASIC_SORT = [{ id: "homoplasic", desc: true }];
 
@@ -107,7 +108,6 @@ const TaxaTable = memo(function TaxaTable({
       rows={taxa}
       rowId={taxonKey}
       initialSorting={HOMOPLASIC_SORT}
-      numeric={TAXON_NUMERIC}
     />
   );
 });
@@ -160,7 +160,6 @@ function AmbiguousPanel({
               rows={statistics.ambiguous_sites}
               rowId={ambiguousKey}
               initialSorting={BRANCHES_SORT}
-              numeric={AMBIGUOUS_NUMERIC}
             />
           </AmbiguousSelectionContext>
         </CollapsibleContent>
@@ -174,15 +173,37 @@ function taxonColumns(drmAnnotated: boolean, onSelect: (name: string) => void) {
     taxonColumn.accessor((row) => row.name, {
       id: "sample",
       header: "Sample",
+      meta: { width: "1fr", minWidth: 160 },
       cell: ({ getValue }) => <SampleButton name={getValue()} onSelect={onSelect} />,
     }),
-    taxonColumn.accessor((row) => row.homoplasic_mutations.length, { id: "homoplasic", header: "Homoplasic" }),
-    ...(drmAnnotated ? [taxonColumn.accessor((row) => row.drm_mutations ?? 0, { id: "drm", header: "DRM" })] : []),
-    taxonColumn.accessor((row) => row.ambiguous_changes, { id: "ambiguous", header: "Ambiguous changes" }),
-    taxonColumn.accessor((row) => row.recurrent_indels, { id: "indels", header: "Recurrent indels" }),
+    taxonColumn.accessor((row) => row.homoplasic_mutations.length, {
+      id: "homoplasic",
+      header: "Homoplasic",
+      meta: { width: 100, numeric: true },
+    }),
+    ...(drmAnnotated
+      ? [
+          taxonColumn.accessor((row) => row.drm_mutations ?? 0, {
+            id: "drm",
+            header: "DRM",
+            meta: { width: 70, numeric: true },
+          }),
+        ]
+      : []),
+    taxonColumn.accessor((row) => row.ambiguous_changes, {
+      id: "ambiguous",
+      header: "Ambiguous changes",
+      meta: { width: 140, numeric: true },
+    }),
+    taxonColumn.accessor((row) => row.recurrent_indels, {
+      id: "indels",
+      header: "Recurrent indels",
+      meta: { width: 130, numeric: true },
+    }),
     taxonColumn.accessor((row) => row.homoplasic_mutations.join(" "), {
       id: "mutations",
       header: "Mutations",
+      meta: { width: "2fr", minWidth: 200 },
       cell: ({ getValue }) => <span className="font-mono whitespace-normal">{getValue()}</span>,
     }),
   ]);

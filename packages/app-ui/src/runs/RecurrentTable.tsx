@@ -7,8 +7,6 @@ import { drmText } from "./homoplasy";
 
 const column = dataColumns<RecurrentMutation>();
 
-const NUMERIC = new Set(["branches", "terminal"]);
-
 const BRANCHES_SORT = [{ id: "branches", desc: true }];
 
 interface RecurrentSelection {
@@ -34,11 +32,6 @@ export function RecurrentTable({
   const columns = useMemo(() => recurrentColumns(drmAnnotated), [drmAnnotated]);
   const selection = useMemo(() => ({ pressed, onColor }), [onColor, pressed]);
 
-  const rowClassName = useCallback(
-    (row: RecurrentMutation) => (pressed.has(row.mutation) ? "bg-accent" : undefined),
-    [pressed],
-  );
-
   return (
     <RecurrentSelectionContext value={selection}>
       <DataTable
@@ -47,8 +40,7 @@ export function RecurrentTable({
         rows={rows}
         rowId={mutationKey}
         initialSorting={BRANCHES_SORT}
-        numeric={NUMERIC}
-        rowClassName={rowClassName}
+        rowClassName={pressedRowClass}
       />
     </RecurrentSelectionContext>
   );
@@ -107,14 +99,29 @@ function recurrentColumns(drmAnnotated: boolean) {
     column.accessor((row) => row.mutation, {
       id: "mutation",
       header: "Mutation",
+      meta: { width: "1fr", minWidth: 96 },
       cell: ({ row }) => <MutationCell row={row.original} />,
     }),
-    column.accessor((row) => row.branches, { id: "branches", header: "Branches" }),
-    column.accessor((row) => row.terminal_branches, { id: "terminal", header: "Terminal" }),
+    column.accessor((row) => row.branches, { id: "branches", header: "Branches", meta: { width: 80, numeric: true } }),
+    column.accessor((row) => row.terminal_branches, {
+      id: "terminal",
+      header: "Terminal",
+      meta: { width: 80, numeric: true },
+    }),
     ...(drmAnnotated
-      ? [column.accessor((row) => (row.drm === undefined ? "" : drmText(row.drm)), { id: "drm", header: "DRM" })]
+      ? [
+          column.accessor((row) => (row.drm === undefined ? "" : drmText(row.drm)), {
+            id: "drm",
+            header: "DRM",
+            meta: { width: "1fr", minWidth: 96 },
+          }),
+        ]
       : []),
   ]);
+}
+
+function pressedRowClass(): string {
+  return "has-aria-pressed:bg-accent";
 }
 
 function mutationKey(row: RecurrentMutation): string {

@@ -1,24 +1,52 @@
 import {
   createColumnHelper,
   createSortedRowModel,
+  metaHelper,
   rowSortingFeature,
   sortFns,
   tableFeatures,
   useTable,
   type ColumnDef,
   type RowData,
-  type Header,
   type SortingState,
 } from "@tanstack/react-table";
+import { useCallback, useMemo } from "react";
+import {
+  Cell,
+  Column,
+  Row,
+  Table,
+  TableBody,
+  TableHeader,
+  TableLayout,
+  Virtualizer,
+  type ColumnProps,
+  type SortDescriptor,
+  type SortDirection,
+} from "react-aria-components";
 import ArrowDown from "~icons/lucide/arrow-down";
 import ArrowUp from "~icons/lucide/arrow-up";
 import ArrowUpDown from "~icons/lucide/arrow-up-down";
 
-import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { sortDescriptor } from "./sortDescriptor";
 
-const FEATURES = tableFeatures({ rowSortingFeature, sortedRowModel: createSortedRowModel(), sortFns });
+interface DataColumnMeta {
+  width: NonNullable<ColumnProps["defaultWidth"]>;
+  minWidth?: NonNullable<ColumnProps["minWidth"]>;
+  numeric?: boolean;
+}
+
+const FEATURES = tableFeatures({
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
+  sortFns,
+  columnMeta: metaHelper<DataColumnMeta>(),
+});
+
+const LAYOUT = { headingHeight: 40, estimatedRowHeight: 41 };
+
+const DEFAULT_WIDTH = "1fr";
 
 export type DataFeatures = typeof FEATURES;
 
@@ -28,96 +56,112 @@ export function dataColumns<Row extends RowData>() {
   return createColumnHelper<DataFeatures, Row>();
 }
 
-export function DataTable<Row extends RowData>({
+export function DataTable<Data extends RowData>({
   columns,
   rows,
   rowId,
   initialSorting,
-  numeric,
   rowClassName,
   label,
 }: {
-  columns: ReadonlyArray<DataColumn<Row>>;
-  rows: readonly Row[];
-  rowId: (row: Row) => string;
+  columns: ReadonlyArray<DataColumn<Data>>;
+  rows: readonly Data[];
+  rowId: (row: Data) => string;
   initialSorting: SortingState;
-  numeric: ReadonlySet<string>;
-  rowClassName?: ((row: Row) => string | undefined) | undefined;
+  rowClassName?: ((row: Data) => string | undefined) | undefined;
   label: string;
 }) {
-  const table = useTable({
-    features: FEATURES,
-    columns,
-    data: rows,
-    getRowId: rowId,
-    initialState: { sorting: initialSorting },
-    enableMultiSort: false,
-  });
+  const options = useMemo(
+    () => ({
+      features: FEATURES,
+      columns,
+      data: rows,
+      getRowId: rowId,
+      initialState: { sorting: initialSorting },
+      enableMultiSort: false,
+    }),
+    [columns, initialSorting, rowId, rows],
+  );
+
+  const table = useTable(options);
+
+  const headers = table.getHeaderGroups().flatMap((group) => group.headers);
+  const items = table.getRowModel().rows;
+  const sort = sortDescriptor(table.state.sorting);
+
+  const dependencies = useMemo(() => [columns, rowClassName], [columns, rowClassName]);
+
+  const toggleSorting = useCallback(
+    (descriptor: SortDescriptor) => table.getColumn(String(descriptor.column))?.toggleSorting(),
+    [table],
+  );
 
   return (
-    <div className="max-h-[36rem] overflow-auto overscroll-contain">
-      <Table aria-label={label} className="text-xs">
-        <TableHeader className="bg-card sticky top-0 z-10">
-          {table.getHeaderGroups().map((group) => (
-            <TableRow key={group.id}>
-              {group.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  aria-sort={ariaSort(header)}
-                  className={cn(numeric.has(header.column.id) && "text-right")}
-                >
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    onClick={header.column.getToggleSortingHandler()}
-                    className="text-muted-foreground -mx-2 font-bold"
-                  >
-                    <table.FlexRender header={header} />
-                    <SortIcon header={header} />
-                  </Button>
-                </TableHead>
-              ))}
-            </TableRow>
+    <Virtualizer layout={TableLayout} layoutOptions={LAYOUT} shouldObserveItemSize>
+      <Table
+        aria-label={label}
+        {...(sort === undefined ? {} : { sortDescriptor: sort })}
+        onSortChange={toggleSorting}
+        className="max-h-[36rem] w-full overflow-auto overscroll-contain text-xs"
+      >
+        <TableHeader className="bg-card border-b">
+          {headers.map((header) => (
+            <Column
+              key={header.id}
+              id={header.column.id}
+              allowsSorting
+              defaultWidth={header.column.columnDef.meta?.width ?? DEFAULT_WIDTH}
+              minWidth={header.column.columnDef.meta?.minWidth ?? null}
+              className={cn(
+                "text-muted-foreground data-focus-visible:ring-ring data-hovered:text-foreground flex cursor-default items-center gap-1 px-2 font-bold outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                header.column.columnDef.meta?.numeric === true && "justify-end",
+              )}
+            >
+              {({ sortDirection }) => (
+                <>
+                  <table.FlexRender header={header} />
+                  <SortIcon direction={sortDirection} />
+                </>
+              )}
+            </Column>
           ))}
         </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id} className={rowClassName?.(row.original)}>
+        <TableBody items={items} dependencies={dependencies}>
+          {(row) => (
+            <Row
+              id={row.id}
+              className={cn(
+                "hover:bg-muted/50 data-focus-visible:ring-ring border-b outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                rowClassName?.(row.original),
+              )}
+            >
               {row.getAllCells().map((cell) => (
-                <TableCell key={cell.id} className={cn(numeric.has(cell.column.id) && "text-right")}>
+                <Cell
+                  key={cell.id}
+                  className={cn(
+                    "data-focus-visible:ring-ring flex items-center p-2 whitespace-nowrap outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                    cell.column.columnDef.meta?.numeric === true && "justify-end",
+                  )}
+                >
                   <table.FlexRender cell={cell} />
-                </TableCell>
+                </Cell>
               ))}
-            </TableRow>
-          ))}
+            </Row>
+          )}
         </TableBody>
       </Table>
-    </div>
+    </Virtualizer>
   );
 }
 
-function SortIcon<Row extends RowData>({ header }: { header: Header<DataFeatures, Row> }) {
-  const sorted = header.column.getIsSorted();
-
-  if (sorted === "asc") {
-    return <ArrowUp aria-hidden />;
+function SortIcon({ direction }: { direction: SortDirection | undefined }) {
+  if (direction === "ascending") {
+    return <ArrowUp aria-hidden className="size-3" />;
   }
 
-  if (sorted === "desc") {
-    return <ArrowDown aria-hidden />;
+  if (direction === "descending") {
+    return <ArrowDown aria-hidden className="size-3" />;
   }
 
-  return <ArrowUpDown aria-hidden className="opacity-40" />;
-}
-
-// oxlint-disable-next-line treetime/no-contract-enum-copy -- ARIA sort values; they equal values of the LadderizeArg enum by chance
-function ariaSort<Row extends RowData>(header: Header<DataFeatures, Row>): "ascending" | "descending" | "none" {
-  const sorted = header.column.getIsSorted();
-
-  if (sorted === "asc") {
-    return "ascending";
-  }
-
-  return sorted === "desc" ? "descending" : "none";
+  return <ArrowUpDown aria-hidden className="size-3 opacity-40" />;
 }

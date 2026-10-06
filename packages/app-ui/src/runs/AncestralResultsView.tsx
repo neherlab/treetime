@@ -16,13 +16,19 @@ const BRANCH_COLUMNS = branchColumn.columns([
   branchColumn.accessor((row) => row.name, {
     id: "branch",
     header: "Branch above",
+    meta: { width: "1fr", minWidth: 160 },
     cell: ({ row }) =>
       row.original.tips === 1 ? row.original.name : `${row.original.name} (${row.original.tips} samples)`,
   }),
-  branchColumn.accessor((row) => row.mutations.length, { id: "count", header: "Mutations" }),
+  branchColumn.accessor((row) => row.mutations.length, {
+    id: "count",
+    header: "Mutations",
+    meta: { width: 100, numeric: true },
+  }),
   branchColumn.accessor((row) => row.mutations.join(" "), {
     id: "list",
     header: "List",
+    meta: { width: "2fr", minWidth: 200 },
     cell: ({ getValue }) => <span className="font-mono whitespace-normal">{getValue()}</span>,
   }),
 ]);
@@ -30,13 +36,17 @@ const BRANCH_COLUMNS = branchColumn.columns([
 const siteColumn = dataColumns<RecurrentSite>();
 
 const SITE_COLUMNS = siteColumn.columns([
-  siteColumn.accessor((row) => row.position, { id: "position", header: "Position" }),
-  siteColumn.accessor((row) => row.branches, { id: "branches", header: "Branches" }),
+  siteColumn.accessor((row) => row.position, {
+    id: "position",
+    header: "Position",
+    meta: { width: "1fr", numeric: true },
+  }),
+  siteColumn.accessor((row) => row.branches, {
+    id: "branches",
+    header: "Branches",
+    meta: { width: "1fr", numeric: true },
+  }),
 ]);
-
-const BRANCH_NUMERIC = new Set(["count"]);
-
-const SITE_NUMERIC = new Set(["position", "branches"]);
 
 const COUNT_SORT = [{ id: "count", desc: true }];
 
@@ -82,7 +92,6 @@ export function AncestralResultsView({
             rows={branches}
             rowId={branchKey}
             initialSorting={COUNT_SORT}
-            numeric={BRANCH_NUMERIC}
           />
         </Panel>
         <Panel
@@ -102,7 +111,6 @@ export function AncestralResultsView({
             rows={sites}
             rowId={siteKey}
             initialSorting={BRANCHES_SORT}
-            numeric={SITE_NUMERIC}
           />
         </Panel>
       </div>
