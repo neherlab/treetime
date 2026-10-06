@@ -232,7 +232,18 @@ mod tests {
             .take(2)
             .collect::<Vec<_>>()
         ),
-        (_, SettingKind::Integer) => json!(default_of(spec).and_then(Value::as_u64).unwrap_or(0) + 3),
+        (_, SettingKind::Integer) => {
+          let changed = json!(default_of(spec).and_then(Value::as_u64).unwrap_or(0) + 3);
+          let below_minimum = changed
+            .as_f64()
+            .zip(spec.minimum)
+            .is_some_and(|(changed, minimum)| changed < minimum);
+          if below_minimum {
+            spec.examples.first().map(|example| example.0.clone()).unwrap()
+          } else {
+            changed
+          }
+        },
         (_, SettingKind::Number) => json!(default_of(spec).and_then(Value::as_f64).unwrap_or(0.0) + 0.5),
         (_, SettingKind::Text) => json!("x"),
         (_, SettingKind::List) => match spec.item_kind {

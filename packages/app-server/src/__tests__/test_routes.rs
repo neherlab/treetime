@@ -610,6 +610,7 @@ pub(crate) mod tests {
     use tokio_stream::StreamExt;
     use tokio_util::sync::CancellationToken;
     use tower::ServiceExt;
+    use treetime_grid::MaxGridPoints;
 
     pub(crate) struct SseEvent {
       pub id: Option<String>,
@@ -652,13 +653,31 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn app_with(max_upload_size: usize, shutdown: &CancellationToken, options: &WebOptions) -> TestApp {
+      app_from(max_upload_size, None, shutdown, options)
+    }
+
+    pub(crate) fn app_with_grid_limit(max_grid_points: MaxGridPoints) -> TestApp {
+      app_from(
+        DEFAULT_MAX_UPLOAD_SIZE,
+        Some(max_grid_points),
+        &CancellationToken::new(),
+        &WebOptions::default(),
+      )
+    }
+
+    fn app_from(
+      max_upload_size: usize,
+      max_grid_points: Option<MaxGridPoints>,
+      shutdown: &CancellationToken,
+      options: &WebOptions,
+    ) -> TestApp {
       let runs_dir = tempdir().unwrap();
       let router = create_router(
         ServerConfig {
           examples_dir: TestApp::examples_dir(),
           runs_dir: runs_dir.path().to_path_buf(),
           max_upload_size,
-          max_grid_points: None,
+          max_grid_points,
           shutdown: shutdown.clone(),
           settings: None,
         },

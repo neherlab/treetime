@@ -6,7 +6,7 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use serde_json::json;
+  use serde_json::{Value, json};
   use std::fs;
   use tempfile::tempdir;
 
@@ -48,6 +48,58 @@ mod tests {
     )
     .await;
     assert_eq!((400, json!("invalid_request")), (status, error["code"].clone()));
+  }
+
+  #[tokio::test]
+  async fn test_app_settings_routes_write_the_analysis_settings_to_the_settings_file() {
+    let local = local_app();
+    let body = json!({ "max_grid_points": 250000 });
+    let (status, analysis) = request(&local.app, "PUT", "/api/app-settings/analysis", Some(body.clone())).await;
+    let (_, settings) = request(&local.app, "GET", "/api/app-settings", None).await;
+    let expected_file = indoc! {r#"
+      analysis:
+        max_grid_points: 250000
+    "#};
+    assert_eq!(
+      (200, body.clone(), json!({ "analysis": body }), expected_file.to_owned()),
+      (
+        status,
+        analysis,
+        settings,
+        fs::read_to_string(local.dir.path().join("settings.yaml")).unwrap()
+      )
+    );
+  }
+
+  #[tokio::test]
+  async fn test_app_settings_routes_clear_the_analysis_settings() {
+    let local = local_app();
+    request(
+      &local.app,
+      "PUT",
+      "/api/app-settings/analysis",
+      Some(json!({ "max_grid_points": 250000 })),
+    )
+    .await;
+    let actual = request(&local.app, "PUT", "/api/app-settings/analysis", Some(json!({}))).await;
+    let (_, settings) = request(&local.app, "GET", "/api/app-settings", None).await;
+    assert_eq!(((200, json!({})), json!({})), (actual, settings));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_minimum(json!({ "max_grid_points": 999 }))]
+  #[case::not_a_number( json!({ "max_grid_points": "many" }))]
+  #[case::unknown_key(  json!({ "grid": 1000 }))]
+  #[trace]
+  #[tokio::test]
+  async fn test_app_settings_routes_refuse_invalid_analysis_settings(#[case] body: Value) {
+    let local = local_app();
+    let (status, error) = request(&local.app, "PUT", "/api/app-settings/analysis", Some(body)).await;
+    assert_eq!(
+      (400, json!("invalid_request"), false),
+      (status, error["code"].clone(), local.dir.path().join("settings.yaml").exists())
+    );
   }
 
   #[tokio::test]
@@ -125,6 +177,7 @@ mod tests {
   #[rstest]
   #[case::settings(          "GET", "/api/app-settings")]
   #[case::ui(                "PUT", "/api/app-settings/ui")]
+  #[case::analysis(          "PUT", "/api/app-settings/analysis")]
   #[case::workspace(         "GET", "/api/workspace")]
   #[case::workspace_update(  "PUT", "/api/workspace")]
   #[trace]

@@ -13,6 +13,7 @@ mod test_progress;
 mod test_rtt_chart;
 mod test_run_checks;
 mod test_run_config;
+mod test_run_limits;
 mod test_schema_annotations;
 mod test_setting_catalog;
 mod test_setting_choices;

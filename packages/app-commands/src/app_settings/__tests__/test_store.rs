@@ -155,11 +155,11 @@ mod tests {
     let path = dir.path().join(SETTINGS_YAML);
     fs::write(&path, "theme: dark\n").unwrap();
     let expected = indoc! {"
-      error: line 1 column 1: unknown field `theme`, expected one of paths, ui
+      error: line 1 column 1: unknown field `theme`, expected one of paths, ui, analysis
        --> <input>:1:1
         |
       1 | theme: dark
-        | ^ unknown field `theme`, expected one of paths, ui"};
+        | ^ unknown field `theme`, expected one of paths, ui, analysis"};
     assert_error!(
       AppSettingsStore::open(dir.path()).unwrap().read(),
       format!("When reading the settings file '{}': {expected}", path.display())

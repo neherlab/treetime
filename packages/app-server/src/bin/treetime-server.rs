@@ -161,3 +161,39 @@ async fn shutdown_signal() {
   }
   eprintln!("TreeTime server shutting down");
 }
+
+#[cfg(test)]
+mod tests {
+  use super::ServerArgs;
+  use clap::Parser;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::default(&[],                                1_000_000)]
+  #[case::minimum(&["--max-grid-points", "1000"],     1_000)]
+  #[case::custom( &["--max-grid-points", "250000"],   250_000)]
+  #[trace]
+  fn test_treetime_server_max_grid_points(#[case] flag: &[&str], #[case] expected: usize) {
+    let args = ServerArgs::try_parse_from(server_args(flag)).unwrap();
+    assert_eq!(expected, args.max_grid_points.get());
+  }
+
+  #[test]
+  fn test_treetime_server_max_grid_points_below_minimum_fails() {
+    let error = ServerArgs::try_parse_from(server_args(&["--max-grid-points", "999"])).unwrap_err();
+    assert_eq!(
+      "error: invalid value '999' for '--max-grid-points <MAX_GRID_POINTS>': the grid point limit must be at least 1000 points, got 999\n\nFor more information, try '--help'.\n",
+      error.to_string()
+    );
+  }
+
+  fn server_args<'a>(extra: &[&'a str]) -> Vec<&'a str> {
+    [
+      &["treetime-server", "--examples-dir", "examples", "--runs-dir", "runs"],
+      extra,
+    ]
+    .concat()
+  }
+}

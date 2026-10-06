@@ -3,6 +3,7 @@ mod test_app_settings_routes;
 mod test_confine;
 mod test_downloads;
 mod test_examples_routes;
+mod test_grid_point_limit_routes;
 mod test_openapi;
 mod test_openapi_contract;
 mod test_routes;
