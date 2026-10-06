@@ -1,3 +1,4 @@
+use crate::assign_node_names::node_name_or_key;
 use crate::edge::GraphEdgeKey;
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
@@ -12,7 +13,7 @@ use treetime_utils::{make_error, make_report};
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TopologyOrderSpec {
   pub preset: TopologyOrderPreset,
-  pub target_order: Vec<String>,
+  pub target_order: BTreeMap<GraphNodeKey, usize>,
   pub target_aggregate: TopologyOrderTargetAggregate,
 }
 
@@ -20,7 +21,7 @@ impl Default for TopologyOrderSpec {
   fn default() -> Self {
     Self {
       preset: TopologyOrderPreset::DescendantCount,
-      target_order: vec![],
+      target_order: BTreeMap::new(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     }
   }
@@ -269,41 +270,22 @@ fn compute_labels(
   Ok(labels)
 }
 
-#[allow(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn compute_target_scores(
   graph: &Graph,
   postorder: &[GraphNodeKey],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  target_order: &[String],
+  target_order: &BTreeMap<GraphNodeKey, usize>,
   aggregate: TopologyOrderTargetAggregate,
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
   if target_order.is_empty() {
     return make_error!("When ordering topology: target-order mode requires a non-empty target order");
   }
 
-  let position_of: BTreeMap<&str, usize> = target_order
-    .iter()
-    .enumerate()
-    .map(|(i, label)| (label.as_str(), i))
-    .collect();
-
-  if position_of.len() != target_order.len() {
-    let duplicate = target_order
-      .iter()
-      .duplicates()
-      .next()
-      .expect("target-order length mismatch guarantees a duplicate");
-    return make_error!("When ordering topology: target order contains duplicate leaf label '{duplicate}'");
-  }
-
-  validate_target_order(graph, names, &position_of)?;
+  validate_target_order(graph, names, target_order)?;
 
   match aggregate {
-    TopologyOrderTargetAggregate::Mean => compute_target_scores_mean(graph, postorder, names, &position_of),
-    TopologyOrderTargetAggregate::Median => compute_target_scores_median(graph, postorder, names, &position_of),
+    TopologyOrderTargetAggregate::Mean => compute_target_scores_mean(graph, postorder, target_order),
+    TopologyOrderTargetAggregate::Median => compute_target_scores_median(graph, postorder, target_order),
   }
 }
 
@@ -322,20 +304,14 @@ pub enum TopologyOrderTargetAggregate {
 fn compute_target_scores_mean(
   graph: &Graph,
   postorder: &[GraphNodeKey],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  position_of: &BTreeMap<&str, usize>,
+  target_order: &BTreeMap<GraphNodeKey, usize>,
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
   let mut scores: BTreeMap<GraphNodeKey, TargetScore> = BTreeMap::new();
   for &node_key in postorder {
     let node = graph.get_node(node_key).unwrap();
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let score = if child_keys.is_empty() {
-      let name = names[&node_key]
-        .clone()
-        .ok_or_else(|| make_report!("When ordering topology by target order: leaf node {node_key} has no name"))?;
-      let pos = *position_of.get(name.as_str()).ok_or_else(|| {
-        make_report!("When ordering topology by target order: leaf '{name}' is absent from target order")
-      })?;
+      let pos = target_position(target_order, node_key)?;
       TargetScore {
         numerator: pos,
         denominator: 1,
@@ -358,8 +334,7 @@ fn compute_target_scores_mean(
 fn compute_target_scores_median(
   graph: &Graph,
   postorder: &[GraphNodeKey],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  position_of: &BTreeMap<&str, usize>,
+  target_order: &BTreeMap<GraphNodeKey, usize>,
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
   let mut positions: BTreeMap<GraphNodeKey, Vec<usize>> = BTreeMap::new();
   let mut scores = BTreeMap::new();
@@ -367,13 +342,7 @@ fn compute_target_scores_median(
     let node = graph.get_node(node_key).unwrap();
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let pos = if child_keys.is_empty() {
-      let name = names[&node_key]
-        .clone()
-        .ok_or_else(|| make_report!("When ordering topology by target order: leaf node {node_key} has no name"))?;
-      let p = *position_of.get(name.as_str()).ok_or_else(|| {
-        make_report!("When ordering topology by target order: leaf '{name}' is absent from target order")
-      })?;
-      vec![p]
+      vec![target_position(target_order, node_key)?]
     } else {
       child_keys
         .iter()
@@ -431,24 +400,26 @@ impl PartialOrd for TargetScore {
 fn validate_target_order(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  position_of: &BTreeMap<&str, usize>,
+  target_order: &BTreeMap<GraphNodeKey, usize>,
 ) -> Result<(), Report> {
-  let mut final_labels = BTreeMap::new();
-  for leaf in graph.get_leaves() {
-    let label = names[&leaf.key()]
-      .clone()
-      .ok_or_else(|| make_report!("When validating target order: leaf node {} has no name", leaf.key()))?;
-    if !position_of.contains_key(label.as_str()) {
-      return make_error!("When validating target order: leaf '{label}' is absent from target order");
-    }
-    if let Some(previous_key) = final_labels.insert(label.clone(), leaf.key()) {
-      return make_error!(
-        "When validating target order: final leaf label '{label}' is duplicated by nodes {previous_key} and {}",
-        leaf.key()
-      );
-    }
+  match graph
+    .get_leaves()
+    .map(|leaf| leaf.key())
+    .find(|key| !target_order.contains_key(key))
+  {
+    Some(key) => make_error!(
+      "When validating target order: leaf '{}' is absent from target order",
+      node_name_or_key(key, names[&key].as_deref())
+    ),
+    None => Ok(()),
   }
-  Ok(())
+}
+
+fn target_position(target_order: &BTreeMap<GraphNodeKey, usize>, key: GraphNodeKey) -> Result<usize, Report> {
+  target_order
+    .get(&key)
+    .copied()
+    .ok_or_else(|| make_report!("When ordering topology by target order: leaf {key} is absent from target order"))
 }
 
 fn postorder_keys(graph: &Graph) -> Result<Vec<GraphNodeKey>, Report> {

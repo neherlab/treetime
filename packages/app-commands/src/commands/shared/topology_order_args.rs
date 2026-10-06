@@ -2,6 +2,7 @@ use crate::commands::shared::leaf_order::leaf_order;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -10,6 +11,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::pair_by_name::pair_by_name;
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
 use treetime_io::name_list::name_list_read_file;
 use treetime_io::nwk::nwk_read_file;
@@ -52,7 +54,7 @@ impl TopologyOrderArgs {
     &self,
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    input_order: Option<Vec<String>>,
+    input_order: Option<Vec<GraphNodeKey>>,
   ) -> Result<TopologyOrderSpec, Report> {
     self.validate()?;
 
@@ -70,7 +72,7 @@ impl TopologyOrderArgs {
     let target_order = if preset.is_target_order() {
       self.target_order(graph, names, input_order)?
     } else {
-      vec![]
+      BTreeMap::new()
     };
 
     Ok(TopologyOrderSpec {
@@ -120,13 +122,22 @@ impl TopologyOrderArgs {
     &self,
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
-    input_order: Option<Vec<String>>,
-  ) -> Result<Vec<String>, Report> {
-    match self
+    input_order: Option<Vec<GraphNodeKey>>,
+  ) -> Result<BTreeMap<GraphNodeKey, usize>, Report> {
+    let target_names = match self
       .topology_order_target_source
       .unwrap_or(TopologyOrderTargetSourceArg::Input)
     {
-      TopologyOrderTargetSourceArg::Input => input_order.map_or_else(|| leaf_order(graph, names), Ok),
+      TopologyOrderTargetSourceArg::Input => {
+        let order = input_order.unwrap_or_else(|| leaf_order(graph));
+        return Ok(
+          order
+            .into_iter()
+            .enumerate()
+            .map(|(position, key)| (key, position))
+            .collect(),
+        );
+      },
       TopologyOrderTargetSourceArg::ReferenceTopology => {
         let path = self
           .topology_order_target_file
@@ -134,18 +145,33 @@ impl TopologyOrderArgs {
           .ok_or_else(|| make_report!("--topology-order-target-file is required for reference-topology"))?;
         let nwk_parsed = nwk_read_file(path).wrap_err("When reading target reference topology")?;
         let ref_names = nwk_parsed.names();
-        let ref_graph = nwk_parsed.graph;
-        leaf_order(&ref_graph, &ref_names)
+        leaf_order(&nwk_parsed.graph)
+          .into_iter()
+          .filter_map(|key| ref_names[&key].clone())
+          .collect_vec()
       },
       TopologyOrderTargetSourceArg::List => {
         let path = self
           .topology_order_target_file
           .as_ref()
           .ok_or_else(|| make_report!("--topology-order-target-file is required for list"))?;
-        name_list_read_file(path, b'\n').wrap_err("When reading the topology order target list")
+        name_list_read_file(path, b'\n').wrap_err("When reading the topology order target list")?
       },
-    }
+    };
+    Ok(target_positions(target_names, graph, names))
   }
+}
+
+pub(crate) fn target_positions(
+  target_names: Vec<String>,
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+) -> BTreeMap<GraphNodeKey, usize> {
+  let positions = target_names
+    .into_iter()
+    .enumerate()
+    .map(|(position, name)| (name, position));
+  pair_by_name(graph.get_leaves().map(|leaf| leaf.key()), names, positions).by_node
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]

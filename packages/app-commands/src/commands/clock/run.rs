@@ -41,7 +41,7 @@ pub fn run_clock(
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
-  let input_order = leaf_order(&graph, &names)?;
+  let input_order = leaf_order(&graph);
 
   let dates = read_input_dates(
     clock_args.metadata(),

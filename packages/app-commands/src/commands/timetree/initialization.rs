@@ -20,7 +20,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
-  let input_leaf_order = leaf_order(&graph, &names)?;
+  let input_leaf_order = leaf_order(&graph);
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
@@ -70,7 +70,7 @@ pub(crate) struct InputData {
   pub graph: Graph,
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub input_leaf_order: Vec<String>,
+  pub input_leaf_order: Vec<GraphNodeKey>,
   pub alphabet: Alphabet,
   pub sequences: Option<PairedAlignment>,
   pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,

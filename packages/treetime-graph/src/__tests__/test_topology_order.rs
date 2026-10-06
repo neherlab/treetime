@@ -3,12 +3,13 @@ mod tests {
   use crate::edge::GraphEdgeKey;
   use crate::graph::Graph;
   use crate::node::GraphNodeKey;
+  use crate::pair_by_name::pair_by_name;
   use crate::topology_order::*;
   use eyre::Report;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_utils::make_report;
+  use treetime_utils::{assert_error, make_report};
 
   #[test]
   fn topology_order_descendant_count_sorts_children_ascending() -> Result<(), Report> {
@@ -93,10 +94,7 @@ mod tests {
     let (mut graph, names) = fixture_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
-      target_order: vec!["A", "D", "E", "F", "B", "C"]
-        .into_iter()
-        .map(str::to_owned)
-        .collect(),
+      target_order: target_positions(&graph, &names, &["A", "D", "E", "F", "B", "C"]),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
     let branch_lengths = edge_branch_lengths(&graph);
@@ -260,10 +258,7 @@ mod tests {
     let (mut graph, names) = fixture_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrderReverse,
-      target_order: vec!["A", "D", "E", "F", "B", "C"]
-        .into_iter()
-        .map(str::to_owned)
-        .collect(),
+      target_order: target_positions(&graph, &names, &["A", "D", "E", "F", "B", "C"]),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
     let branch_lengths = edge_branch_lengths(&graph);
@@ -280,7 +275,7 @@ mod tests {
     let (mut graph, names) = fixture_tree().unwrap();
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
-      target_order: vec![],
+      target_order: BTreeMap::new(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
     let branch_lengths = edge_branch_lengths(&graph);
@@ -289,37 +284,42 @@ mod tests {
   }
 
   #[test]
-  fn topology_order_target_order_rejects_duplicate_ranking_labels() {
-    let (mut graph, names) = fixture_tree().unwrap();
+  fn topology_order_target_order_gives_leaves_that_share_a_name_its_position() -> Result<(), Report> {
+    let (mut graph, mut names) = fixture_tree()?;
+    let node_b = find_node(&names, "B")?;
+    let node_c = find_node(&names, "C")?;
+    names.insert(node_c, Some("B".to_owned()));
+    let target_order = target_positions(&graph, &names, &["D", "E", "F", "A", "B"]);
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
-      target_order: vec!["A", "B", "B", "C", "D", "E", "F"]
-        .into_iter()
-        .map(str::to_owned)
-        .collect(),
+      target_order: target_order.clone(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
-    let branch_lengths = edge_branch_lengths(&graph);
-    let error = spec.apply(&mut graph, &names, &branch_lengths).unwrap_err();
 
-    assert!(error.to_string().contains("duplicate leaf label 'B'"));
+    let branch_lengths = edge_branch_lengths(&graph);
+    spec.apply(&mut graph, &names, &branch_lengths)?;
+
+    assert_eq!((4, 4), (target_order[&node_b], target_order[&node_c]));
+    assert_eq!(vec!["DEF", "A", "BC"], child_names(&graph, &names, "root")?);
+    Ok(())
   }
 
   #[test]
-  fn topology_order_target_order_rejects_duplicate_final_leaf_labels() -> Result<(), Report> {
-    let (mut graph, mut names) = fixture_tree()?;
-    let node_c = find_node(&names, "C")?;
-    names.insert(node_c, Some("B".to_owned()));
+  fn topology_order_target_order_rejects_a_leaf_without_a_position() -> Result<(), Report> {
+    let (mut graph, names) = fixture_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
-      target_order: vec!["A", "B", "D", "E", "F"].into_iter().map(str::to_owned).collect(),
+      target_order: target_positions(&graph, &names, &["A", "B", "D", "E", "F"]),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
 
     let branch_lengths = edge_branch_lengths(&graph);
-    let error = spec.apply(&mut graph, &names, &branch_lengths).unwrap_err();
+    let result = spec.apply(&mut graph, &names, &branch_lengths);
 
-    assert!(error.to_string().contains("final leaf label 'B' is duplicated"));
+    assert_error!(
+      result,
+      "When validating target order: leaf 'C' is absent from target order"
+    );
     Ok(())
   }
 
@@ -328,10 +328,7 @@ mod tests {
     let (mut graph, names) = fixture_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
-      target_order: vec!["removed", "A", "D", "E", "F", "B", "C"]
-        .into_iter()
-        .map(str::to_owned)
-        .collect(),
+      target_order: target_positions(&graph, &names, &["removed", "A", "D", "E", "F", "B", "C"]),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
     let branch_lengths = edge_branch_lengths(&graph);
@@ -356,14 +353,27 @@ mod tests {
     Ok(())
   }
 
+  fn target_positions(
+    graph: &Graph,
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    labels: &[&str],
+  ) -> BTreeMap<GraphNodeKey, usize> {
+    let positions = labels
+      .iter()
+      .enumerate()
+      .map(|(position, label)| ((*label).to_owned(), position));
+    pair_by_name(graph.get_leaves().map(|leaf| leaf.key()), names, positions).by_node
+  }
+
   fn apply_skewed_target_order(target_aggregate: TopologyOrderTargetAggregate) -> Result<Vec<String>, Report> {
     let (mut graph, names) = fixture_tree()?;
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
-      target_order: vec!["D", "E", "B", "C", "pad1", "pad2", "pad3", "pad4", "F", "A"]
-        .into_iter()
-        .map(str::to_owned)
-        .collect(),
+      target_order: target_positions(
+        &graph,
+        &names,
+        &["D", "E", "B", "C", "pad1", "pad2", "pad3", "pad4", "F", "A"],
+      ),
       target_aggregate,
     };
     let branch_lengths = edge_branch_lengths(&graph);

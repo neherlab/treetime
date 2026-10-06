@@ -255,7 +255,7 @@ pub(crate) fn reconstructed_nuc_fasta_path(
 
 struct TreeOutputInputs {
   alphabet: Alphabet,
-  input_leaf_order: Vec<String>,
+  input_leaf_order: Vec<GraphNodeKey>,
   filter: UnknownMutationFilter,
   mutation_units: bool,
 }
