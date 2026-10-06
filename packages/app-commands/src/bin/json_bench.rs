@@ -7,6 +7,7 @@ use std::env;
 use std::fs::{self, File};
 use std::hint::black_box;
 use std::io::{BufReader, BufWriter, Read, Write};
+use std::mem::ManuallyDrop;
 use std::thread;
 use std::time::{Duration, Instant};
 use treetime_io::auspice_types::AuspiceTree;
@@ -17,7 +18,9 @@ use treetime_utils::io::json::{JsonPretty, json_read, json_read_file, json_read_
 fn main() -> Result<(), Report> {
   let args = env::args().skip(1).collect::<Vec<_>>();
   let [variants, targets, repeats, files @ ..] = args.as_slice() else {
-    return Err(eyre!("usage: json_bench <variants,..> <targets,..> <repeats> <files..>"));
+    return Err(eyre!(
+      "usage: json_bench <variants,..> <targets,..> <repeats> <files..>"
+    ));
   };
   let repeats: usize = repeats.parse()?;
   let stack_size: usize = env::var("JSON_BENCH_STACK").map_or(Ok(2 * 1024 * 1024), |s| s.parse())?;
@@ -34,7 +37,7 @@ fn main() -> Result<(), Report> {
             .stack_size(stack_size)
             .spawn(move || measure(&v, &t, &f).map_err(|e| format!("{e:#}")))?
             .join()
-            .map_err(|_| eyre!("thread panicked"))?;
+            .map_err(|panic| eyre!("thread panicked: {panic:?}"))?;
           match elapsed {
             Ok(elapsed) => best = best.min(elapsed),
             Err(error) => println!("{variant:<14} {target:<8} error: {error}"),
@@ -72,7 +75,10 @@ fn measure_typed<T: DeserializeOwned>(variant: &str, file: &str) -> Result<Durat
     "buf-stack" => Some(json_read(BufReader::with_capacity(256 * 1024, File::open(file)?))?),
     "bufdecomp" => {
       let file_reader = BufReader::with_capacity(256 * 1024, File::open(file)?);
-      Some(json_read(BufReader::with_capacity(256 * 1024, Decompressor::from_path(file_reader, file)?))?)
+      Some(json_read(BufReader::with_capacity(
+        256 * 1024,
+        Decompressor::from_path(file_reader, file)?,
+      ))?)
     },
     "buf-nostack" => Some(read_nostack(BufReader::with_capacity(256 * 1024, File::open(file)?))?),
     "mem-ioread" => Some(json_read(fs::read(file)?.as_slice())?),
@@ -90,7 +96,11 @@ fn measure_typed<T: DeserializeOwned>(variant: &str, file: &str) -> Result<Durat
       None
     },
     "bytes-dyn" => {
-      black_box(open_file_or_stdin(file)?.bytes().try_fold(0_u64, |n, b| b.map(|b| n + u64::from(b)))?);
+      black_box(
+        open_file_or_stdin(file)?
+          .bytes()
+          .try_fold(0_u64, |n, b| b.map(|b| n + u64::from(b)))?,
+      );
       None
     },
     "bytes-buf" => {
@@ -102,7 +112,7 @@ fn measure_typed<T: DeserializeOwned>(variant: &str, file: &str) -> Result<Durat
   };
   let elapsed = start.elapsed();
   if env::var_os("JSON_BENCH_FORGET").is_some() {
-    std::mem::forget(black_box(value));
+    black_box(ManuallyDrop::new(value));
   } else {
     drop(black_box(value));
   }
@@ -141,11 +151,11 @@ fn measure_write<T: DeserializeOwned + Serialize>(mode: &str, file: &str) -> Res
   Ok(elapsed)
 }
 
-struct ByteCounter(u64);
+struct ByteCounter(usize);
 
 impl Write for ByteCounter {
   fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-    self.0 += buf.len() as u64;
+    self.0 += buf.len();
     Ok(buf.len())
   }
 
