@@ -8,9 +8,9 @@ mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
-  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
   use crate::test_utils::dense_reconstruction_mut;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
@@ -124,7 +124,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
-      let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+      let partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
       let reconstruction =
         MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
 

@@ -5,8 +5,8 @@ mod tests {
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::{Representation, build_marginal_partition};
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::overlay::SeqOverlay;
+  use crate::test_utils::leaf_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::convergence::sequence_changes::{
     AncestralStateSnapshot, capture_ancestral_states, count_sequence_changes,
@@ -137,7 +137,7 @@ mod tests {
         &graph,
         0,
         alphabet,
-        node_seq_inputs(&graph, &names, aln),
+        leaf_seq_inputs(&graph, &names, aln),
         &branch_lengths,
         &NoopProgress,
       )?;

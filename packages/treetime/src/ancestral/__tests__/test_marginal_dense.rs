@@ -9,7 +9,7 @@ mod tests {
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::partition::marginal::sample::SampleMode;
   use crate::pretty_assert_ulps_eq;
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{emitted_sequences_by_name, internal_node_keys};
   use eyre::Report;
   use indoc::indoc;
@@ -62,7 +62,7 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, DenseReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(0, alphabet, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
+    let partition = PartitionMarginalDense::new(0, alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();

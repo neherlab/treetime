@@ -7,7 +7,9 @@ mod tests {
   use crate::optimize::params::BranchLengthMode;
   use crate::progress::NoopProgress;
   use crate::seq::sink::SeqSink;
-  use crate::test_utils::{RecordingSeqSink, dates_by_node, find_node_key_by_name, marginal_timetree_params};
+  use crate::test_utils::{
+    RecordingSeqSink, dates_by_node, find_node_key_by_name, leaf_seq_inputs, marginal_timetree_params,
+  };
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
   use eyre::Report;
@@ -314,14 +316,15 @@ mod tests {
       with_alignment: bool,
     ) -> Result<TimetreeInput, Report> {
       let alphabet = Alphabet::default();
+      let nwk_parsed = nwk_read(newick.as_bytes())?;
+      let names = nwk_parsed.names();
       let sequences = if with_alignment {
         let records = fasta_read_file(zika_path("aln.fasta.xz"), &alphabet)?;
-        Some(records.into_iter().map(AlignmentRecord::from).collect())
+        let records = records.into_iter().map(AlignmentRecord::from).collect();
+        Some(leaf_seq_inputs(&nwk_parsed.graph, &names, records))
       } else {
         None
       };
-      let nwk_parsed = nwk_read(newick.as_bytes())?;
-      let names = nwk_parsed.names();
       let dates = dates_by_node(dates, &nwk_parsed.graph, &names);
       let input = TimetreeInput {
         graph: nwk_parsed.graph,

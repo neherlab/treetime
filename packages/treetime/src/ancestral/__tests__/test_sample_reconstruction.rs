@@ -86,7 +86,7 @@ mod tests {
     use crate::partition::fitch::passes::create_fitch_partition;
     use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
     use crate::partition::marginal::sample::SampleMode;
-    use crate::seq::alignment::node_seq_inputs;
+    use crate::test_utils::leaf_seq_inputs;
     use crate::test_utils::{emitted_sequences_by_name, internal_node_keys};
     use eyre::{OptionExt, Report};
     use indoc::indoc;
@@ -148,7 +148,7 @@ mod tests {
       let graph: Graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
-      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), node_seq_inputs(&graph, &names, aln))?;
+      let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), leaf_seq_inputs(&graph, &names, aln))?;
       let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
       let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
         partition,

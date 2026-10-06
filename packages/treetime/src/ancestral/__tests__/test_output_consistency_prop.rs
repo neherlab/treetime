@@ -2,14 +2,13 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::ancestral::__tests__::prop_generators::input::{MarginalTestInput, arb_marginal_input_small};
-  use crate::ancestral::mask::create_mask;
   use crate::ancestral::params::{AncestralParams, MethodAncestral};
   use crate::ancestral::pipeline::{AncestralOutput, run};
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
+  use crate::seq::alignment::{AncestralInput, EdgeSeqInput, pair_leaf_sequences};
   use crate::seq::mutation::MutationEvent;
   use crate::test_utils::RecordingSeqSink;
   use proptest::prelude::*;
@@ -90,9 +89,10 @@ mod tests {
       let names = nwk_parsed.names();
       let alphabet = Alphabet::default();
       let alignment: Vec<AlignmentRecord> = input.alignment.clone();
-      let mask = create_mask(&alignment, get_common_length(&alignment)?, &alphabet);
+      let sequences = pair_leaf_sequences(&nwk_parsed.graph, &names, alignment).sequences;
+      let mask = sequences.mask(sequences.common_length()?, &alphabet);
       let ancestral_input = AncestralInput {
-        nodes: node_seq_inputs(&nwk_parsed.graph, &names, alignment),
+        nodes: sequences.nodes,
         edges: nwk_parsed
           .branch_lengths
           .into_iter()

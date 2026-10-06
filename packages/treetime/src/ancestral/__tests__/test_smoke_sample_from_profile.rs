@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::ancestral::attach::complete_alignment_for_leaves;
-  use crate::ancestral::mask::create_mask;
+
   use crate::ancestral::params::AncestralParams;
   use crate::ancestral::params::MethodAncestral;
   use crate::ancestral::pipeline;
@@ -10,9 +9,10 @@ mod tests {
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::get_common_length;
-  use crate::seq::alignment::{AncestralInput, EdgeSeqInput, node_seq_inputs};
+
+  use crate::seq::alignment::{AncestralInput, EdgeSeqInput};
   use crate::test_utils::RecordingSeqSink;
+  use crate::test_utils::{CompletedSequences, complete_leaf_sequences};
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
@@ -62,12 +62,10 @@ mod tests {
       sample_from_profile: SampleMode::Root,
     };
     let names = parse.names();
-    let sequences =
-      complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names, &NoopProgress).unwrap();
-    let alignment_length = get_common_length(&sequences).unwrap();
-    let mask = create_mask(&sequences, alignment_length, &alphabet);
+    let CompletedSequences { nodes, mask } =
+      complete_leaf_sequences(&parse.graph, &names, sequences, &alphabet).unwrap();
     let input = AncestralInput {
-      nodes: node_seq_inputs(&parse.graph, &names, sequences),
+      nodes,
       edges: parse
         .branch_lengths
         .into_iter()
@@ -123,11 +121,9 @@ mod tests {
         sample_from_profile: mode,
       };
       let names = parse.names();
-      let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names, &NoopProgress)?;
-      let alignment_length = get_common_length(&sequences)?;
-      let mask = create_mask(&sequences, alignment_length, &alphabet);
+      let CompletedSequences { nodes, mask } = complete_leaf_sequences(&parse.graph, &names, sequences, &alphabet)?;
       let input = AncestralInput {
-        nodes: node_seq_inputs(&parse.graph, &names, sequences),
+        nodes,
         edges: parse
           .branch_lengths
           .into_iter()

@@ -6,6 +6,7 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
   use crate::progress::NoopProgress;
+  use crate::test_utils::leaf_seq_inputs;
   use approx::assert_ulps_eq;
   use eyre::Report;
   use std::path::Path;
@@ -33,6 +34,7 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
+    let sequences = leaf_seq_inputs(&graph, &names, sequences);
 
     let params = OptimizeParams {
       model: GtrModelName::Infer,

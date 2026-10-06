@@ -7,7 +7,7 @@ mod tests {
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::pretty_assert_abs_diff_eq;
   use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node};
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{NUC_ALPHABET, find_node_key_by_name};
   use eyre::Report;
   use indoc::indoc;
@@ -44,7 +44,7 @@ mod tests {
       0,
       alphabet.clone(),
       &graph,
-      &node_seq_inputs(&graph, &names, aln.clone()),
+      &leaf_seq_inputs(&graph, &names, aln.clone()),
     )?;
     let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr.clone()));
     let (reconstruction, log_lh_before) =
@@ -62,7 +62,7 @@ mod tests {
       .apply_reroot(&reroot)?
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    let fresh_partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+    let fresh_partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
     let (_, log_lh_fresh) = DenseReconstruction::seeded(fresh_partition, gtr)
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     assert!(reroot.edge_merge.is_some(), "the old root is merged away");

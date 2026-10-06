@@ -7,7 +7,7 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::partition::marginal::sample::SampleMode;
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{emitted_sequences_by_name, node_keys};
   use eyre::Report;
   use indoc::indoc;
@@ -128,7 +128,7 @@ mod tests {
       graph,
       0,
       Alphabet::default(),
-      node_seq_inputs(graph, names, aln.to_vec()),
+      leaf_seq_inputs(graph, names, aln.to_vec()),
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
@@ -155,7 +155,7 @@ mod tests {
       0,
       Alphabet::default(),
       graph,
-      &node_seq_inputs(graph, names, aln.to_vec()),
+      &leaf_seq_inputs(graph, names, aln.to_vec()),
     )?;
     let recon = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;

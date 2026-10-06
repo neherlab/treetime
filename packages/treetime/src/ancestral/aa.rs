@@ -8,7 +8,7 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::Representation;
 use crate::partition::marginal::sample::SampleMode;
 use crate::progress::{LogSink, NoopProgress};
-use crate::seq::alignment::{get_common_length, node_seq_inputs};
+use crate::seq::alignment::LeafSequences;
 use crate::seq::mutation::{MutationEvent, MutationTrack, SequenceMutations, Sub};
 use crate::seq::sink::SeqSink;
 use crate::{make_error, make_internal_report};
@@ -18,13 +18,12 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{AlignmentRecord, AsciiChar, Seq};
+use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::sync::random::get_random_number_generator;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 pub fn reconstruct_aa(
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   params: &AaParams,
   cdses: Vec<CdsInput>,
@@ -49,10 +48,19 @@ pub fn reconstruct_aa(
       annotation,
       reference_override,
     } = cds;
-    let sequences = complete_alignment_for_leaves(graph, sequences, &alphabet, params.ignore_missing_alns, names, log)?;
-    validate_cds_length(&name, annotation.as_ref(), get_common_length(&sequences)?)?;
+    let alignment_length = sequences.common_length()?;
+    let LeafSequences { mut nodes, .. } = sequences;
+    complete_alignment_for_leaves(
+      graph,
+      &mut nodes,
+      alignment_length,
+      &alphabet,
+      params.ignore_missing_alns,
+      log,
+    )?;
+    validate_cds_length(&name, annotation.as_ref(), alignment_length)?;
     let unknown = alphabet.unknown();
-    let node_inputs = node_seq_inputs(graph, names, sequences);
+    let node_inputs = nodes;
     let plan = ReconstructionPlan::Marginal {
       representation,
       model: gtr_model,
@@ -91,7 +99,7 @@ pub struct CdsInput {
   pub name: String,
   pub alphabet: Alphabet,
   pub gtr_model: GtrModelName,
-  pub sequences: Vec<AlignmentRecord>,
+  pub sequences: LeafSequences,
   pub annotation: Option<AugurNodeDataJsonAnnotationEntry>,
   pub reference_override: Option<Seq>,
 }

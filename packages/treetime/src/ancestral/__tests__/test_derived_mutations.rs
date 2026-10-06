@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
+  use crate::ancestral::attach::sanitize_to_alphabet;
   use crate::ancestral::partition::AncestralPartition;
   use crate::ancestral::plan::{ReconstructionOptions, ReconstructionPlan, reconstruct_partition};
   use crate::branch_lengths::branch_lengths_or_zero;
@@ -10,9 +10,10 @@ mod tests {
   use crate::partition::create::Representation;
   use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
   use crate::test_utils::RecordingSeqSink;
+  use crate::test_utils::complete_leaf_sequences;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -165,8 +166,7 @@ mod tests {
           AlignmentRecord::from(record)
         })
         .collect();
-      let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names, &NoopProgress)?;
-      let node_inputs = node_seq_inputs(&parse.graph, &names, sequences);
+      let node_inputs = complete_leaf_sequences(&parse.graph, &names, sequences, &alphabet)?.nodes;
       let observed: BTreeMap<GraphNodeKey, Seq> = node_inputs
         .iter()
         .filter_map(|(&key, input)| input.seq.clone().map(|seq| (key, seq)))
@@ -287,7 +287,7 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-      let node_inputs = node_seq_inputs(graph, &names, sequences);
+      let node_inputs = leaf_seq_inputs(graph, &names, sequences);
       let partition = reconstruct_partition(
         graph,
         &plan,

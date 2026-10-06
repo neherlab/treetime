@@ -37,11 +37,13 @@ pub fn run_homoplasy(
     gap_fill_args: &args.gap_fill_args,
     ignore_missing_alns: args.ignore_missing_alns,
   };
-  let AncestralReadInputs { mut input, descs } = read_nwk_fasta(&sequence_args, cancel, stages, log)?;
+  let AncestralReadInputs {
+    mut input, n_records, ..
+  } = read_nwk_fasta(&sequence_args, cancel, stages, log)?;
   progress_info!(
     log,
     "Read {} sequences of length {} and a tree with {} leaves",
-    descs.len(),
+    n_records,
     input.mask.len(),
     input.graph.num_leaves()
   );

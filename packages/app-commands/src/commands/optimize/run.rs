@@ -1,5 +1,5 @@
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
-use crate::commands::shared::alignment::read_alignment;
+use crate::commands::shared::alignment::{PairedAlignment, pair_alignment, read_alignment};
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
@@ -23,7 +23,7 @@ use treetime::seq::mutation::{Mutation, MutationTrack, edge_state_change_counts}
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{AlignmentRecord, Seq};
+use treetime_primitives::Seq;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_optimize(
@@ -62,10 +62,11 @@ pub fn run_optimize(
   };
 
   let unknown = alphabet.unknown();
+  let PairedAlignment { sequences, .. } = pair_alignment(aln, &args.alignment.alignment, &graph, &names, log);
   let input = OptimizeInput {
     graph,
     alphabet,
-    sequences: aln.into_iter().map(AlignmentRecord::from).collect(),
+    sequences: sequences.nodes,
     branch_lengths,
   };
 

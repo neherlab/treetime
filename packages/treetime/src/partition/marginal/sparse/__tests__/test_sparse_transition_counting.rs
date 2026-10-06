@@ -6,7 +6,7 @@ mod tests {
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::shared::update::MarginalPasses;
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
@@ -33,7 +33,7 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
-    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()

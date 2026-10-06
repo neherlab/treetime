@@ -3,12 +3,15 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
   use crate::progress::NoopProgress;
+  use crate::seq::alignment::pair_leaf_sequences;
+  use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
+  use treetime_utils::o;
 
   #[test]
   fn test_attach_synthesizes_all_unknown_for_missing_tip() {
@@ -16,8 +19,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT"), ("C", "ACGT")]);
 
-    let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &names, &NoopProgress).unwrap();
-    let by_name = helpers::by_name(completed);
+    let by_name = helpers::complete(&graph, &names, sequences, &alphabet, false).unwrap();
 
     assert_eq!(4, by_name.len());
     assert_eq!(Seq::try_from_str("ACGT").unwrap(), by_name["A"]);
@@ -30,7 +32,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let sequences = helpers::records(&[("A", "ACGT")]);
 
-    let err = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &names, &NoopProgress).unwrap_err();
+    let err = helpers::complete(&graph, &names, sequences, &alphabet, false).unwrap_err();
 
     assert!(err.to_string().contains("one third"));
     assert!(err.to_string().contains("--ignore-missing-alns"));
@@ -42,8 +44,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let sequences = helpers::records(&[("A", "ACGT")]);
 
-    let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, true, &names, &NoopProgress).unwrap();
-    let by_name = helpers::by_name(completed);
+    let by_name = helpers::complete(&graph, &names, sequences, &alphabet, true).unwrap();
 
     assert_eq!(2, by_name.len());
     assert_eq!(Seq::try_from_str("NNNN").unwrap(), by_name["B"]);
@@ -55,8 +56,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT")]);
 
-    let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &names, &NoopProgress).unwrap();
-    let by_name = helpers::by_name(completed);
+    let by_name = helpers::complete(&graph, &names, sequences, &alphabet, false).unwrap();
 
     assert_eq!(3, by_name.len());
     assert_eq!(Seq::try_from_str("NNNN").unwrap(), by_name["C"]);
@@ -67,12 +67,40 @@ mod tests {
     let (graph, names) = helpers::two_leaf_tree();
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT"), ("reference", "ACGT")]);
+    let mut paired = pair_leaf_sequences(&graph, &names, sequences).sequences;
 
-    let completed = complete_alignment_for_leaves(&graph, sequences, &alphabet, false, &names, &NoopProgress).unwrap();
-    let by_name = helpers::by_name(completed);
+    complete_alignment_for_leaves(&graph, &mut paired.nodes, 4, &alphabet, false, &NoopProgress).unwrap();
 
-    assert_eq!(3, by_name.len());
-    assert!(by_name.contains_key("reference"));
+    assert_eq!(
+      vec![(o!("reference"), Seq::try_from_str("ACGT").unwrap())],
+      paired.unmatched
+    );
+  }
+
+  #[test]
+  fn test_attach_gives_leaves_that_share_a_name_the_first_record_of_that_name() {
+    let nwk_parsed = nwk_read(b"(A:0.1,A:0.1,B:0.1)root;".as_slice()).unwrap();
+    let names = nwk_parsed.names();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
+    let sequences = helpers::records(&[("A", "ACGT"), ("B", "GGGG"), ("A", "TTTT")]);
+
+    let pairing = pair_leaf_sequences(&nwk_parsed.graph, &names, sequences);
+    let leaves = nwk_parsed.graph.get_leaves().map(|leaf| leaf.key()).collect::<Vec<_>>();
+    let mut nodes = pairing.sequences.nodes;
+    complete_alignment_for_leaves(&nwk_parsed.graph, &mut nodes, 4, &alphabet, false, &NoopProgress).unwrap();
+    let leaf_seqs = leaves.iter().map(|key| nodes[key].seq.clone()).collect::<Vec<_>>();
+
+    assert_eq!(
+      (
+        vec![
+          Some(Seq::try_from_str("ACGT").unwrap()),
+          Some(Seq::try_from_str("ACGT").unwrap()),
+          Some(Seq::try_from_str("GGGG").unwrap()),
+        ],
+        vec![o!("A")],
+      ),
+      (leaf_seqs, pairing.duplicate_names)
+    );
   }
 
   #[test]
@@ -124,8 +152,30 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn by_name(records: Vec<AlignmentRecord>) -> BTreeMap<String, Seq> {
-      records.into_iter().map(|record| (record.name, record.seq)).collect()
+    pub(super) fn complete(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      records: Vec<AlignmentRecord>,
+      alphabet: &Alphabet,
+      ignore_missing_alns: bool,
+    ) -> Result<BTreeMap<String, Seq>, Report> {
+      let mut sequences = pair_leaf_sequences(graph, names, records).sequences;
+      let length = sequences.common_length()?;
+      complete_alignment_for_leaves(
+        graph,
+        &mut sequences.nodes,
+        length,
+        alphabet,
+        ignore_missing_alns,
+        &NoopProgress,
+      )?;
+      Ok(
+        sequences
+          .nodes
+          .into_values()
+          .filter_map(|node| Some((node.name?, node.seq?)))
+          .collect(),
+      )
     }
   }
 }

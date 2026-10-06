@@ -10,7 +10,7 @@ use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::progress::LogSink;
 use crate::prune::prune::prune_nodes;
-use crate::seq::alignment::node_seq_inputs;
+use crate::seq::alignment::NodeSeqInput;
 use eyre::eyre;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem::take;
@@ -18,7 +18,6 @@ use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::AlignmentRecord;
 
 pub fn run(
   params: &PruneParams,
@@ -34,12 +33,11 @@ pub fn run(
 
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
   let (mut partitions, gtr) = if needs_sequences {
-    let sequences = take(&mut input.sequences).ok_or_else(|| {
+    let node_inputs = take(&mut input.sequences).ok_or_else(|| {
       OperationError::InvalidInput(eyre!(
         "Sequences required for --prune-empty or --merge-shared-mutations"
       ))
     })?;
-    let node_inputs = node_seq_inputs(&input.graph, &names, sequences);
     let SparseReconstruction { partition, gtr, .. } = build_sparse_reconstruction(
       GtrModelName::JC69,
       &input.graph,
@@ -94,7 +92,7 @@ pub struct PruneParams {
 pub struct PruneInput {
   pub graph: Graph,
   pub alphabet: Alphabet,
-  pub sequences: Option<Vec<AlignmentRecord>>,
+  pub sequences: Option<BTreeMap<GraphNodeKey, NodeSeqInput>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 

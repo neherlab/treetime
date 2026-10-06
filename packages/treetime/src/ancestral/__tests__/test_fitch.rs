@@ -6,7 +6,7 @@ pub(super) mod tests {
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::fitch::passes::{attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward};
   use crate::seq::alignment::get_common_length;
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{internal_node_keys, node_keys};
   use eyre::Report;
   use helpers::*;
@@ -75,7 +75,7 @@ pub(super) mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
@@ -154,7 +154,7 @@ pub(super) mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
@@ -208,7 +208,7 @@ pub(super) mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
     let actual = get_internal_sequences(&graph, &names, &partition);
     let expected = btreemap! {
       o!("AB") => o!("GCGTACGT"),
@@ -255,7 +255,7 @@ pub(super) mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
 
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
@@ -319,7 +319,7 @@ pub(super) mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
 
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
@@ -387,7 +387,7 @@ pub(super) mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
 
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
@@ -452,7 +452,7 @@ pub(super) mod tests {
       edges: btreemap! {},
     };
 
-    attach_seqs_to_graph(&graph, &mut partition, node_seq_inputs(&graph, &names, aln))?;
+    attach_seqs_to_graph(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
     fitch_backward(&graph, &mut partition)?;
 
     {

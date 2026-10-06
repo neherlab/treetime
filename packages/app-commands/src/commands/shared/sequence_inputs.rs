@@ -1,4 +1,4 @@
-use crate::commands::shared::alignment::{AlignmentArgs, read_alignment, sequence_descriptions};
+use crate::commands::shared::alignment::{AlignmentArgs, PairedAlignment, pair_alignment, read_alignment};
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::tree_input::read_input_tree;
@@ -7,13 +7,12 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::attach::complete_alignment_for_leaves;
-use treetime::ancestral::mask::create_mask;
 use treetime::cancel::Cancel;
 use treetime::make_error;
 use treetime::progress::{LogSink, StageSink};
-use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
+use treetime::seq::alignment::{AncestralInput, EdgeSeqInput};
 use treetime::seq::gap_fill::apply_gap_fill;
-use treetime_primitives::AlignmentRecord;
+use treetime_graph::node::GraphNodeKey;
 
 pub(crate) struct SequenceInputArgs<'a> {
   pub(crate) alignment: &'a AlignmentArgs,
@@ -25,7 +24,8 @@ pub(crate) struct SequenceInputArgs<'a> {
 
 pub(crate) struct AncestralReadInputs {
   pub(crate) input: AncestralInput,
-  pub(crate) descs: BTreeMap<String, Option<String>>,
+  pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
+  pub(crate) n_records: usize,
 }
 
 pub(crate) fn read_nwk_fasta(
@@ -48,32 +48,41 @@ pub(crate) fn read_nwk_fasta(
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
   }
-
-  let descs = sequence_descriptions(&aln);
+  let n_records = aln.len();
 
   cancel.check()?;
   stages.report("Parsing tree", 0.1, "");
   let parse = read_input_tree(args.tree, log)?;
 
   let names = parse.names();
-  let aln = aln.into_iter().map(AlignmentRecord::from).collect();
-  let aln = complete_alignment_for_leaves(&parse.graph, aln, &alphabet, args.ignore_missing_alns, &names, log)?;
-  let alignment_length = get_common_length(&aln)?;
-  let mask = create_mask(&aln, alignment_length, &alphabet);
+  let PairedAlignment { mut sequences, descs } =
+    pair_alignment(aln, &args.alignment.alignment, &parse.graph, &names, log);
+  let alignment_length = sequences.common_length()?;
+  complete_alignment_for_leaves(
+    &parse.graph,
+    &mut sequences.nodes,
+    alignment_length,
+    &alphabet,
+    args.ignore_missing_alns,
+    log,
+  )?;
+  let mask = sequences.mask(alignment_length, &alphabet);
 
-  let graph = parse.graph;
-  let nodes = node_seq_inputs(&graph, &names, aln);
   let edges = parse
     .branch_lengths
     .into_iter()
     .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
     .collect();
   let input = AncestralInput {
-    graph,
-    nodes,
+    graph: parse.graph,
+    nodes: sequences.nodes,
     edges,
     alphabet,
     mask,
   };
-  Ok(AncestralReadInputs { input, descs })
+  Ok(AncestralReadInputs {
+    input,
+    descs,
+    n_records,
+  })
 }

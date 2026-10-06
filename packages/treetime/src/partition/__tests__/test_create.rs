@@ -77,7 +77,8 @@ mod tests {
     use crate::partition::fitch::gtr_inference::infer_gtr_fitch;
     use crate::partition::fitch::passes::create_fitch_partition;
     use crate::progress::NoopProgress;
-    use crate::seq::alignment::{NodeSeqInput, node_seq_inputs};
+    use crate::seq::alignment::NodeSeqInput;
+    use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
     use std::collections::BTreeMap;
     use treetime_graph::edge::GraphEdgeKey;
@@ -107,7 +108,7 @@ mod tests {
             })
           })
           .collect::<Result<Vec<_>, Report>>()?;
-        let node_inputs = node_seq_inputs(&nwk_parsed.graph, &names, aln);
+        let node_inputs = leaf_seq_inputs(&nwk_parsed.graph, &names, aln);
         Ok(Self {
           branch_lengths: branch_lengths_or_zero(&nwk_parsed.branch_lengths),
           graph: nwk_parsed.graph,

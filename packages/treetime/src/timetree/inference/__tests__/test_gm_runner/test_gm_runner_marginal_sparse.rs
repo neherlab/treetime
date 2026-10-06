@@ -14,8 +14,8 @@ mod tests {
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::dates_by_node;
+  use crate::test_utils::leaf_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::result::given_times;
@@ -62,7 +62,7 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, ALPHABET.clone(), leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
 

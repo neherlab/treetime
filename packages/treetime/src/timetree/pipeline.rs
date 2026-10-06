@@ -17,7 +17,7 @@ use crate::gtr::gtr::GTR;
 use crate::optimize::params::BranchLengthMode;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::progress::{LogSink, StageSink};
-use crate::seq::alignment::node_seq_inputs;
+use crate::seq::alignment::NodeSeqInput;
 use crate::seq::mutation::{Mutation, MutationTrack, SequenceMutations, edge_state_change_counts};
 use crate::seq::sink::SeqSink;
 use crate::timetree::branch_model::BranchModel;
@@ -46,8 +46,8 @@ use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_primitives::Seq;
 use treetime_primitives::date::DateConstraint;
-use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::make_report;
 
 pub fn run(
@@ -69,7 +69,7 @@ pub fn run(
     branch_lengths,
     names,
   } = input;
-  let context = prepare_inputs(params, &graph, sequences.as_deref(), dates.as_ref(), log)?;
+  let context = prepare_inputs(params, &graph, sequences.as_ref(), dates.as_ref(), log)?;
 
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Clock regression", 0.1, "");
@@ -187,7 +187,7 @@ pub struct TimetreeInput {
   pub graph: Graph,
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   pub alphabet: Alphabet,
-  pub sequences: Option<Vec<AlignmentRecord>>,
+  pub sequences: Option<BTreeMap<GraphNodeKey, NodeSeqInput>>,
   pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
@@ -240,7 +240,7 @@ fn validate_params(params: &TimetreeParams, has_seq_sink: bool) -> Result<(), Op
 fn prepare_inputs(
   params: &TimetreeParams,
   graph: &Graph,
-  sequences: Option<&[AlignmentRecord]>,
+  sequences: Option<&BTreeMap<GraphNodeKey, NodeSeqInput>>,
   dates: Option<&BTreeMap<GraphNodeKey, DateConstraint>>,
   log: &dyn LogSink,
 ) -> Result<TimetreeContext, OperationError> {
@@ -323,7 +323,7 @@ fn initialize_branch_model(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   alphabet: Alphabet,
-  aln: Option<Vec<AlignmentRecord>>,
+  aln: Option<BTreeMap<GraphNodeKey, NodeSeqInput>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<BranchModelInit, OperationError> {
@@ -341,9 +341,8 @@ fn initialize_branch_model(
         log,
         "Branch length mode: Marginal - initializing partitions from alignment"
       );
-      let aln_data = aln
+      let node_inputs = aln
         .ok_or_else(|| OperationError::InvalidInput(make_report!("Alignment required for marginal reconstruction")))?;
-      let node_inputs = node_seq_inputs(graph, names, aln_data);
       let reconstruction = build_marginal_partition(
         Representation::resolve(params.dense),
         params.model,

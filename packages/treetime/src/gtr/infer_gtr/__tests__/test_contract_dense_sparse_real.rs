@@ -11,7 +11,7 @@ mod tests {
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use ndarray::{Array1, Array2};
   use rstest::rstest;
@@ -101,7 +101,7 @@ mod tests {
         0,
         DENSE_NUC_ALPHABET.clone(),
         &graph,
-        &node_seq_inputs(&graph, &names, aln.clone()),
+        &leaf_seq_inputs(&graph, &names, aln.clone()),
       )?;
       let recon = DenseReconstruction::seeded(
         partition,
@@ -134,7 +134,7 @@ mod tests {
         &graph,
         0,
         SPARSE_NUC_ALPHABET.clone(),
-        node_seq_inputs(&graph, &names, aln),
+        leaf_seq_inputs(&graph, &names, aln),
       )?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
     };

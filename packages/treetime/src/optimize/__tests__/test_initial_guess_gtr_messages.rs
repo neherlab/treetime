@@ -8,7 +8,7 @@ mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use ndarray::array;
@@ -47,7 +47,7 @@ mod tests {
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MarginalReconstruction, Report> {
     let alphabet = Alphabet::default();
-    let partition = PartitionMarginalDense::new(0, alphabet, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
+    let partition = PartitionMarginalDense::new(0, alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let reconstruction =
       MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;

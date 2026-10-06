@@ -9,8 +9,8 @@ mod tests {
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::pretty_assert_ulps_eq;
   use crate::seq::alignment::get_common_length;
-  use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::find_node_key_by_name;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use ndarray::array;
   use pretty_assertions::assert_eq;
@@ -34,7 +34,7 @@ mod tests {
     index: usize,
     gtr: GTR,
   ) -> Result<DenseReconstruction, Report> {
-    let partition = PartitionMarginalDense::new(index, alphabet, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
+    let partition = PartitionMarginalDense::new(index, alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     Ok(recon)
@@ -337,13 +337,13 @@ mod tests {
       0,
       alphabet.clone(),
       &graph,
-      &node_seq_inputs(&graph, &names, aln.clone()),
+      &leaf_seq_inputs(&graph, &names, aln.clone()),
     )?;
     let dense_recon = DenseReconstruction::seeded(dense_partition, gtr.clone());
     let (dense_recon, dense_log_lh) = dense_recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let dense_log_lh = dense_log_lh.value();
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (sparse_recon, sparse_log_lh) =

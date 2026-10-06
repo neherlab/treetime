@@ -7,8 +7,8 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
   use crate::seq::alignment::get_common_length;
-  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::indel::InDel;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
@@ -40,7 +40,7 @@ NNGTACGTAC
       .collect();
     let length = get_common_length(&aln)?;
 
-    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon))
@@ -70,7 +70,7 @@ NNGTACGTAC
       .collect();
     let length = get_common_length(&aln)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -169,7 +169,7 @@ ACGTACGTAC
       .collect();
     let length = get_common_length(&aln)?;
 
-    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon))
@@ -237,7 +237,7 @@ ACGTACGTAC
       .collect();
     let length = get_common_length(&aln)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

@@ -4,7 +4,7 @@ mod tests {
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::fitch::passes::compress_sequences;
   use crate::seq::alignment::get_common_length;
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
@@ -33,7 +33,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
 
     let name = |key| -> String { names.get(&key).cloned().flatten().unwrap_or_default() };
 

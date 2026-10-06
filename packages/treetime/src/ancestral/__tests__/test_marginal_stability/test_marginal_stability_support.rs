@@ -9,7 +9,7 @@ pub(super) mod tests {
   use crate::partition::storage::dense::DenseSeqDistribution;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::pretty_assert_ulps_eq;
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
@@ -69,7 +69,7 @@ pub(super) mod tests {
       .collect();
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
@@ -92,7 +92,7 @@ pub(super) mod tests {
       .collect();
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

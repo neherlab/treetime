@@ -1,15 +1,20 @@
 use crate::alphabet::alphabet::Alphabet;
-use treetime_primitives::AlignmentRecord;
+use itertools::Itertools;
+use treetime_primitives::Seq;
 
-pub fn create_mask(aln: &[AlignmentRecord], alignment_length: usize, alphabet: &Alphabet) -> Vec<bool> {
+pub fn create_mask<'a>(
+  seqs: impl IntoIterator<Item = &'a Seq>,
+  alignment_length: usize,
+  alphabet: &Alphabet,
+) -> Vec<bool> {
   let ambiguous = alphabet.unknown();
   let gap = alphabet.gap();
+  let seqs = seqs.into_iter().collect_vec();
 
   (0..alignment_length)
     .map(|pos| {
-      !aln.iter().any(|record| {
-        record
-          .seq
+      !seqs.iter().any(|seq| {
+        seq
           .as_slice()
           .get(pos)
           .is_some_and(|&state| state != ambiguous && state != gap)

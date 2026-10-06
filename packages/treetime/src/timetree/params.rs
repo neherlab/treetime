@@ -5,15 +5,16 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::make_report;
 use crate::optimize::params::BranchLengthMode;
 use crate::progress::LogSink;
-use crate::seq::alignment::get_common_length;
+use crate::seq::alignment::{NodeSeqInput, get_common_length_of_node_inputs};
 use crate::{progress_info, progress_warn};
 use eyre::Report;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
+use std::collections::BTreeMap;
 use std::fmt::Debug;
+use treetime_graph::node::GraphNodeKey;
 use treetime_grid::MaxGridPoints;
-use treetime_primitives::AlignmentRecord;
 
 pub(crate) fn compute_effective_time_marginal(
   time_marginal: TimeMarginalMode,
@@ -66,7 +67,7 @@ pub(crate) fn build_covariation_clock_params(
   covariation: bool,
   sequence_length: Option<usize>,
   tip_slack: Option<f64>,
-  aln: Option<&[AlignmentRecord]>,
+  aln: Option<&BTreeMap<GraphNodeKey, NodeSeqInput>>,
   log: &dyn LogSink,
 ) -> Result<Option<ClockVarianceParams>, Report> {
   if !covariation {
@@ -74,7 +75,7 @@ pub(crate) fn build_covariation_clock_params(
   }
 
   let seq_len = if let Some(aln_data) = aln {
-    get_common_length(aln_data)? as f64
+    get_common_length_of_node_inputs(aln_data)? as f64
   } else {
     sequence_length.ok_or_else(|| make_report!("--sequence-length required for --covariation without alignment"))?
       as f64

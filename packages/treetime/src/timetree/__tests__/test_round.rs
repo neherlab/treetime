@@ -19,8 +19,8 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::pretty_assert_abs_diff_eq;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::dates_by_node;
+  use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{find_node_key_by_name, marginal_timetree_params, parent_edge_key};
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::convergence::sequence_changes::capture_ancestral_states;
@@ -355,7 +355,7 @@ mod tests {
         .map(AlignmentRecord::from)
         .collect();
       let (partition, _) = MarginalReconstruction::Dense(DenseReconstruction {
-        partition: PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?,
+        partition: PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),

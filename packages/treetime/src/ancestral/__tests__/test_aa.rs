@@ -101,13 +101,24 @@ mod tests {
     let name_to_key = helpers::node_name_to_key(&names, &nwk_parsed.graph);
     let aa = Alphabet::new(AlphabetName::Aa).unwrap();
     let cdses = vec![
-      helpers::cds_input("S", &aa, &[("A", "MC*"), ("B", "MC*"), ("C", "MA*")]),
-      helpers::cds_input("N", &aa, &[("A", "KL"), ("B", "KL"), ("C", "KM")]),
+      helpers::cds_input(
+        "S",
+        &aa,
+        &[("A", "MC*"), ("B", "MC*"), ("C", "MA*")],
+        &nwk_parsed.graph,
+        &names,
+      ),
+      helpers::cds_input(
+        "N",
+        &aa,
+        &[("A", "KL"), ("B", "KL"), ("C", "KM")],
+        &nwk_parsed.graph,
+        &names,
+      ),
     ];
 
     let actual = reconstruct_aa(
       &nwk_parsed.graph,
-      &names,
       &nwk_parsed.branch_lengths,
       &helpers::sparse_params(),
       cdses,
@@ -169,9 +180,10 @@ mod tests {
     use crate::partition::fitch::passes::create_fitch_partition;
     use crate::partition::marginal::sample::SampleMode;
     use crate::progress::NoopProgress;
-    use crate::seq::alignment::node_seq_inputs;
+    use crate::seq::alignment::pair_leaf_sequences;
     use crate::seq::mutation::{MutationEvent, Sub};
     use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
+    use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
     use parking_lot::Mutex;
     use std::collections::BTreeMap;
@@ -225,12 +237,23 @@ mod tests {
       let names = nwk_parsed.names();
       let aa = Alphabet::new(AlphabetName::Aa)?;
       let cdses = vec![
-        cds_input("S", &aa, &[("A", "MC*"), ("B", "MC*"), ("C", "MA*")]),
-        cds_input("N", &aa, &[("A", "KL"), ("B", "KL"), ("C", "KM")]),
+        cds_input(
+          "S",
+          &aa,
+          &[("A", "MC*"), ("B", "MC*"), ("C", "MA*")],
+          &nwk_parsed.graph,
+          &names,
+        ),
+        cds_input(
+          "N",
+          &aa,
+          &[("A", "KL"), ("B", "KL"), ("C", "KM")],
+          &nwk_parsed.graph,
+          &names,
+        ),
       ];
       reconstruct_aa(
         &nwk_parsed.graph,
-        &names,
         &nwk_parsed.branch_lengths,
         &sparse_params(),
         cdses,
@@ -300,22 +323,29 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-      let partition = create_fitch_partition(graph, 0, alphabet, node_seq_inputs(graph, names, sequences)).unwrap();
+      let partition = create_fitch_partition(graph, 0, alphabet, leaf_seq_inputs(graph, names, sequences)).unwrap();
       AncestralPartition::Fitch(partition)
     }
 
-    pub(super) fn cds_input(name: &str, alphabet: &Alphabet, seqs: &[(&str, &str)]) -> CdsInput {
+    pub(super) fn cds_input(
+      name: &str,
+      alphabet: &Alphabet,
+      seqs: &[(&str, &str)],
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+    ) -> CdsInput {
+      let records = seqs
+        .iter()
+        .map(|(seq_name, seq)| AlignmentRecord {
+          name: (*seq_name).to_owned(),
+          seq: Seq::try_from_str(seq).unwrap(),
+        })
+        .collect();
       CdsInput {
         name: name.to_owned(),
         alphabet: alphabet.clone(),
         gtr_model: GtrModelName::Infer,
-        sequences: seqs
-          .iter()
-          .map(|(seq_name, seq)| AlignmentRecord {
-            name: (*seq_name).to_owned(),
-            seq: Seq::try_from_str(seq).unwrap(),
-          })
-          .collect(),
+        sequences: pair_leaf_sequences(graph, names, records).sequences,
         annotation: None,
         reference_override: None,
       }

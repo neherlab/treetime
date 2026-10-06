@@ -6,9 +6,9 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
-  use crate::seq::alignment::node_seq_inputs;
   use crate::seq::mutation::Sub;
   use crate::test_utils::dense_partition_with_constant_leaves;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -96,7 +96,7 @@ mod tests {
       0,
       Alphabet::new(AlphabetName::Nuc)?,
       &graph,
-      &node_seq_inputs(&graph, &names, aln),
+      &leaf_seq_inputs(&graph, &names, aln),
     )?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -185,7 +185,7 @@ mod tests {
       0,
       Alphabet::new(AlphabetName::Nuc)?,
       &graph,
-      &node_seq_inputs(&graph, &names, aln),
+      &leaf_seq_inputs(&graph, &names, aln),
     )?;
     let recon = DenseReconstruction::seeded(partition, jc69(JC69Params::default())?);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

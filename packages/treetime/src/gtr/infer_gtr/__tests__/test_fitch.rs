@@ -7,7 +7,7 @@ mod tests {
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use ndarray::array;
@@ -48,7 +48,7 @@ mod tests {
     let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
 
     let counts_actual = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths_or_zero(&branch_lengths))?;
     assert_eq!(
@@ -93,7 +93,7 @@ mod tests {
     let graph: Graph = graph;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
 
     let counts = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths_or_zero(&branch_lengths))?;
     let actual = infer_gtr_impl(

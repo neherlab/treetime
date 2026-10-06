@@ -1,4 +1,3 @@
-use crate::commands::shared::alignment::sequence_descriptions;
 use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
@@ -33,7 +32,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DateConstraint;
 use treetime_io::fasta::FastaWriter;
-use treetime_primitives::{AlignmentRecord, Seq};
+use treetime_primitives::Seq;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_timetree_estimation(
@@ -66,16 +65,17 @@ pub fn run_timetree_estimation(
     .resolve(args.resolve_polytomies.then_some("Polytomy resolution"), log);
   let params = timetree_params(args, sequence_outputs_requested, seed);
 
-  let aln_descs = sequence_descriptions(input_data.aln.iter().flatten());
+  let (sequences, aln_descs) = input_data
+    .sequences
+    .map(|paired| (paired.sequences.nodes, paired.descs))
+    .unzip();
   let alphabet = input_data.alphabet.clone();
   let unknown = alphabet.unknown();
   let input = TimetreeInput {
     graph: input_data.graph,
     names: parse_names.clone(),
     alphabet: input_data.alphabet,
-    sequences: input_data
-      .aln
-      .map(|records| records.into_iter().map(AlignmentRecord::from).collect()),
+    sequences,
     dates: input_data.dates,
     branch_lengths: input_data.branch_lengths,
   };
@@ -86,7 +86,7 @@ pub fn run_timetree_estimation(
       Ok::<_, Report>(ReconstructedNucSink::new(
         FastaWriter::create(path)?,
         parse_names,
-        aln_descs,
+        aln_descs.unwrap_or_default(),
       ))
     })
     .transpose()?;
@@ -392,23 +392,21 @@ fn mutation_divergences(
 struct ReconstructedNucSink {
   writer: FastaWriter,
   parse_names: BTreeMap<GraphNodeKey, Option<String>>,
-  aln_descs: BTreeMap<String, Option<String>>,
-  names: BTreeMap<GraphNodeKey, Option<String>>,
   descs: BTreeMap<GraphNodeKey, Option<String>>,
+  names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 
 impl ReconstructedNucSink {
   fn new(
     writer: FastaWriter,
     parse_names: BTreeMap<GraphNodeKey, Option<String>>,
-    aln_descs: BTreeMap<String, Option<String>>,
+    descs: BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Self {
     Self {
       writer,
       parse_names,
-      aln_descs,
+      descs,
       names: BTreeMap::new(),
-      descs: BTreeMap::new(),
     }
   }
 }
@@ -416,17 +414,6 @@ impl ReconstructedNucSink {
 impl SeqSink for ReconstructedNucSink {
   fn on_topology(&mut self, graph: &Graph) -> Result<(), Report> {
     self.names = assign_node_names(self.parse_names.clone(), graph)?.names;
-    self.descs = self
-      .names
-      .iter()
-      .map(|(&key, name)| {
-        let desc = name
-          .as_deref()
-          .and_then(|name| self.aln_descs.get(name).cloned())
-          .flatten();
-        (key, desc)
-      })
-      .collect();
     Ok(())
   }
 
@@ -435,7 +422,7 @@ impl SeqSink for ReconstructedNucSink {
       SeqTrack::Nuc if !item.emitted => Ok(()),
       SeqTrack::Nuc => {
         let name = self.names[&item.key].clone().unwrap_or_default();
-        let desc = self.descs[&item.key].clone();
+        let desc = self.descs.get(&item.key).cloned().flatten();
         self.writer.write(&name, desc.as_deref(), item.seq)
       },
       SeqTrack::Aa(cds) => {

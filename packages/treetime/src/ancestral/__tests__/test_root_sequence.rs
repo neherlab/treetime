@@ -7,9 +7,10 @@ mod tests {
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::{AncestralInput, EdgeSeqInput, node_seq_inputs};
+  use crate::seq::alignment::{AncestralInput, EdgeSeqInput};
   use crate::seq::mutation::MutationEvent;
   use crate::test_utils::RecordingSeqSink;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
@@ -93,7 +94,7 @@ mod tests {
         .collect_vec();
       let mask = vec![false; sequences[0].seq.len()];
       let input = AncestralInput {
-        nodes: node_seq_inputs(&parse.graph, &names, sequences),
+        nodes: leaf_seq_inputs(&parse.graph, &names, sequences),
         edges: parse
           .branch_lengths
           .into_iter()

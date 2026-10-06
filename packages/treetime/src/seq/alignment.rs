@@ -1,11 +1,13 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::ancestral::mask::create_mask;
 use crate::error::input_error;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::pair_by_name::pair_by_name;
 use treetime_primitives::{AlignmentRecord, Seq};
 
 #[derive(Debug)]
@@ -36,72 +38,78 @@ pub struct EdgeSeqInput {
   pub branch_length: Option<f64>,
 }
 
-pub fn node_seq_inputs(
+pub fn pair_leaf_sequences(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  aln: Vec<AlignmentRecord>,
-) -> BTreeMap<GraphNodeKey, NodeSeqInput> {
-  let mut records_by_name: BTreeMap<String, AlignmentRecord> = BTreeMap::new();
-  for record in aln {
-    records_by_name.entry(record.name.clone()).or_insert(record);
+  records: Vec<AlignmentRecord>,
+) -> LeafPairing {
+  let pairing = pair_by_name(
+    graph.get_leaves().map(|leaf| leaf.key()),
+    names,
+    records.into_iter().map(|record| (record.name, record.seq)),
+  );
+  LeafPairing {
+    sequences: LeafSequences::new(names, pairing.by_node, pairing.unmatched),
+    duplicate_names: pairing.duplicate_entry_names,
+  }
+}
+
+pub struct LeafPairing {
+  pub sequences: LeafSequences,
+  pub duplicate_names: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LeafSequences {
+  pub nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  pub unmatched: Vec<(String, Seq)>,
+}
+
+impl LeafSequences {
+  pub fn new(
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    mut seqs: BTreeMap<GraphNodeKey, Seq>,
+    unmatched: Vec<(String, Seq)>,
+  ) -> Self {
+    let nodes = names
+      .iter()
+      .map(|(key, name)| {
+        let input = NodeSeqInput {
+          name: name.clone(),
+          seq: seqs.remove(key),
+        };
+        (*key, input)
+      })
+      .collect();
+    Self { nodes, unmatched }
   }
 
-  let leaf_keys: BTreeSet<GraphNodeKey> = graph.get_leaves().map(|leaf| leaf.key()).collect();
+  pub fn common_length(&self) -> Result<usize, Report> {
+    common_length(self.kept())
+  }
 
-  names
-    .iter()
-    .map(|(key, name)| {
-      let seq = if leaf_keys.contains(key) {
-        name
-          .as_deref()
-          .and_then(|name| records_by_name.remove(name))
-          .map(|record| record.seq)
-      } else {
-        None
-      };
-      (
-        *key,
-        NodeSeqInput {
-          name: name.clone(),
-          seq,
-        },
-      )
-    })
-    .collect()
+  pub fn mask(&self, alignment_length: usize, alphabet: &Alphabet) -> Vec<bool> {
+    create_mask(self.kept().map(|(_, seq)| seq), alignment_length, alphabet)
+  }
+
+  fn kept(&self) -> impl Iterator<Item = (&str, &Seq)> {
+    let paired = self
+      .nodes
+      .values()
+      .filter_map(|node| Some((node.name.as_deref().unwrap_or(""), node.seq.as_ref()?)));
+    let unmatched = self.unmatched.iter().map(|(name, seq)| (name.as_str(), seq));
+    paired.chain(unmatched)
+  }
 }
 
 pub(crate) fn get_common_length_of_node_inputs(
   node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
 ) -> Result<usize, Report> {
-  let lengths = node_inputs
-    .values()
-    .filter_map(|node| node.seq.as_ref().map(|seq| (seq.len(), node)))
-    .into_group_map_by(|(length, _)| *length)
-    .into_iter()
-    .collect_vec();
-
-  match lengths[..] {
-    [] => Ok(0),
-    [(length, _)] => Ok(length),
-    _ => {
-      let message = lengths
-        .into_iter()
-        .sorted_by_key(|(length, _)| *length)
-        .map(|(length, entries)| {
-          let names = entries
-            .iter()
-            .map(|(_, node)| format!("    \"{}\"", node.name.as_deref().unwrap_or("")))
-            .join("\n");
-          format!("Length {length}:\n{names}")
-        })
-        .join("\n\n");
-
-      Err(input_error(format!(
-        "Sequences are expected to all have the same length, but found the following lengths:\n\n{message}"
-      )))
-    },
-  }
-  .wrap_err("When calculating length of sequences")
+  common_length(
+    node_inputs
+      .values()
+      .filter_map(|node| Some((node.name.as_deref().unwrap_or(""), node.seq.as_ref()?))),
+  )
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -111,9 +119,13 @@ pub struct NodeSeqInput {
 }
 
 pub fn get_common_length(aln: &[AlignmentRecord]) -> Result<usize, Report> {
-  let lengths = aln
-    .iter()
-    .into_group_map_by(|aln| aln.seq.len())
+  common_length(aln.iter().map(|record| (record.name.as_str(), &record.seq)))
+}
+
+fn common_length<'a>(seqs: impl IntoIterator<Item = (&'a str, &'a Seq)>) -> Result<usize, Report> {
+  let lengths = seqs
+    .into_iter()
+    .into_group_map_by(|(_, seq)| seq.len())
     .into_iter()
     .collect_vec();
 
@@ -125,7 +137,7 @@ pub fn get_common_length(aln: &[AlignmentRecord]) -> Result<usize, Report> {
         .into_iter()
         .sorted_by_key(|(length, _)| *length)
         .map(|(length, entries)| {
-          let names = entries.iter().map(|aln| format!("    \"{}\"", aln.name)).join("\n");
+          let names = entries.iter().map(|(name, _)| format!("    \"{name}\"")).join("\n");
           format!("Length {length}:\n{names}")
         })
         .join("\n\n");

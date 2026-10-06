@@ -95,7 +95,8 @@ mod tests {
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
     use crate::partition::storage::sparse::SparseNodeState;
-    use crate::seq::alignment::{NodeSeqInput, node_seq_inputs};
+    use crate::seq::alignment::NodeSeqInput;
+    use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
     use indoc::indoc;
     use std::collections::BTreeMap;
@@ -135,7 +136,7 @@ mod tests {
         .map(AlignmentRecord::from)
         .collect();
         Ok(Self {
-          node_inputs: node_seq_inputs(&nwk_parsed.graph, &names, aln),
+          node_inputs: leaf_seq_inputs(&nwk_parsed.graph, &names, aln),
           branch_lengths: branch_lengths_or_zero(&nwk_parsed.branch_lengths),
           graph: nwk_parsed.graph,
           start_gtr: jc69(JC69Params::default())?,

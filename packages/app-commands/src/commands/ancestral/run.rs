@@ -2,6 +2,7 @@ use crate::commands::ancestral::aa_node_data::{
   cds_output_paths, read_aa_root_sequences, read_gff3_annotations, selected_cdses, translation_path, validate_aa_args,
 };
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
+use crate::commands::shared::alignment::pair_alignment;
 use crate::commands::shared::ancestral_trees::{AncestralOutputMaps, AncestralTrees, write_ancestral_trees};
 use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
@@ -20,6 +21,7 @@ use treetime::cancel::Cancel;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_warn;
+use treetime::seq::alignment::LeafSequences;
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime_graph::assign_node_names::node_name_or_key;
@@ -27,7 +29,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::{FastaWriter, fasta_read_file};
-use treetime_primitives::{AlignmentRecord, Seq};
+use treetime_primitives::Seq;
 use treetime_utils::make_internal_error;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
@@ -51,7 +53,7 @@ pub fn run_ancestral_reconstruction(
     gap_fill_args: &args.gap_fill_args,
     ignore_missing_alns: args.ignore_missing_alns,
   };
-  let AncestralReadInputs { input, descs } = read_nwk_fasta(&sequence_args, cancel, stages, log)?;
+  let AncestralReadInputs { input, descs, .. } = read_nwk_fasta(&sequence_args, cancel, stages, log)?;
   let names = input.names();
   let branch_lengths = input.branch_lengths();
 
@@ -185,7 +187,7 @@ struct AaPlan<'a> {
 struct AncestralSeqSink {
   fasta: Option<FastaWriter>,
   names: BTreeMap<GraphNodeKey, Option<String>>,
-  descs: BTreeMap<String, Option<String>>,
+  descs: BTreeMap<GraphNodeKey, Option<String>>,
   node_sequences: Option<BTreeMap<GraphNodeKey, Seq>>,
 }
 
@@ -193,7 +195,7 @@ impl AncestralSeqSink {
   fn new(
     resolved: &ResolvedOutputs,
     names: BTreeMap<GraphNodeKey, Option<String>>,
-    descs: BTreeMap<String, Option<String>>,
+    descs: BTreeMap<GraphNodeKey, Option<String>>,
   ) -> Result<Self, Report> {
     let fasta = resolved
       .path(OutputSelection::ReconstructedNucFasta)
@@ -215,7 +217,7 @@ impl SeqSink for AncestralSeqSink {
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     if let (Some(writer), true) = (self.fasta.as_mut(), item.emitted) {
       let name = self.names[&item.key].as_deref();
-      let desc = name.and_then(|name| self.descs.get(name)).cloned().flatten();
+      let desc = self.descs.get(&item.key).cloned().flatten();
       writer.write(name.unwrap_or(""), desc.as_deref(), item.seq)?;
     }
     if let Some(node_sequences) = self.node_sequences.as_mut() {
@@ -265,7 +267,15 @@ fn run_aa_reconstructions(
         name: cds.clone(),
         alphabet: recon_alphabet.clone(),
         gtr_model: aa_model.gtr_model,
-        sequences: read_cds_translations(translations, cds, &read_alphabet, &recon_alphabet, gap_fill_mode, log)?,
+        sequences: read_cds_translations(
+          translations,
+          cds,
+          &read_alphabet,
+          &recon_alphabet,
+          gap_fill_mode,
+          inputs,
+          log,
+        )?,
         annotation: annotations.get(cds).cloned(),
         reference_override: aa_root_sequences.get(cds).cloned(),
       })
@@ -281,7 +291,6 @@ fn run_aa_reconstructions(
 
   let node_data = reconstruct_aa(
     inputs.graph,
-    inputs.names,
     inputs.branch_lengths,
     &params,
     cds_inputs,
@@ -303,8 +312,9 @@ fn read_cds_translations(
   read_alphabet: &Alphabet,
   recon_alphabet: &Alphabet,
   gap_fill_mode: GapFill,
+  inputs: &AaRunInputs<'_>,
   log: &dyn LogSink,
-) -> Result<Vec<AlignmentRecord>, Report> {
+) -> Result<LeafSequences, Report> {
   let path = translation_path(translations, cds);
   let mut sequences = fasta_read_file(&path, read_alphabet)?;
   let mut sanitized = 0_usize;
@@ -326,7 +336,8 @@ fn read_cds_translations(
       char::from(recon_alphabet.unknown())
     );
   }
-  Ok(sequences.into_iter().map(AlignmentRecord::from).collect())
+  let paths = [path];
+  Ok(pair_alignment(sequences, &paths, inputs.graph, inputs.names, log).sequences)
 }
 
 struct AaFastaSink {

@@ -5,7 +5,7 @@ mod tests {
   };
   use crate::cancel::NoopCancel;
   use crate::progress::NoopProgress;
-  use crate::test_utils::{dates_by_node, marginal_timetree_params};
+  use crate::test_utils::{dates_by_node, leaf_seq_inputs, marginal_timetree_params};
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline::{self, TimetreeInput};
   use eyre::Report;
@@ -29,11 +29,12 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
+    let aln_nodes = leaf_seq_inputs(&nwk_parsed.graph, &names, aln);
     let input = TimetreeInput {
       graph: nwk_parsed.graph,
       names,
       alphabet: ALPHABET.clone(),
-      sequences: Some(aln),
+      sequences: Some(aln_nodes),
       dates: Some(dates),
       branch_lengths: nwk_parsed.branch_lengths,
     };

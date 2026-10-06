@@ -16,7 +16,7 @@ use crate::progress::{LogSink, StageSink};
 use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_min_dev};
 use crate::reroot::params::BrentParams;
 use crate::reroot::variance::VarianceModel;
-use crate::seq::alignment::node_seq_inputs;
+use crate::seq::alignment::NodeSeqInput;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
 use serde::Serialize;
@@ -26,7 +26,6 @@ use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::AlignmentRecord;
 use treetime_utils::{make_internal_error, make_report};
 
 const PRE_REROOT_DAMPING: f64 = 0.75;
@@ -63,7 +62,7 @@ pub fn run(
     &input.graph,
     0,
     input.alphabet,
-    node_seq_inputs(&input.graph, names, sequences),
+    sequences,
     &branch_lengths_or_zero(&branch_lengths),
     log,
   )
@@ -180,7 +179,7 @@ pub struct OptimizeParams {
 pub struct OptimizeInput {
   pub graph: Graph,
   pub alphabet: Alphabet,
-  pub sequences: Vec<AlignmentRecord>,
+  pub sequences: BTreeMap<GraphNodeKey, NodeSeqInput>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 

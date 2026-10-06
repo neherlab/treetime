@@ -1,13 +1,15 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::progress::LogSink;
 use crate::progress_warn;
-use crate::seq::alignment::get_common_length;
-use crate::{make_error, make_report};
+use crate::seq::alignment::NodeSeqInput;
+use crate::{make_error, make_internal_report};
 use eyre::Report;
-use std::collections::{BTreeMap, BTreeSet};
+use itertools::Itertools;
+use std::collections::BTreeMap;
+use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{AlignmentRecord, AlphabetLike, Seq, seq};
+use treetime_primitives::{AlphabetLike, Seq, seq};
 
 #[allow(
   clippy::as_conversions,
@@ -15,34 +17,23 @@ use treetime_primitives::{AlignmentRecord, AlphabetLike, Seq, seq};
 )]
 pub fn complete_alignment_for_leaves(
   graph: &Graph,
-  mut sequences: Vec<AlignmentRecord>,
+  nodes: &mut BTreeMap<GraphNodeKey, NodeSeqInput>,
+  alignment_length: usize,
   alphabet: &Alphabet,
   ignore_missing_alns: bool,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
-) -> Result<Vec<AlignmentRecord>, Report> {
-  let alignment_length = get_common_length(&sequences)?;
-
-  let present: BTreeSet<String> = sequences.iter().map(|record| record.name.clone()).collect();
-
-  let mut missing = Vec::new();
-  let mut n_leaves = 0_usize;
-  for leaf in graph.get_leaves() {
-    n_leaves += 1;
-    let name = names[&leaf.key()]
-      .clone()
-      .ok_or_else(|| {
-        make_report!("Expected all leaf nodes to have names, so they can be matched to their sequences. Found a leaf node with no name.")
-      })?;
-    if !present.contains(&name) {
-      missing.push(name);
-    }
-  }
-  drop(present);
+) -> Result<(), Report> {
+  let n_leaves = graph.num_leaves();
+  let missing = graph
+    .get_leaves()
+    .map(|leaf| leaf.key())
+    .filter(|key| nodes[key].seq.is_none())
+    .collect_vec();
 
   let n_missing = missing.len();
   if n_missing > 0 {
-    for name in &missing {
+    for key in &missing {
+      let name = node_name_or_key(*key, nodes[key].name.as_deref());
       progress_warn!(
         log,
         "No sequence found for leaf '{name}'; treating it as fully ambiguous (missing data)."
@@ -62,14 +53,15 @@ pub fn complete_alignment_for_leaves(
     );
   }
 
-  for name in missing {
-    sequences.push(AlignmentRecord {
-      name,
-      seq: seq![alphabet.unknown(); alignment_length],
-    });
+  let unknown = alphabet.unknown();
+  for key in missing {
+    let node = nodes
+      .get_mut(&key)
+      .ok_or_else(|| make_internal_report!("Leaf {key} has no sequence input"))?;
+    node.seq = Some(seq![unknown; alignment_length]);
   }
 
-  Ok(sequences)
+  Ok(())
 }
 
 pub fn sanitize_to_alphabet(seq: &Seq, alphabet: &Alphabet) -> (Seq, usize) {

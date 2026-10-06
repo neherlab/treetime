@@ -100,7 +100,11 @@ mod tests {
   #[trace]
   fn test_optimize_pipeline_reroot_min_dev_removes_a_unary_root(#[case] dense: bool) -> Result<(), Report> {
     let (graph, names, alphabet, sequences, branch_lengths) = load_with_unary_root()?;
-    let mut expected: Vec<String> = sequences.iter().map(|record| record.name.clone()).collect();
+    let mut expected: Vec<String> = sequences
+      .values()
+      .filter(|node| node.seq.is_some())
+      .filter_map(|node| node.name.clone())
+      .collect();
     expected.sort();
 
     let mut params = params_with(Some(RerootSpec::Method(RerootMethod::MinDev)));
@@ -162,6 +166,8 @@ mod tests {
     use crate::gtr::get_gtr::GtrModelName;
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use crate::optimize::pipeline::OptimizeParams;
+    use crate::seq::alignment::NodeSeqInput;
+    use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
     use std::collections::BTreeMap;
     use std::fs::read_to_string;
@@ -177,7 +183,7 @@ mod tests {
       Graph,
       BTreeMap<GraphNodeKey, Option<String>>,
       Alphabet,
-      Vec<AlignmentRecord>,
+      BTreeMap<GraphNodeKey, NodeSeqInput>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     );
 
@@ -249,6 +255,7 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
+      let sequences = leaf_seq_inputs(&nwk_parsed.graph, &names, sequences);
       Ok((nwk_parsed.graph, names, alphabet, sequences, nwk_parsed.branch_lengths))
     }
   }

@@ -100,6 +100,7 @@ mod tests {
     use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
     use treetime::progress::NoopProgress;
+    use treetime::seq::alignment::pair_leaf_sequences;
     use treetime_io::fasta::fasta_read_file;
     use treetime_io::nwk::nwk_read_file;
 
@@ -127,6 +128,7 @@ mod tests {
       reroot_spec: None,
       topology_ops: TopologyOps::default(),
     };
+    let sequences = pair_leaf_sequences(&graph, &names, sequences).sequences.nodes;
     let input = OptimizeInput {
       graph,
       alphabet,

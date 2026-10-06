@@ -6,6 +6,7 @@ mod tests {
   use crate::prune::pipeline::{PruneInput, PruneOutput, PruneParams, run};
   use crate::seq::mutation::{Mutation, MutationTrack, Sub};
   use crate::test_utils::find_edge_key;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use helpers::*;
   use itertools::Itertools;
@@ -63,6 +64,7 @@ mod tests {
         merge_shared_mutations: false,
         node_names: btreeset! {},
       };
+      let sequences = leaf_seq_inputs(&parsed.graph, &names, sequences);
       let input = PruneInput {
         graph: parsed.graph,
         alphabet: Alphabet::new(AlphabetName::Nuc)?,

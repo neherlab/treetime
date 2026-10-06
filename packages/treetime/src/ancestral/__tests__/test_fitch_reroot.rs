@@ -9,8 +9,8 @@ mod tests {
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
   use crate::seq::alignment::get_common_length;
-  use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::find_node_key_by_name;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -58,7 +58,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut fitch, leaf_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -252,7 +252,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut fitch, leaf_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -381,7 +381,7 @@ mod tests {
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, node_seq_inputs(&graph, &names, aln))?;
+    compress_sequences(&graph, &mut fitch, leaf_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

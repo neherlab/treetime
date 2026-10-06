@@ -43,15 +43,15 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::ancestral::attach::complete_alignment_for_leaves;
-    use crate::ancestral::mask::create_mask;
+    use crate::test_utils::{CompletedSequences, complete_leaf_sequences};
+
     use crate::ancestral::params::{AncestralParams, MethodAncestral};
     use crate::cancel::NoopCancel;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::gtr::gtr::GTR;
     use crate::partition::marginal::sample::SampleMode;
     use crate::progress::NoopProgress;
-    use crate::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
+    use crate::seq::alignment::{AncestralInput, EdgeSeqInput};
     use eyre::{OptionExt, Report};
     use std::path::PathBuf;
     use std::sync::LazyLock;
@@ -89,11 +89,9 @@ mod tests {
         sample_from_profile: SampleMode::Argmax,
       };
       let names = parse.names();
-      let sequences = complete_alignment_for_leaves(&parse.graph, sequences, &alphabet, false, &names, &NoopProgress)?;
-      let alignment_length = get_common_length(&sequences)?;
-      let mask = create_mask(&sequences, alignment_length, &alphabet);
+      let CompletedSequences { nodes, mask } = complete_leaf_sequences(&parse.graph, &names, sequences, &alphabet)?;
       let input = AncestralInput {
-        nodes: node_seq_inputs(&parse.graph, &names, sequences),
+        nodes,
         edges: parse
           .branch_lengths
           .into_iter()

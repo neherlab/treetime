@@ -9,7 +9,7 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use rstest::rstest;
   use serde::Deserialize;
@@ -149,7 +149,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln.to_vec()))?;
+    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
@@ -179,7 +179,7 @@ mod tests {
     })?;
 
     let partition =
-      PartitionMarginalDense::new(0, NUC_ALPHABET.clone(), &graph, &node_seq_inputs(&graph, &names, aln))?;
+      PartitionMarginalDense::new(0, NUC_ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))

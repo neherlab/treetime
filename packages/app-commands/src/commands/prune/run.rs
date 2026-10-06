@@ -1,5 +1,5 @@
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::shared::alignment::read_alignment;
+use crate::commands::shared::alignment::{pair_alignment, read_alignment};
 use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
@@ -25,7 +25,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::name_list::{name_list_read_file, name_list_read_str};
 use treetime_io::nwk::NwkStyle;
-use treetime_primitives::{AlignmentRecord, Seq};
+use treetime_primitives::Seq;
 
 pub fn run_prune(
   args: &TreetimePruneArgs,
@@ -50,7 +50,11 @@ pub fn run_prune(
   let needs_sequences = args.prune_empty || args.merge_shared_mutations;
   let sequences = if needs_sequences && !args.alignment.alignment.is_empty() {
     let records = read_alignment(&args.alignment.alignment, &alphabet)?;
-    Some(records.into_iter().map(AlignmentRecord::from).collect())
+    Some(
+      pair_alignment(records, &args.alignment.alignment, &graph, &names, log)
+        .sequences
+        .nodes,
+    )
   } else {
     None
   };

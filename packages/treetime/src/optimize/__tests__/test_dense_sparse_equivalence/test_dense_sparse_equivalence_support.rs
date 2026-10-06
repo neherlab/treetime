@@ -6,7 +6,7 @@ pub(super) mod tests {
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use std::collections::BTreeMap;
@@ -50,7 +50,7 @@ pub(super) mod tests {
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MarginalReconstruction, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(0, alphabet, graph, &node_seq_inputs(graph, names, aln.to_vec()))?;
+    let partition = PartitionMarginalDense::new(0, alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let reconstruction =
       MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
 
@@ -66,7 +66,7 @@ pub(super) mod tests {
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MarginalReconstruction, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, node_seq_inputs(graph, names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(graph, 0, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       partition,

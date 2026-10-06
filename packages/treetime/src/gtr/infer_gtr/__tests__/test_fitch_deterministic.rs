@@ -6,7 +6,7 @@ mod tests {
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use rstest::rstest;
   use std::path::PathBuf;
@@ -49,7 +49,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), node_seq_inputs(&graph, &names, aln.clone()))?;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), leaf_seq_inputs(&graph, &names, aln.clone()))?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
     };
 
@@ -59,7 +59,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
-      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), node_seq_inputs(&graph, &names, aln))?;
+      let fitch = create_fitch_partition(&graph, 0, NUC_ALPHABET.clone(), leaf_seq_inputs(&graph, &names, aln))?;
       infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
     };
 

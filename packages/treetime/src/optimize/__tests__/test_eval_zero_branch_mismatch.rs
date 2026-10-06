@@ -8,7 +8,7 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
-  use crate::seq::alignment::node_seq_inputs;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
   use treetime_io::fasta::fasta_read;
@@ -45,7 +45,7 @@ mod tests {
       &graph,
       0,
       Alphabet::new(AlphabetName::Nuc)?,
-      node_seq_inputs(&graph, &names, aln),
+      leaf_seq_inputs(&graph, &names, aln),
     )?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(&graph)?;
     let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(

@@ -5,8 +5,8 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
-  use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::find_node_key_by_name;
+  use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
@@ -27,7 +27,7 @@ mod tests {
         })
       })
       .collect::<Result<Vec<_>, Report>>()?;
-    let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), node_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let MarginalUpdate { node_states, edges, .. } =
       partition.marginal_update(&jc69(JC69Params::default())?, &graph, &branch_lengths, &node_states)?;

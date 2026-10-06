@@ -1,11 +1,13 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::ancestral::attach::complete_alignment_for_leaves;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::gtr::GTR;
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
-use crate::seq::alignment::{NodeSeqInput, node_seq_inputs};
+use crate::progress::NoopProgress;
+use crate::seq::alignment::{NodeSeqInput, pair_leaf_sequences};
 use crate::seq::sink::{SeqItem, SeqSink};
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -28,7 +30,7 @@ pub(crate) fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &
     .map(AlignmentRecord::from)
     .collect();
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-  let partition = PartitionMarginalDense::new(0, alphabet, &graph, &node_seq_inputs(&graph, &names, aln))?;
+  let partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
   let MarginalUpdate { log_lh, .. } =
     partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), &())?;
   Ok(log_lh.value())
@@ -45,7 +47,7 @@ pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: 
     .collect();
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-  let fitch = create_fitch_partition(&graph, 0, alphabet, node_seq_inputs(&graph, &names, aln))?;
+  let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
   let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
 
   let MarginalUpdate { log_lh, .. } =
@@ -136,4 +138,33 @@ pub(crate) fn dense_partition_with_constant_leaves(
     })
     .collect();
   PartitionMarginalDense::new(0, alphabet, graph, &node_inputs)
+}
+
+pub(crate) fn leaf_seq_inputs(
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  aln: Vec<AlignmentRecord>,
+) -> BTreeMap<GraphNodeKey, NodeSeqInput> {
+  pair_leaf_sequences(graph, names, aln).sequences.nodes
+}
+
+pub(crate) struct CompletedSequences {
+  pub(crate) nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  pub(crate) mask: Vec<bool>,
+}
+
+pub(crate) fn complete_leaf_sequences(
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  aln: Vec<AlignmentRecord>,
+  alphabet: &Alphabet,
+) -> Result<CompletedSequences, Report> {
+  let mut sequences = pair_leaf_sequences(graph, names, aln).sequences;
+  let length = sequences.common_length()?;
+  complete_alignment_for_leaves(graph, &mut sequences.nodes, length, alphabet, false, &NoopProgress)?;
+  let mask = sequences.mask(length, alphabet);
+  Ok(CompletedSequences {
+    nodes: sequences.nodes,
+    mask,
+  })
 }

@@ -14,8 +14,8 @@ mod tests {
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::node_seq_inputs;
   use crate::test_utils::dates_by_node;
+  use crate::test_utils::leaf_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::result::given_times;
@@ -63,7 +63,7 @@ mod tests {
       .map(AlignmentRecord::from)
       .collect();
     let dense_partition = MarginalReconstruction::Dense(DenseReconstruction::seeded(
-      PartitionMarginalDense::new(0, ALPHABET.clone(), &graph, &node_seq_inputs(&graph, &names, aln))?,
+      PartitionMarginalDense::new(0, ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?,
       jc69(JC69Params::default())?,
     ));
 

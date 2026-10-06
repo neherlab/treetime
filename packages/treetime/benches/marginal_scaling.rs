@@ -11,14 +11,13 @@ use rayon::ThreadPoolBuilder;
 use std::hint::black_box;
 use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::ancestral::mask::create_mask;
 use treetime::ancestral::params::{AncestralParams, MethodAncestral};
 use treetime::ancestral::pipeline::run;
 use treetime::cancel::NoopCancel;
 use treetime::gtr::get_gtr::GtrModelName;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::NoopProgress;
-use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, get_common_length, node_seq_inputs};
+use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, pair_leaf_sequences};
 use treetime::seq::sink::{SeqItem, SeqSink};
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::nwk::nwk_read_file;
@@ -96,9 +95,10 @@ fn setup() -> AncestralInput {
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
-  let mask = create_mask(&alignment, get_common_length(&alignment).unwrap(), &alphabet);
+  let sequences = pair_leaf_sequences(&nwk_parsed.graph, &names, alignment).sequences;
+  let mask = sequences.mask(sequences.common_length().unwrap(), &alphabet);
   AncestralInput {
-    nodes: node_seq_inputs(&nwk_parsed.graph, &names, alignment),
+    nodes: sequences.nodes,
     edges: nwk_parsed
       .branch_lengths
       .into_iter()
