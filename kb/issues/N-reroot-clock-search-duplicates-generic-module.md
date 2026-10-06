@@ -13,7 +13,7 @@ The migration must preserve payload statistics across the module boundary and us
 
 ## Recommendation
 
-Use O1. Implement `RootStats` directly for `ClockSet`, route clock rerooting through the generic search, preserve the existing clock objective and explicitly supplied optimizer parameters, and delete the duplicate clock-only search module after all callers migrate. Objective/default changes and tip-name policy remain separate issues.
+Use O1. Implement `RootStats` directly for `ClockSet`, route clock rerooting through the generic search, preserve the existing clock objective and explicitly supplied optimizer parameters, and delete the duplicate clock-only search module after all callers migrate. Objective and default changes remain separate issues.
 
 ## Fix (O1)
 
@@ -23,7 +23,7 @@ Route the existing clock reroot objective through the generic `reroot` infrastru
 - Replace the clock-only search and edge-cost calls with the corresponding generic `reroot` search and orchestration APIs
 - Extract the existing per-edge `ClockSet` statistics into the map that the generic search reads
 - Preserve every caller-supplied and default `BranchPointOptimizationParams` value exactly
-- Preserve the fixed-zero-rate MinDev objective (`RootObjective::FixedRate(0.0)` [packages/treetime/src/clock/reroot.rs#L194-L205](../../packages/treetime/src/clock/reroot.rs#L194-L205)) and the current tip-name resolution behavior
+- Preserve the fixed-zero-rate MinDev objective (`RootObjective::FixedRate(0.0)` [packages/treetime/src/clock/reroot.rs#L194-L205](../../packages/treetime/src/clock/reroot.rs#L194-L205)) and the tip reroot on leaf keys that the commands resolve from `--reroot-tips`
 - Keep the clock-specific fixup that swaps the `clock_to_parent` and `clock_to_child` statistics on inverted edges, in `fn apply_reroot()` [packages/treetime/src/clock/reroot.rs#L347-L371](../../packages/treetime/src/clock/reroot.rs#L347-L371)
 - Update imports and delete `packages/treetime/src/clock/find_best_root/` after no callers remain
 
@@ -36,7 +36,6 @@ Route the existing clock reroot objective through the generic `reroot` infrastru
 
 ## Related issues
 
-- [N-reroot-duplicated-tip-name-resolution.md](N-reroot-duplicated-tip-name-resolution.md)
 - [N-reroot-split-optimizer-default-diverges-from-v0.md](N-reroot-split-optimizer-default-diverges-from-v0.md)
 
 ## Related errata

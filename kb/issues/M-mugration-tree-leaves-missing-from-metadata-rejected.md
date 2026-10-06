@@ -1,6 +1,6 @@
 # Mugration rejects tree leaves with no metadata entry
 
-Mugration's `validate_trait_names()` ([`packages/treetime/src/partition/marginal_discrete.rs#L268-L274`](../../packages/treetime/src/partition/marginal_discrete.rs#L268)) hard-errors when a tree leaf has no matching row in the metadata file:
+Mugration's `validate_trait_leaves()` ([`packages/treetime/src/partition/marginal/discrete/input.rs#L20-L38`](../../packages/treetime/src/partition/marginal/discrete/input.rs#L20-L38)) hard-errors when a tree leaf has no matching row in the metadata file:
 
 ```
 Mugration: tree leaves missing from metadata: <names>
@@ -14,7 +14,7 @@ v0 mugration ([`packages/legacy/treetime/treetime/wrappers.py#L777-L782`](../../
 
 ## Correct behavior
 
-A tree leaf missing from the metadata should be assigned the missing-data character and the run should proceed, matching v0 and the FASTA subsystem, which fills absent tips with an ambiguous sequence ([`attach.rs#L61-L68`](../../packages/treetime/src/ancestral/attach.rs#L61)). The mugration model already carries a missing-data state (`DiscreteStates` is built with a missing symbol), so the assignment target exists.
+A tree leaf missing from the metadata should be assigned the missing-data character and the run should proceed, matching v0 and the FASTA subsystem, which fills absent tips with an ambiguous sequence ([`packages/treetime/src/ancestral/attach.rs#L55-L61`](../../packages/treetime/src/ancestral/attach.rs#L55-L61)). The mugration model already carries a missing-data state (`DiscreteStates` is built with a missing symbol), so the assignment target exists.
 
 Whether to also gate on very low coverage (as FASTA does at >1/3 missing) is a separate policy question, not required for v0 parity. The parity fix is: fill missing, do not error.
 
@@ -24,6 +24,6 @@ The opposite direction (metadata names absent from the tree) was fixed to warn-a
 
 ## Related
 
-- [N-io-name-reconciliation-duplicated.md](N-io-name-reconciliation-duplicated.md) -- the same reconciliation is reimplemented per subsystem with inconsistent missing-data policy
+- [N-io-missing-name-policy-differs-across-subsystems.md](N-io-missing-name-policy-differs-across-subsystems.md) -- each subsystem applies its own missing-data policy after the shared pairing
 - [M-io-sequence-name-matching-unreliable.md](M-io-sequence-name-matching-unreliable.md) -- broader name-matching reliability
 - Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) -- shared `reconcile_names` function; its cross-site table records this mugration missing-leaf hard-error as the strictest policy

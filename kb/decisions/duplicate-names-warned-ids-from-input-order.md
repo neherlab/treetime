@@ -10,8 +10,8 @@ Sample and node names repeat in real-world input. TreeTime treats such input as 
 
 - **Identity**: code identifies every entry by an ID derived from its input order: the order of records in a FASTA file, the order of nodes in a Newick tree. Code never identifies an entry by its name
 - **Names**: names are metadata. They pass from input to output unchanged, through a mapping from ID to name, and have no internal use. Outputs and screen reports restore names from IDs where they need them
-- **Pairing across inputs**: inputs that can only be paired by name (tree leaves, FASTA records, metadata rows) pair with the first entry in input order when a name has more than one entry. Later entries with that name get nothing from the pairing
-- **Names in arguments**: a name that the user types, for example a tip of `--reroot-tips`, resolves to the first matching node in input order
+- **Pairing across inputs**: inputs that can only be paired by name (tree leaves, FASTA records, metadata rows) pair once, at the input of each command. The first entry of a name in a file wins, later entries of that name are dropped, and every node with that name receives the kept entry, so nodes that share a name share its data
+- **Names in arguments**: a name that the user types resolves to the first matching node in input order. `--reroot-tips` names resolve among leaves, because a reroot can remove internal nodes; other typed names, such as the prune lists, resolve among all nodes. Leaves that share a name share its position in the topology target order
 - **Detection cost**: TreeTime adds no search for duplicates that costs time or memory on every run. It warns only where a format, a pairing or an algorithm finds a duplicate at no or small cost, for example while it builds an index that it needs anyway
 - **Warning form**: the run result carries each warning as a typed entry, so the web and desktop apps show it as a notice next to the results, and the run log and the CLI show the same text
 - **Processing**: algorithms assume unique names, except where they can detect duplicates cheaply and avoid the corruption that duplicates cause
@@ -26,11 +26,9 @@ Sample and node names repeat in real-world input. TreeTime treats such input as 
 
 ## v0 behavior
 
-v0 has no duplicate check. `TreeAnc` looks leaves up in a dictionary keyed by name, which keeps the last leaf of each name (`_leaves_lookup`, [packages/legacy/treetime/treetime/treeanc.py#L459](../../packages/legacy/treetime/treetime/treeanc.py#L459)).
+v0 has no duplicate check. `TreeAnc` looks leaves up in a dictionary keyed by name, which keeps the last leaf of each name (`_leaves_lookup`, [packages/legacy/treetime/treetime/treeanc.py#L459](../../packages/legacy/treetime/treetime/treeanc.py#L459)). A single reroot name resolves through that dictionary, so among leaves; a list of names resolves through Bio.Phylo `common_ancestor`, which also matches internal node names ([packages/legacy/treetime/treetime/treetime.py#L605-L608](../../packages/legacy/treetime/treetime/treetime.py#L605-L608)).
 
 ## Related
 
-- [kb/issues/M-io-duplicate-node-names-overwrite-name-keyed-outputs.md](../issues/M-io-duplicate-node-names-overwrite-name-keyed-outputs.md)
 - [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md)
-- [kb/issues/N-reroot-duplicated-tip-name-resolution.md](../issues/N-reroot-duplicated-tip-name-resolution.md)
 - [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md)

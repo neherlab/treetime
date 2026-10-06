@@ -4,14 +4,6 @@ The current input model reads tree topology from Newick and sequences from FASTA
 
 ## Failure modes
 
-### Duplicate leaf names
-
-When a tree contains multiple nodes with the same name (e.g., two leaves named `"USA"`), the attachment logic at [packages/treetime/src/partition/fitch/passes.rs#L51-L55](../../packages/treetime/src/partition/fitch/passes.rs#L51-L55) uses `.find()` which returns the first match. The second node silently receives the same sequence or fails.
-
-### Duplicate FASTA names
-
-When a FASTA file contains multiple sequences with the same name, the first matching sequence is used. Subsequent sequences with that name are ignored without warning.
-
 ### Unnamed internal nodes
 
 Newick internal nodes often have no name or arbitrary labels like `"Node_42"`. There is no mechanism to attach ancestral sequences from external sources to these nodes, as name matching requires names.
@@ -27,17 +19,16 @@ Names that differ only in whitespace or encoding are treated as distinct:
 
 ### Case sensitivity
 
-The comparison at [packages/treetime/src/partition/fitch/passes.rs#L53](../../packages/treetime/src/partition/fitch/passes.rs#L53) is case-sensitive. `"USA"` and `"usa"` are treated as different names with no standard convention for which is correct.
+The name lookup of `fn pair_by_name()` [packages/treetime-graph/src/pair_by_name.rs#L27](../../packages/treetime-graph/src/pair_by_name.rs#L27), which every command uses to pair FASTA records with leaves, is case-sensitive. `"USA"` and `"usa"` are treated as different names with no standard convention for which is correct.
 
 ## Current behavior
 
-Attachment fails with an error when a leaf node name has no matching sequence:
+`ancestral` and `homoplasy` fill a leaf without a matching record with unknown characters and warn for each such leaf; they stop when more than a third of the leaves have no record, unless `--ignore-missing-alns` is set (`fn complete_alignment_for_leaves()` [packages/treetime/src/ancestral/attach.rs#L18](../../packages/treetime/src/ancestral/attach.rs#L18)). `timetree`, `optimize` and `prune` stop at the first leaf without a record:
 
-```rust
-.ok_or_else(|| make_report!("Leaf sequence not found: '{leaf_name}'"))?;
-```
+- Dense partitions: `Leaf sequence not found: '<name>'` [packages/treetime/src/partition/marginal/dense/partition.rs#L60](../../packages/treetime/src/partition/marginal/dense/partition.rs#L60)
+- Sparse partitions: `Leaf sequence not found after alignment completion: '<name>'` [packages/treetime/src/partition/fitch/passes.rs#L68](../../packages/treetime/src/partition/fitch/passes.rs#L68)
 
-This error is actionable but provides no guidance on near-matches or potential causes (case, whitespace, duplicates).
+These messages give no guidance on near-matches or potential causes (case, whitespace).
 
 ## Impact
 
@@ -46,10 +37,9 @@ Users with mismatched names must manually edit either the tree or the FASTA file
 ## Possible improvements
 
 1. Build a name index upfront and report all mismatches at once (not one at a time)
-2. Detect and report duplicate names before attachment
-3. Provide fuzzy matching suggestions for near-misses
-4. Support explicit name mapping via config file (see [config-file-multi-partition proposal](../proposals/config-file-multi-partition.md))
-5. Support case-insensitive matching as an option
+2. Provide fuzzy matching suggestions for near-misses
+3. Support explicit name mapping via config file (see [config-file-multi-partition proposal](../proposals/config-file-multi-partition.md))
+4. Support case-insensitive matching as an option
 
 ## Related issues
 
@@ -60,6 +50,6 @@ Users with mismatched names must manually edit either the tree or the FASTA file
 
 ## Related
 
-- [N-io-name-reconciliation-duplicated.md](N-io-name-reconciliation-duplicated.md) - reconciliation logic duplicated across subsystems
+- [N-io-missing-name-policy-differs-across-subsystems.md](N-io-missing-name-policy-differs-across-subsystems.md) - reconciliation logic duplicated across subsystems
 - Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) - ecosystem survey, four design axes, architecture analysis
 - [Configuration file format for multi-partition analysis](../proposals/config-file-multi-partition.md) - could include explicit name mappings

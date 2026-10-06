@@ -30,7 +30,3 @@ Parse a `SplitFraction` type whose value $x$ is finite and satisfies $0\le x\le1
 - Accept $0$, $0.5$, and $1$; reject negative, greater-than-one, NaN, and infinite inputs
 - Split lengths are non-negative, finite, and sum to the original length
 - Inject stale node and edge keys and compare the entire graph before and after the error
-
-## Related issues
-
-- [N-reroot-tip-resolution-untested-errors.md](N-reroot-tip-resolution-untested-errors.md)
