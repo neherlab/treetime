@@ -89,16 +89,19 @@ impl LeafSequences {
   }
 
   pub fn mask(&self, alignment_length: usize, alphabet: &Alphabet) -> Vec<bool> {
-    create_mask(self.kept().map(|(_, seq)| seq), alignment_length, alphabet)
+    create_mask(self.paired().map(|(_, seq)| seq), alignment_length, alphabet)
+  }
+
+  fn paired(&self) -> impl Iterator<Item = (&str, &Seq)> {
+    self
+      .nodes
+      .values()
+      .filter_map(|node| Some((node.name.as_deref().unwrap_or(""), node.seq.as_ref()?)))
   }
 
   fn kept(&self) -> impl Iterator<Item = (&str, &Seq)> {
-    let paired = self
-      .nodes
-      .values()
-      .filter_map(|node| Some((node.name.as_deref().unwrap_or(""), node.seq.as_ref()?)));
     let unmatched = self.unmatched.iter().map(|(name, seq)| (name.as_str(), seq));
-    paired.chain(unmatched)
+    self.paired().chain(unmatched)
   }
 }
 

@@ -2,6 +2,8 @@
 mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use std::collections::BTreeMap;
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::o;
   use util_augur_node_data_json::AugurNodeDataJsonAncestral;
@@ -140,6 +142,34 @@ mod tests {
     use crate::commands::shared::model::GtrModelNameCli;
     let actual = helpers::reconstruct_json(MethodAncestralCli::Marginal, Some(true), GtrModelNameCli::JC69);
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::sparse(false)]
+  #[case::dense( true)]
+  #[trace]
+  fn test_augur_node_data_ancestral_mask_ignores_records_not_in_tree(#[case] dense: bool) {
+    let data = helpers::reconstruct_json_with_outlier_record(dense);
+
+    let sequences = data
+      .nodes
+      .iter()
+      .filter_map(|(name, node)| Some((name.clone(), node.sequence.clone()?)))
+      .collect::<BTreeMap<_, _>>();
+    assert_eq!(
+      (
+        Some(o!("001100")),
+        btreemap! {
+          o!("A") => o!("ACNN-T"),
+          o!("B") => o!("ACNN-T"),
+          o!("C") => o!("ACNN-T"),
+          o!("AB") => o!("ACNN-T"),
+          o!("root") => o!("ACNN-T"),
+        }
+      ),
+      (data.metadata.mask, sequences)
+    );
   }
 
   #[test]
@@ -343,6 +373,39 @@ mod tests {
 
       run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();
       std::fs::read_to_string(node_data_path).unwrap()
+    }
+
+    pub(super) fn reconstruct_json_with_outlier_record(dense: bool) -> AugurNodeDataJsonAncestral {
+      let dir = tempdir().unwrap();
+      let tree_path = dir.path().join("tree.nwk");
+      let fasta_path = dir.path().join("aln.fasta");
+      let node_data_path = dir.path().join("augur-node-data.json");
+      std::fs::write(&tree_path, "((A:0.1,B:0.1)AB:0.1,C:0.1)root;").unwrap();
+      std::fs::write(&fasta_path, ">A\nACNN-T\n>B\nACNN-T\n>C\nACNN-T\n>outlier\nAAGTGT\n").unwrap();
+
+      let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
+        alignment: AlignmentArgs {
+          alignment: vec![fasta_path],
+        },
+        tree: Some(tree_path),
+        method_anc: MethodAncestralCli::Marginal,
+        dense: Some(dense),
+        model_args: ModelArgs {
+          model: GtrModelNameCli::JC69,
+          ..ModelArgs::default()
+        },
+        impute_missing_data: true,
+        output: OutputCoreArgs {
+          output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
+          ..Default::default()
+        },
+        output_augur_node_data: Some(node_data_path.clone()),
+        ..TreetimeAncestralArgsRaw::default()
+      })
+      .unwrap();
+
+      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();
+      json_read_str(std::fs::read_to_string(node_data_path).unwrap()).unwrap()
     }
 
     pub(super) fn reconstruct_json_with_translations() -> AugurNodeDataJsonAncestral {

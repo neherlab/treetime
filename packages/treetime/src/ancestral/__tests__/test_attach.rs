@@ -2,6 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::attach::{complete_alignment_for_leaves, sanitize_to_alphabet};
+  use crate::ancestral::mask::mask_to_string;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::pair_leaf_sequences;
   use eyre::Report;
@@ -75,6 +76,34 @@ mod tests {
       vec![(o!("reference"), Seq::try_from_str("ACGT").unwrap())],
       paired.unmatched
     );
+  }
+
+  #[test]
+  fn test_attach_mask_ignores_records_not_matching_any_leaf() {
+    let (graph, names) = helpers::three_leaf_tree();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
+    let sequences = helpers::records(&[("A", "ACNN-"), ("B", "AGNN-"), ("C", "ATNN-"), ("outlier", "AAGTG")]);
+    let mut paired = pair_leaf_sequences(&graph, &names, sequences).sequences;
+    let length = paired.common_length().unwrap();
+    complete_alignment_for_leaves(&graph, &mut paired.nodes, length, &alphabet, false, &NoopProgress).unwrap();
+
+    let mask = paired.mask(length, &alphabet);
+
+    assert_eq!("00110", mask_to_string(&mask));
+  }
+
+  #[test]
+  fn test_attach_mask_counts_leaves_without_a_record_as_unknown() {
+    let (graph, names) = helpers::three_leaf_tree();
+    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
+    let sequences = helpers::records(&[("A", "ACGN"), ("B", "NNGN"), ("outlier", "AAAA")]);
+    let mut paired = pair_leaf_sequences(&graph, &names, sequences).sequences;
+    let length = paired.common_length().unwrap();
+    complete_alignment_for_leaves(&graph, &mut paired.nodes, length, &alphabet, true, &NoopProgress).unwrap();
+
+    let mask = paired.mask(length, &alphabet);
+
+    assert_eq!("0001", mask_to_string(&mask));
   }
 
   #[test]
