@@ -2,11 +2,11 @@
 
 ## Summary
 
-`Alphabet` serialization needs a user-facing format design before release. The current implementation routes serde through `AlphabetConfig`, which serializes raw byte values (`u8`, `Vec<u8>`) instead of human-readable characters. No command currently outputs alphabet information, but alphabet output will be needed when features like automatic alphabet deduction from data are introduced.
+`Alphabet` serialization needs a user-facing format design before release. The current implementation routes serialization through `AlphabetConfig`, which serializes raw byte values (`u8`, `Vec<u8>`) instead of human-readable characters. No command currently outputs alphabet information, but alphabet output will be needed when features like automatic alphabet deduction from data are introduced.
 
 ## Current state
 
-`Alphabet` stores an `AlphabetConfig` and uses `#[serde(try_from = "AlphabetConfig")]` for deserialization and delegates `Serialize` to the stored config. `AlphabetConfig` fields are raw bytes:
+`Alphabet` stores an `AlphabetConfig`, deserializes through `#[deser(deserialize_as = TryFromInto<AlphabetConfig>)]`, and its `Serialize` impl forwards to the stored config. `AlphabetConfig` fields are raw bytes, written as lists of numbers through `#[deser(as = BytesFallback<IntSeq>)]` (deser writes byte vectors as base64 strings by default):
 
 - `canonical: Vec<u8>` - serializes as `[65, 67, 71, 84]` instead of `["A", "C", "G", "T"]`
 - `ambiguous: IndexMap<u8, Vec<u8>>` - keys and values are byte codes
@@ -38,7 +38,7 @@ Format considerations:
 
 `AlphabetConfig` stores `u8` because it predates `AsciiChar`. Options:
 
-- Keep `AlphabetConfig` as `u8` internally, add serde attributes for human-readable serialization
+- Keep `AlphabetConfig` as `u8` internally, add adapters for human-readable serialization
 - Change `AlphabetConfig` fields to `AsciiChar` / `Vec<AsciiChar>` throughout
 - Separate internal config from a public-facing schema type
 

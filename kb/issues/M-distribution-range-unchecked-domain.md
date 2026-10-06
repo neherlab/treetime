@@ -16,4 +16,4 @@ Choose one construction contract:
 - make range construction fallible and validate finite ordered endpoints plus policy-valid amplitude; or
 - introduce a validated support type that distinguishes positive-width intervals from points before constructing a distribution.
 
-Update serde deserialization and every direct constructor consistently. Implementation waits until this API decision is approved.
+Update deserialization and every direct constructor consistently. Implementation waits until this API decision is approved.

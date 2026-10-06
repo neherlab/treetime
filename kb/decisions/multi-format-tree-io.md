@@ -111,7 +111,7 @@ Unlike NeXML and Nexus, PhyloXML does not support character matrices or alignmen
 
 ### v1 implementation
 
-The `util-phyloxml` crate ([packages/util-phyloxml/src/types.rs](../../packages/util-phyloxml/src/types.rs)) implements the full PhyloXML type model: `Phyloxml`, `PhyloxmlPhylogeny`, `PhyloxmlClade`, `PhyloxmlTaxonomy`, `PhyloxmlSequence`, `PhyloxmlEvents`, `PhyloxmlDistribution`, `PhyloxmlDate`, `PhyloxmlProperty`, `PhyloxmlBinaryCharacters`, `PhyloxmlDomainArchitecture`, and supporting types. `fn phyloxml_read()` and `fn phyloxml_write()` in [packages/util-phyloxml/src/lib.rs](../../packages/util-phyloxml/src/lib.rs) read and write XML through `quick-xml` with serde.
+The `util-phyloxml` crate ([packages/util-phyloxml/src/types.rs](../../packages/util-phyloxml/src/types.rs)) implements the full PhyloXML type model: `Phyloxml`, `PhyloxmlPhylogeny`, `PhyloxmlClade`, `PhyloxmlTaxonomy`, `PhyloxmlSequence`, `PhyloxmlEvents`, `PhyloxmlDistribution`, `PhyloxmlDate`, `PhyloxmlProperty`, `PhyloxmlBinaryCharacters`, `PhyloxmlDomainArchitecture`, and supporting types. `fn phyloxml_read()` and `fn phyloxml_write()` in [packages/util-phyloxml/src/lib.rs](../../packages/util-phyloxml/src/lib.rs) read and write XML through `deser-xml`.
 
 No package depends on the crate, and no converter between PhyloXML and the graph exists. [kb/issues/N-io-phyloxml-crate-unused.md](../issues/N-io-phyloxml-crate-unused.md) asks whether to wire it into the commands or remove it.
 
@@ -183,11 +183,11 @@ Nextstrain/Auspice is the standard visualization platform in genomic epidemiolog
 
 ### Tradeoffs
 
-The format embeds rich visualization metadata directly in the data file, making it web-ready for the Auspice viewer. JSON overhead and cumulative per-node divergence storage produce large files for big trees. The format is Nextstrain-specific - BEAST, IQ-TREE, FigTree, and other phylogenetics tools do not produce or consume it. Dynamic trait properties (`node_attrs` pattern properties) make static typing difficult, requiring serde flatten or similar mechanisms.
+The format embeds rich visualization metadata directly in the data file, making it web-ready for the Auspice viewer. JSON overhead and cumulative per-node divergence storage produce large files for big trees. The format is Nextstrain-specific - BEAST, IQ-TREE, FigTree, and other phylogenetics tools do not produce or consume it. Dynamic trait properties (`node_attrs` pattern properties) make static typing difficult, requiring flattened catch-all maps or similar mechanisms.
 
 ### v1 implementation
 
-The type model in [packages/treetime-io/src/auspice_types.rs](../../packages/treetime-io/src/auspice_types.rs) covers the Auspice v2 schema: `AuspiceTree`, `AuspiceTreeNode`, `AuspiceTreeNodeAttrs`, `AuspiceTreeBranchAttrs`, `AuspiceTreeMeta`, `AuspiceGenomeAnnotations`, colorings, and display defaults. The types derive serde in both directions, but no command reads Auspice JSON.
+The type model in [packages/treetime-io/src/auspice_types.rs](../../packages/treetime-io/src/auspice_types.rs) covers the Auspice v2 schema: `AuspiceTree`, `AuspiceTreeNode`, `AuspiceTreeNodeAttrs`, `AuspiceTreeBranchAttrs`, `AuspiceTreeMeta`, `AuspiceGenomeAnnotations`, colorings, and display defaults. The types derive deser in both directions; unknown keys are kept in flattened `deser_value::Map` fields. No command reads Auspice JSON; the app reads the Auspice file of a run for its results page.
 
 `fn auspice_tree()` in [packages/app-output/src/auspice.rs](../../packages/app-output/src/auspice.rs) builds the tree from the checked tree and the facts that the run has:
 
@@ -202,7 +202,7 @@ Every number in the node attributes must be finite; otherwise the error names th
 
 ### Graph JSON
 
-The graph type derives serde, and every command writes the graph (nodes, edges and graph-level data) as `{stem}.graph.json` through `json_write_file()` of `treetime-utils`, with no format-specific code. The file shows the graph as the run left it, also when it is not a tree. No command reads it.
+The graph type derives deser, and every command writes the graph (nodes, edges and graph-level data) as `{stem}.graph.json` through `json_write_file()` of `treetime-utils`, with no format-specific code. The file shows the graph as the run left it, also when it is not a tree. No command reads it.
 
 ### Graphviz DOT
 

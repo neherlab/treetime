@@ -20,7 +20,7 @@ One concept reads several ways, so call sites share no vocabulary, the same name
 
 Consolidate onto the canonical types per the decision:
 
-- Add `DateNumeric` as a newtype over `f64` (`#[serde(transparent)]`, so it serializes as a bare number) and `DateRangeNumeric { start: DateNumeric, end: DateNumeric }` in the `treetime-utils` datetime module. `DateNumeric` provides the operations the current `CalendarTime` exposes (`value`, `max`, `is_finite`).
+- Add `DateNumeric` as a newtype over `f64` (a newtype struct, which deser serializes as a bare number) and `DateRangeNumeric { start: DateNumeric, end: DateNumeric }` in the `treetime-utils` datetime module. `DateNumeric` provides the operations the current `CalendarTime` exposes (`value`, `max`, `is_finite`).
 - Replace `year_fraction` (for the whole value) and `CalendarTime` with `DateNumeric`. Keep functions that operate on the fractional part `F` named for the fraction.
 - Replace the `f64` `DateRange`, the private `TimeRange`, and the coalescent `SegmentInterval` with `DateRangeNumeric`, which also resolves the name collision (the timestamp `DateRange` keeps its name).
 - Rename the timestamp `DateRange` fields `begin` / `end` to `start` / `end`.

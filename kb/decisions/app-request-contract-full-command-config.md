@@ -54,7 +54,7 @@ The HTTP server and the desktop back end accept, for each of the seven app comma
 
 ## Alternatives considered
 
-- **A subset of settings per operation**, with request structs separate from the CLI config. Rejected: the app offers every CLI setting, and separate request structs repeat the fields and defaults of the CLI config and drift from them. The concern that `serde(flatten)` disables `deny_unknown_fields` does not apply, because the schema check runs before deserialization and rejects unknown keys at every level
+- **A subset of settings per operation**, with request structs separate from the CLI config. Rejected: the app offers every CLI setting, and separate request structs repeat the fields and defaults of the CLI config and drift from them. The concern that flattening disables `deny_unknown_fields` does not apply, because the schema check runs before deserialization and rejects unknown keys at every level
 - **One RPC endpoint** that accepts `{ operation, args }` for every operation, with a table of operations that both transports dispatch. Rejected: the web app must use the public REST API, and a second entry point next to the REST routes doubles the contract that outside clients see
 - **An HTTP server or a local socket in the desktop app**. Rejected: the desktop app opens no network listener. Running the router through `oneshot` in the addon gives the same routing, extractors and error mapping without one; the measured cost is 0.02 to 0.03 ms per small request, and none on responses of 1.6 MB
 - **WebSocket for realtime**. Rejected: axum's WebSocket upgrade needs a hyper connection and cannot run through `oneshot`, so the desktop app could not use it. SSE streams from the server and REST requests from the client cover both directions
