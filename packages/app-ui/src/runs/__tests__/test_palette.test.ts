@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { niceAxis, yearTick } from "../palette";
+import { bottomAxisLabel, leftAxisLabel, niceAxis, yearTick } from "../palette";
 
 describe("chart axes", () => {
   test.each([
@@ -33,5 +33,27 @@ describe("chart axes", () => {
 
     expect(axis.domain[0]).toBeLessThanOrEqual(0);
     expect(axis.domain[1]).toBeGreaterThanOrEqual(3.2e-4);
+  });
+});
+
+describe("chart axis labels", () => {
+  test("a bottom axis label sits below the axis in the tick style", () => {
+    expect(bottomAxisLabel("Date")).toStrictEqual({
+      fontSize: 11,
+      className: "fill-muted-foreground",
+      value: "Date",
+      position: "bottom",
+      offset: 4,
+    });
+  });
+
+  test("a left axis label reads upward inside the left edge in the tick style", () => {
+    expect(leftAxisLabel("Branches")).toStrictEqual({
+      fontSize: 11,
+      className: "fill-muted-foreground",
+      value: "Branches",
+      angle: -90,
+      position: "insideLeft",
+    });
   });
 });
