@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use treetime_grid::MaxGridPoints;
 
 /// Settings of a local TreeTime installation, kept in `settings.yaml` or `settings.json` in the app folder. Every
 /// setting is optional.
@@ -19,6 +20,10 @@ pub struct AppSettings {
   /// Preferences of the user interface.
   #[serde(default, skip_serializing_if = "UiSettings::is_unset")]
   pub ui: UiSettings,
+
+  /// Settings of the analyses that the app runs.
+  #[serde(default, skip_serializing_if = "AnalysisSettings::is_unset")]
+  pub analysis: AnalysisSettings,
 }
 
 /// Folders of the app. A relative path is relative to the app folder. The environment variables
@@ -69,6 +74,24 @@ pub struct UiSettings {
 }
 
 impl UiSettings {
+  pub fn is_unset(&self) -> bool {
+    *self == Self::default()
+  }
+}
+
+/// Settings of the analyses that the app runs. A setting here applies to every run whose configuration does not set
+/// it.
+#[skip_serializing_none]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AnalysisSettings {
+  /// Largest number of points of one probability grid during time inference, for runs whose configuration does not
+  /// set `max_grid_points`. Unset: 1000000.
+  #[serde(default)]
+  pub max_grid_points: Option<MaxGridPoints>,
+}
+
+impl AnalysisSettings {
   pub fn is_unset(&self) -> bool {
     *self == Self::default()
   }

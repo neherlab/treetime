@@ -359,6 +359,7 @@ dependencies = [
  "tower",
  "tower-http 0.7.1",
  "treetime",
+ "treetime-grid",
  "treetime-schema",
  "treetime-utils",
  "zip",

@@ -17,6 +17,7 @@ use log::{LevelFilter, warn};
 use std::io::{self, Write};
 use std::path::PathBuf;
 use tokio_util::sync::CancellationToken;
+use treetime_grid::MaxGridPoints;
 use treetime_utils::env::env_var_optional;
 use treetime_utils::init::global::{global_init, setup_logger};
 use treetime_utils::init::thread_pool::{available_jobs, init_thread_pool};
@@ -74,6 +75,7 @@ async fn main() -> eyre::Result<()> {
     examples_dir: args.examples_dir,
     runs_dir: args.runs_dir,
     max_upload_size: args.max_upload_size,
+    max_grid_points: Some(args.max_grid_points),
     shutdown: shutdown.clone(),
     settings: None,
   };
@@ -126,6 +128,11 @@ struct ServerArgs {
   /// Largest total size, in bytes, of the files uploaded into one run. Defaults to 1 GiB
   #[arg(long, default_value_t = DEFAULT_MAX_UPLOAD_SIZE)]
   max_upload_size: usize,
+
+  /// Largest number of points of one probability grid that a run on this server may use during time inference. A
+  /// run that sets no value gets this one; a run may set a lower value, and a higher value is rejected
+  #[arg(long, default_value_t = MaxGridPoints::default())]
+  max_grid_points: MaxGridPoints,
 
   /// Host name the server answers besides localhost, `*.localhost`, 127.0.0.1 and [::1]; repeat for several.
   /// Falls back to the comma-separated ALLOWED_HOSTS env var. Requests that name another host get HTTP 403

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::app_settings::settings::{AppPathSettings, AppSettings, UiSettings, UiTheme};
+  use crate::app_settings::settings::{AnalysisSettings, AppPathSettings, AppSettings, UiSettings, UiTheme};
   use crate::app_settings::store::{AppSettingsStore, SETTINGS_JSON, SETTINGS_YAML};
   use helpers::{draft, read_text, runs_at};
   use indoc::indoc;
@@ -8,6 +8,7 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
   use tempfile::tempdir;
+  use treetime_grid::MaxGridPoints;
   use treetime_utils::assert_error;
 
   #[test]
@@ -72,6 +73,9 @@ mod tests {
         sidebar_width: None,
         draft: Some(draft()),
       },
+      analysis: AnalysisSettings {
+        max_grid_points: Some(MaxGridPoints::new(250_000).unwrap()),
+      },
     };
     store.update(|settings| *settings = expected.clone()).unwrap();
     assert_eq!(expected, AppSettingsStore::open(dir.path()).unwrap().read().unwrap());
@@ -88,6 +92,9 @@ mod tests {
         theme: Some(UiTheme::Dark),
         sidebar_width: Some(300),
         draft: Some(draft()),
+      },
+      analysis: AnalysisSettings {
+        max_grid_points: Some(MaxGridPoints::new(5_000).unwrap()),
       },
     };
     store.update(|settings| *settings = expected.clone()).unwrap();
@@ -111,6 +118,7 @@ mod tests {
           theme: Some(UiTheme::Dark),
           ..UiSettings::default()
         },
+        analysis: AnalysisSettings::default(),
       },
       updated
     );

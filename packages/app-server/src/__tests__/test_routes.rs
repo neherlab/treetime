@@ -658,6 +658,7 @@ pub(crate) mod tests {
           examples_dir: TestApp::examples_dir(),
           runs_dir: runs_dir.path().to_path_buf(),
           max_upload_size,
+          max_grid_points: None,
           shutdown: shutdown.clone(),
           settings: None,
         },

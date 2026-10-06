@@ -9,6 +9,7 @@ use crate::results::clades::{CladeInRuns, CladeRequest, clade_in_runs};
 use crate::results::compare::{RunComparison, compare_runs};
 use crate::results::run_results::{RunResults, run_results};
 use crate::run_config::{RunConfigRequest, RunConfigResponse, run_config};
+use crate::run_limits::RunLimits;
 use crate::runs::errors::invalid;
 use crate::runs::files::RunFile;
 use crate::runs::manager::{ConfigHook, RunManager};
@@ -23,6 +24,7 @@ use std::sync::Arc;
 use std::thread;
 use treetime_schema::{VersionInfo, version_info};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
+use treetime_utils::make_error;
 
 pub trait InputPolicy: Send + Sync {
   fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report>;
@@ -40,14 +42,16 @@ pub struct AppService {
   runs: Arc<RunManager>,
   examples_dir: PathBuf,
   policy: Arc<dyn InputPolicy>,
+  limits: Arc<RunLimits>,
 }
 
 impl AppService {
-  pub fn new(runs: Arc<RunManager>, examples_dir: PathBuf, policy: Arc<dyn InputPolicy>) -> Self {
+  pub fn new(runs: Arc<RunManager>, examples_dir: PathBuf, policy: Arc<dyn InputPolicy>, limits: RunLimits) -> Self {
     Self {
       runs,
       examples_dir,
       policy,
+      limits: Arc::new(limits),
     }
   }
 
@@ -68,8 +72,16 @@ impl AppService {
   }
 
   pub fn run_config(&self, request: &RunConfigRequest) -> Result<RunConfigResponse, Report> {
+    let mut config = request.config.clone();
+    if let Err(report) = self.limits.apply(request.command, &mut config) {
+      return Ok(RunConfigResponse::invalid(&report));
+    }
+    let request = RunConfigRequest {
+      command: request.command,
+      config,
+    };
     let hook = self.hook(request.command);
-    Ok(run_config(request, hook))
+    Ok(run_config(&request, hook))
   }
 
   pub fn check_inputs(&self, request: CheckInputsRequest) -> Result<InputFacts, Report> {
@@ -141,7 +153,14 @@ impl AppService {
 
   fn hook(&self, command: AppCommand) -> ConfigHook {
     let policy = Arc::clone(&self.policy);
-    Box::new(move |config: &mut Value| policy.confine(command, config))
+    let limits = Arc::clone(&self.limits);
+    Box::new(move |config: &mut Value| {
+      policy.confine(command, config)?;
+      let Value::Object(settings) = config else {
+        return make_error!("a command configuration must be a mapping of settings");
+      };
+      limits.apply(command, settings)
+    })
   }
 
   fn start(&self, id: &JobId, request: &StartRunRequest) -> Result<RunRecord, Report> {

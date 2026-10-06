@@ -5,7 +5,7 @@ use crate::routes::RunPath;
 use crate::state::{AppState, LocalSettings};
 use aide::axum::ApiRouter;
 use aide::axum::routing::{get_with, post_with, put_with};
-use app_commands::app_settings::settings::{AppSettings, UiSettings, Workspace, WorkspaceUpdate};
+use app_commands::app_settings::settings::{AnalysisSettings, AppSettings, UiSettings, Workspace, WorkspaceUpdate};
 use app_commands::app_settings::workspace::{active_workspace, prepare_workspace};
 use app_commands::examples_download::ExamplesDownloadStatus;
 use app_commands::runs::record::SaveRunRequest;
@@ -33,8 +33,8 @@ pub(crate) fn app_settings_routes() -> ApiRouter<Arc<AppState>> {
       "/api/app-settings",
       get_with(app_settings, |op| {
         op.id("appSettings").description(
-          "Settings of a local installation: the runs folder and the preferences of the user interface. Only \
-           local apps serve this path.",
+          "Settings of a local installation: the folders of the app, the preferences of the user interface, and \
+           the settings of the analyses. Only local apps serve this path.",
         )
       }),
     )
@@ -43,6 +43,15 @@ pub(crate) fn app_settings_routes() -> ApiRouter<Arc<AppState>> {
       put_with(app_settings_ui, |op| {
         op.id("appSettingsUi")
           .description("Replace the preferences of the user interface. Only local apps serve this path.")
+      }),
+    )
+    .api_route(
+      "/api/app-settings/analysis",
+      put_with(app_settings_analysis, |op| {
+        op.id("appSettingsAnalysis").description(
+          "Replace the settings of the analyses; they apply to runs whose configuration does not set them. Only \
+           local apps serve this path.",
+        )
       }),
     )
     .api_route(
@@ -89,6 +98,17 @@ async fn app_settings_ui(
 ) -> Result<Json<UiSettings>, AppError> {
   blocking(&state, move |local| {
     Ok(local.store.update(|settings| settings.ui = ui)?.ui)
+  })
+  .await
+  .map(Json)
+}
+
+async fn app_settings_analysis(
+  State(state): State<Arc<AppState>>,
+  ApiJson(analysis): ApiJson<AnalysisSettings>,
+) -> Result<Json<AnalysisSettings>, AppError> {
+  blocking(&state, move |local| {
+    Ok(local.store.update(|settings| settings.analysis = analysis)?.analysis)
   })
   .await
   .map(Json)

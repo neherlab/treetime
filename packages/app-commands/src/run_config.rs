@@ -36,14 +36,7 @@ pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigR
         config_hash_error,
       }
     },
-    Err(report) => {
-      let ReportChain { message, causes } = ReportChain::of(&report);
-      RunConfigResponse::Invalid {
-        message,
-        causes,
-        problems: InvalidConfig::problems_of(&report),
-      }
-    },
+    Err(report) => RunConfigResponse::invalid(&report),
   }
 }
 
@@ -84,6 +77,17 @@ pub enum RunConfigResponse {
     /// Problems found by parsing and by the schema check, empty for other errors.
     problems: Vec<ConfigProblem>,
   },
+}
+
+impl RunConfigResponse {
+  pub fn invalid(report: &Report) -> Self {
+    let ReportChain { message, causes } = ReportChain::of(report);
+    Self::Invalid {
+      message,
+      causes,
+      problems: InvalidConfig::problems_of(report),
+    }
+  }
 }
 
 fn config_hash(command: AppCommand, config: &Map<String, Value>, confine: ConfigHook) -> Result<String, Report> {

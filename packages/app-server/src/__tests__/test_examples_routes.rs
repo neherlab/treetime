@@ -207,6 +207,7 @@ mod tests {
           examples_dir: examples.clone(),
           runs_dir: paths.runs.path.clone(),
           max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
+          max_grid_points: None,
           shutdown: CancellationToken::new(),
           settings: Some(LocalSettings {
             store: Arc::new(AppSettingsStore::open(dir.path()).unwrap()),

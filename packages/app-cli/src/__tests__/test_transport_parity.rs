@@ -130,6 +130,7 @@ mod tests {
           examples_dir: examples_dir(),
           runs_dir: runs_dir.to_path_buf(),
           max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
+          max_grid_points: None,
           shutdown: CancellationToken::new(),
           settings: None,
         },

@@ -17,6 +17,7 @@ doctest = false
 [dependencies]
 app-commands = { workspace = true, features = ["clap"] }
 treetime = { workspace = true }
+treetime-grid = { workspace = true }
 treetime-schema = { workspace = true }
 treetime-utils = { workspace = true }
 

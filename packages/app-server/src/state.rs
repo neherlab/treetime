@@ -4,12 +4,14 @@ use app_commands::app_settings::store::AppSettingsStore;
 use app_commands::bridge::service::{AppService, InputPolicy};
 use app_commands::command::AppCommand;
 use app_commands::examples_download::ExampleDownloads;
+use app_commands::run_limits::RunLimits;
 use app_commands::runs::manager::RunManager;
 use eyre::Report;
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
+use treetime_grid::MaxGridPoints;
 
 pub const DEFAULT_MAX_UPLOAD_SIZE: usize = 1 << 30;
 
@@ -18,6 +20,7 @@ pub struct ServerConfig {
   pub examples_dir: PathBuf,
   pub runs_dir: PathBuf,
   pub max_upload_size: usize,
+  pub max_grid_points: Option<MaxGridPoints>,
   pub shutdown: CancellationToken,
   pub settings: Option<LocalSettings>,
 }
@@ -37,7 +40,13 @@ pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> 
     examples_dir: config.examples_dir.clone(),
     runs: Arc::clone(&runs),
   });
-  Ok(Arc::new(AppService::new(runs, config.examples_dir.clone(), policy)))
+  let limits = config.max_grid_points.map_or(RunLimits::Unset, RunLimits::Server);
+  Ok(Arc::new(AppService::new(
+    runs,
+    config.examples_dir.clone(),
+    policy,
+    limits,
+  )))
 }
 
 pub(crate) struct AppState {
