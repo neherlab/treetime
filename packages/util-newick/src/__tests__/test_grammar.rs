@@ -66,6 +66,7 @@ mod tests {
   #[case::empty_array(       "[&a={}]",               "beast_comment(beast_pair(beast_bare_key:'a' array_open:'{' array_close:'}'))")]
   #[case::nested_array(      "[&a={1,{2,{}}}]",       "beast_comment(beast_pair(beast_bare_key:'a' array_open:'{' number:'1' array_open:'{' number:'2' array_open:'{' array_close:'}' array_close:'}' array_close:'}'))")]
   #[case::empty_comment(     "[&]",                   "beast_comment")]
+  #[case::iqtree_report(     "[&gCF=\"33.33\",gDF1/gDF2=\"0/33.33\"]", "beast_comment(beast_pair(beast_bare_key:'gCF' double_quoted:'\"33.33\"') beast_pair(beast_bare_key:'gDF1/gDF2' double_quoted:'\"0/33.33\"'))")]
   #[trace]
   fn test_grammar_beast_comment(#[case] input: &str, #[case] expected: &str) {
     assert_eq!(Some(expected.to_owned()), tokens(Rule::beast_comment, input));
@@ -92,6 +93,7 @@ mod tests {
   #[case::parts(       "[&&NHX:Ev=1>2>dup]",        "nhx_comment(nhx_tag(nhx_key:'Ev' nhx_value(nhx_part:'1' nhx_part:'2' nhx_part:'dup')))")]
   #[case::comma_value( "[&&NHX:m=A1T,C2G]",         "nhx_comment(nhx_tag(nhx_key:'m' nhx_value(nhx_part:'A1T,C2G')))")]
   #[case::empty(       "[&&NHX]",                   "nhx_comment")]
+  #[case::report(      "[&&NHX:D=Y:S=human:B=90]",  "nhx_comment(nhx_tag(nhx_key:'D' nhx_value(nhx_part:'Y')) nhx_tag(nhx_key:'S' nhx_value(nhx_part:'human')) nhx_tag(nhx_key:'B' nhx_value(nhx_part:'90')))")]
   #[trace]
   fn test_grammar_nhx_comment(#[case] input: &str, #[case] expected: &str) {
     assert_eq!(Some(expected.to_owned()), tokens(Rule::nhx_comment, input));
