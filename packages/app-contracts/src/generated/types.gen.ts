@@ -225,9 +225,9 @@ export type TreeFacts = {
    */
   unnamed_tips: number;
   /**
-   * Tip names that occur more than once.
+   * Node names that occur more than once, tips and internal nodes alike, sorted.
    */
-  duplicate_tip_names: Array<string>;
+  duplicate_node_names: Array<string>;
 };
 
 /**
@@ -711,6 +711,29 @@ export type OutputFile = {
  * Tree variants do not encode the separately selected Newick style.
  */
 export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json' | 'clock-chart-svg' | 'clock-chart-png' | 'homoplasy-stats' | 'homoplasy-report';
+
+/**
+ * A problem of the inputs that the run found and continued past, which makes its results less reliable.
+ */
+export type RunWarning = {
+  /**
+   * Kind of the problem.
+   */
+  kind: RunWarningKind;
+  /**
+   * The problem, as a sentence; the run log shows the same text.
+   */
+  message: string;
+  /**
+   * Every name the problem concerns, sorted; the message may show only some of them.
+   */
+  names: Array<string>;
+};
+
+/**
+ * Kind of a run warning.
+ */
+export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names';
 
 /**
  * Error of a failed run.
@@ -4463,6 +4486,10 @@ export type RunRecordTimetree = {
    */
   output_files: Array<OutputFile>;
   /**
+   * Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.
+   */
+  warnings: Array<RunWarning>;
+  /**
    * The error of a failed run.
    */
   error?: RunError;
@@ -4528,6 +4555,10 @@ export type RunRecordOptimize = {
    * Files the run wrote, with paths relative to the run's `out/` folder.
    */
   output_files: Array<OutputFile>;
+  /**
+   * Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.
+   */
+  warnings: Array<RunWarning>;
   /**
    * The error of a failed run.
    */
@@ -4595,6 +4626,10 @@ export type RunRecordPrune = {
    */
   output_files: Array<OutputFile>;
   /**
+   * Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.
+   */
+  warnings: Array<RunWarning>;
+  /**
    * The error of a failed run.
    */
   error?: RunError;
@@ -4660,6 +4695,10 @@ export type RunRecordAncestral = {
    * Files the run wrote, with paths relative to the run's `out/` folder.
    */
   output_files: Array<OutputFile>;
+  /**
+   * Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.
+   */
+  warnings: Array<RunWarning>;
   /**
    * The error of a failed run.
    */
@@ -4727,6 +4766,10 @@ export type RunRecordClock = {
    */
   output_files: Array<OutputFile>;
   /**
+   * Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.
+   */
+  warnings: Array<RunWarning>;
+  /**
    * The error of a failed run.
    */
   error?: RunError;
@@ -4792,6 +4835,10 @@ export type RunRecordMugration = {
    * Files the run wrote, with paths relative to the run's `out/` folder.
    */
   output_files: Array<OutputFile>;
+  /**
+   * Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.
+   */
+  warnings: Array<RunWarning>;
   /**
    * The error of a failed run.
    */

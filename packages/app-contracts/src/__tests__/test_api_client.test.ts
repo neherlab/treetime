@@ -34,6 +34,7 @@ const RECORD = {
   changed_settings: [],
   headline: {},
   output_files: [],
+  warnings: [],
 };
 
 const FINISHED_RECORD = {
@@ -49,6 +50,13 @@ const FINISHED_RECORD = {
   changed_settings: ["clock_rate"],
   headline: { root_date: { year: 2014.5, date: "2014-07-02" }, clock_rate: 0.0008, r_squared: "nan" },
   output_files: [{ path: "out/clock.nwk", kind: "nwk" }],
+  warnings: [
+    {
+      kind: "duplicate-node-names",
+      message: "The tree 't.nwk' gives the same name to more than one node: A.",
+      names: ["A"],
+    },
+  ],
   error: { message: "When running clock", causes: ["no dates"] },
 };
 

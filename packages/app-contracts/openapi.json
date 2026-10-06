@@ -1633,8 +1633,8 @@
             "format": "uint",
             "minimum": 0
           },
-          "duplicate_tip_names": {
-            "description": "Tip names that occur more than once.",
+          "duplicate_node_names": {
+            "description": "Node names that occur more than once, tips and internal nodes alike, sorted.",
             "type": "array",
             "items": {
               "type": "string"
@@ -1646,7 +1646,7 @@
           "internal_nodes",
           "polytomies",
           "unnamed_tips",
-          "duplicate_tip_names"
+          "duplicate_node_names"
         ]
       },
       "AlignmentFacts": {
@@ -2489,6 +2489,52 @@
           "clock-chart-png",
           "homoplasy-stats",
           "homoplasy-report"
+        ]
+      },
+      "RunWarning": {
+        "description": "A problem of the inputs that the run found and continued past, which makes its results less reliable.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "description": "Kind of the problem.",
+            "$ref": "#/components/schemas/RunWarningKind"
+          },
+          "message": {
+            "description": "The problem, as a sentence; the run log shows the same text.",
+            "type": "string"
+          },
+          "names": {
+            "description": "Every name the problem concerns, sorted; the message may show only some of them.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "message",
+          "names"
+        ]
+      },
+      "RunWarningKind": {
+        "description": "Kind of a run warning.",
+        "oneOf": [
+          {
+            "description": "More than one node of the input tree has the same name.",
+            "type": "string",
+            "const": "duplicate-node-names"
+          },
+          {
+            "description": "More than one sequence of an alignment has the same name.",
+            "type": "string",
+            "const": "duplicate-sequence-names"
+          },
+          {
+            "description": "More than one row of the metadata table has the same name.",
+            "type": "string",
+            "const": "duplicate-metadata-names"
+          }
         ]
       },
       "RunError": {
@@ -7352,6 +7398,13 @@
               "$ref": "#/components/schemas/OutputFile"
             }
           },
+          "warnings": {
+            "description": "Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunWarning"
+            }
+          },
           "error": {
             "description": "The error of a failed run.",
             "$ref": "#/components/schemas/RunError",
@@ -7376,6 +7429,7 @@
           "changed_settings",
           "headline",
           "output_files",
+          "warnings",
           "command",
           "config"
         ]
@@ -7453,6 +7507,13 @@
               "$ref": "#/components/schemas/OutputFile"
             }
           },
+          "warnings": {
+            "description": "Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunWarning"
+            }
+          },
           "error": {
             "description": "The error of a failed run.",
             "$ref": "#/components/schemas/RunError",
@@ -7477,6 +7538,7 @@
           "changed_settings",
           "headline",
           "output_files",
+          "warnings",
           "command",
           "config"
         ]
@@ -7554,6 +7616,13 @@
               "$ref": "#/components/schemas/OutputFile"
             }
           },
+          "warnings": {
+            "description": "Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunWarning"
+            }
+          },
           "error": {
             "description": "The error of a failed run.",
             "$ref": "#/components/schemas/RunError",
@@ -7578,6 +7647,7 @@
           "changed_settings",
           "headline",
           "output_files",
+          "warnings",
           "command",
           "config"
         ]
@@ -7655,6 +7725,13 @@
               "$ref": "#/components/schemas/OutputFile"
             }
           },
+          "warnings": {
+            "description": "Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunWarning"
+            }
+          },
           "error": {
             "description": "The error of a failed run.",
             "$ref": "#/components/schemas/RunError",
@@ -7679,6 +7756,7 @@
           "changed_settings",
           "headline",
           "output_files",
+          "warnings",
           "command",
           "config"
         ]
@@ -7756,6 +7834,13 @@
               "$ref": "#/components/schemas/OutputFile"
             }
           },
+          "warnings": {
+            "description": "Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunWarning"
+            }
+          },
           "error": {
             "description": "The error of a failed run.",
             "$ref": "#/components/schemas/RunError",
@@ -7780,6 +7865,7 @@
           "changed_settings",
           "headline",
           "output_files",
+          "warnings",
           "command",
           "config"
         ]
@@ -7857,6 +7943,13 @@
               "$ref": "#/components/schemas/OutputFile"
             }
           },
+          "warnings": {
+            "description": "Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunWarning"
+            }
+          },
           "error": {
             "description": "The error of a failed run.",
             "$ref": "#/components/schemas/RunError",
@@ -7881,6 +7974,7 @@
           "changed_settings",
           "headline",
           "output_files",
+          "warnings",
           "command",
           "config"
         ]

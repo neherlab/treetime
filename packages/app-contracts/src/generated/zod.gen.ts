@@ -119,7 +119,7 @@ export const zTreeFacts = z.object({
   internal_nodes: z.int().gte(0),
   polytomies: z.int().gte(0),
   unnamed_tips: z.int().gte(0),
-  duplicate_tip_names: z.array(z.string())
+  duplicate_node_names: z.array(z.string())
 });
 
 /**
@@ -444,6 +444,24 @@ export const zOutputSelection = z.enum([
 export const zOutputFile = z.object({
   path: z.string(),
   kind: zOutputSelection
+});
+
+/**
+ * Kind of a run warning.
+ */
+export const zRunWarningKind = z.union([
+  z.literal('duplicate-node-names'),
+  z.literal('duplicate-sequence-names'),
+  z.literal('duplicate-metadata-names')
+]);
+
+/**
+ * A problem of the inputs that the run found and continued past, which makes its results less reliable.
+ */
+export const zRunWarning = z.object({
+  kind: zRunWarningKind,
+  message: z.string(),
+  names: z.array(z.string())
 });
 
 /**
@@ -1785,6 +1803,7 @@ export const zRunRecordTimetree = z.object({
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
   output_files: z.array(zOutputFile),
+  warnings: z.array(zRunWarning),
   error: zRunError.optional(),
   command: z.literal('timetree'),
   config: zTimetreeConfig
@@ -1805,6 +1824,7 @@ export const zRunRecordOptimize = z.object({
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
   output_files: z.array(zOutputFile),
+  warnings: z.array(zRunWarning),
   error: zRunError.optional(),
   command: z.literal('optimize'),
   config: zOptimizeConfig
@@ -1825,6 +1845,7 @@ export const zRunRecordPrune = z.object({
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
   output_files: z.array(zOutputFile),
+  warnings: z.array(zRunWarning),
   error: zRunError.optional(),
   command: z.literal('prune'),
   config: zPruneConfig
@@ -1845,6 +1866,7 @@ export const zRunRecordAncestral = z.object({
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
   output_files: z.array(zOutputFile),
+  warnings: z.array(zRunWarning),
   error: zRunError.optional(),
   command: z.literal('ancestral'),
   config: zAncestralConfig
@@ -1865,6 +1887,7 @@ export const zRunRecordClock = z.object({
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
   output_files: z.array(zOutputFile),
+  warnings: z.array(zRunWarning),
   error: zRunError.optional(),
   command: z.literal('clock'),
   config: zClockConfig
@@ -1885,6 +1908,7 @@ export const zRunRecordMugration = z.object({
   changed_settings: z.array(z.string()),
   headline: zRunHeadline,
   output_files: z.array(zOutputFile),
+  warnings: z.array(zRunWarning),
   error: zRunError.optional(),
   command: z.literal('mugration'),
   config: zMugrationConfig

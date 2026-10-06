@@ -16,6 +16,7 @@ export const RECORD = {
   changed_settings: [],
   headline: {},
   output_files: [],
+  warnings: [],
 } as const;
 
 export interface Sent {

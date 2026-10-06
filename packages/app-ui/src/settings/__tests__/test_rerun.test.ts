@@ -25,6 +25,7 @@ const RECORD: RunRecord = {
   changed_settings: ["keep_root"],
   headline: {},
   output_files: [],
+  warnings: [],
 };
 
 describe("edit and run again", () => {
