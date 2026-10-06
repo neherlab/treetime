@@ -120,11 +120,9 @@ mod tests {
 
     let names = make_names(vec![(a, "A"), (b, "B"), (c, "C")]);
     let branch_lengths = edge_branch_lengths(&graph);
-    let err = TopologyOrderSpec::default()
-      .apply(&mut graph, &names, &branch_lengths)
-      .unwrap_err();
+    let result = TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths);
 
-    assert!(err.to_string().contains("directed cycle"));
+    assert_error!(result, "When ordering topology: graph contains a directed cycle");
 
     Ok(())
   }
@@ -279,8 +277,12 @@ mod tests {
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
     let branch_lengths = edge_branch_lengths(&graph);
-    let err = spec.apply(&mut graph, &names, &branch_lengths).unwrap_err();
-    assert!(err.to_string().contains("non-empty target order"));
+    let result = spec.apply(&mut graph, &names, &branch_lengths);
+
+    assert_error!(
+      result,
+      "When ordering topology: target-order mode requires a non-empty target order"
+    );
   }
 
   #[test]
