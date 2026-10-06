@@ -1,32 +1,10 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::{fixture, inbound, outbound};
   use crate::edge::GraphEdgeKey;
-  use crate::graph::Graph;
-  use crate::node::GraphNodeKey;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use treetime_utils::assert_error;
-
-  fn fixture() -> Result<(Graph, [GraphNodeKey; 4], GraphEdgeKey), Report> {
-    let mut graph = Graph::new();
-    let root = graph.add_node();
-    let a = graph.add_node();
-    let b = graph.add_node();
-    let c = graph.add_node();
-    graph.add_edge(root, a)?;
-    graph.add_edge(root, b)?;
-    let a_to_c = graph.add_edge(a, c)?;
-    graph.build()?;
-    Ok((graph, [root, a, b, c], a_to_c))
-  }
-
-  fn outbound(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
-    graph.get_node(node_key).expect("node exists").outbound().to_vec()
-  }
-
-  fn inbound(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
-    graph.get_node(node_key).expect("node exists").inbound().to_vec()
-  }
 
   #[test]
   fn test_reparent_edge_moves_the_edge_and_keeps_key() -> Result<(), Report> {
@@ -99,5 +77,33 @@ mod tests {
       )
     );
     Ok(())
+  }
+
+  mod helpers {
+    use crate::edge::GraphEdgeKey;
+    use crate::graph::Graph;
+    use crate::node::GraphNodeKey;
+    use eyre::Report;
+
+    pub(super) fn fixture() -> Result<(Graph, [GraphNodeKey; 4], GraphEdgeKey), Report> {
+      let mut graph = Graph::new();
+      let root = graph.add_node();
+      let a = graph.add_node();
+      let b = graph.add_node();
+      let c = graph.add_node();
+      graph.add_edge(root, a)?;
+      graph.add_edge(root, b)?;
+      let a_to_c = graph.add_edge(a, c)?;
+      graph.build()?;
+      Ok((graph, [root, a, b, c], a_to_c))
+    }
+
+    pub(super) fn outbound(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
+      graph.get_node(node_key).expect("node exists").outbound().to_vec()
+    }
+
+    pub(super) fn inbound(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
+      graph.get_node(node_key).expect("node exists").inbound().to_vec()
+    }
   }
 }
