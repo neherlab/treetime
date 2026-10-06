@@ -45,6 +45,28 @@ mod tests {
   }
 
   #[test]
+  fn test_trait_tables_traits_csv_writes_one_row_per_node_with_a_repeated_name() -> Result<(), Report> {
+    let mut setup = mugration_setup()?;
+    setup.topology = topology_from("(A:0.1,B:0.1)root;")?;
+    let (a, b, root) = (
+      node_key(&setup.topology, "A"),
+      node_key(&setup.topology, "B"),
+      node_key(&setup.topology, "root"),
+    );
+    setup.topology.names.insert(b, Some(o!("A")));
+    setup.values = btreemap! { a => Some(o!("usa")), b => Some(o!("uk")), root => None };
+    let graph = mugration_graph(&setup, "country");
+
+    let mut buf = Vec::new();
+    let mut csv = CsvWriter::new(&mut buf, TableFormat::Csv);
+    write_traits_rows(&AnnotatedTreeView::new(&graph)?, &mut csv)?;
+    csv.into_inner()?;
+
+    assert_eq!("node,country\nA,usa\nA,uk\n", String::from_utf8(buf)?);
+    Ok(())
+  }
+
+  #[test]
   fn test_trait_tables_confidence_csv_quotes_fields_per_rfc4180() -> Result<(), Report> {
     let mut setup = mugration_setup()?;
     setup.topology = topology_from("(A:0.1,B:0.1)root;")?;

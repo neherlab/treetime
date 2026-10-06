@@ -305,7 +305,6 @@ dependencies = [
  "ctor",
  "derive_more",
  "eyre",
- "indexmap",
  "itertools",
  "jsonschema",
  "maplit",

@@ -2,7 +2,6 @@ use crate::annotated_graph::{AnnotatedTreeView, TreeTraits};
 use crate::output_plan::OutputSelection;
 use crate::table_output::table_create;
 use eyre::Report;
-use indexmap::IndexMap;
 use std::io::Write;
 use std::iter::once;
 use std::path::Path;
@@ -25,19 +24,15 @@ pub fn write_trait_confidence_csv(tree: &AnnotatedTreeView<'_>, path: &Path) -> 
 pub(crate) fn write_traits_rows<W: Write>(tree: &AnnotatedTreeView<'_>, csv: &mut CsvWriter<W>) -> Result<(), Report> {
   let traits = tree_traits(tree)?;
   let graph = tree.graph();
-  let values: IndexMap<String, &String> = graph
-    .graph
-    .get_nodes()
-    .filter_map(|node| {
-      let key = node.key();
-      let value = traits.values[&key].as_ref()?;
-      Some((node_name_or_key(key, graph.names[&key].as_deref()), value))
-    })
-    .collect();
   csv.write_record(["node", traits.attribute])?;
-  values
-    .iter()
-    .try_for_each(|(name, value)| csv.write_record([name.as_str(), value.as_str()]))
+  graph.graph.get_nodes().try_for_each(|node| {
+    let key = node.key();
+    let Some(value) = &traits.values[&key] else {
+      return Ok(());
+    };
+    let name = node_name_or_key(key, graph.names[&key].as_deref());
+    csv.write_record([name.as_str(), value.as_str()])
+  })
 }
 
 pub(crate) fn write_trait_confidence_rows<W: Write>(
