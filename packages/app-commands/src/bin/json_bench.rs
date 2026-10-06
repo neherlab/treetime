@@ -123,11 +123,35 @@ fn measure_write<T: DeserializeOwned + Serialize>(mode: &str, file: &str) -> Res
       writer.flush()?;
     },
     "vec-compact" => fs::write(&out, serde_json::to_vec(&value)?)?,
+    "count-compact" | "count-pretty" => {
+      let mut counter = ByteCounter(0);
+      if mode == "count-pretty" {
+        serde_json::to_writer_pretty(&mut counter, &value)?;
+      } else {
+        serde_json::to_writer(&mut counter, &value)?;
+      }
+      let elapsed = start.elapsed();
+      eprintln!("{mode}: {} bytes", counter.0);
+      return Ok(elapsed);
+    },
     _ => return Err(eyre!("unknown write mode {mode}")),
   }
   let elapsed = start.elapsed();
   eprintln!("{mode}: {} bytes", fs::metadata(&out)?.len());
   Ok(elapsed)
+}
+
+struct ByteCounter(u64);
+
+impl Write for ByteCounter {
+  fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+    self.0 += buf.len() as u64;
+    Ok(buf.len())
+  }
+
+  fn flush(&mut self) -> std::io::Result<()> {
+    Ok(())
+  }
 }
 
 fn read_nostack<T: DeserializeOwned>(reader: impl Read) -> Result<T, Report> {
