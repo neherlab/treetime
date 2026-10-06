@@ -52,6 +52,7 @@ const ANCESTRAL: RunRecord = {
   changed_settings: ["model", "gap_fill", "reconstruct_tip_states"],
   headline: {},
   output_files: [],
+  warnings: [],
 };
 
 describe("edit and run again", () => {

@@ -75,6 +75,7 @@ const RECORD: RunRecord = {
   headline: {},
   output_files: [],
   duration_seconds: 2.5,
+  warnings: [],
 };
 
 describe("homoplasy results", () => {
