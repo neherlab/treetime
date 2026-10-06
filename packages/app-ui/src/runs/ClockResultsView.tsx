@@ -1,7 +1,7 @@
 import type { RunRecord, RunResults, ClockResults, YearDate } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
-import { DataTable, dataColumns } from "../components/DataTable";
+import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { formatRate, formatSignedDays, rSquaredText } from "../format";
 import { OutputFiles } from "./OutputFiles";
@@ -25,7 +25,12 @@ const RESIDUAL_SORT = [{ id: "residual", desc: true }];
 const sampleColumn = dataColumns<SampleRow>();
 
 const SAMPLE_COLUMNS = sampleColumn.columns([
-  sampleColumn.accessor((row) => row.name, { id: "name", header: "Sample", meta: { width: "1fr", minWidth: 160 } }),
+  sampleColumn.accessor((row) => row.name, {
+    id: "name",
+    header: "Sample",
+    meta: { width: "2fr", minWidth: 240 },
+    cell: ({ getValue }) => <CellText text={getValue()} />,
+  }),
   sampleColumn.accessor((row) => row.date.year, {
     id: "date",
     header: "Date",

@@ -2,7 +2,7 @@ import type { RunRecord, RunResults, AncestralResults, BranchMutations, Recurren
 import { useMemo } from "react";
 import ChartColumn from "~icons/lucide/chart-column";
 
-import { DataTable, dataColumns } from "../components/DataTable";
+import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { Button } from "../ui/button";
 import { OutputFiles } from "./OutputFiles";
@@ -17,8 +17,11 @@ const BRANCH_COLUMNS = branchColumn.columns([
     id: "branch",
     header: "Branch above",
     meta: { width: "1fr", minWidth: 160 },
-    cell: ({ row }) =>
-      row.original.tips === 1 ? row.original.name : `${row.original.name} (${row.original.tips} samples)`,
+    cell: ({ row }) => (
+      <CellText
+        text={row.original.tips === 1 ? row.original.name : `${row.original.name} (${row.original.tips} samples)`}
+      />
+    ),
   }),
   branchColumn.accessor((row) => row.mutations.length, {
     id: "count",

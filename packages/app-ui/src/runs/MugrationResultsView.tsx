@@ -1,7 +1,7 @@
 import type { RunRecord, RunResults, AncestorState, MugrationResults, StateChange } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
-import { DataTable, dataColumns } from "../components/DataTable";
+import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { Empty, EmptyDescription } from "../ui/empty";
 import { OutputFiles } from "./OutputFiles";
@@ -45,7 +45,7 @@ function ancestorColumns(colors: StateColors) {
       id: "name",
       header: "Ancestor",
       meta: { width: "2fr", minWidth: 160 },
-      cell: ({ row }) => `${row.original.name} (${row.original.tips} samples)`,
+      cell: ({ row }) => <CellText text={`${row.original.name} (${row.original.tips} samples)`} />,
     }),
     ancestorColumn.accessor((row) => row.state, {
       id: "state",

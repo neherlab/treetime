@@ -140,11 +140,13 @@ export function DataTable<Data extends RowData>({
                 <Cell
                   key={cell.id}
                   className={cn(
-                    "data-focus-visible:ring-ring flex h-full items-center p-2 whitespace-nowrap outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
+                    "data-focus-visible:ring-ring flex h-full items-center overflow-hidden p-2 whitespace-nowrap outline-none data-focus-visible:ring-2 data-focus-visible:ring-inset",
                     cell.column.columnDef.meta?.numeric === true && "justify-end",
                   )}
                 >
-                  <table.FlexRender cell={cell} />
+                  <div className="min-w-0 truncate">
+                    <table.FlexRender cell={cell} />
+                  </div>
                 </Cell>
               ))}
             </Row>
@@ -153,6 +155,10 @@ export function DataTable<Data extends RowData>({
       </Table>
     </Virtualizer>
   );
+}
+
+export function CellText({ text }: { text: string }) {
+  return <span title={text}>{text}</span>;
 }
 
 function SortIcon({ direction }: { direction: SortDirection | undefined }) {
