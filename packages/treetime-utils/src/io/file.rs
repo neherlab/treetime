@@ -1,37 +1,37 @@
-use crate::io::compression::{Compressor, Decompressor};
+use crate::io::compression::{CompressionType, Compressor, Decompressor};
 use crate::io::fs::ensure_dir;
 use eyre::{Report, WrapErr};
 use log::info;
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write, stdin, stdout};
+use std::io::{BufReader, BufWriter, Write, stdin, stdout};
 use std::path::{Path, PathBuf};
 
 pub const DEFAULT_FILE_BUF_SIZE: usize = 256 * 1024;
 
-pub fn open_file_or_stdin(filepath: impl AsRef<Path>) -> Result<Box<dyn BufRead>, Report> {
+pub fn open_file_or_stdin(filepath: impl AsRef<Path>) -> Result<BufReader<Decompressor<'static>>, Report> {
   let filepath = filepath.as_ref();
   if is_path_stdin(filepath) {
-    return Ok(open_stdin());
+    return open_stdin();
   }
   let file = File::open(filepath).wrap_err_with(|| format!("When opening file '{}'", filepath.display()))?;
   let buf_file = BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, file);
   let decompressor = Decompressor::from_path(buf_file, filepath)?;
-  let buf_decompressor = BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, decompressor);
-  Ok(Box::new(buf_decompressor))
+  Ok(BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, decompressor))
 }
 
-fn open_stdin() -> Box<dyn BufRead> {
+fn open_stdin() -> Result<BufReader<Decompressor<'static>>, Report> {
   info!("Reading from standard input");
 
   #[cfg(not(target_arch = "wasm32"))]
   non_wasm::warn_if_tty();
 
-  Box::new(BufReader::new(stdin()))
+  let decompressor = Decompressor::new(stdin(), &CompressionType::None)?;
+  Ok(BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, decompressor))
 }
 
 pub fn read_file_with<T>(
   filepath: impl AsRef<Path>,
-  read: impl FnOnce(Box<dyn BufRead>) -> Result<T, Report>,
+  read: impl FnOnce(BufReader<Decompressor<'static>>) -> Result<T, Report>,
 ) -> Result<T, Report> {
   let filepath = filepath.as_ref();
   let reader = open_file_or_stdin(filepath)?;

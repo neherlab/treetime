@@ -15,7 +15,7 @@ Write the JSON files that describe a tree without whitespace, and keep the inden
 ## Rationale
 
 - In an Auspice tree, the node object and its `children` array each add a nesting level per tree level, so with indentation the size of a file grows with the number of nodes times the tree depth. Indented Auspice files are 91 to 97% whitespace: the Auspice JSON of `sc2/4500` is 47.8 MB with indentation and 1.3 MB without, and a `timetree.auspice.json` of `mpox/clade-ii/500` is 199 MB and 17.8 MB
-- Every reader parses the whitespace byte by byte. With the stream reader of `json_read_file()` in the dev profile, the Auspice JSON of `sc2/4500` takes 3.7 s to read with indentation and 0.26 s without ([kb/issues/M-io-json-read-from-reader-slow.md](../issues/M-io-json-read-from-reader-slow.md)); writing the `mpox/clade-ii/500` tree takes 5.9 billion CPU instructions with indentation and 0.66 billion without
+- Every reader parses the whitespace byte by byte. With the stream reader of `json_read_file()` in the dev profile, the Auspice JSON of `sc2/4500` takes 1.4 s to read with indentation and 0.09 s without ([kb/issues/M-io-json-read-from-reader-slow.md](../issues/M-io-json-read-from-reader-slow.md)); writing the `mpox/clade-ii/500` tree takes 5.9 billion CPU instructions with indentation and 0.66 billion without
 - People rarely read tree files directly; they open them in Auspice or another viewer. The smaller JSON outputs, such as model parameters, are read directly, so they stay indented
 - A fixed rule per output kind keeps the format of each output independent of the dataset size and needs no extra pass to measure the size
 
