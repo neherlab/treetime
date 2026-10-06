@@ -39,6 +39,7 @@
     "luxon": "3.7.2",
     "next-themes": "0.4.6",
     "react": "catalog:",
+    "react-aria-components": "1.21.1",
     "react-dom": "catalog:",
     "react-dropzone": "20.1.2",
     "react-error-boundary": "6.1.5",
