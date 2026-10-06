@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::check_inputs::{InputFacts, InputKind, InputProblem};
+  use crate::check_inputs::{AlignmentFacts, InputFacts, InputKind, InputProblem};
   use crate::command::AppCommand;
   use crate::json_value::JsonValue;
   use crate::run_checks::{
@@ -131,6 +131,49 @@ mod tests {
         rejection_messages(&rejection, false),
         rejection_messages(&rejection, true)
       )
+    );
+  }
+
+  #[test]
+  fn test_run_checks_duplicate_names_warn_once_per_input() {
+    let config = config(
+      AppCommand::Ancestral,
+      &json!({ "tree": "t.nwk", "alignment": ["a.fasta"] }),
+    );
+    let mut facts = facts_with_tree(20);
+    if let Some(tree) = facts.tree.as_mut() {
+      tree.duplicate_node_names = vec_of_owned!["A", "B", "C", "D", "E"];
+    }
+    facts.alignment = Some(AlignmentFacts {
+      sequences: 20,
+      min_length: 10,
+      max_length: 10,
+      duplicate_names: vec_of_owned!["A"],
+    });
+
+    let actual = checks(AppCommand::Ancestral, Some(&config), None, Some(&facts));
+
+    assert_eq!(
+      vec![
+        (
+          o!("duplicate-node-names"),
+          CheckLevel::Warn,
+          o!(
+            "The tree gives the same name to more than one node: A, B, C, and 2 more. Nodes with the same name receive the same data from the other inputs."
+          ),
+          vec_of_owned!["tree"],
+        ),
+        (
+          o!("duplicate-sequence-names"),
+          CheckLevel::Warn,
+          o!("The alignment has more than one sequence named A. TreeTime uses the first sequence of each name."),
+          vec_of_owned!["alignment"],
+        ),
+      ],
+      actual
+        .into_iter()
+        .map(|check| (check.id, check.level, check.text, check.settings))
+        .collect::<Vec<_>>()
     );
   }
 

@@ -16,10 +16,11 @@ const MONTH_ROUNDING_FACTOR: usize = 4;
 
 const DATE_COLUMN_SETTING: &str = "date_column";
 
-const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 7] = [
+const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 8] = [
   missing_inputs,
   unreadable_inputs,
   rejected_config,
+  duplicate_names,
   tips_without_sequence,
   metadata,
   confidence_without_rate_uncertainty,
@@ -156,6 +157,41 @@ fn rejected_config(context: &CheckContext<'_>) -> Vec<RunCheck> {
     .enumerate()
     .map(|(index, message)| block(format!("config-{index}"), message))
     .collect()
+}
+
+fn duplicate_names(context: &CheckContext<'_>) -> Vec<RunCheck> {
+  let Some(facts) = context.facts else {
+    return vec![];
+  };
+  let tree = facts
+    .tree
+    .as_ref()
+    .filter(|tree| !tree.duplicate_node_names.is_empty())
+    .map(|tree| {
+      warn(
+        "duplicate-node-names",
+        format!(
+          "The tree gives the same name to more than one node: {}. Nodes with the same name receive the same data from the other inputs.",
+          name_list(&tree.duplicate_node_names)
+        ),
+      )
+      .concerning(&[InputKind::Tree.setting()])
+    });
+  let alignment = facts
+    .alignment
+    .as_ref()
+    .filter(|alignment| !alignment.duplicate_names.is_empty())
+    .map(|alignment| {
+      warn(
+        "duplicate-sequence-names",
+        format!(
+          "The alignment has more than one sequence named {}. TreeTime uses the first sequence of each name.",
+          name_list(&alignment.duplicate_names)
+        ),
+      )
+      .concerning(&[InputKind::Alignment.setting()])
+    });
+  tree.into_iter().chain(alignment).collect()
 }
 
 fn tips_without_sequence(context: &CheckContext<'_>) -> Vec<RunCheck> {
