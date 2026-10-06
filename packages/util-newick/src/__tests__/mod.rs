@@ -1,3 +1,4 @@
+mod test_fixtures;
 mod test_grammar;
 mod test_model;
 mod test_nexus;
