@@ -15,7 +15,7 @@ The ranked list of ambiguous changes (`ambiguous.all.ranked`, each entry with th
 
 Most of the ambiguous changes are the sequence ends that gap filling turns into `N` ([N-homoplasy-filled-overhangs-dominate-ambiguous-changes.md](N-homoplasy-filled-overhangs-dominate-ambiguous-changes.md)).
 
-The web and desktop apps read the file for the results page (`fn homoplasy_statistics()` in `packages/app-commands/src/results/homoplasy.rs`). They skip `ambiguous.all.ranked` while deserializing, which avoids allocating its entries but not reading and scanning its bytes. In the dev profile, the mpox file takes 0.37 s to read and 2.55 s to deserialize without the ranked ambiguous list (2.62 s with it); the sc2 file takes 0.27 s, 0.59 s, and 0.86 s.
+The web and desktop apps read the file for the results page (`fn homoplasy_statistics()` in `packages/app-commands/src/results/homoplasy.rs`). They skip `ambiguous.all.ranked` while deserializing, which avoids allocating its entries but not reading and scanning its bytes. Without whitespace, the list is 72.8 MB of the 77.3 MB of the `sc2/4500` file and 100.3 MB of the 107.9 MB of the `mpox/clade-ii/2000` file. With the stream reader of `json_read_file()` in the dev profile, the `sc2/4500` file takes 9.8 s to read as written, and 0.42 s without whitespace and without the list ([M-io-json-read-from-reader-slow.md](M-io-json-read-from-reader-slow.md)). In the dev profile, the mpox file takes 0.37 s to read and 2.55 s to deserialize without the ranked ambiguous list (2.62 s with it); the sc2 file takes 0.27 s, 0.59 s, and 0.86 s.
 
 ## Options
 

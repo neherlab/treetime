@@ -8,17 +8,18 @@
 - `fn run_auspice()` in `packages/app-commands/src/results/auspice.rs` parses the Auspice JSON with `fn read_auspice()` (`packages/app-commands/src/results/outputs.rs`) and computes the color scales with `fn display_auspice()`
 - `fn compare_runs()` in `packages/app-commands/src/results/compare.rs` calls `run_results` for both runs, and `fn clade_in_runs()` in `packages/app-commands/src/results/clades.rs` reads the result tree of every other finished time-tree run on each request
 - Nothing caches these answers in the back end; `AppService` (`packages/app-commands/src/bridge/service.rs`) passes each call straight to these functions
+- The run page requests the Auspice document only after the results arrive (`fn FinishedResults()` in `packages/app-ui/src/runs/RunPage.tsx`), and both answers parse the same Auspice JSON, so a results page parses it twice, one parse after the other. On the dev server, the results page of a `homoplasy` run of `sc2/4500` waits 15.0 s for the results and then 4.3 s for the Auspice document; most of that time is the JSON reader ([M-io-json-read-from-reader-slow.md](M-io-json-read-from-reader-slow.md))
 
 ## Measurements
 
 Release N-API addon, requests sent through an in-process router, median of repeated calls. The time is spent in Rust; the transport adds less than 1 %.
 
-| Request                             | Answer size | Time in Rust |
-| ----------------------------------- | ----------- | ------------ |
-| `run_results`, `flu/h3n2/500`       | 336 KB      | 31.5 ms      |
-| `run_auspice`, `flu/h3n2/500`       | 167 KB      | 26.1 ms      |
-| `run_results`, `dengue/2000`        | 1.65 MB     | 151 ms       |
-| `run_auspice`, `dengue/2000`        | 1.10 MB     | 129 ms       |
+| Request                       | Answer size | Time in Rust |
+| ----------------------------- | ----------- | ------------ |
+| `run_results`, `flu/h3n2/500` | 336 KB      | 31.5 ms      |
+| `run_auspice`, `flu/h3n2/500` | 167 KB      | 26.1 ms      |
+| `run_results`, `dengue/2000`  | 1.65 MB     | 151 ms       |
+| `run_auspice`, `dengue/2000`  | 1.10 MB     | 129 ms       |
 
 ## Impact
 
