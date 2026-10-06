@@ -35,7 +35,7 @@ Release profile, medians of repeated runs, files in the page cache, on a thread 
 - **Fast in the dev profile.** The dev server and the tests use the dev profile, where the serde_json stream reader was 4 to 6 times slower than in the release profile. With deser, the `mpox/clade-ii/500` Auspice JSON reads in 0.25 s instead of 5.9 s, and the `sc2/4500` statistics file in 0.28 s instead of 3.7 s
 - **No stack limit on nesting.** The deser drivers keep the nesting on the heap. A 50,000-level Auspice tree reads and writes on a 2 MiB stack; with serde, writing it overflowed the stack, and reading it needed `serde_stacker` and 670 MB of peak memory instead of 199 MB
 - **Errors name the setting.** Errors of JSON, YAML, and query-string input name the path of the offending value, for example `(path: paths)`
-- **Same outputs.** The generated JSON schemas, the OpenAPI document, the TypeScript client, and the CLI reference are unchanged, and the CLI writes byte-identical outputs for the sampled commands
+- **Same outputs.** The generated JSON schemas, the OpenAPI document, the TypeScript client, and the CLI reference are unchanged. The full smoke matrix, compared with the same workspace before the change, gives identical outputs for every case that both versions complete; the augur node data of config-file runs differs only in the absolute input paths, which contain the folder of each snapshot
 
 ## Limits
 
