@@ -5267,6 +5267,1121 @@
       ]
     },
     {
+      "command": "homoplasy",
+      "title": "Homoplasy",
+      "description": "Mutations that arise on several branches, compared with a Poisson expectation.",
+      "inputs": [
+        {
+          "kind": "tree",
+          "need": "required",
+          "label": "Tree",
+          "formats": "Newick",
+          "extensions": [
+            "nwk",
+            "newick",
+            "tree",
+            "tre",
+            "bz2",
+            "xz",
+            "zst",
+            "gz"
+          ],
+          "list": false
+        },
+        {
+          "kind": "alignment",
+          "need": "required",
+          "label": "Alignment",
+          "formats": "Aligned FASTA",
+          "extensions": [
+            "fasta",
+            "fa",
+            "fas",
+            "aln",
+            "bz2",
+            "xz",
+            "zst",
+            "gz"
+          ],
+          "list": true
+        }
+      ],
+      "uses_dates": false,
+      "groups": [
+        "Input data",
+        "Substitution model",
+        "Ancestral reconstruction",
+        "Reproducibility",
+        "Homoplasy",
+        "Output",
+        "Tree ordering"
+      ],
+      "main_settings": [
+        "method_anc",
+        "model",
+        "gap_fill",
+        "constant_sites",
+        "drms",
+        "rescale"
+      ],
+      "choices": [],
+      "settings": [
+        {
+          "key": "alignment",
+          "path": [
+            "alignment"
+          ],
+          "label": "Alignment",
+          "flag": "--alignment",
+          "group": "Input data",
+          "role": "input",
+          "kind": "list",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": [],
+          "examples": [],
+          "value_names": [
+            "FILEPATH"
+          ],
+          "conflicts": [],
+          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
+          "more": ""
+        },
+        {
+          "key": "tree",
+          "path": [
+            "tree"
+          ],
+          "label": "Tree",
+          "flag": "--tree",
+          "group": "Input data",
+          "role": "input",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "TREE"
+          ],
+          "conflicts": [],
+          "help": "Tree in Newick format.",
+          "more": ""
+        },
+        {
+          "key": "alphabet",
+          "path": [
+            "alphabet"
+          ],
+          "label": "Alphabet",
+          "flag": "--alphabet",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": true,
+          "options": [
+            {
+              "value": "nuc",
+              "help": ""
+            },
+            {
+              "value": "aa",
+              "help": ""
+            },
+            {
+              "value": "aa-no-stop",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "ALPHABET"
+          ],
+          "conflicts": [],
+          "help": "Sequence alphabet",
+          "more": "When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous."
+        },
+        {
+          "key": "zero_based",
+          "path": [
+            "zero_based"
+          ],
+          "label": "Zero based",
+          "flag": "--zero-based",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "ZERO_BASED"
+          ],
+          "conflicts": [],
+          "help": "Report sequence positions counted from 0 instead of 1.",
+          "more": "Applies to the positions of the report, the statistics JSON, and the `GENOMIC_POSITION` column of `--drms`, which is always counted from 1."
+        },
+        {
+          "key": "ignore_missing_alns",
+          "path": [
+            "ignore_missing_alns"
+          ],
+          "label": "Ignore missing alignments",
+          "flag": "--ignore-missing-alns",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "IGNORE_MISSING_ALNS"
+          ],
+          "conflicts": [],
+          "help": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.",
+          "more": "Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0."
+        },
+        {
+          "key": "model",
+          "path": [
+            "model"
+          ],
+          "label": "Substitution model",
+          "flag": "--model",
+          "group": "Substitution model",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "jc69",
+              "help": ""
+            },
+            {
+              "value": "k80",
+              "help": ""
+            },
+            {
+              "value": "f81",
+              "help": ""
+            },
+            {
+              "value": "hky85",
+              "help": ""
+            },
+            {
+              "value": "t92",
+              "help": ""
+            },
+            {
+              "value": "tn93",
+              "help": ""
+            },
+            {
+              "value": "jtt92",
+              "help": ""
+            },
+            {
+              "value": "infer",
+              "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "infer",
+          "examples": [],
+          "value_names": [
+            "MODEL"
+          ],
+          "conflicts": [],
+          "help": "Substitution model to use",
+          "more": "`--model infer` infers a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use `--model-params` to specify those."
+        },
+        {
+          "key": "model_params",
+          "path": [
+            "model_params"
+          ],
+          "label": "Model params",
+          "flag": "--model-params",
+          "group": "Substitution model",
+          "role": "setting",
+          "kind": "list",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": [],
+          "examples": [],
+          "value_names": [
+            "MODEL_PARAMS"
+          ],
+          "conflicts": [],
+          "help": "Parameters for the model selected by `--model`, given as a `key=value` list",
+          "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
+        },
+        {
+          "key": "gtr_iterations",
+          "path": [
+            "gtr_iterations"
+          ],
+          "label": "GTR iterations",
+          "flag": "--gtr-iterations",
+          "group": "Substitution model",
+          "role": "setting",
+          "kind": "integer",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": 0,
+          "minimum": 0.0,
+          "examples": [],
+          "value_names": [
+            "GTR_ITERATIONS"
+          ],
+          "conflicts": [],
+          "help": "Number of outer GTR refinement iterations.",
+          "more": "Re-estimates the rate matrix from marginal posterior profiles after each reconstruction pass. Only effective with `--model infer`. Default 0 preserves the current single-pass behavior."
+        },
+        {
+          "key": "site_specific_gtr",
+          "path": [
+            "site_specific_gtr"
+          ],
+          "label": "Site specific GTR",
+          "flag": "--site-specific-gtr",
+          "group": "Substitution model",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "SITE_SPECIFIC_GTR"
+          ],
+          "conflicts": [],
+          "help": "Use site-specific GTR model with per-site equilibrium frequencies.",
+          "more": "Requires `--model infer` and `--dense true`. Incompatible with sequence compression (sparse representation). When enabled, each alignment position gets its own eigendecomposition based on position-specific base composition."
+        },
+        {
+          "key": "method_anc",
+          "path": [
+            "method_anc"
+          ],
+          "label": "Ancestral method",
+          "flag": "--method-anc",
+          "group": "Ancestral reconstruction",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "marginal",
+              "help": ""
+            },
+            {
+              "value": "parsimony",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "marginal",
+          "examples": [],
+          "value_names": [
+            "METHOD_ANC"
+          ],
+          "conflicts": [],
+          "help": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
+          "more": ""
+        },
+        {
+          "key": "dense",
+          "path": [
+            "dense"
+          ],
+          "label": "Dense",
+          "flag": "--dense",
+          "group": "Ancestral reconstruction",
+          "role": "setting",
+          "kind": "tristate",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "DENSE"
+          ],
+          "conflicts": [],
+          "help": "Use dense representation (stores full probability vectors at each position)",
+          "more": "When combined with `--model infer`, marginal reconstruction runs twice: once to populate profiles for GTR inference, and again with the inferred GTR."
+        },
+        {
+          "key": "gap_fill",
+          "path": [
+            "gap_fill"
+          ],
+          "label": "Gap fill",
+          "flag": "--gap-fill",
+          "group": "Ancestral reconstruction",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "only-terminal",
+              "help": ""
+            },
+            {
+              "value": "all",
+              "help": ""
+            },
+            {
+              "value": "none",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "only-terminal",
+          "examples": [],
+          "value_names": [
+            "GAP_FILL"
+          ],
+          "conflicts": [
+            "keep_overhangs"
+          ],
+          "help": "How to handle gap characters in input sequences",
+          "more": "'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0). 'all': replace all gap characters with the ambiguous character. 'none': leave all gap characters unchanged."
+        },
+        {
+          "key": "keep_overhangs",
+          "path": [
+            "keep_overhangs"
+          ],
+          "label": "Keep overhangs",
+          "flag": "--keep-overhangs",
+          "group": "Ancestral reconstruction",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "KEEP_OVERHANGS"
+          ],
+          "conflicts": [
+            "gap_fill"
+          ],
+          "help": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
+          "more": ""
+        },
+        {
+          "key": "impute_missing_data",
+          "path": [
+            "impute_missing_data"
+          ],
+          "label": "Impute missing data",
+          "flag": "--impute-missing-data",
+          "group": "Ancestral reconstruction",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "IMPUTE_MISSING_DATA"
+          ],
+          "conflicts": [],
+          "help": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.",
+          "more": "Changes involving ambiguous characters on terminal branches then disappear from the report. Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`."
+        },
+        {
+          "key": "sample_from_profile",
+          "path": [
+            "sample_from_profile"
+          ],
+          "label": "Sample from profile",
+          "flag": "--sample-from-profile",
+          "group": "Ancestral reconstruction",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "argmax",
+              "help": ""
+            },
+            {
+              "value": "root",
+              "help": ""
+            },
+            {
+              "value": "all",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "argmax",
+          "examples": [],
+          "value_names": [
+            "SAMPLE_FROM_PROFILE"
+          ],
+          "conflicts": [],
+          "help": "How to pick ancestral states from the marginal posterior profile.",
+          "more": "'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere. 'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws."
+        },
+        {
+          "key": "seed",
+          "path": [
+            "seed"
+          ],
+          "label": "Seed",
+          "flag": "--seed",
+          "group": "Reproducibility",
+          "role": "setting",
+          "kind": "integer",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "minimum": 0.0,
+          "examples": [],
+          "value_names": [
+            "SEED"
+          ],
+          "conflicts": [],
+          "help": "Random seed",
+          "more": "Without a seed, a run with a random step draws one and logs it, so the run can be reproduced."
+        },
+        {
+          "key": "constant_sites",
+          "path": [
+            "constant_sites"
+          ],
+          "label": "Constant sites",
+          "flag": "--const",
+          "group": "Homoplasy",
+          "role": "setting",
+          "kind": "integer",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": 0,
+          "minimum": 0.0,
+          "examples": [],
+          "value_names": [
+            "CONSTANT_SITES"
+          ],
+          "conflicts": [],
+          "help": "Number of constant sites that the alignment leaves out.",
+          "more": "Added to the alignment length to give the number of sites of the genome, which sets the number of sites without mutations and the rate of the Poisson comparison."
+        },
+        {
+          "key": "rescale",
+          "path": [
+            "rescale"
+          ],
+          "label": "Rescale",
+          "flag": "--rescale",
+          "group": "Homoplasy",
+          "role": "setting",
+          "kind": "number",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": 1.0,
+          "examples": [],
+          "value_names": [
+            "RESCALE"
+          ],
+          "conflicts": [],
+          "help": "Factor that multiplies every branch length of the input tree.",
+          "more": "Use it when the tree is not in substitutions per site, for example `--rescale=0.001` for a tree in substitutions per thousand sites. Scales the reconstruction, the tree outputs, and the reported tree lengths."
+        },
+        {
+          "key": "detailed",
+          "path": [
+            "detailed"
+          ],
+          "label": "Detailed",
+          "flag": "--detailed",
+          "group": "Homoplasy",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "DETAILED"
+          ],
+          "conflicts": [],
+          "help": "Add the mutations on terminal branches and the taxa that carry recurrent mutations to the report.",
+          "more": "The statistics JSON always contains them."
+        },
+        {
+          "key": "drms",
+          "path": [
+            "drms"
+          ],
+          "label": "Drms",
+          "flag": "--drms",
+          "group": "Homoplasy",
+          "role": "input",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "DRMS"
+          ],
+          "conflicts": [],
+          "help": "TSV file of drug resistance mutations (DRM) that annotates the report.",
+          "more": "Columns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`. A mutation at a listed position gets the gene and the drug, and the substitution when its derived base is a listed `ALT_BASE`."
+        },
+        {
+          "key": "num_mut",
+          "path": [
+            "num_mut"
+          ],
+          "label": "Num mut",
+          "flag": "--num-mut",
+          "group": "Homoplasy",
+          "role": "setting",
+          "kind": "integer",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": 10,
+          "minimum": 0.0,
+          "examples": [],
+          "value_names": [
+            "NUM_MUT"
+          ],
+          "conflicts": [],
+          "help": "Number of rows of each list in the report.",
+          "more": "The statistics JSON always contains the complete lists."
+        },
+        {
+          "key": "output_all",
+          "path": [
+            "output_all"
+          ],
+          "label": "Output all",
+          "flag": "--output-all",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_ALL"
+          ],
+          "conflicts": [],
+          "help": "Write all default output files into this directory.",
+          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
+        },
+        {
+          "key": "output_nwk_style",
+          "path": [
+            "output_nwk_style"
+          ],
+          "label": "Newick style",
+          "flag": "--output-nwk-style",
+          "group": "Output",
+          "role": "setting",
+          "kind": "enum-list",
+          "nullable": false,
+          "options": [
+            {
+              "value": "plain",
+              "help": ""
+            },
+            {
+              "value": "beast",
+              "help": ""
+            },
+            {
+              "value": "nhx",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": [],
+          "examples": [],
+          "value_names": [
+            "OUTPUT_NWK_STYLE"
+          ],
+          "conflicts": [],
+          "help": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.",
+          "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
+        },
+        {
+          "key": "output_tree_nwk",
+          "path": [
+            "output_tree_nwk"
+          ],
+          "label": "Output tree Newick",
+          "flag": "--output-tree-nwk",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_TREE_NWK"
+          ],
+          "conflicts": [],
+          "help": "Path to output Newick tree file.",
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+        },
+        {
+          "key": "output_tree_nexus",
+          "path": [
+            "output_tree_nexus"
+          ],
+          "label": "Output tree nexus",
+          "flag": "--output-tree-nexus",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_TREE_NEXUS"
+          ],
+          "conflicts": [],
+          "help": "Path to output Nexus tree file.",
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+        },
+        {
+          "key": "output_tree_auspice",
+          "path": [
+            "output_tree_auspice"
+          ],
+          "label": "Output tree auspice",
+          "flag": "--output-tree-auspice",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_TREE_AUSPICE"
+          ],
+          "conflicts": [],
+          "help": "Path to output Auspice v2 JSON tree file.",
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+        },
+        {
+          "key": "output_tree_mat_pb",
+          "path": [
+            "output_tree_mat_pb"
+          ],
+          "label": "Output tree MAT protobuf",
+          "flag": "--output-tree-mat-pb",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_TREE_MAT_PB"
+          ],
+          "conflicts": [],
+          "help": "Path to output UShER MAT protobuf tree file.",
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+        },
+        {
+          "key": "output_tree_mat_json",
+          "path": [
+            "output_tree_mat_json"
+          ],
+          "label": "Output tree MAT JSON",
+          "flag": "--output-tree-mat-json",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_TREE_MAT_JSON"
+          ],
+          "conflicts": [],
+          "help": "Path to output UShER MAT JSON tree file.",
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+        },
+        {
+          "key": "output_tree_graph_json",
+          "path": [
+            "output_tree_graph_json"
+          ],
+          "label": "Output tree graph JSON",
+          "flag": "--output-tree-graph-json",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_TREE_GRAPH_JSON"
+          ],
+          "conflicts": [],
+          "help": "Path to output internal graph JSON tree file.",
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+        },
+        {
+          "key": "output_tree_dot",
+          "path": [
+            "output_tree_dot"
+          ],
+          "label": "Output tree DOT",
+          "flag": "--output-tree-dot",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_TREE_DOT"
+          ],
+          "conflicts": [],
+          "help": "Path to output Graphviz DOT tree file.",
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+        },
+        {
+          "key": "output_homoplasy_stats",
+          "path": [
+            "output_homoplasy_stats"
+          ],
+          "label": "Output homoplasy stats",
+          "flag": "--output-homoplasy-stats",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_HOMOPLASY_STATS"
+          ],
+          "conflicts": [],
+          "help": "Path to output homoplasy statistics JSON.",
+          "more": "Contains the counts, histograms, Poisson comparison, and complete ranked lists of the report, for substitutions, changes involving ambiguous characters, and insertions and deletions.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`."
+        },
+        {
+          "key": "output_homoplasy_report",
+          "path": [
+            "output_homoplasy_report"
+          ],
+          "label": "Output homoplasy report",
+          "flag": "--output-homoplasy-report",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_HOMOPLASY_REPORT"
+          ],
+          "conflicts": [],
+          "help": "Path to output homoplasy report text.",
+          "more": "The run also logs the report at info level (`-v`).\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`."
+        },
+        {
+          "key": "output_selection",
+          "path": [
+            "output_selection"
+          ],
+          "label": "Output files",
+          "flag": "--output-selection",
+          "group": "Output",
+          "role": "setting",
+          "kind": "enum-list",
+          "nullable": false,
+          "options": [
+            {
+              "value": "all",
+              "help": ""
+            },
+            {
+              "value": "nwk",
+              "help": ""
+            },
+            {
+              "value": "nexus",
+              "help": ""
+            },
+            {
+              "value": "auspice",
+              "help": ""
+            },
+            {
+              "value": "mat-pb",
+              "help": ""
+            },
+            {
+              "value": "mat-json",
+              "help": ""
+            },
+            {
+              "value": "graph-json",
+              "help": ""
+            },
+            {
+              "value": "dot",
+              "help": ""
+            },
+            {
+              "value": "homoplasy-stats",
+              "help": ""
+            },
+            {
+              "value": "homoplasy-report",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": [],
+          "examples": [],
+          "value_names": [
+            "OUTPUT_SELECTION"
+          ],
+          "conflicts": [],
+          "help": "Comma-separated list of outputs to produce with `--output-all`.",
+          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection."
+        },
+        {
+          "key": "ladderize",
+          "path": [
+            "ladderize"
+          ],
+          "label": "Ladderize",
+          "flag": "--ladderize",
+          "group": "Tree ordering",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": true,
+          "options": [
+            {
+              "value": "none",
+              "help": ""
+            },
+            {
+              "value": "ascending",
+              "help": ""
+            },
+            {
+              "value": "descending",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "LADDERIZE"
+          ],
+          "conflicts": [
+            "topology_order",
+            "topology_order_target_aggregate",
+            "topology_order_target_file",
+            "topology_order_target_source"
+          ],
+          "help": "Order tree topology before writing output files.",
+          "more": ""
+        },
+        {
+          "key": "topology_order",
+          "path": [
+            "topology_order"
+          ],
+          "label": "Topology order",
+          "flag": "--topology-order",
+          "group": "Tree ordering",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": true,
+          "options": [
+            {
+              "value": "keep",
+              "help": ""
+            },
+            {
+              "value": "descendant-count",
+              "help": ""
+            },
+            {
+              "value": "descendant-count-reverse",
+              "help": ""
+            },
+            {
+              "value": "height",
+              "help": ""
+            },
+            {
+              "value": "height-reverse",
+              "help": ""
+            },
+            {
+              "value": "divergence",
+              "help": ""
+            },
+            {
+              "value": "divergence-reverse",
+              "help": ""
+            },
+            {
+              "value": "label",
+              "help": ""
+            },
+            {
+              "value": "label-reverse",
+              "help": ""
+            },
+            {
+              "value": "target-order",
+              "help": ""
+            },
+            {
+              "value": "target-order-reverse",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "TOPOLOGY_ORDER"
+          ],
+          "conflicts": [
+            "ladderize"
+          ],
+          "help": "Canonical topology ordering preset.",
+          "more": ""
+        },
+        {
+          "key": "topology_order_target_source",
+          "path": [
+            "topology_order_target_source"
+          ],
+          "label": "Topology order target source",
+          "flag": "--topology-order-target-source",
+          "group": "Tree ordering",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": true,
+          "options": [
+            {
+              "value": "input",
+              "help": ""
+            },
+            {
+              "value": "reference-topology",
+              "help": ""
+            },
+            {
+              "value": "list",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "TOPOLOGY_ORDER_TARGET_SOURCE"
+          ],
+          "conflicts": [
+            "ladderize"
+          ],
+          "help": "Source for target-order topology sorting.",
+          "more": ""
+        },
+        {
+          "key": "topology_order_target_file",
+          "path": [
+            "topology_order_target_file"
+          ],
+          "label": "Topology order target file",
+          "flag": "--topology-order-target-file",
+          "group": "Tree ordering",
+          "role": "input",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "TOPOLOGY_ORDER_TARGET_FILE"
+          ],
+          "conflicts": [
+            "ladderize"
+          ],
+          "help": "File used by list or reference-topology target-order sources.",
+          "more": ""
+        },
+        {
+          "key": "topology_order_target_aggregate",
+          "path": [
+            "topology_order_target_aggregate"
+          ],
+          "label": "Topology order target aggregate",
+          "flag": "--topology-order-target-aggregate",
+          "group": "Tree ordering",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "mean",
+              "help": ""
+            },
+            {
+              "value": "median",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "mean",
+          "examples": [],
+          "value_names": [
+            "TOPOLOGY_ORDER_TARGET_AGGREGATE"
+          ],
+          "conflicts": [
+            "ladderize"
+          ],
+          "help": "Aggregate used to map a subtree to a target-order position.",
+          "more": ""
+        }
+      ]
+    },
+    {
       "command": "mugration",
       "title": "Discrete traits",
       "description": "Ancestral states of a metadata column, such as country or host.",

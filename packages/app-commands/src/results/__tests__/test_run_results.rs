@@ -14,7 +14,9 @@ mod tests {
   use crate::runs::record::CreateRunRequest;
   use crate::runs::setting_differences::SettingDifference;
   use eyre::Report;
-  use helpers::{auspice_path, clock_model, dataset, finished_run, timetree_config, zika};
+  use app_output::output_plan::OutputSelection;
+  use helpers::{auspice_path, clock_model, dataset, finished_run, homoplasy_config, timetree_config, zika};
+  use std::collections::BTreeSet;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
@@ -88,8 +90,76 @@ mod tests {
         root_date: estimates.root_date,
         clock_rate: estimates.clock_rate.map(JsonFloat),
         r_squared: estimates.r_squared.map(JsonFloat),
+        recurrent_substitutions: None,
       },
       runs.get(&id)?.headline
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_results_of_a_homoplasy_run_read_its_statistics_file() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(&runs, AppCommand::Homoplasy, homoplasy_config());
+
+    let RunResults {
+      tree,
+      results: CommandResults::Homoplasy(homoplasy),
+      problems,
+      ..
+    } = run_results(&runs, &id)?
+    else {
+      panic!("a homoplasy run has homoplasy results");
+    };
+
+    let record = runs.get(&id)?;
+    let homoplasy = homoplasy.statistics.expect("the run wrote its statistics file");
+    let kinds = record.output_files.iter().map(|file| file.kind).collect::<BTreeSet<_>>();
+    assert_eq!(
+      (
+        (true, true),
+        Vec::<String>::new(),
+        20,
+        homoplasy.sites_hit_more_than_once,
+        Some(homoplasy.recurrent_substitutions),
+      ),
+      (
+        (kinds.contains(&OutputSelection::Auspice), kinds.contains(&OutputSelection::HomoplasyStats)),
+        problems.into_iter().map(|problem| problem.message).collect(),
+        tree.expect("the run wrote an Auspice tree").tips().count(),
+        homoplasy.sites.len(),
+        record.headline.recurrent_substitutions,
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_results_of_a_homoplasy_run_without_statistics_file_are_absent() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(&runs, AppCommand::Homoplasy, homoplasy_config());
+    let record = runs.get(&id)?;
+    let stats = record
+      .output_files
+      .iter()
+      .find(|file| file.kind == OutputSelection::HomoplasyStats)
+      .expect("the run wrote its statistics file");
+    fs::write(runs.store().out_dir(&id).join(&stats.path), "{}")?;
+
+    let RunResults {
+      results: CommandResults::Homoplasy(homoplasy),
+      problems,
+      ..
+    } = run_results(&runs, &id)?
+    else {
+      panic!("a homoplasy run has homoplasy results");
+    };
+
+    assert_eq!(
+      (None, vec![stats.path.to_string_lossy().into_owned()]),
+      (homoplasy.statistics, problems.into_iter().map(|problem| problem.path).collect::<Vec<_>>())
     );
     Ok(())
   }
@@ -258,6 +328,7 @@ mod tests {
   #[case::timetree( AppCommand::Timetree,  timetree_config(None))]
   #[case::ancestral(AppCommand::Ancestral, json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")] }))]
   #[case::clock(    AppCommand::Clock,     json!({ "tree": zika("tree.nwk"), "metadata": zika("metadata.tsv") }))]
+  #[case::homoplasy(AppCommand::Homoplasy, homoplasy_config())]
   #[trace]
   fn test_run_auspice_changes_only_color_scales_and_leaves_the_written_file_unchanged(
     #[case] command: AppCommand,
@@ -468,6 +539,10 @@ mod tests {
         .run();
       assert_eq!(RunStatus::Ok, runs.get(&created.id).unwrap().status);
       created.id
+    }
+
+    pub(super) fn homoplasy_config() -> Value {
+      json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")] })
     }
 
     pub(super) fn zika(file: &str) -> PathBuf {

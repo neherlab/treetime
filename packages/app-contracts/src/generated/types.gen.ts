@@ -129,7 +129,7 @@ export type ExampleConfig = {
 /**
  * Analysis command that every client can run.
  */
-export type AppCommand = 'timetree' | 'clock' | 'ancestral' | 'mugration' | 'optimize' | 'prune';
+export type AppCommand = 'timetree' | 'clock' | 'ancestral' | 'homoplasy' | 'mugration' | 'optimize' | 'prune';
 
 /**
  * Request to check a configuration.
@@ -612,6 +612,10 @@ export type RunHeadline = {
    * Coefficient of determination of the clock model.
    */
   r_squared?: JsonFloat;
+  /**
+   * Number of distinct substitutions on two or more branches of a homoplasy run.
+   */
+  recurrent_substitutions?: number;
 };
 
 /**
@@ -664,6 +668,8 @@ export type RunRecord = ({
 } & RunRecordPrune) | ({
   command: 'ancestral';
 } & RunRecordAncestral) | ({
+  command: 'homoplasy';
+} & RunRecordHomoplasy) | ({
   command: 'clock';
 } & RunRecordClock) | ({
   command: 'mugration';
@@ -964,6 +970,8 @@ export type CommandResults = ({
 } & CommandResultsClock) | ({
   command: 'ancestral';
 } & CommandResultsAncestral) | ({
+  command: 'homoplasy';
+} & CommandResultsHomoplasy) | ({
   command: 'mugration';
 } & CommandResultsMugration) | ({
   command: 'optimize';
@@ -1314,6 +1322,287 @@ export type RecurrentSite = {
   position: number;
   /**
    * Number of branches with a mutation at the position.
+   */
+  branches: number;
+};
+
+/**
+ * Results of a `homoplasy` run.
+ */
+export type HomoplasyResults = {
+  /**
+   * Statistics of the run; absent when its statistics file is missing or unreadable.
+   */
+  statistics?: HomoplasyStatistics;
+};
+
+/**
+ * Statistics of a `homoplasy` run: mutations that occur on more than one branch of the tree.
+ */
+export type HomoplasyStatistics = {
+  /**
+   * Whether `--drms` annotated the substitutions with drug resistance mutations.
+   */
+  drm_annotated: boolean;
+  /**
+   * Whether the run counts positions from 0 (`--zero-based`). Display positions follow this
+   * setting; tree positions always count from 1.
+   */
+  zero_based: boolean;
+  /**
+   * Number of sites of the genome: the alignment length plus the constant sites.
+   */
+  genome_length: number;
+  /**
+   * Sum of all branch lengths.
+   */
+  total_branch_length: number;
+  /**
+   * Substitutions between determined states on all branches, counted once per branch.
+   */
+  substitutions: number;
+  /**
+   * Number of distinct substitutions.
+   */
+  distinct_substitutions: number;
+  /**
+   * Number of distinct substitutions that occur on two or more branches.
+   */
+  recurrent_substitutions: number;
+  /**
+   * Number of sites with substitutions on two or more branches, of any alleles.
+   */
+  sites_hit_more_than_once: number;
+  /**
+   * Expected number of sites with two or more substitutions under a Poisson distribution with the
+   * same mean.
+   */
+  expected_sites_hit_more_than_once: number;
+  /**
+   * Log-likelihood of the site counts under the Poisson distribution minus its expected value.
+   * Negative values mean that substitutions cluster at fewer sites than the Poisson distribution
+   * predicts.
+   */
+  log_likelihood_difference: number;
+  /**
+   * Number of samples whose terminal branch has a substitution at a site hit more than once.
+   */
+  samples_with_homoplasies: number;
+  /**
+   * Number of recurrent substitutions at positions listed in `--drms`; absent without `--drms`.
+   */
+  recurrent_drm_substitutions?: number;
+  /**
+   * Changes from or to an ambiguous character on all branches, counted once per branch.
+   */
+  ambiguous_changes: number;
+  /**
+   * Insertions and deletions on all branches, counted once per branch.
+   */
+  indels: number;
+  /**
+   * Number of sites by the number of substitutions at the site, with the Poisson expectation.
+   */
+  site_hits: Array<SiteHitsRow>;
+  /**
+   * Number of distinct substitutions by the number of branches they occur on.
+   */
+  multiplicities: Array<MultiplicityRow>;
+  /**
+   * Substitutions that occur on two or more branches, most branches first.
+   */
+  recurrent: Array<RecurrentMutation>;
+  /**
+   * Sites with substitutions on two or more branches, by position.
+   */
+  sites: Array<HomoplasySite>;
+  /**
+   * Insertions and deletions that occur on two or more branches, most branches first.
+   */
+  recurrent_indels: Array<RecurrentMutation>;
+  /**
+   * Samples whose terminal branch carries homoplasic, ambiguous, or recurrent indel changes.
+   */
+  taxa: Array<TaxonResult>;
+  /**
+   * Sites with changes involving ambiguous characters, most branches first, at most 100.
+   */
+  ambiguous_sites: Array<AmbiguousSite>;
+  /**
+   * Number of sites with changes involving ambiguous characters.
+   */
+  ambiguous_site_count: number;
+};
+
+/**
+ * Number of sites hit by the same number of substitutions.
+ */
+export type SiteHitsRow = {
+  /**
+   * Number of substitutions at a site.
+   */
+  hits: number;
+  /**
+   * Number of sites with this many substitutions.
+   */
+  sites: number;
+  /**
+   * Expected number of such sites under the Poisson distribution.
+   */
+  expected: number;
+};
+
+/**
+ * Number of distinct mutations that occur on the same number of branches.
+ */
+export type MultiplicityRow = {
+  /**
+   * Number of branches.
+   */
+  branches: number;
+  /**
+   * Number of distinct mutations that occur on this many branches.
+   */
+  mutations: number;
+};
+
+/**
+ * A mutation that occurs on two or more branches.
+ */
+export type RecurrentMutation = {
+  /**
+   * The mutation, such as `G9343A` or `del:100-102:ACG`.
+   */
+  mutation: string;
+  /**
+   * Position counted from 1, as in the tree: the site of a substitution, the first column of an
+   * insertion or deletion.
+   */
+  position: number;
+  /**
+   * Position counted as the run reports positions.
+   */
+  display_position: number;
+  /**
+   * Number of branches the mutation occurs on.
+   */
+  branches: number;
+  /**
+   * Number of terminal branches the mutation occurs on.
+   */
+  terminal_branches: number;
+  /**
+   * Names of the nodes below the branches.
+   */
+  branch_names: Array<string>;
+  /**
+   * Drug resistance annotation from `--drms`.
+   */
+  drm?: DrmAnnotation;
+};
+
+/**
+ * Drug resistance annotation of a substitution.
+ */
+export type DrmAnnotation = {
+  /**
+   * Gene of the position.
+   */
+  gene: string;
+  /**
+   * Drug of the position.
+   */
+  drug: string;
+  /**
+   * Amino-acid substitution of the derived base, when the table lists the base.
+   */
+  substitution?: string;
+};
+
+/**
+ * A site with substitutions on two or more branches.
+ */
+export type HomoplasySite = {
+  /**
+   * Position counted from 1, as in the tree.
+   */
+  position: number;
+  /**
+   * Position counted as the run reports positions.
+   */
+  display_position: number;
+  /**
+   * Number of branches with a substitution at the site.
+   */
+  branches: number;
+  /**
+   * Every substitution at the site, most branches first.
+   */
+  substitutions: Array<SiteSubstitution>;
+};
+
+/**
+ * A substitution at a site hit more than once.
+ */
+export type SiteSubstitution = {
+  /**
+   * The substitution, such as `G9343A`.
+   */
+  mutation: string;
+  /**
+   * Number of branches the substitution occurs on.
+   */
+  branches: number;
+  /**
+   * Names of the nodes below the branches.
+   */
+  branch_names: Array<string>;
+  /**
+   * Drug resistance annotation from `--drms`.
+   */
+  drm?: DrmAnnotation;
+};
+
+/**
+ * Recurrent and ambiguous changes on the terminal branch of one sample.
+ */
+export type TaxonResult = {
+  /**
+   * Name of the sample.
+   */
+  name: string;
+  /**
+   * Substitutions on the terminal branch at sites with substitutions on two or more branches.
+   */
+  homoplasic_mutations: Array<string>;
+  /**
+   * Number of the homoplasic substitutions at positions listed in `--drms`.
+   */
+  drm_mutations?: number;
+  /**
+   * Number of changes involving ambiguous characters on the terminal branch.
+   */
+  ambiguous_changes: number;
+  /**
+   * Number of insertions and deletions on the terminal branch that occur on two or more branches.
+   */
+  recurrent_indels: number;
+};
+
+/**
+ * A site with changes involving ambiguous characters.
+ */
+export type AmbiguousSite = {
+  /**
+   * Position counted from 1, as in the tree.
+   */
+  position: number;
+  /**
+   * Position counted as the run reports positions.
+   */
+  display_position: number;
+  /**
+   * Number of branches with such a change at the site.
    */
   branches: number;
 };
@@ -3528,6 +3817,308 @@ export type AncestralConfig = {
   sample_from_profile?: SampleMode;
 };
 
+export type HomoplasyOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'homoplasy-stats' | 'homoplasy-report';
+
+/**
+ * Sequence alignment input shared by all commands that read sequences.
+ *
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
+ * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
+ * input.
+ */
+export type HomoplasyConfig = {
+  /**
+   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
+   * `xz`, `zstd`) files and detects compression by extension. The records of all
+   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   */
+  alignment?: Array<string>;
+  /**
+   * Tree in Newick format.
+   */
+  tree?: string;
+  /**
+   * Sequence alphabet
+   *
+   * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
+   * detection is ambiguous.
+   */
+  alphabet?: AlphabetName;
+  /**
+   * Substitution model to use
+   *
+   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
+   * specified model requires additional options, use `--model-params` to specify those.
+   */
+  model?: GtrModelName;
+  /**
+   * Parameters for the model selected by `--model`, given as a `key=value` list
+   *
+   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   */
+  model_params?: Array<string>;
+  /**
+   * Method used for reconstructing ancestral sequences, which places the mutations on the branches
+   */
+  method_anc?: MethodAncestral;
+  /**
+   * Use dense representation (stores full probability vectors at each position)
+   *
+   * When combined with `--model infer`, marginal reconstruction runs twice: once to populate
+   * profiles for GTR inference, and again with the inferred GTR.
+   */
+  dense?: boolean;
+  /**
+   * How to handle gap characters in input sequences
+   *
+   * 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
+   * 'all': replace all gap characters with the ambiguous character.
+   * 'none': leave all gap characters unchanged.
+   */
+  gap_fill?: GapFill;
+  /**
+   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
+   */
+  keep_overhangs?: boolean;
+  /**
+   * Report sequence positions counted from 0 instead of 1.
+   *
+   * Applies to the positions of the report, the statistics JSON, and the `GENOMIC_POSITION` column of
+   * `--drms`, which is always counted from 1.
+   */
+  zero_based?: boolean;
+  /**
+   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
+   * inferred state.
+   *
+   * Changes involving ambiguous characters on terminal branches then disappear from the report.
+   * Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.
+   */
+  impute_missing_data?: boolean;
+  /**
+   * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)
+   * instead of aborting.
+   *
+   * Without this flag the run aborts when more than one third of the tips lack a sequence, matching
+   * TreeTime v0.
+   */
+  ignore_missing_alns?: boolean;
+  /**
+   * Number of outer GTR refinement iterations.
+   *
+   * Re-estimates the rate matrix from marginal posterior profiles after each
+   * reconstruction pass. Only effective with `--model infer`. Default 0 preserves
+   * the current single-pass behavior.
+   */
+  gtr_iterations?: number;
+  /**
+   * Use site-specific GTR model with per-site equilibrium frequencies.
+   *
+   * Requires `--model infer` and `--dense true`. Incompatible with sequence compression
+   * (sparse representation). When enabled, each alignment position gets its own
+   * eigendecomposition based on position-specific base composition.
+   */
+  site_specific_gtr?: boolean;
+  /**
+   * How to pick ancestral states from the marginal posterior profile.
+   *
+   * 'argmax': most likely state at every node (deterministic, default).
+   * 'root': sample from the posterior at the root only, argmax elsewhere.
+   * 'all': sample from the posterior at every node.
+   *
+   * Only affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible
+   * draws.
+   */
+  sample_from_profile?: SampleMode;
+  /**
+   * Random seed
+   *
+   * Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
+   */
+  seed?: number;
+  /**
+   * Number of constant sites that the alignment leaves out.
+   *
+   * Added to the alignment length to give the number of sites of the genome, which sets the
+   * number of sites without mutations and the rate of the Poisson comparison.
+   */
+  constant_sites?: number;
+  /**
+   * Factor that multiplies every branch length of the input tree.
+   *
+   * Use it when the tree is not in substitutions per site, for example `--rescale=0.001` for a
+   * tree in substitutions per thousand sites. Scales the reconstruction, the tree outputs, and the
+   * reported tree lengths.
+   */
+  rescale?: number;
+  /**
+   * Add the mutations on terminal branches and the taxa that carry recurrent mutations to the
+   * report.
+   *
+   * The statistics JSON always contains them.
+   */
+  detailed?: boolean;
+  /**
+   * TSV file of drug resistance mutations (DRM) that annotates the report.
+   *
+   * Columns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`.
+   * A mutation at a listed position gets the gene and the drug, and the substitution when its
+   * derived base is a listed `ALT_BASE`.
+   */
+  drms?: string;
+  /**
+   * Number of rows of each list in the report.
+   *
+   * The statistics JSON always contains the complete lists.
+   */
+  num_mut?: number;
+  /**
+   * Write all default output files into this directory.
+   *
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
+   */
+  output_all?: string;
+  /**
+   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   *
+   * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
+   * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   */
+  output_nwk_style?: Array<NwkStyleArg>;
+  /**
+   * Path to output Newick tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nwk?: string;
+  /**
+   * Path to output Nexus tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
+   * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_nexus?: string;
+  /**
+   * Path to output Auspice v2 JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_auspice?: string;
+  /**
+   * Path to output UShER MAT protobuf tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_pb?: string;
+  /**
+   * Path to output UShER MAT JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_mat_json?: string;
+  /**
+   * Path to output internal graph JSON tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_graph_json?: string;
+  /**
+   * Path to output Graphviz DOT tree file.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
+   * Use `-` to write uncompressed to stdout.
+   *
+   * Parent directories are created if missing.
+   */
+  output_tree_dot?: string;
+  /**
+   * Path to output homoplasy statistics JSON.
+   *
+   * Contains the counts, histograms, Poisson comparison, and complete ranked lists of the report,
+   * for substitutions, changes involving ambiguous characters, and insertions and deletions.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_homoplasy_stats?: string;
+  /**
+   * Path to output homoplasy report text.
+   *
+   * The run also logs the report at info level (`-v`).
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_homoplasy_report?: string;
+  /**
+   * Comma-separated list of outputs to produce with `--output-all`.
+   *
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
+   * available for this command. Requires `--output-all`. Per-file flags are always honored
+   * regardless of this selection.
+   */
+  output_selection?: Array<HomoplasyOutputSelection>;
+  /**
+   * Order tree topology before writing output files.
+   */
+  ladderize?: LadderizeArg;
+  /**
+   * Canonical topology ordering preset.
+   */
+  topology_order?: TopologyOrderArg;
+  /**
+   * Source for target-order topology sorting.
+   */
+  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  /**
+   * File used by list or reference-topology target-order sources.
+   */
+  topology_order_target_file?: string;
+  /**
+   * Aggregate used to map a subtree to a target-order position.
+   */
+  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+};
+
 export type MugrationOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'confidence-csv' | 'traits-csv';
 
 /**
@@ -4707,6 +5298,76 @@ export type RunRecordAncestral = {
   config: AncestralConfig;
 };
 
+export type RunRecordHomoplasy = {
+  /**
+   * Identifier of the run, also the name of its folder.
+   */
+  id: JobId;
+  /**
+   * Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.
+   */
+  title: string;
+  /**
+   * State of the run.
+   */
+  status: RunStatus;
+  /**
+   * Whether the run is pinned in run lists.
+   */
+  pinned: boolean;
+  /**
+   * Time the run was created.
+   */
+  created_at: string;
+  /**
+   * Time the computation started.
+   */
+  started_at?: string;
+  /**
+   * Time the run ended.
+   */
+  finished_at?: string;
+  /**
+   * Duration of the computation, in seconds.
+   */
+  duration_seconds?: number;
+  /**
+   * Version of TreeTime that ran the command.
+   */
+  treetime_version: string;
+  /**
+   * Input files the run read.
+   */
+  inputs: Array<RunInput>;
+  /**
+   * SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output
+   * paths removed. Two runs with equal hashes used the same settings on the same input contents.
+   */
+  config_hash?: string;
+  /**
+   * Setting keys whose values differ from the command defaults, as dot-separated key paths.
+   */
+  changed_settings: Array<string>;
+  /**
+   * Key results of a finished run, for run lists.
+   */
+  headline: RunHeadline;
+  /**
+   * Files the run wrote, with paths relative to the run's `out/` folder.
+   */
+  output_files: Array<OutputFile>;
+  /**
+   * Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.
+   */
+  warnings: Array<RunWarning>;
+  /**
+   * The error of a failed run.
+   */
+  error?: RunError;
+  command: 'homoplasy';
+  config: HomoplasyConfig;
+};
+
 export type RunRecordClock = {
   /**
    * Identifier of the run, also the name of its folder.
@@ -4860,6 +5521,11 @@ export type CommandResultsClock = {
 export type CommandResultsAncestral = {
   command: 'ancestral';
   data: AncestralResults;
+};
+
+export type CommandResultsHomoplasy = {
+  command: 'homoplasy';
+  data: HomoplasyResults;
 };
 
 export type CommandResultsMugration = {

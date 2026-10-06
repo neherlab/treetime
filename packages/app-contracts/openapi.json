@@ -1486,6 +1486,7 @@
           "timetree",
           "clock",
           "ancestral",
+          "homoplasy",
           "mugration",
           "optimize",
           "prune"
@@ -2316,6 +2317,13 @@
             "description": "Coefficient of determination of the clock model.",
             "$ref": "#/components/schemas/JsonFloat",
             "x-unset": true
+          },
+          "recurrent_substitutions": {
+            "description": "Number of distinct substitutions on two or more branches of a homoplasy run.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "x-unset": true
           }
         }
       },
@@ -2394,6 +2402,9 @@
             "$ref": "#/components/schemas/RunRecordAncestral"
           },
           {
+            "$ref": "#/components/schemas/RunRecordHomoplasy"
+          },
+          {
             "$ref": "#/components/schemas/RunRecordClock"
           },
           {
@@ -2407,6 +2418,7 @@
             "optimize": "#/components/schemas/RunRecordOptimize",
             "prune": "#/components/schemas/RunRecordPrune",
             "ancestral": "#/components/schemas/RunRecordAncestral",
+            "homoplasy": "#/components/schemas/RunRecordHomoplasy",
             "clock": "#/components/schemas/RunRecordClock",
             "mugration": "#/components/schemas/RunRecordMugration"
           }
@@ -2861,6 +2873,9 @@
             "$ref": "#/components/schemas/CommandResultsAncestral"
           },
           {
+            "$ref": "#/components/schemas/CommandResultsHomoplasy"
+          },
+          {
             "$ref": "#/components/schemas/CommandResultsMugration"
           },
           {
@@ -2876,6 +2891,7 @@
             "timetree": "#/components/schemas/CommandResultsTimetree",
             "clock": "#/components/schemas/CommandResultsClock",
             "ancestral": "#/components/schemas/CommandResultsAncestral",
+            "homoplasy": "#/components/schemas/CommandResultsHomoplasy",
             "mugration": "#/components/schemas/CommandResultsMugration",
             "optimize": "#/components/schemas/CommandResultsOptimize",
             "prune": "#/components/schemas/CommandResultsPrune"
@@ -3398,6 +3414,447 @@
         },
         "required": [
           "position",
+          "branches"
+        ]
+      },
+      "HomoplasyResults": {
+        "description": "Results of a `homoplasy` run.",
+        "type": "object",
+        "properties": {
+          "statistics": {
+            "description": "Statistics of the run; absent when its statistics file is missing or unreadable.",
+            "$ref": "#/components/schemas/HomoplasyStatistics",
+            "x-unset": true
+          }
+        }
+      },
+      "HomoplasyStatistics": {
+        "description": "Statistics of a `homoplasy` run: mutations that occur on more than one branch of the tree.",
+        "type": "object",
+        "properties": {
+          "drm_annotated": {
+            "description": "Whether `--drms` annotated the substitutions with drug resistance mutations.",
+            "type": "boolean"
+          },
+          "zero_based": {
+            "description": "Whether the run counts positions from 0 (`--zero-based`). Display positions follow this\nsetting; tree positions always count from 1.",
+            "type": "boolean"
+          },
+          "genome_length": {
+            "description": "Number of sites of the genome: the alignment length plus the constant sites.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "total_branch_length": {
+            "description": "Sum of all branch lengths.",
+            "type": "number",
+            "format": "double"
+          },
+          "substitutions": {
+            "description": "Substitutions between determined states on all branches, counted once per branch.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "distinct_substitutions": {
+            "description": "Number of distinct substitutions.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "recurrent_substitutions": {
+            "description": "Number of distinct substitutions that occur on two or more branches.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "sites_hit_more_than_once": {
+            "description": "Number of sites with substitutions on two or more branches, of any alleles.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "expected_sites_hit_more_than_once": {
+            "description": "Expected number of sites with two or more substitutions under a Poisson distribution with the\nsame mean.",
+            "type": "number",
+            "format": "double"
+          },
+          "log_likelihood_difference": {
+            "description": "Log-likelihood of the site counts under the Poisson distribution minus its expected value.\nNegative values mean that substitutions cluster at fewer sites than the Poisson distribution\npredicts.",
+            "type": "number",
+            "format": "double"
+          },
+          "samples_with_homoplasies": {
+            "description": "Number of samples whose terminal branch has a substitution at a site hit more than once.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "recurrent_drm_substitutions": {
+            "description": "Number of recurrent substitutions at positions listed in `--drms`; absent without `--drms`.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "x-unset": true
+          },
+          "ambiguous_changes": {
+            "description": "Changes from or to an ambiguous character on all branches, counted once per branch.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "indels": {
+            "description": "Insertions and deletions on all branches, counted once per branch.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "site_hits": {
+            "description": "Number of sites by the number of substitutions at the site, with the Poisson expectation.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SiteHitsRow"
+            }
+          },
+          "multiplicities": {
+            "description": "Number of distinct substitutions by the number of branches they occur on.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MultiplicityRow"
+            }
+          },
+          "recurrent": {
+            "description": "Substitutions that occur on two or more branches, most branches first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurrentMutation"
+            }
+          },
+          "sites": {
+            "description": "Sites with substitutions on two or more branches, by position.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HomoplasySite"
+            }
+          },
+          "recurrent_indels": {
+            "description": "Insertions and deletions that occur on two or more branches, most branches first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurrentMutation"
+            }
+          },
+          "taxa": {
+            "description": "Samples whose terminal branch carries homoplasic, ambiguous, or recurrent indel changes.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaxonResult"
+            }
+          },
+          "ambiguous_sites": {
+            "description": "Sites with changes involving ambiguous characters, most branches first, at most 100.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AmbiguousSite"
+            }
+          },
+          "ambiguous_site_count": {
+            "description": "Number of sites with changes involving ambiguous characters.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "drm_annotated",
+          "zero_based",
+          "genome_length",
+          "total_branch_length",
+          "substitutions",
+          "distinct_substitutions",
+          "recurrent_substitutions",
+          "sites_hit_more_than_once",
+          "expected_sites_hit_more_than_once",
+          "log_likelihood_difference",
+          "samples_with_homoplasies",
+          "ambiguous_changes",
+          "indels",
+          "site_hits",
+          "multiplicities",
+          "recurrent",
+          "sites",
+          "recurrent_indels",
+          "taxa",
+          "ambiguous_sites",
+          "ambiguous_site_count"
+        ]
+      },
+      "SiteHitsRow": {
+        "description": "Number of sites hit by the same number of substitutions.",
+        "type": "object",
+        "properties": {
+          "hits": {
+            "description": "Number of substitutions at a site.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "sites": {
+            "description": "Number of sites with this many substitutions.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "expected": {
+            "description": "Expected number of such sites under the Poisson distribution.",
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "hits",
+          "sites",
+          "expected"
+        ]
+      },
+      "MultiplicityRow": {
+        "description": "Number of distinct mutations that occur on the same number of branches.",
+        "type": "object",
+        "properties": {
+          "branches": {
+            "description": "Number of branches.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "mutations": {
+            "description": "Number of distinct mutations that occur on this many branches.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "branches",
+          "mutations"
+        ]
+      },
+      "RecurrentMutation": {
+        "description": "A mutation that occurs on two or more branches.",
+        "type": "object",
+        "properties": {
+          "mutation": {
+            "description": "The mutation, such as `G9343A` or `del:100-102:ACG`.",
+            "type": "string"
+          },
+          "position": {
+            "description": "Position counted from 1, as in the tree: the site of a substitution, the first column of an\ninsertion or deletion.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "display_position": {
+            "description": "Position counted as the run reports positions.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "branches": {
+            "description": "Number of branches the mutation occurs on.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "terminal_branches": {
+            "description": "Number of terminal branches the mutation occurs on.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "branch_names": {
+            "description": "Names of the nodes below the branches.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "drm": {
+            "description": "Drug resistance annotation from `--drms`.",
+            "$ref": "#/components/schemas/DrmAnnotation",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "mutation",
+          "position",
+          "display_position",
+          "branches",
+          "terminal_branches",
+          "branch_names"
+        ]
+      },
+      "DrmAnnotation": {
+        "description": "Drug resistance annotation of a substitution.",
+        "type": "object",
+        "properties": {
+          "gene": {
+            "description": "Gene of the position.",
+            "type": "string"
+          },
+          "drug": {
+            "description": "Drug of the position.",
+            "type": "string"
+          },
+          "substitution": {
+            "description": "Amino-acid substitution of the derived base, when the table lists the base.",
+            "type": "string",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "gene",
+          "drug"
+        ]
+      },
+      "HomoplasySite": {
+        "description": "A site with substitutions on two or more branches.",
+        "type": "object",
+        "properties": {
+          "position": {
+            "description": "Position counted from 1, as in the tree.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "display_position": {
+            "description": "Position counted as the run reports positions.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "branches": {
+            "description": "Number of branches with a substitution at the site.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "substitutions": {
+            "description": "Every substitution at the site, most branches first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SiteSubstitution"
+            }
+          }
+        },
+        "required": [
+          "position",
+          "display_position",
+          "branches",
+          "substitutions"
+        ]
+      },
+      "SiteSubstitution": {
+        "description": "A substitution at a site hit more than once.",
+        "type": "object",
+        "properties": {
+          "mutation": {
+            "description": "The substitution, such as `G9343A`.",
+            "type": "string"
+          },
+          "branches": {
+            "description": "Number of branches the substitution occurs on.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "branch_names": {
+            "description": "Names of the nodes below the branches.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "drm": {
+            "description": "Drug resistance annotation from `--drms`.",
+            "$ref": "#/components/schemas/DrmAnnotation",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "mutation",
+          "branches",
+          "branch_names"
+        ]
+      },
+      "TaxonResult": {
+        "description": "Recurrent and ambiguous changes on the terminal branch of one sample.",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Name of the sample.",
+            "type": "string"
+          },
+          "homoplasic_mutations": {
+            "description": "Substitutions on the terminal branch at sites with substitutions on two or more branches.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "drm_mutations": {
+            "description": "Number of the homoplasic substitutions at positions listed in `--drms`.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "x-unset": true
+          },
+          "ambiguous_changes": {
+            "description": "Number of changes involving ambiguous characters on the terminal branch.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "recurrent_indels": {
+            "description": "Number of insertions and deletions on the terminal branch that occur on two or more branches.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "homoplasic_mutations",
+          "ambiguous_changes",
+          "recurrent_indels"
+        ]
+      },
+      "AmbiguousSite": {
+        "description": "A site with changes involving ambiguous characters.",
+        "type": "object",
+        "properties": {
+          "position": {
+            "description": "Position counted from 1, as in the tree.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "display_position": {
+            "description": "Position counted as the run reports positions.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "branches": {
+            "description": "Number of branches with such a change at the site.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "position",
+          "display_position",
           "branches"
         ]
       },
@@ -6385,6 +6842,272 @@
         },
         "additionalProperties": false
       },
+      "HomoplasyOutputSelection": {
+        "type": "string",
+        "enum": [
+          "all",
+          "nwk",
+          "nexus",
+          "auspice",
+          "mat-pb",
+          "mat-json",
+          "graph-json",
+          "dot",
+          "homoplasy-stats",
+          "homoplasy-report"
+        ]
+      },
+      "HomoplasyConfig": {
+        "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
+        "type": "object",
+        "properties": {
+          "alignment": {
+            "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-cli-flag": "--alignment",
+            "x-path": "input"
+          },
+          "tree": {
+            "description": "Tree in Newick format.",
+            "type": "string",
+            "x-path": "input",
+            "x-unset": true,
+            "x-cli-flag": "--tree"
+          },
+          "alphabet": {
+            "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
+            "$ref": "#/components/schemas/AlphabetName",
+            "x-unset": true,
+            "x-cli-flag": "--alphabet"
+          },
+          "model": {
+            "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
+            "$ref": "#/components/schemas/GtrModelName",
+            "x-cli-flag": "--model"
+          },
+          "model_params": {
+            "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-cli-flag": "--model-params"
+          },
+          "method_anc": {
+            "description": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
+            "$ref": "#/components/schemas/MethodAncestral",
+            "x-cli-flag": "--method-anc"
+          },
+          "dense": {
+            "description": "Use dense representation (stores full probability vectors at each position)\n\nWhen combined with `--model infer`, marginal reconstruction runs twice: once to populate\nprofiles for GTR inference, and again with the inferred GTR.",
+            "type": "boolean",
+            "x-unset": true,
+            "x-cli-flag": "--dense"
+          },
+          "gap_fill": {
+            "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
+            "$ref": "#/components/schemas/GapFill",
+            "x-cli-flag": "--gap-fill"
+          },
+          "keep_overhangs": {
+            "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
+            "type": "boolean",
+            "x-cli-flag": "--keep-overhangs"
+          },
+          "zero_based": {
+            "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the positions of the report, the statistics JSON, and the `GENOMIC_POSITION` column of\n`--drms`, which is always counted from 1.",
+            "type": "boolean",
+            "x-cli-flag": "--zero-based"
+          },
+          "impute_missing_data": {
+            "description": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely\ninferred state.\n\nChanges involving ambiguous characters on terminal branches then disappear from the report.\nOnly defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.",
+            "type": "boolean",
+            "x-cli-flag": "--impute-missing-data"
+          },
+          "ignore_missing_alns": {
+            "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)\ninstead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, matching\nTreeTime v0.",
+            "type": "boolean",
+            "x-cli-flag": "--ignore-missing-alns"
+          },
+          "gtr_iterations": {
+            "description": "Number of outer GTR refinement iterations.\n\nRe-estimates the rate matrix from marginal posterior profiles after each\nreconstruction pass. Only effective with `--model infer`. Default 0 preserves\nthe current single-pass behavior.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "x-cli-flag": "--gtr-iterations"
+          },
+          "site_specific_gtr": {
+            "description": "Use site-specific GTR model with per-site equilibrium frequencies.\n\nRequires `--model infer` and `--dense true`. Incompatible with sequence compression\n(sparse representation). When enabled, each alignment position gets its own\neigendecomposition based on position-specific base composition.",
+            "type": "boolean",
+            "x-cli-flag": "--site-specific-gtr"
+          },
+          "sample_from_profile": {
+            "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere.\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible\ndraws.",
+            "$ref": "#/components/schemas/SampleMode",
+            "x-cli-flag": "--sample-from-profile"
+          },
+          "seed": {
+            "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0,
+            "x-unset": true,
+            "x-cli-flag": "--seed"
+          },
+          "constant_sites": {
+            "description": "Number of constant sites that the alignment leaves out.\n\nAdded to the alignment length to give the number of sites of the genome, which sets the\nnumber of sites without mutations and the rate of the Poisson comparison.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "x-cli-flag": "--const"
+          },
+          "rescale": {
+            "description": "Factor that multiplies every branch length of the input tree.\n\nUse it when the tree is not in substitutions per site, for example `--rescale=0.001` for a\ntree in substitutions per thousand sites. Scales the reconstruction, the tree outputs, and the\nreported tree lengths.",
+            "type": "number",
+            "format": "double",
+            "x-cli-flag": "--rescale"
+          },
+          "detailed": {
+            "description": "Add the mutations on terminal branches and the taxa that carry recurrent mutations to the\nreport.\n\nThe statistics JSON always contains them.",
+            "type": "boolean",
+            "x-cli-flag": "--detailed"
+          },
+          "drms": {
+            "description": "TSV file of drug resistance mutations (DRM) that annotates the report.\n\nColumns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`.\nA mutation at a listed position gets the gene and the drug, and the substitution when its\nderived base is a listed `ALT_BASE`.",
+            "type": "string",
+            "x-path": "input",
+            "x-unset": true,
+            "x-cli-flag": "--drms"
+          },
+          "num_mut": {
+            "description": "Number of rows of each list in the report.\n\nThe statistics JSON always contains the complete lists.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "x-cli-flag": "--num-mut"
+          },
+          "output_all": {
+            "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.",
+            "type": "string",
+            "x-path": "output",
+            "x-unset": true,
+            "x-cli-flag": "--output-all"
+          },
+          "output_nwk_style": {
+            "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NwkStyleArg"
+            },
+            "x-cli-flag": "--output-nwk-style"
+          },
+          "output_tree_nwk": {
+            "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+            "type": "string",
+            "x-path": "output",
+            "x-unset": true,
+            "x-cli-flag": "--output-tree-nwk"
+          },
+          "output_tree_nexus": {
+            "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+            "type": "string",
+            "x-path": "output",
+            "x-unset": true,
+            "x-cli-flag": "--output-tree-nexus"
+          },
+          "output_tree_auspice": {
+            "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+            "type": "string",
+            "x-path": "output",
+            "x-unset": true,
+            "x-cli-flag": "--output-tree-auspice"
+          },
+          "output_tree_mat_pb": {
+            "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+            "type": "string",
+            "x-path": "output",
+            "x-unset": true,
+            "x-cli-flag": "--output-tree-mat-pb"
+          },
+          "output_tree_mat_json": {
+            "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+            "type": "string",
+            "x-path": "output",
+            "x-unset": true,
+            "x-cli-flag": "--output-tree-mat-json"
+          },
+          "output_tree_graph_json": {
+            "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+            "type": "string",
+            "x-path": "output",
+            "x-unset": true,
+            "x-cli-flag": "--output-tree-graph-json"
+          },
+          "output_tree_dot": {
+            "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+            "type": "string",
+            "x-path": "output",
+            "x-unset": true,
+            "x-cli-flag": "--output-tree-dot"
+          },
+          "output_homoplasy_stats": {
+            "description": "Path to output homoplasy statistics JSON.\n\nContains the counts, histograms, Poisson comparison, and complete ranked lists of the report,\nfor substitutions, changes involving ambiguous characters, and insertions and deletions.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+            "type": "string",
+            "x-path": "output",
+            "x-unset": true,
+            "x-cli-flag": "--output-homoplasy-stats"
+          },
+          "output_homoplasy_report": {
+            "description": "Path to output homoplasy report text.\n\nThe run also logs the report at info level (`-v`).\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+            "type": "string",
+            "x-path": "output",
+            "x-unset": true,
+            "x-cli-flag": "--output-homoplasy-report"
+          },
+          "output_selection": {
+            "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HomoplasyOutputSelection"
+            },
+            "x-cli-flag": "--output-selection"
+          },
+          "ladderize": {
+            "description": "Order tree topology before writing output files.",
+            "$ref": "#/components/schemas/LadderizeArg",
+            "x-unset": true,
+            "x-cli-flag": "--ladderize"
+          },
+          "topology_order": {
+            "description": "Canonical topology ordering preset.",
+            "$ref": "#/components/schemas/TopologyOrderArg",
+            "x-unset": true,
+            "x-cli-flag": "--topology-order"
+          },
+          "topology_order_target_source": {
+            "description": "Source for target-order topology sorting.",
+            "$ref": "#/components/schemas/TopologyOrderTargetSourceArg",
+            "x-unset": true,
+            "x-cli-flag": "--topology-order-target-source"
+          },
+          "topology_order_target_file": {
+            "description": "File used by list or reference-topology target-order sources.",
+            "type": "string",
+            "x-path": "input",
+            "x-unset": true,
+            "x-cli-flag": "--topology-order-target-file"
+          },
+          "topology_order_target_aggregate": {
+            "description": "Aggregate used to map a subtree to a target-order position.",
+            "$ref": "#/components/schemas/TopologyOrderTargetAggregateArg",
+            "x-cli-flag": "--topology-order-target-aggregate"
+          }
+        },
+        "additionalProperties": false
+      },
       "MugrationOutputSelection": {
         "type": "string",
         "enum": [
@@ -7761,6 +8484,115 @@
           "config"
         ]
       },
+      "RunRecordHomoplasy": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Identifier of the run, also the name of its folder.",
+            "$ref": "#/components/schemas/JobId"
+          },
+          "title": {
+            "description": "Title shown in run lists: `Run <local date and time of creation>` until the user renames the run.",
+            "type": "string"
+          },
+          "status": {
+            "description": "State of the run.",
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "pinned": {
+            "description": "Whether the run is pinned in run lists.",
+            "type": "boolean"
+          },
+          "created_at": {
+            "description": "Time the run was created.",
+            "type": "string"
+          },
+          "started_at": {
+            "description": "Time the computation started.",
+            "type": "string",
+            "x-unset": true
+          },
+          "finished_at": {
+            "description": "Time the run ended.",
+            "type": "string",
+            "x-unset": true
+          },
+          "duration_seconds": {
+            "description": "Duration of the computation, in seconds.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          },
+          "treetime_version": {
+            "description": "Version of TreeTime that ran the command.",
+            "type": "string"
+          },
+          "inputs": {
+            "description": "Input files the run read.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunInput"
+            }
+          },
+          "config_hash": {
+            "description": "SHA-256 of the canonical resolved configuration, with each input path replaced by that input's SHA-256 and output\npaths removed. Two runs with equal hashes used the same settings on the same input contents.",
+            "type": "string",
+            "x-unset": true
+          },
+          "changed_settings": {
+            "description": "Setting keys whose values differ from the command defaults, as dot-separated key paths.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "headline": {
+            "description": "Key results of a finished run, for run lists.",
+            "$ref": "#/components/schemas/RunHeadline"
+          },
+          "output_files": {
+            "description": "Files the run wrote, with paths relative to the run's `out/` folder.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutputFile"
+            }
+          },
+          "warnings": {
+            "description": "Warnings of the run, in the order raised. A run that failed keeps the warnings raised before the failure.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunWarning"
+            }
+          },
+          "error": {
+            "description": "The error of a failed run.",
+            "$ref": "#/components/schemas/RunError",
+            "x-unset": true
+          },
+          "command": {
+            "type": "string",
+            "const": "homoplasy"
+          },
+          "config": {
+            "$ref": "#/components/schemas/HomoplasyConfig"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "pinned",
+          "created_at",
+          "treetime_version",
+          "inputs",
+          "changed_settings",
+          "headline",
+          "output_files",
+          "warnings",
+          "command",
+          "config"
+        ]
+      },
       "RunRecordClock": {
         "type": "object",
         "properties": {
@@ -8020,6 +8852,22 @@
           },
           "data": {
             "$ref": "#/components/schemas/AncestralResults"
+          }
+        },
+        "required": [
+          "command",
+          "data"
+        ]
+      },
+      "CommandResultsHomoplasy": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "const": "homoplasy"
+          },
+          "data": {
+            "$ref": "#/components/schemas/HomoplasyResults"
           }
         },
         "required": [

@@ -2,6 +2,7 @@ use crate::command_config::CommandConfig;
 use crate::job::JobId;
 use crate::results::citation::{Citation, citation};
 use crate::results::clock::{ClockResults, clock_results};
+use crate::results::homoplasy::{HomoplasyResults, homoplasy_results};
 use crate::results::mugration::{MugrationResults, mugration_results};
 use crate::results::mutations::{AncestralResults, ancestral_results};
 use crate::results::outputs::{OutputProblem, RunOutputs};
@@ -41,6 +42,7 @@ pub enum CommandResults {
   Timetree(Box<TimetreeResults>),
   Clock(ClockResults),
   Ancestral(AncestralResults),
+  Homoplasy(Box<HomoplasyResults>),
   Mugration(MugrationResults),
   Optimize(TreeSummary),
   Prune(TreeSummary),
@@ -98,6 +100,7 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
     gtr,
     trace,
     coalescent,
+    homoplasy,
     problems,
   } = RunOutputs::read(record.config.command(), out_dir, &record.output_files);
   let results = match &record.config {
@@ -121,6 +124,9 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
       tree.as_ref(),
       &Alphabet::new(config.alphabet_args.alphabet_name().unwrap_or_default())?,
     )?),
+    CommandConfig::Homoplasy(_) => {
+      CommandResults::Homoplasy(Box::new(homoplasy_results(homoplasy.as_ref())))
+    },
     CommandConfig::Mugration(config) => {
       let attribute = config
         .attribute

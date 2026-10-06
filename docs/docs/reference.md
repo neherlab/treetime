@@ -1623,7 +1623,7 @@ Write JSON Schema definitions for TreeTime data types
 
   Default value: `all`
 
-  Possible values: `all`, `version-info`, `progress-event`, `error-response`, `pipeline`, `timetree`, `optimize`, `prune`, `ancestral`, `clock`, `mugration`
+  Possible values: `all`, `version-info`, `progress-event`, `error-response`, `pipeline`, `timetree`, `optimize`, `prune`, `ancestral`, `homoplasy`, `clock`, `mugration`
 
 * `-o`, `--output <OUTPUT>` — Output file or directory (use "-" for stdout). Directory required when --for=all
 

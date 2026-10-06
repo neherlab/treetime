@@ -1,4 +1,5 @@
 use crate::command::{AppCommand, OutputFile};
+use crate::results::homoplasy::HomoplasyStatsFile;
 use crate::results::tree::ResultTree;
 use app_output::output_plan::OutputSelection;
 use app_output::table_output::table_read_file;
@@ -42,6 +43,7 @@ pub struct RunOutputs {
   pub gtr: Option<GtrOutput>,
   pub trace: Option<Vec<ConvergenceMetrics>>,
   pub coalescent: Option<Vec<CoalescentSegmentRow>>,
+  pub homoplasy: Option<HomoplasyStatsFile>,
   pub problems: Vec<OutputProblem>,
 }
 
@@ -74,6 +76,7 @@ impl RunOutputs {
       OutputSelection::Gtr => self.gtr = Some(json_read_file(path)?),
       OutputSelection::Tracelog => self.trace = Some(table_read_file(kind, path)?),
       OutputSelection::CoalescentTsv => self.coalescent = Some(table_read_file(kind, path)?),
+      OutputSelection::HomoplasyStats => self.homoplasy = Some(json_read_file(path)?),
       _ => {},
     }
     Ok(())
@@ -100,6 +103,7 @@ fn result_outputs(command: AppCommand) -> &'static [OutputSelection] {
       OutputSelection::AugurNodeData,
       OutputSelection::Gtr,
     ],
+    AppCommand::Homoplasy => &[OutputSelection::Auspice, OutputSelection::HomoplasyStats],
     AppCommand::Ancestral | AppCommand::Mugration | AppCommand::Prune => &[OutputSelection::Auspice],
   }
 }

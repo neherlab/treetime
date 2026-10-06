@@ -17,12 +17,20 @@ pub fn run_headline(record: &RunRecord, out_dir: &Path) -> Result<RunHeadline, R
         root_date: estimates.root_date,
         clock_rate: estimates.clock_rate.map(JsonFloat),
         r_squared: estimates.r_squared.map(JsonFloat),
+        ..RunHeadline::default()
       })
       .unwrap_or_default(),
     CommandResults::Clock(results) => RunHeadline {
       root_date: None,
       clock_rate: results.estimates.clock_rate.map(JsonFloat),
       r_squared: results.estimates.r_squared.map(JsonFloat),
+      ..RunHeadline::default()
+    },
+    CommandResults::Homoplasy(results) => RunHeadline {
+      recurrent_substitutions: results
+        .statistics
+        .map(|statistics| statistics.recurrent_substitutions),
+      ..RunHeadline::default()
     },
     CommandResults::Ancestral(_)
     | CommandResults::Mugration(_)
@@ -41,4 +49,6 @@ pub struct RunHeadline {
   pub clock_rate: Option<JsonFloat>,
   /// Coefficient of determination of the clock model.
   pub r_squared: Option<JsonFloat>,
+  /// Number of distinct substitutions on two or more branches of a homoplasy run.
+  pub recurrent_substitutions: Option<usize>,
 }

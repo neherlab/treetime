@@ -100,6 +100,17 @@
         {
           "type": "object",
           "properties": {
+            "homoplasy": {
+              "$ref": "#/$defs/HomoplasyConfig"
+            }
+          },
+          "required": [
+            "homoplasy"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "mugration": {
               "$ref": "#/$defs/MugrationConfig"
             }
@@ -2843,6 +2854,477 @@
             "argmax",
             "root",
             "all"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "\\{\\{.*\\}\\}"
+        }
+      ]
+    },
+    "HomoplasyConfig": {
+      "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
+      "type": "object",
+      "properties": {
+        "alignment": {
+          "description": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,\n`xz`, `zstd`) files and detects compression by extension. The records of all\nfiles form one alignment. Use `-` to read uncompressed FASTA from standard input.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "pattern": "\\{\\{.*\\}\\}"
+              }
+            ]
+          },
+          "default": [],
+          "x-path": "input"
+        },
+        "tree": {
+          "anyOf": [
+            {
+              "description": "Tree in Newick format.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "alphabet": {
+          "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
+          "$ref": "#/$defs/AlphabetName",
+          "x-unset": true
+        },
+        "model": {
+          "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
+          "$ref": "#/$defs/GtrModelName",
+          "default": "infer"
+        },
+        "model_params": {
+          "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "pattern": "\\{\\{.*\\}\\}"
+              }
+            ]
+          },
+          "default": []
+        },
+        "method_anc": {
+          "description": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
+          "$ref": "#/$defs/MethodAncestral",
+          "default": "marginal"
+        },
+        "dense": {
+          "anyOf": [
+            {
+              "description": "Use dense representation (stores full probability vectors at each position)\n\nWhen combined with `--model infer`, marginal reconstruction runs twice: once to populate\nprofiles for GTR inference, and again with the inferred GTR.",
+              "type": "boolean",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "gap_fill": {
+          "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
+          "$ref": "#/$defs/GapFill",
+          "default": "only-terminal"
+        },
+        "keep_overhangs": {
+          "anyOf": [
+            {
+              "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
+              "type": "boolean",
+              "default": false
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "zero_based": {
+          "anyOf": [
+            {
+              "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the positions of the report, the statistics JSON, and the `GENOMIC_POSITION` column of\n`--drms`, which is always counted from 1.",
+              "type": "boolean",
+              "default": false
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "impute_missing_data": {
+          "anyOf": [
+            {
+              "description": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely\ninferred state.\n\nChanges involving ambiguous characters on terminal branches then disappear from the report.\nOnly defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.",
+              "type": "boolean",
+              "default": false
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "ignore_missing_alns": {
+          "anyOf": [
+            {
+              "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)\ninstead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, matching\nTreeTime v0.",
+              "type": "boolean",
+              "default": false
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "gtr_iterations": {
+          "anyOf": [
+            {
+              "description": "Number of outer GTR refinement iterations.\n\nRe-estimates the rate matrix from marginal posterior profiles after each\nreconstruction pass. Only effective with `--model infer`. Default 0 preserves\nthe current single-pass behavior.",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0,
+              "default": 0
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "site_specific_gtr": {
+          "anyOf": [
+            {
+              "description": "Use site-specific GTR model with per-site equilibrium frequencies.\n\nRequires `--model infer` and `--dense true`. Incompatible with sequence compression\n(sparse representation). When enabled, each alignment position gets its own\neigendecomposition based on position-specific base composition.",
+              "type": "boolean",
+              "default": false
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "sample_from_profile": {
+          "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere.\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible\ndraws.",
+          "$ref": "#/$defs/SampleMode",
+          "default": "argmax"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0,
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "constant_sites": {
+          "anyOf": [
+            {
+              "description": "Number of constant sites that the alignment leaves out.\n\nAdded to the alignment length to give the number of sites of the genome, which sets the\nnumber of sites without mutations and the rate of the Poisson comparison.",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0,
+              "default": 0
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "rescale": {
+          "anyOf": [
+            {
+              "description": "Factor that multiplies every branch length of the input tree.\n\nUse it when the tree is not in substitutions per site, for example `--rescale=0.001` for a\ntree in substitutions per thousand sites. Scales the reconstruction, the tree outputs, and the\nreported tree lengths.",
+              "type": "number",
+              "format": "double",
+              "default": 1.0
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "detailed": {
+          "anyOf": [
+            {
+              "description": "Add the mutations on terminal branches and the taxa that carry recurrent mutations to the\nreport.\n\nThe statistics JSON always contains them.",
+              "type": "boolean",
+              "default": false
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "drms": {
+          "anyOf": [
+            {
+              "description": "TSV file of drug resistance mutations (DRM) that annotates the report.\n\nColumns: `GENOMIC_POSITION` (counted from 1), `ALT_BASE`, `DRUG`, `GENE`, `SUBSTITUTION`.\nA mutation at a listed position gets the gene and the drug, and the substitution when its\nderived base is a listed `ALT_BASE`.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "num_mut": {
+          "anyOf": [
+            {
+              "description": "Number of rows of each list in the report.\n\nThe statistics JSON always contains the complete lists.",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0,
+              "default": 10
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_all": {
+          "anyOf": [
+            {
+              "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.",
+              "type": "string",
+              "x-path": "output",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_nwk_style": {
+          "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NwkStyleArg"
+          },
+          "default": []
+        },
+        "output_tree_nwk": {
+          "anyOf": [
+            {
+              "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+              "type": "string",
+              "x-path": "output",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_tree_nexus": {
+          "anyOf": [
+            {
+              "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+              "type": "string",
+              "x-path": "output",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_tree_auspice": {
+          "anyOf": [
+            {
+              "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+              "type": "string",
+              "x-path": "output",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_tree_mat_pb": {
+          "anyOf": [
+            {
+              "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+              "type": "string",
+              "x-path": "output",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_tree_mat_json": {
+          "anyOf": [
+            {
+              "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+              "type": "string",
+              "x-path": "output",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_tree_graph_json": {
+          "anyOf": [
+            {
+              "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+              "type": "string",
+              "x-path": "output",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_tree_dot": {
+          "anyOf": [
+            {
+              "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+              "type": "string",
+              "x-path": "output",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_homoplasy_stats": {
+          "anyOf": [
+            {
+              "description": "Path to output homoplasy statistics JSON.\n\nContains the counts, histograms, Poisson comparison, and complete ranked lists of the report,\nfor substitutions, changes involving ambiguous characters, and insertions and deletions.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+              "type": "string",
+              "x-path": "output",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_homoplasy_report": {
+          "anyOf": [
+            {
+              "description": "Path to output homoplasy report text.\n\nThe run also logs the report at info level (`-v`).\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+              "type": "string",
+              "x-path": "output",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "output_selection": {
+          "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HomoplasyOutputSelection"
+          },
+          "default": []
+        },
+        "ladderize": {
+          "description": "Order tree topology before writing output files.",
+          "$ref": "#/$defs/LadderizeArg",
+          "x-unset": true
+        },
+        "topology_order": {
+          "description": "Canonical topology ordering preset.",
+          "$ref": "#/$defs/TopologyOrderArg",
+          "x-unset": true
+        },
+        "topology_order_target_source": {
+          "description": "Source for target-order topology sorting.",
+          "$ref": "#/$defs/TopologyOrderTargetSourceArg",
+          "x-unset": true
+        },
+        "topology_order_target_file": {
+          "anyOf": [
+            {
+              "description": "File used by list or reference-topology target-order sources.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "topology_order_target_aggregate": {
+          "description": "Aggregate used to map a subtree to a target-order position.",
+          "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
+          "default": "mean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "HomoplasyOutputSelection": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "all",
+            "nwk",
+            "nexus",
+            "auspice",
+            "mat-pb",
+            "mat-json",
+            "graph-json",
+            "dot",
+            "homoplasy-stats",
+            "homoplasy-report"
           ]
         },
         {
