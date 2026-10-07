@@ -10,7 +10,14 @@ The `cli.yml` run on `rust` at `400f4ab9` fails two check groups of `just check-
   - `spawn_handle_dropped`: the `JoinHandle` of a spawned task is dropped immediately
   - Also reported: `file_too_long`, `test_real_sleep`, `assert_in_loop`, `error_dropped_by_pattern`, `suggest_builder`, `unnamed_constant`, and a `from_value` call that copies the whole `Value` before parsing
 
-`just dylint` is a slow recipe, so the dylint findings come from the CI log rather than from a local run.
+`just dylint` is a slow recipe, so the dylint findings above come from the CI log.
+
+A local `just dylint` run on the lint setup shared with treeknit-rs fails on findings in `util-newick` and `treetime` as well:
+
+- `no_comments` reports the comments of the pest grammars `packages/util-newick/src/common.pest`, `newick.pest`, and `nexus.pest`. The grammars are not Rust code, so the lint should skip them; this is a defect of the lint, not of the grammars
+- `prefer_error_macros` reports raw `eyre!` calls in `packages/util-newick/src/model/graph.rs`
+- mordant reports findings over the committed baseline: `util_newick` 6, `treetime_ops` 2, `treetime` 2
+- The unused-public-code report judges nothing, because the crates whose compilation failed leave no record
 
 ## Resolution
 
