@@ -1,8 +1,9 @@
+use crate::dialect::NewickAnnotations;
 use crate::grammar::{Rule, matches, parse};
 use crate::read::error::{Location, NewickError, NewickErrorKind};
 use crate::read::options::{NewickReadOptions, NewickTree};
-use crate::read::select::read_tree_text;
 use crate::read::source::{Scan, TextSource, scan_to_semicolon};
+use crate::read::tree_text::read_tree_text;
 use std::io::Read;
 use std::str;
 
@@ -76,7 +77,7 @@ impl<R: Read> NewickTrees<R> {
         window.at_end,
         self.options.mode,
         &mut self.scanned,
-        scan_prefix,
+        |text, at_end| scan_prefix(text, at_end, self.options.dialect.annotations),
         |text| matches(Rule::trivia_only, text),
       ) {
         Scan::Found(slice) => {
@@ -118,8 +119,13 @@ impl<R: Read> Iterator for NewickTrees<R> {
   }
 }
 
-fn scan_prefix(text: &str, at_end: bool) -> usize {
-  let rule = if at_end { Rule::tree_scan_final } else { Rule::tree_scan };
+fn scan_prefix(text: &str, at_end: bool, annotations: NewickAnnotations) -> usize {
+  let rule = match (annotations.reserves_annotations(), at_end) {
+    (true, false) => Rule::tree_scan,
+    (true, true) => Rule::tree_scan_final,
+    (false, false) => Rule::tree_scan_plain,
+    (false, true) => Rule::tree_scan_plain_final,
+  };
   parse(rule, text)
     .ok()
     .and_then(|mut pairs| pairs.next())

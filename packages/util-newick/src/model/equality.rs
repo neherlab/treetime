@@ -93,6 +93,7 @@ struct EdgeKey<'g> {
   support_source: Option<SupportSource>,
   probability: Option<u64>,
   is_acceptor: bool,
+  occurrence_comments: &'g [NodeComment],
   comments: &'g [EdgeComment],
 }
 
@@ -104,6 +105,7 @@ impl<'g> EdgeKey<'g> {
       support_source: (!edge.support().is_empty()).then(|| edge.support_source()),
       probability: edge.probability().map(f64::to_bits),
       is_acceptor: edge.is_acceptor(),
+      occurrence_comments: edge.occurrence_comments(),
       comments: edge.comments(),
     }
   }

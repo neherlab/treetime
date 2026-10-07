@@ -80,6 +80,38 @@ mod tests {
     assert_eq!("The graph contains a cycle", graph.validate().unwrap_err().to_string());
   }
 
+  #[test]
+  fn test_model_validate_rejects_comments_on_hybrid_node() {
+    let mut graph = NewickGraph::new(NewickNodeData::new());
+    let hybrid = NewickNodeData::new()
+      .with_hybrid(NewickHybrid::new(Some("H".to_owned()), 1))
+      .with_comment(NodeComment::new(
+        LabelSide::AfterLabel,
+        NewickComment::Plain("x".to_owned()),
+      ));
+    graph.add_child(0, NewickEdgeData::new(), hybrid).unwrap();
+
+    assert_eq!(
+      "node 1 is a hybrid node with comments; the comments of a hybrid node belong to the edges into its occurrences",
+      graph.validate().unwrap_err().to_string()
+    );
+  }
+
+  #[test]
+  fn test_model_validate_rejects_occurrence_comments_into_tree_node() {
+    let mut graph = NewickGraph::new(NewickNodeData::new());
+    let edge = NewickEdgeData::new().with_occurrence_comment(NodeComment::new(
+      LabelSide::AfterLabel,
+      NewickComment::Plain("x".to_owned()),
+    ));
+    graph.add_child(0, edge, NewickNodeData::new().with_name("A")).unwrap();
+
+    assert_eq!(
+      "The edge into node 1 ('A') has occurrence comments, but only an edge into a hybrid node can have them",
+      graph.validate().unwrap_err().to_string()
+    );
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::rooted(            |graph: &mut NewickGraph| graph.set_rooted(Some(false)))]
@@ -98,6 +130,7 @@ mod tests {
   #[case::edge_comment_field(|graph: &mut NewickGraph| graph.edge_mut(0).comments_mut()[0].field = EdgeField::Support)]
   #[case::annotation_value(  |graph: &mut NewickGraph| graph.edge_mut(0).comments_mut()[0].comment = NewickComment::Beast(vec![("rate".to_owned(), NewickValue::NumberText("1.50".to_owned()))]))]
   #[case::acceptor(          |graph: &mut NewickGraph| *graph.edge_mut(2) = NewickEdgeData::new().with_acceptor(false))]
+  #[case::occurrence_comment(|graph: &mut NewickGraph| graph.edge_mut(2).occurrence_comments_mut().push(NodeComment::new(LabelSide::AfterLabel, NewickComment::Plain("x".to_owned()))))]
   fn test_model_equality_sees_every_field(#[case] change: fn(&mut NewickGraph)) {
     let original = full_graph();
     let mut changed = original.clone();
@@ -152,6 +185,27 @@ mod tests {
     assert_eq!(
       (2, Some(&NewickValue::Number(2.0))),
       (edge.annotations().count(), edge.annotation("a"))
+    );
+  }
+
+  #[test]
+  fn test_model_annotations_of_edge_start_with_occurrence_comments() {
+    let edge = NewickEdgeData::new()
+      .with_comment(EdgeComment::new(
+        EdgeField::Length,
+        ValueSide::BeforeValue,
+        NewickComment::Beast(vec![("a".to_owned(), NewickValue::Number(2.0))]),
+      ))
+      .with_occurrence_comment(NodeComment::new(
+        LabelSide::AfterLabel,
+        NewickComment::Beast(vec![("a".to_owned(), NewickValue::Number(1.0))]),
+      ));
+
+    let annotations: Vec<(&str, &NewickValue)> = edge.annotations().collect();
+
+    assert_eq!(
+      vec![("a", &NewickValue::Number(1.0)), ("a", &NewickValue::Number(2.0))],
+      annotations
     );
   }
 

@@ -7,6 +7,7 @@ use crate::commands::shared::output_args::{DivergenceUnits, OptimizeOutputSelect
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::resolve_reroot_tips;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
+use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
@@ -25,6 +26,7 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 pub struct TreetimeOptimizeArgs {
   pub(crate) alignment: AlignmentArgs,
   pub(crate) tree: PathBuf,
+  pub(crate) tree_dialect: TreeDialectArgs,
   pub(crate) alphabet_args: AlphabetArgs,
   pub(crate) model_args: ModelArgs,
   pub(crate) dense: Option<bool>,
@@ -87,6 +89,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
     Ok(Self {
       alignment: raw.alignment,
       tree,
+      tree_dialect: raw.tree_dialect,
       alphabet_args: raw.alphabet_args,
       model_args: raw.model_args,
       dense: raw.dense,
@@ -140,6 +143,11 @@ pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree_dialect: TreeDialectArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

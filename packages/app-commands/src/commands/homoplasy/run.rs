@@ -33,6 +33,7 @@ pub fn run_homoplasy(
   let sequence_args = SequenceInputArgs {
     alignment: &args.alignment,
     tree: &args.tree,
+    tree_dialect: args.tree_dialect.dialect(),
     alphabet_args: &args.alphabet_args,
     gap_fill_args: &args.gap_fill_args,
     ignore_missing_alns: args.ignore_missing_alns,
@@ -53,7 +54,10 @@ pub fn run_homoplasy(
   let names = input.names();
   let branch_lengths = input.branch_lengths();
   let alphabet = input.alphabet.clone();
-  let topology_order = args.topology_order.resolve_topology_order(&input.graph, &names, None)?;
+  let topology_order =
+    args
+      .topology_order
+      .resolve_topology_order(&input.graph, &names, None, args.tree_dialect.dialect())?;
 
   let random_step = (args.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile");
   let seed = args.seed_args.resolve(random_step, log);

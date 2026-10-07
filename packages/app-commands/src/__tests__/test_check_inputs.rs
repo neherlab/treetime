@@ -159,18 +159,49 @@ mod tests {
           &[]
         };
         let date_keys: &[&str] = if command.uses_dates() { &["date_column"] } else { &[] };
+        let reads_tree = command.inputs().iter().any(|input| input.kind == InputKind::Tree);
+        let tree_keys: &[&str] = if reads_tree { &["tree_dialect"] } else { &[] };
         command
           .inputs()
           .iter()
           .map(|input| input.kind.setting())
           .chain(metadata_keys.iter().copied())
           .chain(date_keys.iter().copied())
+          .chain(tree_keys.iter().copied())
           .filter(|key| !keys.contains(*key))
           .map(|key| format!("{command}: {key}"))
           .collect_vec()
       })
       .collect_vec();
     assert_eq!(Vec::<String>::new(), missing);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::network_dialect(  json!("enewick,beast"), (None, vec![InputKind::Tree]))]
+  #[case::default_dialect(  json!(null),            (Some(4), vec![]))]
+  #[trace]
+  fn test_check_inputs_reads_the_tree_in_the_configured_dialect(
+    #[case] tree_dialect: serde_json::Value,
+    #[case] expected: (Option<usize>, Vec<InputKind>),
+  ) {
+    let dir = tempdir().unwrap();
+    let tree = dir.path().join("tree.nwk");
+    fs::write(&tree, "((A:1,(B:1)#H0:0.5):1,(#H0:0.7,C:1):1);\n").unwrap();
+    let mut config = json!({ "tree": tree });
+    if !tree_dialect.is_null() {
+      config["tree_dialect"] = tree_dialect;
+    }
+
+    let facts = check_inputs(&request(AppCommand::Clock, config)).unwrap();
+
+    assert_eq!(
+      expected,
+      (
+        facts.tree.map(|tree| tree.tips),
+        facts.problems.iter().map(|problem| problem.input).collect::<Vec<_>>()
+      )
+    );
   }
 
   #[test]

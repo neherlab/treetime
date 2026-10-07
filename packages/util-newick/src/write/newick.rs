@@ -1,6 +1,6 @@
-use crate::dialect::{CommentKind, DialectFeatures};
+use crate::dialect::NewickAnnotations;
 use crate::grammar::{Rule, matches, parse};
-use crate::model::comment::{EdgeComment, LabelSide, NewickComment, ValueSide};
+use crate::model::comment::{EdgeComment, LabelSide, NewickComment, NodeComment, ValueSide};
 use crate::model::data::{NewickEdgeData, SupportSource};
 use crate::model::graph::NewickGraph;
 use crate::model::validate::describe_node;
@@ -52,7 +52,6 @@ pub(crate) fn write_tree(
   let writer = TreeWriter {
     graph,
     options,
-    features: options.dialect.features(),
     translate,
   };
   writer.check()?;
@@ -65,7 +64,6 @@ pub(crate) fn write_tree(
 struct TreeWriter<'g> {
   graph: &'g NewickGraph,
   options: &'g NewickWriteOptions,
-  features: DialectFeatures,
   translate: Option<&'g BTreeMap<String, String>>,
 }
 
@@ -76,17 +74,19 @@ impl TreeWriter<'_> {
       && conversion(dialect, DataKind::HybridNodes) == Conversion::Fail
     {
       return Err(eyre!(
-        "The {dialect} dialect cannot hold hybrid nodes such as {}; write networks in the enewick or rich dialect",
+        "The {dialect} dialect cannot hold hybrid nodes such as {}; write networks with the enewick or rich structure",
         describe_node(self.graph, node)
       ));
     }
     match &self.options.support {
-      SupportPlacement::Field if !self.features.rich_fields => {
-        Err(eyre!("Support in a colon field needs the rich dialect, not {dialect}"))
-      },
-      SupportPlacement::Annotation(_) if !matches!(self.features.comments, CommentKind::Beast | CommentKind::Nhx) => {
+      SupportPlacement::Field if dialect.structure.field_count() < 2 => Err(eyre!(
+        "Support in a colon field needs the rich structure, not {dialect}"
+      )),
+      SupportPlacement::Annotation(_)
+        if !matches!(dialect.annotations, NewickAnnotations::Beast | NewickAnnotations::Nhx) =>
+      {
         Err(eyre!(
-          "Support in an annotation needs the beast or nhx dialect, not {dialect}"
+          "Support in an annotation needs beast or nhx annotations, not {dialect}"
         ))
       },
       SupportPlacement::Source
@@ -181,19 +181,19 @@ impl TreeWriter<'_> {
       )
     };
     let support = self.support_target(frame, edge).wrap_err_with(branch_context)?;
-    if frame.is_definition {
-      self
-        .write_node_comments(out, frame.node, LabelSide::BeforeLabel)
-        .wrap_err_with(node_context)?;
-    }
+    let comments = self.label_comments(frame);
+    let node = self.graph.node(frame.node);
+    let starts_tree = frame.node == self.graph.root() && frame.next_child == 0;
+    let has_label = node.name().is_some() || node.hybrid().is_some();
+    self
+      .write_label_comments(out, comments, LabelSide::BeforeLabel, starts_tree)
+      .wrap_err_with(node_context)?;
     self
       .write_label(out, frame, edge, &support)
       .wrap_err_with(node_context)?;
-    if frame.is_definition {
-      self
-        .write_node_comments(out, frame.node, LabelSide::AfterLabel)
-        .wrap_err_with(node_context)?;
-    }
+    self
+      .write_label_comments(out, comments, LabelSide::AfterLabel, starts_tree && !has_label)
+      .wrap_err_with(node_context)?;
     if let SupportTarget::Annotation(key, values) = &support {
       let value = match values.as_slice() {
         [single] => NewickValue::Number(*single),
@@ -206,9 +206,9 @@ impl TreeWriter<'_> {
         ),
       };
       let pairs = [(key.clone(), value)];
-      let encoded = match self.features.comments {
-        CommentKind::Nhx => encode_nhx(&pairs),
-        CommentKind::Beast | CommentKind::Plain | CommentKind::MrBayes => encode_beast(&pairs),
+      let encoded = match self.options.dialect.annotations {
+        NewickAnnotations::Nhx => encode_nhx(&pairs),
+        NewickAnnotations::Beast | NewickAnnotations::Plain | NewickAnnotations::MrBayes => encode_beast(&pairs),
       };
       out.push_str(&encoded.wrap_err_with(branch_context)?);
     }
@@ -308,19 +308,53 @@ impl TreeWriter<'_> {
     }
   }
 
-  fn write_node_comments(&self, out: &mut String, node: usize, side: LabelSide) -> Result<(), Report> {
-    for comment in self
-      .graph
-      .node(node)
-      .comments()
-      .iter()
-      .filter(|comment| comment.position == side)
-    {
+  fn label_comments(&self, frame: Frame) -> &[NodeComment] {
+    let node = self.graph.node(frame.node);
+    if node.hybrid().is_none() {
+      return node.comments();
+    }
+    match frame.edge {
+      Some(edge) => self.graph.edge(edge).data().occurrence_comments(),
+      None => self.graph.root_edge().occurrence_comments(),
+    }
+  }
+
+  fn write_label_comments(
+    &self,
+    out: &mut String,
+    comments: &[NodeComment],
+    side: LabelSide,
+    starts_tree: bool,
+  ) -> Result<(), Report> {
+    for comment in comments.iter().filter(|comment| comment.position == side) {
+      if starts_tree {
+        self.check_tree_start_comment(&comment.comment)?;
+      }
       if let Some(text) = encode_comment(&comment.comment, self.options.dialect)? {
         out.push_str(&text);
       }
     }
     Ok(())
+  }
+
+  fn check_tree_start_comment(&self, comment: &NewickComment) -> Result<(), Report> {
+    let NewickComment::Plain(text) = comment else {
+      return Ok(());
+    };
+    let bracketed = format!("[{text}]");
+    let reads_as = [
+      (Rule::rooting_exact, DataKind::RootingPlainComments, "rooting"),
+      (Rule::weight_exact, DataKind::WeightPlainComments, "tree weight"),
+    ]
+    .into_iter()
+    .find(|&(rule, data, _)| conversion(self.options.dialect, data) == Conversion::Fail && matches(rule, &bracketed));
+    match reads_as {
+      Some((_, _, what)) => Err(eyre!(
+        "The comment {bracketed} at the start of the tree cannot be written in the {} dialect, which would read it as the {what} comment",
+        self.options.dialect
+      )),
+      None => Ok(()),
+    }
   }
 
   fn write_fields(&self, out: &mut String, edge: &NewickEdgeData, field_support: Option<f64>) -> Result<(), Report> {

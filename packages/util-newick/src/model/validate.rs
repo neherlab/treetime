@@ -1,3 +1,4 @@
+use crate::model::data::NewickEdgeData;
 use crate::model::graph::NewickGraph;
 use crate::model::traverse::Postorder;
 use eyre::{Report, eyre};
@@ -92,9 +93,28 @@ fn validate_node(graph: &NewickGraph, node: usize) -> Result<(), Report> {
     }
   }
   let parent_count = graph.parent_edges(node).len();
-  if graph.node(node).hybrid().is_none() && parent_count > 1 {
+  let data = graph.node(node);
+  if data.hybrid().is_none() && parent_count > 1 {
     return Err(eyre!(
       "{} has {parent_count} parents, but only a hybrid node can have more than one parent",
+      describe_node(graph, node)
+    ));
+  }
+  if data.hybrid().is_some() && !data.comments().is_empty() {
+    return Err(eyre!(
+      "{} is a hybrid node with comments; the comments of a hybrid node belong to the edges into its occurrences",
+      describe_node(graph, node)
+    ));
+  }
+  let in_edges: Vec<&NewickEdgeData> = graph
+    .parent_edges(node)
+    .iter()
+    .map(|&edge| graph.edge(edge).data())
+    .chain((node == graph.root()).then(|| graph.root_edge()))
+    .collect();
+  if data.hybrid().is_none() && in_edges.iter().any(|edge| !edge.occurrence_comments().is_empty()) {
+    return Err(eyre!(
+      "The edge into {} has occurrence comments, but only an edge into a hybrid node can have them",
       describe_node(graph, node)
     ));
   }

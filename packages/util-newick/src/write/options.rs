@@ -4,7 +4,6 @@ use smart_default::SmartDefault;
 
 #[derive(Clone, Debug, SmartDefault)]
 pub struct NewickWriteOptions {
-  #[default(NewickDialect::Classic)]
   pub dialect: NewickDialect,
   pub branch_annotations: BranchAnnotations,
   pub support: SupportPlacement,

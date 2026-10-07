@@ -13,10 +13,12 @@ use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput};
 use treetime::seq::gap_fill::apply_gap_fill;
 use treetime_graph::node::GraphNodeKey;
+use treetime_io::nwk::NewickDialect;
 
 pub(crate) struct SequenceInputArgs<'a> {
   pub(crate) alignment: &'a AlignmentArgs,
   pub(crate) tree: &'a Path,
+  pub(crate) tree_dialect: NewickDialect,
   pub(crate) alphabet_args: &'a AlphabetArgs,
   pub(crate) gap_fill_args: &'a GapFillArgs,
   pub(crate) ignore_missing_alns: bool,
@@ -52,7 +54,7 @@ pub(crate) fn read_nwk_fasta(
 
   cancel.check()?;
   stages.report("Parsing tree", 0.1, "");
-  let parse = read_input_tree(args.tree, log)?;
+  let parse = read_input_tree(args.tree, args.tree_dialect, log)?;
 
   let names = parse.names();
   let PairedAlignment { mut sequences, descs } =

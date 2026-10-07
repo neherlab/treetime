@@ -73,11 +73,11 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::comment_with_semicolon(  NewickDialect::Classic, "(C[x;y],D);",          5, vec!["- ", "C ", "D "])]
-  #[case::quoted_semicolon(        NewickDialect::Classic, "('q;r',D);",           4, vec!["- ", "q;r ", "D "])]
-  #[case::string_with_bracket(     NewickDialect::Beast,   "(C[&a=\"x];y\"],D);",  10, vec!["- ", "C ", "D "])]
-  #[case::two_byte_character(      NewickDialect::Classic, "(C\u{e9},D);",         3, vec!["- ", "C\u{e9} ", "D "])]
-  #[case::four_byte_character(     NewickDialect::Classic, "(C\u{1f600},D);",      4, vec!["- ", "C\u{1f600} ", "D "])]
+  #[case::comment_with_semicolon(  NewickDialect::CLASSIC, "(C[x;y],D);",          5, vec!["- ", "C ", "D "])]
+  #[case::quoted_semicolon(        NewickDialect::CLASSIC, "('q;r',D);",           4, vec!["- ", "q;r ", "D "])]
+  #[case::string_with_bracket(     NewickDialect::BEAST,   "(C[&a=\"x];y\"],D);",  10, vec!["- ", "C ", "D "])]
+  #[case::two_byte_character(      NewickDialect::CLASSIC, "(C\u{e9},D);",         3, vec!["- ", "C\u{e9} ", "D "])]
+  #[case::four_byte_character(     NewickDialect::CLASSIC, "(C\u{1f600},D);",      4, vec!["- ", "C\u{1f600} ", "D "])]
   #[trace]
   fn test_stream_construct_across_read_boundary(
     #[case] dialect: NewickDialect,
@@ -86,7 +86,7 @@ mod tests {
     #[case] expected: Vec<&str>,
   ) {
     let options = NewickReadOptions {
-      dialects: vec![dialect],
+      dialect,
       ..NewickReadOptions::default()
     };
     let input = split_at_first_read(second_tree, split);
@@ -95,6 +95,26 @@ mod tests {
 
     let expected: Vec<String> = expected.into_iter().map(str::to_owned).collect();
     assert_eq!((2, Some(Ok(expected))), (actual.len(), actual.get(1).cloned()));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::plain_comments_end_at_bracket(  NewickDialect::CLASSIC, vec![Ok(vec!["- ", "A ", "B "]), Ok(vec!["- ", "C ", "D "])])]
+  #[case::beast_string_holds_semicolon(   NewickDialect::BEAST,   vec![Ok(vec!["- ", "A ", "B "])])]
+  #[trace]
+  fn test_stream_tree_ends_follow_the_annotation_convention(#[case] dialect: NewickDialect, #[case] expected: Vec<Result<Vec<&str>, &str>>) {
+    let options = NewickReadOptions {
+      dialect,
+      ..NewickReadOptions::default()
+    };
+
+    let actual = names_and_errors(b"(A,B)[&a=\"];(C,D)[x\"];".as_slice(), &options);
+
+    let expected: Vec<Result<Vec<String>, String>> = expected
+      .into_iter()
+      .map(|tree| tree.map(|names| names.into_iter().map(str::to_owned).collect()).map_err(str::to_owned))
+      .collect();
+    assert_eq!(expected, actual);
   }
 
   mod helpers {

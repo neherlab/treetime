@@ -12,6 +12,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
 use treetime_io::name_list::name_list_read_file;
+use treetime_io::nwk::NewickDialect;
 use treetime_io::tree::tree_read_file;
 #[cfg(feature = "clap")]
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
@@ -58,6 +59,7 @@ impl TopologyOrderArgs {
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     input_order: Option<Vec<GraphNodeKey>>,
+    tree_dialect: NewickDialect,
   ) -> Result<TopologyOrderSpec, Report> {
     self.validate()?;
 
@@ -73,7 +75,7 @@ impl TopologyOrderArgs {
     };
 
     let target_order = if preset.is_target_order() {
-      self.target_order(graph, names, input_order)?
+      self.target_order(graph, names, input_order, tree_dialect)?
     } else {
       BTreeMap::new()
     };
@@ -126,6 +128,7 @@ impl TopologyOrderArgs {
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     input_order: Option<Vec<GraphNodeKey>>,
+    tree_dialect: NewickDialect,
   ) -> Result<BTreeMap<GraphNodeKey, usize>, Report> {
     let target_names = match self
       .topology_order_target_source
@@ -146,7 +149,7 @@ impl TopologyOrderArgs {
           .topology_order_target_file
           .as_ref()
           .ok_or_else(|| make_report!("--topology-order-target-file is required for reference-topology"))?;
-        let nwk_parsed = tree_read_file(path).wrap_err("When reading target reference topology")?;
+        let nwk_parsed = tree_read_file(path, tree_dialect).wrap_err("When reading target reference topology")?;
         let ref_names = nwk_parsed.names();
         leaf_order(&nwk_parsed.graph)
           .into_iter()

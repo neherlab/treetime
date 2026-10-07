@@ -2604,6 +2604,16 @@ export type TimetreeConfig = {
    */
   tree?: string;
   /**
+   * Newick dialect of the tree inputs (the tree and the reference topology)
+   *
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   */
+  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  /**
    * Only for vcf input: fasta file of the sequence the VCF was mapped to.
    */
   vcf_reference?: string;
@@ -3195,6 +3205,16 @@ export type ClockConfig = {
    */
   tree?: string;
   /**
+   * Newick dialect of the tree inputs (the tree and the reference topology)
+   *
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   */
+  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  /**
    * Only for vcf input: fasta file of the sequence the VCF was mapped to.
    */
   vcf_reference?: string;
@@ -3493,6 +3513,16 @@ export type AncestralConfig = {
    * Tree in Newick format.
    */
   tree?: string;
+  /**
+   * Newick dialect of the tree inputs (the tree and the reference topology)
+   *
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   */
+  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Sequence alphabet
    *
@@ -3838,6 +3868,16 @@ export type HomoplasyConfig = {
    */
   tree?: string;
   /**
+   * Newick dialect of the tree inputs (the tree and the reference topology)
+   *
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   */
+  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  /**
    * Sequence alphabet
    *
    * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
@@ -4122,19 +4162,23 @@ export type HomoplasyConfig = {
 export type MugrationOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'confidence-csv' | 'traits-csv';
 
 /**
- * Metadata identity and delimiter options shared by every command that reads a metadata table
- * (`timetree`, `clock`, `mugration`).
- *
- * `--metadata-id-columns` (alias `--name-column`) lists the candidate columns holding the taxon
- * identifier that links a metadata row to a tree tip; the first column present in the header wins.
- * Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
- * candidate field separators; the delimiter actually present in the file is used.
+ * Newick dialect of the tree inputs, shared by every command that reads a tree.
  */
 export type MugrationConfig = {
   /**
    * Tree in Newick format.
    */
   tree?: string;
+  /**
+   * Newick dialect of the tree inputs (the tree and the reference topology)
+   *
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   */
+  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Attribute to reconstruct, e.g. country
    */
@@ -4404,6 +4448,16 @@ export type OptimizeConfig = {
    * Tree in Newick format.
    */
   tree?: string;
+  /**
+   * Newick dialect of the tree inputs (the tree and the reference topology)
+   *
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   */
+  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Sequence alphabet
    *
@@ -4706,6 +4760,16 @@ export type PruneConfig = {
    * Tree in Newick format.
    */
   tree?: string;
+  /**
+   * Newick dialect of the tree inputs (the tree and the reference topology)
+   *
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   */
+  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Sequence alphabet
    *

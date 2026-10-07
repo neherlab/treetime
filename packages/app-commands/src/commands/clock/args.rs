@@ -8,6 +8,7 @@ use crate::commands::shared::output_args::{ClockOutputSelection, OutputCoreArgs}
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::RerootArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
+use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
@@ -30,6 +31,7 @@ pub struct TreetimeClockArgs {
   )]
   pub(crate) alignment: AlignmentArgs,
   pub(crate) tree: PathBuf,
+  pub(crate) tree_dialect: TreeDialectArgs,
   #[expect(
     dead_code,
     reason = "VCF input is not implemented, see kb/issues/M-io-vcf-input-output-unimplemented.md"
@@ -114,6 +116,7 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
     Ok(Self {
       alignment: raw.alignment,
       tree,
+      tree_dialect: raw.tree_dialect,
       vcf_reference: raw.vcf_reference,
       metadata,
       metadata_id: raw.metadata_id,
@@ -170,6 +173,11 @@ pub struct TreetimeClockArgsRaw {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree_dialect: TreeDialectArgs,
 
   /// Only for vcf input: fasta file of the sequence the VCF was mapped to.
   #[cfg_attr(feature = "clap", clap(long, short = 'r', help_heading = "Input data"))]

@@ -113,6 +113,14 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
+* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+
+   A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+
+  Default value: `classic,beast`
+
+  Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
+
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — Only for vcf input: fasta file of the sequence the VCF was mapped to
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — CSV/TSV file with metadata including sampling dates
 * `--metadata-id-columns <COLUMN>` [alias: `name-column`] — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
@@ -408,6 +416,14 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
+* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+
+   A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+
+  Default value: `classic,beast`
+
+  Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
+
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
    When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous.
@@ -630,6 +646,14 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
+* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+
+   A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+
+  Default value: `classic,beast`
+
+  Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
+
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
    When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous.
@@ -779,6 +803,14 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Tree in Newick format
+* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+
+   A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+
+  Default value: `classic,beast`
+
+  Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
+
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
    When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous.
@@ -996,6 +1028,14 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
+* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+
+   A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+
+  Default value: `classic,beast`
+
+  Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
+
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — Only for vcf input: fasta file of the sequence the VCF was mapped to
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — CSV/TSV file with metadata including sampling dates
 * `--metadata-id-columns <COLUMN>` [alias: `name-column`] — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
@@ -1211,6 +1251,14 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input
 * `-t`, `--tree <TREE>` — Tree in Newick format
+* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+
+   A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+
+  Default value: `classic,beast`
+
+  Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
+
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
    When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous.
@@ -1415,6 +1463,14 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `-t`, `--tree <TREE>` — Tree in Newick format
+* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+
+   A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+
+  Default value: `classic,beast`
+
+  Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
+
 * `--attribute <ATTRIBUTE>` — Attribute to reconstruct, e.g. country
 * `-s`, `--metadata <METADATA>` [alias: `states`] — CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...
 * `-w`, `--weights <WEIGHTS>` — CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...

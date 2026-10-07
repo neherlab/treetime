@@ -5,16 +5,14 @@ use pest::iterators::Pair;
 
 pub(crate) struct MapContext<'o, 'i> {
   pub(crate) options: &'o NewickReadOptions,
-  pub(crate) mode: ReadMode,
   pub(crate) index: &'o TextIndex<'i>,
   pub(crate) warnings: Vec<NewickWarning>,
 }
 
 impl<'o, 'i> MapContext<'o, 'i> {
-  pub(crate) fn new(options: &'o NewickReadOptions, mode: ReadMode, index: &'o TextIndex<'i>) -> Self {
+  pub(crate) fn new(options: &'o NewickReadOptions, index: &'o TextIndex<'i>) -> Self {
     Self {
       options,
-      mode,
       index,
       warnings: Vec::new(),
     }
@@ -44,7 +42,7 @@ impl<'o, 'i> MapContext<'o, 'i> {
     location: Location,
     message: impl Into<String>,
   ) -> Result<(), NewickError> {
-    match self.mode {
+    match self.options.mode {
       ReadMode::Strict => Err(NewickError::new(kind, location, message)),
       ReadMode::Tolerant => {
         self.warnings.push(NewickWarning::new(location, message));

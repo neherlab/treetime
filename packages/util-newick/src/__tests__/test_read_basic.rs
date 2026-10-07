@@ -1,6 +1,5 @@
 #[cfg(test)]
 pub(crate) mod tests {
-  use crate::dialect::NewickDialect;
   use crate::read::options::{InternalLabel, NewickReadOptions};
   use helpers::{read, read_with, summary};
   use pretty_assertions::assert_eq;
@@ -102,11 +101,6 @@ pub(crate) mod tests {
       r#"line 1, column 7: The internal label "clade" is not a support value"#,
       actual.to_string()
     );
-  }
-
-  #[test]
-  fn test_read_basic_records_dialect() {
-    assert_eq!(NewickDialect::Classic, read("(A,B);").dialect);
   }
 
   pub(crate) mod helpers {

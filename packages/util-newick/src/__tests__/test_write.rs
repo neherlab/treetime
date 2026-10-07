@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_read_basic::tests::helpers::{caterpillar, on_small_stack, read_with};
-  use crate::dialect::NewickDialect;
+  use crate::dialect::{NewickAnnotations, NewickDialect, NewickStructure};
   use crate::model::comment::NewickComment;
   use crate::model::data::{NewickEdgeData, NewickNodeData, SupportSource};
   use crate::model::graph::NewickGraph;
@@ -18,22 +18,22 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::classic(           NewickDialect::Classic, "(A:0.1,B:0.2)root;")]
-  #[case::empty_names(       NewickDialect::Classic, "(,);")]
-  #[case::root_length(       NewickDialect::Classic, "(A,B):0.5;")]
-  #[case::support(           NewickDialect::Classic, "((A,B)95:1,C)0.5;")]
-  #[case::multi_support(     NewickDialect::Classic, "((A,B)80.5/95,C);")]
-  #[case::exponent(          NewickDialect::Classic, "(A:1.0e-10,B:1.0e20);")]
-  #[case::plain_comments(    NewickDialect::Classic, "([a]A[b]:[c]1[d],[e]:2)[r]Y[f];")]
-  #[case::ampersand_classic( NewickDialect::Classic, "(A[&a=1],B);")]
-  #[case::beast(             NewickDialect::Beast,   "[&R]((A[&rate=1.5,s=\"x,y\"]:[&r=1]1[c],B)[&posterior=0.9]:1,C);")]
-  #[case::beast_arrays(      NewickDialect::Beast,   "(A[&a={1,{2,\"x\"},{}},c=#ff0080,b=TRUE],B);")]
-  #[case::mrbayes(           NewickDialect::MrBayes, "[&U](A:1[&B TK02Brlens 0.1],B[&E ibr 2: 0.1]);")]
-  #[case::nhx(               NewickDialect::Nhx,     "(A[&&NHX:S=human:T=9606:C=1.2.3:D:Ev=1>2]:1,B);")]
-  #[case::enewick(           NewickDialect::ENewick, "((A)x##LGT1,(x#LGT1,B));")]
-  #[case::enewick_unnamed(   NewickDialect::ENewick, "((A)#H1:1,(#H1:2,B));")]
-  #[case::rich(              NewickDialect::Rich,    "[&U][&W 0.5]((A:1:90,(B)#H1:::0.3),(#H1:::0.7,C)):0.1;")]
-  #[case::rich_field_comment(NewickDialect::Rich,    "(A:1[c]:[d]80,B);")]
+  #[case::classic(           NewickDialect::CLASSIC, "(A:0.1,B:0.2)root;")]
+  #[case::empty_names(       NewickDialect::CLASSIC, "(,);")]
+  #[case::root_length(       NewickDialect::CLASSIC, "(A,B):0.5;")]
+  #[case::support(           NewickDialect::CLASSIC, "((A,B)95:1,C)0.5;")]
+  #[case::multi_support(     NewickDialect::CLASSIC, "((A,B)80.5/95,C);")]
+  #[case::exponent(          NewickDialect::CLASSIC, "(A:1.0e-10,B:1.0e20);")]
+  #[case::plain_comments(    NewickDialect::CLASSIC, "([a]A[b]:[c]1[d],[e]:2)[r]Y[f];")]
+  #[case::ampersand_classic( NewickDialect::CLASSIC, "(A[&a=1],B);")]
+  #[case::beast(             NewickDialect::BEAST,   "[&R]((A[&rate=1.5,s=\"x,y\"]:[&r=1]1[c],B)[&posterior=0.9]:1,C);")]
+  #[case::beast_arrays(      NewickDialect::BEAST,   "(A[&a={1,{2,\"x\"},{}},c=#ff0080,b=TRUE],B);")]
+  #[case::mrbayes(           NewickDialect::MRBAYES, "[&U](A:1[&B TK02Brlens 0.1],B[&E ibr 2: 0.1]);")]
+  #[case::nhx(               NewickDialect::NHX,     "(A[&&NHX:S=human:T=9606:C=1.2.3:D:Ev=1>2]:1,B);")]
+  #[case::enewick(           NewickDialect::ENEWICK, "((A)x##LGT1,(x#LGT1,B));")]
+  #[case::enewick_unnamed(   NewickDialect::ENEWICK, "((A)#H1:1,(#H1:2,B));")]
+  #[case::rich(              NewickDialect::RICH,    "[&U][&W 0.5]((A:1:90,(B)#H1:::0.3),(#H1:::0.7,C)):0.1;")]
+  #[case::rich_field_comment(NewickDialect::RICH,    "(A:1[c]:[d]80,B);")]
   #[trace]
   fn test_write_reproduces_canonical_text(#[case] dialect: NewickDialect, #[case] text: &str) {
     assert_eq!(text, rewrite(text, dialect, &NewickWriteOptions::new(dialect)));
@@ -63,7 +63,7 @@ mod tests {
     let written = newick_to_string(&graph, &NewickWriteOptions::default()).unwrap();
 
     let expected_text = if internal { format!("(){expected};") } else { format!("{expected};") };
-    assert_eq!((expected_text, true), (written.clone(), graph.eq_ordered(&reread(&written, NewickDialect::Classic))));
+    assert_eq!((expected_text, true), (written.clone(), graph.eq_ordered(&reread(&written, NewickDialect::CLASSIC))));
   }
 
   #[rustfmt::skip]
@@ -91,7 +91,7 @@ mod tests {
       ..NewickWriteOptions::default()
     };
 
-    assert_eq!(expected, rewrite("(A:0.123456789,B:1);", NewickDialect::Classic, &options));
+    assert_eq!(expected, rewrite("(A:0.123456789,B:1);", NewickDialect::CLASSIC, &options));
   }
 
   #[rustfmt::skip]
@@ -130,11 +130,11 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::label_to_field(    "((A,B)95,C);",          NewickDialect::Rich,    SupportPlacement::Field,                           "((A,B)::95,C);")]
-  #[case::field_to_label(    "((A,B):1:95,C);",       NewickDialect::Rich,    SupportPlacement::Label,                           "((A,B)95:1,C);")]
-  #[case::field_in_classic(  "((A,B):1:95,C);",       NewickDialect::Classic, SupportPlacement::Source,                          "((A,B):1,C);")]
-  #[case::annotation_beast(  "((A,B)0.9,C);",         NewickDialect::Beast,   SupportPlacement::Annotation("posterior".to_owned()), "((A,B)[&posterior=0.9],C);")]
-  #[case::annotation_nhx(    "((A,B)90/80,C);",       NewickDialect::Nhx,     SupportPlacement::Annotation("s".to_owned()),      "((A,B)[&&NHX:s=90>80],C);")]
+  #[case::label_to_field(    "((A,B)95,C);",          NewickDialect::RICH,    SupportPlacement::Field,                           "((A,B)::95,C);")]
+  #[case::field_to_label(    "((A,B):1:95,C);",       NewickDialect::RICH,    SupportPlacement::Label,                           "((A,B)95:1,C);")]
+  #[case::field_in_classic(  "((A,B):1:95,C);",       NewickDialect::CLASSIC, SupportPlacement::Source,                          "((A,B):1,C);")]
+  #[case::annotation_beast(  "((A,B)0.9,C);",         NewickDialect::BEAST,   SupportPlacement::Annotation("posterior".to_owned()), "((A,B)[&posterior=0.9],C);")]
+  #[case::annotation_nhx(    "((A,B)90/80,C);",       NewickDialect::NHX,     SupportPlacement::Annotation("s".to_owned()),      "((A,B)[&&NHX:s=90>80],C);")]
   #[trace]
   fn test_write_support_placement(#[case] input: &str, #[case] dialect: NewickDialect, #[case] support: SupportPlacement, #[case] expected: &str) {
     let options = NewickWriteOptions {
@@ -142,16 +142,16 @@ mod tests {
       ..NewickWriteOptions::new(dialect)
     };
 
-    assert_eq!(expected, rewrite(input, NewickDialect::Rich, &options));
+    assert_eq!(expected, rewrite(input, NewickDialect::RICH, &options));
   }
 
   #[rustfmt::skip]
   #[rstest]
   #[case::leaf_label(       star_with_edge(NewickEdgeData::new().with_support(vec![0.9], SupportSource::Label)),  NewickWriteOptions::default(),  "When writing Newick: When writing the branch above node 1: A leaf cannot carry support in its label, because a leaf label is read as a name")]
   #[case::named_label(      named_internal_with_support(),                                                       NewickWriteOptions::default(),  "When writing Newick: When writing the branch above node 1 ('X'): The label of the node holds its name, so it cannot also hold the support of the branch above")]
-  #[case::field_classic(    star_with_edge(NewickEdgeData::new()),                                               NewickWriteOptions { support: SupportPlacement::Field, ..NewickWriteOptions::default() }, "When writing Newick: Support in a colon field needs the rich dialect, not classic")]
-  #[case::annotation_rich(  star_with_edge(NewickEdgeData::new()),                                               NewickWriteOptions { support: SupportPlacement::Annotation("p".to_owned()), ..NewickWriteOptions::new(NewickDialect::Rich) }, "When writing Newick: Support in an annotation needs the beast or nhx dialect, not rich")]
-  #[case::two_in_field(     star_with_edge(NewickEdgeData::new().with_support(vec![1.0, 2.0], SupportSource::Field)), NewickWriteOptions::new(NewickDialect::Rich), "When writing Newick: When writing the branch above node 1: A colon field holds one support value, but the branch has 2")]
+  #[case::field_classic(    star_with_edge(NewickEdgeData::new()),                                               NewickWriteOptions { support: SupportPlacement::Field, ..NewickWriteOptions::default() }, "When writing Newick: Support in a colon field needs the rich structure, not classic,plain")]
+  #[case::annotation_rich(  star_with_edge(NewickEdgeData::new()),                                               NewickWriteOptions { support: SupportPlacement::Annotation("p".to_owned()), ..NewickWriteOptions::new(NewickDialect::RICH) }, "When writing Newick: Support in an annotation needs beast or nhx annotations, not rich,plain")]
+  #[case::two_in_field(     star_with_edge(NewickEdgeData::new().with_support(vec![1.0, 2.0], SupportSource::Field)), NewickWriteOptions::new(NewickDialect::RICH), "When writing Newick: When writing the branch above node 1: A colon field holds one support value, but the branch has 2")]
   #[case::infinite_length(  star_with_edge(NewickEdgeData::new().with_length(f64::INFINITY)),                    NewickWriteOptions::default(),  "When writing Newick: When writing the branch above node 1: Newick cannot represent the number inf")]
   #[case::nan_support(      named_root_support(f64::NAN),                                                        NewickWriteOptions::default(),  "When writing Newick: When writing node 0: Newick cannot represent the number NaN")]
   #[case::zero_digits(      star_with_edge(NewickEdgeData::new().with_length(1.0)),                              NewickWriteOptions { numbers: NumberFormat { significant_digits: Some(0), ..NumberFormat::default() }, ..NewickWriteOptions::default() }, "When writing Newick: When writing the branch above node 1: The number of significant digits must be at least 1")]
@@ -169,10 +169,10 @@ mod tests {
   fn test_write_branch_annotation_position(#[case] branch_annotations: BranchAnnotations, #[case] expected: &str) {
     let options = NewickWriteOptions {
       branch_annotations,
-      ..NewickWriteOptions::new(NewickDialect::Beast)
+      ..NewickWriteOptions::new(NewickDialect::BEAST)
     };
 
-    assert_eq!(expected, rewrite("(A:[c]1[&p=1],B:[&q=2]);", NewickDialect::Beast, &options));
+    assert_eq!(expected, rewrite("(A:[c]1[&p=1],B:[&q=2]);", NewickDialect::BEAST, &options));
   }
 
   #[rustfmt::skip]
@@ -189,9 +189,9 @@ mod tests {
   fn test_write_beast_values(#[case] pairs: Vec<(&str, NewickValue)>, #[case] expected: &str) {
     let graph = commented_leaf(NewickComment::Beast(helpers::pairs(pairs)));
 
-    let written = newick_to_string(&graph, &NewickWriteOptions::new(NewickDialect::Beast)).unwrap();
+    let written = newick_to_string(&graph, &NewickWriteOptions::new(NewickDialect::BEAST)).unwrap();
 
-    assert_eq!((format!("A{expected};"), true), (written.clone(), graph.eq_ordered(&reread(&written, NewickDialect::Beast))));
+    assert_eq!((format!("A{expected};"), true), (written.clone(), graph.eq_ordered(&reread(&written, NewickDialect::BEAST))));
   }
 
   #[rustfmt::skip]
@@ -206,14 +206,14 @@ mod tests {
   fn test_write_nhx_rejects(#[case] pairs: Vec<(&str, NewickValue)>, #[case] expected: &str) {
     let graph = commented_leaf(NewickComment::Nhx(helpers::pairs(pairs)));
 
-    assert_eq!(expected, write_error(&graph, &NewickWriteOptions::new(NewickDialect::Nhx)));
+    assert_eq!(expected, write_error(&graph, &NewickWriteOptions::new(NewickDialect::NHX)));
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::unbalanced(       NewickDialect::Classic, "a]b",  "When writing Newick: When writing node 0 ('A'): The comment text \"a]b\" cannot be written as a comment, because its brackets do not balance")]
-  #[case::ampersand_beast(  NewickDialect::Beast,   "&a=1", "When writing Newick: When writing node 0 ('A'): The comment Plain(\"&a=1\") cannot be written in the beast dialect, which would read it as an annotation")]
-  #[case::ampersand_rich(   NewickDialect::Rich,    "&R",   "When writing Newick: When writing node 0 ('A'): The comment Plain(\"&R\") cannot be written in the rich dialect, which would read it as an annotation")]
+  #[case::unbalanced(       NewickDialect::CLASSIC, "a]b",  "When writing Newick: When writing node 0 ('A'): The comment text \"a]b\" cannot be written as a comment, because its brackets do not balance")]
+  #[case::ampersand_beast(  NewickDialect::BEAST,   "&a=1", "When writing Newick: When writing node 0 ('A'): The comment Plain(\"&a=1\") cannot be written in the classic,beast dialect, which would read it as an annotation")]
+  #[case::ampersand_rich(   NewickDialect::new(NewickStructure::Rich, NewickAnnotations::Beast), "&R", "When writing Newick: When writing node 0 ('A'): The comment Plain(\"&R\") cannot be written in the rich,beast dialect, which would read it as an annotation")]
   #[trace]
   fn test_write_rejects_plain_comment(#[case] dialect: NewickDialect, #[case] text: &str, #[case] expected: &str) {
     let graph = commented_leaf(NewickComment::Plain(text.to_owned()));
@@ -229,8 +229,8 @@ mod tests {
       text,
       rewrite(
         text,
-        NewickDialect::ENewick,
-        &NewickWriteOptions::new(NewickDialect::ENewick)
+        NewickDialect::ENEWICK,
+        &NewickWriteOptions::new(NewickDialect::ENEWICK)
       )
     );
   }
@@ -242,7 +242,7 @@ mod tests {
       ..NewickWriteOptions::default()
     };
 
-    let written = rewrite("((A:1,B:2)C:3,D)E;", NewickDialect::Classic, &options);
+    let written = rewrite("((A:1,B:2)C:3,D)E;", NewickDialect::CLASSIC, &options);
 
     assert_eq!(
       indoc::indoc! {"
@@ -268,13 +268,13 @@ mod tests {
       ..NewickWriteOptions::default()
     };
 
-    assert_eq!(expected, rewrite("(A,B)95:0.5;", NewickDialect::Classic, &options));
+    assert_eq!(expected, rewrite("(A,B)95:0.5;", NewickDialect::CLASSIC, &options));
   }
 
   #[test]
   fn test_write_several_trees_one_per_line() {
-    let first = reread("(A,B);", NewickDialect::Classic);
-    let second = reread("(C);", NewickDialect::Classic);
+    let first = reread("(A,B);", NewickDialect::CLASSIC);
+    let second = reread("(C);", NewickDialect::CLASSIC);
     let mut buffer = Vec::new();
 
     write_newick_trees(&mut buffer, [&first, &second], &NewickWriteOptions::default()).unwrap();
@@ -303,8 +303,8 @@ mod tests {
     let written = on_small_stack(move || {
       rewrite(
         &input,
-        NewickDialect::Beast,
-        &NewickWriteOptions::new(NewickDialect::Beast),
+        NewickDialect::BEAST,
+        &NewickWriteOptions::new(NewickDialect::BEAST),
       )
     });
 
@@ -324,7 +324,7 @@ mod tests {
 
     pub(super) fn reread(text: &str, dialect: NewickDialect) -> NewickGraph {
       let options = NewickReadOptions {
-        dialects: vec![dialect],
+        dialect,
         ..NewickReadOptions::default()
       };
       read_with(text, &options).graph

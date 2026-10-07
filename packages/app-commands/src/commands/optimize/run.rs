@@ -41,7 +41,7 @@ pub fn run_optimize(
   for record in &mut aln {
     apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
   }
-  let nwk_parsed = read_input_tree(args.tree(), log)?;
+  let nwk_parsed = read_input_tree(args.tree(), args.tree_dialect.dialect(), log)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
@@ -82,7 +82,9 @@ pub fn run_optimize(
 
   let maps = gather_optimize_output_maps(&graph, &reconstruction, UnknownMutationFilter::hiding_unknown(unknown))?;
 
-  let topology_order = args.topology_order.resolve_topology_order(&graph, &names, None)?;
+  let topology_order = args
+    .topology_order
+    .resolve_topology_order(&graph, &names, None, args.tree_dialect.dialect())?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 

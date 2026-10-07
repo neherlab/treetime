@@ -4,6 +4,7 @@ use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::output_args::{OutputCoreArgs, PruneOutputSelection};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
+use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
@@ -17,6 +18,7 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 pub struct TreetimePruneArgs {
   pub(crate) alignment: AlignmentArgs,
   pub(crate) tree: PathBuf,
+  pub(crate) tree_dialect: TreeDialectArgs,
   pub(crate) alphabet_args: AlphabetArgs,
   pub(crate) output: OutputCoreArgs,
   pub(crate) output_gtr: Option<PathBuf>,
@@ -47,6 +49,7 @@ impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
     Ok(Self {
       alignment: raw.alignment,
       tree,
+      tree_dialect: raw.tree_dialect,
       alphabet_args: raw.alphabet_args,
       output: raw.output,
       output_gtr: raw.output_gtr,
@@ -88,6 +91,11 @@ pub struct TreetimePruneArgsRaw {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree_dialect: TreeDialectArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

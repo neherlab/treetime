@@ -1,5 +1,3 @@
-use crate::dialect::NewickDialect;
-use crate::read::options::ReadMode;
 use std::error::Error;
 use std::fmt;
 
@@ -34,36 +32,13 @@ impl NewickError {
 
 impl fmt::Display for NewickError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match &self.kind {
-      NewickErrorKind::NoDialect(attempts) => {
-        write!(f, "{}", self.message)?;
-        for attempt in attempts {
-          write!(
-            f,
-            "\n  {} ({}): {}",
-            attempt.dialect,
-            attempt.mode.name(),
-            attempt.error
-          )?;
-        }
-        Ok(())
-      },
-      NewickErrorKind::Syntax
-      | NewickErrorKind::Structure
-      | NewickErrorKind::Annotation
-      | NewickErrorKind::Nexus
-      | NewickErrorKind::InvalidUtf8
-      | NewickErrorKind::MultipleTrees
-      | NewickErrorKind::Incomplete
-      | NewickErrorKind::Options
-      | NewickErrorKind::Io => write!(f, "line {}, column {}: {}", self.line, self.column, self.message),
-    }
+    write!(f, "line {}, column {}: {}", self.line, self.column, self.message)
   }
 }
 
 impl Error for NewickError {}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NewickErrorKind {
   Syntax,
   Structure,
@@ -72,16 +47,7 @@ pub enum NewickErrorKind {
   InvalidUtf8,
   MultipleTrees,
   Incomplete,
-  Options,
   Io,
-  NoDialect(Vec<DialectAttempt>),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DialectAttempt {
-  pub dialect: NewickDialect,
-  pub mode: ReadMode,
-  pub error: NewickError,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -1,4 +1,4 @@
-use crate::dialect::NewickDialect;
+use crate::dialect::{NewickAnnotations, NewickDialect, NewickStructure};
 use crate::read::options::ReadMode;
 use pest::Parser;
 use pest::iterators::Pairs;
@@ -18,30 +18,40 @@ pub(crate) fn matches(rule: Rule, input: &str) -> bool {
 }
 
 pub(crate) const fn start_rule(dialect: NewickDialect, mode: ReadMode) -> Rule {
-  match (dialect, mode) {
-    (NewickDialect::Classic, ReadMode::Strict) => Rule::classic_strict,
-    (NewickDialect::Classic, ReadMode::Tolerant) => Rule::classic_tolerant,
-    (NewickDialect::Beast, ReadMode::Strict) => Rule::beast_strict,
-    (NewickDialect::Beast, ReadMode::Tolerant) => Rule::beast_tolerant,
-    (NewickDialect::MrBayes, ReadMode::Strict) => Rule::mrbayes_strict,
-    (NewickDialect::MrBayes, ReadMode::Tolerant) => Rule::mrbayes_tolerant,
-    (NewickDialect::Nhx, ReadMode::Strict) => Rule::nhx_strict,
-    (NewickDialect::Nhx, ReadMode::Tolerant) => Rule::nhx_tolerant,
-    (NewickDialect::ENewick, ReadMode::Strict) => Rule::enewick_strict,
-    (NewickDialect::ENewick, ReadMode::Tolerant) => Rule::enewick_tolerant,
-    (NewickDialect::Rich, ReadMode::Strict) => Rule::rich_strict,
-    (NewickDialect::Rich, ReadMode::Tolerant) => Rule::rich_tolerant,
+  match (dialect.structure, dialect.annotations, mode) {
+    (NewickStructure::Classic, NewickAnnotations::Plain, ReadMode::Strict) => Rule::classic_plain_strict,
+    (NewickStructure::Classic, NewickAnnotations::Plain, ReadMode::Tolerant) => Rule::classic_plain_tolerant,
+    (NewickStructure::Classic, NewickAnnotations::Beast, ReadMode::Strict) => Rule::classic_beast_strict,
+    (NewickStructure::Classic, NewickAnnotations::Beast, ReadMode::Tolerant) => Rule::classic_beast_tolerant,
+    (NewickStructure::Classic, NewickAnnotations::Nhx, ReadMode::Strict) => Rule::classic_nhx_strict,
+    (NewickStructure::Classic, NewickAnnotations::Nhx, ReadMode::Tolerant) => Rule::classic_nhx_tolerant,
+    (NewickStructure::Classic, NewickAnnotations::MrBayes, ReadMode::Strict) => Rule::classic_mrbayes_strict,
+    (NewickStructure::Classic, NewickAnnotations::MrBayes, ReadMode::Tolerant) => Rule::classic_mrbayes_tolerant,
+    (NewickStructure::ENewick, NewickAnnotations::Plain, ReadMode::Strict) => Rule::enewick_plain_strict,
+    (NewickStructure::ENewick, NewickAnnotations::Plain, ReadMode::Tolerant) => Rule::enewick_plain_tolerant,
+    (NewickStructure::ENewick, NewickAnnotations::Beast, ReadMode::Strict) => Rule::enewick_beast_strict,
+    (NewickStructure::ENewick, NewickAnnotations::Beast, ReadMode::Tolerant) => Rule::enewick_beast_tolerant,
+    (NewickStructure::ENewick, NewickAnnotations::Nhx, ReadMode::Strict) => Rule::enewick_nhx_strict,
+    (NewickStructure::ENewick, NewickAnnotations::Nhx, ReadMode::Tolerant) => Rule::enewick_nhx_tolerant,
+    (NewickStructure::ENewick, NewickAnnotations::MrBayes, ReadMode::Strict) => Rule::enewick_mrbayes_strict,
+    (NewickStructure::ENewick, NewickAnnotations::MrBayes, ReadMode::Tolerant) => Rule::enewick_mrbayes_tolerant,
+    (NewickStructure::Rich, NewickAnnotations::Plain, ReadMode::Strict) => Rule::rich_plain_strict,
+    (NewickStructure::Rich, NewickAnnotations::Plain, ReadMode::Tolerant) => Rule::rich_plain_tolerant,
+    (NewickStructure::Rich, NewickAnnotations::Beast, ReadMode::Strict) => Rule::rich_beast_strict,
+    (NewickStructure::Rich, NewickAnnotations::Beast, ReadMode::Tolerant) => Rule::rich_beast_tolerant,
+    (NewickStructure::Rich, NewickAnnotations::Nhx, ReadMode::Strict) => Rule::rich_nhx_strict,
+    (NewickStructure::Rich, NewickAnnotations::Nhx, ReadMode::Tolerant) => Rule::rich_nhx_tolerant,
+    (NewickStructure::Rich, NewickAnnotations::MrBayes, ReadMode::Strict) => Rule::rich_mrbayes_strict,
+    (NewickStructure::Rich, NewickAnnotations::MrBayes, ReadMode::Tolerant) => Rule::rich_mrbayes_tolerant,
   }
 }
 
-pub(crate) const fn comment_rule(dialect: NewickDialect) -> Rule {
-  match dialect {
-    NewickDialect::Classic => Rule::classic_comment_only,
-    NewickDialect::Beast => Rule::beast_comment_only,
-    NewickDialect::MrBayes => Rule::mrbayes_comment_only,
-    NewickDialect::Nhx => Rule::nhx_comment_only,
-    NewickDialect::ENewick => Rule::enewick_comment_only,
-    NewickDialect::Rich => Rule::rich_comment_only,
+pub(crate) const fn comment_rule(annotations: NewickAnnotations) -> Rule {
+  match annotations {
+    NewickAnnotations::Plain => Rule::plain_comment_only,
+    NewickAnnotations::Beast => Rule::beast_comment_only,
+    NewickAnnotations::Nhx => Rule::nhx_comment_only,
+    NewickAnnotations::MrBayes => Rule::mrbayes_comment_only,
   }
 }
 
@@ -76,15 +86,12 @@ pub(crate) const fn rule_name(rule: Rule) -> &'static str {
     | Rule::scan_quote_start
     | Rule::scan_string
     | Rule::malformed_annotation
-    | Rule::classic_comment
-    | Rule::enewick_comment
-    | Rule::rich_comment
-    | Rule::classic_comment_only
+    | Rule::scan_plain_comment
+    | Rule::plain_any_comment
+    | Rule::plain_comment_only
     | Rule::beast_comment_only
-    | Rule::mrbayes_comment_only
     | Rule::nhx_comment_only
-    | Rule::enewick_comment_only
-    | Rule::rich_comment_only => "comment",
+    | Rule::mrbayes_comment_only => "comment",
     Rule::beast_comment | Rule::beast_any_comment => "BEAST annotation",
     Rule::beast_pair | Rule::beast_key | Rule::beast_bare_key | Rule::beast_bare_key_exact => "annotation key",
     Rule::beast_value
@@ -113,57 +120,84 @@ pub(crate) const fn rule_name(rule: Rule) -> &'static str {
     | Rule::mrbayes_kind
     | Rule::mrbayes_token
     | Rule::mrbayes_token_exact => "MrBayes comment",
-    Rule::rooting | Rule::rooting_value => "rooting comment",
-    Rule::weight => "tree weight comment",
+    Rule::rooting | Rule::rooting_value | Rule::rooting_exact => "rooting comment",
+    Rule::weight | Rule::weight_exact => "tree weight comment",
     Rule::EOI => "end of input",
     Rule::bom => "byte order mark",
     Rule::WHITESPACE
     | Rule::delimiter
     | Rule::beast_ws
-    | Rule::classic_open
-    | Rule::classic_field
-    | Rule::classic_tail
-    | Rule::classic_items
+    | Rule::plain_open
+    | Rule::plain_field
     | Rule::beast_open
     | Rule::beast_field
-    | Rule::beast_tail
-    | Rule::beast_items
-    | Rule::beast_preamble
-    | Rule::mrbayes_open
-    | Rule::mrbayes_field
-    | Rule::mrbayes_tail
-    | Rule::mrbayes_items
-    | Rule::mrbayes_preamble
     | Rule::nhx_open
     | Rule::nhx_field
-    | Rule::nhx_tail
-    | Rule::nhx_items
-    | Rule::enewick_open
-    | Rule::enewick_field
-    | Rule::enewick_tail
-    | Rule::enewick_items
-    | Rule::rich_open
-    | Rule::rich_field
-    | Rule::rich_tail
-    | Rule::rich_items
-    | Rule::rich_preamble
-    | Rule::classic_strict
-    | Rule::classic_tolerant
-    | Rule::beast_strict
-    | Rule::beast_tolerant
-    | Rule::mrbayes_strict
-    | Rule::mrbayes_tolerant
-    | Rule::nhx_strict
-    | Rule::nhx_tolerant
-    | Rule::enewick_strict
-    | Rule::enewick_tolerant
-    | Rule::rich_strict
-    | Rule::rich_tolerant
+    | Rule::mrbayes_open
+    | Rule::mrbayes_field
+    | Rule::classic_plain_tail
+    | Rule::classic_plain_items
+    | Rule::classic_plain_strict
+    | Rule::classic_plain_tolerant
+    | Rule::classic_beast_tail
+    | Rule::classic_beast_items
+    | Rule::classic_beast_preamble
+    | Rule::classic_beast_strict
+    | Rule::classic_beast_tolerant
+    | Rule::classic_nhx_tail
+    | Rule::classic_nhx_items
+    | Rule::classic_nhx_strict
+    | Rule::classic_nhx_tolerant
+    | Rule::classic_mrbayes_tail
+    | Rule::classic_mrbayes_items
+    | Rule::classic_mrbayes_preamble
+    | Rule::classic_mrbayes_strict
+    | Rule::classic_mrbayes_tolerant
+    | Rule::enewick_plain_tail
+    | Rule::enewick_plain_items
+    | Rule::enewick_plain_strict
+    | Rule::enewick_plain_tolerant
+    | Rule::enewick_beast_tail
+    | Rule::enewick_beast_items
+    | Rule::enewick_beast_preamble
+    | Rule::enewick_beast_strict
+    | Rule::enewick_beast_tolerant
+    | Rule::enewick_nhx_tail
+    | Rule::enewick_nhx_items
+    | Rule::enewick_nhx_strict
+    | Rule::enewick_nhx_tolerant
+    | Rule::enewick_mrbayes_tail
+    | Rule::enewick_mrbayes_items
+    | Rule::enewick_mrbayes_preamble
+    | Rule::enewick_mrbayes_strict
+    | Rule::enewick_mrbayes_tolerant
+    | Rule::rich_plain_tail
+    | Rule::rich_plain_items
+    | Rule::rich_plain_preamble
+    | Rule::rich_plain_strict
+    | Rule::rich_plain_tolerant
+    | Rule::rich_beast_tail
+    | Rule::rich_beast_items
+    | Rule::rich_beast_preamble
+    | Rule::rich_beast_strict
+    | Rule::rich_beast_tolerant
+    | Rule::rich_nhx_tail
+    | Rule::rich_nhx_items
+    | Rule::rich_nhx_preamble
+    | Rule::rich_nhx_strict
+    | Rule::rich_nhx_tolerant
+    | Rule::rich_mrbayes_tail
+    | Rule::rich_mrbayes_items
+    | Rule::rich_mrbayes_preamble
+    | Rule::rich_mrbayes_strict
+    | Rule::rich_mrbayes_tolerant
     | Rule::scan_word
     | Rule::scan_text
     | Rule::scan_text_final
     | Rule::tree_scan
     | Rule::tree_scan_final
+    | Rule::tree_scan_plain
+    | Rule::tree_scan_plain_final
     | Rule::trivia_only => "tree",
   }
 }

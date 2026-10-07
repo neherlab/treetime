@@ -37,7 +37,7 @@ pub fn run_clock(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
-  let nwk_parsed = read_input_tree(&clock_args.tree, log)?;
+  let nwk_parsed = read_input_tree(&clock_args.tree, clock_args.tree_dialect.dialect(), log)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
@@ -96,9 +96,12 @@ pub fn run_clock(
     names,
     branch_lengths,
   } = output;
-  let topology_order = clock_args
-    .topology_order
-    .resolve_topology_order(&graph, &names, Some(input_order))?;
+  let topology_order = clock_args.topology_order.resolve_topology_order(
+    &graph,
+    &names,
+    Some(input_order),
+    clock_args.tree_dialect.dialect(),
+  )?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 

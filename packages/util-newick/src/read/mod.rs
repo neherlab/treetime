@@ -4,6 +4,6 @@ pub(crate) mod context;
 pub mod error;
 pub(crate) mod labels;
 pub mod options;
-pub(crate) mod select;
 pub(crate) mod source;
 pub mod stream;
+pub(crate) mod tree_text;

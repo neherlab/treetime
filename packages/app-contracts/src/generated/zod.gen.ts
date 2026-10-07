@@ -1363,6 +1363,20 @@ export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
 export const zTimetreeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
+  tree_dialect: z.enum([
+    'classic,plain',
+    'classic,beast',
+    'classic,nhx',
+    'classic,mrbayes',
+    'enewick,plain',
+    'enewick,beast',
+    'enewick,nhx',
+    'enewick,mrbayes',
+    'rich,plain',
+    'rich,beast',
+    'rich,nhx',
+    'rich,mrbayes'
+  ]).optional(),
   vcf_reference: z.string().optional(),
   metadata: z.string().optional(),
   metadata_id_columns: z.array(z.string()).optional(),
@@ -1500,6 +1514,20 @@ export const zClockRegressionArgs = z.strictObject({
 export const zClockConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
+  tree_dialect: z.enum([
+    'classic,plain',
+    'classic,beast',
+    'classic,nhx',
+    'classic,mrbayes',
+    'enewick,plain',
+    'enewick,beast',
+    'enewick,nhx',
+    'enewick,mrbayes',
+    'rich,plain',
+    'rich,beast',
+    'rich,nhx',
+    'rich,mrbayes'
+  ]).optional(),
   vcf_reference: z.string().optional(),
   metadata: z.string().optional(),
   metadata_id_columns: z.array(z.string()).optional(),
@@ -1590,6 +1618,20 @@ export const zAncestralConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   vcf_reference: z.string().optional(),
   tree: z.string().optional(),
+  tree_dialect: z.enum([
+    'classic,plain',
+    'classic,beast',
+    'classic,nhx',
+    'classic,mrbayes',
+    'enewick,plain',
+    'enewick,beast',
+    'enewick,nhx',
+    'enewick,mrbayes',
+    'rich,plain',
+    'rich,beast',
+    'rich,nhx',
+    'rich,mrbayes'
+  ]).optional(),
   alphabet: zAlphabetName.optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
@@ -1659,6 +1701,20 @@ export const zHomoplasyOutputSelection = z.enum([
 export const zHomoplasyConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
+  tree_dialect: z.enum([
+    'classic,plain',
+    'classic,beast',
+    'classic,nhx',
+    'classic,mrbayes',
+    'enewick,plain',
+    'enewick,beast',
+    'enewick,nhx',
+    'enewick,mrbayes',
+    'rich,plain',
+    'rich,beast',
+    'rich,nhx',
+    'rich,mrbayes'
+  ]).optional(),
   alphabet: zAlphabetName.optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
@@ -1713,16 +1769,24 @@ export const zMugrationOutputSelection = z.enum([
 ]);
 
 /**
- * Metadata identity and delimiter options shared by every command that reads a metadata table
- * (`timetree`, `clock`, `mugration`).
- *
- * `--metadata-id-columns` (alias `--name-column`) lists the candidate columns holding the taxon
- * identifier that links a metadata row to a tree tip; the first column present in the header wins.
- * Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
- * candidate field separators; the delimiter actually present in the file is used.
+ * Newick dialect of the tree inputs, shared by every command that reads a tree.
  */
 export const zMugrationConfig = z.strictObject({
   tree: z.string().optional(),
+  tree_dialect: z.enum([
+    'classic,plain',
+    'classic,beast',
+    'classic,nhx',
+    'classic,mrbayes',
+    'enewick,plain',
+    'enewick,beast',
+    'enewick,nhx',
+    'enewick,mrbayes',
+    'rich,plain',
+    'rich,beast',
+    'rich,nhx',
+    'rich,mrbayes'
+  ]).optional(),
   attribute: z.string().optional(),
   metadata: z.string().optional(),
   weights: z.string().optional(),
@@ -1815,6 +1879,20 @@ export const zOptimizeRerootMethod = z.enum(['min-dev']);
 export const zOptimizeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
+  tree_dialect: z.enum([
+    'classic,plain',
+    'classic,beast',
+    'classic,nhx',
+    'classic,mrbayes',
+    'enewick,plain',
+    'enewick,beast',
+    'enewick,nhx',
+    'enewick,mrbayes',
+    'rich,plain',
+    'rich,beast',
+    'rich,nhx',
+    'rich,mrbayes'
+  ]).optional(),
   alphabet: zAlphabetName.optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
@@ -1875,6 +1953,20 @@ export const zPruneOutputSelection = z.enum([
 export const zPruneConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
+  tree_dialect: z.enum([
+    'classic,plain',
+    'classic,beast',
+    'classic,nhx',
+    'classic,mrbayes',
+    'enewick,plain',
+    'enewick,beast',
+    'enewick,nhx',
+    'enewick,mrbayes',
+    'rich,plain',
+    'rich,beast',
+    'rich,nhx',
+    'rich,mrbayes'
+  ]).optional(),
   alphabet: zAlphabetName.optional(),
   output_all: z.string().optional(),
   output_nwk_style: z.array(zNwkStyleArg).optional(),

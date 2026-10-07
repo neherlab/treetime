@@ -9,12 +9,14 @@
           "kind": "tree",
           "need": "required",
           "label": "Tree",
-          "formats": "Newick",
+          "formats": "Newick or Nexus",
           "extensions": [
             "nwk",
             "newick",
             "tree",
             "tre",
+            "nex",
+            "nexus",
             "bz2",
             "xz",
             "zst",
@@ -369,6 +371,77 @@
           "conflicts": [],
           "help": "Tree in Newick format.",
           "more": ""
+        },
+        {
+          "key": "tree_dialect",
+          "path": [
+            "tree_dialect"
+          ],
+          "label": "Tree dialect",
+          "flag": "--tree-dialect",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "classic,plain",
+              "help": ""
+            },
+            {
+              "value": "classic,beast",
+              "help": ""
+            },
+            {
+              "value": "classic,nhx",
+              "help": ""
+            },
+            {
+              "value": "classic,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "enewick,plain",
+              "help": ""
+            },
+            {
+              "value": "enewick,beast",
+              "help": ""
+            },
+            {
+              "value": "enewick,nhx",
+              "help": ""
+            },
+            {
+              "value": "enewick,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "rich,plain",
+              "help": ""
+            },
+            {
+              "value": "rich,beast",
+              "help": ""
+            },
+            {
+              "value": "rich,nhx",
+              "help": ""
+            },
+            {
+              "value": "rich,mrbayes",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "classic,beast",
+          "examples": [],
+          "value_names": [
+            "TREE_DIALECT"
+          ],
+          "conflicts": [],
+          "help": "Newick dialect of the tree inputs (the tree and the reference topology)",
+          "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
         },
         {
           "key": "vcf_reference",
@@ -2443,12 +2516,14 @@
           "kind": "tree",
           "need": "required",
           "label": "Tree",
-          "formats": "Newick",
+          "formats": "Newick or Nexus",
           "extensions": [
             "nwk",
             "newick",
             "tree",
             "tre",
+            "nex",
+            "nexus",
             "bz2",
             "xz",
             "zst",
@@ -2601,6 +2676,77 @@
           "conflicts": [],
           "help": "Tree in Newick format.",
           "more": ""
+        },
+        {
+          "key": "tree_dialect",
+          "path": [
+            "tree_dialect"
+          ],
+          "label": "Tree dialect",
+          "flag": "--tree-dialect",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "classic,plain",
+              "help": ""
+            },
+            {
+              "value": "classic,beast",
+              "help": ""
+            },
+            {
+              "value": "classic,nhx",
+              "help": ""
+            },
+            {
+              "value": "classic,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "enewick,plain",
+              "help": ""
+            },
+            {
+              "value": "enewick,beast",
+              "help": ""
+            },
+            {
+              "value": "enewick,nhx",
+              "help": ""
+            },
+            {
+              "value": "enewick,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "rich,plain",
+              "help": ""
+            },
+            {
+              "value": "rich,beast",
+              "help": ""
+            },
+            {
+              "value": "rich,nhx",
+              "help": ""
+            },
+            {
+              "value": "rich,mrbayes",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "classic,beast",
+          "examples": [],
+          "value_names": [
+            "TREE_DIALECT"
+          ],
+          "conflicts": [],
+          "help": "Newick dialect of the tree inputs (the tree and the reference topology)",
+          "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
         },
         {
           "key": "vcf_reference",
@@ -3955,12 +4101,14 @@
           "kind": "tree",
           "need": "required",
           "label": "Tree",
-          "formats": "Newick",
+          "formats": "Newick or Nexus",
           "extensions": [
             "nwk",
             "newick",
             "tree",
             "tre",
+            "nex",
+            "nexus",
             "bz2",
             "xz",
             "zst",
@@ -4067,6 +4215,77 @@
           "conflicts": [],
           "help": "Tree in Newick format.",
           "more": ""
+        },
+        {
+          "key": "tree_dialect",
+          "path": [
+            "tree_dialect"
+          ],
+          "label": "Tree dialect",
+          "flag": "--tree-dialect",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "classic,plain",
+              "help": ""
+            },
+            {
+              "value": "classic,beast",
+              "help": ""
+            },
+            {
+              "value": "classic,nhx",
+              "help": ""
+            },
+            {
+              "value": "classic,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "enewick,plain",
+              "help": ""
+            },
+            {
+              "value": "enewick,beast",
+              "help": ""
+            },
+            {
+              "value": "enewick,nhx",
+              "help": ""
+            },
+            {
+              "value": "enewick,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "rich,plain",
+              "help": ""
+            },
+            {
+              "value": "rich,beast",
+              "help": ""
+            },
+            {
+              "value": "rich,nhx",
+              "help": ""
+            },
+            {
+              "value": "rich,mrbayes",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "classic,beast",
+          "examples": [],
+          "value_names": [
+            "TREE_DIALECT"
+          ],
+          "conflicts": [],
+          "help": "Newick dialect of the tree inputs (the tree and the reference topology)",
+          "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
         },
         {
           "key": "alphabet",
@@ -5275,12 +5494,14 @@
           "kind": "tree",
           "need": "required",
           "label": "Tree",
-          "formats": "Newick",
+          "formats": "Newick or Nexus",
           "extensions": [
             "nwk",
             "newick",
             "tree",
             "tre",
+            "nex",
+            "nexus",
             "bz2",
             "xz",
             "zst",
@@ -5368,6 +5589,77 @@
           "conflicts": [],
           "help": "Tree in Newick format.",
           "more": ""
+        },
+        {
+          "key": "tree_dialect",
+          "path": [
+            "tree_dialect"
+          ],
+          "label": "Tree dialect",
+          "flag": "--tree-dialect",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "classic,plain",
+              "help": ""
+            },
+            {
+              "value": "classic,beast",
+              "help": ""
+            },
+            {
+              "value": "classic,nhx",
+              "help": ""
+            },
+            {
+              "value": "classic,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "enewick,plain",
+              "help": ""
+            },
+            {
+              "value": "enewick,beast",
+              "help": ""
+            },
+            {
+              "value": "enewick,nhx",
+              "help": ""
+            },
+            {
+              "value": "enewick,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "rich,plain",
+              "help": ""
+            },
+            {
+              "value": "rich,beast",
+              "help": ""
+            },
+            {
+              "value": "rich,nhx",
+              "help": ""
+            },
+            {
+              "value": "rich,mrbayes",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "classic,beast",
+          "examples": [],
+          "value_names": [
+            "TREE_DIALECT"
+          ],
+          "conflicts": [],
+          "help": "Newick dialect of the tree inputs (the tree and the reference topology)",
+          "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
         },
         {
           "key": "alphabet",
@@ -6390,12 +6682,14 @@
           "kind": "tree",
           "need": "required",
           "label": "Tree",
-          "formats": "Newick",
+          "formats": "Newick or Nexus",
           "extensions": [
             "nwk",
             "newick",
             "tree",
             "tre",
+            "nex",
+            "nexus",
             "bz2",
             "xz",
             "zst",
@@ -6456,6 +6750,77 @@
           "conflicts": [],
           "help": "Tree in Newick format.",
           "more": ""
+        },
+        {
+          "key": "tree_dialect",
+          "path": [
+            "tree_dialect"
+          ],
+          "label": "Tree dialect",
+          "flag": "--tree-dialect",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "classic,plain",
+              "help": ""
+            },
+            {
+              "value": "classic,beast",
+              "help": ""
+            },
+            {
+              "value": "classic,nhx",
+              "help": ""
+            },
+            {
+              "value": "classic,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "enewick,plain",
+              "help": ""
+            },
+            {
+              "value": "enewick,beast",
+              "help": ""
+            },
+            {
+              "value": "enewick,nhx",
+              "help": ""
+            },
+            {
+              "value": "enewick,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "rich,plain",
+              "help": ""
+            },
+            {
+              "value": "rich,beast",
+              "help": ""
+            },
+            {
+              "value": "rich,nhx",
+              "help": ""
+            },
+            {
+              "value": "rich,mrbayes",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "classic,beast",
+          "examples": [],
+          "value_names": [
+            "TREE_DIALECT"
+          ],
+          "conflicts": [],
+          "help": "Newick dialect of the tree inputs (the tree and the reference topology)",
+          "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
         },
         {
           "key": "attribute",
@@ -7293,12 +7658,14 @@
           "kind": "tree",
           "need": "required",
           "label": "Tree",
-          "formats": "Newick",
+          "formats": "Newick or Nexus",
           "extensions": [
             "nwk",
             "newick",
             "tree",
             "tre",
+            "nex",
+            "nexus",
             "bz2",
             "xz",
             "zst",
@@ -7430,6 +7797,77 @@
           "conflicts": [],
           "help": "Tree in Newick format.",
           "more": ""
+        },
+        {
+          "key": "tree_dialect",
+          "path": [
+            "tree_dialect"
+          ],
+          "label": "Tree dialect",
+          "flag": "--tree-dialect",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "classic,plain",
+              "help": ""
+            },
+            {
+              "value": "classic,beast",
+              "help": ""
+            },
+            {
+              "value": "classic,nhx",
+              "help": ""
+            },
+            {
+              "value": "classic,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "enewick,plain",
+              "help": ""
+            },
+            {
+              "value": "enewick,beast",
+              "help": ""
+            },
+            {
+              "value": "enewick,nhx",
+              "help": ""
+            },
+            {
+              "value": "enewick,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "rich,plain",
+              "help": ""
+            },
+            {
+              "value": "rich,beast",
+              "help": ""
+            },
+            {
+              "value": "rich,nhx",
+              "help": ""
+            },
+            {
+              "value": "rich,mrbayes",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "classic,beast",
+          "examples": [],
+          "value_names": [
+            "TREE_DIALECT"
+          ],
+          "conflicts": [],
+          "help": "Newick dialect of the tree inputs (the tree and the reference topology)",
+          "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
         },
         {
           "key": "alphabet",
@@ -8489,12 +8927,14 @@
           "kind": "tree",
           "need": "required",
           "label": "Tree",
-          "formats": "Newick",
+          "formats": "Newick or Nexus",
           "extensions": [
             "nwk",
             "newick",
             "tree",
             "tre",
+            "nex",
+            "nexus",
             "bz2",
             "xz",
             "zst",
@@ -8577,6 +9017,77 @@
           "conflicts": [],
           "help": "Tree in Newick format.",
           "more": ""
+        },
+        {
+          "key": "tree_dialect",
+          "path": [
+            "tree_dialect"
+          ],
+          "label": "Tree dialect",
+          "flag": "--tree-dialect",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "classic,plain",
+              "help": ""
+            },
+            {
+              "value": "classic,beast",
+              "help": ""
+            },
+            {
+              "value": "classic,nhx",
+              "help": ""
+            },
+            {
+              "value": "classic,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "enewick,plain",
+              "help": ""
+            },
+            {
+              "value": "enewick,beast",
+              "help": ""
+            },
+            {
+              "value": "enewick,nhx",
+              "help": ""
+            },
+            {
+              "value": "enewick,mrbayes",
+              "help": ""
+            },
+            {
+              "value": "rich,plain",
+              "help": ""
+            },
+            {
+              "value": "rich,beast",
+              "help": ""
+            },
+            {
+              "value": "rich,nhx",
+              "help": ""
+            },
+            {
+              "value": "rich,mrbayes",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "classic,beast",
+          "examples": [],
+          "value_names": [
+            "TREE_DIALECT"
+          ],
+          "conflicts": [],
+          "help": "Newick dialect of the tree inputs (the tree and the reference topology)",
+          "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
         },
         {
           "key": "alphabet",

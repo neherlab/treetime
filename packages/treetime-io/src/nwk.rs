@@ -12,32 +12,28 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::tree_view::TreeView;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::{read_file_with, write_file_with};
-use treetime_utils::make_report;
-pub use util_newick::NewickValue;
+use treetime_utils::{make_error, make_report};
 use util_newick::{
-  InternalLabel, LabelSide, NewickComment, NewickDialect, NewickEdgeData, NewickGraph, NewickNodeData,
-  NewickReadOptions, NewickWarning, NewickWriteOptions, NodeComment, NumberFormat, ReadMode, newick_from_reader,
-  newick_to_writer,
+  InternalLabel, LabelSide, NewickComment, NewickEdgeData, NewickGraph, NewickNodeData, NewickReadOptions,
+  NewickWarning, NewickWriteOptions, NodeComment, NumberFormat, ReadMode, newick_from_reader, newick_to_writer,
 };
+pub use util_newick::{NewickDialect, NewickValue};
+
+pub const TREE_DIALECT_DEFAULT: NewickDialect = NewickDialect::BEAST;
 
 pub fn nwk_read_file(filepath: impl AsRef<Path>) -> Result<NwkParse, Report> {
   read_file_with(filepath, nwk_read)
 }
 
 pub fn nwk_read(reader: impl Read) -> Result<NwkParse, Report> {
-  let tree = newick_from_reader(reader, &tree_read_options()).wrap_err("When reading Newick")?;
+  let tree = newick_from_reader(reader, &tree_read_options(TREE_DIALECT_DEFAULT)).wrap_err("When reading Newick")?;
   log_read_warnings(&tree.warnings);
   graph_from_newick(&tree.graph).wrap_err("When reading Newick")
 }
 
-pub(crate) fn tree_read_options() -> NewickReadOptions {
+pub(crate) fn tree_read_options(dialect: NewickDialect) -> NewickReadOptions {
   NewickReadOptions {
-    dialects: vec![
-      NewickDialect::Beast,
-      NewickDialect::Nhx,
-      NewickDialect::MrBayes,
-      NewickDialect::Classic,
-    ],
+    dialect,
     mode: ReadMode::Tolerant,
     internal_label: InternalLabel::Auto,
     underscores_as_spaces: false,
@@ -51,6 +47,7 @@ pub(crate) fn log_read_warnings(warnings: &[NewickWarning]) {
 }
 
 pub(crate) fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Report> {
+  reject_network_nodes(nwk_graph)?;
   let mut graph = Graph::new();
 
   let mut node_keys: Vec<GraphNodeKey> = Vec::with_capacity(nwk_graph.node_count());
@@ -104,6 +101,21 @@ pub(crate) fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Rep
     branch_lengths,
     duplicate_names,
   })
+}
+
+fn reject_network_nodes(nwk_graph: &NewickGraph) -> Result<(), Report> {
+  let network_node = nwk_graph
+    .nodes()
+    .map(|(node, data)| (data, nwk_graph.parent_edges(node).len()))
+    .find(|&(_, parents)| parents > 1);
+  match network_node {
+    Some((data, parents)) => {
+      let tag = data.hybrid().map(|hybrid| hybrid.tag(false)).unwrap_or_default();
+      let label = format!("{}{tag}", data.name().unwrap_or_default());
+      make_error!("The tree contains the network node '{label}' with {parents} parents; TreeTime reads trees only")
+    },
+    None => Ok(()),
+  }
 }
 
 #[derive(Debug)]
@@ -238,9 +250,9 @@ pub enum NwkStyle {
 impl NwkStyle {
   pub const fn dialect(self) -> NewickDialect {
     match self {
-      Self::Plain => NewickDialect::Classic,
-      Self::Beast => NewickDialect::Beast,
-      Self::Nhx => NewickDialect::Nhx,
+      Self::Plain => NewickDialect::CLASSIC,
+      Self::Beast => NewickDialect::BEAST,
+      Self::Nhx => NewickDialect::NHX,
     }
   }
 }

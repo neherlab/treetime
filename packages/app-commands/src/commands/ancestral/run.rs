@@ -49,6 +49,7 @@ pub fn run_ancestral_reconstruction(
   let sequence_args = SequenceInputArgs {
     alignment: &args.alignment,
     tree: args.tree(),
+    tree_dialect: args.tree_dialect.dialect(),
     alphabet_args: &args.alphabet_args,
     gap_fill_args: &args.gap_fill_args,
     ignore_missing_alns: args.ignore_missing_alns,
@@ -57,7 +58,10 @@ pub fn run_ancestral_reconstruction(
   let names = input.names();
   let branch_lengths = input.branch_lengths();
 
-  let topology_order = args.topology_order.resolve_topology_order(&input.graph, &names, None)?;
+  let topology_order =
+    args
+      .topology_order
+      .resolve_topology_order(&input.graph, &names, None, args.tree_dialect.dialect())?;
 
   let resolved = args.resolve_outputs()?;
   let aa_plan = plan_aa_reconstructions(args, &resolved, log)?;

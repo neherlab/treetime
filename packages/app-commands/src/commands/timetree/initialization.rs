@@ -16,7 +16,8 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DateConstraint;
 
 pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) -> Result<InputData, Report> {
-  let nwk_parsed = read_input_tree(&args.tree, log).wrap_err("Failed to load tree from file")?;
+  let nwk_parsed =
+    read_input_tree(&args.tree, args.tree_dialect.dialect(), log).wrap_err("Failed to load tree from file")?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;

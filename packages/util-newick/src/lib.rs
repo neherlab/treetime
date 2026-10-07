@@ -7,7 +7,7 @@ pub mod number;
 pub mod read;
 pub mod write;
 
-pub use crate::dialect::{CommentKind, DialectFeatures, NewickDialect};
+pub use crate::dialect::{NewickAnnotations, NewickDialect, NewickStructure};
 pub use crate::model::comment::{
   EdgeComment, EdgeField, LabelSide, MrBayesComment, MrBayesKind, NewickComment, NodeComment, ValueSide,
 };
@@ -19,7 +19,7 @@ pub use crate::nexus::read::{NexusTrees, is_nexus, nexus_from_reader, nexus_from
 pub use crate::nexus::types::{NexusCommand, NexusFile, NexusTree, NexusTreeRef, NexusWriteOptions};
 pub use crate::nexus::write::{nexus_to_string, nexus_to_writer};
 pub use crate::number::NumberFormat;
-pub use crate::read::error::{DialectAttempt, Location, NewickError, NewickErrorKind, NewickWarning};
+pub use crate::read::error::{Location, NewickError, NewickErrorKind, NewickWarning};
 pub use crate::read::options::{InternalLabel, NewickReadOptions, NewickTree, ReadMode};
 pub use crate::read::stream::{NewickTrees, newick_from_reader, newick_from_str, newick_trees};
 pub use crate::write::conversions::{Conversion, DataKind, conversion};

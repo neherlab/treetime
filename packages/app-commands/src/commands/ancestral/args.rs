@@ -9,6 +9,7 @@ use crate::commands::shared::output_args::{AncestralOutputSelection, OutputCoreA
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
+use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
@@ -45,6 +46,7 @@ pub struct TreetimeAncestralArgs {
   )]
   pub(crate) vcf_reference: Option<PathBuf>,
   pub(crate) tree: PathBuf,
+  pub(crate) tree_dialect: TreeDialectArgs,
   pub(crate) alphabet_args: AlphabetArgs,
   pub(crate) model_args: ModelArgs,
   pub(crate) method_anc: MethodAncestral,
@@ -109,6 +111,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       alignment: raw.alignment,
       vcf_reference: raw.vcf_reference,
       tree,
+      tree_dialect: raw.tree_dialect,
       alphabet_args: raw.alphabet_args,
       model_args: raw.model_args,
       method_anc: raw.method_anc.into(),
@@ -173,6 +176,11 @@ pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree_dialect: TreeDialectArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

@@ -192,7 +192,11 @@ impl<'i> Builder<'_, '_, 'i> {
           .into_iter()
           .map(|comment| NodeComment::new(LabelSide::AfterLabel, comment)),
       );
-    node.comments_mut().extend(comments);
+    if hybrid.is_some() {
+      edge.occurrence_comments_mut().extend(comments);
+    } else {
+      node.comments_mut().extend(comments);
+    }
     let children = slot.children.unwrap_or_default();
     let idx = if let Some((tag, offset)) = hybrid {
       self.merge_hybrid(tag, node, !children.is_empty(), offset)?
@@ -302,7 +306,6 @@ impl<'i> Builder<'_, '_, 'i> {
         ));
       },
     }
-    existing.comments_mut().extend(node.into_comments());
     Ok(idx)
   }
 }

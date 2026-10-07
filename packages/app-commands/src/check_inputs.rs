@@ -1,7 +1,9 @@
 use crate::command::AppCommand;
 use crate::commands::shared::alignment::read_alignment;
+use crate::commands::shared::tree_input::TreeDialectArg;
 use crate::json_value::SparseConfig;
 use chrono::Datelike;
+use deser::adapters::DisplayFromStr;
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -14,6 +16,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime_io::csv::{DELIMITED_EXTENSIONS, default_metadata_delimiters, default_name_candidates};
 use treetime_io::dates_csv::{DateConstraint, DateValue, MetadataTable, metadata_read_file};
 use treetime_io::fasta::FASTA_EXTENSIONS;
+use treetime_io::nwk::NewickDialect;
 use treetime_io::tree::{TREE_EXTENSIONS, tree_read_file};
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::datetime::options::DateParserOptions;
@@ -38,6 +41,8 @@ pub struct CheckInputsRequest {
 #[deser(default)]
 struct InputSettings {
   tree: Option<PathBuf>,
+  #[deser(as = DisplayFromStr)]
+  tree_dialect: TreeDialectArg,
   metadata: Option<PathBuf>,
   alignment: Vec<PathBuf>,
   metadata_id_columns: Vec<String>,
@@ -266,7 +271,12 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
     });
   };
 
-  let tree = request.tree.as_deref().map(read_tree).transpose();
+  let tree_dialect = request.tree_dialect.dialect();
+  let tree = request
+    .tree
+    .as_deref()
+    .map(|path| read_tree(path, tree_dialect))
+    .transpose();
   let tree = tree.unwrap_or_else(|report| {
     problem(InputKind::Tree, &report);
     None
@@ -318,8 +328,8 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
   Ok(facts)
 }
 
-fn read_tree(path: &Path) -> Result<(TreeFacts, Vec<String>), Report> {
-  let parsed = tree_read_file(path)?;
+fn read_tree(path: &Path, dialect: NewickDialect) -> Result<(TreeFacts, Vec<String>), Report> {
+  let parsed = tree_read_file(path, dialect)?;
   let names = parsed.names();
   let graph = &parsed.graph;
   let tip_names = graph.get_leaves().map(|leaf| names[&leaf.key()].clone()).collect_vec();

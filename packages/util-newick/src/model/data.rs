@@ -59,10 +59,6 @@ impl NewickNodeData {
     last_value(self.annotations(), key)
   }
 
-  pub(crate) fn into_comments(self) -> Vec<NodeComment> {
-    self.comments
-  }
-
   pub(crate) fn has_label(&self) -> bool {
     self.name.is_some() || self.hybrid.is_some()
   }
@@ -79,7 +75,7 @@ impl NewickHybrid {
     Self { kind, index }
   }
 
-  pub(crate) fn tag(&self, is_acceptor: bool) -> String {
+  pub fn tag(&self, is_acceptor: bool) -> String {
     let marker = if is_acceptor { "##" } else { "#" };
     format!("{marker}{}{}", self.kind.as_deref().unwrap_or(""), self.index)
   }
@@ -92,6 +88,7 @@ pub struct NewickEdgeData {
   support_source: SupportSource,
   probability: Option<f64>,
   is_acceptor: bool,
+  occurrence_comments: Vec<NodeComment>,
   comments: Vec<EdgeComment>,
 }
 
@@ -122,6 +119,12 @@ impl NewickEdgeData {
   #[must_use]
   pub fn with_acceptor(mut self, is_acceptor: bool) -> Self {
     self.is_acceptor = is_acceptor;
+    self
+  }
+
+  #[must_use]
+  pub fn with_occurrence_comment(mut self, comment: NodeComment) -> Self {
+    self.occurrence_comments.push(comment);
     self
   }
 
@@ -164,6 +167,14 @@ impl NewickEdgeData {
     self.is_acceptor
   }
 
+  pub fn occurrence_comments(&self) -> &[NodeComment] {
+    &self.occurrence_comments
+  }
+
+  pub fn occurrence_comments_mut(&mut self) -> &mut Vec<NodeComment> {
+    &mut self.occurrence_comments
+  }
+
   pub fn comments(&self) -> &[EdgeComment] {
     &self.comments
   }
@@ -173,7 +184,9 @@ impl NewickEdgeData {
   }
 
   pub fn annotations(&self) -> impl Iterator<Item = (&str, &NewickValue)> {
-    annotation_pairs(self.comments.iter().map(|comment| &comment.comment))
+    let occurrence = self.occurrence_comments.iter().map(|comment| &comment.comment);
+    let fields = self.comments.iter().map(|comment| &comment.comment);
+    annotation_pairs(occurrence.chain(fields))
   }
 
   pub fn annotation(&self, key: &str) -> Option<&NewickValue> {

@@ -98,7 +98,7 @@ mod tests {
   #[trace]
   fn test_nexus_rooting(#[case] body: &str, #[case] expected: Option<bool>) {
     let options = NewickReadOptions {
-      dialects: vec![NewickDialect::Beast],
+      dialect: NewickDialect::BEAST,
       ..NewickReadOptions::default()
     };
 
@@ -110,19 +110,20 @@ mod tests {
   #[test]
   fn test_nexus_tree_command_comments_use_tree_dialect() {
     let input = "#NEXUS\nBegin trees;\n tree STATE_0 [&lnP=-3195.24] = [&R] (A:[&rate=1.0]1.0,B:1.0);\nEnd;\n";
+    let options = NewickReadOptions {
+      dialect: NewickDialect::BEAST,
+      ..NewickReadOptions::default()
+    };
 
-    let file = nexus_from_str(input, &NewickReadOptions::all_dialects()).unwrap();
+    let file = nexus_from_str(input, &options).unwrap();
 
     let tree = &file.trees[0];
     assert_eq!(
-      (
-        NewickDialect::Beast,
-        vec![NewickComment::Beast(vec![(
-          "lnP".to_owned(),
-          NewickValue::Number(-3195.24)
-        )])]
-      ),
-      (tree.tree.dialect, tree.comments.clone())
+      vec![NewickComment::Beast(vec![(
+        "lnP".to_owned(),
+        NewickValue::Number(-3195.24)
+      )])],
+      tree.comments
     );
   }
 
@@ -139,7 +140,10 @@ mod tests {
          tree gen.0 = [&U] ((1:0.1[&B TK02Brlens 0.1],2:0.1):0.2,3:0.3);
       end;
     "};
-    let options = NewickReadOptions::all_dialects();
+    let options = NewickReadOptions {
+      dialect: NewickDialect::MRBAYES,
+      ..NewickReadOptions::default()
+    };
 
     let file = nexus_from_str(input, &options).unwrap();
 
@@ -156,7 +160,6 @@ mod tests {
     assert_eq!(
       (
         "gen.0",
-        NewickDialect::MrBayes,
         vec!["- ", "- :0.2", "Homo_sapiens :0.1", "Pan :0.1", "Gorilla :0.3"]
           .into_iter()
           .map(str::to_owned)
@@ -165,7 +168,6 @@ mod tests {
       ),
       (
         tree.name.as_str(),
-        tree.tree.dialect,
         summary(&tree.tree.graph),
         tree
           .tree
@@ -280,13 +282,13 @@ mod tests {
       End;
     "};
     let read_options = NewickReadOptions {
-      dialects: vec![NewickDialect::Beast],
+      dialect: NewickDialect::BEAST,
       ..NewickReadOptions::default()
     };
     let file = nexus_from_str(source, &read_options).unwrap();
     let refs: Vec<NexusTreeRef<'_>> = file.trees.iter().map(|tree| tree.as_ref()).collect();
     let options = NexusWriteOptions {
-      newick: NewickWriteOptions::new(NewickDialect::Beast),
+      newick: NewickWriteOptions::new(NewickDialect::BEAST),
       translate,
     };
 

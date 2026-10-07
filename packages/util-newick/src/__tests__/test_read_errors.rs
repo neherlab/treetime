@@ -65,36 +65,22 @@ mod tests {
         NewickErrorKind::InvalidUtf8,
         "line 1, column 4: The input is not valid UTF-8".to_owned()
       ),
-      (actual.kind.clone(), actual.to_string())
+      (actual.kind, actual.to_string())
     );
   }
 
   #[test]
-  fn test_read_errors_no_dialect_lists_each_attempt() {
+  fn test_read_errors_syntax_error_of_the_given_dialect() {
     let options = NewickReadOptions {
-      dialects: vec![NewickDialect::Rich, NewickDialect::Nhx],
+      dialect: NewickDialect::NHX,
       ..NewickReadOptions::default()
     };
 
     let actual = read_error("(A[&a=1]B);", &options);
 
-    let expected = indoc::indoc! {"
-      No selected Newick dialect reads the tree:
-        rich (strict): line 1, column 9: expected comment, ')', ',', ':', ';'
-        nhx (strict): line 1, column 9: expected comment, ')', ',', ':', ';', NHX annotation"};
-    assert_eq!(expected, actual);
-  }
-
-  #[test]
-  fn test_read_errors_empty_dialect_list() {
-    let options = NewickReadOptions {
-      dialects: vec![],
-      ..NewickReadOptions::default()
-    };
-
     assert_eq!(
-      "line 1, column 1: No Newick dialect is selected",
-      read_error("(A);", &options)
+      "line 1, column 9: expected comment, ')', ',', ':', ';', NHX annotation",
+      actual
     );
   }
 
@@ -127,7 +113,7 @@ mod tests {
   fn test_read_errors_deeply_nested_array_on_small_stack() {
     let input = format!("(A[&a={}1{}],B);", "{".repeat(100_000), "}".repeat(100_000));
     let options = NewickReadOptions {
-      dialects: vec![NewickDialect::Beast],
+      dialect: NewickDialect::BEAST,
       ..NewickReadOptions::default()
     };
 

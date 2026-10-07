@@ -2,6 +2,7 @@
 mod tests {
   use crate::__tests__::test_read_basic::tests::helpers::summary;
   use crate::dialect::NewickDialect;
+  use crate::model::value::NewickValue;
   use crate::read::error::NewickErrorKind;
   use crate::read::options::NewickReadOptions;
   use crate::read::stream::newick_from_str;
@@ -28,54 +29,55 @@ mod tests {
   const PHYLONET_RICH_GAMMA: &str = "[&U]((A:1,(B:1)#H1:1::0.3):1,(#H1:1::0.7,C:1):1);";
   const PHYLONET_SUPPORT_FIELDS: &str = "((A:1:90,B:1:80):1:100,C:2);";
   const PHYLONET_RICH_WEIGHT: &str = "[&R][&W 0.5]((A:1:90,B:1:80):1:100,C:2);";
+  const TREEKNIT_ARG: &str = "(A[&segments={0,1}]:1.0,x#H1[&segments={0}]:0.5)GlobalRoot[&segments={0,1}]:0.0;";
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::dendropy_5_0_8_beast1_tree_log(              BEAST1_TREE_LOG,              NewickDialect::Beast, indoc! {"
+  #[case::dendropy_5_0_8_beast1_tree_log(              BEAST1_TREE_LOG,              NewickDialect::BEAST, indoc! {"
     -
     - :0.5 rate=1.1
     1 :0.25 rate=1.0
     2 :0.25 rate=0.9
     3 :0.75 rate=1.0"})]
-  #[case::dendropy_5_0_8_beast2_node_and_branch_meta(  BEAST2_NODE_AND_BRANCH_META,  NewickDialect::Beast, indoc! {"
+  #[case::dendropy_5_0_8_beast2_node_and_branch_meta(  BEAST2_NODE_AND_BRANCH_META,  NewickDialect::BEAST, indoc! {"
     - height=1.0
     - :0.25 height=0.75
     A :0.5 height=0.25 rate=1.2
     B :0.5 height=0.25 rate=0.8
     C :1.0 height=0.0"})]
-  #[case::dendropy_5_0_8_treeannotator_mcc(            TREEANNOTATOR_MCC,            NewickDialect::Beast, indoc! {"
+  #[case::dendropy_5_0_8_treeannotator_mcc(            TREEANNOTATOR_MCC,            NewickDialect::BEAST, indoc! {"
     - height=2.0 posterior=1.0
     - :0.5 height=1.5 height_95%_HPD={1.2,1.8} posterior=0.9876
     A :1.5 height=0.0 height_95%_HPD={0.0,0.0} posterior=1.0
     B :1.5 height=0.0 height_95%_HPD={0.0,0.0} posterior=1.0
     C :2.0 height=0.0 posterior=1.0"})]
-  #[case::dendropy_5_0_8_mrbayes_consensus(            MRBAYES_CONSENSUS,            NewickDialect::Beast, indoc! {"
+  #[case::dendropy_5_0_8_mrbayes_consensus(            MRBAYES_CONSENSUS,            NewickDialect::BEAST, indoc! {"
     -
     A :1.0 length_95%HPD={9.0e-02,1.1e-01} length_mean=1.0e-01 length_median=1.0e-01 prob(percent)=100 prob+-sd=100+-0 prob=1.00000000e+00 prob_range={1.00000000e+00,1.00000000e+00} prob_stddev=0.00000000e+00
     B :0.2 length_mean=2.0e-01 prob=1.00000000e+00
     C :0.3 length_mean=3.0e-01 prob=1.00000000e+00"})]
-  #[case::dendropy_5_0_8_iqtree_concordance(           IQTREE_CONCORDANCE,           NewickDialect::Beast, indoc! {"
+  #[case::dendropy_5_0_8_iqtree_concordance(           IQTREE_CONCORDANCE,           NewickDialect::BEAST, indoc! {"
     -
     A :0.1
     B :0.2
     - :0.5 gCF=33.33 gDF1/gDF2=0/33.33
     C :0.3
     D :0.4"})]
-  #[case::dendropy_5_0_8_fasttree_sh_support(          FASTTREE_SH_SUPPORT,          NewickDialect::Classic, indoc! {"
+  #[case::dendropy_5_0_8_fasttree_sh_support(          FASTTREE_SH_SUPPORT,          NewickDialect::CLASSIC, indoc! {"
     -
     A :0.1
     B :0.2
     0.950 :0.05
     C :0.3
     D :0.4"})]
-  #[case::dendropy_5_0_8_raxml_ng_bootstrap(           RAXML_NG_BOOTSTRAP,           NewickDialect::Classic, indoc! {"
+  #[case::dendropy_5_0_8_raxml_ng_bootstrap(           RAXML_NG_BOOTSTRAP,           NewickDialect::CLASSIC, indoc! {"
     -
     A :0.1
     B :0.2
     100 :0.05
     C :0.3
     D :0.4"})]
-  #[case::dendropy_5_0_8_iqtree_two_supports(          IQTREE_TWO_SUPPORTS,          NewickDialect::Classic, indoc! {"
+  #[case::dendropy_5_0_8_iqtree_two_supports(          IQTREE_TWO_SUPPORTS,          NewickDialect::CLASSIC, indoc! {"
     -
     A :0.1
     B :0.2
@@ -106,14 +108,14 @@ mod tests {
     ADH1 :0.11 E=1.1.1.1 S=yeast"})]
   #[trace]
   fn test_fixtures_match_ete3(#[case] input: &str, #[case] expected: &str) {
-    let graph = read_in(input, NewickDialect::Nhx);
+    let graph = read_in(input, NewickDialect::NHX);
 
     assert_eq!(expected, ete_view(&graph));
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::phylonet_3_8_5_cardona_enewick(      CARDONA_ENEWICK,          NewickDialect::ENewick, indoc! {"
+  #[case::phylonet_3_8_5_cardona_enewick(      CARDONA_ENEWICK,          NewickDialect::ENEWICK, indoc! {"
     f
     A | from f length=-Infinity support=-Infinity probability=-Infinity
     B | from f length=-Infinity support=-Infinity probability=-Infinity
@@ -124,7 +126,7 @@ mod tests {
     Y | from x length=-Infinity support=-Infinity probability=-Infinity
     d | from e length=-Infinity support=-Infinity probability=-Infinity
     D | from d length=-Infinity support=-Infinity probability=-Infinity"})]
-  #[case::phylonet_3_8_5_splitstree_hybrid(    SPLITSTREE_HYBRID,        NewickDialect::ENewick, indoc! {"
+  #[case::phylonet_3_8_5_splitstree_hybrid(    SPLITSTREE_HYBRID,        NewickDialect::ENEWICK, indoc! {"
     g
     e | from g length=1.0 support=-Infinity probability=-Infinity
     a | from e length=1.0 support=-Infinity probability=-Infinity
@@ -132,7 +134,7 @@ mod tests {
     b | from - length=1.0 support=-Infinity probability=-Infinity
     f | from g length=1.0 support=-Infinity probability=-Infinity
     c | from f length=1.0 support=-Infinity probability=-Infinity"})]
-  #[case::phylonet_3_8_5_rich_gamma(           PHYLONET_RICH_GAMMA,      NewickDialect::Rich,    indoc! {"
+  #[case::phylonet_3_8_5_rich_gamma(           PHYLONET_RICH_GAMMA,      NewickDialect::RICH,    indoc! {"
     -
     - | from - length=1.0 support=-Infinity probability=-Infinity
     A | from - length=1.0 support=-Infinity probability=-Infinity
@@ -140,7 +142,7 @@ mod tests {
     B | from - length=1.0 support=-Infinity probability=-Infinity
     - | from - length=1.0 support=-Infinity probability=-Infinity
     C | from - length=1.0 support=-Infinity probability=-Infinity"})]
-  #[case::phylonet_3_8_5_support_fields(       PHYLONET_SUPPORT_FIELDS,  NewickDialect::Rich,    indoc! {"
+  #[case::phylonet_3_8_5_support_fields(       PHYLONET_SUPPORT_FIELDS,  NewickDialect::RICH,    indoc! {"
     -
     - | from - length=1.0 support=100.0 probability=-Infinity
     A | from - length=1.0 support=90.0 probability=-Infinity
@@ -155,9 +157,9 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::spec_mrbayes_sample(          MRBAYES_SAMPLE,           NewickDialect::MrBayes, vec!["- ", "- :0.2", "1 :0.1", "2 :0.1", "3 :0.3"])]
-  #[case::spec_dendroscope_acceptor(    DENDROSCOPE_LGT_ACCEPTOR, NewickDialect::ENewick, vec!["r ", "c ", "A ", "x#LGT1 acceptor | ", "B ", "d ", "C "])]
-  #[case::spec_phylonet_rich_weight(    PHYLONET_RICH_WEIGHT,     NewickDialect::Rich,    vec!["- ", "- :1 support=100(field)", "A :1 support=90(field)", "B :1 support=80(field)", "C :2"])]
+  #[case::spec_mrbayes_sample(          MRBAYES_SAMPLE,           NewickDialect::MRBAYES, vec!["- ", "- :0.2", "1 :0.1", "2 :0.1", "3 :0.3"])]
+  #[case::spec_dendroscope_acceptor(    DENDROSCOPE_LGT_ACCEPTOR, NewickDialect::ENEWICK, vec!["r ", "c ", "A ", "x#LGT1 acceptor | ", "B ", "d ", "C "])]
+  #[case::spec_phylonet_rich_weight(    PHYLONET_RICH_WEIGHT,     NewickDialect::RICH,    vec!["- ", "- :1 support=100(field)", "A :1 support=90(field)", "B :1 support=80(field)", "C :2"])]
   #[trace]
   fn test_fixtures_spec_expectations(#[case] input: &str, #[case] dialect: NewickDialect, #[case] expected: Vec<&str>) {
     assert_eq!(expected, summary(&read_in(input, dialect)));
@@ -165,28 +167,28 @@ mod tests {
 
   #[test]
   fn test_fixtures_spec_rich_weight_and_rooting() {
-    let graph = read_in(PHYLONET_RICH_WEIGHT, NewickDialect::Rich);
+    let graph = read_in(PHYLONET_RICH_WEIGHT, NewickDialect::RICH);
 
     assert_eq!((Some(true), Some(0.5)), (graph.rooted(), graph.weight()));
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::beast1(          BEAST1_TREE_LOG,              NewickDialect::Beast)]
-  #[case::beast2(          BEAST2_NODE_AND_BRANCH_META,  NewickDialect::Beast)]
-  #[case::treeannotator(   TREEANNOTATOR_MCC,            NewickDialect::Beast)]
-  #[case::mrbayes_con(     MRBAYES_CONSENSUS,            NewickDialect::Beast)]
-  #[case::mrbayes_sample(  MRBAYES_SAMPLE,               NewickDialect::MrBayes)]
-  #[case::iqtree_cf(       IQTREE_CONCORDANCE,           NewickDialect::Beast)]
-  #[case::fasttree(        FASTTREE_SH_SUPPORT,          NewickDialect::Classic)]
-  #[case::raxml_ng(        RAXML_NG_BOOTSTRAP,           NewickDialect::Classic)]
-  #[case::iqtree_supports( IQTREE_TWO_SUPPORTS,          NewickDialect::Classic)]
-  #[case::forester(        FORESTER_NHX,                 NewickDialect::Nhx)]
-  #[case::cardona(         CARDONA_ENEWICK,              NewickDialect::ENewick)]
-  #[case::dendroscope(     DENDROSCOPE_LGT_ACCEPTOR,     NewickDialect::ENewick)]
-  #[case::splitstree(      SPLITSTREE_HYBRID,            NewickDialect::ENewick)]
-  #[case::phylonet_gamma(  PHYLONET_RICH_GAMMA,          NewickDialect::Rich)]
-  #[case::phylonet_weight( PHYLONET_RICH_WEIGHT,         NewickDialect::Rich)]
+  #[case::beast1(          BEAST1_TREE_LOG,              NewickDialect::BEAST)]
+  #[case::beast2(          BEAST2_NODE_AND_BRANCH_META,  NewickDialect::BEAST)]
+  #[case::treeannotator(   TREEANNOTATOR_MCC,            NewickDialect::BEAST)]
+  #[case::mrbayes_con(     MRBAYES_CONSENSUS,            NewickDialect::BEAST)]
+  #[case::mrbayes_sample(  MRBAYES_SAMPLE,               NewickDialect::MRBAYES)]
+  #[case::iqtree_cf(       IQTREE_CONCORDANCE,           NewickDialect::BEAST)]
+  #[case::fasttree(        FASTTREE_SH_SUPPORT,          NewickDialect::CLASSIC)]
+  #[case::raxml_ng(        RAXML_NG_BOOTSTRAP,           NewickDialect::CLASSIC)]
+  #[case::iqtree_supports( IQTREE_TWO_SUPPORTS,          NewickDialect::CLASSIC)]
+  #[case::forester(        FORESTER_NHX,                 NewickDialect::NHX)]
+  #[case::cardona(         CARDONA_ENEWICK,              NewickDialect::ENEWICK)]
+  #[case::dendroscope(     DENDROSCOPE_LGT_ACCEPTOR,     NewickDialect::ENEWICK)]
+  #[case::splitstree(      SPLITSTREE_HYBRID,            NewickDialect::ENEWICK)]
+  #[case::phylonet_gamma(  PHYLONET_RICH_GAMMA,          NewickDialect::RICH)]
+  #[case::phylonet_weight( PHYLONET_RICH_WEIGHT,         NewickDialect::RICH)]
   #[trace]
   fn test_fixtures_roundtrip_in_own_dialect(#[case] input: &str, #[case] dialect: NewickDialect) {
     let graph = read_in(input, dialect);
@@ -198,30 +200,66 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::beast1_all(          BEAST1_TREE_LOG,          NewickDialect::ALL.to_vec(),        Ok(NewickDialect::Beast))]
-  #[case::beast1_classic(      BEAST1_TREE_LOG,          vec![NewickDialect::Classic],       Ok(NewickDialect::Classic))]
-  #[case::beast1_nhx(          BEAST1_TREE_LOG,          vec![NewickDialect::Nhx],           Err(NewickErrorKind::Annotation))]
-  #[case::mrbayes_con_all(     MRBAYES_CONSENSUS,        NewickDialect::ALL.to_vec(),        Ok(NewickDialect::Beast))]
-  #[case::mrbayes_sample_all(  MRBAYES_SAMPLE,           NewickDialect::ALL.to_vec(),        Ok(NewickDialect::MrBayes))]
-  #[case::mrbayes_sample_beast(MRBAYES_SAMPLE,           vec![NewickDialect::Beast],         Err(NewickErrorKind::Annotation))]
-  #[case::forester_all(        FORESTER_NHX,             NewickDialect::ALL.to_vec(),        Ok(NewickDialect::Nhx))]
-  #[case::forester_beast(      FORESTER_NHX,             vec![NewickDialect::Beast],         Err(NewickErrorKind::Annotation))]
-  #[case::fasttree_all(        FASTTREE_SH_SUPPORT,      NewickDialect::ALL.to_vec(),        Ok(NewickDialect::Rich))]
-  #[case::splitstree_all(      SPLITSTREE_HYBRID,        NewickDialect::ALL.to_vec(),        Ok(NewickDialect::Rich))]
-  #[case::splitstree_classic(  SPLITSTREE_HYBRID,        vec![NewickDialect::Classic],       Ok(NewickDialect::Classic))]
-  #[case::phylonet_all(        PHYLONET_RICH_GAMMA,      NewickDialect::ALL.to_vec(),        Ok(NewickDialect::Rich))]
-  #[case::phylonet_enewick(    PHYLONET_RICH_GAMMA,      vec![NewickDialect::ENewick],       Err(NewickErrorKind::Syntax))]
-  #[case::quoted_bracket_classic("(A[&a=\"x]y\"],B);",   vec![NewickDialect::Classic],       Err(NewickErrorKind::Syntax))]
+  #[case::beast1_beast(           BEAST1_TREE_LOG,         NewickDialect::BEAST,    Ok(()))]
+  #[case::beast1_classic(         BEAST1_TREE_LOG,         NewickDialect::CLASSIC,  Ok(()))]
+  #[case::beast1_nhx(             BEAST1_TREE_LOG,         NewickDialect::NHX,      Err(NewickErrorKind::Annotation))]
+  #[case::mrbayes_con_beast(      MRBAYES_CONSENSUS,       NewickDialect::BEAST,    Ok(()))]
+  #[case::mrbayes_sample_mrbayes( MRBAYES_SAMPLE,          NewickDialect::MRBAYES,  Ok(()))]
+  #[case::mrbayes_sample_beast(   MRBAYES_SAMPLE,          NewickDialect::BEAST,    Err(NewickErrorKind::Annotation))]
+  #[case::forester_nhx(           FORESTER_NHX,            NewickDialect::NHX,      Ok(()))]
+  #[case::forester_beast(         FORESTER_NHX,            NewickDialect::BEAST,    Err(NewickErrorKind::Annotation))]
+  #[case::fasttree_classic(       FASTTREE_SH_SUPPORT,     NewickDialect::CLASSIC,  Ok(()))]
+  #[case::splitstree_enewick(     SPLITSTREE_HYBRID,       NewickDialect::ENEWICK,  Ok(()))]
+  #[case::splitstree_classic(     SPLITSTREE_HYBRID,       NewickDialect::CLASSIC,  Ok(()))]
+  #[case::phylonet_rich(          PHYLONET_RICH_GAMMA,     NewickDialect::RICH,     Ok(()))]
+  #[case::phylonet_enewick(       PHYLONET_RICH_GAMMA,     NewickDialect::ENEWICK,  Err(NewickErrorKind::Syntax))]
+  #[case::treeknit_enewick_beast( TREEKNIT_ARG,            NewickDialect::ENEWICK_BEAST, Ok(()))]
+  #[case::quoted_bracket_classic( "(A[&a=\"x]y\"],B);",  NewickDialect::CLASSIC,  Err(NewickErrorKind::Syntax))]
   #[trace]
-  fn test_fixtures_dialect_selection(#[case] input: &str, #[case] dialects: Vec<NewickDialect>, #[case] expected: Result<NewickDialect, NewickErrorKind>) {
+  fn test_fixtures_read_in_dialect(#[case] input: &str, #[case] dialect: NewickDialect, #[case] expected: Result<(), NewickErrorKind>) {
     let options = NewickReadOptions {
-      dialects,
+      dialect,
       ..NewickReadOptions::default()
     };
 
-    let actual = newick_from_str(input, &options).map(|tree| tree.dialect).map_err(|error| error.kind);
+    let actual = newick_from_str(input, &options).map(|_| ()).map_err(|error| error.kind);
 
     assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_fixtures_spec_treeknit_arg() {
+    let graph = read_in(TREEKNIT_ARG, NewickDialect::ENEWICK_BEAST);
+
+    let x = graph.children(graph.root()).nth(1).unwrap();
+    let segments = |value: &[f64]| {
+      Some(NewickValue::Array(
+        value.iter().map(|&v| NewickValue::Number(v)).collect::<Vec<_>>().into(),
+      ))
+    };
+    assert_eq!(
+      (
+        vec!["GlobalRoot :0".to_owned(), "A :1".to_owned(), "x#H1 :0.5".to_owned()],
+        segments(&[0.0, 1.0]),
+        segments(&[0.0, 1.0]),
+        segments(&[0.0]),
+        0,
+      ),
+      (
+        summary(&graph),
+        graph.node(graph.root()).annotation("segments").cloned(),
+        graph
+          .node(graph.children(graph.root()).next().unwrap())
+          .annotation("segments")
+          .cloned(),
+        graph
+          .edge(graph.parent_edges(x)[0])
+          .data()
+          .annotation("segments")
+          .cloned(),
+        graph.node(x).comments().len(),
+      )
+    );
   }
 
   mod helpers {
@@ -236,7 +274,7 @@ mod tests {
 
     pub(super) fn read_in(text: &str, dialect: NewickDialect) -> NewickGraph {
       let options = NewickReadOptions {
-        dialects: vec![dialect],
+        dialect,
         ..NewickReadOptions::default()
       };
       read_with(text, &options).graph

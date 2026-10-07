@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::dialect::NewickDialect;
+  use crate::dialect::{NewickAnnotations, NewickDialect, NewickStructure};
   use crate::number::NumberFormat;
   use crate::read::options::NewickReadOptions;
   use crate::read::stream::newick_from_str;
@@ -10,16 +10,19 @@ mod tests {
   use proptest::prelude::*;
   use rstest::rstest;
 
-  #[rustfmt::skip]
   #[rstest]
-  #[case::classic(  NewickDialect::Classic)]
-  #[case::beast(    NewickDialect::Beast)]
-  #[case::mrbayes(  NewickDialect::MrBayes)]
-  #[case::nhx(      NewickDialect::Nhx)]
-  #[case::enewick(  NewickDialect::ENewick)]
-  #[case::rich(     NewickDialect::Rich)]
   #[trace]
-  fn test_prop_roundtrip_dialect(#[case] dialect: NewickDialect) {
+  fn test_prop_roundtrip_dialect(
+    #[values(NewickStructure::Classic, NewickStructure::ENewick, NewickStructure::Rich)] structure: NewickStructure,
+    #[values(
+      NewickAnnotations::Plain,
+      NewickAnnotations::Beast,
+      NewickAnnotations::Nhx,
+      NewickAnnotations::MrBayes
+    )]
+    annotations: NewickAnnotations,
+  ) {
+    let dialect = NewickDialect::new(structure, annotations);
     proptest!(|(graph in gen_graph(dialect), quoting in prop_oneof![Just(Quoting::WhenNeeded), Just(Quoting::Always)], indent in proptest::option::of(0_usize..3), point_zero in any::<bool>())| {
       let options = NewickWriteOptions {
         quoting,
@@ -27,7 +30,7 @@ mod tests {
         numbers: NumberFormat { point_zero, ..NumberFormat::default() },
         ..NewickWriteOptions::new(dialect)
       };
-      let read_options = NewickReadOptions { dialects: vec![dialect], ..NewickReadOptions::default() };
+      let read_options = NewickReadOptions { dialect, ..NewickReadOptions::default() };
 
       let written = newick_to_string(&graph, &options).unwrap();
       let tree = newick_from_str(&written, &read_options).map_err(|error| TestCaseError::fail(format!("{error}\nWritten: {written}")))?;
@@ -38,13 +41,14 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::beast(    NewickDialect::Beast)]
-  #[case::rich(     NewickDialect::Rich)]
+  #[case::beast(          NewickDialect::BEAST)]
+  #[case::rich(           NewickDialect::RICH)]
+  #[case::enewick_beast(  NewickDialect::ENEWICK_BEAST)]
   #[trace]
   fn test_prop_roundtrip_write_idempotent(#[case] dialect: NewickDialect) {
     proptest!(|(graph in gen_graph(dialect))| {
       let options = NewickWriteOptions::new(dialect);
-      let read_options = NewickReadOptions { dialects: vec![dialect], ..NewickReadOptions::default() };
+      let read_options = NewickReadOptions { dialect, ..NewickReadOptions::default() };
 
       let first = newick_to_string(&graph, &options).unwrap();
       let second = newick_to_string(&newick_from_str(&first, &read_options).unwrap().graph, &options).unwrap();
@@ -53,25 +57,16 @@ mod tests {
     });
   }
 
-  #[test]
-  fn test_prop_roundtrip_all_dialects_read_back_rich_output() {
-    proptest!(|(graph in gen_graph(NewickDialect::Rich))| {
-      let written = newick_to_string(&graph, &NewickWriteOptions::new(NewickDialect::Rich)).unwrap();
-
-      let tree = newick_from_str(&written, &NewickReadOptions::all_dialects()).unwrap();
-
-      prop_assert!(graph.eq_ordered(&tree.graph), "Written: {written}");
-    });
-  }
-
   mod generators {
-    use crate::dialect::{CommentKind, NewickDialect};
+    use crate::dialect::{NewickAnnotations, NewickDialect};
+    use crate::grammar::{Rule, matches};
     use crate::model::comment::{
       EdgeComment, EdgeField, LabelSide, MrBayesComment, MrBayesKind, NewickComment, NodeComment, ValueSide,
     };
     use crate::model::data::{NewickEdgeData, NewickHybrid, NewickNodeData, SupportSource};
     use crate::model::graph::NewickGraph;
     use crate::model::value::NewickValue;
+    use crate::write::conversions::{Conversion, DataKind, conversion};
     use proptest::collection::vec;
     use proptest::prelude::*;
 
@@ -85,6 +80,7 @@ mod tests {
 
     #[derive(Clone, Debug)]
     pub(super) struct GenEdge {
+      occurrence: Vec<(bool, NewickComment)>,
       length: Option<f64>,
       support: Option<(Vec<f64>, bool)>,
       probability: Option<f64>,
@@ -137,8 +133,12 @@ mod tests {
         rooted: Option<bool>,
         weight: Option<f64>,
       ) -> NewickGraph {
-        let features = self.dialect.features();
-        let mut graph = NewickGraph::new(self.node_data(root, false));
+        let (root_data, root_comments) = self.node_data(root, false);
+        let root_comments = root_comments
+          .into_iter()
+          .filter(|comment| !root.children.is_empty() || self.tree_start_writable(&comment.comment))
+          .collect();
+        let mut graph = NewickGraph::new(with_comments(root_data, root_comments));
         let is_internal = !root.children.is_empty();
         *graph.root_edge_mut() = self.edge_data(root_edge, is_internal, root.name.is_some(), false);
         self.add_children(&mut graph, 0, root);
@@ -156,45 +156,59 @@ mod tests {
             .filter(|&node| !below[node] && !graph.children(node).any(|child| child == hybrid))
             .collect();
           if let Some(&parent) = candidates.get(parent_pick % candidates.len().max(1)) {
-            let data = self.edge_data(edge, false, true, true);
+            let mut data = self.edge_data(edge, false, true, true);
+            data
+              .occurrence_comments_mut()
+              .extend(occurrence_comments(&edge.occurrence, true));
             graph.add_edge(parent, hybrid, data).unwrap();
           }
         }
-        graph.set_rooted(rooted.filter(|_| features.rooting));
-        graph.set_weight(weight.filter(|_| features.weight));
+        graph.set_rooted(rooted.filter(|_| self.dialect.rooting()));
+        graph.set_weight(weight.filter(|_| self.dialect.structure.weight()));
         graph
+      }
+
+      fn tree_start_writable(&self, comment: &NewickComment) -> bool {
+        let NewickComment::Plain(text) = comment else {
+          return true;
+        };
+        let bracketed = format!("[{text}]");
+        [
+          (Rule::rooting_exact, DataKind::RootingPlainComments),
+          (Rule::weight_exact, DataKind::WeightPlainComments),
+        ]
+        .into_iter()
+        .all(|(rule, data)| conversion(self.dialect, data) == Conversion::Keep || !matches(rule, &bracketed))
       }
 
       fn add_children(&mut self, graph: &mut NewickGraph, parent: usize, node: &GenNode) {
         for (child, edge) in &node.children {
-          let data = self.node_data(child, true);
+          let (data, comments) = self.node_data(child, true);
           let has_label = data.name().is_some() || data.hybrid().is_some();
           let is_hybrid = data.hybrid().is_some();
-          let edge = self.edge_data(edge, !child.children.is_empty(), has_label, is_hybrid);
+          let mut edge = self.edge_data(edge, !child.children.is_empty(), has_label, is_hybrid);
+          let data = if is_hybrid {
+            edge.occurrence_comments_mut().extend(comments);
+            data
+          } else {
+            with_comments(data, comments)
+          };
           let idx = graph.add_child(parent, edge, data).unwrap();
           self.add_children(graph, idx, child);
         }
       }
 
-      fn node_data(&mut self, node: &GenNode, may_be_hybrid: bool) -> NewickNodeData {
+      fn node_data(&mut self, node: &GenNode, may_be_hybrid: bool) -> (NewickNodeData, Vec<NodeComment>) {
         let mut data = NewickNodeData::new();
         if let Some(name) = &node.name {
           data = data.with_name(name.clone());
         }
-        if node.hybrid && may_be_hybrid && self.dialect.features().hybrid_tags {
+        if node.hybrid && may_be_hybrid && self.dialect.structure.hybrid_tags() {
           self.next_hybrid += 1;
           data = data.with_hybrid(NewickHybrid::new(Some("H".to_owned()), self.next_hybrid));
         }
         let has_label = data.name().is_some() || data.hybrid().is_some();
-        for (before, comment) in &node.comments {
-          let position = if *before && has_label {
-            LabelSide::BeforeLabel
-          } else {
-            LabelSide::AfterLabel
-          };
-          data = data.with_comment(NodeComment::new(position, comment.clone()));
-        }
-        data
+        (data, occurrence_comments(&node.comments, has_label))
       }
 
       fn edge_data(
@@ -204,11 +218,11 @@ mod tests {
         child_labeled: bool,
         child_hybrid: bool,
       ) -> NewickEdgeData {
-        let features = self.dialect.features();
+        let field_count = self.dialect.structure.field_count();
         let mut data = NewickEdgeData::new().with_acceptor(edge.acceptor && child_hybrid);
         data.set_branch_length(edge.length);
         match &edge.support {
-          Some((values, true)) if features.rich_fields && !values.is_empty() => {
+          Some((values, true)) if field_count > 1 && !values.is_empty() => {
             data.set_support(vec![values[0]], SupportSource::Field);
           },
           Some((values, false)) if child_internal && !child_labeled && !child_hybrid && !values.is_empty() => {
@@ -216,7 +230,7 @@ mod tests {
           },
           Some(_) | None => {},
         }
-        if features.rich_fields {
+        if field_count > 1 {
           data.set_probability(edge.probability);
         }
         let has_value = [
@@ -225,7 +239,7 @@ mod tests {
           data.probability().is_some(),
         ];
         for (field, after, comment) in &edge.comments {
-          let index = field % features.field_count();
+          let index = field % field_count;
           let side = if *after && has_value[index] {
             ValueSide::AfterValue
           } else {
@@ -235,6 +249,24 @@ mod tests {
         }
         data
       }
+    }
+
+    fn occurrence_comments(comments: &[(bool, NewickComment)], has_label: bool) -> Vec<NodeComment> {
+      comments
+        .iter()
+        .map(|(before, comment)| {
+          let position = if *before && has_label {
+            LabelSide::BeforeLabel
+          } else {
+            LabelSide::AfterLabel
+          };
+          NodeComment::new(position, comment.clone())
+        })
+        .collect()
+    }
+
+    fn with_comments(data: NewickNodeData, comments: Vec<NodeComment>) -> NewickNodeData {
+      comments.into_iter().fold(data, NewickNodeData::with_comment)
     }
 
     fn reachable_from(graph: &NewickGraph, start: usize) -> Vec<bool> {
@@ -260,34 +292,42 @@ mod tests {
 
     fn gen_edge(dialect: NewickDialect) -> impl Strategy<Value = GenEdge> {
       (
+        vec((any::<bool>(), gen_comment(dialect)), 0..2),
         proptest::option::of(gen_finite()),
         proptest::option::of((vec(gen_finite(), 1..3), any::<bool>())),
         proptest::option::of(gen_finite()),
         any::<bool>(),
         vec((0_usize..3, any::<bool>(), gen_comment(dialect)), 0..2),
       )
-        .prop_map(|(length, support, probability, acceptor, comments)| GenEdge {
-          length,
-          support,
-          probability,
-          acceptor,
-          comments,
-        })
+        .prop_map(
+          |(occurrence, length, support, probability, acceptor, comments)| GenEdge {
+            occurrence,
+            length,
+            support,
+            probability,
+            acceptor,
+            comments,
+          },
+        )
     }
 
     fn gen_comment(dialect: NewickDialect) -> BoxedStrategy<NewickComment> {
-      let features = dialect.features();
-      let plain = "[a-z \"'=,{}:;()#&]{0,6}(\\[[a-z;]{0,3}\\])?[a-z ]{0,3}"
-        .prop_filter(
-          "a reserved dialect reads '[&' as an annotation",
-          move |text: &String| !(features.reserves_annotations && text.starts_with('&')),
-        )
-        .prop_map(NewickComment::Plain);
-      match features.comments {
-        CommentKind::Plain => plain.boxed(),
-        CommentKind::Beast => prop_oneof![plain, gen_beast_comment()].boxed(),
-        CommentKind::Nhx => prop_oneof![plain, gen_nhx_comment()].boxed(),
-        CommentKind::MrBayes => prop_oneof![plain, gen_mrbayes_comment()].boxed(),
+      let annotations = dialect.annotations;
+      let tree_comment = prop_oneof![Just("&R"), Just("&U"), Just("&W 1")].prop_map(str::to_owned);
+      let plain = prop_oneof![
+        4 => "[a-z \"'=,{}:;()#&]{0,6}(\\[[a-z;]{0,3}\\])?[a-z ]{0,3}",
+        1 => tree_comment,
+      ]
+      .prop_filter(
+        "an annotation convention reads '[&' as an annotation",
+        move |text: &String| !(annotations.reserves_annotations() && text.starts_with('&')),
+      )
+      .prop_map(NewickComment::Plain);
+      match annotations {
+        NewickAnnotations::Plain => plain.boxed(),
+        NewickAnnotations::Beast => prop_oneof![plain, gen_beast_comment()].boxed(),
+        NewickAnnotations::Nhx => prop_oneof![plain, gen_nhx_comment()].boxed(),
+        NewickAnnotations::MrBayes => prop_oneof![plain, gen_mrbayes_comment()].boxed(),
       }
     }
 

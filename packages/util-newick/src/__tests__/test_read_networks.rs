@@ -21,7 +21,7 @@ mod tests {
   #[case::branch_lengths(    "((A)x#H1:1,(x#H1:2,B));",             vec!["- ", "x#H1 :2 | :1", "A ", "- ", "B "])]
   #[trace]
   fn test_read_networks_enewick(#[case] input: &str, #[case] expected: Vec<&str>) {
-    assert_eq!(expected, summary(&read_with(input, &options(NewickDialect::ENewick)).graph));
+    assert_eq!(expected, summary(&read_with(input, &options(NewickDialect::ENEWICK)).graph));
   }
 
   #[rustfmt::skip]
@@ -34,7 +34,7 @@ mod tests {
   #[case::index_too_large(  "(A#H4294967296,B);",      r##"line 1, column 3: The hybrid node index in "#H4294967296" is not a valid index: number too large to fit in target type"##)]
   #[trace]
   fn test_read_networks_invalid(#[case] input: &str, #[case] expected: &str) {
-    assert_eq!(expected, read_error(input, &options(NewickDialect::ENewick)));
+    assert_eq!(expected, read_error(input, &options(NewickDialect::ENEWICK)));
   }
 
   #[rustfmt::skip]
@@ -46,7 +46,7 @@ mod tests {
   #[case::phylonet_gamma(     "((A,(B)#H1:::0.3)C,(#H1:::0.7,D)E)F;", vec!["F ", "C ", "A ", "-#H1 p=0.3 | p=0.7", "B ", "E ", "D "])]
   #[trace]
   fn test_read_networks_rich_fields(#[case] input: &str, #[case] expected: Vec<&str>) {
-    assert_eq!(expected, summary(&read_with(input, &options(NewickDialect::Rich)).graph));
+    assert_eq!(expected, summary(&read_with(input, &options(NewickDialect::RICH)).graph));
   }
 
   #[rustfmt::skip]
@@ -56,14 +56,14 @@ mod tests {
   #[case::none(                 "(A,B);",               (None,        None))]
   #[trace]
   fn test_read_networks_rich_tree_comments(#[case] input: &str, #[case] expected: (Option<bool>, Option<f64>)) {
-    let graph = read_with(input, &options(NewickDialect::Rich)).graph;
+    let graph = read_with(input, &options(NewickDialect::RICH)).graph;
 
     assert_eq!(expected, (graph.rooted(), graph.weight()));
   }
 
   #[test]
   fn test_read_networks_rich_field_comments() {
-    let tree = read_with("(A:1[c]:[d]80,B);", &options(NewickDialect::Rich));
+    let tree = read_with("(A:1[c]:[d]80,B);", &options(NewickDialect::RICH));
 
     let edge = tree.graph.edge(tree.graph.child_edges(tree.graph.root())[0]).data();
     let expected = vec![
@@ -85,7 +85,7 @@ mod tests {
   fn test_read_networks_second_rooting_comment_is_error() {
     assert_eq!(
       "line 1, column 5: The tree has more than one rooting comment",
-      read_error("[&R][&U](A);", &options(NewickDialect::Rich))
+      read_error("[&R][&U](A);", &options(NewickDialect::RICH))
     );
   }
 
@@ -102,7 +102,7 @@ mod tests {
 
     pub(super) fn options(dialect: NewickDialect) -> NewickReadOptions {
       NewickReadOptions {
-        dialects: vec![dialect],
+        dialect,
         ..NewickReadOptions::default()
       }
     }

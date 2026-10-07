@@ -284,9 +284,12 @@ fn write_result_outputs(
   } = output;
   let (maps, mutation_counts) = timetree_output_maps(&graph, sequences, inputs.filter, inputs.mutation_units)?;
 
-  let topology_order = args
-    .topology_order
-    .resolve_topology_order(&graph, &names, Some(inputs.input_leaf_order))?;
+  let topology_order = args.topology_order.resolve_topology_order(
+    &graph,
+    &names,
+    Some(inputs.input_leaf_order),
+    args.tree_dialect.dialect(),
+  )?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
 
   let trees = TimetreeTrees {

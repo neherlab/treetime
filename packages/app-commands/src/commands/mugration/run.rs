@@ -34,7 +34,7 @@ pub fn run_mugration(
 ) -> Result<(), Report> {
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
-  let parse = read_input_tree(&mugration_args.tree, log)?;
+  let parse = read_input_tree(&mugration_args.tree, mugration_args.tree_dialect.dialect(), log)?;
   let names = parse.names();
   let graph: Graph = parse.graph;
   let branch_lengths = parse.branch_lengths;
@@ -90,9 +90,12 @@ pub fn run_mugration(
   };
   let mut output = pipeline::run(&params, input, &names, cancel, log).map_err(|err| err.into_report())?;
 
-  let topology_order = mugration_args
-    .topology_order
-    .resolve_topology_order(&output.graph, &names, None)?;
+  let topology_order = mugration_args.topology_order.resolve_topology_order(
+    &output.graph,
+    &names,
+    None,
+    mugration_args.tree_dialect.dialect(),
+  )?;
   topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 

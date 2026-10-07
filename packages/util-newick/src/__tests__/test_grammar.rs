@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::grammar::{Rule, matches};
-  use helpers::{prefix, tokens};
+  use helpers::{pair_rule_lines, prefix, tokens};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
@@ -122,11 +122,13 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::quote_in_plain_comments( Rule::classic_strict, "(A[5\" tall],B[say \"hi\"]);",  "classic_strict(open:'(' label(unquoted_label_plain:'A') plain_comment:'[5\" tall]' comma:',' label(unquoted_label_plain:'B') plain_comment:'[say \"hi\"]' close:')' end:';' EOI:'')")]
-  #[case::rich_fields(             Rule::rich_strict,    "[&U](A:1::0.4)#H1;",             "rich_strict(rooting(rooting_value:'U') open:'(' network_label(unquoted_label:'A') colon:':' number:'1' colon:':' colon:':' number:'0.4' close:')' network_label(hybrid_tag(hybrid_marker:'#' hybrid_kind:'H' hybrid_index:'1')) end:';' EOI:'')")]
-  #[case::beast_branch(            Rule::beast_strict,   "(A:[&r=1]2[c]);",                "beast_strict(open:'(' label(unquoted_label_plain:'A') colon:':' beast_comment(beast_pair(beast_bare_key:'r' number:'1')) number:'2' plain_comment:'[c]' close:')' end:';' EOI:'')")]
-  #[case::comment_before_open(     Rule::classic_strict, "[c](A);",                        "classic_strict(plain_comment:'[c]' open:'(' label(unquoted_label_plain:'A') close:')' end:';' EOI:'')")]
-  #[case::enewick_annotation(      Rule::enewick_strict, "(A[&a=1]);",                     "enewick_strict(open:'(' network_label(unquoted_label:'A') malformed_annotation:'[&a=1]' close:')' end:';' EOI:'')")]
+  #[case::quote_in_plain_comments( Rule::classic_plain_strict, "(A[5\" tall],B[say \"hi\"]);",  "classic_plain_strict(open:'(' label(unquoted_label_plain:'A') plain_comment:'[5\" tall]' comma:',' label(unquoted_label_plain:'B') plain_comment:'[say \"hi\"]' close:')' end:';' EOI:'')")]
+  #[case::rich_fields(             Rule::rich_plain_strict,    "[&U](A:1::0.4)#H1;",             "rich_plain_strict(rooting(rooting_value:'U') open:'(' network_label(unquoted_label:'A') colon:':' number:'1' colon:':' colon:':' number:'0.4' close:')' network_label(hybrid_tag(hybrid_marker:'#' hybrid_kind:'H' hybrid_index:'1')) end:';' EOI:'')")]
+  #[case::beast_branch(            Rule::classic_beast_strict,   "(A:[&r=1]2[c]);",                "classic_beast_strict(open:'(' label(unquoted_label_plain:'A') colon:':' beast_comment(beast_pair(beast_bare_key:'r' number:'1')) number:'2' plain_comment:'[c]' close:')' end:';' EOI:'')")]
+  #[case::comment_before_open(     Rule::classic_plain_strict, "[c](A);",                        "classic_plain_strict(plain_comment:'[c]' open:'(' label(unquoted_label_plain:'A') close:')' end:';' EOI:'')")]
+  #[case::enewick_plain_comment(   Rule::enewick_plain_strict, "(A[&a=1]);",               "enewick_plain_strict(open:'(' network_label(unquoted_label:'A') plain_comment:'[&a=1]' close:')' end:';' EOI:'')")]
+  #[case::enewick_beast_comment(   Rule::enewick_beast_strict, "(A#H1[&a=1]);",            "enewick_beast_strict(open:'(' network_label(unquoted_label:'A' hybrid_tag(hybrid_marker:'#' hybrid_kind:'H' hybrid_index:'1')) beast_comment(beast_pair(beast_bare_key:'a' number:'1')) close:')' end:';' EOI:'')")]
+  #[case::plain_trailing_comment(  Rule::classic_plain_strict, "(A);[&a=\"]",             "classic_plain_strict(open:'(' label(unquoted_label_plain:'A') close:')' end:';' scan_plain_comment:'[&a=\"]' EOI:'')")]
   #[trace]
   fn test_grammar_tree_tokens(#[case] rule: Rule, #[case] input: &str, #[case] expected: &str) {
     assert_eq!(Some(expected.to_owned()), tokens(rule, input));
@@ -134,11 +136,11 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::classic_two_fields(   Rule::classic_strict,  "(A:1:2);")]
-  #[case::beast_second_label(   Rule::beast_strict,    "(A B);")]
-  #[case::strict_bom(           Rule::classic_strict,  "\u{feff}(A);")]
-  #[case::strict_no_semicolon(  Rule::classic_strict,  "(A)")]
-  #[case::rich_four_fields(     Rule::rich_strict,     "(A:1:2:3:4);")]
+  #[case::classic_two_fields(   Rule::classic_plain_strict,  "(A:1:2);")]
+  #[case::beast_second_label(   Rule::classic_beast_strict,    "(A B);")]
+  #[case::strict_bom(           Rule::classic_plain_strict,  "\u{feff}(A);")]
+  #[case::strict_no_semicolon(  Rule::classic_plain_strict,  "(A)")]
+  #[case::rich_four_fields(     Rule::rich_plain_strict,     "(A:1:2:3:4);")]
   #[trace]
   fn test_grammar_tree_rejects(#[case] rule: Rule, #[case] input: &str) {
     assert_eq!(None, tokens(rule, input));
@@ -146,8 +148,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::tolerant_bom(           Rule::classic_tolerant, "\u{feff}(A)")]
-  #[case::tolerant_no_semicolon(  Rule::beast_tolerant,   "(A[&a=1])")]
+  #[case::tolerant_bom(           Rule::classic_plain_tolerant, "\u{feff}(A)")]
+  #[case::tolerant_no_semicolon(  Rule::classic_beast_tolerant,   "(A[&a=1])")]
   #[trace]
   fn test_grammar_tolerant_accepts(#[case] rule: Rule, #[case] input: &str) {
     assert_ne!(None, tokens(rule, input));
@@ -180,6 +182,12 @@ mod tests {
   #[case::mrbayes_token(      Rule::mrbayes_token_exact,  "a]",        false)]
   #[case::plain_balanced(     Rule::plain_comment_exact,  "[a[b]]",    true)]
   #[case::plain_unbalanced(   Rule::plain_comment_exact,  "[a]b]",     false)]
+  #[case::rooting_upper(      Rule::rooting_exact,        "[&R]",      true)]
+  #[case::rooting_lower(      Rule::rooting_exact,        "[&u]",      true)]
+  #[case::rooting_other(      Rule::rooting_exact,        "[&x]",      false)]
+  #[case::weight(             Rule::weight_exact,         "[&W 1]",    true)]
+  #[case::weight_lower(       Rule::weight_exact,         "[&w 0.5]",  true)]
+  #[case::weight_no_number(   Rule::weight_exact,         "[&W]",      false)]
   #[trace]
   fn test_grammar_exact_rules(#[case] rule: Rule, #[case] input: &str, #[case] expected: bool) {
     assert_eq!(expected, matches(rule, input));
@@ -197,6 +205,10 @@ mod tests {
   #[case::open_string(        Rule::tree_scan,       "(A[&a=\"x];",             Some("(A"))]
   #[case::final_open_comment( Rule::tree_scan_final, "(A[x;",                    Some("(A[x"))]
   #[case::final_no_semicolon( Rule::tree_scan_final, "(A,B)",                    Some("(A,B)"))]
+  #[case::plain_string(       Rule::tree_scan_plain,       "(A[&a=\"x];y\"]);(B);", Some("(A[&a=\"x]"))]
+  #[case::plain_open_comment( Rule::tree_scan_plain,       "(A[x;",                    Some("(A"))]
+  #[case::plain_open_quote(   Rule::tree_scan_plain,       "(A,'x;",                   Some("(A,"))]
+  #[case::plain_final_open(   Rule::tree_scan_plain_final, "(A[x;",                    Some("(A[x"))]
   #[trace]
   fn test_grammar_tree_scan(#[case] rule: Rule, #[case] input: &str, #[case] expected: Option<&str>) {
     assert_eq!(expected.map(str::to_owned), prefix(rule, input));
@@ -213,9 +225,66 @@ mod tests {
     assert_eq!(expected, matches(Rule::trivia_only, input));
   }
 
+  #[test]
+  fn test_grammar_pair_rules_follow_one_template() {
+    let grammar: Vec<&str> = include_str!("../newick.pest").lines().collect();
+
+    let missing: Vec<String> = pair_rule_lines()
+      .into_iter()
+      .filter(|line| !grammar.contains(&line.as_str()))
+      .collect();
+
+    assert_eq!(Vec::<String>::new(), missing);
+  }
+
   mod helpers {
+    use crate::dialect::{NewickAnnotations, NewickDialect};
     use crate::grammar::{Rule, parse};
     use pest::iterators::{Pair, Pairs};
+
+    pub(super) fn pair_rule_lines() -> Vec<String> {
+      let per_convention = NewickAnnotations::ALL.into_iter().flat_map(|annotations| {
+        let a = annotations.name();
+        let comment = if annotations.reserves_annotations() {
+          format!("{a}_comment | malformed_annotation | plain_comment")
+        } else {
+          "plain_comment".to_owned()
+        };
+        [
+          format!("{a}_any_comment = _{{ {comment} }}"),
+          format!("{a}_open = _{{ {a}_any_comment* ~ open }}"),
+          format!("{a}_field = _{{ colon ~ {a}_any_comment* ~ number? ~ {a}_any_comment* }}"),
+          format!("{a}_comment_only = {{ SOI ~ {a}_any_comment ~ EOI }}"),
+        ]
+      });
+      let per_pair = NewickDialect::pairs().flat_map(|dialect| {
+        let (s, a) = (dialect.structure.name(), dialect.annotations.name());
+        let label = if dialect.structure.hybrid_tags() { "network_label" } else { "label" };
+        let fields = match dialect.structure.field_count() {
+          1 => format!("{a}_field?"),
+          _ => format!("({a}_field ~ {a}_field? ~ {a}_field?)?"),
+        };
+        let preamble_items: Vec<&str> = [("rooting", dialect.rooting()), ("weight", dialect.structure.weight())]
+          .into_iter()
+          .filter_map(|(item, holds)| holds.then_some(item))
+          .collect();
+        let trailing = if dialect.annotations.reserves_annotations() { "scan_comment" } else { "scan_plain_comment" };
+        let mut lines = vec![
+          format!("{s}_{a}_tail = _{{ {a}_any_comment* ~ {label}? ~ {a}_any_comment* ~ {fields} }}"),
+          format!("{s}_{a}_items = _{{ {a}_open* ~ {s}_{a}_tail ~ (comma ~ {a}_open* ~ {s}_{a}_tail | close ~ {s}_{a}_tail)* }}"),
+        ];
+        let preamble = if preamble_items.is_empty() {
+          String::new()
+        } else {
+          lines.push(format!("{s}_{a}_preamble = _{{ ({} | {a}_any_comment)* }}", preamble_items.join(" | ")));
+          format!("{s}_{a}_preamble ~ ")
+        };
+        lines.push(format!("{s}_{a}_strict = {{ SOI ~ !bom ~ {preamble}{s}_{a}_items ~ end ~ {trailing}* ~ EOI }}"));
+        lines.push(format!("{s}_{a}_tolerant = {{ SOI ~ bom? ~ {preamble}{s}_{a}_items ~ end? ~ {trailing}* ~ EOI }}"));
+        lines
+      });
+      per_convention.chain(per_pair).collect()
+    }
 
     pub(super) fn tokens(rule: Rule, input: &str) -> Option<String> {
       let pairs = parse(rule, input).ok()?;

@@ -1,4 +1,3 @@
-use crate::dialect::NewickDialect;
 use crate::grammar;
 use crate::grammar::comment_rule;
 use crate::model::comment::NewickComment;
@@ -9,8 +8,8 @@ use crate::read::comments::{read_comment, unquote};
 use crate::read::context::MapContext;
 use crate::read::error::{Location, NewickError, NewickErrorKind, NewickWarning, TextIndex};
 use crate::read::options::{NewickReadOptions, ReadMode};
-use crate::read::select::{read_tree_text, syntax_error};
 use crate::read::source::{Scan, TextSource, scan_to_semicolon};
+use crate::read::tree_text::{read_tree_text, syntax_error};
 use pest::error::{Error, ErrorVariant, InputLocation};
 use pest::iterators::Pair;
 use std::collections::{BTreeMap, BTreeSet};
@@ -418,7 +417,7 @@ impl CommandReader<'_> {
     let mut tree = read_tree_text(newick, index.locate(newick_start), self.options)?;
     let mut comments = Vec::new();
     for (text, location) in comment_texts {
-      let comment = tree_comment(text, location, &mut tree.warnings, self.options, tree.dialect)?;
+      let comment = tree_comment(text, location, &mut tree.warnings, self.options)?;
       comments.push(comment);
     }
     self.resolve_leaf_names(&mut tree.graph, &mut tree.warnings, at)?;
@@ -472,11 +471,11 @@ fn tree_comment(
   at: Location,
   warnings: &mut Vec<NewickWarning>,
   options: &NewickReadOptions,
-  dialect: NewickDialect,
 ) -> Result<NewickComment, NewickError> {
   let index = TextIndex::new(text, at);
-  let mut pairs = grammar::parse(comment_rule(dialect), text).map_err(|error| syntax_error(&error, &index))?;
-  let mut context = MapContext::new(options, options.mode, &index);
+  let mut pairs =
+    grammar::parse(comment_rule(options.dialect.annotations), text).map_err(|error| syntax_error(&error, &index))?;
+  let mut context = MapContext::new(options, &index);
   let comment = pairs
     .next()
     .and_then(|only| only.into_inner().next())

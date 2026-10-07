@@ -5,20 +5,10 @@ use smart_default::SmartDefault;
 
 #[derive(Clone, Debug, SmartDefault)]
 pub struct NewickReadOptions {
-  #[default(vec![NewickDialect::Classic])]
-  pub dialects: Vec<NewickDialect>,
+  pub dialect: NewickDialect,
   pub mode: ReadMode,
   pub internal_label: InternalLabel,
   pub underscores_as_spaces: bool,
-}
-
-impl NewickReadOptions {
-  pub fn all_dialects() -> Self {
-    Self {
-      dialects: NewickDialect::ALL.to_vec(),
-      ..Self::default()
-    }
-  }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -48,6 +38,5 @@ pub enum InternalLabel {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NewickTree {
   pub graph: NewickGraph,
-  pub dialect: NewickDialect,
   pub warnings: Vec<NewickWarning>,
 }

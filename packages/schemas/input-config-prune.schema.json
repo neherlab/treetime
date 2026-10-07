@@ -21,6 +21,26 @@
       "x-unset": true,
       "x-cli-flag": "--tree"
     },
+    "tree_dialect": {
+      "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
+      "type": "string",
+      "enum": [
+        "classic,plain",
+        "classic,beast",
+        "classic,nhx",
+        "classic,mrbayes",
+        "enewick,plain",
+        "enewick,beast",
+        "enewick,nhx",
+        "enewick,mrbayes",
+        "rich,plain",
+        "rich,beast",
+        "rich,nhx",
+        "rich,mrbayes"
+      ],
+      "default": "classic,beast",
+      "x-cli-flag": "--tree-dialect"
+    },
     "alphabet": {
       "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
       "$ref": "#/$defs/AlphabetName",

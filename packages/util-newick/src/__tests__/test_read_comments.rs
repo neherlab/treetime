@@ -40,7 +40,7 @@ mod tests {
   fn test_read_comments_beast_value(#[case] comment: &str, #[case] expected: NewickValue) {
     let input = format!("(A{comment},B);");
 
-    let actual = first_leaf_comments(&input, &options(NewickDialect::Beast));
+    let actual = first_leaf_comments(&input, &options(NewickDialect::BEAST));
 
     assert_eq!(vec![NodeComment::new(LabelSide::AfterLabel, NewickComment::Beast(pairs(vec![("a", expected)])))], actual);
   }
@@ -49,7 +49,7 @@ mod tests {
   fn test_read_comments_beast_pairs_keep_order_and_repeated_keys() {
     let input = "(A[&b=1,\"a b\"=2,b=3],B);";
 
-    let actual = first_leaf_comments(input, &options(NewickDialect::Beast));
+    let actual = first_leaf_comments(input, &options(NewickDialect::BEAST));
 
     let expected = NewickComment::Beast(pairs(vec![
       ("b", NewickValue::Number(1.0)),
@@ -61,7 +61,7 @@ mod tests {
 
   #[test]
   fn test_read_comments_annotation_accessor_returns_last_value() {
-    let tree = read_with("(A[&b=1][&b=3],B);", &options(NewickDialect::Beast));
+    let tree = read_with("(A[&b=1][&b=3],B);", &options(NewickDialect::BEAST));
     let leaf = tree.graph.children(tree.graph.root()).next().unwrap();
 
     assert_eq!(Some(&NewickValue::Number(3.0)), tree.graph.node(leaf).annotation("b"));
@@ -81,7 +81,7 @@ mod tests {
   fn test_read_comments_nhx_tags(#[case] comment: &str, #[case] expected: Vec<(&str, NewickValue)>) {
     let input = format!("(A{comment},B);");
 
-    let actual = first_leaf_comments(&input, &options(NewickDialect::Nhx));
+    let actual = first_leaf_comments(&input, &options(NewickDialect::NHX));
 
     assert_eq!(vec![NodeComment::new(LabelSide::AfterLabel, NewickComment::Nhx(pairs(expected)))], actual);
   }
@@ -97,14 +97,14 @@ mod tests {
   fn test_read_comments_nhx_type_mismatch_strict(#[case] comment: &str, #[case] expected: &str) {
     let input = format!("(A{comment},B);");
 
-    assert_eq!(expected, read_error(&input, &options(NewickDialect::Nhx)));
+    assert_eq!(expected, read_error(&input, &options(NewickDialect::NHX)));
   }
 
   #[test]
   fn test_read_comments_nhx_type_mismatch_tolerant() {
     let options = NewickReadOptions {
       mode: ReadMode::Tolerant,
-      ..options(NewickDialect::Nhx)
+      ..options(NewickDialect::NHX)
     };
 
     let tree = read_with("(A[&&NHX:B=high],B);", &options);
@@ -135,7 +135,7 @@ mod tests {
   fn test_read_comments_mrbayes(#[case] comment: &str, #[case] kind: MrBayesKind, #[case] name: &str, #[case] values: Vec<&str>) {
     let input = format!("(A{comment},B);");
 
-    let actual = first_leaf_comments(&input, &options(NewickDialect::MrBayes));
+    let actual = first_leaf_comments(&input, &options(NewickDialect::MRBAYES));
 
     let expected = NewickComment::MrBayesMcmc(MrBayesComment {
       kind,
@@ -147,11 +147,11 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::beast_missing_value(   NewickDialect::Beast,   "(A[&a=],B);",       "line 1, column 3: The annotation [&a=] does not follow the annotation syntax of the dialect")]
-  #[case::beast_unclosed_string( NewickDialect::Beast,   "(A[&a=\"x],B);",    "line 1, column 3: The annotation [&a=\"x] does not follow the annotation syntax of the dialect")]
-  #[case::nhx_with_beast(        NewickDialect::Nhx,     "(A[&a=1],B);",      "line 1, column 3: The annotation [&a=1] does not follow the annotation syntax of the dialect")]
-  #[case::enewick_with_beast(    NewickDialect::ENewick, "(A[&a=1],B);",      "line 1, column 3: The annotation [&a=1] does not follow the annotation syntax of the dialect")]
-  #[case::mrbayes_with_beast(    NewickDialect::MrBayes, "(A[&prob=1],B);",   "line 1, column 3: The annotation [&prob=1] does not follow the annotation syntax of the dialect")]
+  #[case::beast_missing_value(   NewickDialect::BEAST,   "(A[&a=],B);",       "line 1, column 3: The annotation [&a=] does not follow the annotation syntax of the dialect")]
+  #[case::beast_unclosed_string( NewickDialect::BEAST,   "(A[&a=\"x],B);",    "line 1, column 3: The annotation [&a=\"x] does not follow the annotation syntax of the dialect")]
+  #[case::nhx_with_beast(        NewickDialect::NHX,     "(A[&a=1],B);",      "line 1, column 3: The annotation [&a=1] does not follow the annotation syntax of the dialect")]
+  #[case::enewick_beast_malformed(NewickDialect::ENEWICK_BEAST, "(A[&a=],B);", "line 1, column 3: The annotation [&a=] does not follow the annotation syntax of the dialect")]
+  #[case::mrbayes_with_beast(    NewickDialect::MRBAYES, "(A[&prob=1],B);",   "line 1, column 3: The annotation [&prob=1] does not follow the annotation syntax of the dialect")]
   #[trace]
   fn test_read_comments_malformed_annotation_strict(#[case] dialect: NewickDialect, #[case] input: &str, #[case] expected: &str) {
     assert_eq!(expected, read_error(input, &options(dialect)));
@@ -161,7 +161,7 @@ mod tests {
   fn test_read_comments_malformed_annotation_tolerant() {
     let options = NewickReadOptions {
       mode: ReadMode::Tolerant,
-      ..options(NewickDialect::Beast)
+      ..options(NewickDialect::BEAST)
     };
 
     let tree = read_with("(A[&a=],B);", &options);
@@ -208,7 +208,7 @@ mod tests {
 
   #[test]
   fn test_read_comments_positions() {
-    let tree = read_with("[r]([a]A[b]:[c]1[d],[e]:2)Y[f];", &options(NewickDialect::Classic));
+    let tree = read_with("[r]([a]A[b]:[c]1[d],[e]:2)Y[f];", &options(NewickDialect::CLASSIC));
     let graph = &tree.graph;
     let children: Vec<usize> = graph.children(graph.root()).collect();
     let edges: Vec<usize> = graph.child_edges(graph.root()).to_vec();
@@ -240,7 +240,7 @@ mod tests {
 
   #[test]
   fn test_read_comments_branch_annotation_without_length() {
-    let tree = read_with("(A:[&rate=1.5],B);", &options(NewickDialect::Beast));
+    let tree = read_with("(A:[&rate=1.5],B);", &options(NewickDialect::BEAST));
 
     let edge = tree.graph.edge(tree.graph.child_edges(tree.graph.root())[0]).data();
     let expected = vec![EdgeComment::new(
@@ -253,8 +253,8 @@ mod tests {
 
   #[test]
   fn test_read_comments_rooting_comment_only_in_rooting_dialects() {
-    let classic = read_with("[&R](A,B);", &options(NewickDialect::Classic));
-    let beast = read_with("[&R](A,B);", &options(NewickDialect::Beast));
+    let classic = read_with("[&R](A,B);", &options(NewickDialect::CLASSIC));
+    let beast = read_with("[&R](A,B);", &options(NewickDialect::BEAST));
 
     let expected_classic = vec![NodeComment::new(
       LabelSide::AfterLabel,
@@ -275,6 +275,17 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::enewick_plain(  NewickDialect::ENEWICK,       NewickComment::Plain("&a=1".to_owned()))]
+  #[case::enewick_beast(  NewickDialect::ENEWICK_BEAST, NewickComment::Beast(pairs(vec![("a", NewickValue::Number(1.0))])))]
+  #[trace]
+  fn test_read_comments_enewick_annotation_convention(#[case] dialect: NewickDialect, #[case] expected: NewickComment) {
+    let actual = first_leaf_comments("(A[&a=1],B);", &options(dialect));
+
+    assert_eq!(vec![NodeComment::new(LabelSide::AfterLabel, expected)], actual);
+  }
+
   #[test]
   fn test_read_comments_classic_keeps_beast_annotations_as_text() {
     let tree = read_with("(A[&a=1]:1,B);", &NewickReadOptions::default());
@@ -291,7 +302,7 @@ mod tests {
 
     pub(super) fn options(dialect: NewickDialect) -> NewickReadOptions {
       NewickReadOptions {
-        dialects: vec![dialect],
+        dialect,
         ..NewickReadOptions::default()
       }
     }

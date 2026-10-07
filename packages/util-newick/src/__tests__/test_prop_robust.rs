@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::dialect::NewickDialect;
   use crate::nexus::read::nexus_from_str;
   use crate::read::options::{NewickReadOptions, ReadMode};
   use crate::read::stream::{newick_from_str, newick_trees};
@@ -22,22 +23,25 @@ mod tests {
   }
 
   mod helpers {
-    use super::{NewickReadOptions, ReadMode, newick_from_str, newick_trees, nexus_from_str};
+    use super::{NewickDialect, NewickReadOptions, ReadMode, newick_from_str, newick_trees, nexus_from_str};
     use std::thread;
 
     pub(super) fn runs_without_panic(text: String) -> bool {
       thread::Builder::new()
         .stack_size(2 << 20)
         .spawn(move || {
-          for mode in [ReadMode::Strict, ReadMode::Tolerant] {
-            let options = NewickReadOptions {
-              mode,
-              ..NewickReadOptions::all_dialects()
-            };
-            drop(newick_from_str(&text, &options));
-            newick_trees(text.as_bytes(), options.clone()).for_each(drop);
-            drop(nexus_from_str(&format!("#NEXUS\nBegin Trees;\n{text}"), &options));
-            drop(nexus_from_str(&text, &options));
+          for dialect in NewickDialect::pairs() {
+            for mode in [ReadMode::Strict, ReadMode::Tolerant] {
+              let options = NewickReadOptions {
+                dialect,
+                mode,
+                ..NewickReadOptions::default()
+              };
+              drop(newick_from_str(&text, &options));
+              newick_trees(text.as_bytes(), options.clone()).for_each(drop);
+              drop(nexus_from_str(&format!("#NEXUS\nBegin Trees;\n{text}"), &options));
+              drop(nexus_from_str(&text, &options));
+            }
           }
         })
         .unwrap()

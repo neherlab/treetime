@@ -5,3 +5,4 @@ mod test_metadata_args;
 mod test_output_args;
 mod test_output_resolution;
 mod test_seed_args;
+mod test_tree_input;

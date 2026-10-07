@@ -14,7 +14,7 @@ mod tests {
   use tempfile::tempdir;
   use treetime::progress::{NoopProgress, RunWarningKind};
   use treetime_io::dates_csv::DateConstraint;
-  use treetime_io::nwk::nwk_read;
+  use treetime_io::nwk::{TREE_DIALECT_DEFAULT, nwk_read};
   use treetime_primitives::Seq;
   use treetime_utils::{o, vec_of_owned};
 
@@ -27,7 +27,7 @@ mod tests {
     fs::write(&path, format!("{TREE}\n")).unwrap();
     let log = WarningCollector::new(&NoopProgress);
 
-    read_input_tree(&path, &log).unwrap();
+    read_input_tree(&path, TREE_DIALECT_DEFAULT, &log).unwrap();
 
     assert_eq!(
       vec![warning(

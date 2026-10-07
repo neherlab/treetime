@@ -3,6 +3,7 @@ use crate::commands::shared::metadata::MetadataIdArgs;
 use crate::commands::shared::output_args::{MugrationOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
+use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
@@ -15,6 +16,7 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 #[derive(Debug, Clone)]
 pub struct TreetimeMugrationArgs {
   pub(crate) tree: PathBuf,
+  pub(crate) tree_dialect: TreeDialectArgs,
   pub(crate) attribute: String,
   pub(crate) metadata: PathBuf,
   pub(crate) weights: Option<PathBuf>,
@@ -52,6 +54,7 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
     match (raw.tree, raw.metadata, raw.attribute) {
       (Some(tree), Some(metadata), Some(attribute)) => Ok(Self {
         tree,
+        tree_dialect: raw.tree_dialect,
         attribute,
         metadata,
         weights: raw.weights,
@@ -107,6 +110,11 @@ pub struct TreetimeMugrationArgsRaw {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub tree: Option<PathBuf>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree_dialect: TreeDialectArgs,
 
   /// Attribute to reconstruct, e.g. country
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]

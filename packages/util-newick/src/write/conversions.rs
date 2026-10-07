@@ -1,18 +1,20 @@
-use crate::dialect::{CommentKind, NewickDialect};
+use crate::dialect::{NewickAnnotations, NewickDialect};
 
 pub fn conversion(dialect: NewickDialect, data: DataKind) -> Conversion {
-  let features = dialect.features();
+  let NewickDialect { structure, annotations } = dialect;
   let (holds, unsupported) = match data {
-    DataKind::BeastComments => (features.comments == CommentKind::Beast, Conversion::Drop),
-    DataKind::NhxComments => (features.comments == CommentKind::Nhx, Conversion::Drop),
-    DataKind::MrBayesComments => (features.comments == CommentKind::MrBayes, Conversion::Drop),
-    DataKind::AmpersandPlainComments => (!features.reserves_annotations, Conversion::Fail),
-    DataKind::Rooting => (features.rooting, Conversion::Drop),
-    DataKind::Weight => (features.weight, Conversion::Drop),
+    DataKind::BeastComments => (annotations == NewickAnnotations::Beast, Conversion::Drop),
+    DataKind::NhxComments => (annotations == NewickAnnotations::Nhx, Conversion::Drop),
+    DataKind::MrBayesComments => (annotations == NewickAnnotations::MrBayes, Conversion::Drop),
+    DataKind::AmpersandPlainComments => (!annotations.reserves_annotations(), Conversion::Fail),
+    DataKind::RootingPlainComments => (!dialect.rooting(), Conversion::Fail),
+    DataKind::WeightPlainComments => (!structure.weight(), Conversion::Fail),
+    DataKind::Rooting => (dialect.rooting(), Conversion::Drop),
+    DataKind::Weight => (structure.weight(), Conversion::Drop),
     DataKind::FieldSupport | DataKind::Probability | DataKind::FieldComments => {
-      (features.rich_fields, Conversion::Drop)
+      (structure.field_count() > 1, Conversion::Drop)
     },
-    DataKind::HybridNodes => (features.hybrid_tags, Conversion::Fail),
+    DataKind::HybridNodes => (structure.hybrid_tags(), Conversion::Fail),
   };
   if holds { Conversion::Keep } else { unsupported }
 }
@@ -23,6 +25,8 @@ pub enum DataKind {
   NhxComments,
   MrBayesComments,
   AmpersandPlainComments,
+  RootingPlainComments,
+  WeightPlainComments,
   Rooting,
   Weight,
   FieldSupport,
@@ -32,11 +36,13 @@ pub enum DataKind {
 }
 
 impl DataKind {
-  pub const ALL: [Self; 10] = [
+  pub const ALL: [Self; 12] = [
     Self::BeastComments,
     Self::NhxComments,
     Self::MrBayesComments,
     Self::AmpersandPlainComments,
+    Self::RootingPlainComments,
+    Self::WeightPlainComments,
     Self::Rooting,
     Self::Weight,
     Self::FieldSupport,
