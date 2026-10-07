@@ -27,6 +27,8 @@ mod tests {
   #[case::text_after_tree(   "(A,B);xyz",     "line 1, column 7: The input contains more than one tree; read it tree by tree with newick_trees()")]
   #[case::second_line(       "(A,\nB C);",    "line 2, column 3: expected comment, ')', ',', ':', ';'")]
   #[case::byte_order_mark(   "\u{feff}(A);",  "line 1, column 1: unexpected byte order mark")]
+  #[case::length_overflow(   "(A:1e999,B);",  "line 1, column 4: \"1e999\" is too large for a 64-bit floating-point number")]
+  #[case::support_overflow(  "((A)1e999,B);", "line 1, column 5: The support value \"1e999\" is too large for a 64-bit floating-point number")]
   #[trace]
   fn test_read_errors_strict(#[case] input: &str, #[case] expected: &str) {
     assert_eq!(expected, read_error(input, &NewickReadOptions::default()));

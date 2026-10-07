@@ -26,7 +26,6 @@ pub(crate) mod tests {
   #[case::negative(         "(A:-0.01,B:0.2);",          vec!["- ", "A :-0.01", "B :0.2"])]
   #[case::leading_dot(      "(A:.5,B:2);",               vec!["- ", "A :0.5", "B :2"])]
   #[case::plus_sign(        "(A:+1,B:2);",               vec!["- ", "A :1", "B :2"])]
-  #[case::overflow(         "(A:1e400,B:1);",            vec!["- ", "A :inf", "B :1"])]
   #[case::root_length(      "(A:0.1,B:0.2):0.5;",        vec!["- :0.5", "A :0.1", "B :0.2"])]
   #[case::empty_field(      "(A:,B);",                   vec!["- ", "A ", "B "])]
   #[case::whitespace(       "  ( A : 0.1 , B : 0.2 ) ; ", vec!["- ", "A :0.1", "B :0.2"])]

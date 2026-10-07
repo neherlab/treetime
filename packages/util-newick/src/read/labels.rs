@@ -28,13 +28,25 @@ pub(crate) fn read_label(label: Pair<'_, Rule>, context: &MapContext<'_, '_>) ->
           .clone()
           .into_inner()
           .map(|number| {
-            number.as_str().parse::<f64>().map_err(|error| {
+            let value = number.as_str().parse::<f64>().map_err(|error| {
               context.error(
                 NewickErrorKind::Syntax,
                 &number,
                 format!("The support value {:?} is not a number: {error}", number.as_str()),
               )
-            })
+            })?;
+            if value.is_finite() {
+              Ok(value)
+            } else {
+              Err(context.error(
+                NewickErrorKind::Syntax,
+                &number,
+                format!(
+                  "The support value {:?} is too large for a 64-bit floating-point number",
+                  number.as_str()
+                ),
+              ))
+            }
           })
           .collect::<Result<Vec<_>, _>>()?;
         token.support = Some(values);

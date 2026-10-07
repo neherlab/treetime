@@ -7,6 +7,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::tree_view::TreeView;
+  use treetime_utils::assert_error;
 
   #[rustfmt::skip]
   #[rstest]
@@ -76,22 +77,13 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_read_infinite_length_cannot_be_written() -> Result<(), Report> {
-    let parse = tree_read(b"(A:1e400,B:1)root;".as_slice(), TREE_DIALECT_DEFAULT)?;
+  fn test_tree_read_infinite_length_is_an_error() {
+    let actual = tree_read(b"(A:1e400,B:1)root;".as_slice(), TREE_DIALECT_DEFAULT);
 
-    let actual = nwk_write_str(
-      &TreeView::new(&parse.graph)?,
-      &parse.names(),
-      &parse.branch_lengths,
-      &NwkWriteOptions::default(),
-      &NwkNodeComments::new(),
+    assert_error!(
+      actual,
+      "When reading Newick: line 1, column 4: \"1e400\" is too large for a 64-bit floating-point number"
     );
-
-    assert_eq!(
-      "When writing Newick: When writing the branch above node 1 ('A'): Newick cannot represent the number inf",
-      format!("{:#}", actual.unwrap_err())
-    );
-    Ok(())
   }
 
   #[rustfmt::skip]

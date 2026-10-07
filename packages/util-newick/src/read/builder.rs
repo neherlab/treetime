@@ -130,13 +130,21 @@ impl<'i> Builder<'_, '_, 'i> {
   }
 
   fn parse_number(&self, text: &str, token: &Pair<'i, Rule>) -> Result<f64, NewickError> {
-    text.parse::<f64>().map_err(|error| {
+    let value = text.parse::<f64>().map_err(|error| {
       self.context.error(
         NewickErrorKind::Syntax,
         token,
         format!("{text:?} is not a number: {error}"),
       )
-    })
+    })?;
+    if !value.is_finite() {
+      return Err(self.context.error(
+        NewickErrorKind::Syntax,
+        token,
+        format!("{text:?} is too large for a 64-bit floating-point number"),
+      ));
+    }
+    Ok(value)
   }
 
   fn syntax_error(&self, token: &Pair<'i, Rule>, message: &str) -> NewickError {
