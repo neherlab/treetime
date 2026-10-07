@@ -18,7 +18,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use maplit::btreemap;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -179,7 +179,6 @@ fn compute_msg_to_child(
 ) -> Result<SparseSeqDistribution, Report> {
   let mut seq_dis = SparseSeqDistribution {
     variable: VarPosMap::default(),
-    variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: parent_obs.composition.clone(),
     log_lh: forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh),

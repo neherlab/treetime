@@ -7,7 +7,7 @@ use eyre::Report;
 use itertools::izip;
 use maplit::btreemap;
 use ndarray::{Array1, Array2};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use treetime_primitives::{AsciiChar, LogLh};
 use treetime_utils::array::ndarray::is_max_above;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm_owned;
@@ -29,7 +29,6 @@ pub(crate) fn combine_messages(
 ) -> Result<SparseSeqDistribution, Report> {
   let mut seq_dis = SparseSeqDistribution {
     variable: VarPosMap::default(),
-    variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: composition.clone(),
     log_lh: messages.iter().map(|m| m.log_lh).sum(),
@@ -109,7 +108,6 @@ pub(crate) fn propagate_raw(
 ) -> SparseSeqDistribution {
   let mut message = SparseSeqDistribution {
     variable: VarPosMap::default(),
-    variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: seq_dis.fixed_counts.clone(),
     log_lh: seq_dis.log_lh,
@@ -162,7 +160,6 @@ pub(crate) fn propagate_raw_per_site(
 
   let mut message = SparseSeqDistribution {
     variable: VarPosMap::default(),
-    variable_indel: BTreeSet::new(),
     fixed: btreemap! {},
     fixed_counts: seq_dis.fixed_counts.clone(),
     log_lh: seq_dis.log_lh,

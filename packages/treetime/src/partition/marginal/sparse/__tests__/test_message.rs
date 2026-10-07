@@ -7,7 +7,6 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use maplit::btreemap;
   use ndarray::{Array1, array};
-  use std::collections::BTreeSet;
   use treetime_primitives::{AsciiChar, LogLh};
 
   #[test]
@@ -30,7 +29,6 @@ mod tests {
 
     let seq_dis = SparseSeqDistribution {
       variable: variable.into(),
-      variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
       log_lh: LogLh::ZERO,
@@ -82,7 +80,6 @@ mod tests {
 
     let seq_dis = SparseSeqDistribution {
       variable: variable.into(),
-      variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
       log_lh: LogLh::ZERO,

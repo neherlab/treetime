@@ -150,8 +150,6 @@ pub struct SparseEdgeForward {
 pub struct SparseSeqDistribution {
   pub(crate) variable: VarPosMap,
 
-  pub(crate) variable_indel: BTreeSet<(usize, usize)>,
-
   #[deser(as = BTreeMap<_, ArrayVec>)]
   pub(crate) fixed: BTreeMap<AsciiChar, Array1<f64>>,
 
@@ -164,7 +162,6 @@ impl Default for SparseSeqDistribution {
   fn default() -> Self {
     Self {
       variable: VarPosMap::default(),
-      variable_indel: BTreeSet::new(),
       fixed: btreemap! {},
       fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
       log_lh: LogLh::ZERO,

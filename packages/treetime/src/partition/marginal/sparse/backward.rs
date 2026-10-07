@@ -8,7 +8,7 @@ use crate::partition::storage::sparse::{
 };
 use eyre::Report;
 use maplit::btreemap;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -76,7 +76,6 @@ fn process_node_backward_indexed(
     SparseSeqDistribution {
       fixed_counts: obs.composition.clone(),
       variable,
-      variable_indel: BTreeSet::new(),
       fixed,
       log_lh: LogLh::ZERO,
     }
