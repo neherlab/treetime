@@ -31,7 +31,7 @@ pub struct AugurNodeDataJsonTraitsNode {
   pub fields: BTreeMap<String, Value>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct AugurNodeDataJsonTraitsBranches {
   #[deser(skip_serializing_if = Option::is_none)]
   pub labels: Option<BTreeMap<String, String>>,
