@@ -24,6 +24,8 @@ fn format_number(value: f64, format: NumberFormat) -> Result<String, NewickWrite
   }
   let mut config = FmtFloatConfig::default()
     .add_point_zero(format.point_zero)
+    .upper_e_break(16)
+    .lower_e_break(-4)
     .radix_point('.');
   if let Some(significant_digits) = format.significant_digits {
     if significant_digits == 0 {

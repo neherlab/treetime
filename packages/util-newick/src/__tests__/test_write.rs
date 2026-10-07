@@ -24,6 +24,8 @@ mod tests {
   #[case::support(           NewickDialect::CLASSIC, "((A,B)95:1,C)0.5;")]
   #[case::multi_support(     NewickDialect::CLASSIC, "((A,B)80.5/95,C);")]
   #[case::exponent(          NewickDialect::CLASSIC, "(A:1.0e-10,B:1.0e20);")]
+  #[case::plain_large(       NewickDialect::CLASSIC, "(A:19329.779261588275,B:1000000000000000,C:1.0e16);")]
+  #[case::plain_small(       NewickDialect::CLASSIC, "(A:0.0001,B:1.0e-5);")]
   #[case::plain_comments(    NewickDialect::CLASSIC, "([a]A[b]:[c]1[d],[e]:2)[r]Y[f];")]
   #[case::ampersand_classic( NewickDialect::CLASSIC, "(A[&a=1],B);")]
   #[case::beast(             NewickDialect::BEAST,   "[&R]((A[&rate=1.5,s=\"x,y\"]:[&r=1]1[c],B)[&posterior=0.9]:1,C);")]
