@@ -1,11 +1,9 @@
 use crate::hard_approach_law::HardApproachLaw;
 use crate::soft_tail_law::SoftTailLaw;
-use deser::{Deserialize, Serialize};
 
 pub const DEFAULT_TAIL_FIT_POINTS: usize = 5;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum BoundaryBehavior {
   #[default]
   Error,

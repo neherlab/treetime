@@ -6,20 +6,17 @@ use crate::hard_approach_law::Side;
 use crate::interp_nonuniform::interp_nonuniform;
 use crate::max_grid_points::MaxGridPoints;
 use approx::{UlpsEq, ulps_eq};
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::{Array1, s};
 use ndarray_stats::QuantileExt;
 use num::Float;
 use std::fmt::Debug;
-use treetime_utils::adapters::ArrayVec;
 use treetime_utils::array::ndarray::has_uniform_spacing;
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GridFn<T: InterpElem> {
   grid: Grid<T>,
-  #[deser(as = ArrayVec)]
   y: Array1<T>,
 }
 

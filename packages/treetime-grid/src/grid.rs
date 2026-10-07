@@ -2,7 +2,6 @@ use crate::InterpElem;
 use crate::grid_iter::GridIter;
 use crate::max_grid_points::MaxGridPoints;
 use approx::UlpsEq;
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::Array1;
 use num_traits::Float;
@@ -22,7 +21,7 @@ where
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Grid<T: InterpElem> {
   x_min: T,
   dx: T,

@@ -1,10 +1,9 @@
 use crate::{GridEdge, GridFn};
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use treetime_utils::least_squares::LineFit;
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HardApproachLaw {
   pub t_hard: f64,
   pub b: f64,
