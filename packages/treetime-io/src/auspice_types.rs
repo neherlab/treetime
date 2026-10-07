@@ -3,27 +3,6 @@ use deser_value::{Map, Value, from_value};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct AuspiceGraphMeta {
-  #[deser(skip_serializing_if = Option::is_none)]
-  auspice_tree_version: Option<String>,
-
-  meta: AuspiceTreeMeta,
-
-  #[deser(flatten)]
-  other: Map,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AuspiceTreeNodeAttrF64 {
-  value: f64,
-
-  #[deser(flatten)]
-  other: Map,
-}
-
-impl AuspiceTreeNodeAttrF64 {}
-
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub enum DivergenceUnits {

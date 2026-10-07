@@ -1,4 +1,3 @@
-use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use log::warn;
 use smart_default::SmartDefault;
@@ -132,7 +131,7 @@ impl NwkParse {
   }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct NwkNodeMeta {
   name: Option<String>,
 }
@@ -238,8 +237,7 @@ pub(crate) fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
   )
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SmartDefault, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SmartDefault)]
 pub enum NwkStyle {
   #[default]
   Plain,
