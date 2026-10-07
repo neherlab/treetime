@@ -9,7 +9,7 @@ mod tests {
   };
   use treetime_io::csv::TableFormat;
   use treetime_utils::assert_error;
-  use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
+  use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   const GEN_PER_YEAR: f64 = 50.0;
 
@@ -152,7 +152,7 @@ mod tests {
   }
 
   #[test]
-  fn test_coalescent_output_json_roundtrips_and_renames_keys() -> Result<(), Report> {
+  fn test_coalescent_output_json_renames_keys() -> Result<(), Report> {
     let output = CoalescentOutput::new(
       CoalescentInputs {
         mode: CoalescentOutputMode::Constant,
@@ -180,9 +180,6 @@ mod tests {
     assert!(json.contains("\"N_e\""));
     assert!(!json.contains("\"tc\""));
     assert!(!json.contains("\"ne\""));
-
-    let parsed: CoalescentOutput = json_read_str(&json)?;
-    assert_eq!(output, parsed);
     Ok(())
   }
 

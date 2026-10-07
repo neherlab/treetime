@@ -2,20 +2,18 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::shared::update::MarginalNodeState;
 use crate::seq::find_char_ranges::find_letter_ranges;
 use crate::seq::indel::InDel;
-use deser::{Deserialize, Serialize};
 use ndarray::Array2;
 use std::collections::BTreeSet;
 use treetime_primitives::{LogLh, Seq};
-use treetime_utils::adapters::Array2Rows;
 use treetime_utils::interval::range_union::range_union;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct DenseNodeState {
   pub seq: DenseSeqInfo,
   pub profile: DenseSeqDistribution,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub(crate) struct DenseLeafObs {
   sequence: Seq,
   gaps: Vec<(usize, usize)>,
@@ -57,7 +55,7 @@ impl MarginalNodeState for DenseNodeState {
   }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
 pub struct DenseSeqInfo {
   pub(crate) gaps: Vec<(usize, usize)>,
   pub(crate) unknown: Vec<(usize, usize)>,
@@ -66,25 +64,24 @@ pub struct DenseSeqInfo {
   pub(crate) sequence: Seq,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
 pub struct DenseEdgeBackward {
   pub(crate) msg_to_parent: DenseSeqDistribution,
   pub(crate) msg_from_child: DenseSeqDistribution,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
 pub struct DenseEdgeForward {
   pub(crate) msg_to_child: DenseSeqDistribution,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
 pub struct DenseEdgeEstimate {
   pub(crate) indels: Vec<InDel>,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
 pub struct DenseSeqDistribution {
-  #[deser(as = Array2Rows)]
   pub(crate) dis: Array2<f64>,
 
   pub(crate) log_lh: LogLh,

@@ -18,7 +18,6 @@ use crate::reroot::params::BrentParams;
 use crate::reroot::variance::VarianceModel;
 use crate::seq::alignment::NodeSeqInput;
 use crate::{progress_info, progress_warn};
-use deser::Serialize;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::restrict_node_names;
@@ -182,18 +181,13 @@ pub struct OptimizeInput {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct OptimizeOutput {
-  #[deser(skip)]
   pub graph: Graph,
-  #[deser(skip)]
   pub gtr: GTR,
   pub model_name: GtrModelName,
-  #[deser(skip)]
   pub reconstruction: MarginalReconstruction,
-  #[deser(skip)]
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  #[deser(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 

@@ -6,7 +6,6 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootOb
 use crate::clock::find_best_root::{method_brent, method_golden_section, method_grid_search};
 use crate::node_label::node_label;
 use crate::progress::LogSink;
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -39,7 +38,7 @@ pub(crate) fn find_best_split(
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct FindRootResult {
   pub(crate) edge: Option<GraphEdgeKey>,
 

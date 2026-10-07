@@ -1,11 +1,7 @@
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::marginal::sample::SampleMode;
-use deser::{Deserialize, Serialize};
-use schemars::JsonSchema;
 
-#[derive(Copy, Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
+#[derive(Copy, Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MethodAncestral {
   #[default]
   Marginal,

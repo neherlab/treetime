@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::shared::update::MarginalPasses;
@@ -12,6 +12,7 @@ mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use deser::Deserialize;
   use eyre::Report;
+  use ndarray::{Array1, Array2};
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::fs;
@@ -22,6 +23,7 @@ mod tests {
   use treetime_io::fasta::{fasta_read, fasta_read_file};
   use treetime_io::nwk::{nwk_read, nwk_read_file};
   use treetime_primitives::AlignmentRecord;
+  use treetime_utils::adapters::{Array2Rows, ArrayVec};
   use treetime_utils::io::json::json_read_str;
 
   #[rstest]
@@ -52,7 +54,7 @@ mod tests {
     )?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?;
 
-    pretty_assert_ulps_eq!(&expected.W, &actual.W, epsilon = 1e-8);
+    pretty_assert_ulps_eq!(&expected.w, &actual.W, epsilon = 1e-8);
     pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-8);
     pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-8);
 
@@ -83,7 +85,7 @@ mod tests {
     )?;
     let actual = infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?;
 
-    pretty_assert_ulps_eq!(&expected.W, &actual.W, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(&expected.w, &actual.W, epsilon = 1e-6);
     pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-6);
     pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-6);
 
@@ -112,8 +114,17 @@ mod tests {
 
   #[derive(Debug, Deserialize)]
   struct Outputs {
-    synthetic: BTreeMap<String, InferGtrResult>,
-    real: BTreeMap<String, InferGtrResult>,
+    synthetic: BTreeMap<String, ExpectedGtr>,
+    real: BTreeMap<String, ExpectedGtr>,
+  }
+
+  #[derive(Debug, Deserialize)]
+  struct ExpectedGtr {
+    #[deser(rename = "W", as = Array2Rows)]
+    w: Array2<f64>,
+    #[deser(as = ArrayVec)]
+    pi: Array1<f64>,
+    mu: f64,
   }
 
   static INPUTS: LazyLock<Inputs> = LazyLock::new(|| {

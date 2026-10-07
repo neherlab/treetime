@@ -1,7 +1,6 @@
-use deser::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct DiscreteStates {
   states: Vec<String>,
   indices: BTreeMap<String, usize>,

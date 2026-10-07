@@ -1,4 +1,3 @@
-use deser::{Deserialize, Serialize};
 use itertools::Itertools;
 use std::collections::BTreeSet;
 use std::fmt;
@@ -313,7 +312,7 @@ pub(crate) fn resolve_indels_forward(
   (deletions.into_iter().chain(insertions).collect(), new_node_gaps)
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub struct InDel {
   pub(crate) range: (usize, usize),
   pub(crate) seq: Seq,
@@ -351,8 +350,7 @@ impl fmt::Display for InDel {
   }
 }
 
-#[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum InDelKind {
   Insertion,
   Deletion,

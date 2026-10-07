@@ -1,5 +1,3 @@
-use deser::{Deserialize, Serialize};
-use schemars::JsonSchema;
 use treetime_primitives::{AsciiChar, Seq};
 
 pub fn apply_gap_fill(seq: &mut Seq, mode: GapFill, gap: AsciiChar, unknown: AsciiChar) {
@@ -38,9 +36,7 @@ pub fn apply_gap_fill(seq: &mut Seq, mode: GapFill, gap: AsciiChar, unknown: Asc
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GapFill {
   #[default]
   OnlyTerminal,

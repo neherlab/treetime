@@ -28,7 +28,6 @@ mod tests {
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, AlphabetLike, Seq};
-  use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::sync::random::get_random_number_generator;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -178,10 +177,7 @@ mod tests {
       |key| recon.node_sequence(&graph, false, key),
     )?;
 
-    assert_eq!(
-      json_write_str(&expected, JsonPretty(false))?,
-      json_write_str(&actual, JsonPretty(false))?
-    );
+    assert_eq!(expected, actual);
 
     let recon = sparse_reconstruction(&recon);
     for name in expected.keys() {
@@ -533,11 +529,11 @@ mod tests {
             .log_lh
             .value()
             .to_bits(),
-          json_write_str(&recon.node_states, JsonPretty(false))?,
-          json_write_str(
-            &(&recon.edges.backward, &recon.edges.forward, &recon.edges.estimates),
-            JsonPretty(false),
-          )?,
+          format!("{:#?}", recon.node_states),
+          format!(
+            "{:#?}",
+            (&recon.edges.backward, &recon.edges.forward, &recon.edges.estimates)
+          ),
         ))
       })
     }

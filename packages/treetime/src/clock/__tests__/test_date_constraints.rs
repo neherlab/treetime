@@ -5,7 +5,6 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
-  use deser::{Deserialize, Serialize};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -18,7 +17,6 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
   use treetime_io::nwk::nwk_read;
-  use treetime_utils::io::json::json_read_str;
 
   #[test]
   fn test_load_date_constraints_success_three_leaves() -> Result<(), Report> {
@@ -34,14 +32,12 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
-        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
-        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", Some(Distribution::point(2020.0, 0.0))),
+      loaded("B", Some(Distribution::point(2020.5, 0.0))),
+      loaded("C", Some(Distribution::point(2020.75, 0.0))),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     Ok(())
   }
@@ -60,15 +56,13 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
-        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
-        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
-        {"name": "D", "date_constraint": null},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", Some(Distribution::point(2020.0, 0.0))),
+      loaded("B", Some(Distribution::point(2020.5, 0.0))),
+      loaded("C", Some(Distribution::point(2020.75, 0.0))),
+      loaded("D", None),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     Ok(())
   }
@@ -87,14 +81,12 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": {"range": {"range": [2020.0, 2020.25], "ampl": 0.0}}},
-        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
-        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", Some(Distribution::range((2020.0, 2020.25), 0.0))),
+      loaded("B", Some(Distribution::point(2020.5, 0.0))),
+      loaded("C", Some(Distribution::point(2020.75, 0.0))),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     Ok(())
   }
@@ -114,15 +106,13 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
-        {"name": "AB", "date_constraint": {"point": {"t": 2019.5, "ampl": 0.0}}},
-        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
-        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", Some(Distribution::point(2020.0, 0.0))),
+      loaded("AB", Some(Distribution::point(2019.5, 0.0))),
+      loaded("B", Some(Distribution::point(2020.5, 0.0))),
+      loaded("C", Some(Distribution::point(2020.75, 0.0))),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     Ok(())
   }
@@ -141,17 +131,15 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
-        {"name": "AB", "date_constraint": null},
-        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
-        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
-        {"name": "CD", "date_constraint": null},
-        {"name": "D", "date_constraint": null},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", Some(Distribution::point(2020.0, 0.0))),
+      loaded("AB", None),
+      loaded("B", Some(Distribution::point(2020.5, 0.0))),
+      loaded("C", Some(Distribution::point(2020.75, 0.0))),
+      loaded("CD", None),
+      loaded("D", None),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     let expected_bad_branches = btreemap! {
       o!("A") => false,
@@ -183,19 +171,17 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": null},
-        {"name": "AB", "date_constraint": null},
-        {"name": "ABCD", "date_constraint": null},
-        {"name": "B", "date_constraint": null},
-        {"name": "C", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
-        {"name": "CD", "date_constraint": null},
-        {"name": "D", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
-        {"name": "E", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", None),
+      loaded("AB", None),
+      loaded("ABCD", None),
+      loaded("B", None),
+      loaded("C", Some(Distribution::point(2020.0, 0.0))),
+      loaded("CD", None),
+      loaded("D", Some(Distribution::point(2020.5, 0.0))),
+      loaded("E", Some(Distribution::point(2020.75, 0.0))),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     let expected_bad_branches = btreemap! {
       o!("A") => true,
@@ -248,15 +234,13 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
-        {"name": "B", "date_constraint": null},
-        {"name": "C", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
-        {"name": "D", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", Some(Distribution::point(2020.0, 0.0))),
+      loaded("B", None),
+      loaded("C", Some(Distribution::point(2020.5, 0.0))),
+      loaded("D", Some(Distribution::point(2020.75, 0.0))),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     Ok(())
   }
@@ -279,23 +263,21 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": null},
-        {"name": "B", "date_constraint": null},
-        {"name": "C", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
-        {"name": "D", "date_constraint": {"point": {"t": 2020.25, "ampl": 0.0}}},
-        {"name": "E", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
-        {"name": "F", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
-        {"name": "G", "date_constraint": {"point": {"t": 2021.0, "ampl": 0.0}}},
-        {"name": "L1", "date_constraint": null},
-        {"name": "L2", "date_constraint": null},
-        {"name": "L3", "date_constraint": null},
-        {"name": "L4", "date_constraint": null},
-        {"name": "L5", "date_constraint": null},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", None),
+      loaded("B", None),
+      loaded("C", Some(Distribution::point(2020.0, 0.0))),
+      loaded("D", Some(Distribution::point(2020.25, 0.0))),
+      loaded("E", Some(Distribution::point(2020.5, 0.0))),
+      loaded("F", Some(Distribution::point(2020.75, 0.0))),
+      loaded("G", Some(Distribution::point(2021.0, 0.0))),
+      loaded("L1", None),
+      loaded("L2", None),
+      loaded("L3", None),
+      loaded("L4", None),
+      loaded("L5", None),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     let expected_bad_branches = btreemap! {
       o!("A") => true,
@@ -337,23 +319,21 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
-        {"name": "B", "date_constraint": null},
-        {"name": "C", "date_constraint": {"point": {"t": 2020.2, "ampl": 0.0}}},
-        {"name": "D", "date_constraint": null},
-        {"name": "E", "date_constraint": {"point": {"t": 2020.4, "ampl": 0.0}}},
-        {"name": "F", "date_constraint": null},
-        {"name": "G", "date_constraint": {"point": {"t": 2020.6, "ampl": 0.0}}},
-        {"name": "H", "date_constraint": null},
-        {"name": "I", "date_constraint": {"point": {"t": 2020.8, "ampl": 0.0}}},
-        {"name": "J", "date_constraint": null},
-        {"name": "K", "date_constraint": {"point": {"t": 2021.0, "ampl": 0.0}}},
-        {"name": "L", "date_constraint": null},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", Some(Distribution::point(2020.0, 0.0))),
+      loaded("B", None),
+      loaded("C", Some(Distribution::point(2020.2, 0.0))),
+      loaded("D", None),
+      loaded("E", Some(Distribution::point(2020.4, 0.0))),
+      loaded("F", None),
+      loaded("G", Some(Distribution::point(2020.6, 0.0))),
+      loaded("H", None),
+      loaded("I", Some(Distribution::point(2020.8, 0.0))),
+      loaded("J", None),
+      loaded("K", Some(Distribution::point(2021.0, 0.0))),
+      loaded("L", None),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     Ok(())
   }
@@ -373,15 +353,13 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": {"range": {"range": [2020.0, 2020.25], "ampl": 0.0}}},
-        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
-        {"name": "C", "date_constraint": {"range": {"range": [2020.6, 2020.8], "ampl": 0.0}}},
-        {"name": "D", "date_constraint": {"point": {"t": 2021.0, "ampl": 0.0}}},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", Some(Distribution::range((2020.0, 2020.25), 0.0))),
+      loaded("B", Some(Distribution::point(2020.5, 0.0))),
+      loaded("C", Some(Distribution::range((2020.6, 2020.8), 0.0))),
+      loaded("D", Some(Distribution::point(2021.0, 0.0))),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     Ok(())
   }
@@ -401,15 +379,13 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": {"point": {"t": 2020.0, "ampl": 0.0}}},
-        {"name": "AB", "date_constraint": {"range": {"range": [2019.0, 2019.75], "ampl": 0.0}}},
-        {"name": "B", "date_constraint": {"point": {"t": 2020.5, "ampl": 0.0}}},
-        {"name": "C", "date_constraint": {"point": {"t": 2020.75, "ampl": 0.0}}},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", Some(Distribution::point(2020.0, 0.0))),
+      loaded("AB", Some(Distribution::range((2019.0, 2019.75), 0.0))),
+      loaded("B", Some(Distribution::point(2020.5, 0.0))),
+      loaded("C", Some(Distribution::point(2020.75, 0.0))),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     Ok(())
   }
@@ -428,14 +404,12 @@ mod tests {
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
 
     let actual = node_constraints(&names, &graph, &constraints);
-    let expected: Vec<LoadedNode> = json_read_str(
-      r#"[
-        {"name": "A", "date_constraint": {"point": {"t": -500.0, "ampl": 0.0}}},
-        {"name": "B", "date_constraint": {"point": {"t": -250.0, "ampl": 0.0}}},
-        {"name": "C", "date_constraint": {"point": {"t": 0.0, "ampl": 0.0}}},
-        {"name": "root", "date_constraint": null}
-      ]"#,
-    )?;
+    let expected = vec![
+      loaded("A", Some(Distribution::point(-500.0, 0.0))),
+      loaded("B", Some(Distribution::point(-250.0, 0.0))),
+      loaded("C", Some(Distribution::point(0.0, 0.0))),
+      loaded("root", None),
+    ];
     assert_eq!(actual, expected);
     Ok(())
   }
@@ -443,7 +417,7 @@ mod tests {
   mod helpers {
     use super::*;
 
-    #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
+    #[derive(Clone, Default, Debug, PartialEq)]
     pub(super) struct LoadedNode {
       pub(super) name: Option<String>,
       pub(super) date_constraint: Option<Arc<Distribution<NegLog>>>,
@@ -476,6 +450,13 @@ mod tests {
           .map(|(key, bad)| (names[&key].clone().expect("every fixture node is named"), bad))
           .collect(),
       )
+    }
+
+    pub(super) fn loaded(name: &str, date_constraint: Option<Distribution<NegLog>>) -> LoadedNode {
+      LoadedNode {
+        name: Some(name.to_owned()),
+        date_constraint: date_constraint.map(Arc::new),
+      }
     }
 
     pub(super) fn exact(value: f64) -> Option<DateConstraint> {

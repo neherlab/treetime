@@ -23,7 +23,6 @@ mod tests {
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
-  use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::sync::random::get_random_number_generator;
 
   fn assert_dense_rows_normalized(dis: &Array2<f64>, max_ulps: u32) {
@@ -149,10 +148,7 @@ mod tests {
       |key| recon.node_sequence(&graph, false, key),
     )?;
 
-    assert_eq!(
-      json_write_str(&expected, JsonPretty(false))?,
-      json_write_str(&actual, JsonPretty(false))?
-    );
+    assert_eq!(expected, actual);
 
     Ok(())
   }

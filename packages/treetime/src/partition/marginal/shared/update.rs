@@ -1,6 +1,5 @@
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::MutationCounts;
-use deser::Serialize;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -83,14 +82,14 @@ pub trait MarginalPasses {
   }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct MarginalUpdate<Node, Backward, Forward, Estimate> {
   pub(crate) node_states: BTreeMap<GraphNodeKey, Node>,
   pub(crate) edges: MarginalEdges<Backward, Forward, Estimate>,
   pub(crate) log_lh: LogLh,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct MarginalEdges<Backward, Forward, Estimate> {
   pub backward: BTreeMap<GraphEdgeKey, Backward>,
   pub forward: BTreeMap<GraphEdgeKey, Forward>,
@@ -107,13 +106,13 @@ impl<Backward, Forward, Estimate> Default for MarginalEdges<Backward, Forward, E
   }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct MarginalBackward<Node, Backward> {
   pub(crate) node_states: BTreeMap<GraphNodeKey, Node>,
   pub(crate) backward: BTreeMap<GraphEdgeKey, Backward>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct MarginalForward<Node, Forward, Estimate> {
   pub(crate) node_states: BTreeMap<GraphNodeKey, Node>,
   pub(crate) forward: BTreeMap<GraphEdgeKey, Forward>,

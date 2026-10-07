@@ -9,10 +9,8 @@ use crate::node_label::node_label;
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::reroot::placement::root_moves;
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use log::debug;
-use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
@@ -22,7 +20,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::{RerootResult, StemRemovalInfo};
-use treetime_schema::schema_defaults;
 
 #[allow(
   clippy::unwrap_used,
@@ -228,12 +225,11 @@ fn search_root(
   )
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct ClockRerootResult {
   regression: Option<ClockRegression>,
   clock_model: Option<ClockModel>,
   reroot_result: Option<RerootResult>,
-  #[deser(skip)]
   points: Vec<ClockRegressionPoint>,
 }
 
@@ -452,20 +448,14 @@ fn clock_regression_points(
   Ok(points)
 }
 
-#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
-#[schemars(default, deny_unknown_fields)]
-#[schemars(transform = schema_defaults::<Self>)]
-#[deser(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault)]
 pub struct ClockVarianceParams {
-  /// Variance scaling factor proportional to branch length
   #[default = 0.0]
   pub variance_factor: f64,
 
-  /// Constant variance offset for all branches
   #[default = 0.0]
   pub variance_offset: f64,
 
-  /// Additional variance offset for leaf (terminal) nodes
   #[default = 1.0]
   pub variance_offset_leaf: f64,
 }

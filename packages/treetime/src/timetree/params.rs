@@ -7,9 +7,7 @@ use crate::optimize::params::BranchLengthMode;
 use crate::progress::LogSink;
 use crate::seq::alignment::{NodeSeqInput, get_common_length_of_node_inputs};
 use crate::{progress_info, progress_warn};
-use deser::{Deserialize, Serialize};
 use eyre::Report;
-use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -44,9 +42,7 @@ pub(crate) fn compute_effective_time_marginal(
   }
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault)]
 pub enum TimeMarginalMode {
   #[default]
   Never,

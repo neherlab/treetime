@@ -11,9 +11,8 @@ mod tests {
   use std::fs::read_to_string;
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
-  use treetime::timetree::coalescent::{CoalescentOutput, CoalescentOutputMode};
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
-  use treetime_utils::io::json::json_read_file;
+  use treetime_utils::io::json::{json_read_file, json_value_read_file};
 
   #[test]
   #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
@@ -161,10 +160,12 @@ mod tests {
     let tsv_path = output.path().join("timetree.coalescent.tsv");
     assert!(tsv_path.exists(), "default --output-all must write the coalescent TSV");
 
-    let doc: CoalescentOutput = json_read_file(output.path().join("timetree.coalescent.json"))?;
-    assert_eq!(CoalescentOutputMode::Skyline, doc.inputs.mode);
+    let doc = json_value_read_file(output.path().join("timetree.coalescent.json"))?;
+    assert_eq!("skyline", doc["inputs"]["mode"]);
     assert!(
-      !doc.outputs.segments.is_empty(),
+      doc["outputs"]["segments"]
+        .as_array()
+        .is_some_and(|segments| !segments.is_empty()),
       "a skyline run must report at least one coalescent segment"
     );
 

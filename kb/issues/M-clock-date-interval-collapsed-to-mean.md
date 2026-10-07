@@ -19,7 +19,7 @@ A public support thread documents mixed-granularity sampling dates and recommend
 
 - Date collapse: [packages/treetime/src/clock/assign_dates.rs#L28-L32](../../packages/treetime/src/clock/assign_dates.rs#L28-L32)
 - Downstream consumer: leaf date and leaf variance in the backward regression [packages/treetime/src/clock/clock_regression.rs#L341-L369](../../packages/treetime/src/clock/clock_regression.rs#L341-L369)
-- Leaf variance parameter: `ClockVarianceParams::variance_offset_leaf` [packages/treetime/src/clock/clock_regression.rs#L456-L468](../../packages/treetime/src/clock/clock_regression.rs#L456-L468)
+- Leaf variance parameter: `ClockVarianceParams::variance_offset_leaf` [packages/treetime/src/clock/clock_regression.rs#L452-L461](../../packages/treetime/src/clock/clock_regression.rs#L452-L461)
 
 ## Possible fix
 

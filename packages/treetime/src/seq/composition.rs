@@ -1,10 +1,9 @@
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
-use deser::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use treetime_primitives::AsciiChar;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Composition {
   counts: BTreeMap<AsciiChar, usize>,
   gap: AsciiChar,

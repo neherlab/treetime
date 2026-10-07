@@ -183,15 +183,13 @@ impl ClockLine for ClockModel {
 }
 
 #[must_use]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct ClockRegression {
   clock_rate: f64,
   intercept: f64,
   chisq: f64,
   r_val: f64,
-  #[deser(as = Array2Rows)]
   hessian: Array2<f64>,
-  #[deser(as = Array2Rows)]
   cov: Array2<f64>,
 }
 

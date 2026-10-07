@@ -5,7 +5,7 @@
 
 Clock and timetree use an $11$-point grid as the default continuous split-position search, while v0 brackets on a grid and refines the selected edge with bounded scalar minimization [packages/legacy/treetime/treetime/treeregression.py](../../packages/legacy/treetime/treetime/treeregression.py). Optimize already selects Brent refinement explicitly. Changing the clock/timetree default would alter numerical output and requires approval independently of code-structure migration.
 
-The v1 defaults originate in `enum BranchPointOptimizationParams` and `struct GridSearchParams` [packages/treetime/src/clock/find_best_root/params.rs#L49-L115](../../packages/treetime/src/clock/find_best_root/params.rs#L49-L115), and are selected by clock and timetree callers [packages/app-commands/src/commands/clock/run.rs#L166-L174](../../packages/app-commands/src/commands/clock/run.rs#L166-L174) [packages/treetime/src/timetree/pipeline.rs#L238](../../packages/treetime/src/timetree/pipeline.rs#L238). An eleven-point grid resolves a root split only to approximately one tenth of an edge.
+The v1 defaults originate in `enum BranchPointOptimizationParams` and `struct GridSearchParams` [packages/treetime/src/clock/find_best_root/params.rs#L53-L104](../../packages/treetime/src/clock/find_best_root/params.rs#L53-L104), and are selected by clock and timetree callers [packages/app-commands/src/commands/clock/run.rs#L166-L174](../../packages/app-commands/src/commands/clock/run.rs#L166-L174) [packages/treetime/src/timetree/pipeline.rs#L238](../../packages/treetime/src/timetree/pipeline.rs#L238). An eleven-point grid resolves a root split only to approximately one tenth of an edge.
 
 ## Options
 

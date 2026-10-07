@@ -1,7 +1,6 @@
-use deser::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(Debug, Clone, Copy, SmartDefault, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, SmartDefault)]
 pub struct VarianceModel {
   #[default = 0.0]
   pub(crate) variance_factor: f64,

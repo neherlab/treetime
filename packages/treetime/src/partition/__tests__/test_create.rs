@@ -9,7 +9,6 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::assert_error;
-  use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   #[rustfmt::skip]
   #[rstest]
@@ -36,8 +35,8 @@ mod tests {
     assert_eq!(expected_dense, matches!(reconstruction, MarginalReconstruction::Dense(_)));
     assert_eq!(4, reconstruction.sequence_length());
     assert_eq!(
-      json_write_str(&expected_gtr(&input)?, JsonPretty(false))?,
-      json_write_str(reconstruction.gtr(), JsonPretty(false))?
+      format!("{:#?}", expected_gtr(&input)?),
+      format!("{:#?}", reconstruction.gtr())
     );
     let (updated, _) = reconstruction.marginal_update(&input.graph, &input.branch_lengths)?;
     assert_eq!("ACGT", updated.root_sequence(&input.graph)?.to_string());

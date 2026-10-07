@@ -25,7 +25,7 @@ impl ConvergenceMetrics {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct IterationClock {
   pub clock_rate: f64,
   pub r_squared: Option<f64>,
@@ -40,7 +40,7 @@ impl IterationClock {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct IterationRecord {
   pub iteration: usize,
   pub metrics: ConvergenceMetrics,

@@ -4,7 +4,7 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime::clock::clock_model::{ClockModel, ClockRegression};
+  use treetime::clock::clock_model::ClockModel;
   use treetime::clock::rtt::ClockRegressionResult;
   use treetime_utils::io::json::json_read_str;
 
@@ -73,16 +73,19 @@ mod tests {
     use super::*;
 
     pub(super) fn clock_model() -> ClockModel {
-      let regression: ClockRegression = json_read_str(indoc! {r#"{
+      json_read_str(indoc! {r#"{
         "clock_rate": 0.002,
         "intercept": -4.0,
-        "chisq": 0.0,
-        "r_val": 0.99,
-        "hessian": [[0.0, 0.0], [0.0, 0.0]],
-        "cov": [[1e-8, 0.0], [0.0, 0.5]]
+        "stats": {
+          "estimated": {
+            "chisq": 0.0,
+            "r_val": 0.99,
+            "hessian": [[0.0, 0.0], [0.0, 0.0]],
+            "cov": [[1e-8, 0.0], [0.0, 0.5]]
+          }
+        }
       }"#})
-      .unwrap();
-      ClockModel::from_regression(&regression).unwrap()
+      .unwrap()
     }
 
     pub(super) fn result(name: &str, date: f64, div: f64, is_outlier: bool) -> ClockRegressionResult {

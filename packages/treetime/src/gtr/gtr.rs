@@ -1,30 +1,22 @@
 use crate::make_error;
 use bon::bon;
-use deser::Serialize;
 use eyre::Report;
 use ndarray::prelude::*;
 use ndarray_linalg::Eigh;
 use ndarray_linalg::UPLO::Lower;
 use num_traits::abs;
-use treetime_utils::adapters::{Array2Rows, ArrayVec};
 use treetime_utils::array::ndarray::{clamp_min, outer};
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct GTR {
   pub debug: bool,
   pub average_rate: f64,
   pub mu: f64,
-  #[deser(serialize_as = Array2Rows)]
   pub W: Array2<f64>,
-  #[deser(serialize_as = ArrayVec)]
   pub pi: Array1<f64>,
-  #[deser(serialize_as = ArrayVec)]
   pub eigvals: Array1<f64>,
-  #[deser(serialize_as = Array2Rows)]
   pub v: Array2<f64>,
-  #[deser(serialize_as = Array2Rows)]
   pub v_inv: Array2<f64>,
-  #[deser(serialize_as = Option<ArrayVec>)]
   pub site_rates: Option<Array1<f64>>,
   pub unimodal_branch_likelihood: bool,
 }

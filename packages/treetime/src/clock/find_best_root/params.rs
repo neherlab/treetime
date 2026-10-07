@@ -1,12 +1,8 @@
 use crate::clock::clock_set::ClockSet;
-use deser::{Deserialize, Serialize};
-use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use treetime_graph::node::GraphNodeKey;
-use treetime_schema::schema_defaults;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RerootSpec {
   Method(RerootMethod),
   Tips(Vec<GraphNodeKey>),
@@ -18,9 +14,7 @@ impl Default for RerootSpec {
   }
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault)]
 pub enum RerootMethod {
   #[default]
   LeastSquares,
@@ -29,8 +23,7 @@ pub enum RerootMethod {
   ClockFilter,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, SmartDefault, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Copy, Debug, Clone, PartialEq, SmartDefault)]
 pub enum RootObjective {
   #[default]
   EstimatedRate,
@@ -56,8 +49,7 @@ impl RootObjective {
   }
 }
 
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Debug, Clone, SmartDefault)]
 pub enum BranchPointOptimizationParams {
   #[default]
   Grid(GridSearchParams),
@@ -81,55 +73,32 @@ impl BranchPointOptimizationParams {
   }
 }
 
-/// Optimization method selection
-#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
+#[derive(Debug, Clone, SmartDefault)]
 pub enum OptimizationMethod {
-  /// Grid search with equally-spaced evaluation points
   #[default]
   Grid,
-  /// Brent's method for robust 1D optimization
   Brent,
-  /// Golden section search optimization
   GoldenSection,
 }
 
-/// Configuration for grid search optimization
-#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
-#[schemars(default, deny_unknown_fields)]
-#[schemars(transform = schema_defaults::<Self>)]
-#[deser(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault)]
 pub struct GridSearchParams {
-  /// Number of equally-spaced points to evaluate (grid method only)
   #[default = 11]
   pub n_points: usize,
 }
 
-/// Configuration for Brent's method optimization
-#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
-#[schemars(default, deny_unknown_fields)]
-#[schemars(transform = schema_defaults::<Self>)]
-#[deser(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault)]
 pub struct BrentParams {
-  /// Maximum number of iterations for Brent's method
   #[default = 50]
   pub brent_max_iters: usize,
-  /// Convergence tolerance for Brent's method
   #[default = 1e-12]
   pub brent_tolerance: f64,
 }
 
-/// Configuration for golden section search optimization
-#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
-#[schemars(default, deny_unknown_fields)]
-#[schemars(transform = schema_defaults::<Self>)]
-#[deser(default, deny_unknown_fields)]
+#[derive(Debug, Clone, SmartDefault)]
 pub struct GoldenSectionParams {
-  /// Maximum number of iterations for golden section search
   #[default = 50]
   pub golden_max_iters: usize,
-  /// Convergence tolerance for golden section search
   #[default = 1e-12]
   pub golden_tolerance: f64,
 }

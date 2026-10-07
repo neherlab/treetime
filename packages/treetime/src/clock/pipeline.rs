@@ -12,7 +12,6 @@ use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::error::OperationError;
 use crate::progress::{LogSink, StageSink};
 use crate::progress_warn;
-use deser::Serialize;
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::assign_node_names::restrict_node_names;
@@ -97,21 +96,15 @@ pub struct ClockInput {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct ClockOutput {
-  #[deser(skip)]
   pub graph: Graph,
-  #[deser(skip)]
   pub inputs: ClockInputs,
-  #[deser(skip)]
   pub divergences: BTreeMap<GraphNodeKey, f64>,
-  #[deser(skip)]
   pub outliers: BTreeSet<GraphNodeKey>,
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
-  #[deser(skip)]
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
-  #[deser(skip)]
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 

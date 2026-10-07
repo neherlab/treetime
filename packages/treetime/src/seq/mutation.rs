@@ -4,7 +4,6 @@ use crate::seq::indel::{InDel, InDelKind};
 use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use crate::{make_error, make_internal_error, make_internal_report};
 use derive_more::Display;
-use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use getset::CopyGetters;
 use itertools::Itertools;
@@ -179,7 +178,7 @@ pub(crate) fn combine_edge_mutations(
     .collect()
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Mutation {
   pub track: MutationTrack,
   pub event: MutationEvent,
@@ -203,8 +202,7 @@ impl Mutation {
   }
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum MutationTrack {
   Nucleotide,
   AminoAcid(String),
@@ -237,15 +235,14 @@ pub fn mutation_event_strings(event: &MutationEvent) -> Result<Vec<String>, Repo
   }
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum MutationEvent {
   Substitution(Sub),
   Insertion(AlignedMutation),
   Deletion(AlignedMutation),
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub struct AlignedMutation {
   pub range: (usize, usize),
   pub sequence: Seq,
@@ -334,13 +331,12 @@ pub(crate) fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> 
   Ok(result)
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, CopyGetters, Display, Serialize, Deserialize)]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, CopyGetters, Display)]
 #[getset(get_copy = "pub")]
 #[display("{reff}{}{qry}", pos + 1)]
 pub struct Sub {
   pos: usize,
   qry: AsciiChar,
-  #[deser(rename = "ref")]
   reff: AsciiChar,
 }
 

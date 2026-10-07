@@ -4,7 +4,6 @@ use crate::gtr::infer_gtr::common::{
   MutationCounts, accumulate_mutation_counts, get_branch_mutation_matrix, is_profile_informative,
 };
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
-use deser::Serialize;
 use eyre::Report;
 use ndarray::prelude::*;
 use std::collections::BTreeMap;
@@ -56,7 +55,7 @@ pub(crate) fn count_transitions_dense(
   Ok(MutationCounts { nij, Ti, root_state })
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug)]
 pub struct DenseInputs {
   pub(crate) min_branch_length: f64,
   pub(crate) filter_uninformative_root: bool,

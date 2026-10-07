@@ -21,7 +21,6 @@ pub(super) mod tests {
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
-  use treetime_utils::io::json::{JsonPretty, json_write_str};
   use treetime_utils::vec_of_owned;
 
   #[test]
@@ -57,7 +56,7 @@ pub(super) mod tests {
       &*NUC_ALPHABET,
     )?
     .into_iter()
-    .map(|fasta| (fasta.seq_name, fasta.seq))
+    .map(|fasta| (Some(fasta.seq_name), fasta.seq.to_string()))
     .collect::<BTreeMap<_, _>>();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
@@ -86,10 +85,7 @@ pub(super) mod tests {
       );
     }
 
-    assert_eq!(
-      json_write_str(&expected, JsonPretty(false))?,
-      json_write_str(&actual, JsonPretty(false))?
-    );
+    assert_eq!(expected, actual);
 
     Ok(())
   }
@@ -135,7 +131,7 @@ pub(super) mod tests {
       &*NUC_ALPHABET,
     )?
     .into_iter()
-    .map(|fasta| (fasta.seq_name, fasta.seq))
+    .map(|fasta| (Some(fasta.seq_name), fasta.seq.to_string()))
     .collect::<BTreeMap<_, _>>();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
@@ -164,10 +160,7 @@ pub(super) mod tests {
       );
     }
 
-    assert_eq!(
-      json_write_str(&expected, JsonPretty(false))?,
-      json_write_str(&actual, JsonPretty(false))?
-    );
+    assert_eq!(expected, actual);
 
     Ok(())
   }

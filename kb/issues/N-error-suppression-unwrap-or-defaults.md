@@ -36,7 +36,7 @@ Edges with no branch length get `one_mutation` (= 1.0 / total_sites) as a fallba
 
 `packages/treetime/src/gtr/infer_gtr/common.rs:70-74:`
 
-Returns `Ok(...)` with a warning log (`progress_warn!`) when GTR inference does not converge. `struct InferGtrResult` (`packages/treetime/src/gtr/infer_gtr/common.rs:111:`) has no convergence flag. Callers cannot distinguish a converged model from a non-converged one without parsing log output.
+Returns `Ok(...)` with a warning log (`progress_warn!`) when GTR inference does not converge. `struct InferGtrResult` (`packages/treetime/src/gtr/infer_gtr/common.rs:106:`) has no convergence flag. Callers cannot distinguish a converged model from a non-converged one without parsing log output.
 
 Fix: add a convergence flag to `InferGtrResult` so callers can detect and handle non-convergence programmatically.
 

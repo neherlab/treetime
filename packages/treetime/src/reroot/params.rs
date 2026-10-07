@@ -1,8 +1,6 @@
-use deser::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(Debug, Clone, SmartDefault, Serialize, Deserialize)]
-#[deser(default)]
+#[derive(Debug, Clone, SmartDefault)]
 pub struct BrentParams {
   #[default = 50]
   pub(crate) brent_max_iters: usize,

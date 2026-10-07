@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use eyre::Report;
-  use treetime_utils::io::json::{JsonPretty, json_write_str};
 
   #[test]
   fn test_smoke_ancestral_gtr_iterations_sparse() -> Result<(), Report> {
@@ -14,8 +13,8 @@ mod tests {
       refined.mu
     );
     assert_ne!(
-      json_write_str(&initial, JsonPretty(false))?,
-      json_write_str(&refined, JsonPretty(false))?,
+      format!("{initial:#?}"),
+      format!("{refined:#?}"),
       "GTR iterations must replace the parsimony-inferred GTR"
     );
 
@@ -33,8 +32,8 @@ mod tests {
       refined.mu
     );
     assert_ne!(
-      json_write_str(&initial, JsonPretty(false))?,
-      json_write_str(&refined, JsonPretty(false))?,
+      format!("{initial:#?}"),
+      format!("{refined:#?}"),
       "GTR iterations must replace the parsimony-inferred GTR"
     );
 

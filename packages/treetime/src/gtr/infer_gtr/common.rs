@@ -1,11 +1,9 @@
 use crate::gtr::gtr::avg_transition;
 use crate::progress::LogSink;
 use crate::progress_warn;
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
 use smart_default::SmartDefault;
-use treetime_utils::adapters::{Array2Rows, ArrayVec};
 use treetime_utils::array::ndarray::{is_max_above, outer};
 
 const TINY_NUMBER: f64 = 1e-12;
@@ -81,15 +79,12 @@ pub(crate) fn infer_gtr_impl(
   Ok(InferGtrResult { W, pi, mu })
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct MutationCounts {
-  #[deser(as = Array2Rows)]
   pub(crate) nij: Array2<f64>,
 
-  #[deser(as = ArrayVec)]
   pub(crate) Ti: Array1<f64>,
 
-  #[deser(as = ArrayVec)]
   pub(crate) root_state: Array1<f64>,
 }
 
@@ -107,11 +102,9 @@ pub struct InferGtrOptions {
   pub(crate) max_iter: usize,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct InferGtrResult {
-  #[deser(as = Array2Rows)]
   pub(crate) W: Array2<f64>,
-  #[deser(as = ArrayVec)]
   pub(crate) pi: Array1<f64>,
   pub(crate) mu: f64,
 }

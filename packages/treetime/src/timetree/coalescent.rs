@@ -3,7 +3,7 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use treetime_utils::make_error;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct CoalescentOutput {
   pub inputs: CoalescentInputs,
   pub outputs: CoalescentOutputs,
@@ -67,7 +67,7 @@ impl CoalescentOutput {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct CoalescentInputs {
   pub mode: CoalescentOutputMode,
   #[deser(skip_serializing_if = Option::is_none)]
@@ -79,7 +79,7 @@ pub struct CoalescentInputs {
   pub gen_per_year: f64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum CoalescentOutputMode {
   Fixed,
@@ -87,7 +87,7 @@ pub enum CoalescentOutputMode {
   Skyline,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct CoalescentOutputs {
   #[deser(skip_serializing_if = Option::is_none)]
   pub log_likelihood: Option<f64>,
@@ -131,7 +131,7 @@ impl From<&CoalescentSegment> for CoalescentSegmentRow {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct CoalescentSegment {
   pub index: usize,
   pub segment: SegmentInterval,
@@ -141,13 +141,13 @@ pub struct CoalescentSegment {
   pub ne: Estimate,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct SegmentInterval {
   pub start: f64,
   pub end: f64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct Estimate {
   value: f64,
   #[deser(skip_serializing_if = Option::is_none)]
