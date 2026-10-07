@@ -1,6 +1,5 @@
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
 use approx::UlpsEq;
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
@@ -10,14 +9,11 @@ use treetime_grid::grid::Grid;
 use treetime_grid::{BoundaryBehavior, GridFn, InterpElem, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
   grid_fn: GridFn<T>,
-  #[deser(skip)]
   left_extrap: BoundaryBehavior,
-  #[deser(skip)]
   right_extrap: BoundaryBehavior,
-  #[deser(skip)]
   _policy: PolicyMarker<Y>,
 }
 

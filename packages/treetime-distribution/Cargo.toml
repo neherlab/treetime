@@ -22,7 +22,6 @@ treetime-utils = { workspace = true }
 
 # [external]
 approx = { workspace = true }
-deser = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
 itertools = { workspace = true }
@@ -34,6 +33,7 @@ strum_macros = { workspace = true }
 
 [dev-dependencies]
 ctor = { workspace = true }
+deser = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }

@@ -1,5 +1,4 @@
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
-use deser::{Deserialize, Serialize};
 use eyre::{Result, WrapErr};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
@@ -10,13 +9,10 @@ use treetime_utils::{make_error, make_internal_error};
 
 const FORMULA_GRID_SIZE: usize = 200;
 
-#[derive(Serialize, Deserialize)]
 pub struct DistributionFormula<Y: YAxisPolicy = Plain> {
-  #[deser(skip, default = default_eval_fn())]
   eval_fn: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
   t_min: f64,
   t_max: f64,
-  #[deser(skip)]
   _policy: PolicyMarker<Y>,
 }
 
@@ -113,8 +109,4 @@ impl<Y: YAxisPolicy> PartialEq for DistributionFormula<Y> {
   fn eq(&self, other: &Self) -> bool {
     self.t_min == other.t_min && self.t_max == other.t_max
   }
-}
-
-fn default_eval_fn() -> Arc<dyn Fn(f64) -> Result<f64> + Send + Sync> {
-  Arc::new(|_t| Ok(0.0))
 }

@@ -1,14 +1,12 @@
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
-use deser::{Deserialize, Serialize};
 use getset::Getters;
 use std::fmt::Debug;
 
-#[derive(Debug, Eq, PartialEq, Clone, Getters, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Getters)]
 #[getset(get = "pub")]
 pub struct DistributionRange<T: Clone + Copy + Debug, Y: YAxisPolicy = Plain> {
   range: (T, T),
   ampl: T,
-  #[deser(skip)]
   #[getset(skip)]
   _policy: PolicyMarker<Y>,
 }
