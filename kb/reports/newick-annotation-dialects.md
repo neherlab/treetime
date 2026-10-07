@@ -217,6 +217,23 @@ For LGT events, `##` (double hash) on exactly one copy marks the acceptor (main 
 
 Each copy carries its own branch length (the edge from that copy's parent to the hybrid node).
 
+### Annotated networks
+
+BEAST2 network packages and TreeKnit write eNewick with BEAST annotations `[&key=value]` at every copy of a hybrid node, and each copy carries its own values, because each copy stands for one parent branch:
+
+- CoalRe (reassortment networks, <a id="cite-10"></a>[Müller et al. 2020](https://doi.org/10.1073/pnas.1918304117) [[10](#ref-10)]) writes `x#H<id>[&segments={...},...]:length` in `getExtendedNewick()` of [Network.java](https://github.com/nicfel/CoalRe/blob/39442ea90fd05ffc2b338affc414e97a7bcee4b9/src/coalre/network/Network.java#L286-L291); the `segments` of a copy are the genome segments carried along that parent branch
+- Bacter (ancestral recombination graphs, <a id="cite-11"></a>[Vaughan et al. 2017](https://doi.org/10.1534/genetics.116.193425) [[11](#ref-11)]) [[repo](https://github.com/tgvaughan/bacter)] and SpeciesNetwork (species networks, inheritance probability `gamma` of each parent, <a id="cite-12"></a>[Zhang et al. 2018](https://doi.org/10.1093/molbev/msx307) [[12](#ref-12)]) [[repo](https://github.com/zhangchicool/speciesnetwork)] log networks the same way
+- TreeKnit (reassortment graphs from trees, <a id="cite-13"></a>[Barrat-Charlaix, Vaughan, and Neher 2022](https://doi.org/10.1371/journal.pcbi.1010394) [[13](#ref-13)]) [[repo](https://github.com/neherlab/TreeKnit.jl)] writes `x#H1[&segments={0}]:0.5`
+- IcyTree (<a id="cite-14"></a>[Vaughan 2017](https://doi.org/10.1093/bioinformatics/btx155) [[14](#ref-14)]) reads eNewick with BEAST annotations, also inside NEXUS tree blocks, and draws the annotations per branch
+
+Example in the CoalRe form:
+
+```
+((A[&segments={0,1}]:1,(B[&segments={0,1}]:1)#H0[&segments={0}]:0.5)[&segments={0,1}]:1,(#H0[&segments={1}]:0.7,C[&segments={0,1}]:1)[&segments={0,1}]:1);
+```
+
+A reader that reads the eNewick tags but not the annotations loses the segments; a reader that reads the annotations but not the tags flattens the network into a tree with two nodes named `#H0`.
+
 ### Example
 
 ```
@@ -296,6 +313,11 @@ R = reads, W = writes, RW = both, blank = unsupported. Source evidence in footno
 | ETE toolkit | RW           | R              | RW [h]            |              |             |
 | BioPython   | RW           | RW [i]         |                   |              |             |
 | DendroPy    | RW           | RW             | RW                |              |             |
+| CoalRe      |              | RW [k]         |                   | RW [k]       |             |
+| Bacter      |              | W [k]          |                   | W [k]        |             |
+| SpeciesNetwork |           | W [k]          |                   | W [k]        |             |
+| TreeKnit    |              | W [k]          |                   | W [k]        |             |
+| IcyTree     | R            | R [k]          |                   | R [k]        |             |
 | TreeTime v0 | RW           | W [j]          |                   |              |             |
 | augur       | RW           |                |                   |              |             |
 
@@ -309,6 +331,7 @@ R = reads, W = writes, RW = both, blank = unsupported. Source evidence in footno
 [h] Reads NHX natively, BEAST-style with appropriate settings. Primary NHX consumer in the Python ecosystem.
 [i] `Bio.Phylo` `.comment` attribute becomes `[&...]` in Nexus output. Does NOT parse `[&...]` back into structured data on read - comments stripped or stored as raw strings.
 [j] Writes BEAST-style `[&mutations=...,date=...]` via BioPython `.comment` at [CLI_io.py](https://github.com/neherlab/treetime/blob/master/treetime/CLI_io.py). Cannot read annotations back (BioPython strips comments on Newick read). Local v0 source: `packages/legacy/treetime/treetime/CLI_io.py#L166-L205`.
+[k] eNewick with BEAST annotations at each copy of a hybrid node, see [Annotated networks](#annotated-networks). CoalRe: writer in [Network.java](https://github.com/nicfel/CoalRe/blob/39442ea90fd05ffc2b338affc414e97a7bcee4b9/src/coalre/network/Network.java#L286-L291), ANTLR reader in [NetworkParser.java](https://github.com/nicfel/CoalRe/blob/39442ea90fd05ffc2b338affc414e97a7bcee4b9/src/coalre/network/parser/NetworkParser.java). Bacter, SpeciesNetwork and IcyTree: as described in their papers [[11](#ref-11)] [[12](#ref-12)] [[14](#ref-14)].
 
 ### File extensions
 
@@ -343,26 +366,22 @@ No extension reliably distinguishes annotated from plain Newick. Auto-detection 
 
 ## Implications for v1 parser and writer
 
-The `util-newick` crate implements the dialects above ([packages/util-newick/README.md](../../packages/util-newick/README.md)). Content-based detection alone cannot tell the dialects apart, because the same text means different things in different dialects: `EPI_ISL#402124` is a sample name in classic Newick and a hybrid node in eNewick, and `[&rate=1]` is an annotation in BEAST and a comment in classic Newick. The crate therefore makes the dialect an option.
+The `util-newick` crate implements the dialects above ([packages/util-newick/README.md](../../packages/util-newick/README.md)). Content-based detection alone cannot tell the dialects apart, because the same text means different things in different dialects: `EPI_ISL#402124` is a sample name in classic Newick and a hybrid node in eNewick, and `[&rate=1]` is an annotation in BEAST and a comment in classic Newick. The crate therefore makes the dialect an option, and the reader and the writer each take exactly one dialect.
 
-### Reader
+### Two settings
 
-The reader takes an ordered list of dialects and returns the first one that reads the tree; the result records which one it was:
+The extensions fall into two independent groups. The tree structure decides how labels, colon fields and the tree weight read; the annotation convention decides how comments read. A dialect is one structure paired with one annotation convention, and every pair is valid, because files combine them: the annotated networks above are eNewick structure with BEAST annotations.
 
-- `Classic`: standard Newick. Every comment is plain text, so a BEAST tree read as classic keeps its annotations only as text
-- `Beast`: `[&key=value,...]` annotations with arrays, colors, booleans and quoted strings, plus `[&R]`/`[&U]` (BEAST, FigTree, TreeAnnotator, MrBayes consensus, IQ-TREE)
-- `MrBayes`: the MrBayes sampling comments `[&E ...]`, `[&B ...]`, `[&N ...]`, plus `[&R]`/`[&U]`
-- `Nhx`: `[&&NHX:key=value:...]` with the typed standard tags
-- `ENewick`: hybrid tags `#H1`, `##LGT1` read from the label alone
-- `Rich`: eNewick plus `[&R]`/`[&U]`, the tree weight `[&W x]` and the colon fields length, support and probability
+- Structures: `Classic` (standard Newick), `ENewick` (hybrid tags `#H1`, `##LGT1` read from the label alone), `Rich` (eNewick plus `[&R]`/`[&U]`, the tree weight `[&W x]` and the colon fields length, support and probability)
+- Annotation conventions: `Plain` (every comment is text), `Beast` (`[&key=value,...]` with arrays, colors, booleans and quoted strings, plus `[&R]`/`[&U]`), `Nhx` (`[&&NHX:key=value:...]` with the typed standard tags), `MrBayes` (the sampling comments `[&E ...]`, `[&B ...]`, `[&N ...]`, plus `[&R]`/`[&U]`)
 
-The annotation dialects and the network dialects read a comment that starts with `[&` and does not follow their syntax as a malformed annotation, which is an error in strict mode. This keeps the dialects apart when a caller lists several of them: reading a BEAST tree with all dialects, from the most specific to the least specific, fails in Rich Newick, eNewick, NHX and MrBayes and succeeds in BEAST.
+The annotation conventions `Beast`, `Nhx` and `MrBayes` read a comment that starts with `[&` and does not follow their syntax as a malformed annotation, which is an error in strict mode. With `Plain`, every node and branch comment is text in every structure. The comments at each copy of a hybrid node belong to the edge into that copy, because every producer above writes per-branch facts there.
 
 ### Writer
 
-The writer takes one dialect and writes every annotation, comment and field that the dialect can hold, at its recorded position. Data that the dialect cannot hold is dropped by one table of conversions; hybrid nodes in a dialect without hybrid tags are an error.
+The writer takes one dialect and writes every annotation, comment and field that the dialect can hold, at its recorded position, including the comments of each hybrid copy at that copy. Data that the dialect cannot hold is dropped by one table of conversions; data that would read back as something else is an error, such as hybrid nodes with classic structure.
 
-TreeTime writes `--output-nwk-style plain` (classic Newick, the default), `beast` and `nhx`, for both `.nwk` and `.nexus` output, and reads its tree input with the BEAST, NHX, MrBayes and classic dialects ([kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md)). eNewick and Rich Newick output belong on a separate axis when network algorithms ship.
+TreeTime writes `--output-nwk-style plain` (classic Newick, the default), `beast` and `nhx`, for both `.nwk` and `.nexus` output, and reads its tree inputs in the dialect of `--tree-dialect`, by default classic structure with BEAST annotations ([kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md)). The commands read trees only and reject networks.
 
 ## Glossary
 
@@ -391,3 +410,13 @@ TreeTime writes `--output-nwk-style plain` (classic Newick, the default), `beast
 8. <a id="ref-8"></a> Zmasek, Christian M., and Sean R. Eddy. 2001. "ATV: Display and Manipulation of Annotated Phylogenetic Trees." _Bioinformatics_ 17(4):383-384. https://doi.org/10.1093/bioinformatics/17.4.383 [↩](#cite-8)
 
 9. <a id="ref-9"></a> Cardona, Gabriel, Francesc Rossello, and Gabriel Valiente. 2008. "Extended Newick: It Is Time for a Standard Representation of Phylogenetic Networks." _BMC Bioinformatics_ 9:532. https://doi.org/10.1186/1471-2105-9-532 [↩](#cite-9)
+
+10. <a id="ref-10"></a> Müller, Nicola F., Ugne Stolz, Gytis Dudas, Tanja Stadler, and Timothy G. Vaughan. 2020. "Bayesian Inference of Reassortment Networks Reveals Fitness Benefits of Reassortment in Human Influenza Viruses." _Proceedings of the National Academy of Sciences_ 117(29):17104-17111. https://doi.org/10.1073/pnas.1918304117 [↩](#cite-10)
+
+11. <a id="ref-11"></a> Vaughan, Timothy G., David Welch, Alexei J. Drummond, Patrick J. Biggs, Tessy George, and Nigel P. French. 2017. "Inferring Ancestral Recombination Graphs from Bacterial Genomic Data." _Genetics_ 205(2):857-870. https://doi.org/10.1534/genetics.116.193425 [↩](#cite-11)
+
+12. <a id="ref-12"></a> Zhang, Chi, Huw A. Ogilvie, Alexei J. Drummond, and Tanja Stadler. 2018. "Bayesian Inference of Species Networks from Multilocus Sequence Data." _Molecular Biology and Evolution_ 35(2):504-517. https://doi.org/10.1093/molbev/msx307 [↩](#cite-12)
+
+13. <a id="ref-13"></a> Barrat-Charlaix, Pierre, Timothy G. Vaughan, and Richard A. Neher. 2022. "TreeKnit: Inferring Ancestral Reassortment Graphs of Influenza Viruses." _PLOS Computational Biology_ 18(8):e1010394. https://doi.org/10.1371/journal.pcbi.1010394 [↩](#cite-13)
+
+14. <a id="ref-14"></a> Vaughan, Timothy G. 2017. "IcyTree: Rapid Browser-Based Visualization for Phylogenetic Trees and Networks." _Bioinformatics_ 33(15):2392-2394. https://doi.org/10.1093/bioinformatics/btx155 [↩](#cite-14)
