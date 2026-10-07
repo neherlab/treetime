@@ -1,9 +1,8 @@
 use crate::dialect::NewickDialect;
 use crate::number::NumberFormat;
-use deser::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(Clone, Debug, SmartDefault, Serialize, Deserialize)]
+#[derive(Clone, Debug, SmartDefault)]
 pub struct NewickWriteOptions {
   #[default(NewickDialect::Classic)]
   pub dialect: NewickDialect,
@@ -26,8 +25,7 @@ impl NewickWriteOptions {
   }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum BranchAnnotations {
   #[default]
   Recorded,
@@ -35,8 +33,7 @@ pub enum BranchAnnotations {
   AfterLength,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum SupportPlacement {
   #[default]
   Source,
@@ -45,16 +42,14 @@ pub enum SupportPlacement {
   Annotation(String),
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Quoting {
   #[default]
   WhenNeeded,
   Always,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Spaces {
   #[default]
   Quote,

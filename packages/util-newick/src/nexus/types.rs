@@ -3,16 +3,15 @@ use crate::model::graph::NewickGraph;
 use crate::read::error::NewickWarning;
 use crate::read::options::NewickTree;
 use crate::write::options::NewickWriteOptions;
-use deser::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NexusFile {
   pub trees: Vec<NexusTree>,
   pub skipped: Vec<NexusCommand>,
   pub warnings: Vec<NewickWarning>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NexusTree {
   pub name: String,
   pub tree: NewickTree,
@@ -46,14 +45,14 @@ impl<'t> NexusTreeRef<'t> {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NexusCommand {
   pub block: Option<String>,
   pub command: String,
   pub line: usize,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default)]
 pub struct NexusWriteOptions {
   pub newick: NewickWriteOptions,
   pub translate: bool,

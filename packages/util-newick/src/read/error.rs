@@ -1,10 +1,9 @@
 use crate::dialect::NewickDialect;
 use crate::read::options::ReadMode;
-use deser::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NewickError {
   pub kind: NewickErrorKind,
   pub offset: usize,
@@ -64,8 +63,7 @@ impl fmt::Display for NewickError {
 
 impl Error for NewickError {}
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NewickErrorKind {
   Syntax,
   Structure,
@@ -79,14 +77,14 @@ pub enum NewickErrorKind {
   NoDialect(Vec<DialectAttempt>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DialectAttempt {
   pub dialect: NewickDialect,
   pub mode: ReadMode,
   pub error: NewickError,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NewickWarning {
   pub offset: usize,
   pub line: usize,
@@ -111,7 +109,7 @@ impl fmt::Display for NewickWarning {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Location {
   pub offset: usize,
   pub line: usize,

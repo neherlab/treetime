@@ -1,8 +1,6 @@
-use deser::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NewickDialect {
   Classic,
   Beast,

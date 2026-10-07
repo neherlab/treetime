@@ -1,5 +1,4 @@
 use crate::dialect::{CommentKind, NewickDialect};
-use deser::{Deserialize, Serialize};
 
 pub fn conversion(dialect: NewickDialect, data: DataKind) -> Conversion {
   let features = dialect.features();
@@ -18,8 +17,7 @@ pub fn conversion(dialect: NewickDialect, data: DataKind) -> Conversion {
   if holds { Conversion::Keep } else { unsupported }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DataKind {
   BeastComments,
   NhxComments,
@@ -48,8 +46,7 @@ impl DataKind {
   ];
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Conversion {
   Keep,
   Drop,

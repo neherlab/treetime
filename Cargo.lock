@@ -5352,7 +5352,6 @@ version = "1.0.0"
 dependencies = [
  "criterion",
  "ctor",
- "deser",
  "eyre",
  "indoc",
  "pest",

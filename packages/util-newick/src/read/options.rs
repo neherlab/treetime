@@ -1,10 +1,9 @@
 use crate::dialect::NewickDialect;
 use crate::model::graph::NewickGraph;
 use crate::read::error::NewickWarning;
-use deser::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(Clone, Debug, SmartDefault, Serialize, Deserialize)]
+#[derive(Clone, Debug, SmartDefault)]
 pub struct NewickReadOptions {
   #[default(vec![NewickDialect::Classic])]
   pub dialects: Vec<NewickDialect>,
@@ -22,8 +21,7 @@ impl NewickReadOptions {
   }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ReadMode {
   #[default]
   Strict,
@@ -39,8 +37,7 @@ impl ReadMode {
   }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum InternalLabel {
   #[default]
   Auto,
@@ -48,7 +45,7 @@ pub enum InternalLabel {
   Support,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NewickTree {
   pub graph: NewickGraph,
   pub dialect: NewickDialect,

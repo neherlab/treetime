@@ -1,8 +1,6 @@
 use crate::model::value::NewickValue;
-use deser::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NewickComment {
   Beast(Vec<(String, NewickValue)>),
   Nhx(Vec<(String, NewickValue)>),
@@ -19,14 +17,14 @@ impl NewickComment {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MrBayesComment {
   pub kind: MrBayesKind,
   pub name: String,
   pub values: Vec<String>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MrBayesKind {
   E,
   B,
@@ -43,7 +41,7 @@ impl MrBayesKind {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NodeComment {
   pub position: LabelSide,
   pub comment: NewickComment,
@@ -55,14 +53,13 @@ impl NodeComment {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum LabelSide {
   BeforeLabel,
   AfterLabel,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EdgeComment {
   pub field: EdgeField,
   pub side: ValueSide,
@@ -75,8 +72,7 @@ impl EdgeComment {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EdgeField {
   Length,
   Support,
@@ -95,8 +91,7 @@ impl EdgeField {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ValueSide {
   BeforeValue,
   AfterValue,

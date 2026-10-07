@@ -1,9 +1,7 @@
-use deser::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Debug)]
 pub enum NewickValue {
   Boolean(bool),
   Number(f64),
@@ -81,8 +79,7 @@ impl Hash for NewickValue {
   }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[deser(transparent)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NewickArray(Vec<NewickValue>);
 
 impl NewickArray {

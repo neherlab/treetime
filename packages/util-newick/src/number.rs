@@ -1,8 +1,7 @@
-use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr, eyre};
 use pretty_dtoa::{FmtFloatConfig, dtoa};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct NumberFormat {
   pub significant_digits: Option<u8>,
   pub decimal_digits: Option<i8>,

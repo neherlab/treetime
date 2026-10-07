@@ -1,8 +1,7 @@
 use crate::model::comment::{EdgeComment, NodeComment, annotation_pairs};
 use crate::model::value::NewickValue;
-use deser::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default)]
 pub struct NewickNodeData {
   name: Option<String>,
   hybrid: Option<NewickHybrid>,
@@ -69,7 +68,7 @@ impl NewickNodeData {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NewickHybrid {
   pub kind: Option<String>,
   pub index: u32,
@@ -86,7 +85,7 @@ impl NewickHybrid {
   }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default)]
 pub struct NewickEdgeData {
   branch_length: Option<f64>,
   support: Vec<f64>,
@@ -182,8 +181,7 @@ impl NewickEdgeData {
   }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SupportSource {
   #[default]
   Label,

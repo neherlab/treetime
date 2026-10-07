@@ -2,10 +2,9 @@ use crate::model::data::{NewickEdgeData, NewickNodeData};
 use crate::model::equality::graphs_equal;
 use crate::model::traverse::{Postorder, Preorder};
 use crate::model::validate::{describe_node, validate_graph};
-use deser::{Deserialize, Serialize};
 use eyre::{Report, eyre};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct NewickGraph {
   nodes: Vec<NodeEntry>,
   edges: Vec<NewickEdgeEntry>,
@@ -207,7 +206,7 @@ impl PartialEq for NewickGraph {
 
 impl Eq for NewickGraph {}
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct NewickEdgeEntry {
   parent: usize,
   child: usize,
@@ -232,7 +231,7 @@ impl NewickEdgeEntry {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 struct NodeEntry {
   data: NewickNodeData,
   children: Vec<usize>,
