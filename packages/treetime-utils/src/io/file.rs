@@ -65,6 +65,10 @@ impl Write for FileWriter {
     self.inner.write(buf)
   }
 
+  fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
+    self.inner.write_all(buf)
+  }
+
   fn flush(&mut self) -> std::io::Result<()> {
     self.inner.flush()
   }
