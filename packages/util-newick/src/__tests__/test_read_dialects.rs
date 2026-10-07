@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::dialect::{NewickAnnotations, NewickDialect, NewickStructure};
+  use crate::error::ParseDialectError;
   use crate::read::error::NewickErrorKind;
   use crate::read::options::{NewickReadOptions, ReadMode};
   use crate::read::stream::newick_from_str;
@@ -153,6 +154,32 @@ mod tests {
 
     let expected: Vec<String> = NewickDialect::pairs().map(|dialect| dialect.to_string()).collect();
     assert_eq!(expected, read);
+  }
+
+  #[test]
+  fn test_read_dialects_names_parse_back() {
+    let parsed: Vec<Result<NewickDialect, ParseDialectError>> = NewickDialect::pairs()
+      .map(|dialect| dialect.to_string().parse())
+      .collect();
+
+    let expected: Vec<Result<NewickDialect, ParseDialectError>> = NewickDialect::pairs().map(Ok).collect();
+    assert_eq!(expected, parsed);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::no_comma(           "enewick")]
+  #[case::unknown_structure(  "nexus,beast")]
+  #[case::unknown_annotations("enewick,figtree")]
+  #[trace]
+  fn test_read_dialects_unknown_name_is_an_error(#[case] text: &str) {
+    let expected = ParseDialectError {
+      text: text.to_owned(),
+      structures: "classic, enewick, rich".to_owned(),
+      annotations: "plain, beast, nhx, mrbayes".to_owned(),
+    };
+
+    assert_eq!(Err(expected), text.parse::<NewickDialect>());
   }
 
   mod helpers {

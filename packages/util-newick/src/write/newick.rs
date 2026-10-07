@@ -1,4 +1,5 @@
 use crate::dialect::NewickAnnotations;
+use crate::error::{NewickWriteError, WriteContext, write_error};
 use crate::grammar::{Rule, matches, parse};
 use crate::model::comment::{EdgeComment, LabelSide, NewickComment, NodeComment, ValueSide};
 use crate::model::data::{NewickEdgeData, SupportSource};
@@ -8,7 +9,6 @@ use crate::model::value::NewickValue;
 use crate::write::comments::{encode_beast, encode_comment, encode_nhx};
 use crate::write::conversions::{Conversion, DataKind, conversion};
 use crate::write::options::{BranchAnnotations, NewickWriteOptions, Quoting, Spaces, SupportPlacement};
-use eyre::{Report, WrapErr, eyre};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::{io, mem};
@@ -17,15 +17,15 @@ pub fn newick_to_writer(
   writer: &mut impl io::Write,
   graph: &NewickGraph,
   options: &NewickWriteOptions,
-) -> Result<(), Report> {
+) -> Result<(), NewickWriteError> {
   let text = newick_to_string(graph, options)?;
-  writer.write_all(text.as_bytes())?;
+  writer.write_all(text.as_bytes()).context("When writing Newick")?;
   Ok(())
 }
 
-pub fn newick_to_string(graph: &NewickGraph, options: &NewickWriteOptions) -> Result<String, Report> {
+pub fn newick_to_string(graph: &NewickGraph, options: &NewickWriteOptions) -> Result<String, NewickWriteError> {
   let mut text = String::new();
-  write_tree(&mut text, graph, options, None).wrap_err("When writing Newick")?;
+  write_tree(&mut text, graph, options, None).context("When writing Newick")?;
   Ok(text)
 }
 
@@ -33,11 +33,11 @@ pub fn write_newick_trees<'g>(
   writer: &mut impl io::Write,
   trees: impl IntoIterator<Item = &'g NewickGraph>,
   options: &NewickWriteOptions,
-) -> Result<(), Report> {
+) -> Result<(), NewickWriteError> {
   for (idx, graph) in trees.into_iter().enumerate() {
-    let mut text = newick_to_string(graph, options).wrap_err_with(|| format!("When writing tree {}", idx + 1))?;
+    let mut text = newick_to_string(graph, options).with_context(|| format!("When writing tree {}", idx + 1))?;
     text.push('\n');
-    writer.write_all(text.as_bytes())?;
+    writer.write_all(text.as_bytes()).context("When writing Newick")?;
   }
   Ok(())
 }
@@ -47,7 +47,7 @@ pub(crate) fn write_tree(
   graph: &NewickGraph,
   options: &NewickWriteOptions,
   translate: Option<&BTreeMap<String, String>>,
-) -> Result<(), Report> {
+) -> Result<(), NewickWriteError> {
   graph.validate()?;
   let writer = TreeWriter {
     graph,
@@ -68,24 +68,24 @@ struct TreeWriter<'g> {
 }
 
 impl TreeWriter<'_> {
-  fn check(&self) -> Result<(), Report> {
+  fn check(&self) -> Result<(), NewickWriteError> {
     let dialect = self.options.dialect;
     if let Some((node, _)) = self.graph.nodes().find(|(_, data)| data.hybrid().is_some())
       && conversion(dialect, DataKind::HybridNodes) == Conversion::Fail
     {
-      return Err(eyre!(
+      return Err(write_error!(
         "The {dialect} dialect cannot hold hybrid nodes such as {}; write networks with the enewick or rich structure",
         describe_node(self.graph, node)
       ));
     }
     match &self.options.support {
-      SupportPlacement::Field if dialect.structure.field_count() < 2 => Err(eyre!(
+      SupportPlacement::Field if dialect.structure.field_count() < 2 => Err(write_error!(
         "Support in a colon field needs the rich structure, not {dialect}"
       )),
       SupportPlacement::Annotation(_)
         if !matches!(dialect.annotations, NewickAnnotations::Beast | NewickAnnotations::Nhx) =>
       {
-        Err(eyre!(
+        Err(write_error!(
           "Support in an annotation needs beast or nhx annotations, not {dialect}"
         ))
       },
@@ -96,7 +96,7 @@ impl TreeWriter<'_> {
     }
   }
 
-  fn write_tree_comments(&self, out: &mut String) -> Result<(), Report> {
+  fn write_tree_comments(&self, out: &mut String) -> Result<(), NewickWriteError> {
     let dialect = self.options.dialect;
     if conversion(dialect, DataKind::Rooting) == Conversion::Keep {
       match self.graph.rooted() {
@@ -115,7 +115,7 @@ impl TreeWriter<'_> {
     Ok(())
   }
 
-  fn write_nodes(&self, out: &mut String) -> Result<(), Report> {
+  fn write_nodes(&self, out: &mut String) -> Result<(), NewickWriteError> {
     let graph = self.graph;
     let mut defined = vec![false; graph.node_count()];
     defined[graph.root()] = true;
@@ -166,7 +166,7 @@ impl TreeWriter<'_> {
     }
   }
 
-  fn write_node(&self, out: &mut String, frame: Frame) -> Result<(), Report> {
+  fn write_node(&self, out: &mut String, frame: Frame) -> Result<(), NewickWriteError> {
     let empty = NewickEdgeData::new();
     let edge = match frame.edge {
       Some(edge) => self.graph.edge(edge).data(),
@@ -180,20 +180,20 @@ impl TreeWriter<'_> {
         describe_node(self.graph, frame.node)
       )
     };
-    let support = self.support_target(frame, edge).wrap_err_with(branch_context)?;
+    let support = self.support_target(frame, edge).with_context(branch_context)?;
     let comments = self.label_comments(frame);
     let node = self.graph.node(frame.node);
     let starts_tree = frame.node == self.graph.root() && frame.next_child == 0;
     let has_label = node.name().is_some() || node.hybrid().is_some();
     self
       .write_label_comments(out, comments, LabelSide::BeforeLabel, starts_tree)
-      .wrap_err_with(node_context)?;
+      .with_context(node_context)?;
     self
       .write_label(out, frame, edge, &support)
-      .wrap_err_with(node_context)?;
+      .with_context(node_context)?;
     self
       .write_label_comments(out, comments, LabelSide::AfterLabel, starts_tree && !has_label)
-      .wrap_err_with(node_context)?;
+      .with_context(node_context)?;
     if let SupportTarget::Annotation(key, values) = &support {
       let value = match values.as_slice() {
         [single] => NewickValue::Number(*single),
@@ -210,18 +210,16 @@ impl TreeWriter<'_> {
         NewickAnnotations::Nhx => encode_nhx(&pairs),
         NewickAnnotations::Beast | NewickAnnotations::Plain | NewickAnnotations::MrBayes => encode_beast(&pairs),
       };
-      out.push_str(&encoded.wrap_err_with(branch_context)?);
+      out.push_str(&encoded.with_context(branch_context)?);
     }
     let field_support = match support {
       SupportTarget::Field(value) => Some(value),
       SupportTarget::None | SupportTarget::Label(_) | SupportTarget::Annotation(..) => None,
     };
-    self
-      .write_fields(out, edge, field_support)
-      .wrap_err_with(branch_context)
+    self.write_fields(out, edge, field_support).with_context(branch_context)
   }
 
-  fn support_target<'e>(&self, frame: Frame, edge: &'e NewickEdgeData) -> Result<SupportTarget<'e>, Report> {
+  fn support_target<'e>(&self, frame: Frame, edge: &'e NewickEdgeData) -> Result<SupportTarget<'e>, NewickWriteError> {
     let values = edge.support();
     if values.is_empty() {
       return Ok(SupportTarget::None);
@@ -235,7 +233,7 @@ impl TreeWriter<'_> {
         match values {
           [single] => SupportTarget::Field(*single),
           _ => {
-            return Err(eyre!(
+            return Err(write_error!(
               "A colon field holds one support value, but the branch has {}",
               values.len()
             ));
@@ -247,12 +245,12 @@ impl TreeWriter<'_> {
     if let SupportTarget::Label(_) = target {
       let node = self.graph.node(frame.node);
       if self.graph.is_leaf(frame.node) {
-        return Err(eyre!(
+        return Err(write_error!(
           "A leaf cannot carry support in its label, because a leaf label is read as a name"
         ));
       }
       if node.name().is_some() || node.hybrid().is_some() {
-        return Err(eyre!(
+        return Err(write_error!(
           "The label of the node holds its name, so it cannot also hold the support of the branch above"
         ));
       }
@@ -266,7 +264,7 @@ impl TreeWriter<'_> {
     frame: Frame,
     edge: &NewickEdgeData,
     support: &SupportTarget<'_>,
-  ) -> Result<(), Report> {
+  ) -> Result<(), NewickWriteError> {
     let node = self.graph.node(frame.node);
     let tag = node.hybrid().map(|hybrid| hybrid.tag(edge.is_acceptor()));
     if let SupportTarget::Label(values) = support {
@@ -325,7 +323,7 @@ impl TreeWriter<'_> {
     comments: &[NodeComment],
     side: LabelSide,
     starts_tree: bool,
-  ) -> Result<(), Report> {
+  ) -> Result<(), NewickWriteError> {
     for comment in comments.iter().filter(|comment| comment.position == side) {
       if starts_tree {
         self.check_tree_start_comment(&comment.comment)?;
@@ -337,7 +335,7 @@ impl TreeWriter<'_> {
     Ok(())
   }
 
-  fn check_tree_start_comment(&self, comment: &NewickComment) -> Result<(), Report> {
+  fn check_tree_start_comment(&self, comment: &NewickComment) -> Result<(), NewickWriteError> {
     let NewickComment::Plain(text) = comment else {
       return Ok(());
     };
@@ -349,7 +347,7 @@ impl TreeWriter<'_> {
     .into_iter()
     .find(|&(rule, data, _)| conversion(self.options.dialect, data) == Conversion::Fail && matches(rule, &bracketed));
     match reads_as {
-      Some((_, _, what)) => Err(eyre!(
+      Some((_, _, what)) => Err(write_error!(
         "The comment {bracketed} at the start of the tree cannot be written in the {} dialect, which would read it as the {what} comment",
         self.options.dialect
       )),
@@ -357,7 +355,12 @@ impl TreeWriter<'_> {
     }
   }
 
-  fn write_fields(&self, out: &mut String, edge: &NewickEdgeData, field_support: Option<f64>) -> Result<(), Report> {
+  fn write_fields(
+    &self,
+    out: &mut String,
+    edge: &NewickEdgeData,
+    field_support: Option<f64>,
+  ) -> Result<(), NewickWriteError> {
     let mut fields: [FieldText; 3] = Default::default();
     if let Some(length) = edge.branch_length() {
       fields[0].value = Some(self.options.numbers.format(length)?);

@@ -1,15 +1,18 @@
 use crate::dialect::NewickDialect;
+use crate::error::{NewickWriteError, write_error};
 use crate::grammar::{Rule, matches};
 use crate::model::comment::{MrBayesComment, NewickComment};
 use crate::model::value::NewickValue;
 use crate::nhx::{DUPLICATION_VALUES, NhxType};
 use crate::number::format_shortest;
 use crate::write::conversions::{Conversion, DataKind, conversion};
-use eyre::{Report, eyre};
 use std::fmt::Write;
 use std::{iter, slice};
 
-pub(crate) fn encode_comment(comment: &NewickComment, dialect: NewickDialect) -> Result<Option<String>, Report> {
+pub(crate) fn encode_comment(
+  comment: &NewickComment,
+  dialect: NewickDialect,
+) -> Result<Option<String>, NewickWriteError> {
   let data = match comment {
     NewickComment::Beast(_) => DataKind::BeastComments,
     NewickComment::Nhx(_) => DataKind::NhxComments,
@@ -19,7 +22,7 @@ pub(crate) fn encode_comment(comment: &NewickComment, dialect: NewickDialect) ->
   };
   match conversion(dialect, data) {
     Conversion::Drop => Ok(None),
-    Conversion::Fail => Err(eyre!(
+    Conversion::Fail => Err(write_error!(
       "The comment {comment:?} cannot be written in the {dialect} dialect, which would read it as an annotation"
     )),
     Conversion::Keep => match comment {
@@ -31,7 +34,7 @@ pub(crate) fn encode_comment(comment: &NewickComment, dialect: NewickDialect) ->
   }
 }
 
-pub(crate) fn encode_beast(pairs: &[(String, NewickValue)]) -> Result<String, Report> {
+pub(crate) fn encode_beast(pairs: &[(String, NewickValue)]) -> Result<String, NewickWriteError> {
   let mut text = String::from("[&");
   for (i, (key, value)) in pairs.iter().enumerate() {
     if i > 0 {
@@ -43,17 +46,17 @@ pub(crate) fn encode_beast(pairs: &[(String, NewickValue)]) -> Result<String, Re
       push_double_quoted(&mut text, key);
     }
     text.push('=');
-    push_beast_value(&mut text, value).map_err(|error| eyre!("In the BEAST annotation {key:?}: {error}"))?;
+    push_beast_value(&mut text, value).map_err(|error| write_error!("In the BEAST annotation {key:?}: {error}"))?;
   }
   text.push(']');
   Ok(text)
 }
 
-pub(crate) fn encode_nhx(pairs: &[(String, NewickValue)]) -> Result<String, Report> {
+pub(crate) fn encode_nhx(pairs: &[(String, NewickValue)]) -> Result<String, NewickWriteError> {
   let mut text = String::from("[&&NHX");
   for (key, value) in pairs {
     if !matches(Rule::nhx_key_exact, key) {
-      return Err(eyre!(
+      return Err(write_error!(
         "NHX cannot hold the tag {key:?}: a tag is not empty and contains none of ':', '=', '[', ']', '>'"
       ));
     }
@@ -68,11 +71,11 @@ pub(crate) fn encode_nhx(pairs: &[(String, NewickValue)]) -> Result<String, Repo
   Ok(text)
 }
 
-fn encode_mrbayes(comment: &MrBayesComment) -> Result<String, Report> {
+fn encode_mrbayes(comment: &MrBayesComment) -> Result<String, NewickWriteError> {
   let mut text = format!("[&{} ", comment.kind.letter());
   for (i, token) in iter::once(&comment.name).chain(&comment.values).enumerate() {
     if !matches(Rule::mrbayes_token_exact, token) {
-      return Err(eyre!(
+      return Err(write_error!(
         "The MrBayes comment {:?} cannot hold {token:?}: a token is not empty and contains no whitespace, '[' or ']'",
         comment.name
       ));
@@ -86,17 +89,17 @@ fn encode_mrbayes(comment: &MrBayesComment) -> Result<String, Report> {
   Ok(text)
 }
 
-fn encode_plain(text: &str) -> Result<String, Report> {
+fn encode_plain(text: &str) -> Result<String, NewickWriteError> {
   let comment = format!("[{text}]");
   if !matches(Rule::plain_comment_exact, &comment) {
-    return Err(eyre!(
+    return Err(write_error!(
       "The comment text {text:?} cannot be written as a comment, because its brackets do not balance"
     ));
   }
   Ok(comment)
 }
 
-fn push_beast_value(text: &mut String, value: &NewickValue) -> Result<(), Report> {
+fn push_beast_value(text: &mut String, value: &NewickValue) -> Result<(), NewickWriteError> {
   let mut pending: Vec<(slice::Iter<'_, NewickValue>, bool)> = Vec::new();
   let mut current = Some(value);
   loop {
@@ -136,17 +139,17 @@ fn push_double_quoted(text: &mut String, value: &str) {
   text.push('"');
 }
 
-fn checked_number_text(text: &str) -> Result<&str, Report> {
+fn checked_number_text(text: &str) -> Result<&str, NewickWriteError> {
   if matches(Rule::number_exact, text) {
     Ok(text)
   } else {
-    Err(eyre!(
+    Err(write_error!(
       "The value {text:?} is marked as a number, but it is not a number"
     ))
   }
 }
 
-fn nhx_value(key: &str, value: &NewickValue) -> Result<Option<String>, Report> {
+fn nhx_value(key: &str, value: &NewickValue) -> Result<Option<String>, NewickWriteError> {
   let expected = NhxType::of(key);
   let text = match (value, expected) {
     (NewickValue::Boolean(true), _) => return Ok(None),
@@ -161,38 +164,40 @@ fn nhx_value(key: &str, value: &NewickValue) -> Result<Option<String>, Report> {
     (NewickValue::Color([red, green, blue]), NhxType::Color) => format!("{red}.{green}.{blue}"),
     (NewickValue::Array(values), NhxType::Text) if values.as_slice().len() > 1 => nhx_parts(key, values.as_slice())?,
     _ => {
-      return Err(eyre!(
+      return Err(write_error!(
         "The NHX tag {key} needs {}, and NHX cannot hold the value {value:?} there",
         expected.description()
       ));
     },
   };
   if expected == NhxType::Integer && !matches(Rule::integer_exact, &text) {
-    return Err(eyre!("The NHX tag {key} needs an integer, but the value is {text}"));
+    return Err(write_error!(
+      "The NHX tag {key} needs an integer, but the value is {text}"
+    ));
   }
   Ok(Some(text))
 }
 
-fn nhx_parts(key: &str, values: &[NewickValue]) -> Result<String, Report> {
+fn nhx_parts(key: &str, values: &[NewickValue]) -> Result<String, NewickWriteError> {
   let parts = values
     .iter()
     .map(|value| match value {
       NewickValue::String(string) => Ok(nhx_part(key, string)?.to_owned()),
       NewickValue::Number(number) => format_shortest(*number),
       NewickValue::NumberText(number) => Ok(checked_number_text(number)?.to_owned()),
-      NewickValue::Boolean(_) | NewickValue::Color(_) | NewickValue::Array(_) => {
-        Err(eyre!("The NHX tag {key} cannot hold {value:?} as a part of its value"))
-      },
+      NewickValue::Boolean(_) | NewickValue::Color(_) | NewickValue::Array(_) => Err(write_error!(
+        "The NHX tag {key} cannot hold {value:?} as a part of its value"
+      )),
     })
     .collect::<Result<Vec<_>, _>>()?;
   Ok(parts.join(">"))
 }
 
-fn nhx_part<'s>(key: &str, text: &'s str) -> Result<&'s str, Report> {
+fn nhx_part<'s>(key: &str, text: &'s str) -> Result<&'s str, NewickWriteError> {
   if matches(Rule::nhx_part_exact, text) {
     Ok(text)
   } else {
-    Err(eyre!(
+    Err(write_error!(
       "NHX cannot hold the value {text:?} of the tag {key}: a value contains none of ':', '=', '[', ']', '>'"
     ))
   }

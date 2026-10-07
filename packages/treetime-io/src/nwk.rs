@@ -172,7 +172,8 @@ pub fn nwk_write(
   comments: &NwkNodeComments,
 ) -> Result<(), Report> {
   let graph = newick_graph(tree, names, weights, comments, options.style)?;
-  newick_to_writer(&mut writer, &graph, &newick_write_options(options))
+  newick_to_writer(&mut writer, &graph, &newick_write_options(options))?;
+  Ok(())
 }
 
 pub type NwkNodeComments = BTreeMap<GraphNodeKey, Vec<(String, NewickValue)>>;

@@ -1,4 +1,4 @@
-use eyre::{Report, eyre};
+use crate::error::ParseDialectError;
 use std::fmt;
 use std::str::FromStr;
 
@@ -103,15 +103,13 @@ impl fmt::Display for NewickDialect {
 }
 
 impl FromStr for NewickDialect {
-  type Err = Report;
+  type Err = ParseDialectError;
 
   fn from_str(text: &str) -> Result<Self, Self::Err> {
-    let structure_names = NewickStructure::ALL.map(NewickStructure::name).join(", ");
-    let annotation_names = NewickAnnotations::ALL.map(NewickAnnotations::name).join(", ");
-    let error = || {
-      eyre!(
-        "{text:?} is not a Newick dialect: expected <structure>,<annotations> with structure one of {structure_names} and annotations one of {annotation_names}"
-      )
+    let error = || ParseDialectError {
+      text: text.to_owned(),
+      structures: NewickStructure::ALL.map(NewickStructure::name).join(", "),
+      annotations: NewickAnnotations::ALL.map(NewickAnnotations::name).join(", "),
     };
     let (structure, annotations) = text.split_once(',').ok_or_else(error)?;
     let structure = NewickStructure::ALL

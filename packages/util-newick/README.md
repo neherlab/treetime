@@ -120,6 +120,8 @@ let text = newick_to_string(&tree.graph, &NewickWriteOptions::new(NewickDialect:
 
 With the default options a write followed by a read in the same dialect gives an equal graph (property tests check this for all 12 dialects, networks, occurrence comments and every comment kind). Names are quoted exactly when the grammar would read them differently unquoted: a name that is not a run of label characters, that contains `'`, that ends like a hybrid tag, or, on an internal node, that reads as a support label. BEAST keys are quoted when they are not bare keys, and BEAST strings are always written in double quotes, so `"TRUE"` stays a string. A NHX tag or value that NHX cannot hold, and a number that is not finite, is an error.
 
+Writer errors, and errors of `add_edge()`, `add_child()` and `validate()`, are `NewickWriteError`, with one message that starts with the context of the step that failed: "When writing Newick: When writing the branch above node 1 ('A'): Newick cannot represent the number inf". A dialect name that `FromStr` cannot read is a `ParseDialectError` ([kb/decisions/util-newick-typed-errors.md](../../kb/decisions/util-newick-typed-errors.md)).
+
 `write_newick_trees()` writes one tree per line.
 
 ### Data a dialect cannot hold

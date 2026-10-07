@@ -1,8 +1,8 @@
+use crate::error::{NewickWriteError, write_error};
 use crate::model::data::{NewickEdgeData, NewickNodeData};
 use crate::model::equality::graphs_equal;
 use crate::model::traverse::{Postorder, Preorder};
 use crate::model::validate::{describe_node, validate_graph};
-use eyre::{Report, eyre};
 
 #[derive(Clone, Debug)]
 pub struct NewickGraph {
@@ -31,21 +31,24 @@ impl NewickGraph {
     self.nodes.len() - 1
   }
 
-  pub fn add_edge(&mut self, parent: usize, child: usize, data: NewickEdgeData) -> Result<usize, Report> {
+  pub fn add_edge(&mut self, parent: usize, child: usize, data: NewickEdgeData) -> Result<usize, NewickWriteError> {
     let node_count = self.nodes.len();
     if parent >= node_count || child >= node_count {
-      return Err(eyre!(
+      return Err(write_error!(
         "Cannot connect node {parent} to node {child}: the graph has {node_count} nodes"
       ));
     }
     if child == self.root {
-      return Err(eyre!("The root, {}, cannot have a parent", describe_node(self, child)));
+      return Err(write_error!(
+        "The root, {}, cannot have a parent",
+        describe_node(self, child)
+      ));
     }
     if parent == child {
-      return Err(eyre!("{} cannot be its own parent", describe_node(self, child)));
+      return Err(write_error!("{} cannot be its own parent", describe_node(self, child)));
     }
     if self.children(parent).any(|existing| existing == child) {
-      return Err(eyre!(
+      return Err(write_error!(
         "{} already has an edge to {}",
         describe_node(self, parent),
         describe_node(self, child)
@@ -53,7 +56,7 @@ impl NewickGraph {
     }
     let child_entry = &self.nodes[child];
     if child_entry.data.hybrid().is_none() && !child_entry.parents.is_empty() {
-      return Err(eyre!(
+      return Err(write_error!(
         "{} already has a parent, and only a hybrid node can have more than one",
         describe_node(self, child)
       ));
@@ -61,9 +64,14 @@ impl NewickGraph {
     Ok(self.push_edge(parent, child, data))
   }
 
-  pub fn add_child(&mut self, parent: usize, edge: NewickEdgeData, node: NewickNodeData) -> Result<usize, Report> {
+  pub fn add_child(
+    &mut self,
+    parent: usize,
+    edge: NewickEdgeData,
+    node: NewickNodeData,
+  ) -> Result<usize, NewickWriteError> {
     if parent >= self.nodes.len() {
-      return Err(eyre!(
+      return Err(write_error!(
         "Cannot add a child to node {parent}: the graph has {} nodes",
         self.nodes.len()
       ));
@@ -161,7 +169,7 @@ impl NewickGraph {
     Postorder::new(self)
   }
 
-  pub fn validate(&self) -> Result<(), Report> {
+  pub fn validate(&self) -> Result<(), NewickWriteError> {
     validate_graph(self)
   }
 

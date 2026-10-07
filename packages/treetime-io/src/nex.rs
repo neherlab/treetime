@@ -35,5 +35,6 @@ pub fn nex_write(
     newick: newick_write_options(options),
     translate: false,
   };
-  nexus_to_writer(&mut writer, &[NexusTreeRef::new("tree1", &graph)], &nexus_options)
+  nexus_to_writer(&mut writer, &[NexusTreeRef::new("tree1", &graph)], &nexus_options)?;
+  Ok(())
 }

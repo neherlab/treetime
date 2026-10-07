@@ -1,4 +1,4 @@
-use eyre::{Report, WrapErr, eyre};
+use crate::error::{NewickWriteError, WriteContext, write_error};
 use pretty_dtoa::{FmtFloatConfig, dtoa};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -9,25 +9,25 @@ pub struct NumberFormat {
 }
 
 impl NumberFormat {
-  pub fn format(&self, value: f64) -> Result<String, Report> {
+  pub fn format(&self, value: f64) -> Result<String, NewickWriteError> {
     format_number(value, *self)
   }
 }
 
-pub(crate) fn format_shortest(value: f64) -> Result<String, Report> {
+pub(crate) fn format_shortest(value: f64) -> Result<String, NewickWriteError> {
   format_number(value, NumberFormat::default())
 }
 
-fn format_number(value: f64, format: NumberFormat) -> Result<String, Report> {
+fn format_number(value: f64, format: NumberFormat) -> Result<String, NewickWriteError> {
   if !value.is_finite() {
-    return Err(eyre!("Newick cannot represent the number {value}"));
+    return Err(write_error!("Newick cannot represent the number {value}"));
   }
   let mut config = FmtFloatConfig::default()
     .add_point_zero(format.point_zero)
     .radix_point('.');
   if let Some(significant_digits) = format.significant_digits {
     if significant_digits == 0 {
-      return Err(eyre!("The number of significant digits must be at least 1"));
+      return Err(write_error!("The number of significant digits must be at least 1"));
     }
     config = config.max_significant_digits(significant_digits);
   }
@@ -51,13 +51,13 @@ fn trim_fraction_zeros(text: String, point_zero: bool) -> String {
   }
 }
 
-fn round_to_decimal_digits(value: f64, decimal_digits: i8) -> Result<f64, Report> {
+fn round_to_decimal_digits(value: f64, decimal_digits: i8) -> Result<f64, NewickWriteError> {
   if decimal_digits >= 0 {
     let decimals = usize::from(decimal_digits.unsigned_abs());
     let rounded = format!("{value:.decimals$}");
     return rounded
       .parse::<f64>()
-      .wrap_err_with(|| format!("When rounding {value} to {decimals} decimal digits"));
+      .with_context(|| format!("When rounding {value} to {decimals} decimal digits"));
   }
   let scale = 10_f64.powi(i32::from(decimal_digits.unsigned_abs()));
   Ok((value / scale).round() * scale)

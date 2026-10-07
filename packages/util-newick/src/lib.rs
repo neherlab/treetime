@@ -1,4 +1,5 @@
 pub mod dialect;
+pub mod error;
 pub(crate) mod grammar;
 pub mod model;
 pub mod nexus;
@@ -8,6 +9,7 @@ pub mod read;
 pub mod write;
 
 pub use crate::dialect::{NewickAnnotations, NewickDialect, NewickStructure};
+pub use crate::error::{NewickWriteError, ParseDialectError};
 pub use crate::model::comment::{
   EdgeComment, EdgeField, LabelSide, MrBayesComment, MrBayesKind, NewickComment, NodeComment, ValueSide,
 };

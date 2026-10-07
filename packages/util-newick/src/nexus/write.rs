@@ -1,9 +1,9 @@
+use crate::error::{NewickWriteError, WriteContext};
 use crate::nexus::grammar::{Rule, matches};
 use crate::nexus::types::{NexusTreeRef, NexusWriteOptions};
 use crate::write::comments::encode_comment;
 use crate::write::newick::write_tree;
 use crate::write::options::Spaces;
-use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use std::io;
@@ -12,19 +12,23 @@ pub fn nexus_to_writer(
   writer: &mut impl io::Write,
   trees: &[NexusTreeRef<'_>],
   options: &NexusWriteOptions,
-) -> Result<(), Report> {
+) -> Result<(), NewickWriteError> {
   let text = nexus_to_string(trees, options)?;
-  writer.write_all(text.as_bytes())?;
+  writer.write_all(text.as_bytes()).context("When writing NEXUS")?;
   Ok(())
 }
 
-pub fn nexus_to_string(trees: &[NexusTreeRef<'_>], options: &NexusWriteOptions) -> Result<String, Report> {
+pub fn nexus_to_string(trees: &[NexusTreeRef<'_>], options: &NexusWriteOptions) -> Result<String, NewickWriteError> {
   let mut text = String::new();
-  write_nexus(&mut text, trees, options).wrap_err("When writing NEXUS")?;
+  write_nexus(&mut text, trees, options).context("When writing NEXUS")?;
   Ok(text)
 }
 
-fn write_nexus(out: &mut String, trees: &[NexusTreeRef<'_>], options: &NexusWriteOptions) -> Result<(), Report> {
+fn write_nexus(
+  out: &mut String,
+  trees: &[NexusTreeRef<'_>],
+  options: &NexusWriteOptions,
+) -> Result<(), NewickWriteError> {
   let taxa = taxon_labels(trees);
   out.push_str("#NEXUS\n");
   if !taxa.is_empty() {
@@ -57,7 +61,7 @@ fn write_nexus(out: &mut String, trees: &[NexusTreeRef<'_>], options: &NexusWrit
   }
   for tree in trees {
     write_tree_command(out, tree, options, translate.as_ref())
-      .wrap_err_with(|| format!("When writing the tree {:?}", tree.name))?;
+      .with_context(|| format!("When writing the tree {:?}", tree.name))?;
   }
   out.push_str("End;\n");
   Ok(())
@@ -68,7 +72,7 @@ fn write_tree_command(
   tree: &NexusTreeRef<'_>,
   options: &NexusWriteOptions,
   translate: Option<&BTreeMap<String, String>>,
-) -> Result<(), Report> {
+) -> Result<(), NewickWriteError> {
   out.push_str("  Tree ");
   push_word(out, tree.name, options);
   for comment in tree.comments {
