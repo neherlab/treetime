@@ -1,5 +1,3 @@
-use deser::Serialize;
-
 pub const GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES: &[GaussianPairwiseMultiplicationTestCase] = &[
   GaussianPairwiseMultiplicationTestCase {
     name: "identical",
@@ -153,7 +151,7 @@ pub const GAUSSIAN_PAIRWISE_MULTIPLICATION_CASES: &[GaussianPairwiseMultiplicati
   },
 ];
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct GaussianPairwiseMultiplicationTestCase {
   pub name: &'static str,
   pub description: &'static str,

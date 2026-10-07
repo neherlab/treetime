@@ -1,5 +1,3 @@
-use deser::Serialize;
-
 pub const GAUSSIAN_CONVOLUTION_CASES: &[GaussianConvolutionTestCase] = &[
   GaussianConvolutionTestCase {
     name: "python_notebook_case_1",
@@ -207,7 +205,7 @@ pub const GAUSSIAN_CONVOLUTION_CASES: &[GaussianConvolutionTestCase] = &[
   },
 ];
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct GaussianConvolutionTestCase {
   pub name: &'static str,
   pub description: &'static str,

@@ -1,5 +1,3 @@
-use deser::Serialize;
-
 pub const GAUSSIAN_EXPONENTIAL_CASES: &[GaussianExponentialTestCase] = &[
   GaussianExponentialTestCase {
     name: "python_notebook_case",
@@ -73,7 +71,7 @@ pub const GAUSSIAN_EXPONENTIAL_CASES: &[GaussianExponentialTestCase] = &[
   },
 ];
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct GaussianExponentialTestCase {
   pub name: &'static str,
   pub description: &'static str,

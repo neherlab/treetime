@@ -1,5 +1,3 @@
-use deser::Serialize;
-
 pub const EXPONENTIAL_CONVOLUTION_CASES: &[ExponentialConvolutionTestCase] = &[
   ExponentialConvolutionTestCase {
     name: "python_notebook_case",
@@ -146,7 +144,7 @@ pub const EXPONENTIAL_CONVOLUTION_CASES: &[ExponentialConvolutionTestCase] = &[
   },
 ];
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct ExponentialConvolutionTestCase {
   pub name: &'static str,
   pub description: &'static str,
