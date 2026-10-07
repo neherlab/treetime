@@ -2,7 +2,7 @@ use crate::config::catalog::{SettingRole, SettingSpec, command_settings};
 use crate::config::settings::setting_ref;
 use crate::json_value::JsonValue;
 use crate::runs::record::{RunInput, RunRecord};
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
@@ -35,7 +35,7 @@ pub fn setting_differences(first: &RunRecord, second: &RunRecord) -> Result<Vec<
 }
 
 /// A setting whose value differs between two runs.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 #[schemars(tag = "kind", rename_all = "kebab-case")]

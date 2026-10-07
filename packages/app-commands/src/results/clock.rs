@@ -1,6 +1,6 @@
 use crate::results::tree::ResultTree;
 use crate::results::year_date::YearDate;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use schemars::JsonSchema;
 use std::collections::BTreeSet;
 use treetime::clock::clock_model::{ClockModel, ClockModelStats};
@@ -9,7 +9,7 @@ use treetime_schema::skip_serializing_optionals;
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
 /// Results of a `clock` run.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct ClockResults {
@@ -20,7 +20,7 @@ pub struct ClockResults {
 }
 
 /// Estimates of a `clock` run.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct ClockEstimates {
@@ -39,7 +39,7 @@ pub struct ClockEstimates {
 }
 
 /// The points and line of a root-to-tip regression, as TreeTime fitted it.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct RootToTip {
@@ -50,7 +50,7 @@ pub struct RootToTip {
 }
 
 /// Line of a clock model: divergence = rate * date + intercept.
-#[derive(Clone, Copy, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, JsonSchema, Serialize)]
 pub struct ClockLine {
   /// Clock rate in substitutions per site per year.
   pub rate: f64,
@@ -59,7 +59,7 @@ pub struct ClockLine {
 }
 
 /// One sample of a root-to-tip regression.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct RootToTipPoint {

@@ -27,7 +27,7 @@ use treetime_utils::io::json::from_json_value;
 const ROUND_DAYS: [u32; 2] = [1, 15];
 
 /// A command configuration whose input files to inspect before a run.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct CheckInputsRequest {
@@ -203,12 +203,9 @@ impl InputKind {
   }
 }
 
-/// An input file an app command reads.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CommandInput {
-  /// Kind of the file; also the setting that names it.
   pub kind: InputKind,
-  /// Whether a run of the app needs the file.
   pub need: InputNeed,
 }
 
@@ -219,7 +216,7 @@ impl CommandInput {
 }
 
 /// An input file of a command, as the form asks for it.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct InputSlot {
   /// Kind of the file; also the setting that names it.
   pub kind: InputKind,
@@ -249,7 +246,7 @@ impl InputSlot {
 }
 
 /// How much a run of the app needs an input file.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum InputNeed {

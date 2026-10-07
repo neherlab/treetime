@@ -332,7 +332,7 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
 }
 
 /// Liveness of the server.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 struct HealthStatus {
   /// Always `ok`.
   status: String,

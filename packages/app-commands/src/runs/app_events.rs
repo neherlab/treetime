@@ -2,7 +2,7 @@ use crate::examples_download::ExamplesDownload;
 use crate::job::JobId;
 use crate::runs::record::RunSummary;
 use chrono::{DateTime, Utc};
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use parking_lot::Mutex;
 use schemars::JsonSchema;
 use std::collections::VecDeque;
@@ -34,7 +34,7 @@ pub fn resync_stale_paths() -> Vec<StalePath> {
 }
 
 /// Change of the app's runs, sent on the app-wide event stream.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 pub struct AppEvent {
   /// Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
   /// restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
@@ -51,7 +51,7 @@ pub struct AppEvent {
 }
 
 /// REST path whose answers a change made stale.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct StalePath {
   /// Path of the API, without query string.
   pub path: String,
@@ -76,7 +76,7 @@ impl StalePath {
 }
 
 /// Which answers a stale path covers.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum StaleScope {
@@ -88,7 +88,7 @@ pub enum StaleScope {
 }
 
 /// What changed.
-#[derive(Clone, Debug, JsonSchema, IntoStaticStr, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, IntoStaticStr, Serialize)]
 #[schemars(tag = "kind", rename_all = "kebab-case")]
 #[deser(tag = "kind", rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]

@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use treetime_schema::skip_serializing_optionals;
 
 /// Recurrent mutations of a `homoplasy` run: mutations that occur on more than one branch of the tree.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 pub struct HomoplasyResult {
   /// Whether positions count from 0 (`--zero-based`) instead of from 1.
   pub zero_based: bool,
@@ -44,7 +44,7 @@ pub struct SubstitutionResult {
 }
 
 /// Statistics of changes involving ambiguous characters.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct AmbiguousResult {
   /// Changes on all branches.
   pub all: MutationTable,

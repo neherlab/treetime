@@ -6,7 +6,7 @@ use schemars::{JsonSchema, Schema, json_schema};
 use serde_json::{Map, Value};
 use std::borrow::Cow;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Deref, DerefMut, From, Into, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deref, DerefMut, From, Into, Serialize)]
 pub struct JsonValue(#[deser(as = Serde)] pub Value);
 
 impl JsonSchema for JsonValue {

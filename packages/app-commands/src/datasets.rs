@@ -1,7 +1,7 @@
 use crate::check_inputs::InputKind;
 use crate::command::AppCommand;
 use app_datasets::{DatasetFiles, ExampleFile, TREE_FILE, discover_datasets};
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
@@ -35,7 +35,7 @@ pub fn dataset_catalog(examples_dir: &Path) -> Result<DatasetCatalog, Report> {
 }
 
 /// Example datasets and example command configurations found in the examples folder.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 pub struct DatasetCatalog {
   /// Directories that hold a `tree.nwk`, with their files.
   pub datasets: Vec<Dataset>,
@@ -44,7 +44,7 @@ pub struct DatasetCatalog {
 }
 
 /// A directory of example input files.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 pub struct Dataset {
   /// Path of the directory relative to the examples folder, with `/` separators.
   pub name: String,
@@ -83,7 +83,7 @@ impl Dataset {
 }
 
 /// A file of an example dataset that fills a command input.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct DatasetInput {
   /// Input the file fills.
   pub kind: InputKind,
@@ -94,7 +94,7 @@ pub struct DatasetInput {
 }
 
 /// An example configuration file of one command.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct ExampleConfig {
   /// Path of the file relative to the examples folder, with `/` separators.
   pub path: String,

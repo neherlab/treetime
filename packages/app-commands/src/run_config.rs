@@ -41,7 +41,7 @@ pub fn run_config(request: &RunConfigRequest, confine: ConfigHook) -> RunConfigR
 }
 
 /// Request to resolve a configuration as a run resolves it, without running it.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct RunConfigRequest {
@@ -52,7 +52,7 @@ pub struct RunConfigRequest {
 }
 
 /// Outcome of resolving a configuration as a run resolves it.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 #[schemars(tag = "status", rename_all = "kebab-case")]

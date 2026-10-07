@@ -212,7 +212,7 @@ pub enum UiCodeFormat {
 }
 
 /// The runs folder of the running back end, and the folder used when the settings name none.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct Workspace {
@@ -227,8 +227,7 @@ pub struct Workspace {
 }
 
 /// A new runs folder. It takes effect when the back end starts again.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
-#[deser(skip_serializing_optionals)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Deserialize)]
 #[schemars(transform = skip_serializing_optionals)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]

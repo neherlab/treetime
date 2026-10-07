@@ -1,7 +1,7 @@
 use crate::command::OutputFile;
 use crate::runs::errors::{invalid, not_found};
 use app_output::output_plan::OutputSelection;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
@@ -15,7 +15,7 @@ use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
 /// One file in a run's `out/` folder.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct RunFile {

@@ -16,7 +16,7 @@ use crate::runs::record::{
 use crate::runs::store::RunStore;
 use crate::runs::warnings::WarningCollector;
 use chrono::{TimeDelta, Utc};
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use log::error;
@@ -327,7 +327,7 @@ impl RunManager {
 }
 
 /// A file uploaded into a run's `inputs/` folder.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 pub struct UploadedInput {
   /// File name inside the run's `inputs/` folder.
   pub name: String,

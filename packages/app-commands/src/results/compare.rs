@@ -8,14 +8,14 @@ use crate::results::year_date::YearDate;
 use crate::runs::manager::RunManager;
 use crate::runs::record::{RunRecord, RunStatus};
 use crate::runs::setting_differences::{SettingDifference, setting_differences};
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Report;
 use schemars::JsonSchema;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
 /// Comparison of two runs: their settings and their results.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct RunComparison {
@@ -28,7 +28,7 @@ pub struct RunComparison {
 }
 
 /// Settings and inputs that differ between two runs of the same command.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct SettingsComparison {
   /// Settings and inputs whose values differ.
   pub differences: Vec<SettingDifference>,
@@ -39,7 +39,7 @@ pub struct SettingsComparison {
 }
 
 /// Estimates of two time-tree runs and their differences, second minus first.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct EstimateComparison {
@@ -60,7 +60,7 @@ pub struct EstimateComparison {
 }
 
 /// Date shifts of the ancestors two trees share, matched by their set of samples.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct AncestorComparison {
@@ -73,7 +73,7 @@ pub struct AncestorComparison {
 }
 
 /// Date shift of one ancestor between two trees.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 pub struct AncestorShift {
   /// Name of the ancestor in the first tree.
   pub name: String,

@@ -15,7 +15,7 @@ use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
 
 /// Request to find a clade of one run in the other time-tree runs.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct CladeRequest {
@@ -26,7 +26,7 @@ pub struct CladeRequest {
 }
 
 /// A clade of one run found in the other finished time-tree runs.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 pub struct CladeInRuns {
   /// Runs whose tree has a node with the same set of samples below it.
   pub matches: Vec<CladeMatch>,
@@ -37,7 +37,7 @@ pub struct CladeInRuns {
 }
 
 /// The node of another run with the same set of samples below it.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct CladeMatch {
@@ -54,7 +54,7 @@ pub struct CladeMatch {
 }
 
 /// A run whose tree could not be read.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct UnreadableRun {
   /// Id of the run.
   pub run: JobId,

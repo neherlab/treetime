@@ -1,5 +1,5 @@
 use crate::results::year_date::YearDate;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use schemars::JsonSchema;
@@ -35,7 +35,7 @@ pub fn preorder(root: &AuspiceTreeNode) -> Vec<(&AuspiceTreeNode, Option<usize>)
 }
 
 /// A tree a run wrote, read from its Auspice file.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct ResultTree {
@@ -89,7 +89,7 @@ impl ResultTree {
 }
 
 /// One node of a result tree.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct ResultNode {
@@ -120,7 +120,7 @@ impl ResultNode {
 }
 
 /// Confidence interval of a date.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 pub struct DateInterval {
   /// Earliest date.
   pub lower: YearDate,
@@ -144,7 +144,7 @@ impl DateInterval {
 }
 
 /// A coloring of the Auspice tree.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct ResultColoring {
   /// Node attribute the coloring reads.
   pub key: String,
@@ -159,7 +159,7 @@ pub struct ResultColoring {
 }
 
 /// Color of one state of a categorical coloring.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct StateColor {
   /// Value of the node attribute.
   pub state: String,

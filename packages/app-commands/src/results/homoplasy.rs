@@ -94,7 +94,7 @@ pub struct AmbiguousCount {
 }
 
 /// Results of a `homoplasy` run.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct HomoplasyResults {
@@ -103,7 +103,7 @@ pub struct HomoplasyResults {
 }
 
 /// Statistics of a `homoplasy` run: mutations that occur on more than one branch of the tree.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct HomoplasyStatistics {
@@ -158,7 +158,7 @@ pub struct HomoplasyStatistics {
 }
 
 /// A mutation that occurs on two or more branches.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct RecurrentMutation {
@@ -180,7 +180,7 @@ pub struct RecurrentMutation {
 }
 
 /// A site with substitutions on two or more branches.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct HomoplasySite {
   /// Position counted from 1, as in the tree.
   pub position: usize,
@@ -193,7 +193,7 @@ pub struct HomoplasySite {
 }
 
 /// A substitution at a site hit more than once.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct SiteSubstitution {
@@ -208,7 +208,7 @@ pub struct SiteSubstitution {
 }
 
 /// A site with changes involving ambiguous characters.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct AmbiguousSite {
   /// Position counted from 1, as in the tree.
   pub position: usize,

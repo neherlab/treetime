@@ -3,15 +3,13 @@ mod tests {
   use crate::openapi::add_discriminators;
   use crate::routes::api_doc;
   use app_commands::command::AppCommand;
-  use app_commands::config::catalog::{SettingCatalog, setting_catalog};
+  use app_commands::config::catalog::setting_catalog;
   use helpers::{
     discriminated, keyword_locations, response_components, schemas_after, tagged_unions_without_discriminator,
   };
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
   use treetime_utils::assert_error;
-  use treetime_utils::io::json::from_json_value;
-  use treetime_utils::io::json::to_json_value;
 
   #[test]
   fn test_openapi_every_tagged_union_has_a_discriminator() {
@@ -460,7 +458,6 @@ mod tests {
   fn test_openapi_setting_catalog_is_a_component_and_lists_every_command_in_display_order() {
     let doc = api_doc().unwrap();
     let catalog = setting_catalog().unwrap();
-    let parsed: SettingCatalog = from_json_value(&to_json_value(&&catalog).unwrap()).unwrap();
     assert_eq!(
       (
         true,
@@ -473,7 +470,6 @@ mod tests {
           AppCommand::Optimize,
           AppCommand::Prune
         ],
-        &catalog
       ),
       (
         doc["components"]["schemas"]["SettingCatalog"].is_object(),
@@ -482,7 +478,6 @@ mod tests {
           .iter()
           .map(|command| command.command)
           .collect::<Vec<_>>(),
-        &parsed
       )
     );
   }

@@ -3,7 +3,7 @@ use crate::results::homoplasy::HomoplasyStatsFile;
 use crate::results::tree::ResultTree;
 use app_output::output_plan::OutputSelection;
 use app_output::table_output::table_read_file;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Report;
 use schemars::JsonSchema;
 use std::path::Path;
@@ -25,7 +25,7 @@ pub fn read_auspice(out_dir: &Path, output_files: &[OutputFile]) -> Result<Optio
 }
 
 /// An output file of a run that could not be read.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct OutputProblem {
   /// Path of the file relative to the run's `out/` folder.
   pub path: String,

@@ -11,7 +11,7 @@ use crate::results::tree::ResultTree;
 use crate::runs::errors::conflict;
 use crate::runs::manager::RunManager;
 use crate::runs::record::{RunRecord, RunStatus};
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Report;
 use schemars::JsonSchema;
 use std::path::Path;
@@ -22,7 +22,7 @@ use treetime_utils::make_report;
 use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
 /// Results of a finished run, read from its output files.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct RunResults {
@@ -37,7 +37,7 @@ pub struct RunResults {
 }
 
 /// Results specific to the command of a run.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[schemars(tag = "command", content = "data", rename_all = "kebab-case")]
 #[deser(tag = "command", content = "data", rename_all = "kebab-case")]
 pub enum CommandResults {
@@ -51,7 +51,7 @@ pub enum CommandResults {
 }
 
 /// Summary of a tree an `optimize` or `prune` run wrote.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct TreeSummary {
@@ -68,7 +68,7 @@ pub struct TreeSummary {
 }
 
 /// A fitted substitution model.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 pub struct SubstitutionModel {
   /// Name of the model.
   pub name: String,

@@ -4,7 +4,7 @@ use crate::results::run_results::finished_record;
 use crate::results::tree::{ResultColoring, result_colorings};
 use crate::runs::errors::not_found;
 use crate::runs::manager::RunManager;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::{Report, WrapErr};
 use itertools::izip;
 use schemars::JsonSchema;
@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 use treetime_io::auspice_types::AuspiceTree;
 
 /// Auspice JSON of a run, with the color scales the app displays.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 #[schemars(transparent)]
 pub struct AuspiceDocument(#[schemars(with = "Map<String, Value>")] pub AuspiceTree);
 

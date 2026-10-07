@@ -2,7 +2,7 @@ use crate::runs::app_events::{AppChange, DATASETS_PATH, EXAMPLES_DOWNLOAD_PATH, 
 use crate::runs::errors::conflict;
 use crate::runs::manager::RunManager;
 use crate::version::{BUILD_MODE, LONG_VERSION, NIGHTLY_BUILD_MODE};
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::{Report, WrapErr};
 use parking_lot::Mutex;
 use reqwest::blocking::Client;
@@ -167,7 +167,7 @@ impl ExampleDownloads {
 }
 
 /// Stage of the download of the example datasets.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 #[schemars(tag = "state", rename_all = "kebab-case")]
@@ -195,7 +195,7 @@ pub enum ExamplesDownload {
 }
 
 /// The download of the example datasets, with the app event that reported it last.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct ExamplesDownloadStatus {

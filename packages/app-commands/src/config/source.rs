@@ -1,7 +1,7 @@
 use crate::yaml::yaml_value_read_str;
 use bon::bon;
 use color_eyre::Section;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Report;
 use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan, NamedSource, Severity, SourceCode, SourceSpan};
@@ -53,7 +53,7 @@ pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawD
 }
 
 /// Configuration rejected by parsing or by the schema check.
-#[derive(Clone, Debug, derive_more::Display, derive_more::Error, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, derive_more::Display, derive_more::Error, JsonSchema)]
 #[display("{message}")]
 pub struct InvalidConfig {
   /// One-line summary of every problem, as the CLI prints it.
@@ -74,7 +74,7 @@ impl InvalidConfig {
 }
 
 /// One problem found in a configuration.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct ConfigProblem {
@@ -89,7 +89,7 @@ pub struct ConfigProblem {
 }
 
 /// Location of a problem in the configuration text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct ConfigSpan {
   /// Byte offset of the first character.
   pub offset: usize,

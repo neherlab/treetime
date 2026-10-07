@@ -120,7 +120,7 @@ pub struct RunError {
 }
 
 /// Entry of a run list.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct RunSummary {
@@ -151,7 +151,7 @@ pub struct RunSummary {
 }
 
 /// Runs, newest first, and the number of runs computing now.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 pub struct RunList {
   /// Runs, newest first.
   pub runs: Vec<RunSummary>,
@@ -160,7 +160,7 @@ pub struct RunList {
 }
 
 /// Request to create a run.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct CreateRunRequest {
@@ -176,8 +176,7 @@ pub struct CreateRunRequest {
 }
 
 /// Request to start a created run.
-#[derive(Clone, Debug, Default, JsonSchema, Serialize, Deserialize)]
-#[deser(skip_serializing_optionals)]
+#[derive(Clone, Debug, Default, JsonSchema, Deserialize)]
 #[schemars(transform = skip_serializing_optionals)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
@@ -194,15 +193,14 @@ pub struct StartRunRequest {
 }
 
 /// Answer to a cancellation request.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 pub struct CancelRunResponse {
   /// Whether cancellation was requested; the run ends with a `cancelled` terminal event.
   pub cancelled: bool,
 }
 
 /// Where to save an output file of a run, or the archive of all its outputs.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
-#[deser(skip_serializing_optionals)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(transform = skip_serializing_optionals)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
@@ -216,8 +214,7 @@ pub struct SaveRunRequest {
 }
 
 /// Changes to the presentation of a run.
-#[derive(Clone, Debug, Default, JsonSchema, Serialize, Deserialize)]
-#[deser(skip_serializing_optionals)]
+#[derive(Clone, Debug, Default, JsonSchema, Deserialize)]
 #[schemars(transform = skip_serializing_optionals)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]

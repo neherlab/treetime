@@ -69,7 +69,7 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
 }
 
 /// Outcome of checking a configuration without running it.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 #[schemars(tag = "status", rename_all = "kebab-case")]
@@ -111,8 +111,7 @@ pub enum CheckConfigResponse {
 }
 
 /// Request to check a configuration.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
-#[deser(skip_serializing_optionals)]
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(transform = skip_serializing_optionals)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]

@@ -235,7 +235,6 @@ mod tests {
     use serde_json::{Value, json};
     use std::path::Path;
     use std::sync::Arc;
-    use treetime_utils::io::json::from_json_value;
     use treetime_utils::io::json::to_json_value;
 
     pub(super) type Recorded = Arc<Mutex<Vec<AppEvent>>>;
@@ -325,7 +324,7 @@ mod tests {
             id: text(&run["id"]).or_else(|| text(&value["id"])).unwrap(),
             title: text(&run["title"]),
             status: text(&run["status"]),
-            stale: from_json_value(&value["stale"].clone()).unwrap(),
+            stale: event.stale.clone(),
           }
         })
         .collect()

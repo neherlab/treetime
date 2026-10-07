@@ -2,7 +2,7 @@ use crate::config::catalog::SettingSpec;
 use crate::config::settings::setting_ref;
 use crate::json_value::JsonValue;
 use crate::run_checks::SettingPatch;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
@@ -126,7 +126,7 @@ pub fn active_choices(settings: &[SettingSpec], config: &Map<String, Value>) -> 
 }
 
 /// Settings that the form shows as one choice between options, for example the coalescent prior.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct SettingChoice {
   pub choice: ChoiceName,
   /// Keys of the settings the choice controls.
@@ -136,7 +136,7 @@ pub struct SettingChoice {
 }
 
 /// One option of a choice.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct ChoiceOption {
   pub option: ChoiceOptionName,
   /// Changes that picking the option makes: settings it writes, and settings it removes so that they take their
@@ -147,14 +147,14 @@ pub struct ChoiceOption {
 }
 
 /// The option of a choice that a configuration selects.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct ActiveChoice {
   pub choice: ChoiceName,
   pub option: ChoiceOptionName,
 }
 
 /// A group of settings that the form shows as one choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum ChoiceName {
@@ -167,7 +167,7 @@ pub enum ChoiceName {
 }
 
 /// An option of a choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum ChoiceOptionName {
