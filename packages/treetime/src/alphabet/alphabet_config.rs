@@ -1,8 +1,6 @@
 use crate::alphabet::alphabet::{FILL_CHAR, NON_CHAR, ProfileMap, VARIABLE_CHAR};
 use crate::make_error;
 use color_eyre::{Section, SectionExt};
-use deser::adapters::{BytesFallback, IntSeq};
-use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use indexmap::IndexMap;
 use itertools::{Itertools, chain};
@@ -10,23 +8,16 @@ use ndarray::{Array1, Array2};
 use std::iter::once;
 use treetime_primitives::{AsciiChar, StateSet};
 use treetime_utils::fmt::string::quote;
-use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AlphabetConfig {
-  #[deser(as = BytesFallback<IntSeq>)]
   pub(crate) canonical: Vec<u8>,
-  #[deser(as = IndexMap<_, BytesFallback<IntSeq>>)]
   pub(crate) ambiguous: IndexMap<u8, Vec<u8>>,
   pub(crate) unknown: u8,
   pub(crate) gap: u8,
 }
 
 impl AlphabetConfig {
-  #[allow(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   pub(crate) fn create_profile_map(&self) -> Result<ProfileMap, Report> {
     let AlphabetConfig {
       canonical,
@@ -41,11 +32,7 @@ impl AlphabetConfig {
     self
       .validate()
       .wrap_err("When validating alphabet config")
-      .with_section(|| {
-        json_write_str(&self, JsonPretty(true))
-          .unwrap()
-          .header("Alphabet config")
-      })?;
+      .with_section(|| format!("{self:#?}").header("Alphabet config"))?;
 
     let eye = Array2::<f64>::eye(canonical.len());
 

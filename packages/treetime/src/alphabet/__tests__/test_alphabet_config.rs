@@ -4,13 +4,11 @@ mod tests {
   use crate::alphabet::alphabet_config::AlphabetConfig;
   use crate::pretty_assert_ulps_eq;
   use crate::vec_u8;
-  use eyre::Report;
   use indexmap::indexmap;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_primitives::AsciiChar;
-  use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 
   fn make_valid_config() -> AlphabetConfig {
     AlphabetConfig {
@@ -121,13 +119,6 @@ mod tests {
     assert!(err_msg.contains("canonical"));
   }
 
-  #[test]
-  fn test_alphabet_config_serializes_bytes_as_numbers() -> Result<(), Report> {
-    let expected = r#"{"canonical":[65,67,71,84],"ambiguous":{"82":[65,71],"89":[67,84]},"unknown":78,"gap":45}"#;
-    assert_eq!(expected, json_write_str(&make_valid_config(), JsonPretty(false))?);
-    Ok(())
-  }
-
   #[rstest]
   #[case::non_char(u8::from(NON_CHAR))]
   #[case::variable_char(u8::from(VARIABLE_CHAR))]
@@ -235,15 +226,6 @@ mod tests {
     let profile_z = &profile_map[&AsciiChar::from_byte_unchecked(b'Z')];
     let expected_z = array![0.0, 0.0, 1.0];
     pretty_assert_ulps_eq!(expected_z, profile_z, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_alphabet_config_serde_roundtrip() -> Result<(), Report> {
-    let config = make_valid_config();
-    let json = json_write_str(&config, JsonPretty(false))?;
-    let deserialized: AlphabetConfig = json_read_str(&json)?;
-    assert_eq!(config, deserialized);
-    Ok(())
   }
 
   #[rstest]

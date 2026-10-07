@@ -1,13 +1,9 @@
 use crate::alphabet::alphabet_config::AlphabetConfig;
 use crate::{make_report, vec_u8};
-use deser::adapters::TryFromInto;
-use deser::ser::{Chunk, SerializeHandle};
-use deser::{Deserialize, Error, Serialize, State};
 use eyre::Report;
 use indexmap::{IndexMap, indexmap};
 use itertools::Itertools;
 use ndarray::{Array1, Array2, Axis, stack};
-use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::borrow::Borrow;
 use std::fmt::Display;
@@ -18,8 +14,7 @@ pub(crate) const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
 pub(crate) const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
 pub(crate) const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
-#[derive(Clone, Debug, Deserialize)]
-#[deser(deserialize_as = TryFromInto<AlphabetConfig>)]
+#[derive(Clone, Debug)]
 pub struct Alphabet {
   all: StateSet,
   canonical: StateSet,
@@ -32,20 +27,8 @@ pub struct Alphabet {
   set_to_char: IndexMap<StateSet, AsciiChar>,
   char_to_index: Vec<Option<usize>>,
   index_to_char: Vec<AsciiChar>,
-  config: AlphabetConfig,
 }
-impl Serialize for Alphabet {
-  fn serialize(&self, _state: &mut State) -> Result<Chunk<'_>, Error> {
-    Ok(Chunk::Forward(SerializeHandle::to(&self.config)))
-  }
-}
-impl TryFrom<AlphabetConfig> for Alphabet {
-  type Error = Report;
 
-  fn try_from(config: AlphabetConfig) -> Result<Self, Report> {
-    Self::with_config(&config)
-  }
-}
 impl Default for Alphabet {
   #[allow(
     clippy::expect_used,
@@ -165,7 +148,6 @@ impl Alphabet {
       set_to_char,
       char_to_index,
       index_to_char,
-      config: config.clone(),
     })
   }
 
@@ -299,11 +281,7 @@ impl AlphabetLike for Alphabet {
   }
 }
 
-#[derive(
-  Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display, JsonSchema, Serialize, Deserialize,
-)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display)]
 pub enum AlphabetName {
   #[default]
   Nuc,

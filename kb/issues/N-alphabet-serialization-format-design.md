@@ -2,17 +2,17 @@
 
 ## Summary
 
-`Alphabet` serialization needs a user-facing format design before release. The current implementation routes serialization through `AlphabetConfig`, which serializes raw byte values (`u8`, `Vec<u8>`) instead of human-readable characters. No command currently outputs alphabet information, but alphabet output will be needed when features like automatic alphabet deduction from data are introduced.
+Reading or writing an alphabet needs a user-facing format design before release. `Alphabet` and `AlphabetConfig` have no serialization: no command reads a custom alphabet or outputs alphabet information. Alphabet output will be needed when features like automatic alphabet deduction from data are introduced, and alphabet input when users can define custom alphabets.
 
 ## Current state
 
-`Alphabet` stores an `AlphabetConfig`, deserializes through `#[deser(deserialize_as = TryFromInto<AlphabetConfig>)]`, and its `Serialize` impl forwards to the stored config. `AlphabetConfig` fields are raw bytes, written as lists of numbers through `#[deser(as = BytesFallback<IntSeq>)]` (deser writes byte vectors as base64 strings by default):
+`Alphabet::with_config()` builds an alphabet from an `AlphabetConfig`, and `Alphabet::new()` builds the three named alphabets from fixed configs. `AlphabetConfig` fields are raw bytes:
 
-- `canonical: Vec<u8>` - serializes as `[65, 67, 71, 84]` instead of `["A", "C", "G", "T"]`
+- `canonical: Vec<u8>` - byte codes such as `[65, 67, 71, 84]` instead of `["A", "C", "G", "T"]`
 - `ambiguous: IndexMap<u8, Vec<u8>>` - keys and values are byte codes
 - `unknown: u8`, `gap: u8` - single byte codes
 
-No production code serializes `Alphabet` today. The `Serialize` impl exists from the original `derive(Serialize, Deserialize)` and is only exercised by roundtrip tests.
+A direct derive on these fields would read and write byte codes (or, for byte vectors, base64 strings), which a user cannot read or write by hand.
 
 ## Design scope
 
@@ -44,11 +44,11 @@ Format considerations:
 
 ## Locations
 
-- `packages/treetime/src/alphabet/alphabet.rs` - `struct Alphabet`, `Serialize` impl, `TryFrom<AlphabetConfig>`
+- `packages/treetime/src/alphabet/alphabet.rs` - `struct Alphabet`, `fn Alphabet::with_config()`
 - `packages/treetime/src/alphabet/alphabet_config.rs` - `struct AlphabetConfig`
-- `packages/treetime/src/commands/*/args.rs` - `--alphabet` CLI flag (4 commands)
+- `packages/app-commands/src/commands/shared/alphabet.rs` - `--alphabet` CLI flag shared by the sequence commands
 - `packages/treetime-io/src/fasta.rs` - `fasta_read()` uses `AlphabetLike` trait
 
 ## Impact
 
-Low priority. No production serialization exists. Blocking factor for any feature that reports alphabet information back to the user.
+Low priority. No alphabet is read from or written to a file. Blocking factor for any feature that reports alphabet information back to the user.
