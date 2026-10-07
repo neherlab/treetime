@@ -1,6 +1,6 @@
 # Serialization uses deser
 
-Every serialized type of the workspace derives `deser::Serialize` and `deser::Deserialize`, and JSON, CSV, YAML, XML, and query strings are read and written with the deser format crates. serde stays only where a library requires `serde_json::Value`.
+Serialized types of the workspace derive `deser::Serialize`, `deser::Deserialize`, or both, only for the directions that code writes or reads, and JSON, CSV, YAML, XML, and query strings are read and written with the deser format crates. serde stays only where a library requires `serde_json::Value`.
 
 **Type**: Library choice for an implementation concern without a v0 counterpart.
 
