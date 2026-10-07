@@ -18,7 +18,6 @@ doctest = false
 [dependencies]
 app-commands = { workspace = true, features = ["clap"] }
 app-server = { workspace = true }
-treetime-schema = { workspace = true }
 treetime-utils = { workspace = true }
 
 axum = { workspace = true }
@@ -43,6 +42,7 @@ parking_lot = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 tempfile = { workspace = true }
+treetime-schema = { workspace = true }
 zip = { workspace = true }
 
 [lints]

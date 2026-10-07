@@ -4976,7 +4976,6 @@ dependencies = [
  "treetime-grid",
  "treetime-io",
  "treetime-primitives",
- "treetime-schema",
  "treetime-utils",
  "util-augur-node-data-json",
 ]

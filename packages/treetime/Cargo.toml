@@ -20,7 +20,6 @@ treetime-distribution = { workspace = true }
 treetime-graph = { workspace = true }
 treetime-grid = { workspace = true }
 treetime-primitives = { workspace = true }
-treetime-schema = { workspace = true }
 treetime-utils = { workspace = true }
 util-augur-node-data-json = { workspace = true }
 
@@ -52,7 +51,6 @@ rand_distr = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }
 schemars = { workspace = true }
-serde_json = { workspace = true }
 smart-default = { workspace = true }
 statrs = { workspace = true }
 strum_macros = { workspace = true }
@@ -65,6 +63,7 @@ parking_lot = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rstest = { workspace = true }
+serde_json = { workspace = true }
 treetime-io = { workspace = true }
 
 [lints]
