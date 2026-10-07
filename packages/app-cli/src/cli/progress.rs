@@ -72,7 +72,7 @@ impl TextProgress {
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     debug_remnants,
     reason = "the stage sink renders stage lines on stderr and has no error channel"

@@ -1,14 +1,14 @@
-# Vendored custom lint library for the TreeTime project, run via cargo-dylint.
+# Custom lint library of the project, run via cargo-dylint.
 # Standalone workspace: builds on a pinned nightly (see rust-toolchain.toml),
 # isolated from the main workspace which targets stable Rust.
 [workspace]
 
 [package]
-name = "treetime_lints"
+name = "custom"
 version = "0.1.0"
 edition = "2024"
-description = "Custom Rust lints for the TreeTime project, via the dylint ecosystem"
-license = "MIT OR Apache-2.0"
+description = "Custom Rust lints of the project, via the dylint ecosystem"
+license = "MIT"
 publish = false
 
 [lib]

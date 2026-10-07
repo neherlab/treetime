@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts");
 
-tester.run("treetime/no-uppercase-test-title", noUppercaseTestTitleRule, {
+tester.run("custom/no-uppercase-test-title", noUppercaseTestTitleRule, {
   valid: ["test('adds two numbers', () => {})", "describe('parser', () => {})"],
   invalid: [
     { code: "test('Adds two numbers', () => {})", errors: [{ messageId: "uppercase" }] },

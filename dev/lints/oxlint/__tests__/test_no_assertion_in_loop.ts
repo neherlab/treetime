@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts");
 
-tester.run("treetime/no-assertion-in-loop", noAssertionInLoopRule, {
+tester.run("custom/no-assertion-in-loop", noAssertionInLoopRule, {
   valid: ["test('adds', () => { expect(add(1, 1)).toBe(2) })", "for (const item of items) { collect(item) }"],
   invalid: [
     {

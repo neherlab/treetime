@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts");
 
-tester.run("treetime/prefer-strict-equal", preferStrictEqualRule, {
+tester.run("custom/prefer-strict-equal", preferStrictEqualRule, {
   valid: ["expect(value).toStrictEqual(expected)", "queue.toEqual(other)"],
   invalid: [
     { code: "expect(value).toEqual(expected)", errors: [{ messageId: "toEqual" }] },

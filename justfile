@@ -55,13 +55,20 @@ export KACHE_CACHE_DIR := if kache_store != "" { kache_prefix + "-build" } else 
 lint_env := "CARGO_TARGET_DIR=" + quote(lint_target_dir) + if kache_store != "" { " KACHE_CACHE_DIR=" + quote(kache_prefix + "-clippy") } else { "" }
 uncached_env := "RUSTC_WRAPPER= CARGO_INCREMENTAL=0"
 
-# The dylint driver, shared by the check, fix, and baseline recipes. The
-# pub_unused_in_workspace lint writes its records into the pub-unused directory,
-# and pub-unused-report reads them after the check pass. Mordant lists the
-# crates over the committed baseline in over-baseline.txt.
-pub_unused_env := "TREETIME_LINTS_PUB_UNUSED_DIR=" + quote(dylint_target_dir / "pub-unused")
+# The dylint driver, shared by the check, fix, and baseline recipes. It loads
+# the lint libraries of [workspace.metadata.dylint] in Cargo.toml, which read
+# their settings from dylint.toml. The pub_unused_in_workspace lint leaves one
+# record per compiled crate in the pub-unused directory, and pub-unused-report
+# reads them after the check pass. Mordant lists the crates over the committed
+# baseline in over-baseline.txt.
+pub_unused_env := "CUSTOM_LINTS_PUB_UNUSED_DIR=" + quote(dylint_target_dir / "pub-unused")
 dylint_cmd := uncached_env + " CARGO_TARGET_DIR=" + quote(dylint_target_dir) + " " + pub_unused_env + " cargo dylint --quiet --all"
 dylint_cargo_args := "--quiet --locked --workspace --all-targets"
+
+# Lint levels of the driver: lints that only one library declares are unknown
+# to the others. Every lint of the custom library is on, the comment lints
+# (no_comments, doc_comment_limit) included.
+dylint_rustflags := "-A unknown_lints"
 dylint_over_baseline := dylint_target_dir / "mordant/over-baseline.txt"
 
 # Library crates whose public API is an external boundary, skipped by both
@@ -78,6 +85,9 @@ public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_d
 cargo_min_age := "RUSTC_BOOTSTRAP=1 cargo -Zmin-publish-age --config 'registry.global-min-publish-age=\"7 days\"'"
 hawk_toolchain := trim(read("dev/docker/files/hawk-toolchain"))
 
+# Reason of the React 19 pin, printed by lint-ts when the catalog leaves 19.x.
+react_pin_reason := "Auspice runs in-process and is verified only on React 19"
+
 # Groups of the full gate, one CI job each (`just check-group <group>`). Hawk
 # needs a second full compilation and runs locally only.
 checks_format := "fmt-check-rs fmt-check-ts fmt-check-other lint-shell lint-docker lint-workflows deny shear fixtures-check"
@@ -89,6 +99,9 @@ checks_typescript := "typecheck lint-ts knip test-ts"
 checks_hawk := "hawk"
 check_fast := "fmt-check-rs fmt-check-ts fmt-check-other lint-rs lint-ts typecheck"
 check_full := checks_format + " " + checks_clippy + " " + checks_dylint + " " + checks_tests + " " + checks_generated + " " + checks_typescript + " " + checks_hawk
+lint_fast := "lint-rs lint-ts"
+lint_full := "lint-rs lint-ts typecheck dylint hawk knip deny shear lint-shell lint-docker lint-workflows"
+dockerfiles := "dev/docker/*.dockerfile dev/deploy/*.dockerfile"
 
 alias b := build
 alias br := build-release
@@ -108,17 +121,17 @@ alias fc := fmt-check
 # Fast checks: formatting, clippy, TypeScript types and lints, in parallel
 [group("check")]
 check: _js
-    TREETIME_JS_READY=1 dev/run-checks {{ check_fast }}
+    JS_READY=1 dev/run-checks {{ check_fast }}
 
-# Every check, in parallel; must pass before a change is merged
+# Every check, in parallel; slow
 [group("check")]
 check-all: _js
-    TREETIME_JS_READY=1 dev/run-checks {{ check_full }}
+    JS_READY=1 dev/run-checks {{ check_full }}
 
-# One group of check-all, serially with streamed output, as its CI job runs it: just check-group <format|clippy|dylint|tests|generated|typescript|hawk>
+# One group of check-all, serially with streamed output: just check-group <format|clippy|dylint|tests|generated|typescript|hawk>
 [group("check")]
 check-group group: _js
-    recipes="$(just --evaluate "checks_$1")"; TREETIME_JS_READY=1 dev/run-checks --serial ${recipes}
+    recipes="$(just --evaluate "checks_$1")"; JS_READY=1 dev/run-checks --serial ${recipes}
 
 # Apply the fast automatic lint fixes (clippy, oxlint), then format; stage your changes first
 [group("check")]
@@ -200,7 +213,7 @@ example name *args:
 # Rust and TypeScript tests, keep-going
 [group("test")]
 test: _js
-    TREETIME_JS_READY=1 dev/run-checks --serial test-rs test-ts
+    JS_READY=1 dev/run-checks --serial test-rs test-ts
 
 # Rust tests (nextest); arguments are nextest filters and options
 [group("test")]
@@ -286,12 +299,12 @@ review-suppressions:
 # Fast lints: clippy and oxlint, keep-going
 [group("lint")]
 lint: _js
-    TREETIME_JS_READY=1 dev/run-checks --serial lint-rs lint-ts
+    JS_READY=1 dev/run-checks --serial {{ lint_fast }}
 
-# Every lint: the fast lints, the custom lint libraries, unused code and dependencies, and the shell, Dockerfile, and workflow lints, keep-going
+# Every lint: the fast lints, TypeScript types, the lint libraries, unused code and dependencies, dependency policy, and the shell, Dockerfile, and workflow lints, keep-going
 [group("lint")]
 lint-all: _js
-    TREETIME_JS_READY=1 dev/run-checks --serial lint-rs lint-ts dylint hawk deny shear knip lint-shell lint-docker lint-workflows
+    JS_READY=1 dev/run-checks --serial {{ lint_full }}
 
 # Apply the fast automatic lint fixes: clippy, then oxlint; stage your changes first
 [group("lint")]
@@ -307,13 +320,13 @@ lint-rs *args:
 lint-fix-rs:
     {{ lint_env }} cargo clippy --locked --workspace --all-targets --fix --allow-staged
 
-# TypeScript lints (oxlint) and the React 19 pin, keep-going
+# TypeScript lints (oxlint, type-aware) and the React 19 pin, keep-going
 [group("lint")]
 [script]
 lint-ts: _js
     status=0
     bun run --silent lint || status=1
-    jq -e '.workspaces.catalog.react | startswith("19.")' package.json >/dev/null || { printf 'the react catalog entry must stay on 19.x: Auspice runs in-process and is verified only on React 19\n' >&2; status=1; }
+    jq -e '.workspaces.catalog.react | startswith("19.")' package.json >/dev/null || { printf 'the react catalog entry must stay on 19.x: %s\n' {{ quote(react_pin_reason) }} >&2; status=1; }
     exit "${status}"
 
 # Apply oxlint's automatic fixes
@@ -321,28 +334,28 @@ lint-ts: _js
 lint-fix-ts: _js
     bun run --silent lint:fix
 
-# Custom lint libraries (dylint) gated against .config/mordant-baseline.toml, then the unused public items they recorded; reports every finding, then fails if there were any
+# Lint libraries (dylint) gated against .config/mordant-baseline.toml, then the unused public items they recorded; reports every finding, then fails if there were any
 [group("lint")]
 [script]
 dylint *args:
     status=0
     rm -f {{ quote(dylint_over_baseline) }}
-    DYLINT_RUSTFLAGS="-A unknown_lints" CARGO_BUILD_WARNINGS=deny {{ dylint_cmd }} -- {{ dylint_cargo_args }} --keep-going "$@" || status=1
+    DYLINT_RUSTFLAGS={{ quote(dylint_rustflags) }} CARGO_BUILD_WARNINGS=deny {{ dylint_cmd }} -- {{ dylint_cargo_args }} --keep-going "$@" || status=1
     if [[ -s {{ quote(dylint_over_baseline) }} ]]; then printf 'mordant: findings over the committed baseline:\n' >&2; cat {{ quote(dylint_over_baseline) }} >&2; status=1; fi
     (cd dev/lints/dylint-custom && {{ uncached_env }} {{ pub_unused_env }} cargo run --quiet --release --locked --target-dir {{ quote(dylint_target_dir / "report") }} --bin pub-unused-report -- {{ quote(justfile_directory() / "Cargo.toml") }} {{ prepend("--exclude-crate ", public_api_crates) }}) || status=1
     exit "${status}"
 
-# Apply the automatic fixes of the custom lint libraries (dylint); stage your changes first
+# Apply the automatic fixes of the lint libraries (dylint); stage your changes first
 [group("lint")]
 dylint-fix:
     rm -f {{ quote(dylint_over_baseline) }}
-    DYLINT_RUSTFLAGS="-A unknown_lints" {{ dylint_cmd }} --fix -- --allow-staged {{ dylint_cargo_args }}
+    DYLINT_RUSTFLAGS={{ quote(dylint_rustflags) }} {{ dylint_cmd }} --fix -- --allow-staged {{ dylint_cargo_args }}
 
 # Accept the current mordant findings: rewrites .config/mordant-baseline.toml, commit it afterwards
 [confirm("Rewrite .config/mordant-baseline.toml with the current findings?")]
 [group("lint")]
 dylint-baseline:
-    DYLINT_RUSTFLAGS="-A unknown_lints" MORDANT_BASELINE_WRITE=1 {{ dylint_cmd }} -- {{ dylint_cargo_args }} --keep-going
+    DYLINT_RUSTFLAGS={{ quote(dylint_rustflags) }} MORDANT_BASELINE_WRITE=1 {{ dylint_cmd }} -- {{ dylint_cargo_args }} --keep-going
 
 # Unnecessary public surface (cargo-hawk), denying warnings
 [group("lint")]
@@ -385,7 +398,7 @@ lint-shell:
 # Dockerfiles (hadolint)
 [group("lint")]
 lint-docker:
-    hadolint --config .config/hadolint.yaml dev/docker/*.dockerfile dev/deploy/*.dockerfile
+    hadolint --config .config/hadolint.yaml {{ dockerfiles }}
 
 # GitHub Actions workflows (actionlint)
 [group("lint")]
@@ -399,7 +412,7 @@ fmt: fmt-rs fmt-ts fmt-other
 # Check formatting of Rust, TypeScript, shell, TOML, and the justfile, keep-going
 [group("format")]
 fmt-check: _js
-    TREETIME_JS_READY=1 dev/run-checks --serial fmt-check-rs fmt-check-ts fmt-check-other
+    JS_READY=1 dev/run-checks --serial fmt-check-rs fmt-check-ts fmt-check-other
 
 # Format Rust (rustfmt)
 [group("format")]
@@ -543,7 +556,7 @@ deps-age:
 # Security advisories of both dependency graphs and the crate publish age (network), keep-going
 [group("deps")]
 audit: _js
-    TREETIME_JS_READY=1 dev/run-checks --serial audit-rs audit-ts deps-age
+    JS_READY=1 dev/run-checks --serial audit-rs audit-ts deps-age
 
 # Security advisories of the Rust dependencies (cargo-deny, network)
 [group("deps")]
@@ -567,7 +580,7 @@ tools-lock *tools:
 
 # Install the JavaScript dependencies from bun.lock
 _js:
-    [[ -n "${TREETIME_JS_READY:-}" ]] || bun install --frozen-lockfile --silent
+    [[ -n "${JS_READY:-}" ]] || bun install --frozen-lockfile --silent
 
 _main-checkout:
     test "$(git rev-parse --path-format=absolute --git-common-dir)" = "$(git rev-parse --path-format=absolute --git-dir)" || { printf 'run this recipe in the main checkout, not in a worktree\n' >&2; exit 1; }

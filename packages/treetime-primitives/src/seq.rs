@@ -55,7 +55,7 @@ impl Seq {
   }
 
   #[cfg_attr(
-    dylint_lib = "treetime_lints",
+    dylint_lib = "custom",
     allow(
       pub_unused_in_workspace,
       reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
@@ -81,7 +81,7 @@ impl Seq {
   }
 
   #[cfg_attr(
-    dylint_lib = "treetime_lints",
+    dylint_lib = "custom",
     allow(
       pub_unused_in_workspace,
       reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
@@ -244,7 +244,7 @@ impl AsRef<[u8]> for Seq {
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(handwritten_fmt_impl, reason = "a sequence renders as its characters")
 )]
 impl core::fmt::Display for Seq {
@@ -254,7 +254,7 @@ impl core::fmt::Display for Seq {
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     handwritten_fmt_impl,
     reason = "Debug shows the sequence text, not its byte vector, for readable test diffs"

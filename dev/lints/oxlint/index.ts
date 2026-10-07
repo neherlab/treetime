@@ -26,9 +26,10 @@ import { preferTestOverItRule } from "./rules/prefer-test-over-it.ts";
 import { requireIoTimeoutRule } from "./rules/require-io-timeout.ts";
 import { requireSuppressionReasonRule } from "./rules/require-suppression-reason.ts";
 import { useClassNameHelperRule } from "./rules/use-class-name-helper.ts";
+import { useThemedCnRule } from "./rules/use-themed-cn.ts";
 
 export default definePlugin({
-  meta: { name: "treetime" },
+  meta: { name: "custom" },
   rules: {
     "callers-before-callees": callersBeforeCalleesRule,
     "no-assertion-in-loop": noAssertionInLoopRule,
@@ -56,5 +57,6 @@ export default definePlugin({
     "require-io-timeout": requireIoTimeoutRule,
     "require-suppression-reason": requireSuppressionReasonRule,
     "use-class-name-helper": useClassNameHelperRule,
+    "use-themed-cn": useThemedCnRule,
   },
 });

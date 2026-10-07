@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("tsx");
 
-tester.run("web/use-themed-cn", useThemedCnRule, {
+tester.run("custom/use-themed-cn", useThemedCnRule, {
   valid: ["import { cn } from '@/ui/cn'", "import { useState } from 'react'"],
   invalid: [
     { code: "import clsx from 'clsx'", errors: [{ messageId: "themedCn", data: { source: "clsx" } }] },

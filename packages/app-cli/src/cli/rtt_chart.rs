@@ -17,7 +17,7 @@ const TEXT_CHART_MIN_SIZE: (u16, u16) = (32, 3);
 const TEXT_CHART_MAX_SIZE: (u16, u16) = (1024, 1024);
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     result_defaulted,
     reason = "output that is not a terminal has no size; the chart uses a fixed default"

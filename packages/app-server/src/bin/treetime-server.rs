@@ -145,7 +145,7 @@ struct ServerArgs {
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     debug_remnants,
     reason = "status line on stderr; the shutdown future has no error channel"

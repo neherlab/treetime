@@ -5,18 +5,18 @@ const tester = ruleTester("ts");
 
 const error = { messageId: "unbounded" };
 
-tester.run("treetime/no-unbounded-suppression", noUnboundedSuppressionRule, {
+tester.run("custom/no-unbounded-suppression", noUnboundedSuppressionRule, {
   valid: [
-    "// oxlint-disable treetime/foo -- reason\nconst x = 1\n// oxlint-enable treetime/foo",
-    "// oxlint-disable-next-line treetime/foo -- reason\nconst x = 1",
-    "// oxlint-disable-line treetime/foo -- reason\nconst x = 1",
+    "// oxlint-disable custom/foo -- reason\nconst x = 1\n// oxlint-enable custom/foo",
+    "// oxlint-disable-next-line custom/foo -- reason\nconst x = 1",
+    "// oxlint-disable-line custom/foo -- reason\nconst x = 1",
     "// a normal comment\nconst x = 1",
     "const x = 1",
   ],
   invalid: [
-    { code: "// oxlint-disable treetime/foo -- reason\nconst x = 1", errors: [error] },
+    { code: "// oxlint-disable custom/foo -- reason\nconst x = 1", errors: [error] },
     {
-      code: "// oxlint-enable treetime/foo\n// oxlint-disable treetime/foo -- reason\nconst x = 1",
+      code: "// oxlint-enable custom/foo\n// oxlint-disable custom/foo -- reason\nconst x = 1",
       errors: [error],
     },
   ],

@@ -89,7 +89,7 @@ mod tests {
 
   #[test]
   #[cfg_attr(
-    dylint_lib = "treetime_lints",
+    dylint_lib = "custom",
     expect(
       typographic_characters,
       reason = "sequence names with emoji exercise Unicode handling"
@@ -162,7 +162,7 @@ mod tests {
 
   #[test]
   #[cfg_attr(
-    dylint_lib = "treetime_lints",
+    dylint_lib = "custom",
     expect(
       typographic_characters,
       reason = "sequence names with emoji exercise Unicode handling"

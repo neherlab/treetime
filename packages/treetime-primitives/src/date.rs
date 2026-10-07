@@ -7,7 +7,7 @@ pub struct DateConstraint {
 
 impl DateConstraint {
   #[cfg_attr(
-    dylint_lib = "treetime_lints",
+    dylint_lib = "custom",
     allow(
       pub_unused_in_workspace,
       reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
@@ -65,7 +65,7 @@ pub struct DateRange {
 
 impl DateRange {
   #[cfg_attr(
-    dylint_lib = "treetime_lints",
+    dylint_lib = "custom",
     allow(
       pub_unused_in_workspace,
       reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"
@@ -76,7 +76,7 @@ impl DateRange {
   }
 
   #[cfg_attr(
-    dylint_lib = "treetime_lints",
+    dylint_lib = "custom",
     allow(
       pub_unused_in_workspace,
       reason = "used only by tests of other workspace crates, which a cfg(test) item cannot reach"

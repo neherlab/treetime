@@ -19,7 +19,7 @@ export function serveFetch(endpoint: FetchEndpoint, backend: AddonBackend, scope
     try {
       let ended = false;
 
-      // oxlint-disable-next-line treetime/require-io-timeout -- the addon runs the request in process; the renderer's signal ends it with an abort message
+      // oxlint-disable-next-line custom/require-io-timeout -- the addon runs the request in process; the renderer's signal ends it with an abort message
       const exchange = backend.fetch(request, scope, (reply) => {
         if (reply.kind === "end" || reply.kind === "reset") {
           ended = true;

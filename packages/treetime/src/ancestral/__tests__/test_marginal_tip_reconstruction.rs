@@ -118,7 +118,7 @@ mod tests {
 
   #[test]
   #[cfg_attr(
-    dylint_lib = "treetime_lints",
+    dylint_lib = "custom",
     expect(versioned_name, reason = "v0 names the reference implementation, not a revision")
   )]
   fn test_gm_marginal_tip_impute_matches_v0() -> Result<(), Report> {

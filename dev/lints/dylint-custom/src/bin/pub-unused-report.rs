@@ -3,7 +3,7 @@
 //! compiles the workspace. Runs after cargo exits, when every record is final.
 //!
 //! Usage: `pub-unused-report <workspace-manifest-path> [--exclude-crate <crate>]...`,
-//! with the records directory in `TREETIME_LINTS_PUB_UNUSED_DIR` as for the lint.
+//! with the records directory in `CUSTOM_LINTS_PUB_UNUSED_DIR` as for the lint.
 //! An excluded crate publishes its API for users outside the workspace or serves
 //! only test targets: its items are not reported, and its uses of other crates'
 //! items still count.

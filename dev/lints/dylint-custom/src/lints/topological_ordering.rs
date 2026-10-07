@@ -5,7 +5,7 @@
 
 //! Lint enforcing the project's item ordering convention within a module.
 //!
-//! The TreeTime style reads top-to-bottom: a referencing item (caller, user of
+//! The project style reads top-to-bottom: a referencing item (caller, user of
 //! a type) appears *before* the item it references (callee, dependency).  Public
 //! API sits near the top and its private helpers follow below.  This is the
 //! reverse of a classic callee-first topological sort.

@@ -153,7 +153,7 @@ pub struct ConfigSource {
 
 impl ConfigSource {
   #[cfg_attr(
-    dylint_lib = "treetime_lints",
+    dylint_lib = "custom",
     expect(
       error_dropped_by_pattern,
       reason = "source spans are optional; parse_config_document reports the YAML error for the same text"

@@ -64,6 +64,40 @@ impl Default for NeedlessBuilderConfig {
     }
 }
 
+/// Config for the `proper_error_type` lint.
+#[derive(Default, Deserialize)]
+#[serde(default)]
+pub struct ProperErrorTypeConfig {
+    /// The error types the project expects in public signatures.
+    pub style: ErrorStyle,
+}
+
+/// Error convention of a project, named in `proper_error_type` diagnostics.
+///
+/// Deserialized from `dylint.toml` as `"eyre"` or `"typed"`.
+#[derive(Clone, Copy, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ErrorStyle {
+    /// `eyre::Report` in every crate.
+    #[default]
+    Eyre,
+    /// Typed error enums (`thiserror`) in libraries, `eyre::Report` in binaries.
+    Typed,
+}
+
+/// Config for the `prefer_error_macros` lint.
+#[derive(Default, Deserialize)]
+#[serde(default)]
+pub struct PreferErrorMacrosConfig {
+    /// Project macros that wrap `eyre!`; an `eyre!` expanded from one of them
+    /// is generated code and is not reported.
+    pub helper_macros: Vec<String>,
+    /// Macro suggested in place of `eyre!`, with the same arguments as `eyre!`.
+    pub report_macro: Option<String>,
+    /// Macro suggested in place of `bail!`, as `return <error_macro>!(...)`.
+    pub error_macro: Option<String>,
+}
+
 /// Config for the `fallible_new` lint.
 #[derive(Deserialize)]
 #[serde(default)]
@@ -113,13 +147,13 @@ pub struct NoCommentsConfig {
 #[derive(Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct RenderSource {
-    /// Surface name, e.g. `"clap"`, `"schemars"`.
+    /// Surface name, e.g. `"clap"`, `"schemars"`, `"tsify"`.
     pub name: String,
     /// Derive names that place an item on this surface (last path segment).
     pub derives: Vec<String>,
-    /// Attribute paths that place an item on this surface (e.g. `"utoipa::path"`).
+    /// Attribute paths that place an item on this surface (e.g. `"wasm_bindgen"`).
     pub attrs: Vec<String>,
-    /// Which doc comments this surface renders: item, fields, variants.
+    /// Which doc comments this surface renders: item, fields, variants, methods.
     pub renders: Vec<Granularity>,
     /// Attributes that remove a field or variant from this surface, so this
     /// surface does not keep its doc comment. Form `outer(word)`, e.g.
@@ -134,6 +168,8 @@ pub enum Granularity {
     Item,
     Fields,
     Variants,
+    /// The public associated functions of an `impl` block.
+    Methods,
 }
 
 impl Default for NoCommentsConfig {

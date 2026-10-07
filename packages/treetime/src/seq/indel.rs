@@ -334,7 +334,7 @@ impl InDel {
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     handwritten_fmt_impl,
     reason = "an indel renders in range notation with the replaced characters"

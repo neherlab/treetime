@@ -1,12 +1,13 @@
 //! Flags unstructured error types in public API signatures.
 //!
-//! The TreeTime project standardizes on `eyre` / `color_eyre` for error
-//! propagation: fallible functions return `Result<_, eyre::Report>` and build
-//! errors with the `make_error!` / `make_report!` helper macros. This lint flags
-//! public and `pub(crate)` functions that instead return a stringly-typed error
-//! (`String`, `&str`, `Cow<str>`), an untyped `Box<dyn Error>`, or a competing
-//! erased error crate (`anyhow::Error`, `miette::Report`). `eyre::Report` itself
-//! is the approved type and is never flagged.
+//! The project's error convention comes from the `[proper_error_type]` config:
+//! `eyre` / `color_eyre` reports in every crate (`style = "eyre"`, the
+//! default), or typed error enums (`thiserror`) in libraries and `eyre` reports
+//! in binaries (`style = "typed"`). This lint flags public and `pub(crate)`
+//! functions that instead return a stringly-typed error (`String`, `&str`,
+//! `Cow<str>`), an untyped `Box<dyn Error>`, or a competing erased error crate
+//! (`anyhow::Error`, `miette::Report`). `eyre::Report` and typed errors are
+//! never flagged.
 
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{is_def_id_trait_method, is_entrypoint_fn, is_in_cfg_test, return_ty};
@@ -17,8 +18,7 @@ use rustc_middle::ty::{self, ExistentialPredicate, Ty};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Symbol, sym};
 
-const HELP: &str =
-    "return `eyre::Report` (or `color_eyre::Report`) and construct errors with `make_error!` / `make_report!`";
+use crate::config::{ErrorStyle, ProperErrorTypeConfig};
 
 enum UnstructuredKind {
     Basic(&'static str),
@@ -37,6 +37,7 @@ rustc_session::declare_lint! {
 }
 
 pub struct ProperErrorType {
+    style: ErrorStyle,
     sym_error: Symbol,
     sym_anyhow: Symbol,
     sym_miette: Symbol,
@@ -45,7 +46,9 @@ pub struct ProperErrorType {
 
 impl Default for ProperErrorType {
     fn default() -> Self {
+        let config: ProperErrorTypeConfig = dylint_linting::config_or_default("proper_error_type");
         Self {
+            style: config.style,
             sym_error: Symbol::intern("Error"),
             sym_anyhow: Symbol::intern("anyhow"),
             sym_miette: Symbol::intern("miette"),
@@ -183,10 +186,11 @@ impl<'tcx> LateLintPass<'tcx> for ProperErrorType {
                     PROPER_ERROR_TYPE,
                     ret_span,
                     format!(
-                        "{vis_label} function returns `Result<_, {name}>` -- use `eyre::Report`"
+                        "{vis_label} function returns `Result<_, {name}>` -- use {}",
+                        self.style.expected()
                     ),
                     None,
-                    HELP,
+                    self.style.help(),
                 );
             }
             UnstructuredKind::ErasedCrate { crate_name, type_name } => {
@@ -198,12 +202,36 @@ impl<'tcx> LateLintPass<'tcx> for ProperErrorType {
                     PROPER_ERROR_TYPE,
                     ret_span,
                     format!(
-                        "effectively public function returns `{crate_name}::{type_name}` -- the project standardizes on `eyre`"
+                        "effectively public function returns `{crate_name}::{type_name}` -- the project uses {}",
+                        self.style.convention()
                     ),
                     None,
-                    HELP,
+                    self.style.help(),
                 );
             }
+        }
+    }
+}
+
+impl ErrorStyle {
+    const fn expected(self) -> &'static str {
+        match self {
+            Self::Eyre => "`eyre::Report`",
+            Self::Typed => "a typed error or `eyre::Report`",
+        }
+    }
+
+    const fn convention(self) -> &'static str {
+        match self {
+            Self::Eyre => "`eyre`",
+            Self::Typed => "typed errors and `eyre`",
+        }
+    }
+
+    const fn help(self) -> &'static str {
+        match self {
+            Self::Eyre => "return `eyre::Report` (or `color_eyre::Report`)",
+            Self::Typed => "return a typed error enum (`thiserror`) from a library, or `eyre::Report` from a binary",
         }
     }
 }

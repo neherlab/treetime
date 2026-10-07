@@ -3,7 +3,7 @@
 # Usage: $0 <Cargo.lock>...
 #
 # Fail when a crates.io package in the given lockfiles was published less than
-# TREETIME_MIN_PUBLISH_AGE_DAYS (default 7) days ago. The publish time comes
+# MIN_PUBLISH_AGE_DAYS (default 7) days ago. The publish time comes
 # from the crates.io sparse index. Needs network access.
 #
 # Until the pinned Rust toolchain enforces `registry.global-min-publish-age` on
@@ -13,7 +13,7 @@
 set -euo pipefail
 shopt -s inherit_errexit
 
-min_days="${TREETIME_MIN_PUBLISH_AGE_DAYS:-7}"
+min_days="${MIN_PUBLISH_AGE_DAYS:-7}"
 
 index_path() {
   local name

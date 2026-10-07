@@ -7,7 +7,7 @@ const curlyQuote = String.fromCodePoint(0x201c);
 
 const emDash = String.fromCodePoint(0x2014);
 
-tester.run("treetime/no-typographic-characters", noTypographicCharactersRule, {
+tester.run("custom/no-typographic-characters", noTypographicCharactersRule, {
   valid: ['const label = "straight"', "const dash = 'a-b'"],
   invalid: [
     { code: `const label = "${curlyQuote}quoted"`, errors: [{ messageId: "typographic" }] },

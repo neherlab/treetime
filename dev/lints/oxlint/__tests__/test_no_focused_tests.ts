@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts");
 
-tester.run("treetime/no-focused-tests", noFocusedTestsRule, {
+tester.run("custom/no-focused-tests", noFocusedTestsRule, {
   valid: ["test('runs', () => {})", "describe('suite', () => {})"],
   invalid: [
     { code: "fit('focus', () => {})", errors: [{ messageId: "focused" }] },

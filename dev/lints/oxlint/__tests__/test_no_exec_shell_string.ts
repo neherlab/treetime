@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts");
 
-tester.run("treetime/no-exec-shell-string", noExecShellStringRule, {
+tester.run("custom/no-exec-shell-string", noExecShellStringRule, {
   valid: ["execFile('git', ['status'])", "spawn('ls', ['-la'])", "exec(command)"],
   invalid: [
     { code: "exec('rm -rf tmp')", errors: [{ messageId: "execString" }] },

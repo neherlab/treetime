@@ -5,7 +5,7 @@ const tester = ruleTester("ts");
 
 const error = { messageId: "sideEffect" };
 
-tester.run("treetime/no-side-effects-in-getters", noSideEffectsInGettersRule, {
+tester.run("custom/no-side-effects-in-getters", noSideEffectsInGettersRule, {
   valid: [
     "class C { get x() { return this._x } }",
     "class C { get x() { const a = []; a.push(1); return a } }",

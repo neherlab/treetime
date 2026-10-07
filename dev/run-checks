@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 #
-# Usage: $0 [--serial] <recipe>...
+# Usage: $0 [--serial] <check>...
 #
 # Run just recipes as checks, in parallel by default, and keep going past
-# failures. Each check writes its output to tmp/checks/<recipe>.log. A result
+# failures. A check is a recipe name, followed by its arguments separated by
+# colons: `build-web:prod` runs `just build-web prod`. Each check writes its
+# output to tmp/checks/<check>.log. A result
 # line is printed as each check finishes; the output of every failed check is
 # printed at the end. Exits 1 when any check failed.
 #
@@ -14,6 +16,7 @@
 # Examples:
 #   $0 fmt-check lint typecheck
 #   $0 --serial test
+#   $0 build-web:prod
 #
 set -euo pipefail
 shopt -s inherit_errexit
@@ -29,12 +32,18 @@ seconds_since() {
   printf '%s' "$(($(date +%s) - ${1}))"
 }
 
+run_check() {
+  local words
+  IFS=: read -ra words <<<"${1}"
+  just "${words[@]}"
+}
+
 run_serial() {
   local recipe start failed=()
   for recipe in "$@"; do
     printf '\n==> %s\n' "${recipe}" >&2
     start="$(date +%s)"
-    if just "${recipe}" 2>&1 | tee "${log_dir}/${recipe}.log"; then
+    if run_check "${recipe}" 2>&1 | tee "${log_dir}/${recipe}.log"; then
       printf 'PASS %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
     else
       printf 'FAIL %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
@@ -49,7 +58,7 @@ run_parallel() {
   start="$(date +%s)"
   for recipe in "$@"; do
     (
-      if just "${recipe}" >"${log_dir}/${recipe}.log" 2>&1; then
+      if run_check "${recipe}" >"${log_dir}/${recipe}.log" 2>&1; then
         printf 'PASS %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2
       else
         printf 'FAIL %s (%ss)\n' "${recipe}" "$(seconds_since "${start}")" >&2

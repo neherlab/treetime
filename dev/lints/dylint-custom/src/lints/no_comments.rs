@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use rustc_ast::{AttrKind, Attribute, Crate, Item, ItemKind, MetaItemInner, VariantData};
+use rustc_ast::{self as ast, AttrKind, Attribute, Crate, Item, ItemKind, MetaItemInner, VariantData, VisibilityKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::Applicability;
@@ -71,18 +71,29 @@ impl HelpDocCollector {
                     self.record_field_docs(cx, &rendering, &variant.data);
                 }
             },
+            ItemKind::Impl(imp) => {
+                let rendering = sources_rendering(&sources, Granularity::Methods);
+                for assoc in &imp.items {
+                    let shown = matches!(assoc.vis.kind, VisibilityKind::Public)
+                        && rendering.iter().any(|source| !is_skipped(source, &assoc.attrs));
+                    if shown {
+                        self.record_doc_block(cx, &assoc.attrs);
+                    }
+                }
+            },
             _ => {},
         }
     }
 
     fn matched_sources(&self, item: &Item) -> Vec<&RenderSource> {
-        let derives = derive_names(&item.attrs);
+        let attrs = item.attrs.iter().flat_map(attr_views).collect::<Vec<_>>();
+        let derives = derive_names(&attrs);
         self.config
             .rendered
             .iter()
             .filter(|source| {
                 source.derives.iter().any(|name| derives.contains(name))
-                    || item.attrs.iter().any(|attr| source.attrs.contains(&attr_path(attr)))
+                    || attrs.iter().any(|view| source.attrs.contains(&view.path))
             })
             .collect()
     }
@@ -358,31 +369,59 @@ fn comment_inner_text(text: &str) -> &str {
     text.trim_start_matches('/').trim()
 }
 
-fn derive_names(attrs: &[Attribute]) -> Vec<String> {
+/// An attribute as it applies after `cfg_attr` expansion: its path and its
+/// argument list. The pre-expansion pass sees `#[cfg_attr(pred, attr, ...)]`
+/// unexpanded, so the attributes inside it are taken as present whatever the
+/// predicate, because a doc comment that any configuration renders is
+/// user-facing.
+struct AttrView {
+    path: String,
+    list: Vec<MetaItemInner>,
+}
+
+fn attr_views(attr: &Attribute) -> Vec<AttrView> {
+    if attr.has_name(sym::cfg_attr) {
+        return attr
+            .meta_item_list()
+            .into_iter()
+            .flatten()
+            .skip(1)
+            .filter_map(|entry| match entry {
+                MetaItemInner::MetaItem(meta) => Some(AttrView {
+                    path: path_string(&meta.path),
+                    list: meta.meta_item_list().map(<[_]>::to_vec).unwrap_or_default(),
+                }),
+                MetaItemInner::Lit(_) => None,
+            })
+            .collect();
+    }
+    match &attr.kind {
+        AttrKind::Normal(normal) => vec![AttrView {
+            path: path_string(&normal.item.path),
+            list: attr.meta_item_list().map(Vec::from).unwrap_or_default(),
+        }],
+        AttrKind::DocComment(..) => vec![],
+    }
+}
+
+fn path_string(path: &ast::Path) -> String {
+    path.segments
+        .iter()
+        .map(|segment| segment.ident.to_string())
+        .collect::<Vec<_>>()
+        .join("::")
+}
+
+fn derive_names(attrs: &[AttrView]) -> Vec<String> {
     attrs
         .iter()
-        .filter(|attr| attr.has_name(sym::derive))
-        .filter_map(Attribute::meta_item_list)
-        .flatten()
+        .filter(|view| view.path == "derive")
+        .flat_map(|view| &view.list)
         .filter_map(|entry| match entry {
             MetaItemInner::MetaItem(meta) => meta.path.segments.last().map(|segment| segment.ident.to_string()),
             MetaItemInner::Lit(_) => None,
         })
         .collect()
-}
-
-fn attr_path(attr: &Attribute) -> String {
-    match &attr.kind {
-        AttrKind::Normal(normal) => normal
-            .item
-            .path
-            .segments
-            .iter()
-            .map(|segment| segment.ident.to_string())
-            .collect::<Vec<_>>()
-            .join("::"),
-        AttrKind::DocComment(..) => String::new(),
-    }
 }
 
 fn sources_rendering<'a>(sources: &[&'a RenderSource], granularity: Granularity) -> Vec<&'a RenderSource> {
@@ -394,11 +433,10 @@ fn sources_rendering<'a>(sources: &[&'a RenderSource], granularity: Granularity)
 }
 
 fn is_skipped(source: &RenderSource, attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| {
-        let path = attr_path(attr);
+    attrs.iter().flat_map(attr_views).any(|view| {
         source.skip_attrs.iter().any(|spec| {
             let (outer, word) = split_spec(spec);
-            path == outer && word.is_none_or(|word| attr_list_has_word(attr, word))
+            view.path == outer && word.is_none_or(|word| list_has_word(&view.list, word))
         })
     })
 }
@@ -410,12 +448,10 @@ fn split_spec(spec: &str) -> (&str, Option<&str>) {
     }
 }
 
-fn attr_list_has_word(attr: &Attribute, word: &str) -> bool {
-    attr.meta_item_list().is_some_and(|list| {
-        list.iter().any(|entry| match entry {
-            MetaItemInner::MetaItem(meta) => meta.is_word() && meta.has_name(Symbol::intern(word)),
-            MetaItemInner::Lit(_) => false,
-        })
+fn list_has_word(list: &[MetaItemInner], word: &str) -> bool {
+    list.iter().any(|entry| match entry {
+        MetaItemInner::MetaItem(meta) => meta.is_word() && meta.has_name(Symbol::intern(word)),
+        MetaItemInner::Lit(_) => false,
     })
 }
 

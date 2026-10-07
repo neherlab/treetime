@@ -1,7 +1,7 @@
 import { defineRule } from "@oxlint/plugins";
 
 import { bindingImport } from "./binding.ts";
-import { isContractsSource } from "./contracts.ts";
+import { contractsPackage, isContractsSource } from "./contracts.ts";
 
 const PARSE_METHODS = new Set(["parse", "safeParse", "parseAsync", "safeParseAsync"]);
 
@@ -16,6 +16,14 @@ export const noContractParseRule = defineRule({
       contractParse:
         "`{{schema}}.{{method}}()` parses data that already has its generated type. Use the typed value; parse only where untrusted data enters the app.",
     },
+    schema: [
+      {
+        type: "object",
+        properties: { package: { type: "string" } },
+        required: ["package"],
+        additionalProperties: false,
+      },
+    ],
   },
   createOnce(context) {
     return {
@@ -32,9 +40,10 @@ export const noContractParseRule = defineRule({
           return;
         }
 
+        const contracts = contractsPackage(context.options);
         const binding = bindingImport(callee.object, context.sourceCode);
 
-        if (binding !== undefined && isContractsSource(binding.source)) {
+        if (binding !== undefined && contracts !== undefined && isContractsSource(binding.source, contracts)) {
           context.report({
             node,
             messageId: "contractParse",

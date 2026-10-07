@@ -1,16 +1,23 @@
 import type { ESTree } from "@oxlint/plugins";
+import * as z from "zod";
 
-export const CONTRACTS_PACKAGE = "@neherlab/app-contracts";
+const zContractsOptions = z.object({ package: z.string() });
 
-export function isContractsSource(source: string): boolean {
-  return source === CONTRACTS_PACKAGE || source.startsWith(`${CONTRACTS_PACKAGE}/`);
+export function contractsPackage(options: readonly unknown[]): string | undefined {
+  const parsed = zContractsOptions.safeParse(options[0]);
+
+  return parsed.success ? parsed.data.package : undefined;
 }
 
-export function contractImports(program: ESTree.Program): Set<string> {
+export function isContractsSource(source: string, contracts: string): boolean {
+  return source === contracts || source.startsWith(`${contracts}/`);
+}
+
+export function contractImports(program: ESTree.Program, contracts: string): Set<string> {
   const names = new Set<string>();
 
   for (const statement of program.body) {
-    if (statement.type !== "ImportDeclaration" || !isContractsSource(statement.source.value)) {
+    if (statement.type !== "ImportDeclaration" || !isContractsSource(statement.source.value, contracts)) {
       continue;
     }
 

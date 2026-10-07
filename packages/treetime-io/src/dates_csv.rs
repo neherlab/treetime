@@ -123,7 +123,7 @@ pub fn metadata_read(
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     error_dropped_by_pattern,
     reason = "each date notation is tried in turn; a value that matches none is reported by the caller as missing"

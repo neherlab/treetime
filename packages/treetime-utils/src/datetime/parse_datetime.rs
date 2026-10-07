@@ -9,7 +9,7 @@ pub fn parse_datetime(datetime_str: impl AsRef<str>, options: &DateParserOptions
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     error_dropped_by_pattern,
     reason = "each accepted format is tried in turn; the final error names the unrecognized input"

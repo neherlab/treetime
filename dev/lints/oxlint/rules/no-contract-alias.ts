@@ -1,7 +1,7 @@
 import { defineRule } from "@oxlint/plugins";
 import type { ESTree } from "@oxlint/plugins";
 
-import { contractImports, isContractsSource } from "./contracts.ts";
+import { contractImports, contractsPackage, isContractsSource } from "./contracts.ts";
 
 export const noContractAliasRule = defineRule({
   meta: {
@@ -16,13 +16,23 @@ export const noContractAliasRule = defineRule({
         "`Omit<{{name}}, ...> & {...}` re-declares part of the generated type `{{name}}`. Change the Rust type, then regenerate.",
       renamedExport: "Re-exporting the generated `{{name}}` as `{{alias}}` gives one type two names. Export it as is.",
     },
+    schema: [
+      {
+        type: "object",
+        properties: { package: { type: "string" } },
+        required: ["package"],
+        additionalProperties: false,
+      },
+    ],
   },
   createOnce(context) {
     let contracts = new Set<string>();
+    let contractsSource: string | undefined;
 
     return {
       Program(node) {
-        contracts = contractImports(node);
+        contractsSource = contractsPackage(context.options);
+        contracts = contractsSource === undefined ? new Set() : contractImports(node, contractsSource);
       },
       TSTypeAliasDeclaration(node) {
         const name = referencedName(node.typeAnnotation);
@@ -45,7 +55,10 @@ export const noContractAliasRule = defineRule({
         }
       },
       ExportNamedDeclaration(node) {
-        const fromContracts = node.source !== null && isContractsSource(node.source.value);
+        const fromContracts =
+          node.source !== null &&
+          contractsSource !== undefined &&
+          isContractsSource(node.source.value, contractsSource);
 
         for (const specifier of node.specifiers) {
           const local = exportName(specifier.local);

@@ -9,7 +9,7 @@ use regex::Regex;
 use std::sync::LazyLock;
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     error_dropped_by_pattern,
     reason = "each accepted format is tried in turn; the final error names the unrecognized input"
@@ -32,7 +32,7 @@ pub fn parse_date(date_str: impl AsRef<str>, options: &DateParserOptions) -> Res
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     error_dropped_by_pattern,
     reason = "each accepted format is tried in turn; the final error names the unrecognized input"

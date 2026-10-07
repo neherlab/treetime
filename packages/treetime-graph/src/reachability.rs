@@ -3,7 +3,7 @@ use crate::node::GraphNodeKey;
 use std::collections::BTreeSet;
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   allow(
     pub_unused_in_workspace,
     reason = "graph query API without a production caller, covered by this crate's tests"

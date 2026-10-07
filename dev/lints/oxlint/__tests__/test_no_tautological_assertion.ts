@@ -5,7 +5,7 @@ const tester = ruleTester("ts", { NaN: "readonly", undefined: "readonly", Infini
 
 const error = { messageId: "tautology" };
 
-tester.run("treetime/no-tautological-assertion", noTautologicalAssertionRule, {
+tester.run("custom/no-tautological-assertion", noTautologicalAssertionRule, {
   valid: [
     "import { value, advance } from './counter'; const before = value; advance(); assert.strictEqual(before, value)",
     "import value, { advance } from './counter'; const before = value; advance(); expect(before).toBe(value)",

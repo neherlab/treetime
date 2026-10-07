@@ -266,7 +266,7 @@ impl From<char> for BitSet128 {
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     handwritten_fmt_impl,
     reason = "a state set renders as a braced list of its characters"
@@ -287,7 +287,7 @@ impl std::fmt::Display for BitSet128 {
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     handwritten_fmt_impl,
     reason = "Debug shows the characters of the set, not its bit mask, for readable test diffs"

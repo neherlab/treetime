@@ -75,7 +75,7 @@ impl AsciiChar {
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     handwritten_fmt_impl,
     reason = "a sequence character renders as the character, not its byte value"
@@ -88,7 +88,7 @@ impl core::fmt::Display for AsciiChar {
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     handwritten_fmt_impl,
     reason = "Debug shows the character, not its byte value, for readable test diffs"

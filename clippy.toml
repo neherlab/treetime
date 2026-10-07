@@ -15,14 +15,14 @@ allow-expect-in-tests = true
 allow-panic-in-tests = true
 allow-indexing-slicing-in-tests = true
 
-# clippy::disallowed_types -- steer type choices toward the workspace defaults.
+# clippy::disallowed_types -- steer type choices toward deterministic defaults.
 # An unresolved path is silently ignored, so a ban can precede its first use.
 disallowed-types = [
     { path = "std::sync::Mutex", reason = "use parking_lot::Mutex (poison-free, faster, supports lock_arc)" },
     { path = "std::sync::RwLock", reason = "use parking_lot::RwLock (poison-free, faster, supports read_arc/write_arc)" },
     { path = "std::collections::HashMap", reason = "use BTreeMap for deterministic order, or IndexMap for insertion order; #[allow] with a reason in a profiled hot path" },
     { path = "std::collections::HashSet", reason = "use BTreeSet for deterministic order, or IndexSet for insertion order; #[allow] with a reason in a profiled hot path" },
-    { path = "rand::rngs::StdRng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible" },
+    { path = "rand::rngs::StdRng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible", allow-invalid = true },
     { path = "rand::rngs::SmallRng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible", allow-invalid = true },
 ]
 
@@ -30,13 +30,13 @@ disallowed-types = [
 # unbounded constructors in favor of their safe counterparts. Unresolved paths
 # (e.g. for crates not yet depended on) are ignored until the crate is present.
 disallowed-methods = [
-    { path = "rand::thread_rng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible" },
+    { path = "rand::thread_rng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible", allow-invalid = true },
     { path = "rand::rng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible", allow-invalid = true },
-    { path = "rand::SeedableRng::from_entropy", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible" },
+    { path = "rand::SeedableRng::from_entropy", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible", allow-invalid = true },
     { path = "std::time::Duration::from_secs_f32", reason = "panics on a negative, NaN, or overflowing value; use Duration::try_from_secs_f32" },
     { path = "std::time::Duration::from_secs_f64", reason = "panics on a negative, NaN, or overflowing value; use Duration::try_from_secs_f64" },
-    { path = "reqwest::Client::new", reason = "build the client through ClientBuilder with an explicit .timeout(...)" },
+    { path = "reqwest::Client::new", reason = "build the client through ClientBuilder with an explicit .timeout(...)", allow-invalid = true },
     { path = "std::sync::mpsc::channel", reason = "use a bounded channel (sync_channel or crossbeam bounded) to apply backpressure" },
     { path = "crossbeam_channel::unbounded", reason = "use crossbeam_channel::bounded to apply backpressure" },
-    { path = "tokio::sync::mpsc::unbounded_channel", reason = "use tokio::sync::mpsc::channel with an explicit capacity" },
+    { path = "tokio::sync::mpsc::unbounded_channel", reason = "use tokio::sync::mpsc::channel with an explicit capacity", allow-invalid = true },
 ]

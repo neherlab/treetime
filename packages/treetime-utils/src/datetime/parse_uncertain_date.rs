@@ -15,7 +15,7 @@ const SUPPORTED_YEARS: (u32, u32) = (1, 9999);
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     error_dropped_by_pattern,
     reason = "each accepted format is tried in turn; the final error names the unrecognized input"
@@ -44,7 +44,7 @@ pub fn parse_date_uncertain(date_uncertain_str: &str, _options: &DateParserOptio
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     result_defaulted,
     reason = "a component outside its calendar range leaves that component unresolved, so a less specific pattern can match"

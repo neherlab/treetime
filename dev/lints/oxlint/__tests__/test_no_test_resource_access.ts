@@ -5,7 +5,7 @@ const tester = ruleTester("ts");
 
 const error = { messageId: "resource" };
 
-tester.run("treetime/no-test-resource-access", noTestResourceAccessRule, {
+tester.run("custom/no-test-resource-access", noTestResourceAccessRule, {
   valid: [
     { code: "const x = 1", filename: "widget.test.ts" },
     { code: "expect(add(1, 2)).toBe(3)", filename: "math.test.ts" },

@@ -1,5 +1,5 @@
 #![cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(debug_remnants, reason = "the validation report is printed to stdout")
 )]
 

@@ -98,7 +98,7 @@ pub struct Args {
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(debug_remnants, reason = "the test case listing is the command output")
 )]
 fn list_test_cases_generic<T: TestCase>(cases: &[T], suite_name: &str) {

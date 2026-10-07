@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 /// Directory the lint writes records into and the report reads them from.
 /// Collection is off when unset.
-pub const RECORDS_DIR_ENV: &str = "TREETIME_LINTS_PUB_UNUSED_DIR";
+pub const RECORDS_DIR_ENV: &str = "CUSTOM_LINTS_PUB_UNUSED_DIR";
 
 /// Extension of a record file.
 pub const RECORD_EXTENSION: &str = "json";
@@ -35,7 +35,7 @@ pub struct CrateRecord {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Def {
     /// Crate name plus definition path, the same from every crate:
-    /// `treetime_io::csv::read`, `treetime::{impl#3}::eql`.
+    /// `my_io::csv::read`, `my_crate::{impl#3}::eql`.
     pub key: String,
     /// Absolute path of the file that holds the item's name.
     pub file: PathBuf,

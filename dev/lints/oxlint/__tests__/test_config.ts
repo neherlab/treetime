@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 
-// oxlint-disable-next-line no-restricted-imports -- the test reads the lint configuration at the repository root, which belongs to no package
-import config, { packageGraphPatterns } from "../../../../oxlint.config.ts";
+import * as z from "zod";
+
+import config from "../../../../oxlint.config.ts";
+import { packageGraphPatterns } from "../config.ts";
 
 const PROTECTED_RULES = [
   "anti-slop/no-unknown-parameters",
@@ -12,6 +16,14 @@ const PROTECTED_RULES = [
 ];
 
 const PACKAGE_FILES = /^packages\/(?<dir>[^/]+)\//u;
+
+const ROOT = join(import.meta.dirname, "../../../..");
+
+const zManifest = z.object({
+  dependencies: z.record(z.string(), z.string()).optional(),
+  devDependencies: z.record(z.string(), z.string()).optional(),
+  peerDependencies: z.record(z.string(), z.string()).optional(),
+});
 
 const overrides = config.overrides ?? [];
 
@@ -39,7 +51,7 @@ void test("every override that restricts imports keeps the package graph of its 
 
     return override.files.flatMap((files) => {
       const dir = PACKAGE_FILES.exec(files)?.groups?.["dir"];
-      const graph = dir === undefined ? [] : packageGraphPatterns(dir);
+      const graph = dir === undefined ? [] : packageGraphPatterns(ROOT, dir);
 
       return graph.every((pattern) => groups.includes(JSON.stringify(pattern))) ? [] : [files];
     });
@@ -48,14 +60,29 @@ void test("every override that restricts imports keeps the package graph of its 
   assert.deepStrictEqual(missing, []);
 });
 
-void test("the package graph of a UI package bans the packages it does not declare", () => {
-  const [graph] = packageGraphPatterns("app-ui");
+void test("the package graph of a package bans no workspace package it declares", () => {
+  const banned = readdirSync(join(ROOT, "packages")).flatMap((dir) => {
+    const group = new Set(packageGraphPatterns(ROOT, dir).flatMap((pattern) => pattern.group));
 
-  assert.deepStrictEqual(
-    [graph?.group.includes("@neherlab/app-desktop"), graph?.group.includes("@neherlab/app-contracts")],
-    [true, false],
-  );
+    return declaredWorkspacePackages(dir).filter((name) => group.has(name));
+  });
+
+  assert.deepStrictEqual(banned, []);
 });
+
+function declaredWorkspacePackages(dir: string): string[] {
+  const manifest = join(ROOT, "packages", dir, "package.json");
+
+  if (!existsSync(manifest)) {
+    return [];
+  }
+
+  const parsed = zManifest.parse(JSON.parse(readFileSync(manifest, "utf8")));
+
+  return Object.keys({ ...parsed.dependencies, ...parsed.devDependencies, ...parsed.peerDependencies }).filter((name) =>
+    name.startsWith("@neherlab/"),
+  );
+}
 
 function isTestOrLintGlob(glob: string): boolean {
   return glob.startsWith("dev/lints/") || glob.includes("__tests__") || /\.(test|spec)\./u.test(glob);

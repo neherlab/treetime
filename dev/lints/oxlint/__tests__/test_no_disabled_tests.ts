@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts");
 
-tester.run("treetime/no-disabled-tests", noDisabledTestsRule, {
+tester.run("custom/no-disabled-tests", noDisabledTestsRule, {
   valid: ["test('runs', () => {})", "describe('suite', () => {})"],
   invalid: [
     { code: "xit('skip', () => {})", errors: [{ messageId: "disabled" }] },

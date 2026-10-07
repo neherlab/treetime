@@ -1,11 +1,6 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { defineRule } from "@oxlint/plugins";
 import type { ESTree } from "@oxlint/plugins";
 import * as z from "zod";
-
-const OPENAPI_PATH = join(import.meta.dirname, "../../../../packages/app-contracts/openapi.json");
 
 const MIN_MEMBERS = 2;
 
@@ -17,18 +12,16 @@ const zConstantsNode = z.object({ oneOf: z.array(z.object({ const: z.string() })
 
 const zOptions = z.object({ enums: z.array(z.array(z.string())) });
 
-const CONTRACT_ENUMS = contractEnums(readFileSync(OPENAPI_PATH, "utf8"));
-
 export const noContractEnumCopyRule = defineRule({
   meta: {
     type: "problem",
     docs: {
       description:
-        "Disallow string literal sets that copy the values of a generated enum; use the generated type or schema instead.",
+        "Disallow string literal sets that copy the values of a generated enum; use the generated type or value list instead.",
     },
     messages: {
       enumCopy:
-        "These literals ({{values}}) copy values of a generated enum. Use the generated type, or its zod schema's options, so a new value cannot be missed.",
+        "These literals ({{values}}) copy values of a generated enum. Use the generated type or value list, so a new value cannot be missed.",
     },
     schema: [
       {
@@ -40,9 +33,9 @@ export const noContractEnumCopyRule = defineRule({
   },
   createOnce(context) {
     function enums(): ReadonlyArray<ReadonlySet<string>> {
-      const options = zOptions.safeParse(context.options?.[0]);
+      const options = zOptions.safeParse(context.options[0]);
 
-      return options.success ? options.data.enums.map((values) => new Set(values)) : CONTRACT_ENUMS;
+      return options.success ? options.data.enums.map((values) => new Set(values)) : [];
     }
 
     function check(node: ESTree.Node, values: readonly string[]): void {
@@ -97,14 +90,14 @@ export const noContractEnumCopyRule = defineRule({
   },
 });
 
-function contractEnums(document: string): Array<ReadonlySet<string>> {
-  const found: Array<ReadonlySet<string>> = [];
+export function openApiEnums(document: string): string[][] {
+  const found: string[][] = [];
 
   JSON.parse(document, (_key, value: unknown) => {
     const values = enumValues(value);
 
     if (values !== undefined) {
-      found.push(new Set(values));
+      found.push(values);
     }
 
     return value;

@@ -1,5 +1,5 @@
 # Configuration for cargo-dylint custom lint libraries.
-# The local treetime_lints library reads its own sections here and falls back to
+# The local custom library reads its own sections here and falls back to
 # built-in defaults when a section is absent.
 
 # mordant: type-invariant lints (github.com/scarletindustries/mordant).
@@ -10,10 +10,14 @@
 baseline = ".config/mordant-baseline.toml"
 # unused_pub judges each library from the records of whichever crates cargo
 # happened to compile before the reporting crate, so it reports items that
-# sibling binaries use. treetime_lints' pub_unused_in_workspace and the
+# sibling binaries use. The custom library's pub_unused_in_workspace and the
 # pub-unused-report post-pass replace it.
 disabled = ["unused_pub"]
 
+# forbidden_reach: the inference algorithms of the treetime crate take their
+# input as arguments and their randomness from the seed of the caller, so no
+# call path from these entry points reaches the file system, the environment, a
+# process, the clock, or an unseeded random source.
 [[mordant.forbidden-reach]]
 from = "ancestral_reconstruction"
 never = [
@@ -29,6 +33,7 @@ never = [
   "rand::thread_rng",
 ]
 
+# Fitch parsimony reconstruction, packages/treetime/src/ancestral/fitch.rs
 [[mordant.forbidden-reach]]
 from = "ancestral_reconstruction_fitch"
 never = [
@@ -44,6 +49,7 @@ never = [
   "rand::thread_rng",
 ]
 
+# branch length and model optimization, packages/treetime/src/optimize/run_loop.rs
 [[mordant.forbidden-reach]]
 from = "run_optimize_loop"
 never = [
@@ -59,6 +65,7 @@ never = [
   "rand::thread_rng",
 ]
 
+# time tree inference, packages/treetime/src/timetree/inference/runner.rs
 [[mordant.forbidden-reach]]
 from = "run_timetree"
 never = [
@@ -74,6 +81,7 @@ never = [
   "rand::thread_rng",
 ]
 
+# coalescent lineage counts, packages/treetime/src/coalescent/lineage_counts.rs
 [[mordant.forbidden-reach]]
 from = "compute_lineage_counts"
 never = [
@@ -148,3 +156,18 @@ name = "napi"
 attrs = ["napi"]
 renders = ["item", "fields", "variants"]
 skip_attrs = ["napi(skip)", "napi(skip_typescript)"]
+
+# debug_remnants: the workspace logs with the log crate.
+[debug_remnants]
+suggested_framework = "log"
+
+# proper_error_type: fallible functions return eyre::Report in every crate.
+[proper_error_type]
+style = "eyre"
+
+# prefer_error_macros: the error helper macros of treetime-utils wrap eyre!
+# with consistent formatting and internal-error annotations.
+[prefer_error_macros]
+helper_macros = ["make_error", "make_report", "make_internal_error", "make_internal_report"]
+report_macro = "make_report"
+error_macro = "make_error"

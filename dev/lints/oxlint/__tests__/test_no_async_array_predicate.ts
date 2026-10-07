@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts");
 
-tester.run("treetime/no-async-array-predicate", noAsyncArrayPredicateRule, {
+tester.run("custom/no-async-array-predicate", noAsyncArrayPredicateRule, {
   valid: ["items.filter((item) => item.ok)", "items.map(async (item) => await load(item))"],
   invalid: [
     {

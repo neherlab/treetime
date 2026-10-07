@@ -140,7 +140,7 @@ impl DomainAgreementMetrics {
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     handwritten_fmt_impl,
     reason = "the multi-line metrics report is the validation output"

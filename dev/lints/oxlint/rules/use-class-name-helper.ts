@@ -4,10 +4,10 @@ export const useClassNameHelperRule = defineRule({
   meta: {
     type: "suggestion",
     docs: {
-      description: "Disallow importing `clsx` or `tailwind-merge` directly; use the themed cn helper.",
+      description: "Disallow importing `clsx` or `tailwind-merge` directly; use `cn`, the project's class name helper.",
     },
     messages: {
-      useCn: "Import the themed cn helper instead of `{{source}}` directly.",
+      useCn: "Import `cn`, the project's class name helper, instead of `{{source}}`.",
     },
   },
   createOnce(context) {

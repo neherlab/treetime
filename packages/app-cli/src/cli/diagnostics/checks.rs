@@ -318,7 +318,7 @@ fn leaf_reference_diagnostics(
 }
 
 #[cfg_attr(
-  dylint_lib = "treetime_lints",
+  dylint_lib = "custom",
   expect(
     result_defaulted,
     reason = "a path segment that is not an index places the pointer outside a step"

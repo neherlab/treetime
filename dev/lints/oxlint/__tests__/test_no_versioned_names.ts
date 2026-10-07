@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts");
 
-tester.run("treetime/no-versioned-names", noVersionedNamesRule, {
+tester.run("custom/no-versioned-names", noVersionedNamesRule, {
   valid: ["const parser = {}", "function reconstruct() {}", "class Cache {}"],
   invalid: [
     { code: "const parser_v2 = {}", errors: [{ messageId: "versioned", data: { name: "parser_v2" } }] },

@@ -12,7 +12,7 @@ const ENUMS = [
   },
 ];
 
-tester.run("treetime/no-contract-enum-copy", noContractEnumCopyRule, {
+tester.run("custom/no-contract-enum-copy", noContractEnumCopyRule, {
   valid: [
     'status === "valid"',
     { code: 'type Mode = "light" | "custom";', options: ENUMS },

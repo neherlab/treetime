@@ -1,6 +1,9 @@
 import { defineRule } from "@oxlint/plugins";
+import * as z from "zod";
 
 const CN_SOURCES = new Set(["clsx", "tailwind-merge", "cn"]);
+
+const zOptions = z.object({ module: z.string() });
 
 export const useThemedCnRule = defineRule({
   meta: {
@@ -11,11 +14,20 @@ export const useThemedCnRule = defineRule({
     messages: {
       themedCn: "Import `cn` from the themed ui/cn module, not `{{source}}` directly.",
     },
+    schema: [
+      {
+        type: "object",
+        properties: { module: { type: "string" } },
+        required: ["module"],
+        additionalProperties: false,
+      },
+    ],
   },
   createOnce(context) {
     return {
       ImportDeclaration(node) {
-        const isThemedModule = context.filename.replaceAll("\\", "/").endsWith("app-ui/src/ui/cn.ts");
+        const options = zOptions.safeParse(context.options[0]);
+        const isThemedModule = options.success && context.filename.replaceAll("\\", "/").endsWith(options.data.module);
 
         if (isThemedModule) {
           return;

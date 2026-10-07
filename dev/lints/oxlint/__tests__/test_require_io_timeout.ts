@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts");
 
-tester.run("treetime/require-io-timeout", requireIoTimeoutRule, {
+tester.run("custom/require-io-timeout", requireIoTimeoutRule, {
   valid: ["fetch(url, { signal: controller.signal })", "notFetch(url)"],
   invalid: [
     { code: "fetch(url)", errors: [{ messageId: "needSignal" }] },

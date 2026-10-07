@@ -3,7 +3,7 @@ import { ruleTester } from "./rule-tester.ts";
 
 const tester = ruleTester("ts");
 
-tester.run("treetime/no-leaky-mocks", noLeakyMocksRule, {
+tester.run("custom/no-leaky-mocks", noLeakyMocksRule, {
   valid: ["vi.mock('./service')", "makeStub()"],
   invalid: [
     { code: "vi.spyOn(console, 'log')", errors: [{ messageId: "leakyMock" }] },

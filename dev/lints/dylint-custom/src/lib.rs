@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 #![cfg_attr(
-    not(dylint_lib = "treetime_lints"),
+    not(dylint_lib = "custom"),
     allow(unknown_lints, reason = "enable dylint lint annotations")
 )]
 
