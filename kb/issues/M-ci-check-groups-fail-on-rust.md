@@ -12,7 +12,7 @@ The `cli.yml` run on `rust` at `400f4ab9` fails two check groups of `just check-
 
 `just dylint` is a slow recipe, so the dylint findings above come from the CI log.
 
-A local `just dylint` run on the lint setup shared with treeknit-rs fails on findings in `util-newick` and `treetime` as well:
+A local `just dylint` run also fails on findings in `util-newick` and `treetime`:
 
 - `no_comments` reports the comments of the pest grammars `packages/util-newick/src/common.pest`, `newick.pest`, and `nexus.pest`. The grammars are not Rust code, so the lint should skip them; this is a defect of the lint, not of the grammars
 - `prefer_error_macros` reports raw `eyre!` calls in `packages/util-newick/src/model/graph.rs`
