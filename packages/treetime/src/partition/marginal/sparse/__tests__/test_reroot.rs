@@ -29,7 +29,6 @@ mod tests {
     let stem_seq = Seq::try_from_slice(b"ACGTACGT")?;
     let r_seq = Seq::try_from_slice(b"ACTTA--T")?;
     let partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: alphabet.clone(),
       length: 8,
       root_sequence: stem_seq.clone(),

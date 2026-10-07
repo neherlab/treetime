@@ -24,13 +24,11 @@ use treetime_utils::interval::range_union::range_union;
 
 pub fn create_fitch_partition(
   graph: &Graph,
-  index: usize,
   alphabet: Alphabet,
   node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
 ) -> Result<PartitionFitch, Report> {
   let length = get_common_length_of_node_inputs(&node_inputs)?;
   let mut partition = PartitionFitch {
-    index,
     alphabet,
     length,
     nodes: btreemap! {},

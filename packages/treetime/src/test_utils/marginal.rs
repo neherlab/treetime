@@ -30,7 +30,7 @@ pub(crate) fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &
     .map(AlignmentRecord::from)
     .collect();
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-  let partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
+  let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
   let MarginalUpdate { log_lh, .. } =
     partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), &())?;
   Ok(log_lh.value())
@@ -47,7 +47,7 @@ pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: 
     .collect();
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-  let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
+  let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
   let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
 
   let MarginalUpdate { log_lh, .. } =
@@ -137,7 +137,7 @@ pub(crate) fn dense_partition_with_constant_leaves(
       (leaf.key(), input)
     })
     .collect();
-  PartitionMarginalDense::new(0, alphabet, graph, &node_inputs)
+  PartitionMarginalDense::new(alphabet, graph, &node_inputs)
 }
 
 pub(crate) fn leaf_seq_inputs(

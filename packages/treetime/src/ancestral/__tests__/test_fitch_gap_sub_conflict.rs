@@ -27,7 +27,6 @@ mod tests {
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let mut partition = PartitionFitch {
-      index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},

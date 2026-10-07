@@ -1,11 +1,11 @@
 # Partition creation is hardcoded instead of configured as complete partition sets
 
-`build_marginal_partition()` centralizes one dense/sparse/model branch, but callers still provide construction mechanics one partition at a time and independently decide attachment, index assignment, trait-object ownership, and output handling.
+`build_marginal_partition()` centralizes one dense/sparse/model branch, but callers still provide construction mechanics one partition at a time and independently decide attachment, trait-object ownership, and output handling.
 
 ## Current state
 
-- `fn build_marginal_partition()` accepts a representation, model, graph, partition index, alphabet, and node inputs, and returns one seeded `MarginalReconstruction` [`packages/treetime/src/partition/create.rs#L34`](../../packages/treetime/src/partition/create.rs#L34). Prune builds its sparse partition with `fn build_sparse_reconstruction()` [`packages/treetime/src/partition/create.rs#L68`](../../packages/treetime/src/partition/create.rs#L68).
-- Ancestral, optimize, prune, and timetree pipelines each build exactly one sequence partition and hardcode its index `0` [`packages/treetime/src/ancestral/pipeline.rs#L39`](../../packages/treetime/src/ancestral/pipeline.rs#L39) [`packages/treetime/src/optimize/pipeline.rs#L61`](../../packages/treetime/src/optimize/pipeline.rs#L61) [`packages/treetime/src/prune/pipeline.rs#L47`](../../packages/treetime/src/prune/pipeline.rs#L47) [`packages/treetime/src/timetree/pipeline.rs#L304`](../../packages/treetime/src/timetree/pipeline.rs#L304).
+- `fn build_marginal_partition()` accepts a representation, model, graph, alphabet, and node inputs, and returns one seeded `MarginalReconstruction` [`packages/treetime/src/partition/create.rs#L34`](../../packages/treetime/src/partition/create.rs#L34). Prune builds its sparse partition with `fn build_sparse_reconstruction()` [`packages/treetime/src/partition/create.rs#L66`](../../packages/treetime/src/partition/create.rs#L66).
+- Ancestral, optimize, prune, and timetree pipelines each build exactly one sequence partition. Partitions carry no index, because no code identifies a partition by position [`packages/treetime/src/ancestral/pipeline.rs#L38`](../../packages/treetime/src/ancestral/pipeline.rs#L38) [`packages/treetime/src/optimize/pipeline.rs#L58`](../../packages/treetime/src/optimize/pipeline.rs#L58) [`packages/treetime/src/prune/pipeline.rs#L41`](../../packages/treetime/src/prune/pipeline.rs#L41) [`packages/treetime/src/timetree/pipeline.rs#L346`](../../packages/treetime/src/timetree/pipeline.rs#L346).
 - Multi-partition infrastructure exists, while command configuration still creates one sequence partition.
 
 ## Impact

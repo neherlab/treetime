@@ -97,7 +97,7 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, SparseReconstruction), Report> {
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(graph, 0, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
@@ -160,7 +160,7 @@ mod tests {
 
     let alphabet = Alphabet::default();
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       partition,
@@ -271,7 +271,7 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
 
     let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = SparseReconstruction::seeded(partition, gtr, node_states);
 
@@ -406,12 +406,7 @@ mod tests {
           .map(AlignmentRecord::from)
           .collect();
 
-          let fitch = create_fitch_partition(
-            &graph,
-            0,
-            alphabet.clone(),
-            leaf_seq_inputs(&graph, &names, aln.clone()),
-          )?;
+          let fitch = create_fitch_partition(&graph, alphabet.clone(), leaf_seq_inputs(&graph, &names, aln.clone()))?;
           let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
           let recon = SparseReconstruction::seeded(partition, gtr.clone(), node_states);
 
@@ -452,7 +447,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let graph: Graph = graph;
-    let fitch = create_fitch_partition(&graph, 0, Alphabet::default(), leaf_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, Alphabet::default(), leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       partition,

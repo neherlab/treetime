@@ -60,7 +60,6 @@ pub fn run(
     Representation::resolve(params.dense),
     params.model,
     &input.graph,
-    0,
     input.alphabet,
     sequences,
     &branch_lengths_or_zero(&branch_lengths),

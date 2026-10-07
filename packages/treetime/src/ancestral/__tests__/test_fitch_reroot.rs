@@ -52,7 +52,6 @@ mod tests {
     let alphabet = Alphabet::default();
 
     let mut fitch = PartitionFitch {
-      index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
@@ -246,7 +245,6 @@ mod tests {
     let alphabet = Alphabet::default();
 
     let mut fitch = PartitionFitch {
-      index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
@@ -375,7 +373,6 @@ mod tests {
     let alphabet = Alphabet::default();
 
     let mut fitch = PartitionFitch {
-      index: 0,
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},

@@ -612,7 +612,6 @@ pub(super) mod tests {
         vec![]
       } else {
         let mut partition = PartitionMarginalSparse {
-          index: 0,
           alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
           length: 100,
           root_sequence: seq![],
@@ -666,7 +665,6 @@ pub(super) mod tests {
         vec![]
       } else {
         let mut partition = PartitionMarginalSparse {
-          index: 0,
           alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
           length: 100,
           root_sequence: seq![],

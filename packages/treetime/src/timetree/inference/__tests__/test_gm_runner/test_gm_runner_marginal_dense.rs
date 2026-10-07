@@ -63,7 +63,7 @@ mod tests {
       .map(AlignmentRecord::from)
       .collect();
     let dense_partition = MarginalReconstruction::Dense(DenseReconstruction::seeded(
-      PartitionMarginalDense::new(0, ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?,
+      PartitionMarginalDense::new(ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?,
       jc69(JC69Params::default())?,
     ));
 

@@ -40,7 +40,6 @@ mod tests {
 
   fn make_sparse_reconstruction(length: usize) -> Result<PartitionMarginalSparse, Report> {
     let partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: Alphabet::new(AlphabetName::Nuc)?,
       length,
       obs_nodes: btreemap! {},
@@ -380,7 +379,6 @@ mod tests {
     recon_a.obs_edges.insert(ib_key, SparseEdgeObs::default());
 
     let mut recon_b = make_sparse_reconstruction(100)?;
-    recon_b.index = 1;
     populate_test_nodes(&mut recon_b, &graph);
     recon_b
       .obs_edges

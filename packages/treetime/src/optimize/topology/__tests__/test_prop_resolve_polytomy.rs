@@ -246,7 +246,6 @@ mod tests {
       }
 
       let partition = PartitionMarginalSparse {
-        index: 0,
         alphabet,
         length,
         root_sequence: ref_seq,

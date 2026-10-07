@@ -175,7 +175,6 @@ mod tests {
       let partition = reconstruct_partition(
         &parse.graph,
         &plan,
-        0,
         alphabet,
         node_inputs,
         &branch_lengths_or_zero(&parse.branch_lengths),
@@ -291,7 +290,6 @@ mod tests {
       let partition = reconstruct_partition(
         graph,
         &plan,
-        0,
         alphabet,
         node_inputs,
         &branch_lengths_or_zero(&parse.branch_lengths),

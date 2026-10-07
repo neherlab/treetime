@@ -124,12 +124,7 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
-    let fitch = create_fitch_partition(
-      graph,
-      0,
-      Alphabet::default(),
-      leaf_seq_inputs(graph, names, aln.to_vec()),
-    )?;
+    let fitch = create_fitch_partition(graph, Alphabet::default(), leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
       partition,
@@ -151,12 +146,8 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
-    let partition = PartitionMarginalDense::new(
-      0,
-      Alphabet::default(),
-      graph,
-      &leaf_seq_inputs(graph, names, aln.to_vec()),
-    )?;
+    let partition =
+      PartitionMarginalDense::new(Alphabet::default(), graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let recon = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     named_strings(

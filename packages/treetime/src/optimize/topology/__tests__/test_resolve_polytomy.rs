@@ -24,7 +24,6 @@ mod tests {
     let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
-      0,
       100,
       &[
         ("U", "V", vec![sub(b'A', 0, b'T'), sub(b'C', 5, b'G')]),
@@ -68,7 +67,6 @@ mod tests {
     let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
-      0,
       100,
       &[
         (
@@ -109,7 +107,6 @@ mod tests {
     let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
-      0,
       100,
       &[
         ("root", "S", vec![sub(b'A', 0, b'G')]),
@@ -156,7 +153,6 @@ mod tests {
     let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
-      0,
       100,
       &[
         ("U", "V", vec![sub(b'A', 0, b'T')]),
@@ -202,7 +198,6 @@ mod tests {
     let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
-      0,
       100,
       &[
         ("root", "A", vec![sub(b'A', 0, b'T')]),
@@ -238,7 +233,6 @@ mod tests {
     let (partition, node_states) = helpers::make_partition(
       &graph,
       &names,
-      0,
       100,
       &[
         ("U", "V", vec![sub(b'A', 0, b'T')]),
@@ -300,7 +294,6 @@ mod tests {
     pub(super) fn make_partition(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-      index: usize,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
     ) -> (PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>) {
@@ -331,7 +324,6 @@ mod tests {
       }
 
       let partition = PartitionMarginalSparse {
-        index,
         alphabet,
         length,
         root_sequence: ref_seq,

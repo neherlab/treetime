@@ -371,10 +371,9 @@ mod tests {
       ],
     )?;
 
-    let p2 = helpers::make_partition_from_static_indexed(
+    let p2 = helpers::make_partition_from_static(
       &graph,
       &names,
-      1,
       200,
       &[
         ("root", "A", vec![Sub::new(c(b'C'), 50_usize, c(b'G')).unwrap()]),
@@ -463,16 +462,6 @@ mod tests {
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
     ) -> Result<PartitionMarginalSparse, Report> {
-      make_partition_from_static_indexed(graph, names, 0, length, edge_mutations)
-    }
-
-    pub(super) fn make_partition_from_static_indexed(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      index: usize,
-      length: usize,
-      edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> Result<PartitionMarginalSparse, Report> {
       let alphabet = Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?;
 
       let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
@@ -500,7 +489,6 @@ mod tests {
       }
 
       let partition = PartitionMarginalSparse {
-        index,
         alphabet,
         length,
         root_sequence: ref_seq,

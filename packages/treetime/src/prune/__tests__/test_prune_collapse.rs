@@ -145,7 +145,6 @@ mod tests {
     let internal_b_edge_key = find_edge_key(&graph, &names, "internal", "B").unwrap();
 
     let mut partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -223,7 +222,6 @@ mod tests {
     let internal_b_edge_key = find_edge_key(&graph, &names, "internal", "B").unwrap();
 
     let mut partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -285,7 +283,6 @@ mod tests {
     let internal_b_edge_key = find_edge_key(&graph, &names, "internal", "B").unwrap();
 
     let mut partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -345,7 +342,6 @@ mod tests {
     let internal_b_edge_key = find_edge_key(&graph, &names, "internal", "B").unwrap();
 
     let mut partition1 = PartitionMarginalSparse {
-      index: 0,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -365,7 +361,6 @@ mod tests {
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partition2 = PartitionMarginalSparse {
-      index: 1,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -635,7 +630,6 @@ mod tests {
     let mut graph: Graph = graph;
 
     let mut partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],
@@ -710,7 +704,6 @@ mod tests {
     let internal_b_edge_key = find_edge_key(&graph, &names, "internal", "B").unwrap();
 
     let mut partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
       length: 100,
       root_sequence: seq![],

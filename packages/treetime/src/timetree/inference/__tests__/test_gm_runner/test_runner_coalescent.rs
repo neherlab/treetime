@@ -116,7 +116,7 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
         .map(AlignmentRecord::from)
         .collect();
       let dense_partition = MarginalReconstruction::Dense(DenseReconstruction {
-        partition: PartitionMarginalDense::new(0, ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?,
+        partition: PartitionMarginalDense::new(ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),

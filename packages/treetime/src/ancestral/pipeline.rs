@@ -38,7 +38,6 @@ pub fn run(
   let partition = reconstruct_partition(
     &graph,
     &plan,
-    0,
     alphabet,
     nodes,
     &branch_lengths,

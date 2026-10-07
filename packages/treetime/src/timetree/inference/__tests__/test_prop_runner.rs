@@ -140,7 +140,7 @@ mod tests {
         .map(AlignmentRecord::from)
         .collect();
       let partition = MarginalReconstruction::Dense(DenseReconstruction {
-        partition: PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?,
+        partition: PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),

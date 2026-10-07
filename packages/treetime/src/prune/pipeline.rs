@@ -41,7 +41,6 @@ pub fn run(
     let SparseReconstruction { partition, gtr, .. } = build_sparse_reconstruction(
       GtrModelName::JC69,
       &input.graph,
-      0,
       input.alphabet,
       node_inputs,
       &branch_lengths_or_zero(&branch_lengths),

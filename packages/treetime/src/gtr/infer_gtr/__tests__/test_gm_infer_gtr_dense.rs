@@ -150,7 +150,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln.to_vec()))?;
+    let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))
@@ -179,8 +179,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let partition =
-      PartitionMarginalDense::new(0, NUC_ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?;
+    let partition = PartitionMarginalDense::new(NUC_ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     Ok((graph, recon, branch_lengths))

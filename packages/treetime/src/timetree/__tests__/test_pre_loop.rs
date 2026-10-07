@@ -57,7 +57,6 @@ mod tests {
       Representation::Sparse,
       GtrModelName::JC69,
       &graph,
-      0,
       alphabet,
       leaf_seq_inputs(&graph, &names, aln),
       &branch_lengths_or_zero(&branch_lengths),

@@ -146,17 +146,12 @@ mod tests {
       pub(super) fn sparse(
         &self,
       ) -> Result<(PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>), Report> {
-        create_fitch_partition(
-          &self.graph,
-          0,
-          Alphabet::new(AlphabetName::Nuc)?,
-          self.node_inputs.clone(),
-        )?
-        .into_marginal_sparse(&self.graph)
+        create_fitch_partition(&self.graph, Alphabet::new(AlphabetName::Nuc)?, self.node_inputs.clone())?
+          .into_marginal_sparse(&self.graph)
       }
 
       pub(super) fn dense(&self) -> Result<PartitionMarginalDense, Report> {
-        PartitionMarginalDense::new(0, Alphabet::new(AlphabetName::Nuc)?, &self.graph, &self.node_inputs)
+        PartitionMarginalDense::new(Alphabet::new(AlphabetName::Nuc)?, &self.graph, &self.node_inputs)
       }
     }
   }

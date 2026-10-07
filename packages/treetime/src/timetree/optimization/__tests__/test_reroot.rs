@@ -104,7 +104,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 
@@ -199,7 +199,6 @@ mod tests {
     );
 
     let partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: alphabet.clone(),
       length: 16,
       root_sequence: seq![AsciiChar::from_byte_unchecked(b'A'); 16],
@@ -266,7 +265,6 @@ mod tests {
     let sub = Sub::new(c(b'G'), 2_usize, c(b'T'))?;
 
     let partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: alphabet.clone(),
       length: 8,
       root_sequence: root_seq.clone(),
@@ -338,7 +336,6 @@ mod tests {
     let indel = deletion((2, 4), seq![c(b'G'), c(b'T')]);
 
     let partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: alphabet.clone(),
       length: 8,
       root_sequence: root_seq.clone(),
@@ -402,7 +399,6 @@ mod tests {
     let sub3 = Sub::new(c(b'C'), 1_usize, c(b'A'))?;
 
     let partition = PartitionMarginalSparse {
-      index: 0,
       alphabet: alphabet.clone(),
       length: 8,
       root_sequence: root_seq.clone(),
@@ -455,7 +451,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
 

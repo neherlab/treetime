@@ -66,7 +66,6 @@ mod tests {
     }
 
     let partition = PartitionMarginalSparse {
-      index: 0,
       alphabet,
       length,
       root_sequence: ref_seq,
@@ -410,7 +409,6 @@ mod tests {
     p2_obs_edges.insert(edge_c, SparseEdgeObs::default());
 
     let p2 = PartitionMarginalSparse {
-      index: 1,
       alphabet: p2_alphabet,
       length: 200,
       root_sequence: p2_ref_seq,
@@ -948,7 +946,6 @@ mod tests {
       }
 
       let partition = PartitionMarginalSparse {
-        index: 1,
         alphabet,
         length,
         root_sequence: ref_seq,

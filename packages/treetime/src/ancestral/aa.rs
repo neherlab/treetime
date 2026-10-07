@@ -69,7 +69,6 @@ pub fn reconstruct_aa(
     let partition = reconstruct_partition(
       graph,
       &plan,
-      index,
       alphabet,
       node_inputs,
       &branch_lengths,

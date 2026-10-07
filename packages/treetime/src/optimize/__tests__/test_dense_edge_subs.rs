@@ -93,7 +93,6 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = PartitionMarginalDense::new(
-      0,
       Alphabet::new(AlphabetName::Nuc)?,
       &graph,
       &leaf_seq_inputs(&graph, &names, aln),
@@ -182,7 +181,6 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = PartitionMarginalDense::new(
-      0,
       Alphabet::new(AlphabetName::Nuc)?,
       &graph,
       &leaf_seq_inputs(&graph, &names, aln),

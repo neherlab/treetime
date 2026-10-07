@@ -27,7 +27,6 @@ use treetime_utils::interval::range_union::range_union;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalSparse {
-  pub index: usize,
   pub alphabet: Alphabet,
   pub length: usize,
   pub root_sequence: Seq,

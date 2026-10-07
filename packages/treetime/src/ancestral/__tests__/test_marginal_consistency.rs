@@ -87,7 +87,7 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, MarginalReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(0, alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
+    let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let recon = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr));
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
@@ -102,7 +102,7 @@ mod tests {
     gtr: GTR,
   ) -> Result<(f64, MarginalReconstruction), Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, 0, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
+    let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
     let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
@@ -421,7 +421,7 @@ mod tests {
     .map(AlignmentRecord::from)
     .collect();
 
-    let partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
+    let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
     let recon = DenseReconstruction::seeded(partition, gtr);
 
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

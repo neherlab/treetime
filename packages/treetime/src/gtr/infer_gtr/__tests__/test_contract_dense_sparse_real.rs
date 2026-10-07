@@ -98,7 +98,6 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
       let partition = PartitionMarginalDense::new(
-        0,
         DENSE_NUC_ALPHABET.clone(),
         &graph,
         &leaf_seq_inputs(&graph, &names, aln.clone()),
@@ -132,7 +131,6 @@ mod tests {
       let graph: Graph = graph;
       let fitch = create_fitch_partition(
         &graph,
-        0,
         SPARSE_NUC_ALPHABET.clone(),
         leaf_seq_inputs(&graph, &names, aln),
       )?;

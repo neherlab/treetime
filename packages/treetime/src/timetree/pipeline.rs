@@ -347,7 +347,6 @@ fn initialize_branch_model(
         Representation::resolve(params.dense),
         params.model,
         graph,
-        0,
         alphabet,
         node_inputs,
         &branch_lengths_or_zero(branch_lengths),

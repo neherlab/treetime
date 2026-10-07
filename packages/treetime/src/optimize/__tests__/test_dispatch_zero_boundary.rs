@@ -56,7 +56,6 @@ mod tests {
 
     let fitch = create_fitch_partition(
       graph,
-      0,
       Alphabet::new(AlphabetName::Nuc)?,
       leaf_seq_inputs(graph, names, aln),
     )?;

@@ -75,7 +75,6 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPla
 pub(crate) fn reconstruct_partition(
   graph: &Graph,
   plan: &ReconstructionPlan,
-  index: usize,
   alphabet: Alphabet,
   node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -86,25 +85,15 @@ pub(crate) fn reconstruct_partition(
   log: &dyn LogSink,
 ) -> Result<AncestralPartition, Report> {
   match *plan {
-    ReconstructionPlan::Fitch => {
-      reconstruct_fitch(graph, index, alphabet, node_inputs, options.impute, cancel, stages, log)
-    },
+    ReconstructionPlan::Fitch => reconstruct_fitch(graph, alphabet, node_inputs, options.impute, cancel, stages, log),
     ReconstructionPlan::Marginal {
       representation,
       model,
       gtr_refinement,
     } => {
       checkpoint(cancel, stages, "Inferring GTR model", 0.2)?;
-      let reconstruction = build_marginal_partition(
-        representation,
-        model,
-        graph,
-        index,
-        alphabet,
-        node_inputs,
-        branch_lengths,
-        log,
-      )?;
+      let reconstruction =
+        build_marginal_partition(representation, model, graph, alphabet, node_inputs, branch_lengths, log)?;
       checkpoint(cancel, stages, "Marginal reconstruction", 0.4)?;
       reconstruct_marginal(
         graph,
@@ -123,7 +112,6 @@ pub(crate) fn reconstruct_partition(
 
 fn reconstruct_fitch(
   graph: &Graph,
-  index: usize,
   alphabet: Alphabet,
   node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
   impute: bool,
@@ -132,7 +120,7 @@ fn reconstruct_fitch(
   log: &dyn LogSink,
 ) -> Result<AncestralPartition, Report> {
   checkpoint(cancel, stages, "Fitch parsimony", 0.3)?;
-  let mut partitions = vec![create_fitch_partition(graph, index, alphabet, node_inputs)?];
+  let mut partitions = vec![create_fitch_partition(graph, alphabet, node_inputs)?];
 
   if impute {
     progress_warn!(

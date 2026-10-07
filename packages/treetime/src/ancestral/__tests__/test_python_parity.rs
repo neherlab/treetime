@@ -31,10 +31,9 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     alphabet: Alphabet,
-    index: usize,
     gtr: GTR,
   ) -> Result<DenseReconstruction, Report> {
-    let partition = PartitionMarginalDense::new(index, alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
+    let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let recon = DenseReconstruction::seeded(partition, gtr);
     let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     Ok(recon)
@@ -72,7 +71,7 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
+    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, gtr)?;
 
     let root_key = find_node_key_by_name(&graph, &names, "NODE_0000000").expect("root node must exist");
     let root_seq = MarginalReconstruction::Dense(recon)
@@ -126,7 +125,7 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
+    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, gtr)?;
 
     let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
     let ab_profile = &recon.node_states[&ab_key].profile.dis;
@@ -155,7 +154,7 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
+    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, gtr)?;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Node root not found"))?;
     let root_profile = &recon.node_states[&root_key].profile.dis;
@@ -184,7 +183,7 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
+    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, gtr)?;
 
     let cd_key = find_node_key_by_name(&graph, &names, "CD").ok_or_else(|| make_report!("Node CD not found"))?;
     let cd_profile = &recon.node_states[&cd_key].profile.dis;
@@ -218,7 +217,7 @@ mod tests {
     let gtr = make_python_reference_gtr()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 0, gtr)?;
+    let recon = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, gtr)?;
 
     for (key, node_data) in &recon.node_states {
       let profile = &node_data.profile.dis;
@@ -250,8 +249,8 @@ mod tests {
     let gtr2 = make_python_reference_gtr2()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let recon1 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet.clone(), 0, gtr1)?;
-    let recon2 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 1, gtr2)?;
+    let recon1 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet.clone(), gtr1)?;
+    let recon2 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, gtr2)?;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Node root not found"))?;
 
@@ -290,8 +289,8 @@ mod tests {
     let gtr2 = make_python_reference_gtr2()?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
-    let recon1 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet.clone(), 0, gtr1)?;
-    let recon2 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, 1, gtr2)?;
+    let recon1 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet.clone(), gtr1)?;
+    let recon2 = build_dense_recon(&graph, &branch_lengths, &names, &aln, alphabet, gtr2)?;
 
     let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("Node AB not found"))?;
 
@@ -333,17 +332,13 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let length = get_common_length(&aln)?;
 
-    let dense_partition = PartitionMarginalDense::new(
-      0,
-      alphabet.clone(),
-      &graph,
-      &leaf_seq_inputs(&graph, &names, aln.clone()),
-    )?;
+    let dense_partition =
+      PartitionMarginalDense::new(alphabet.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln.clone()))?;
     let dense_recon = DenseReconstruction::seeded(dense_partition, gtr.clone());
     let (dense_recon, dense_log_lh) = dense_recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let dense_log_lh = dense_log_lh.value();
 
-    let fitch = create_fitch_partition(&graph, 0, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
+    let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_recon = SparseReconstruction::seeded(partition, gtr, node_states);
     let (sparse_recon, sparse_log_lh) =

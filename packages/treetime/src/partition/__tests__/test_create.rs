@@ -28,16 +28,10 @@ mod tests {
   ) -> Result<(), Report> {
     let input = helpers::Input::star(&[("A", "ACGT"), ("B", "ACGT"), ("C", "ACGA")])?;
 
-    let reconstruction = build_marginal_partition(
-      representation,
-      model,
-      &input.graph,
-      0,
-      Alphabet::default(),
-      input.node_inputs.clone(),
-      &input.branch_lengths,
-      &NoopProgress,
-    )?;
+    let reconstruction = build_marginal_partition(representation, model, &input.graph, Alphabet::default(),
+    input.node_inputs.clone(),
+    &input.branch_lengths,
+    &NoopProgress,)?;
 
     assert_eq!(expected_dense, matches!(reconstruction, MarginalReconstruction::Dense(_)));
     assert_eq!(4, reconstruction.sequence_length());
@@ -58,7 +52,6 @@ mod tests {
       Representation::Dense,
       GtrModelName::JC69,
       &input.graph,
-      0,
       Alphabet::default(),
       input.node_inputs.clone(),
       &input.branch_lengths,
@@ -118,7 +111,7 @@ mod tests {
     }
 
     pub(super) fn fitch_inferred_gtr(input: &Input) -> Result<GTR, Report> {
-      let fitch = create_fitch_partition(&input.graph, 0, Alphabet::default(), input.node_inputs.clone())?;
+      let fitch = create_fitch_partition(&input.graph, Alphabet::default(), input.node_inputs.clone())?;
       infer_gtr_fitch(&fitch, &input.graph, &input.branch_lengths, &NoopProgress)
     }
 

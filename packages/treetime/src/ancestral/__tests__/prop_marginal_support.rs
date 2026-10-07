@@ -21,7 +21,6 @@ pub(super) mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
 
     let partition = PartitionMarginalDense::new(
-      0,
       alphabet,
       &graph,
       &leaf_seq_inputs(&graph, &names, input.alignment.clone()),
@@ -43,7 +42,6 @@ pub(super) mod tests {
 
     let fitch = create_fitch_partition(
       &graph,
-      0,
       alphabet,
       leaf_seq_inputs(&graph, &names, input.alignment.clone()),
     )?;

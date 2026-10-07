@@ -40,12 +40,8 @@ mod tests {
     .collect();
     let gtr = jc69(JC69Params::default())?;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(
-      0,
-      alphabet.clone(),
-      &graph,
-      &leaf_seq_inputs(&graph, &names, aln.clone()),
-    )?;
+    let partition =
+      PartitionMarginalDense::new(alphabet.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln.clone()))?;
     let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr.clone()));
     let (reconstruction, log_lh_before) =
       reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -62,7 +58,7 @@ mod tests {
       .apply_reroot(&reroot)?
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    let fresh_partition = PartitionMarginalDense::new(0, alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
+    let fresh_partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
     let (_, log_lh_fresh) = DenseReconstruction::seeded(fresh_partition, gtr)
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     assert!(reroot.edge_merge.is_some(), "the old root is merged away");

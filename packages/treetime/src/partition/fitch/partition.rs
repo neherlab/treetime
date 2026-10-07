@@ -16,7 +16,6 @@ use treetime_primitives::{Seq, seq};
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionFitch {
-  pub index: usize,
   pub alphabet: Alphabet,
   pub length: usize,
   pub nodes: BTreeMap<GraphNodeKey, FitchNodeData>,
@@ -56,7 +55,6 @@ impl PartitionFitch {
     }
 
     let partition = PartitionMarginalSparse {
-      index: self.index,
       alphabet: self.alphabet,
       length: self.length,
       root_sequence,
@@ -71,7 +69,7 @@ impl PartitionFitch {
     graph: &Graph,
     node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
   ) -> Result<PartitionMarginalDense, Report> {
-    PartitionMarginalDense::new(self.index, self.alphabet, graph, node_inputs)
+    PartitionMarginalDense::new(self.alphabet, graph, node_inputs)
   }
 
   pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<crate::seq::indel::InDel> {

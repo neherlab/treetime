@@ -31,7 +31,6 @@ use treetime_utils::interval::range_union::range_union;
 #[derive(Clone, Debug, Serialize)]
 pub struct PartitionMarginalDense {
   pub(crate) inputs: DenseInputs,
-  pub(crate) index: usize,
   pub(crate) alphabet: Alphabet,
   pub(crate) length: usize,
   pub(crate) obs_leaves: BTreeMap<GraphNodeKey, DenseLeafObs>,
@@ -43,7 +42,6 @@ impl PartitionMarginalDense {
     reason = "count/index numeric cast is exact for the domain range"
   )]
   pub(crate) fn new(
-    index: usize,
     alphabet: Alphabet,
     graph: &Graph,
     node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
@@ -67,7 +65,6 @@ impl PartitionMarginalDense {
         min_branch_length,
         filter_uninformative_root: true,
       },
-      index,
       alphabet,
       length,
       obs_leaves,

@@ -54,7 +54,6 @@ pub(crate) mod tests {
   ) -> Result<MarginalReconstruction, Report> {
     let fitch = create_fitch_partition(
       graph,
-      0,
       Alphabet::new(AlphabetName::Nuc)?,
       leaf_seq_inputs(graph, names, aln.to_vec()),
     )?;
@@ -76,7 +75,6 @@ pub(crate) mod tests {
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<MarginalReconstruction, Report> {
     let partition = PartitionMarginalDense::new(
-      0,
       Alphabet::new(AlphabetName::Nuc)?,
       graph,
       &leaf_seq_inputs(graph, names, aln.to_vec()),
