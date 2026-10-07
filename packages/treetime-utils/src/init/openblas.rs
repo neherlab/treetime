@@ -7,7 +7,7 @@
 )]
 
 use crate::io::json::{JsonPretty, json_write_str};
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use std::ffi::{CStr, c_char, c_int};
 
 unsafe extern "C" {
@@ -53,7 +53,7 @@ pub fn get_openblas_info() -> OpenBlasInfo {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct OpenBlasInfo {
   pub config: Option<String>,
   pub core_name: Option<String>,
@@ -62,7 +62,7 @@ pub struct OpenBlasInfo {
   pub num_procs: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum ParallelMode {
   Sequential,

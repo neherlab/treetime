@@ -1,14 +1,12 @@
 use chrono::{NaiveDate, NaiveTime};
-use deser::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone)]
 pub struct DateParserOptions {
   pub default_time_of_day: TimeOfDay,
 }
 
-#[derive(Debug, SmartDefault, Clone, Copy, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Debug, SmartDefault, Clone, Copy)]
 pub enum TimeOfDay {
   Dawn,
 
@@ -19,6 +17,5 @@ pub enum TimeOfDay {
 
   Custom(NaiveTime),
 
-  #[deser(skip)]
   CustomFn(fn(&NaiveDate) -> NaiveTime),
 }
