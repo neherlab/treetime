@@ -1,9 +1,5 @@
 use crate::seq_char::AsciiChar;
 use auto_ops::{impl_op_ex, impl_op_ex_commutative};
-use deser::adapters::{DeserializeAs, FromInto};
-use deser::de::SinkHandle;
-use deser::ser::{Chunk, SerializeHandle};
-use deser::{Deserialize, Error, Serialize, State};
 use itertools::Itertools;
 use std::borrow::Borrow;
 
@@ -357,16 +353,3 @@ impl_op_ex!(&=|a: &mut BitSet128, b: AsciiChar| { *a = a.intersection(&BitSet128
 
 impl_op_ex_commutative!(^|a: &BitSet128, b: AsciiChar| -> BitSet128 { a.symmetric_difference(&BitSet128::from_char(b)) });
 impl_op_ex!(^=|a: &mut BitSet128, b: AsciiChar| { *a = a.symmetric_difference(&BitSet128::from_char(b)); });
-
-impl Serialize for BitSet128 {
-  fn serialize(&self, state: &mut State) -> Result<Chunk<'_>, Error> {
-    let chars: Vec<char> = self.iter().map(char::from).collect();
-    Ok(Chunk::Forward(SerializeHandle::arena(chars, state)))
-  }
-}
-
-impl<'de> Deserialize<'de> for BitSet128 {
-  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut State) -> SinkHandle<'out, 'de> {
-    <FromInto<Vec<char>> as DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
-  }
-}

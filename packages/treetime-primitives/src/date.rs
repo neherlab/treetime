@@ -1,5 +1,4 @@
-use deser::{Deserialize, Serialize};
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DateConstraint {
   pub raw: String,
   pub value: DateValue,
@@ -30,8 +29,7 @@ impl DateConstraint {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum DateValue {
   Exact(DateExact),
   Uncertain(DateRange),
@@ -52,12 +50,12 @@ impl DateValue {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DateExact {
   pub value: f64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DateRange {
   pub start: f64,
   pub end: f64,

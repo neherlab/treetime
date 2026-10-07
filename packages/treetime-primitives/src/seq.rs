@@ -1,8 +1,4 @@
 use crate::seq_char::AsciiChar;
-use deser::adapters::{DeserializeAs, TryFromInto};
-use deser::de::SinkHandle;
-use deser::ser::Chunk;
-use deser::{Atom, Deserialize, Error, Serialize, State};
 use eyre::Report;
 use std::mem::ManuallyDrop;
 use treetime_utils::error::make_error;
@@ -370,28 +366,4 @@ macro_rules! seq {
       $crate::seq::Seq::from_iter([$($char),*].into_iter())
     }
   };
-}
-
-impl Serialize for Seq {
-  fn serialize(&self, _state: &mut State) -> Result<Chunk<'_>, Error> {
-    Ok(Chunk::Atom(Atom::Str(self.as_str().into())))
-  }
-}
-
-impl<'de> Deserialize<'de> for Seq {
-  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut State) -> SinkHandle<'out, 'de> {
-    <TryFromInto<String> as DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
-  }
-}
-
-impl TryFrom<String> for Seq {
-  type Error = &'static str;
-
-  fn try_from(s: String) -> Result<Self, Self::Error> {
-    if s.is_ascii() {
-      Ok(Seq::from_ascii_str(&s))
-    } else {
-      Err("Seq: input contains non-ASCII characters")
-    }
-  }
 }

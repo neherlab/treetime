@@ -1,6 +1,3 @@
-use deser::adapters::{DeserializeAs, TryFromInto};
-use deser::de::SinkHandle;
-use deser::{Deserialize, Serialize, State};
 use eyre::Report;
 use std::fmt::Write as _;
 use treetime_utils::error::make_error;
@@ -41,7 +38,7 @@ impl From<AsciiChar> for char {
   }
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct AsciiChar(u8);
 
@@ -97,19 +94,5 @@ impl core::fmt::Display for AsciiChar {
 impl core::fmt::Debug for AsciiChar {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     core::fmt::Display::fmt(self, f)
-  }
-}
-
-impl<'de> Deserialize<'de> for AsciiChar {
-  fn deserialize_into<'out>(out: &'out mut Option<Self>, state: &mut State) -> SinkHandle<'out, 'de> {
-    <TryFromInto<u8> as DeserializeAs<'de, Self>>::deserialize_into_as(out, state)
-  }
-}
-
-impl TryFrom<u8> for AsciiChar {
-  type Error = Report;
-
-  fn try_from(value: u8) -> Result<Self, Report> {
-    Self::try_new(value)
   }
 }
