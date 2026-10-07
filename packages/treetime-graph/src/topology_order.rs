@@ -2,7 +2,6 @@ use crate::assign_node_names::node_name_or_key;
 use crate::edge::GraphEdgeKey;
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -10,7 +9,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use treetime_utils::{make_error, make_report};
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TopologyOrderSpec {
   pub preset: TopologyOrderPreset,
   pub target_order: BTreeMap<GraphNodeKey, usize>,
@@ -86,8 +85,7 @@ impl TopologyOrderSpec {
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum TopologyOrderPreset {
   Keep,
   #[default]
@@ -289,8 +287,7 @@ fn compute_target_scores(
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum TopologyOrderTargetAggregate {
   #[default]
   Mean,

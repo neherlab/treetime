@@ -1,12 +1,11 @@
 use crate::edge::{GraphEdgeKey, invert_edge};
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_utils::make_internal_report;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct RerootResult {
   pub new_root_key: GraphNodeKey,
   pub stem_removal: Option<StemRemovalInfo>,
@@ -169,7 +168,7 @@ pub fn record_split(branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>, in
   branch_lengths.insert(info.child_side_edge_key, info.child_side_length);
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct EdgeSplitInfo {
   pub old_edge_key: GraphEdgeKey,
   pub new_node_key: GraphNodeKey,
@@ -186,14 +185,14 @@ pub fn record_merge(branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>, in
   branch_lengths.insert(info.merged_edge_key, info.merged_branch_length);
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct StemRemovalInfo {
   pub removed_node_key: GraphNodeKey,
   pub removed_edge_key: GraphEdgeKey,
   pub new_root_key: GraphNodeKey,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct EdgeMergeInfo {
   pub removed_node_key: GraphNodeKey,
   pub parent_edge_key: GraphEdgeKey,

@@ -1,12 +1,12 @@
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
 use derive_more::Display;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use getset::{CopyGetters, Getters, MutGetters, Setters};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Clone, Debug, Getters, CopyGetters, MutGetters, Setters, Serialize, Deserialize)]
+#[derive(Clone, Debug, Getters, CopyGetters, MutGetters, Setters, Serialize)]
 pub struct Edge {
   #[getset(get_copy = "pub", get_mut = "pub", set = "pub")]
   key: GraphEdgeKey,
@@ -53,7 +53,7 @@ pub fn invert_edge(graph: &mut Graph, edge_key: GraphEdgeKey) {
   }
 }
 
-#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize)]
 pub struct GraphEdgeKey(pub usize);
 
 impl GraphEdgeKey {
