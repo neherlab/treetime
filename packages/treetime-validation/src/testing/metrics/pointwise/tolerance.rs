@@ -1,5 +1,5 @@
 use crate::testing::metrics::config::PointwiseConfig;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use ndarray::Array1;
 use treetime_utils::adapters::ArrayVec;
 
@@ -66,7 +66,7 @@ pub(super) fn compute_tolerance_metrics(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ToleranceMetrics {
   #[deser(as = [ArrayVec; 3])]
   pub(crate) pass_masks: [Array1<f64>; 3],
@@ -75,7 +75,7 @@ pub struct ToleranceMetrics {
   pub(crate) summary: ToleranceSummary,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ToleranceSummary {
   pub(crate) pass_fractions: [f64; 3],
   pub(crate) support_mismatch_count: usize,

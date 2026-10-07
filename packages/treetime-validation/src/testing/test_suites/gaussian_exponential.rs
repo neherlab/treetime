@@ -1,6 +1,6 @@
 use crate::testing::framework::test_case::{TestCase, TestCaseBase};
 use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Report;
 use ndarray::Array1;
 use std::f64::consts::PI;
@@ -38,7 +38,7 @@ impl ConvolutionTestSuite for GaussianExponentialTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GaussianExponentialTestCase {
   #[deser(flatten)]
   base: TestCaseBase,

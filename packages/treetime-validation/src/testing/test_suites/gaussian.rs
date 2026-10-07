@@ -1,6 +1,6 @@
 use crate::testing::framework::test_case::{TestCase, TestCaseBase};
 use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Report;
 use ndarray::Array1;
 use treetime_analytical::validation::cases::gaussian_convolution::{
@@ -40,7 +40,7 @@ impl ConvolutionTestSuite for GaussianTestSuite {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GaussianTestCase {
   #[deser(flatten)]
   base: TestCaseBase,

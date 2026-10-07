@@ -1,5 +1,4 @@
 use clap::ValueEnum;
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
@@ -9,23 +8,7 @@ use treetime_ops::{
 };
 use treetime_utils::make_error;
 
-#[derive(
-  Debug,
-  Clone,
-  Copy,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  Hash,
-  Display,
-  EnumString,
-  EnumIter,
-  ValueEnum,
-  Serialize,
-  Deserialize,
-)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display, EnumString, EnumIter, ValueEnum)]
 #[strum(serialize_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
 pub enum ConvolutionAlgorithm {
@@ -58,23 +41,7 @@ impl ConvolutionAlgorithm {
   }
 }
 
-#[derive(
-  Debug,
-  Clone,
-  Copy,
-  PartialEq,
-  Eq,
-  PartialOrd,
-  Ord,
-  Hash,
-  Display,
-  EnumString,
-  EnumIter,
-  ValueEnum,
-  Serialize,
-  Deserialize,
-)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display, EnumString, EnumIter, ValueEnum)]
 #[strum(serialize_all = "kebab-case")]
 #[clap(rename_all = "kebab-case")]
 pub enum MultiplicationAlgorithm {

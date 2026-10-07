@@ -1,5 +1,5 @@
 use crate::testing::metrics::config::SpatialConfig;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use ndarray::Array1;
 use treetime_utils::adapters::ArrayVec;
 
@@ -29,7 +29,7 @@ pub(super) fn compute_windowed_metrics(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct WindowedMetrics {
   #[deser(as = ArrayVec)]
   pub(crate) sliding_rms: Array1<f64>,
@@ -38,7 +38,7 @@ pub struct WindowedMetrics {
   pub(crate) summary: WindowedSummary,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct WindowedSummary {
   pub(crate) sliding_rms_max: f64,
   pub(crate) sliding_max_max: f64,

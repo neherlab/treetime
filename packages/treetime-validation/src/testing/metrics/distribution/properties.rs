@@ -1,6 +1,6 @@
 use crate::testing::metrics::distribution::statistics::{compute_quantile, compute_std};
 use crate::testing::metrics::pointwise::errors::PointwiseErrors;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 
@@ -39,7 +39,7 @@ pub(super) fn compute_distribution_properties(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DistributionProperties {
   dynamic_range: f64,
   symmetry_measure: f64,
@@ -73,7 +73,7 @@ fn classify_tail_behavior(errors: &Array1<f64>) -> TailBehavior {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum TailBehavior {
   Light,
@@ -112,7 +112,7 @@ fn compute_outlier_statistics(errors: &Array1<f64>) -> OutlierStatistics {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct OutlierStatistics {
   count_3sigma: usize,
   count_5sigma: usize,

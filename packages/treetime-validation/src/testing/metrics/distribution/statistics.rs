@@ -1,5 +1,5 @@
 use crate::testing::metrics::pointwise::errors::PointwiseErrors;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 
@@ -15,7 +15,7 @@ pub(super) fn compute_statistical_metrics(pointwise_errors: &PointwiseErrors) ->
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct StatisticalMetrics {
   pub(crate) abs_error_stats: ErrorStatistics,
   pub(crate) rel_error_stats: ErrorStatistics,
@@ -69,7 +69,7 @@ fn compute_error_statistics(errors: &Array1<f64>) -> eyre::Result<ErrorStatistic
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ErrorStatistics {
   pub(crate) mean: f64,
   pub(crate) std: f64,

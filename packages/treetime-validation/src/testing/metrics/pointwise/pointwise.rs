@@ -2,11 +2,11 @@ use crate::testing::metrics::config::PointwiseConfig;
 use crate::testing::metrics::pointwise::errors::{PointwiseErrors, compute_pointwise_errors};
 use crate::testing::metrics::pointwise::structural::{StructuralErrors, compute_structural_errors};
 use crate::testing::metrics::pointwise::tolerance::{ToleranceMetrics, compute_tolerance_metrics};
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use ndarray::Array1;
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PointwiseMetrics {
   pub(crate) total_points: usize,
   pub(crate) dx: f64,

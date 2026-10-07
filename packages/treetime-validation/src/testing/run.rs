@@ -10,7 +10,6 @@ use crate::testing::test_suites::test_suites::ConvolutionTestSuite;
 use crate::testing::test_suites::test_suites::MultiplicationTestSuite;
 use crate::testing::test_suites::test_suites::TestSuiteName;
 use clap::Parser;
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 
 pub fn run_validation_tests() -> Result<(), Report> {
@@ -51,8 +50,7 @@ where
   })
 }
 
-#[derive(Parser, Clone, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Parser, Clone)]
 #[command(
   name = "validation-test",
   about = "Validation test framework for convolution and multiplication algorithms",

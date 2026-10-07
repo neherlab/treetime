@@ -1,6 +1,6 @@
 use crate::testing::metrics::config::DistributionConfig;
 use crate::testing::metrics::pointwise::errors::PointwiseErrors;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use ndarray::Array1;
 use treetime_utils::make_error;
 
@@ -63,7 +63,7 @@ pub(super) fn compute_histogram_metrics(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct HistogramMetrics {
   pub(crate) abs_error_histogram: ErrorHistogram,
   pub(crate) rel_error_histogram: ErrorHistogram,
@@ -71,7 +71,7 @@ pub struct HistogramMetrics {
   pub(crate) summary: HistogramSummary,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct HistogramSummary {
   total_count: usize,
   modal_range: (f64, f64),
@@ -153,7 +153,7 @@ pub enum HistogramMode {
   Signed,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ErrorHistogram {
   pub(crate) bin_edges: Vec<f64>,
   pub(crate) bin_counts: Vec<usize>,

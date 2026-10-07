@@ -1,5 +1,5 @@
 use crate::testing::metrics::config::ToleranceThresholds;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use itertools::izip;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
@@ -34,7 +34,7 @@ pub(crate) fn compute_tolerance_counts(
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct ToleranceCounts {
   pub(crate) within_abs_tolerances: [usize; 3],
   pub(crate) within_rel_tolerances: [usize; 3],
@@ -58,7 +58,7 @@ pub(crate) fn find_max_error_location(
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MaxErrorLocation {
   pub(crate) idx: usize,
   pub(crate) x_value: f64,

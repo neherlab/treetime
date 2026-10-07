@@ -1,5 +1,5 @@
 use crate::testing::metrics::config::PointwiseConfig;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
@@ -57,7 +57,7 @@ pub(super) fn compute_structural_errors(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct StructuralErrors {
   #[deser(as = ArrayVec)]
   pub(crate) first_derivative: Array1<f64>,
@@ -70,7 +70,7 @@ pub struct StructuralErrors {
   pub(crate) summary: StructuralErrorSummary,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct StructuralErrorSummary {
   pub(crate) d1_max: f64,
   pub(crate) d1_mean: f64,

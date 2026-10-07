@@ -8,7 +8,6 @@ use crate::testing::test_suites::gaussian_chain_multiplication::GaussianChainMul
 use crate::testing::test_suites::gaussian_exponential::GaussianExponentialTestSuite;
 use crate::testing::test_suites::gaussian_pairwise_multiplication::GaussianPairwiseMultiplicationTestSuite;
 use clap::ValueEnum;
-use deser::{Deserialize, Serialize};
 use eyre::Report;
 use ndarray::Array1;
 use strum::IntoEnumIterator;
@@ -16,8 +15,7 @@ use strum_macros::{Display, EnumIter};
 use treetime_ops::ScaledArray;
 use treetime_utils::make_error;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Display, ValueEnum, EnumIter, Serialize, Deserialize)]
-#[deser(rename_all = "kebab-case")]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Display, ValueEnum, EnumIter)]
 #[clap(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum TestSuiteName {

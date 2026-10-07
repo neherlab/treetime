@@ -1,4 +1,4 @@
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use ndarray::{Array1, Axis};
 use treetime_utils::adapters::ArrayVec;
 use treetime_utils::array::ndarray::cumsum_axis;
@@ -24,14 +24,14 @@ pub(super) fn compute_cumulative_metrics(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CumulativeMetrics {
   #[deser(as = ArrayVec)]
   pub(crate) cumulative_error: Array1<f64>,
   pub(crate) summary: CumulativeSummary,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CumulativeSummary {
   pub(crate) final_value: f64,
   pub(crate) max_abs: f64,

@@ -1,5 +1,5 @@
 use crate::testing::metrics::config::PointwiseConfig;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use treetime_utils::adapters::ArrayVec;
@@ -68,7 +68,7 @@ pub(super) fn compute_pointwise_errors(
   })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PointwiseErrors {
   #[deser(as = ArrayVec)]
   pub(crate) absolute: Array1<f64>,
@@ -81,7 +81,7 @@ pub struct PointwiseErrors {
   pub(crate) summary: PointwiseErrorSummary,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PointwiseErrorSummary {
   pub(crate) abs_mean: f64,
   pub(crate) abs_max: f64,

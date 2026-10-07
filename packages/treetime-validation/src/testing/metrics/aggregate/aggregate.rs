@@ -1,11 +1,11 @@
 use crate::testing::metrics::aggregate::domain_agreement::domain_agreement::DomainAgreementMetrics;
 use crate::testing::metrics::aggregate::performance::performance::{PerformanceMetrics, compute_performance_metrics};
 use crate::testing::metrics::config::ToleranceThresholds;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use eyre::Result;
 use ndarray::Array1;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AggregateMetrics {
   pub(crate) domain_agreement: DomainAgreementMetrics,
   pub(crate) performance: PerformanceMetrics,

@@ -12,7 +12,7 @@ use crate::testing::metrics::aggregate::domain_agreement::tolerance::{
 };
 use crate::testing::metrics::config::ToleranceThresholds;
 use bon::bon;
-use deser::{Deserialize, Serialize};
+use deser::Serialize;
 use itertools::Itertools;
 use ndarray::Array1;
 use std::fmt;
@@ -20,7 +20,7 @@ use strum_macros::Display;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::make_error;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DomainAgreementMetrics {
   pub(crate) total_points: usize,
   pub(crate) abs_error_stats: AbsoluteErrorStats,
@@ -280,7 +280,7 @@ fn compute_overall_assessment(r2: f64, thresholds: &[f64; 3]) -> AgreementAssess
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, Serialize)]
 #[deser(rename_all = "kebab-case")]
 pub enum AgreementAssessment {
   #[strum(to_string = "EXCELLENT: Near-perfect agreement")]
