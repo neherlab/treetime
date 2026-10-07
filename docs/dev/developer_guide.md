@@ -88,26 +88,18 @@ just run treetime clock --tree=data/$v/tree.nwk --metadata=data/$v/metadata.tsv 
 just run treetime timetree --tree=data/$v/tree.nwk --metadata=data/$v/metadata.tsv --alignment=data/$v/aln.fasta.xz --output-all=tmp/timetree/$v
 ```
 
-## Shared lint setup
+## Lint settings
 
-The lint, format, and check setup is shared with TreeKnit (https://github.com/neherlab/treeknit-rs). The shared files are identical in both repositories: a change to one of them is copied by hand, without edits, to the other repository. Shared files name no project; the custom dylint library and the oxlint plugin of `dev/lints/oxlint/` are both named `custom`, so a suppression reads `#[cfg_attr(dylint_lib = "custom", expect(no_comments, reason = ".."))]` or `// oxlint-disable-next-line custom/no-vague-identifiers -- reason`.
+The custom dylint library and the oxlint plugin of `dev/lints/oxlint/` are both named `custom`, so a suppression reads `#[cfg_attr(dylint_lib = "custom", expect(no_comments, reason = ".."))]` or `// oxlint-disable-next-line custom/no-vague-identifiers -- reason`.
 
-Shared files:
-
-- `dev/lints/`: the dylint libraries (`dylint-custom`, `dylint-mordant`, `dylint-trailofbits`), the oxlint plugin and the oxlint base configuration (`dev/lints/oxlint/config.ts`), and the vendored anti-slop plugin
-- `dev/run-checks`, `dev/review-suppressions`, `dev/shell-files`, `dev/toml-files`, `dev/crate-age`
-- `rustfmt.toml`, `.editorconfig`, `.config/nextest.toml`, `.config/hadolint.yaml`
-- the `[workspace.lints]` table of `Cargo.toml`, apart from an allowed lint whose reason belongs to one project
-- the lint, format, and check recipes of the `justfile`, which have the same name, parameters, and body in both justfiles
-
-Each project keeps its settings in its own files:
+The project settings of the lints are in these files:
 
 - `justfile` variables: `dylint_rustflags` (the lint levels of the custom library), the check groups `checks_*` with `check_fast` and `check_full`, `lint_fast`, `lint_full`, `public_api_crates`, `dockerfiles`, and `react_pin_reason`
 - `dylint.toml`: the settings of the dylint libraries, such as the render sources of `no_comments`, the entry points of `forbidden-reach`, the error style of `proper_error_type`, and the helper macros of `prefer_error_macros`
 - `oxlint.config.ts`: a call of `projectConfig` from `dev/lints/oxlint/config.ts` with the package layout, the web scopes, the import and property restrictions, and the contracts package
-- `clippy.toml` (the reasons of the random generator bans), `oxfmt.config.ts`, `taplo.toml`, `.config/knip.json`, `.config/deny.toml`, `.config/hawk.toml`, `.config/jscpd.json`, and `.config/mordant-baseline.toml`
+- `clippy.toml` (thresholds and banned types and functions), `oxfmt.config.ts`, `taplo.toml`, `.config/knip.json`, `.config/deny.toml`, `.config/hawk.toml`, `.config/jscpd.json`, and `.config/mordant-baseline.toml`
 
-Rust comments are banned in TreeTime: every lint of the custom library is on, so `no_comments` keeps only the doc comments that a render source of `dylint.toml` carries into user-facing output, and comments that start with a marker such as `SAFETY:` or `TODO`. TypeScript comments are banned in both projects by the oxlint base configuration, apart from tool directives.
+Rust comments are banned in TreeTime: every lint of the custom library is on, so `no_comments` keeps only the doc comments that a render source of `dylint.toml` carries into user-facing output, and comments that start with a marker such as `SAFETY:` or `TODO`. TypeScript comments are banned by the oxlint base configuration `dev/lints/oxlint/config.ts`, apart from tool directives.
 
 ## Project structure
 
