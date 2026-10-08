@@ -14,6 +14,7 @@ export default defineConfig({
     "packages/app-contracts/src/generated",
     "packages/app-napi/index.d.ts",
     "packages/app-output/src/__tests__/schemas",
+    "packages/app-wasm/pkg",
     "packages/legacy",
     "pixi.lock",
     "packages/schemas",

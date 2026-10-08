@@ -35,6 +35,9 @@
     "packages/app-napi": {
       "entry": [],
       "project": []
+    },
+    "packages/app-wasm": {
+      "entry": ["smoke.ts"]
     }
   }
 }

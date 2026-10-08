@@ -9,7 +9,15 @@ const WEB_SCOPES = ["packages/app-ui/src/**", "packages/app-web/src/**", "packag
 export default projectConfig({
   root: import.meta.dirname,
 
-  ignorePatterns: ["dist", "dist-electron", ".turbo", ".build", "coverage", "packages/app-contracts/src/generated"],
+  ignorePatterns: [
+    "dist",
+    "dist-electron",
+    ".turbo",
+    ".build",
+    "coverage",
+    "packages/app-contracts/src/generated",
+    "packages/app-wasm/pkg",
+  ],
 
   tailwind: { cwd: "packages/app-web", entryPoint: "src/index.css" },
 

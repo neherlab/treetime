@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["smoke.ts"],
+  "references": [{ "path": "../app-contracts/tsconfig.generated.json" }]
+}

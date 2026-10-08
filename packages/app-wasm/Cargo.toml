@@ -1,0 +1,48 @@
+[package]
+name = "app-wasm"
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+app-commands = { workspace = true, features = ["clap"] }
+app-server = { workspace = true }
+treetime-utils = { workspace = true }
+
+axum = { workspace = true }
+console_error_panic_hook = { workspace = true }
+console_log = { workspace = true }
+eyre = { workspace = true }
+itertools = { workspace = true }
+js-sys = { workspace = true }
+log = { workspace = true }
+parking_lot = { workspace = true }
+tokio-stream = { workspace = true }
+tokio-util = { workspace = true }
+tower = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+
+[dev-dependencies]
+ctor = { workspace = true }
+pretty_assertions = { workspace = true }
+rayon = { workspace = true }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
+treetime-schema = { workspace = true }
+
+[lints]
+workspace = true
+
+# The `#[wasm_bindgen]` exports of the async methods of `Exchange` call
+# `wasm-bindgen-futures`, which the crate source never names.
+[package.metadata.cargo-shear]
+ignored = ["wasm-bindgen-futures"]

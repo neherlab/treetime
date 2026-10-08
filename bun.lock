@@ -125,6 +125,16 @@
         "vite": "catalog:",
       },
     },
+    "packages/app-wasm": {
+      "name": "@neherlab/app-wasm",
+      "version": "0.0.1",
+      "devDependencies": {
+        "@neherlab/app-contracts": "workspace:*",
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "zod": "catalog:",
+      },
+    },
     "packages/app-web": {
       "name": "@neherlab/app-web",
       "version": "0.0.1",
@@ -709,6 +719,8 @@
     "@neherlab/app-napi": ["@neherlab/app-napi@workspace:packages/app-napi"],
 
     "@neherlab/app-ui": ["@neherlab/app-ui@workspace:packages/app-ui"],
+
+    "@neherlab/app-wasm": ["@neherlab/app-wasm@workspace:packages/app-wasm"],
 
     "@neherlab/app-web": ["@neherlab/app-web@workspace:packages/app-web"],
 

@@ -53,3 +53,37 @@ rustflags = [
 # have only the archive; dev/cross/build passes its directory to the linker.
 [target.x86_64-unknown-linux-gnu.openblas]
 rustc-link-lib = ["static:-bundle=openblas"]
+
+# The WebAssembly back end of the web2 app. rustc links through emcc, and emcc
+# runs wasm-bindgen on the linked module (`-sWASM_BINDGEN`), so the wasm-bindgen
+# CLI on PATH must equal the wasm-bindgen pin:
+# - panic=abort and no C++ exceptions, because wasm-bindgen does not support
+#   unwinding on this target; a static relocation model, because the module is
+#   one main module
+# - an ES module whose default export creates an instance, for a dedicated
+#   worker and for Node
+# - memory that grows up to the 4 GiB of wasm32, and a stack of 8 MiB instead of
+#   the 64 KiB default
+# - --emit-tsd writes the TypeScript declarations of the exports next to the
+#   module
+[target.wasm32-unknown-emscripten]
+rustflags = [
+  "-Cpanic=abort",
+  "-Cllvm-args=-enable-emscripten-cxx-exceptions=0",
+  "-Crelocation-model=static",
+  "-Clink-arg=-sWASM_BINDGEN",
+  "-Clink-arg=-Wno-experimental",
+  "-Clink-arg=-sMODULARIZE",
+  "-Clink-arg=-sEXPORT_ES6",
+  "-Clink-arg=-sENVIRONMENT=worker,node",
+  "-Clink-arg=-sALLOW_MEMORY_GROWTH",
+  "-Clink-arg=-sMAXIMUM_MEMORY=4GB",
+  "-Clink-arg=-sSTACK_SIZE=8MB",
+  "-Clink-arg=--emit-tsd=app-wasm.d.ts",
+]
+
+# The single-threaded OpenBLAS archive that dev/docker/files/install-openblas-emscripten
+# builds with emcc; it needs no Fortran runtime and no pthreads.
+[target.wasm32-unknown-emscripten.openblas]
+rustc-link-lib = ["static:-bundle=openblas"]
+rustc-link-search = ["/usr/local/wasm32-unknown-emscripten/lib"]

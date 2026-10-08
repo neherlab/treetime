@@ -1,0 +1,23 @@
+{
+  "name": "@neherlab/app-wasm",
+  "version": "0.0.1",
+  "private": true,
+  "description": "TreeTime web2 application - WebAssembly back end, written into pkg/ by `just build-wasm`",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./pkg/app_wasm.d.ts",
+      "default": "./pkg/app_wasm.js"
+    },
+    "./app_wasm.wasm": "./pkg/app_wasm.wasm"
+  },
+  "scripts": {
+    "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit"
+  },
+  "devDependencies": {
+    "@neherlab/app-contracts": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "zod": "catalog:"
+  }
+}

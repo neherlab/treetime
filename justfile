@@ -4,9 +4,10 @@
 # in the build container through `dev/docker/run just <recipe>`. Before a change
 # is merged, `just check-all` must pass.
 #
-# Naming: a leaf recipe runs one tool in one mode. The suffix `-rs` or `-ts`
-# names the toolchain of a leaf, Rust or TypeScript (Bun); tools that serve one
-# toolchain only, such as dylint or knip, keep their own name. A recipe without
+# Naming: a leaf recipe runs one tool in one mode. The suffix `-rs`, `-wasm`, or
+# `-ts` names the toolchain of a leaf: Rust, Rust for WebAssembly, or TypeScript
+# (Bun); tools that serve one toolchain only, such as dylint or knip, keep their
+# own name. A recipe without
 # a language suffix combines the leaves of both toolchains and calls no tool
 # itself. The suffix `-all` adds the slow tools to the fast set of the same name:
 # `fix` and `fix-all`, `lint` and `lint-all`, `check` and `check-all`.
@@ -73,10 +74,11 @@ dylint_over_baseline := dylint_target_dir / "mordant/over-baseline.txt"
 
 # Library crates whose public API is an external boundary, skipped by both
 # unused-public-code checks (hawk and pub-unused-report): the shared utility and
-# file-format libraries publish a complete API for reuse, and the Node addon's
-# `#[napi]` surface is consumed by JavaScript. The test-infrastructure crates
-# serve only test targets, which neither check counts as users.
-public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_data_json util_usher_mat app_napi treetime_validation treetime_analytical"
+# file-format libraries publish a complete API for reuse, and the `#[napi]`
+# surface of the Node addon and the `#[wasm_bindgen]` surface of the WebAssembly
+# back end are consumed by JavaScript. The test-infrastructure crates serve only
+# test targets, which neither check counts as users.
+public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_data_json util_usher_mat app_napi app_wasm treetime_validation treetime_analytical"
 
 # Cargo with the seven-day minimum publish age of new dependency releases. The
 # setting is unstable in the pinned Rust (stable from 1.100), so the dependency
@@ -85,22 +87,31 @@ public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_d
 cargo_min_age := "RUSTC_BOOTSTRAP=1 cargo -Zmin-publish-age --config 'registry.global-min-publish-age=\"7 days\"'"
 hawk_toolchain := trim(read("dev/docker/files/hawk-toolchain"))
 
+# The package that emcc and wasm-bindgen write for the WebAssembly back end of
+# the web2 app: the JavaScript module, the WebAssembly binary, and the
+# TypeScript declarations. Only the declarations are committed
+# (`just gen wasm-types`).
+# The build modes: dev and release are the cargo profiles of the same name; prod,
+# the shipped build, is the cargo profile dist. Cargo writes the dev profile to
+# the debug folder.
+wasm_pkg := "packages/app-wasm/pkg"
+
 # Reason of the React 19 pin, printed by lint-ts when the catalog leaves 19.x.
 react_pin_reason := "Auspice runs in-process and is verified only on React 19"
 
 # Groups of the full gate, one CI job each (`just check-group <group>`). Hawk
 # needs a second full compilation and runs locally only.
 checks_format := "fmt-check-rs fmt-check-ts fmt-check-other lint-shell lint-docker lint-workflows deny shear fixtures-check"
-checks_clippy := "lint-rs"
+checks_clippy := "lint-rs lint-wasm"
 checks_dylint := "dylint"
-checks_tests := "test-rs"
+checks_tests := "test-rs test-wasm"
 checks_generated := "generated-check"
 checks_typescript := "typecheck lint-ts knip test-ts"
 checks_hawk := "hawk"
-check_fast := "fmt-check-rs fmt-check-ts fmt-check-other lint-rs lint-ts typecheck"
+check_fast := "fmt-check-rs fmt-check-ts fmt-check-other lint-rs lint-wasm lint-ts typecheck"
 check_full := checks_format + " " + checks_clippy + " " + checks_dylint + " " + checks_tests + " " + checks_generated + " " + checks_typescript + " " + checks_hawk
-lint_fast := "lint-rs lint-ts"
-lint_full := "lint-rs lint-ts typecheck dylint hawk knip deny shear lint-shell lint-docker lint-workflows"
+lint_fast := "lint-rs lint-wasm lint-ts"
+lint_full := "lint-rs lint-wasm lint-ts typecheck dylint hawk knip deny shear lint-shell lint-docker lint-workflows"
 dockerfiles := "dev/docker/*.dockerfile dev/deploy/*.dockerfile"
 
 alias b := build
@@ -180,6 +191,17 @@ build-napi profile="dev":
     {{ if profile == "dev" { "" } else { "source dev/lib/dist-flags.sh && export_dist_flags &&" } }} cargo build --locked -p app-napi --lib --profile {{ quote(profile) }}
     cp {{ quote(CARGO_TARGET_DIR / (if profile == "dev" { "debug" } else { profile }) / "libapp_napi.so") }} packages/app-napi/app-napi.node
 
+# Build the WebAssembly back end of the web2 app into packages/app-wasm/pkg/: just build-wasm [dev|release|prod]; prod, as shipped, uses the dist profile
+[group("build")]
+[script]
+build-wasm mode="dev":
+    out={{ quote(CARGO_TARGET_DIR / "wasm32-unknown-emscripten" / (if mode == "dev" { "debug" } else if mode == "prod" { "dist" } else { mode })) }}
+    cargo build --locked --profile={{ if mode == "prod" { "dist" } else { quote(mode) } }} --target=wasm32-unknown-emscripten -p app-wasm
+    mkdir -p {{ wasm_pkg }}
+    cp "${out}/app-wasm.js" {{ wasm_pkg }}/app_wasm.js
+    cp "${out}/app_wasm.wasm" {{ wasm_pkg }}/app_wasm.wasm
+    cp "${out}/deps/app-wasm.d.ts" {{ wasm_pkg }}/app_wasm.d.ts
+
 # Cross-compile shipped (dist profile) binaries in the cross images (host only, needs Docker): just cross [--target=<triple>]
 [group("build")]
 cross *args:
@@ -234,6 +256,11 @@ test-integration-rs *args:
 [group("test")]
 test-list-rs *args:
     cargo nextest list --locked --workspace "$@"
+
+# Smoke test of the WebAssembly back end in Bun: the API of a new back end, and an ancestral run with its outputs
+[group("test")]
+test-wasm: (build-wasm "dev")
+    bun packages/app-wasm/smoke.ts
 
 # TypeScript tests (vitest)
 [group("test")]
@@ -314,6 +341,11 @@ lint-fix: lint-fix-rs lint-fix-ts
 [group("lint")]
 lint-rs *args:
     {{ lint_env }} CARGO_BUILD_WARNINGS=deny cargo clippy --locked --workspace --all-targets --keep-going "$@"
+
+# Clippy over the WebAssembly back end for the WebAssembly target; reports the warnings of every crate, then fails if there were any
+[group("lint")]
+lint-wasm *args:
+    {{ lint_env }} CARGO_BUILD_WARNINGS=deny cargo clippy --locked -p app-wasm --bins --target=wasm32-unknown-emscripten --keep-going "$@"
 
 # Apply clippy's machine-applicable fixes; stage your changes first
 [group("lint")]
@@ -451,7 +483,7 @@ fmt-check-other:
     just --fmt --check || status=1
     exit "${status}"
 
-# Regenerate the committed generated files: just gen [schemas|openapi|catalog|ts-client|napi-types|cli-docs]...
+# Regenerate the committed generated files: just gen [schemas|openapi|catalog|ts-client|napi-types|wasm-types|cli-docs]...
 [group("generated")]
 gen *groups: _js
     dev/generated generate "$@"

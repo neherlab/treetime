@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::io::{IsTerminal, stderr};
 
 pub fn is_tty() -> bool {

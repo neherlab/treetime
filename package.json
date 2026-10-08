@@ -7,6 +7,7 @@
       "packages/app-desktop",
       "packages/app-napi",
       "packages/app-ui",
+      "packages/app-wasm",
       "packages/app-web"
     ],
     "catalog": {
