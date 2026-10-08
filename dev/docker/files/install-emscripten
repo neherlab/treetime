@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <prefix>
+#
+# Install an Emscripten release into a prefix: emcc, the LLVM and Binaryen it
+# runs, and its prebuilt system libraries. The archive is the one that
+# `emsdk install <version>` downloads; the build id is the entry of the version
+# in emscripten-releases-tags.json of emsdk. emcc finds Node on PATH.
+#
+set -euxo pipefail
+
+dest="${1:?prefix}"
+version="6.0.10"
+build="666337b525e673e769121856d175f6f52b8ead64"
+archive="/tmp/wasm-binaries.tar.xz"
+mkdir -p "${dest}"
+
+/fetch "https://storage.googleapis.com/webassembly/emscripten-releases-builds/linux/${build}/wasm-binaries.tar.xz" "${archive}"
+pixz -dp "$(nproc)" <"${archive}" | tar -C "${dest}" -x --strip-components=1
+rm "${archive}"
+
+# The configuration is Python that emcc runs at start. The image sets the
+# include paths for its native GCC; the clang of emcc would search them too and
+# mix the glibc headers of the host into WebAssembly compiles.
+cat >"${dest}/emscripten/.emscripten" <<CONFIG
+import os
+
+LLVM_ROOT = '${dest}/bin'
+BINARYEN_ROOT = '${dest}'
+
+for name in ('C_INCLUDE_PATH', 'CPLUS_INCLUDE_PATH'):
+  os.environ.pop(name, None)
+CONFIG
+
+grep -qxF "${version}-git" "${dest}/emscripten/emscripten-version.txt"
+"${dest}/emscripten/emcc" --version

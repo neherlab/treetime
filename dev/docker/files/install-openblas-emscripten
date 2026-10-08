@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <prefix>
+#
+# Build a static, single-threaded OpenBLAS for wasm32-unknown-emscripten with
+# emcc, and install the archive into <prefix>/lib.
+#
+# - NOFORTRAN builds LAPACK from the C translation that ships with OpenBLAS.
+#   Its functions take no hidden string lengths and return void, as the
+#   lapack-sys declarations do; WebAssembly traps on a call whose signature
+#   differs from the callee
+# - The develop commit is the first with void LAPACK functions (#6017) that
+#   is older than the seven-day quarantine of new dependencies. The patch is
+#   upstream #6082 (06f28d09), which makes XERBLA void too, so the error path
+#   of the C LAPACK matches its callee. Remove the patch with the next bump
+# - TARGET=WASM128_GENERIC selects the SIMD128 kernels; USE_THREAD=0 because
+#   the module has no threads
+#
+set -euxo pipefail
+
+dest="${1:?prefix}"
+commit="eb00d5975cf5386412ade8ed95d691fe8b470c7f"
+patch="/openblas-xerbla-void.patch"
+src="/tmp/openblas"
+mkdir -p "${dest}/lib" "${src}"
+
+/fetch "https://github.com/OpenMathLib/OpenBLAS/archive/${commit}.tar.gz" "/tmp/openblas.tar.gz"
+tar -C "${src}" -xzf "/tmp/openblas.tar.gz" --strip-components=1
+git -C "${src}" apply "${patch}"
+
+make -C "${src}" -j"$(nproc)" libs netlib \
+  CC=emcc AR=emar RANLIB=emranlib HOSTCC=gcc \
+  TARGET=WASM128_GENERIC BINARY=32 \
+  NOFORTRAN=1 C_LAPACK=1 NO_LAPACKE=1 NO_SHARED=1 \
+  USE_THREAD=0 \
+  >/dev/null
+
+cp -L "${src}/libopenblas.a" "${dest}/lib/libopenblas.a"
+rm -rf "${src}" "/tmp/openblas.tar.gz"
+emnm "${dest}/lib/libopenblas.a" 2>/dev/null | grep ' T dsyev_$' >/dev/null

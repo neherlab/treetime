@@ -2,3 +2,4 @@
 channel = "1.98.1"
 profile = "minimal"
 components = ["clippy", "rustfmt", "llvm-tools-preview"]
+targets = ["wasm32-unknown-emscripten"]
