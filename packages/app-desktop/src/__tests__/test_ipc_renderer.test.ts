@@ -1,5 +1,6 @@
 import type { PortReply } from "@neherlab/app-napi";
 import { BACKEND_PORT_CHANNEL, BACKEND_PORT_REQUEST_CHANNEL, type BackendStopped } from "@neherlab/app-ui/host";
+import type { FetchPort } from "@neherlab/app-ui/port-fetch";
 import { describe, expect, test } from "vitest";
 
 import {
@@ -9,7 +10,6 @@ import {
   type IpcRendererLike,
   type WindowLike,
 } from "../ipc-renderer";
-import type { FetchPort } from "../port-fetch";
 
 describe("ipc_renderer invoke", () => {
   test("a request goes to the prefixed channel and the reply comes back typed", async () => {

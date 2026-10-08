@@ -12,7 +12,9 @@
     "./build/public-dir": "./build/public-dir.ts",
     "./icons": "./src/icons.d.ts",
     "./window": "./src/window.ts",
-    "./host": "./src/host.ts"
+    "./host": "./src/host.ts",
+    "./port": "./src/port.ts",
+    "./port-fetch": "./src/port-fetch.ts"
   },
   "scripts": {
     "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit && tsc -p tsconfig.node.json --noEmit"

@@ -1,9 +1,9 @@
 import type { PortMessage, PortReply, PortRequest } from "@neherlab/app-napi";
+import { createPortFetch, type FetchPort } from "@neherlab/app-ui/port-fetch";
 import { describe, expect, test } from "vitest";
 
 import { serveFetch, type AddonBackend } from "../backend-host";
 import type { FetchEndpoint } from "../backend-protocol";
-import { createPortFetch, type FetchPort } from "../port-fetch";
 
 describe("backend_host fetch relay", () => {
   test("a request goes to the addon and every reply of the addon goes back to the port", () => {

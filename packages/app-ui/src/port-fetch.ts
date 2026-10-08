@@ -1,10 +1,11 @@
 import { ApiError } from "@neherlab/app-contracts/client";
-import type { PortHeader, PortMessage, PortReply, PortRequest } from "@neherlab/app-napi";
-import type { BackendStopped } from "@neherlab/app-ui/host";
+
+import type { BackendStopped } from "./host";
+import { type PortHeader, type PortMessage, type PortReply, type PortRequest, portReplySchema } from "./port";
 
 export interface FetchPort {
   postMessage(message: PortMessage): void;
-  addEventListener(type: "message", listener: (event: { data: PortReply }) => void): void;
+  addEventListener(type: "message", listener: (event: { data: unknown }) => void): void;
   start(): void;
 }
 
@@ -18,6 +19,8 @@ export type PortFetch = (input: string | URL | Request, init?: RequestInit) => P
 const SERVER_ERROR_STATUS = 500;
 
 const MISSING_HEAD = "the back end ended the exchange without a response head";
+
+const MALFORMED_REPLY = "the back end sent a malformed message";
 
 const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
 
@@ -164,7 +167,13 @@ class PortClient {
     this.port = port;
     this.failure = undefined;
     port.addEventListener("message", (event) => {
-      this.exchanges.get(event.data.seq)?.reply(event.data);
+      const reply = portReplySchema.safeParse(event.data);
+
+      if (reply.success) {
+        this.exchanges.get(reply.data.seq)?.reply(reply.data);
+      } else {
+        this.fault(new TypeError(MALFORMED_REPLY, { cause: reply.error }));
+      }
     });
     port.start();
 
@@ -173,6 +182,16 @@ class PortClient {
     }
 
     this.waiting.clear();
+  }
+
+  private fault(error: Error): void {
+    this.port = undefined;
+    this.failure = error;
+    this.waiting.clear();
+
+    for (const exchange of this.exchanges.values()) {
+      exchange.fail(error);
+    }
   }
 
   private stop({ reason, restarts, error: startError }: BackendStopped): void {

@@ -1,9 +1,10 @@
 import { ApiError } from "@neherlab/app-contracts/client";
 import type { PortMessage, PortReply } from "@neherlab/app-napi";
+import { portReplySchema } from "@neherlab/app-ui/port";
+import { createPortFetch } from "@neherlab/app-ui/port-fetch";
 import { describe, expect, test, vi } from "vitest";
 
 import { HostConnection, mainFetchPort, type MainPort } from "../host-port";
-import { createPortFetch } from "../port-fetch";
 
 const ORIGIN = "http://treetime.host";
 
@@ -14,7 +15,7 @@ describe("host_port adapter", () => {
     const received: PortReply[] = [];
 
     adapted.addEventListener("message", (event) => {
-      received.push(event.data);
+      received.push(portReplySchema.parse(event.data));
     });
     adapted.start();
     // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a message port takes no target origin

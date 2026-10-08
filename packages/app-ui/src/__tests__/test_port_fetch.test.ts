@@ -1,9 +1,9 @@
 import type { ErrorResponse } from "@neherlab/app-contracts";
 import { ApiError } from "@neherlab/app-contracts/client";
-import type { PortMessage, PortReply } from "@neherlab/app-napi";
-import type { BackendStopped } from "@neherlab/app-ui/host";
 import { describe, expect, test, vi } from "vitest";
 
+import type { BackendStopped } from "../host";
+import type { PortMessage, PortReply } from "../port";
 import { createPortFetch, type FetchConnection, type FetchPort } from "../port-fetch";
 
 const ORIGIN = "http://treetime.desktop";
@@ -143,6 +143,48 @@ describe("port_fetch responses", () => {
     backend.reply({ kind: "reset", seq: 0, message: "When reading the response body: disk gone" });
 
     await expect(resolved.text()).rejects.toThrow("When reading the response body: disk gone");
+  });
+});
+
+describe("port_fetch malformed replies", () => {
+  test("a reply that breaks the protocol fails every open exchange and every later request", async () => {
+    const backend = fakeBackend({ connected: true });
+    const portFetch = createPortFetch(backend.connection);
+    const pending = portFetch(`${ORIGIN}/api/version`);
+    await sent(backend, 1);
+
+    backend.deliver({ kind: "head", seq: 0, status: "200", headers: [] });
+
+    const expected = new TypeError("the back end sent a malformed message");
+    await expect(pending).rejects.toThrow(expected);
+    await expect(portFetch(`${ORIGIN}/api/runs`)).rejects.toThrow(expected);
+    expect(backend.posted).toHaveLength(1);
+  });
+
+  test("a chunk whose data is not bytes breaks the protocol", async () => {
+    const backend = fakeBackend({ connected: true });
+    const response = createPortFetch(backend.connection)(`${ORIGIN}/api/version`);
+    await sent(backend, 1);
+    backend.reply({ kind: "head", seq: 0, status: 200, headers: [] });
+    const resolved = await response;
+
+    backend.deliver({ kind: "chunk", seq: 0, data: [104, 105] });
+
+    await expect(resolved.text()).rejects.toThrow("the back end sent a malformed message");
+  });
+
+  test("a new port after a malformed reply accepts requests again", async () => {
+    const backend = fakeBackend({ connected: true });
+    const portFetch = createPortFetch(backend.connection);
+
+    backend.deliver({ kind: "unknown", seq: 0 });
+    backend.connect();
+    void portFetch(`${ORIGIN}/api/version`);
+    await sent(backend, 1);
+
+    expect(backend.posted).toStrictEqual([
+      { kind: "request", request: { seq: 0, method: "GET", url: "/api/version", headers: [] } },
+    ]);
   });
 });
 
@@ -290,13 +332,14 @@ interface FakeBackend {
   posted: PortMessage[];
   connect(): void;
   reply(reply: PortReply): void;
+  deliver(data: unknown): void;
   stop(stop: BackendStopped): void;
 }
 
 function fakeBackend({ connected = false } = {}): FakeBackend {
   const portListeners: Array<(port: FetchPort) => void> = [];
   const stoppedListeners: Array<(stop: BackendStopped) => void> = [];
-  let deliver: (reply: PortReply) => void = () => undefined;
+  let deliver: (data: unknown) => void = () => undefined;
 
   const backend: FakeBackend = {
     posted: [],
@@ -331,6 +374,9 @@ function fakeBackend({ connected = false } = {}): FakeBackend {
     },
     reply(reply) {
       deliver(reply);
+    },
+    deliver(data) {
+      deliver(data);
     },
     stop(stop) {
       deliver = () => undefined;

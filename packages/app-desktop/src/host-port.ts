@@ -1,7 +1,6 @@
 import type { PortMessage, PortReply } from "@neherlab/app-napi";
 import type { BackendStopped } from "@neherlab/app-ui/host";
-
-import type { FetchConnection, FetchPort } from "./port-fetch";
+import type { FetchConnection, FetchPort } from "@neherlab/app-ui/port-fetch";
 
 export interface MainPort {
   postMessage(message: PortMessage): void;

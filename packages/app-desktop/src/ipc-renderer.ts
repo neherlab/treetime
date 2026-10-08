@@ -10,8 +10,7 @@ import {
   type HostReply,
   type HostRequest,
 } from "@neherlab/app-ui/host";
-
-import type { FetchConnection, FetchPort } from "./port-fetch";
+import type { FetchConnection, FetchPort } from "@neherlab/app-ui/port-fetch";
 
 export interface IpcRendererLike<Port> {
   // oxlint-disable-next-line anti-slop/no-unknown-returns -- Electron IPC replies are untyped; invoke() parses them with the channel schema

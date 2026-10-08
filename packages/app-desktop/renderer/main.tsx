@@ -9,11 +9,11 @@ import {
   ThemeProvider,
 } from "@neherlab/app-ui";
 import type { Host } from "@neherlab/app-ui/host";
+import { createPortFetch } from "@neherlab/app-ui/port-fetch";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { windowFetchConnection } from "../src/ipc-renderer";
-import { createPortFetch } from "../src/port-fetch";
 
 import "./index.css";
 

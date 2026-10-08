@@ -6,6 +6,7 @@ import { errorMessage, zUiTheme, type ErrorResponse, type UiTheme } from "@neher
 import { ApiError, createApiClient, runsSave, type ApiClient } from "@neherlab/app-contracts/client";
 import { appStartup } from "@neherlab/app-napi";
 import type { BackendStopped, HostHandlerReply, HostHandlerRequest } from "@neherlab/app-ui/host";
+import { createPortFetch } from "@neherlab/app-ui/port-fetch";
 import { windowBackground, WINDOW_MIN_SIZE } from "@neherlab/app-ui/window";
 import {
   app,
@@ -35,7 +36,6 @@ import { DIAGNOSTIC_DIR_ENV, initDiagnostics } from "./diagnostics";
 import { HostConnection, mainFetchPort } from "./host-port";
 import { emit, handle, listenForPortRequests, sendPort } from "./ipc-main";
 import { napiErrorResponse } from "./napi-error";
-import { createPortFetch } from "./port-fetch";
 import { confineNavigation, isTrustedSender } from "./security";
 import { firstWindowBounds } from "./window-bounds";
 
