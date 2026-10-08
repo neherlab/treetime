@@ -20,6 +20,11 @@
 #                           registry (CI on the base branch only)
 #   KACHE_STORE             Host directory of the optional kache compiler cache;
 #                           mounted at the same path when set (see .env.example)
+#   TREETIME_CARGO_HOME     Absolute host directory mounted as the cargo home
+#                           (default .cache/cargo of the checkout); dev/smoke
+#                           points a baseline worktree at the cargo home of its
+#                           checkout, so the baseline build reuses the crates
+#                           that checkout downloaded
 #   SMOKE_STORE             Host directory of the optional smoke snapshot store
 #                           shared by all checkouts; mounted at the same path when
 #                           set, because dev/smoke runs its cases in the container
@@ -203,17 +208,23 @@ jupyter)
   # cargo home is mounted at one fixed path in every checkout, so the registry
   # source paths that compiled crates record, and that kache shares between
   # worktrees, exist in each of them.
-  mkdir -p "${root}/.cache/cargo/dylint_drivers" "${root}/.cache/bun" "${root}/.build/container"
+  cargo_home="${TREETIME_CARGO_HOME:-${root}/.cache/cargo}"
+  mkdir -p "${cargo_home}/dylint_drivers" "${root}/.cache/bun" "${root}/.build/container"
   run_flags+=(
     --env="HOME=/tmp/home"
     --env="MISE_TRUSTED_CONFIG_PATHS=${root}"
-    --volume="${root}/.cache/cargo:/cargo-home"
+    --volume="${cargo_home}:/cargo-home"
     --env="CARGO_HOME=/cargo-home"
-    --env="DYLINT_DRIVER_PATH=${root}/.cache/cargo/dylint_drivers"
+    --env="DYLINT_DRIVER_PATH=${cargo_home}/dylint_drivers"
     --env="TREETIME_BUILD_DIR=${root}/.build/container"
     --env="BUN_INSTALL_CACHE_DIR=${root}/.cache/bun"
     --env="electron_config_cache=${root}/.cache/electron"
   )
+  # A cargo home outside the checkout is also mounted at its host path, where
+  # DYLINT_DRIVER_PATH points.
+  if [[ "${cargo_home}" != "${root}/"* ]]; then
+    run_flags+=(--volume="${cargo_home}:${cargo_home}")
+  fi
   if [[ -n "${KACHE_STORE:-}" ]]; then
     mkdir -p "${KACHE_STORE}"
     run_flags+=(--env="KACHE_STORE=${KACHE_STORE}" --volume="${KACHE_STORE}:${KACHE_STORE}")
