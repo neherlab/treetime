@@ -2,7 +2,7 @@
 
 The `cli.yml` run on `rust` at `400f4ab9` fails two check groups of `just check-all`. The nightly CLI release does not wait for these checks, but every pull request and push to `rust` reports red until they pass.
 
-- **`Check (format and config lints)`**: `just shear` reports `async-stream` as unused, both in `packages/app-server/Cargo.toml` and in the workspace dependency table of the root `Cargo.toml`. No Rust source uses it. The failure reproduces locally with `just shear`
+- **`Check (format and config lints)`**: `just shear` fails. At `eabc013d` it reports `strum` in `packages/app-napi/Cargo.toml`, `treetime` in `packages/app-server/Cargo.toml`, and `rand` in `packages/treetime-utils/Cargo.toml` as unused (`async-stream`, reported at `400f4ab9`, is gone). `strum` serves the code that the `EnumString` derive of `strum_macros` generates in `packages/app-napi/src/backend.rs`, which cargo-shear cannot see, so it needs an entry in `[package.metadata.cargo-shear]`; the other two need a check of their use
 - **`Check (custom lints)`**: `just dylint` denies warnings from the custom lint libraries. Most findings are in the app crates (`app-commands`, `app-server`, `app-napi`), with some in `treetime-io` and `treetime`. The most frequent lints:
   - `topological_ordering`: items are not ordered callers-before-callees in a module
   - `try_io_result`: a function returns `std::io::Result`, which drops the file or path context
@@ -21,4 +21,4 @@ A local `just dylint` run also fails on findings in `util-newick` and `treetime`
 
 ## Resolution
 
-Remove `async-stream` from both manifests. Fix the dylint findings, or suppress one with a justification where it does not point at a real defect.
+Remove the unused dependencies, declare the ones that only generated code uses to cargo-shear, and fix the dylint findings, or suppress one with a justification where it does not point at a real defect.
