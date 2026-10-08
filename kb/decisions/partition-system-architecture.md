@@ -175,7 +175,7 @@ Behavior is defined through traits in `packages/treetime/src/partition/traits.rs
 
 `PartitionCompressed` (`traits.rs:42-72:1:`) provides access to sparse node/edge maps, alphabet, and length.
 
-`HasLogLh` extracts a typed `LogLh` aggregate per node. Probability arrays and local numerical kernels remain native `f64`; see [typed-log-likelihood-values.md](typed-log-likelihood-values.md).
+`HasLogLh` extracts a typed `LogLh` aggregate per node. Probability arrays and local numerical kernels remain native `f64`.
 
 `PartitionTimetreeOps<N, E>` (`partition_ops.rs:29-43:1:`) defines:
 

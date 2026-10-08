@@ -22,9 +22,8 @@ Both keep scientific storage independent from format policy. O1 avoids intermedi
 - Format fixtures preserve Newick comments, branch lengths, labels, and Graphviz attributes exactly.
 - Payload crates no longer import format-specific traits after migration.
 - Domain tests construct payloads without I/O dependencies.
-- Precision changes remain governed by the existing decision and are not bundled with adapter movement.
+- Precision changes are not bundled with adapter movement: the Newick `date` comment keeps 2 decimals, as in v0.
 
 ## Related decisions
 
 - [kb/decisions/multi-format-tree-io.md](../decisions/multi-format-tree-io.md)
-- [kb/decisions/timetree-nwk-date-two-decimal-precision.md](../decisions/timetree-nwk-date-two-decimal-precision.md)

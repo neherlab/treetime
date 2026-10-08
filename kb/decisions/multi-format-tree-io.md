@@ -68,7 +68,7 @@ PAUP\*, MrBayes, Mesquite, MacClade, SplitsTree, BEAST, IQ-TREE all support Nexu
 
 ### v1 implementation
 
-`fn nex_write()` in [packages/treetime-io/src/nex.rs](../../packages/treetime-io/src/nex.rs) writes the tree with the Nexus writer of `util-newick`, in the same dialect as the Newick output, in a `#NEXUS` file with a `Taxa` block and a `Trees` block. `TaxLabels` lists each named leaf once, and labels are quoted by the Nexus rules, which also treat `{ } / \ = * " ` + - < >` as punctuation (`'hCoV-19/USA/1'`). Every command writes `.nexus` output alongside `.nwk`.
+`fn nex_write()` in [packages/treetime-io/src/nex.rs](../../packages/treetime-io/src/nex.rs) writes the tree with the Nexus writer of `util-newick`, in the same dialect as the Newick output, in a `#NEXUS` file with a `Taxa` block and a `Trees` block. `TaxLabels` lists each named leaf once, and labels are quoted by the Nexus rules, which also treat `{ } / \ = * " ` + - < >` as punctuation (`'hCoV-19/USA/1'`). Every command writes `.nexus`output alongside`.nwk`.
 
 The Nexus reader of `util-newick` (`fn nexus_trees()` in [packages/util-newick/src/nexus/read.rs](../../packages/util-newick/src/nexus/read.rs)) reads a file command by command with the grammar [packages/util-newick/src/nexus.pest](../../packages/util-newick/src/nexus.pest), and reads each tree in the dialect of the Newick reader:
 
@@ -199,7 +199,7 @@ The type model in [packages/treetime-io/src/auspice_types.rs](../../packages/tre
 - `div`: summed from the root down along the divergence branch lengths, in the order of augur and v0, or taken from the values the command computed
 - Dates: `num_date` with its confidence interval, plus the `Date` and `Excluded` (`bad_branch`) colorings, when the run inferred dates
 - Trait: the value, the confidence of each state above 0.001 and the entropy, plus a coloring and a filter for the attribute, when the run reconstructed a discrete trait
-- Mutations: nucleotide substitutions and amino-acid mutations per CDS in `branch_attrs`, the `Genotype` (`gt`) coloring when at least one branch shows a mutation ([kb/decisions/auspice-genotype-coloring-when-mutations-shown.md](auspice-genotype-coloring-when-mutations-shown.md)), the root sequences, and the genome annotations with the entropy panel
+- Mutations: nucleotide substitutions and amino-acid mutations per CDS in `branch_attrs`, the `Genotype` (`gt`) coloring when at least one branch shows a mutation, the root sequences, and the genome annotations with the entropy panel
 
 Every number in the node attributes must be finite; otherwise the error names the node and the field.
 

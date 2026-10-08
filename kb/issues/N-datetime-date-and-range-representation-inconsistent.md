@@ -1,6 +1,8 @@
 # Date and range representation is inconsistent across v1
 
-v1 encodes a calendar date as a floating-point year (`YYYY.F`, for example `2015.3`) and spans of such dates as interval structs, but the naming and typing have drifted into several competing conventions. The canonical target is fixed by [../decisions/datetime-numeric-date-naming.md](../decisions/datetime-numeric-date-naming.md) (numeric date, `DateNumeric` newtype, `DateRangeNumeric`); the code has not yet been consolidated onto it.
+v1 encodes a calendar date as a floating-point year (`YYYY.F`, for example `2015.3`) and spans of such dates as interval structs, but the naming and typing have drifted into several competing conventions. The canonical term is numeric date, with a `DateNumeric` newtype and a `DateRangeNumeric` interval; the code has not yet been consolidated onto it.
+
+Numeric date is the term of v0 (`numdate`, `numeric_date()`), augur, BEAST, and the Auspice schema (`num_date`). The R ecosystem says decimal date (`lubridate::decimal_date()`, `ape`), but TreeTime reads and writes the augur and Auspice formats, so a second term at that boundary would bring back the inconsistency.
 
 ## Inconsistencies
 
@@ -18,7 +20,7 @@ One concept reads several ways, so call sites share no vocabulary, the same name
 
 ## Proposed solution
 
-Consolidate onto the canonical types per the decision:
+Consolidate onto the canonical types:
 
 - Add `DateNumeric` as a newtype over `f64` (a newtype struct, which deser serializes as a bare number) and `DateRangeNumeric { start: DateNumeric, end: DateNumeric }` in the `treetime-utils` datetime module. `DateNumeric` provides the operations the current `CalendarTime` exposes (`value`, `max`, `is_finite`).
 - Replace `year_fraction` (for the whole value) and `CalendarTime` with `DateNumeric`. Keep functions that operate on the fractional part `F` named for the fraction.
@@ -27,7 +29,3 @@ Consolidate onto the canonical types per the decision:
 - Keep `numdate` / `num_date` only as external field names in the augur/Auspice JSON schema, which is an external contract and is not renamed.
 
 Nothing is shipped, so the renames and field changes are free.
-
-## Related issues
-
-- Decision: [../decisions/datetime-numeric-date-naming.md](../decisions/datetime-numeric-date-naming.md)
