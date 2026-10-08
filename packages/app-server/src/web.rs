@@ -1,5 +1,6 @@
 use crate::error::plain_error;
-use crate::routes::{NO_STORE, not_found};
+use crate::routes::{NO_STORE, api_router, not_found};
+use crate::state::{ServerConfig, server_service};
 use app_commands::bridge::error::ErrorCode;
 use axum::Router;
 use axum::body::Body;
@@ -10,6 +11,7 @@ use axum::http::{self, HeaderName, HeaderValue, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::any;
+use eyre::Report;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tower::util::MapResponseLayer;
@@ -40,6 +42,11 @@ const SECURITY_HEADERS: &[(&str, &str)] = &[
   ("cross-origin-resource-policy", "same-origin"),
   ("content-security-policy", "frame-ancestors 'none'"),
 ];
+
+pub fn create_router(config: ServerConfig, options: &WebOptions) -> Result<Router, Report> {
+  let (api, _) = api_router(server_service(&config)?, config)?;
+  Ok(web_router(api, options))
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct WebOptions {

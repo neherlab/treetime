@@ -10,18 +10,8 @@ mod openapi;
 pub mod port;
 pub mod routes;
 pub mod state;
+#[cfg(not(target_family = "wasm"))]
 pub mod web;
-
-use crate::routes::api_router;
-use crate::state::{ServerConfig, server_service};
-use crate::web::{WebOptions, web_router};
-use axum::Router;
-use eyre::Report;
-
-pub fn create_router(config: ServerConfig, options: &WebOptions) -> Result<Router, Report> {
-  let (api, _) = api_router(server_service(&config)?, config)?;
-  Ok(web_router(api, options))
-}
 
 #[cfg(test)]
 mod tests {

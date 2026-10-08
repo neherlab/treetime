@@ -6,7 +6,7 @@ use aide::openapi::{MediaType, Operation, Response as ApiResponse, SchemaObject,
 use app_commands::bridge::error::ErrorResponse;
 use axum::body::Body;
 use axum::http::{HeaderValue, StatusCode, header};
-use axum::response::sse::{Event, KeepAlive, Sse};
+use axum::response::sse::{Event, Sse};
 use axum::response::{IntoResponse, Response};
 use deser::Serialize;
 use indexmap::IndexMap;
@@ -15,6 +15,9 @@ use std::convert::Infallible;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use tokio_stream::{Stream, StreamExt as _};
+
+#[cfg(not(target_family = "wasm"))]
+use axum::response::sse::KeepAlive;
 
 const JSON: &str = "application/json";
 const EVENT_STREAM: &str = "text/event-stream";
@@ -81,9 +84,10 @@ impl<T: 'static> TypedSse<T> {
 
 impl<T> IntoResponse for TypedSse<T> {
   fn into_response(self) -> Response {
-    Sse::new(self.events.map(Ok::<_, Infallible>))
-      .keep_alive(KeepAlive::default())
-      .into_response()
+    let sse = Sse::new(self.events.map(Ok::<_, Infallible>));
+    #[cfg(not(target_family = "wasm"))]
+    let sse = sse.keep_alive(KeepAlive::default());
+    sse.into_response()
   }
 }
 

@@ -1,17 +1,32 @@
 use crate::api::response::{FileContent, ZipAttachment};
 use crate::error::AppError;
-use app_commands::runs::files::stream_run_zip;
 use axum::body::Body;
 use axum::extract::Request;
 use axum::http::{HeaderValue, header};
+use axum::response::Response;
 use eyre::Report;
 use log::warn;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use std::path::{Path, PathBuf};
+
+#[cfg(not(target_family = "wasm"))]
+use app_commands::runs::files::stream_run_zip;
+#[cfg(target_family = "wasm")]
+use app_commands::runs::files::{FileChunks, RunZipChunks};
+#[cfg(target_family = "wasm")]
+use std::convert::Infallible;
+#[cfg(target_family = "wasm")]
+use std::future::{Ready, ready};
+#[cfg(target_family = "wasm")]
+use tokio_stream::iter;
+#[cfg(not(target_family = "wasm"))]
 use tokio_util::io::{ReaderStream, SyncIoBridge};
+#[cfg(not(target_family = "wasm"))]
 use tower::ServiceExt as _;
+#[cfg(not(target_family = "wasm"))]
 use tower_http::services::ServeFile;
 
+#[cfg(not(target_family = "wasm"))]
 const ARCHIVE_BUFFER_SIZE: usize = 64 * 1024;
 
 const CONTENT_TYPES: &[(&str, &str)] = &[
@@ -34,7 +49,7 @@ const CONTENT_TYPES: &[(&str, &str)] = &[
 pub(crate) async fn serve_run_file(path: PathBuf, request: Request) -> Result<FileContent, AppError> {
   let content_type = content_type(&path);
   let disposition = attachment(&file_name(&path))?;
-  let mut response = ServeFile::new(&path).oneshot(request).await?.map(Body::new);
+  let mut response = file_response(&path, request).await?;
   if response.status().is_success() {
     let headers = response.headers_mut();
     headers.insert(header::CONTENT_TYPE, content_type);
@@ -43,19 +58,62 @@ pub(crate) async fn serve_run_file(path: PathBuf, request: Request) -> Result<Fi
   Ok(FileContent(response))
 }
 
-pub(crate) fn stream_run_archive(out_dir: PathBuf, name: &str) -> Result<ZipAttachment, AppError> {
-  let (reader, writer) = tokio::io::duplex(ARCHIVE_BUFFER_SIZE);
-  let bridge = SyncIoBridge::new(writer);
-  let folder = name.to_owned();
-  tokio::task::spawn_blocking(move || {
-    if let Err(report) = stream_run_zip(&out_dir, &folder, bridge) {
-      warn!("The archive of run '{folder}' ended early: {report:#}");
-    }
-  });
+pub(crate) fn stream_run_archive(out_dir: &Path, name: &str) -> Result<ZipAttachment, AppError> {
   Ok(ZipAttachment {
     disposition: attachment(&format!("treetime-{name}.zip"))?,
-    body: Body::from_stream(ReaderStream::new(reader)),
+    body: archive_body(out_dir, name),
   })
+}
+
+#[cfg(not(target_family = "wasm"))]
+async fn file_response(path: &Path, request: Request) -> Result<Response, AppError> {
+  Ok(ServeFile::new(path).oneshot(request).await?.map(Body::new))
+}
+
+#[cfg(target_family = "wasm")]
+fn file_response(path: &Path, _request: Request) -> Ready<Result<Response, AppError>> {
+  ready(
+    FileChunks::open(path)
+      .map(|chunks| Response::new(Body::from_stream(iter(chunks))))
+      .map_err(AppError::from),
+  )
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn archive_body(out_dir: &Path, folder: &str) -> Body {
+  let (reader, writer) = tokio::io::duplex(ARCHIVE_BUFFER_SIZE);
+  let bridge = SyncIoBridge::new(writer);
+  let out_dir = out_dir.to_owned();
+  let folder = folder.to_owned();
+  tokio::task::spawn_blocking(move || {
+    if let Err(report) = stream_run_zip(&out_dir, &folder, bridge) {
+      warn_archive_ended(&folder, &report);
+    }
+  });
+  Body::from_stream(ReaderStream::new(reader))
+}
+
+#[cfg(target_family = "wasm")]
+fn archive_body(out_dir: &Path, folder: &str) -> Body {
+  let chunks = match RunZipChunks::new(out_dir, folder) {
+    Ok(chunks) => chunks,
+    Err(report) => {
+      warn_archive_ended(folder, &report);
+      return Body::empty();
+    },
+  };
+  let folder = folder.to_owned();
+  Body::from_stream(iter(chunks.map_while(move |chunk| match chunk {
+    Ok(bytes) => Some(Ok::<_, Infallible>(bytes)),
+    Err(report) => {
+      warn_archive_ended(&folder, &report);
+      None
+    },
+  })))
+}
+
+fn warn_archive_ended(folder: &str, report: &Report) {
+  warn!("The archive of run '{folder}' ended early: {report:#}");
 }
 
 fn content_type(path: &Path) -> HeaderValue {

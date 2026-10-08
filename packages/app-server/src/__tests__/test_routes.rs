@@ -595,9 +595,8 @@ pub(crate) mod tests {
   }
 
   pub(crate) mod helpers {
-    use crate::create_router;
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
-    use crate::web::WebOptions;
+    use crate::web::{WebOptions, create_router};
     use axum::Router;
     use axum::body::{Body, BodyDataStream};
     use axum::http::Request;

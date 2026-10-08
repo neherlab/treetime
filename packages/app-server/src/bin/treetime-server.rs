@@ -7,9 +7,8 @@
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-use app_server::create_router;
 use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
-use app_server::web::WebOptions;
+use app_server::web::{WebOptions, create_router};
 use clap::Parser;
 use ctor::ctor;
 use eyre::WrapErr;

@@ -43,9 +43,8 @@ mod tests {
     use app_commands::command::AppCommand;
     use app_napi::backend::{DesktopService, PortScope};
     use app_napi::port::{PortHeader, PortReply, PortRequest};
-    use app_server::create_router;
     use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
-    use app_server::web::WebOptions;
+    use app_server::web::{WebOptions, create_router};
     use axum::body::Body;
     use axum::http::Request;
     use napi::bindgen_prelude::Uint8Array;

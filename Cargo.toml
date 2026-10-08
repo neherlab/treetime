@@ -131,7 +131,7 @@ approx = "=0.5.1"
 argmin = "=0.10.0"
 argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
 auto_ops = "=0.3.0"
-axum = { version = "=0.8.9", features = ["json"] }
+axum = { version = "=0.8.9", default-features = false, features = ["json"] }
 bon = "=3.9.3"
 bytes = "=1.12.1"
 chrono = { version = "=0.4.45", default-features = false, features = ["clock", "alloc", "std"] }
@@ -215,7 +215,7 @@ tempfile = "=3.27.0"
 textplots = "=0.8.7"
 thiserror = "=2.0.21"
 tikv-jemallocator = "=0.6.0"
-tokio = { version = "=1.53.1", features = ["full"] }
+tokio = "=1.53.1"
 tokio-stream = "=0.1.19"
 tokio-util = { version = "=0.7.19", features = ["io", "io-util"] }
 tower = { version = "=0.5.3", default-features = false, features = ["timeout", "util"] }
@@ -223,7 +223,6 @@ tower-http = { version = "=0.7.1", features = [
   "catch-panic",
   "compression-gzip",
   "compression-zstd",
-  "fs",
   "set-header",
 ] }
 zip = { version = "=8.6.0", default-features = false, features = ["deflate-flate2"] }

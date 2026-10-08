@@ -1,3 +1,4 @@
+use crate::api::blocking::run_blocking;
 use crate::api::extract::{ApiJson, ApiPath};
 use crate::api::response::Accepted;
 use crate::error::AppError;
@@ -161,7 +162,7 @@ where
   F: FnOnce(&LocalSettings) -> Result<T, Report> + Send + 'static,
 {
   let local = local_settings(state)?;
-  Ok(tokio::task::spawn_blocking(move || operation(&local)).await??)
+  run_blocking(move || operation(&local)).await
 }
 
 fn local_settings(state: &AppState) -> Result<LocalSettings, AppError> {

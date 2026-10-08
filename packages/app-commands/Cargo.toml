@@ -70,14 +70,14 @@ png = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
 [dev-dependencies]
 approx = { workspace = true }
-axum = { workspace = true }
+axum = { workspace = true, features = ["http1", "tokio"] }
 ctor = { workspace = true }
 indoc = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
 
 [lints]
 workspace = true

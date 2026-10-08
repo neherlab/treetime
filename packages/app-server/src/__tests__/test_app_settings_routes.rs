@@ -197,9 +197,8 @@ mod tests {
     const EXAMPLES_URL: &str = "http://127.0.0.1:9/examples.zip";
 
     use crate::__tests__::test_routes::tests::helpers::TestApp;
-    use crate::create_router;
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
-    use crate::web::WebOptions;
+    use crate::web::{WebOptions, create_router};
     use app_commands::app_paths::{AppFolderEnv, AppPaths};
     use app_commands::app_settings::settings::AppPathSettings;
     use app_commands::app_settings::store::AppSettingsStore;

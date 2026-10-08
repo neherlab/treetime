@@ -1,8 +1,11 @@
+use crate::api::blocking::{read_body_blocking, run_blocking};
 use crate::api::cache::{Revalidated, finished_runs_tag, is_unchanged};
 use crate::api::download::{serve_run_file, stream_run_archive};
 use crate::api::extract::{ApiJson, ApiPath, ApiQuery, OctetStream};
 use crate::api::generate::with_project_schemas;
 use crate::api::response::{FileContent, TypedSse, ZipAttachment};
+#[cfg(not(target_family = "wasm"))]
+use crate::api::timeout::with_request_timeout;
 use crate::app_settings_routes::{app_settings_routes, host_routes};
 use crate::error::{AppError, panic_response, plain_error};
 use crate::events::{app_events_sse, run_events_sse};
@@ -30,27 +33,21 @@ use app_commands::runs::manager::UploadedInput;
 use app_commands::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
-use axum::error_handling::HandleErrorLayer;
+use axum::Router;
 use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, Uri, header};
-use axum::response::{IntoResponse, Response};
-use axum::{BoxError, Router};
+use axum::response::Response;
 use deser::{Deserialize, Serialize};
-use eyre::{Report, eyre};
+use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use schemars::generate::SchemaSettings;
 use serde_json::Value;
 use std::any::Any;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::io;
 use std::process;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tokio_stream::StreamExt as _;
-use tokio_util::io::{StreamReader, SyncIoBridge};
-use tower::ServiceBuilder;
-use tower::timeout::error::Elapsed;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
 use treetime_schema::{VersionInfo, version_info};
@@ -60,8 +57,6 @@ const LAST_EVENT_ID: &str = "last-event-id";
 const HEALTH_STATUS: &str = "ok";
 
 pub(crate) const NO_STORE: &str = "no-store";
-
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 
 pub fn api_router(service: Arc<AppService>, config: ServerConfig) -> Result<(Router, OpenApi), Report> {
   let scope = if config.settings.is_some() {
@@ -164,6 +159,26 @@ fn build_api(scope: RouteScope, settings: &SchemaSettings) -> Result<(Router<Arc
 }
 
 fn api_routes() -> ApiRouter<Arc<AppState>> {
+  let routes = timed_routes();
+  #[cfg(not(target_family = "wasm"))]
+  let routes = with_request_timeout(routes);
+  routes.api_route(
+    "/api/runs/{id}/inputs/{name}",
+    put_with(runs_upload_input, |op| {
+      op.id("runsUploadInput")
+        .description(
+          "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use \
+           for it in the run's configuration.",
+        )
+        .response_with::<413, AppError, _>(|response| {
+          response.description("The inputs of the run exceed the upload limit of the server")
+        })
+    })
+    .layer(DefaultBodyLimit::disable()),
+  )
+}
+
+fn timed_routes() -> ApiRouter<Arc<AppState>> {
   ApiRouter::new()
     .api_route(
       "/api/health",
@@ -309,25 +324,6 @@ fn api_routes() -> ApiRouter<Arc<AppState>> {
         op.id("runsArchive")
           .description("Zip archive of the run's `out/` folder.")
       }),
-    )
-    .layer(
-      ServiceBuilder::new()
-        .layer(HandleErrorLayer::new(timed_out))
-        .timeout(REQUEST_TIMEOUT),
-    )
-    .api_route(
-      "/api/runs/{id}/inputs/{name}",
-      put_with(runs_upload_input, |op| {
-        op.id("runsUploadInput")
-          .description(
-            "Store a file in the `inputs/` folder of a run that has not started; the answer names the path to use \
-             for it in the run's configuration.",
-          )
-          .response_with::<413, AppError, _>(|response| {
-            response.description("The inputs of the run exceed the upload limit of the server")
-          })
-      })
-      .layer(DefaultBodyLimit::disable()),
     )
 }
 
@@ -557,11 +553,9 @@ async fn runs_upload_input(
   ApiPath(InputPath { id, name }): ApiPath<InputPath>,
   OctetStream(body): OctetStream,
 ) -> Result<ApiJson<UploadedInput>, AppError> {
-  let stream = body.into_data_stream().map(|chunk| chunk.map_err(io::Error::other));
-  let mut reader = SyncIoBridge::new(StreamReader::new(stream));
   let runs = Arc::clone(&state.runs);
   let limit = state.config.max_upload_size;
-  let uploaded = tokio::task::spawn_blocking(move || runs.upload_input(&id, &name, &mut reader, limit)).await??;
+  let uploaded = read_body_blocking(body, move |reader| runs.upload_input(&id, &name, reader, limit)).await?;
   Ok(ApiJson(uploaded))
 }
 
@@ -581,7 +575,7 @@ async fn runs_archive(
 ) -> Result<ZipAttachment, AppError> {
   let name = id.as_str().to_owned();
   let out_dir = call(&state, move |service| service.runs().out_dir(&id)).await?;
-  stream_run_archive(out_dir, &name)
+  stream_run_archive(&out_dir, &name)
 }
 
 async fn revalidated<T, F>(
@@ -616,7 +610,7 @@ where
   F: FnOnce(&AppService) -> Result<T, Report> + Send + 'static,
 {
   let service = Arc::clone(&state.service);
-  Ok(tokio::task::spawn_blocking(move || operation(&service)).await??)
+  run_blocking(move || operation(&service)).await
 }
 
 pub(crate) async fn not_found(uri: Uri) -> Response {
@@ -628,17 +622,6 @@ async fn method_not_allowed(method: Method, uri: Uri) -> Response {
     ErrorCode::MethodNotAllowed,
     format!("the API path `{}` does not accept `{method}` requests", uri.path()),
   )
-}
-
-async fn timed_out(error: BoxError) -> Response {
-  if error.is::<Elapsed>() {
-    plain_error(
-      ErrorCode::Timeout,
-      format!("the request took longer than {} seconds", REQUEST_TIMEOUT.as_secs()),
-    )
-  } else {
-    AppError::from(eyre!(error)).into_response()
-  }
 }
 
 fn instance_id() -> Result<u64, Report> {
