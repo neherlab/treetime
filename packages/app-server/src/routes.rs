@@ -373,7 +373,7 @@ struct InputPath {
 #[schemars(inline)]
 struct EventsQuery {
   /// Sequence number of the first event to send.
-  from: Option<usize>,
+  from: Option<u64>,
 }
 
 /// Query of a run file.
@@ -543,11 +543,11 @@ async fn events(
   app_events_sse(&state, resume_from(&headers, &query))
 }
 
-fn resume_from(headers: &HeaderMap, query: &EventsQuery) -> Option<usize> {
+fn resume_from(headers: &HeaderMap, query: &EventsQuery) -> Option<u64> {
   headers
     .get(LAST_EVENT_ID)
     .and_then(|value| value.to_str().ok())
-    .and_then(|value| value.parse::<usize>().ok())
+    .and_then(|value| value.parse::<u64>().ok())
     .map(|seq| seq + 1)
     .or(query.from)
 }

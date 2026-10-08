@@ -2410,7 +2410,7 @@ export const zRunComparison = z.object({
  * The job was accepted; always the first event.
  */
 export const zRunEventStarted = z.object({
-  seq: z.int().gte(0),
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
   time: z.string(),
   data: zJobStarted,
   type: z.literal('started')
@@ -2420,7 +2420,7 @@ export const zRunEventStarted = z.object({
  * A stage of the computation began or advanced.
  */
 export const zRunEventProgress = z.object({
-  seq: z.int().gte(0),
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
   time: z.string(),
   data: zProgressEvent,
   type: z.literal('progress')
@@ -2430,7 +2430,7 @@ export const zRunEventProgress = z.object({
  * A diagnostic message of the computation.
  */
 export const zRunEventLog = z.object({
-  seq: z.int().gte(0),
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
   time: z.string(),
   data: zLogEvent,
   type: z.literal('log')
@@ -2440,7 +2440,7 @@ export const zRunEventLog = z.object({
  * Convergence values of one timetree optimization iteration.
  */
 export const zRunEventIteration = z.object({
-  seq: z.int().gte(0),
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
   time: z.string(),
   data: zIterationEvent,
   type: z.literal('iteration')
@@ -2495,7 +2495,7 @@ export const zTerminalEvent = z.discriminatedUnion('status', [
  * The job ended; always the last event, exactly once per job.
  */
 export const zRunEventTerminal = z.object({
-  seq: z.int().gte(0),
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
   time: z.string(),
   data: zTerminalEvent,
   type: z.literal('terminal')
@@ -2516,7 +2516,7 @@ export const zRunEvent = z.discriminatedUnion('type', [
  * A run was created.
  */
 export const zAppEventRunCreated = z.object({
-  seq: z.int().gte(0),
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
   time: z.string(),
   stale: z.array(zStalePath),
   run: zRunSummary,
@@ -2527,7 +2527,7 @@ export const zAppEventRunCreated = z.object({
  * A run changed: it started, ended, or got a new title or pinned state.
  */
 export const zAppEventRunUpdated = z.object({
-  seq: z.int().gte(0),
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
   time: z.string(),
   stale: z.array(zStalePath),
   run: zRunSummary,
@@ -2540,7 +2540,7 @@ export const zAppEventRunUpdated = z.object({
  * events after this one.
  */
 export const zAppEventResync = z.object({
-  seq: z.int().gte(0),
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
   time: z.string(),
   stale: z.array(zStalePath),
   kind: z.literal('resync')
@@ -2593,14 +2593,14 @@ export const zExamplesDownload = z.discriminatedUnion('state', [
  */
 export const zExamplesDownloadStatus = z.object({
   download: zExamplesDownload,
-  seq: z.int().gte(0).optional()
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
 });
 
 /**
  * The download of the example datasets progressed, finished, or failed.
  */
 export const zAppEventExamplesDownload = z.object({
-  seq: z.int().gte(0),
+  seq: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }),
   time: z.string(),
   stale: z.array(zStalePath),
   download: zExamplesDownload,
@@ -2769,7 +2769,7 @@ export const zRunsEventsPath = z.object({
 });
 
 export const zRunsEventsQuery = z.object({
-  from: z.int().gte(0).optional()
+  from: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
 });
 
 /**
@@ -2778,7 +2778,7 @@ export const zRunsEventsQuery = z.object({
 export const zRunsEventsResponse = zRunEvent;
 
 export const zEventsQuery = z.object({
-  from: z.int().gte(0).optional()
+  from: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
 });
 
 /**

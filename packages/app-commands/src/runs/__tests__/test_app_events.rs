@@ -270,7 +270,7 @@ mod tests {
       Arc::new(Mutex::new(vec![]))
     }
 
-    pub(super) fn collect(log: &AppEventLog, from: Option<usize>) -> Recorded {
+    pub(super) fn collect(log: &AppEventLog, from: Option<u64>) -> Recorded {
       let received = recorded();
       let sink = Arc::clone(&received);
       log.subscribe(
@@ -296,11 +296,11 @@ mod tests {
       }
     }
 
-    pub(super) fn seqs(received: &Recorded) -> Vec<usize> {
+    pub(super) fn seqs(received: &Recorded) -> Vec<u64> {
       received.lock().iter().map(|event| event.seq).collect()
     }
 
-    pub(super) fn summarize(received: &Recorded) -> Vec<(usize, Value, Value)> {
+    pub(super) fn summarize(received: &Recorded) -> Vec<(u64, Value, Value)> {
       received
         .lock()
         .iter()

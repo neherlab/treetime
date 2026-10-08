@@ -15,7 +15,7 @@ use treetime_utils::make_error;
 #[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
 pub struct RunEvent {
   /// Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
-  pub seq: usize,
+  pub seq: u64,
   /// Time the event was recorded.
   #[schemars(with = "String")]
   pub time: DateTime<Utc>,
@@ -24,7 +24,7 @@ pub struct RunEvent {
   pub event: JobEvent,
 }
 
-pub fn read_events(path: &Path, from: usize) -> Result<Vec<RunEvent>, Report> {
+pub fn read_events(path: &Path, from: u64) -> Result<Vec<RunEvent>, Report> {
   let Some(text) = read_file_to_string_if_exists(path)? else {
     return Ok(vec![]);
   };
@@ -81,7 +81,7 @@ impl EventLog {
     }
     let is_terminal = matches!(event, JobEvent::Terminal { .. });
     let event = RunEvent {
-      seq: state.events.len(),
+      seq: u64::try_from(state.events.len())?,
       time: Utc::now(),
       event,
     };
@@ -99,7 +99,7 @@ impl EventLog {
     Ok(event)
   }
 
-  pub fn subscribe(&self, from: usize, mut subscriber: Subscriber) {
+  pub fn subscribe(&self, from: u64, mut subscriber: Subscriber) {
     let mut state = self.state.lock();
     for event in state.events.iter().filter(|event| event.seq >= from) {
       if !subscriber(event) {

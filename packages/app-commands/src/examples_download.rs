@@ -202,7 +202,7 @@ pub struct ExamplesDownloadStatus {
   pub download: ExamplesDownload,
   /// Sequence number of the last app event about the download. A client keeps whichever of this answer and the
   /// events it received has the higher number.
-  pub seq: Option<usize>,
+  pub seq: Option<u64>,
 }
 
 fn publish(state: &mut ExamplesDownloadStatus, runs: &RunManager, download: ExamplesDownload) {

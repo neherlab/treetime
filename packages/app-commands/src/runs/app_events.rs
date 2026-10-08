@@ -39,7 +39,7 @@ pub struct AppEvent {
   /// Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a
   /// restarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after
   /// the event.
-  pub seq: usize,
+  pub seq: u64,
   /// Time the event was recorded.
   #[schemars(with = "String")]
   pub time: DateTime<Utc>,
@@ -123,12 +123,12 @@ pub struct AppEventLog {
 
 struct AppEventLogState {
   events: VecDeque<AppEvent>,
-  next_seq: usize,
+  next_seq: u64,
   subscribers: Vec<AppSubscriber>,
 }
 
 impl AppEventLog {
-  pub fn new(capacity: usize, first_seq: usize) -> Self {
+  pub fn new(capacity: usize, first_seq: u64) -> Self {
     Self {
       capacity,
       state: Mutex::new(AppEventLogState {
@@ -156,7 +156,7 @@ impl AppEventLog {
     event
   }
 
-  pub fn subscribe(&self, from: Option<usize>, mut subscriber: AppSubscriber) {
+  pub fn subscribe(&self, from: Option<u64>, mut subscriber: AppSubscriber) {
     let mut state = self.state.lock();
     if let Some(from) = from {
       let oldest = state.events.front().map_or(state.next_seq, |event| event.seq);
@@ -181,7 +181,7 @@ impl AppEventLog {
     state.subscribers.push(subscriber);
   }
 
-  pub fn head(&self) -> usize {
+  pub fn head(&self) -> u64 {
     self.state.lock().next_seq - 1
   }
 }

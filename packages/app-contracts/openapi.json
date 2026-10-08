@@ -738,7 +738,7 @@
             "schema": {
               "description": "Sequence number of the first event to send.",
               "type": "integer",
-              "format": "uint",
+              "format": "uint64",
               "minimum": 0
             },
             "style": "form"
@@ -780,7 +780,7 @@
             "schema": {
               "description": "Sequence number of the first event to send.",
               "type": "integer",
-              "format": "uint",
+              "format": "uint64",
               "minimum": 0
             },
             "style": "form"
@@ -4921,7 +4921,7 @@
           "seq": {
             "description": "Sequence number of the last app event about the download. A client keeps whichever of this answer and the\nevents it received has the higher number.",
             "type": "integer",
-            "format": "uint",
+            "format": "uint64",
             "minimum": 0,
             "x-unset": true
           }
@@ -9201,7 +9201,7 @@
           "seq": {
             "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
             "type": "integer",
-            "format": "uint",
+            "format": "uint64",
             "minimum": 0
           },
           "time": {
@@ -9230,7 +9230,7 @@
           "seq": {
             "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
             "type": "integer",
-            "format": "uint",
+            "format": "uint64",
             "minimum": 0
           },
           "time": {
@@ -9259,7 +9259,7 @@
           "seq": {
             "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
             "type": "integer",
-            "format": "uint",
+            "format": "uint64",
             "minimum": 0
           },
           "time": {
@@ -9288,7 +9288,7 @@
           "seq": {
             "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
             "type": "integer",
-            "format": "uint",
+            "format": "uint64",
             "minimum": 0
           },
           "time": {
@@ -9317,7 +9317,7 @@
           "seq": {
             "description": "Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.",
             "type": "integer",
-            "format": "uint",
+            "format": "uint64",
             "minimum": 0
           },
           "time": {
@@ -9431,7 +9431,7 @@
           "seq": {
             "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
-            "format": "uint",
+            "format": "uint64",
             "minimum": 0
           },
           "time": {
@@ -9469,7 +9469,7 @@
           "seq": {
             "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
-            "format": "uint",
+            "format": "uint64",
             "minimum": 0
           },
           "time": {
@@ -9507,7 +9507,7 @@
           "seq": {
             "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
-            "format": "uint",
+            "format": "uint64",
             "minimum": 0
           },
           "time": {
@@ -9545,7 +9545,7 @@
           "seq": {
             "description": "Position of the event in the app-wide event stream. Each event has the number of the previous one plus 1, and a\nrestarted server numbers its events above those of the previous server. Subscribing from `seq + 1` resumes after\nthe event.",
             "type": "integer",
-            "format": "uint",
+            "format": "uint64",
             "minimum": 0
           },
           "time": {

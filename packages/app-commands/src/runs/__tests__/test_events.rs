@@ -17,7 +17,7 @@ mod tests {
     log.append(message("a")).unwrap();
     log.append(message("b")).unwrap();
     log.append(terminal()).unwrap();
-    let persisted: Vec<(usize, bool)> = read_events(&path, 0)
+    let persisted: Vec<(u64, bool)> = read_events(&path, 0)
       .unwrap()
       .iter()
       .map(|event| (event.seq, matches!(event.event, JobEvent::Terminal { .. })))

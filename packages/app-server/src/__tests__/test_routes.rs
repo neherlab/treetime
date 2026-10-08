@@ -586,7 +586,7 @@ pub(crate) mod tests {
         400,
         json!({
           "code": "invalid_request",
-          "message": "Failed to deserialize query string: Unexpected: invalid value \"x\", expected usize at line 1 column 6 (path: from)",
+          "message": "Failed to deserialize query string: Unexpected: invalid value \"x\", expected u64 at line 1 column 6 (path: from)",
           "causes": [],
         })
       ),

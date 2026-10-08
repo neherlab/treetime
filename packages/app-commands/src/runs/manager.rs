@@ -62,7 +62,7 @@ impl RunManager {
       .remove_unstarted(Utc::now() - UNSTARTED_RUN_LIFETIME)
       .wrap_err("When removing runs that were created for uploads and never started")?;
     let first_app_seq =
-      usize::try_from(Utc::now().timestamp_micros()).wrap_err("When numbering the app events from the current time")?;
+      u64::try_from(Utc::now().timestamp_micros()).wrap_err("When numbering the app events from the current time")?;
     Ok(Arc::new(Self {
       store,
       active: Mutex::new(BTreeMap::new()),
@@ -169,7 +169,7 @@ impl RunManager {
     Ok(true)
   }
 
-  pub fn subscribe(&self, id: &JobId, from: usize, mut subscriber: Subscriber) -> Result<(), Report> {
+  pub fn subscribe(&self, id: &JobId, from: u64, mut subscriber: Subscriber) -> Result<(), Report> {
     let mut active = self.active.lock();
     if let Some(run) = active.get(id) {
       run.events.subscribe(from, subscriber);
