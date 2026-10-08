@@ -13,14 +13,14 @@ Shared knowledge base (KB). AI agents and humans collaborate here: documenting p
 - Multi-agent coordination. Parallel agents working on different issues share state through issues, decisions, and proposals.
 - Scientific rigor. Math-heavy phylogenetics code requires tracking what is correct, what diverges from theory, and what diverges from the reference implementation.
 - Preventing rework. Known issues and errata prevent re-investigating solved problems or re-introducing fixed bugs.
-- Decision traceability. Design choices are documented with rationale, not implicit in code.
+- Decision traceability. Scientific and large design choices are documented with rationale. Commit messages, code, and tests explain the other choices.
 
 ## Directories
 
 | Directory                  | Description                                                                                                                                                                                                                                               |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`algo/`](algo/)           | Algorithm documentation: scientific background, implementation status, v0/v1 locations                                                                                                                                                                    |
-| [`decisions/`](decisions/) | Deliberate v1 design choices with rationale (one file per decision)                                                                                                                                                                                       |
+| [`decisions/`](decisions/) | Approved scientific and large design choices with rationale, one file per choice. See [Decision files](#decision-files)                                                                                                                                   |
 | [`features/`](features/)   | Feature parity checklist: `[x]` done, `[/]` partial, `[ ]` not done                                                                                                                                                                                       |
 | [`issues/`](issues/)       | Concrete problems. Severity-prefixed (H/M/N). The working list agents consult before domain work. PREFER independent issues, but entangled problems may share a file when splitting would lose clarity                                                    |
 | [`proposals/`](proposals/) | Undecided design documents analyzing a problem space with options and tradeoffs. Source material for issues -- every actionable item in a proposal must be extracted into a separate issue so it is not lost when the proposal is no longer actively read |
@@ -37,23 +37,34 @@ The knowledge base holds prose and data only -- no executable code. Scripts, not
 
 Every work item falls into exactly one category:
 
-| Category                        | Directory                                                                     | Scope                                                                |
-| ------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Implemented, same behavior      | [`algo/`](algo/), [`features/`](features/)                                    | Feature with equivalent behavior to v0 or design spec                |
-| Implemented, different behavior | [`decisions/`](decisions/)                                                    | Feature with deliberate divergence from v0, or intentionally removed |
-| Not yet done                    | [`issues/`](issues/), [`algo/unimplemented.md`](algo/unimplemented.md)        | Bugs, missing features, stubs, unused flags, behavioral differences  |
-| New in v1                       | [`proposals/`](proposals/) (pre-impl), [`decisions/`](decisions/) (post-impl) | Feature not in v0 or design specs                                    |
-| v0 defective, v1 correct        | [`v0-errata/`](v0-errata/)                                                    | v0 defect that v1 does not reproduce                                 |
+| Category                        | Directory                                                                     | Scope                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Implemented, same behavior      | [`algo/`](algo/), [`features/`](features/)                                    | Feature with equivalent behavior to v0 or design spec               |
+| Implemented, different behavior | [`decisions/`](decisions/)                                                    | Scientific divergence from v0 or removal (see Decision files)       |
+| Implemented, other difference   | None: commit message, code, tests                                             | Output format, naming, library, UI, or code structure change        |
+| Not yet done                    | [`issues/`](issues/), [`algo/unimplemented.md`](algo/unimplemented.md)        | Bugs, missing features, stubs, unused flags, behavioral differences |
+| New in v1                       | [`proposals/`](proposals/) (pre-impl), [`decisions/`](decisions/) (post-impl) | Feature not in v0 or design specs (see Decision files)              |
+| v0 defective, v1 correct        | [`v0-errata/`](v0-errata/)                                                    | v0 defect that v1 does not reproduce                                |
 
 ### Decision rules
 
 - Feature working with same results: [`features/`](features/) `[x]`, algorithm in domain file
-- Feature working with different results: [`decisions/`](decisions/) (one file with rationale)
-- Feature intentionally removed: [`decisions/`](decisions/) (one file with rationale)
+- Feature working with different scientific results: [`decisions/`](decisions/) (one file with rationale)
+- Scientific feature or command intentionally removed: [`decisions/`](decisions/) (one file with rationale)
+- Other implemented difference from v0 (output format, naming, library, UI, code structure): no KB entry; the commit message holds the reason
 - Feature missing, stubbed, or broken: [`issues/`](issues/) (severity-prefixed file). If algorithmic, also in [`algo/unimplemented.md`](algo/unimplemented.md)
 - Design-spec feature not yet implemented: [`issues/`](issues/) (severity-prefixed file)
-- New v1 feature: [`proposals/`](proposals/) pre-implementation, then [`decisions/`](decisions/) post-implementation
+- New v1 feature: [`proposals/`](proposals/) pre-implementation, then [`decisions/`](decisions/) post-implementation only for a large design choice
 - v0 behavior wrong, v1 correct: [`v0-errata/`](v0-errata/) (one file with evidence)
+
+### Decision files
+
+A decision file records a choice that a reader must know to trust a TreeTime result or to plan a large change. Two kinds of choice qualify:
+
+- Scientific choices: a change to a scientific result, model, estimator, numerical method, approximation, or scientific default, including every difference from v0, augur, or auspice in a scientific output
+- Large design choices: choices that shape many crates or the whole product and cost much to undo, such as the graph model, the partition system, dense and sparse sequences, or a new or removed command
+
+Other choices, such as code structure, names, types, library choice, output layout and number format, schema conventions, UI behavior, and performance techniques, keep their reason in the code, the tests, the commit message, or the project rules. A file for every small choice hides the few that matter. The maintainer team approves every decision file.
 
 ### Severity (issues only)
 
