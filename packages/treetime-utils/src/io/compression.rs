@@ -1,10 +1,14 @@
 use crate::env::env_var_optional;
 use crate::error::report_to_string;
 use crate::io::fs::extension;
+use bzip2::read::MultiBzDecoder;
+use bzip2::write::BzEncoder;
 use color_eyre::{Help, SectionExt};
 use eyre::{Report, WrapErr};
 use flate2::read::MultiGzDecoder;
 use flate2::write::GzEncoder;
+use liblzma::read::XzDecoder;
+use liblzma::write::XzEncoder;
 use log::{debug, error};
 use num::Integer;
 use num_traits::NumCast;
@@ -14,19 +18,6 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 // TODO: keep an eye on alternative crates that don't rely on C, and replace when they are stable enough.
-// TODO: keep an eye on efforts of bringing (pieces of) libc to `wasm32-unknown-unknown`, and enable `bzip2`, `xz2`
-// and `zstd` crates for wasm builds when it's compatible enough: https://github.com/rustwasm/team/issues/291
-// Crates `bzip2`, `xz2` and `zstd` depend on corresponding C libraries and require libc in order to build.
-// libc is not present for `wasm32-unknown-unknown` target, so we disable these crates.
-#[cfg(not(target_arch = "wasm32"))]
-use bzip2::read::MultiBzDecoder;
-#[cfg(not(target_arch = "wasm32"))]
-use bzip2::write::BzEncoder;
-
-#[cfg(not(target_arch = "wasm32"))]
-use xz2::read::XzDecoder;
-#[cfg(not(target_arch = "wasm32"))]
-use xz2::write::XzEncoder;
 
 pub const COMPRESSION_EXTENSIONS: [&str; 4] = ["bz2", "xz", "zst", "gz"];
 
@@ -47,11 +38,8 @@ pub struct Decompressor<'r> {
 impl<'r> Decompressor<'r> {
   pub fn new<R: 'r + Read>(reader: R, compression_type: &CompressionType) -> Result<Self, Report> {
     let decompressor: Box<dyn Read> = match compression_type {
-      #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Bzip2 => Box::new(MultiBzDecoder::new(reader)),
-      #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Xz => Box::new(XzDecoder::new_multi_decoder(reader)),
-      #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Zstandard => {
         Box::new(zstd::Decoder::new(reader).wrap_err("When creating the Zstandard decoder")?)
       },
@@ -81,21 +69,18 @@ trait Encoder: Write + Send {
   fn finish_encoding(self: Box<Self>) -> io::Result<()>;
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl<W: Write + Send> Encoder for BzEncoder<W> {
   fn finish_encoding(self: Box<Self>) -> io::Result<()> {
     self.finish()?.flush()
   }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl<W: Write + Send> Encoder for XzEncoder<W> {
   fn finish_encoding(self: Box<Self>) -> io::Result<()> {
     self.finish()?.flush()
   }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl<W: Write + Send> Encoder for zstd::Encoder<'_, W> {
   fn finish_encoding(self: Box<Self>) -> io::Result<()> {
     self.finish()?.flush()
@@ -135,11 +120,8 @@ pub struct Compressor<'w> {
 impl<'w> Compressor<'w> {
   pub fn new<W: 'w + Write + Send>(writer: W, compression_type: &CompressionType) -> Result<Self, Report> {
     let encoder: Box<dyn Encoder + 'w> = match compression_type {
-      #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Bzip2 => Box::new(BzEncoder::new(writer, bzip2::Compression::new(get_comp_level("BZ2")?))),
-      #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Xz => Box::new(XzEncoder::new(writer, get_comp_level("XZ")?)),
-      #[cfg(not(target_arch = "wasm32"))]
       CompressionType::Zstandard => {
         Box::new(zstd::Encoder::new(writer, get_comp_level("ZST")?).wrap_err("When creating the Zstandard encoder")?)
       },
@@ -223,11 +205,8 @@ pub fn guess_compression_from_filepath(filepath: impl AsRef<Path>) -> (Compressi
     None => (CompressionType::None, "".to_owned()),
     Some(ext) => {
       let compression_type: CompressionType = match ext.as_str() {
-        #[cfg(not(target_arch = "wasm32"))]
         "bz2" => CompressionType::Bzip2,
-        #[cfg(not(target_arch = "wasm32"))]
         "xz" => CompressionType::Xz,
-        #[cfg(not(target_arch = "wasm32"))]
         "zst" => CompressionType::Zstandard,
         "gz" => CompressionType::Gzip,
         _ => CompressionType::None,
@@ -246,13 +225,9 @@ pub fn guess_compression_from_filepath(filepath: impl AsRef<Path>) -> (Compressi
 
 #[derive(strum_macros::Display, Clone)]
 pub enum CompressionType {
-  #[cfg(not(target_arch = "wasm32"))]
   Bzip2,
-  #[cfg(not(target_arch = "wasm32"))]
   Xz,
-  #[cfg(not(target_arch = "wasm32"))]
   Zstandard,
-
   Gzip,
   None,
 }
