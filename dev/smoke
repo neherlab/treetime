@@ -13,8 +13,8 @@ The cases are defined in dev/smoke.toml: one row per command variant, with its f
 runs on and its expected failures. The header of that file documents every field. `--overview` prints
 what the file produces.
 
-Run it on the host. It needs git and Docker: the binaries are built with `./dev/docker/run just br
-treetime`, and the cases run inside the container.
+Run it on the host. It needs git, Docker and zstd: the binaries are built with `./dev/docker/run just br
+treetime`, the cases run inside the container, and the comparison reads outputs stored compressed with zstd.
 
 Usage:
 
@@ -45,6 +45,11 @@ Options:
                             2 GiB (at most 100 sequences) and 8 GiB (at most 500) when never measured; a larger
                             case without a completed run runs alone. Every treetime process is limited to the
                             budget, so a case that needs more fails with an allocation error
+    --min-free GIB          free disk space to keep on the file systems of the checkout and the store (default:
+                            SMOKE_MIN_FREE_GIB, else 20). A build does not start below it, and a run below it
+                            stops the running cases, deletes their partial outputs and exits with code 2
+    --max-file-size GIB     largest file a treetime process may write (default: 8). A case that writes a larger
+                            file is stopped by SIGXFSZ and fails
     --rerun                 run the selected cases again even when stored results are reusable
     --no-build              use the existing .out/treetime for the current snapshot instead of the stored
                             binary or a new build
@@ -52,7 +57,8 @@ Options:
                             the case nondeterministic when the outputs differ
     --prune                 delete the dirty snapshots of this checkout other than the current one, and
                             the snapshots of committed trees older than 7 days whose tree is not the tip
-                            of a local branch, then exit. Snapshots in use by another run are kept
+                            of a local branch, then exit. Snapshots in use by another run are kept. Every
+                            run also deletes the earlier current-tree snapshots of its checkout (see below)
 
 Snapshot store:
 
@@ -69,7 +75,9 @@ Snapshot store:
       bin/treetime                  the binary that produced the snapshot
       last-run.json                 statuses of the last run and its checkout (for --rerun-failed)
       cases/<case-id>/
-        out/                        raw outputs, never modified
+        out/                        outputs; a file of at least 1 MiB is stored compressed as <name>.zst
+        outputs.json                SHA-256 of every output after removing the volatile fields (see below),
+                                    and whether it is compressed
         stdout.txt, stderr.txt
         cmd.sh                      the exact command, runnable from the repository root in the container
         result.json                 status, exit code, wall and CPU time, case key
@@ -77,11 +85,19 @@ Snapshot store:
       compare/<baseline-id>/        report.tsv and report.md of a comparison
       report.tsv, report.md         report of a --no-compare run
 
-A stored case is reused when its case key (argv, expectation, declared outputs, working directory and
-the SHA-256 of every input file) is unchanged and its result is consistent with the requested timeout.
-A snapshot whose binary changed loses its stored cases. The current binary is built in the checkout
-unless its snapshot already has one. A git ref baseline is built in a temporary worktree in the store,
-with a copy of the checkout's .env, so the build uses the same compiler cache.
+A stored case is reused when its case key (argv, expectation, declared outputs, working directory, the
+SHA-256 of every input file, the file size limit and the output storage layout) is unchanged and its
+result is consistent with the requested timeout. A snapshot whose binary changed loses its stored cases.
+The current binary is built in the checkout unless its snapshot already has one. A git ref baseline is
+built in a temporary worktree in the store, with a copy of the checkout's .env, so the build uses the
+same compiler cache, and with the cargo home of the checkout (TREETIME_CARGO_HOME of dev/docker/run), so
+it reuses the downloaded crates.
+
+A comparison reads the hashes of outputs.json and decompresses a file only when its hash differs.
+
+Each edit or commit gives the current tree a new snapshot that one comparison uses. After every run,
+dev/smoke deletes the snapshots that its checkout ran before as its current tree, except the current one,
+the baseline of the run, the snapshots of local branch tips, and snapshots used as a baseline.
 
 Each run holds an exclusive lock on a snapshot while it builds and runs it, and a shared lock while it
 reads the results for its report. A run that needs a locked snapshot logs the pid and checkout of the
@@ -120,12 +136,14 @@ Exit codes:
 
     0   every selected case passed
     1   a case failed or changed
-    2   the script could not complete (build failure, git error, invalid arguments, container failure)
+    2   the script could not complete (build failure, git error, invalid arguments, container failure,
+        free disk space below --min-free)
 
 Environment:
 
     SMOKE_STORE         absolute directory of a snapshot store shared by all checkouts; read from the
                         environment, else from .env of the checkout
+    SMOKE_MIN_FREE_GIB  default of --min-free; read from the environment, else from .env of the checkout
     SMOKE_WRAPPER       container wrapper command (default: ./dev/docker/run); empty runs in place
 """
 
@@ -172,6 +190,14 @@ WRAPPER = shlex.split(os.environ.get("SMOKE_WRAPPER", "./dev/docker/run"))
 ENV_FILE = PROJECT_ROOT / ".env"
 TREE_ID_LENGTH = 10
 OLD_SNAPSHOT_DAYS = 7
+GIB = 1024**3
+MIN_FREE_GIB = 20.0
+MAX_FILE_SIZE_GIB = 8.0
+DISK_POLL_S = 1.0
+COMPRESS_MIN_BYTES = 1 << 20
+COMPRESSED_SUFFIX = ".zst"
+OUTPUTS_FILE = "outputs.json"
+OUTPUT_STORAGE = "zstd-from-1MiB"
 
 
 def env_setting(name: str) -> str | None:
@@ -298,6 +324,9 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
   parser.add_argument("--timeout-scale", type=float, default=1.0)
   parser.add_argument("--memory-budget", metavar="GIB", type=float)
+  parser.add_argument("--min-free", metavar="GIB", type=float,
+                      default=float(env_setting("SMOKE_MIN_FREE_GIB") or MIN_FREE_GIB))
+  parser.add_argument("--max-file-size", metavar="GIB", type=float, default=MAX_FILE_SIZE_GIB)
   parser.add_argument("--rerun", action="store_true")
   parser.add_argument("--no-build", action="store_true")
   parser.add_argument("--check-determinism", action="store_true")
@@ -313,6 +342,10 @@ def parse_args() -> argparse.Namespace:
     parser.error("--memory-budget must be positive")
   if args.timeout_scale <= 0:
     parser.error("--timeout-scale must be positive")
+  if args.min_free < 0:
+    parser.error("--min-free must not be negative")
+  if args.max_file_size <= 0:
+    parser.error("--max-file-size must be positive")
   return args
 
 
@@ -341,11 +374,14 @@ def host_mode(args: argparse.Namespace) -> int:
 
   baseline = None if args.no_compare else resolve_against(args.against)
   hasher = InputHasher()
+  min_free_bytes = round(args.min_free * GIB)
   with snapshot_lock(current.id):
+    check_free_space([PROJECT_ROOT, SNAPSHOTS_DIR], min_free_bytes, "building and running the current snapshot")
     ensure_current_binary(current, args.no_build)
     run_snapshot(current, selected, args, hasher, args.check_determinism)
   if baseline is not None:
     with snapshot_lock(baseline.id):
+      check_free_space([WORKTREES_DIR, SNAPSHOTS_DIR], min_free_bytes, "building and running the baseline")
       ensure_baseline_binary(baseline)
       run_snapshot(baseline, selected, args, hasher, check_determinism=False)
 
@@ -358,6 +394,7 @@ def host_mode(args: argparse.Namespace) -> int:
     report_dir = current.dir / "compare" / baseline.id if baseline else current.dir
     write_reports(reports, current, baseline, report_dir)
     write_last_run(current, reports, baseline)
+  prune_superseded_snapshots({current.id, *([baseline.id] if baseline else [])})
   print_summary(reports, current, baseline, report_dir, time.perf_counter() - start)
   if len(reports) != len(selected):
     raise SmokeError(f"{len(selected)} cases selected, but {len(reports)} have results")
@@ -674,7 +711,7 @@ def resolve_against(against: str) -> Snapshot:
   """Baseline snapshot of an existing snapshot id, or of the tree of a git ref."""
   if (SNAPSHOTS_DIR / against / "snapshot.json").is_file():
     meta = json.loads((SNAPSHOTS_DIR / against / "snapshot.json").read_text())
-    return Snapshot(against, meta["commit"], meta.get("tree"), meta.get("dirty_hash"), meta.get("ref"))
+    return Snapshot(against, meta["commit"], meta.get("tree"), meta.get("dirty_hash"), meta.get("ref") or against)
   commit = git("rev-parse", "--verify", f"{against}^{{commit}}").decode().strip()
   tree = tree_of(commit)
   return Snapshot(tree[:TREE_ID_LENGTH], commit, tree, None, against)
@@ -682,6 +719,17 @@ def resolve_against(against: str) -> Snapshot:
 
 def tree_of(commit: str) -> str:
   return git("rev-parse", f"{commit}^{{tree}}").decode().strip()
+
+
+def check_free_space(paths: list[Path], min_free_bytes: int, action: str) -> None:
+  """Raise before `action` when the file system of one of the paths has less free space than the limit."""
+  for path in paths:
+    path.mkdir(parents=True, exist_ok=True)
+    free = shutil.disk_usage(path).free
+    if free < min_free_bytes:
+      raise SmokeError(f"{free / GIB:.1f} GiB free on the file system of {path}, below the limit of "
+                       f"{min_free_bytes / GIB:g} GiB: not {action}. Free disk space, or lower the limit with "
+                       "--min-free or SMOKE_MIN_FREE_GIB")
 
 
 @contextlib.contextmanager
@@ -725,28 +773,55 @@ def prune_snapshots(current: Snapshot) -> None:
 
   A snapshot that another run holds is skipped.
   """
-  if not SNAPSHOTS_DIR.is_dir():
-    return
-  tips = {tree[:TREE_ID_LENGTH] for tree in git("for-each-ref", "--format=%(tree)", "refs/heads").decode().split()}
+  tips = branch_tip_ids()
   cutoff = datetime.now(timezone.utc).timestamp() - OLD_SNAPSHOT_DAYS * 24 * 3600
-  for directory in sorted(SNAPSHOTS_DIR.iterdir()):
-    if not directory.is_dir() or directory.name.startswith(".") or directory.name == current.id:
+  for directory, meta in stored_snapshots():
+    if directory.name == current.id:
       continue
-    meta_path = directory / "snapshot.json"
-    meta = json.loads(meta_path.read_text()) if meta_path.is_file() else None
     if "+dirty-" in directory.name:
       prune = is_own(meta)
     else:
       created = datetime.fromisoformat(meta["created_at"]).timestamp() if meta else 0.0
       prune = created < cutoff and directory.name not in tips
-    if not prune:
+    if prune and delete_snapshot(directory):
+      print(display_path(directory))
+
+
+def prune_superseded_snapshots(keep: set[str]) -> None:
+  """Delete the snapshots that this checkout ran as its current tree before, other than the kept ones.
+
+  Each edit or commit gives the current tree a new snapshot, used by one comparison, so the earlier ones are deleted
+  after every run. Snapshots of branch tips stay, and so do snapshots used as a baseline, which record their ref.
+  """
+  tips = branch_tip_ids()
+  for directory, meta in stored_snapshots():
+    if directory.name in keep or directory.name in tips or meta is None or meta.get("ref") or not is_own(meta):
       continue
-    with snapshot_lock(directory.name, wait=False) as held:
-      if not held:
-        log.info("Snapshot %s is in use: not deleted", directory.name)
-        continue
-      shutil.rmtree(directory)
-    print(display_path(directory))
+    if delete_snapshot(directory):
+      log.info("Deleted the earlier snapshot %s of this checkout", display_path(directory))
+
+
+def branch_tip_ids() -> set[str]:
+  return {tree[:TREE_ID_LENGTH] for tree in git("for-each-ref", "--format=%(tree)", "refs/heads").decode().split()}
+
+
+def stored_snapshots() -> Iterator[tuple[Path, dict | None]]:
+  if not SNAPSHOTS_DIR.is_dir():
+    return
+  for directory in sorted(SNAPSHOTS_DIR.iterdir()):
+    if directory.is_dir() and not directory.name.startswith("."):
+      meta_path = directory / "snapshot.json"
+      yield directory, json.loads(meta_path.read_text()) if meta_path.is_file() else None
+
+
+def delete_snapshot(directory: Path) -> bool:
+  """Delete a snapshot unless another run holds it; return whether it was deleted."""
+  with snapshot_lock(directory.name, wait=False) as held:
+    if not held:
+      log.info("Snapshot %s is in use: not deleted", directory.name)
+      return False
+    shutil.rmtree(directory)
+  return True
 
 
 def ensure_current_binary(snapshot: Snapshot, no_build: bool) -> None:
@@ -765,7 +840,11 @@ def ensure_current_binary(snapshot: Snapshot, no_build: bool) -> None:
 
 
 def ensure_baseline_binary(snapshot: Snapshot) -> None:
+  """Build the baseline binary unless the snapshot has one, and record the ref that selected it as a baseline."""
   if snapshot.binary.is_file():
+    meta = snapshot.read_meta()
+    if meta is not None and not meta.get("ref"):
+      write_json(snapshot.dir / "snapshot.json", {**meta, "ref": snapshot.ref})
     return
   if snapshot.dirty_hash is not None:
     raise SmokeError(f"Snapshot {snapshot.id} has no binary and cannot be rebuilt: it is a dirty working tree")
@@ -789,14 +868,21 @@ def build_baseline_binary(snapshot: Snapshot) -> Path:
     if ENV_FILE.is_file():
       shutil.copy2(ENV_FILE, checkout / ".env")
     staged = SNAPSHOTS_DIR / f".{snapshot.id}.treetime"
-    shutil.copy2(build_in_checkout(checkout), staged)
+    cargo_home = PROJECT_ROOT / ".cache" / "cargo"
+    cargo_home.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(build_in_checkout(checkout, {"TREETIME_CARGO_HOME": str(cargo_home)}), staged)
     return staged
   finally:
     git("worktree", "remove", "--force", str(checkout))
 
 
-def build_in_checkout(checkout: Path) -> Path:
-  run_checked([*WRAPPER, *release_build_cmd(checkout)], cwd=checkout)
+def build_in_checkout(checkout: Path, env: dict[str, str] | None = None) -> Path:
+  """Build the release binary of a checkout and return its path.
+
+  A baseline worktree gets the cargo home of this checkout through env, so its build reuses the downloaded crates.
+  Revisions whose dev/docker/run predates TREETIME_CARGO_HOME ignore it.
+  """
+  run_checked([*WRAPPER, *release_build_cmd(checkout)], cwd=checkout, env=env)
   binary = checkout / ".out" / "treetime"
   if not binary.is_file():
     raise SmokeError(f"The build did not produce {binary}")
@@ -821,7 +907,8 @@ def prepare_snapshot(snapshot: Snapshot, binary: Path) -> None:
     log.info("Binary of snapshot %s changed: deleting its stored cases", snapshot.id)
     shutil.rmtree(snapshot.dir / "cases", ignore_errors=True)
   write_json(snapshot.dir / "snapshot.json", {
-    "commit": snapshot.commit, "tree": snapshot.tree, "dirty_hash": snapshot.dirty_hash, "ref": snapshot.ref,
+    "commit": snapshot.commit, "tree": snapshot.tree, "dirty_hash": snapshot.dirty_hash,
+    "ref": snapshot.ref or (meta or {}).get("ref"),
     "checkout": str(PROJECT_ROOT), "binary_sha256": binary_sha,
     "created_at": (meta or {}).get("created_at") or now_iso(),
   })
@@ -836,8 +923,9 @@ def run_snapshot(snapshot: Snapshot, cases: list[Case], args: argparse.Namespace
                  check_determinism: bool) -> None:
   """Run every selected case of a snapshot whose stored result is not reusable."""
   pending = []
+  max_file_bytes = round(args.max_file_size * GIB)
   for case in cases:
-    key = case_key(case, hasher)
+    key = case_key(case, hasher, max_file_bytes)
     scaled = dataclasses.replace(case, timeout_s=case.timeout_s * args.timeout_scale)
     stored = read_result(snapshot, case.id)
     run_main = args.rerun or not is_reusable(stored, key, scaled.timeout_s)
@@ -850,7 +938,8 @@ def run_snapshot(snapshot: Snapshot, cases: list[Case], args: argparse.Namespace
     cases_file = snapshot.dir / "pending-cases.json"
     write_json(cases_file, pending)
     command = [*WRAPPER, "python3", SELF, "--run-cases", "--bin", str(snapshot.binary), "--snapshot", str(snapshot.dir),
-               "--cases", str(cases_file), "--jobs", str(args.jobs)]
+               "--cases", str(cases_file), "--jobs", str(args.jobs), "--min-free", str(args.min_free),
+               "--max-file-size", str(args.max_file_size)]
     if args.memory_budget is not None:
       command += ["--memory-budget", str(args.memory_budget)]
     if check_determinism:
@@ -883,10 +972,16 @@ def memory_estimate_kib(case: Case) -> int | None:
   return None if results or estimate_gib is None else round(estimate_gib * 1024 * 1024)
 
 
-def case_key(case: Case, hasher: InputHasher) -> str:
+def case_key(case: Case, hasher: InputHasher, max_file_bytes: int) -> str:
+  """Hash of everything that determines a stored result.
+
+  The key covers the case, its input files, the file size limit and the way the outputs are stored, so a run of
+  another dev/smoke version that shares the store never reuses results in a layout it does not read.
+  """
   payload = {
     "argv": list(case.argv), "expect": case.expect.value, "required_outputs": list(case.required_outputs),
-    "cwd_mode": case.cwd_mode.value, "inputs": hasher.inputs(case),
+    "cwd_mode": case.cwd_mode.value, "inputs": hasher.inputs(case), "max_file_bytes": max_file_bytes,
+    "output_storage": OUTPUT_STORAGE,
   }
   return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
@@ -919,14 +1014,18 @@ def run_cases_mode(args: argparse.Namespace) -> int:
   jobs = max(1, args.jobs)
   budget_kib = round(args.memory_budget * 1024 * 1024) if args.memory_budget else default_memory_budget_kib()
   memory = MemoryBudget(budget_kib)
+  max_file_bytes = round(args.max_file_size * GIB)
   log.info("Running %d cases with %d jobs and a memory budget of %.1f GiB", len(tasks), jobs, budget_kib / 1024**2)
   tty = sys.stderr.isatty()
   done = 0
-  with ThreadPoolExecutor(max_workers=jobs) as pool:
-    futures = {pool.submit(run_case_task, task, binary, snapshot_dir, args.check_determinism, memory): task
-               for task in tasks}
+  with DiskGuard(snapshot_dir, round(args.min_free * GIB)) as disk, ThreadPoolExecutor(max_workers=jobs) as pool:
+    futures = {pool.submit(run_case_task, task, binary, snapshot_dir, args.check_determinism, memory,
+                           max_file_bytes, disk): task for task in tasks}
     for future in as_completed(futures):
-      result = future.result()
+      try:
+        result = future.result()
+      except DiskSpaceLow:
+        continue
       done += 1
       status = effective_status(result)
       if tty:
@@ -938,6 +1037,11 @@ def run_cases_mode(args: argparse.Namespace) -> int:
         sys.stderr.flush()
   if tty:
     sys.stderr.write(CLEAR_LINE)
+  if disk.low_free_bytes is not None:
+    log.error("Free disk space on the file system of %s fell to %.1f GiB, below the limit of %g GiB (--min-free, "
+              "SMOKE_MIN_FREE_GIB): stopped the running cases and skipped %d of %d cases", snapshot_dir,
+              disk.low_free_bytes / GIB, args.min_free, len(tasks) - done, len(tasks))
+    return 2
   return 0
 
 
@@ -948,16 +1052,20 @@ def default_memory_budget_kib() -> int:
   return round(available_kib * MEMORY_BUDGET_FRACTION)
 
 
-def run_case_task(task: dict, binary: Path, snapshot_dir: Path, check_determinism: bool,
-                  memory: MemoryBudget) -> dict:
+def run_case_task(task: dict, binary: Path, snapshot_dir: Path, check_determinism: bool, memory: MemoryBudget,
+                  max_file_bytes: int, disk: DiskGuard) -> dict:
+  """Run a case and store its result; raise DiskSpaceLow without a result when the disk guard stops the run."""
   case = Case.from_json(task["case"])
   case_dir = snapshot_dir / "cases" / case.id
   extra = [] if case.is_help else ["--no-progress"]
+  limits = RunLimits(memory.total_kib, max_file_bytes)
   with memory.reserve(task["memory_kib"]):
+    if disk.low_free_bytes is not None:
+      raise DiskSpaceLow
     if not task["run_main"]:
       result = json.loads((case_dir / "result.json").read_text())
     else:
-      outcome, missing = run_one(case, binary, case_dir, extra, memory.total_kib)
+      outcome, missing = run_one(case, binary, case_dir, extra, limits, disk)
       status, detail = classify(case, outcome, missing)
       result = {
         "id": case.id, "status": status.value, "detail": detail, "exit_code": outcome.exit_code,
@@ -967,7 +1075,7 @@ def run_case_task(task: dict, binary: Path, snapshot_dir: Path, check_determinis
       }
     if check_determinism:
       rerun_extra = extra + ([] if case.is_help else ["--jobs=1"])
-      rerun_outcome, rerun_missing = run_one(case, binary, case_dir / "rerun", rerun_extra, memory.total_kib)
+      rerun_outcome, rerun_missing = run_one(case, binary, case_dir / "rerun", rerun_extra, limits, disk)
       rerun_status, _ = classify(case, rerun_outcome, rerun_missing)
       same = rerun_status.value == result["status"] and not diff_run_dirs(case, case_dir, case_dir / "rerun")
       result["determinism"] = "same" if same else "differs"
@@ -975,9 +1083,12 @@ def run_case_task(task: dict, binary: Path, snapshot_dir: Path, check_determinis
   return result
 
 
-def run_one(case: Case, binary: Path, run_dir: Path, extra_args: list[str],
-            memory_limit_kib: int) -> tuple[RunOutcome, list[str]]:
-  """Run a case into run_dir (out/, stdout.txt, stderr.txt, cmd.sh) and return the outcome and missing outputs."""
+def run_one(case: Case, binary: Path, run_dir: Path, extra_args: list[str], limits: RunLimits,
+            disk: DiskGuard) -> tuple[RunOutcome, list[str]]:
+  """Run a case into run_dir (out/, outputs.json, stdout.txt, stderr.txt, cmd.sh); return the outcome and missing outputs.
+
+  When the disk guard stops the run, run_dir is deleted and DiskSpaceLow is raised.
+  """
   shutil.rmtree(run_dir, ignore_errors=True)
   out = run_dir / "out"
   out.mkdir(parents=True)
@@ -992,10 +1103,13 @@ def run_one(case: Case, binary: Path, run_dir: Path, extra_args: list[str],
   else:
     cwd = PROJECT_ROOT
     script = f"RUST_BACKTRACE=1 NO_COLOR=1 exec {shlex.join(argv)}\n"
-  (run_dir / "cmd.sh").write_text(f"#!/usr/bin/env bash\nset -euo pipefail\nulimit -d {memory_limit_kib}\n{script}")
+  ulimits = f"ulimit -d {limits.memory_kib}\nulimit -f {limits.max_file_bytes // 1024}\n"
+  (run_dir / "cmd.sh").write_text(f"#!/usr/bin/env bash\nset -euo pipefail\n{ulimits}{script}")
   (run_dir / "cmd.sh").chmod(0o755)
-  outcome = execute(argv, cwd, run_dir / "stdout.txt", run_dir / "stderr.txt", case.timeout_s,
-                    memory_limit_kib=memory_limit_kib)
+  outcome = execute(argv, cwd, run_dir / "stdout.txt", run_dir / "stderr.txt", case.timeout_s, limits, disk)
+  if disk.low_free_bytes is not None:
+    shutil.rmtree(run_dir, ignore_errors=True)
+    raise DiskSpaceLow
   if case.cwd_mode is CwdMode.SANDBOX:
     (cwd / DATA_DIR).unlink()
     for entry in cwd.iterdir():
@@ -1003,7 +1117,39 @@ def run_one(case: Case, binary: Path, run_dir: Path, extra_args: list[str],
     cwd.rmdir()
   if case.compare_stdout:
     without_checkout_root(run_dir / "stdout.txt")
-  return outcome, missing_outputs(case, run_dir)
+  missing = missing_outputs(case, run_dir)
+  store_outputs(run_dir)
+  return outcome, missing
+
+
+def store_outputs(run_dir: Path) -> None:
+  """Record the SHA-256 of every output file in outputs.json, after removing volatile fields, and compress large files.
+
+  Files of at least COMPRESS_MIN_BYTES are replaced by a zstd-compressed copy with the suffix .zst. A comparison reads
+  the hashes and decompresses a file only when its hash differs from the one of the other snapshot.
+  """
+  out = run_dir / "out"
+  manifest = {}
+  for path in sorted(p for p in out.rglob("*") if p.is_file()):
+    name = path.relative_to(out).as_posix()
+    compressed = not path.is_symlink() and path.stat().st_size >= COMPRESS_MIN_BYTES
+    manifest[name] = {"sha256": output_digest(name, path), "compressed": compressed}
+    if compressed:
+      zstd("-q", "--rm", "-o", f"{path}{COMPRESSED_SUFFIX}", "--", str(path))
+  write_json(run_dir / OUTPUTS_FILE, manifest)
+
+
+def output_digest(name: str, path: Path) -> str:
+  if volatile_key_path(name) is None:
+    return sha256_file(path)
+  return hashlib.sha256(normalized_bytes(name, path.read_bytes())).hexdigest()
+
+
+def zstd(*args: str) -> bytes:
+  result = subprocess.run(["zstd", *args], capture_output=True, check=False)
+  if result.returncode != 0:
+    raise SmokeError(f"zstd {shlex.join(args)} failed: {result.stderr.decode(errors='replace').strip()}")
+  return result.stdout
 
 
 def without_checkout_root(path: Path) -> None:
@@ -1022,12 +1168,14 @@ def resolve_argv(case: Case, binary: Path, out: Path) -> list[str]:
   return argv
 
 
-def execute(argv: list[str], cwd: Path, stdout: Path, stderr: Path, timeout_s: float,
-            *, memory_limit_kib: int) -> RunOutcome:
-  """Run one process with a timeout and a data-segment limit, and measure its wall time, CPU time and peak memory.
+def execute(argv: list[str], cwd: Path, stdout: Path, stderr: Path, timeout_s: float, limits: RunLimits,
+            disk: DiskGuard) -> RunOutcome:
+  """Run one process under a timeout and the run limits, and measure its wall time, CPU time and peak memory.
 
-  The limit turns an allocation beyond the memory budget into an allocation failure of that process, so a case that
-  needs more memory than the machine can give fails on its own instead of exhausting the host.
+  The data-segment limit turns an allocation beyond the memory budget into an allocation failure of that process, so a
+  case that needs more memory than the machine can give fails on its own instead of exhausting the host. The file size
+  limit stops the process with SIGXFSZ when it writes a file beyond it. The disk guard kills the process when free disk
+  space falls below its limit.
   """
   env = {**os.environ, "RUST_BACKTRACE": "1", "NO_COLOR": "1"}
   lock = threading.Lock()
@@ -1035,9 +1183,11 @@ def execute(argv: list[str], cwd: Path, stdout: Path, stderr: Path, timeout_s: f
   with stdout.open("wb") as out, stderr.open("wb") as err:
     start = time.perf_counter()
     process = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=out, stderr=err, env=env)
-  limit_bytes = memory_limit_kib * 1024
+  disk.watch(process.pid)
+  memory_bytes = limits.memory_kib * 1024
   with contextlib.suppress(ProcessLookupError):
-    resource.prlimit(process.pid, resource.RLIMIT_DATA, (limit_bytes, limit_bytes))
+    resource.prlimit(process.pid, resource.RLIMIT_DATA, (memory_bytes, memory_bytes))
+    resource.prlimit(process.pid, resource.RLIMIT_FSIZE, (limits.max_file_bytes, limits.max_file_bytes))
 
   def stop_on_timeout() -> None:
     with lock:
@@ -1052,6 +1202,7 @@ def execute(argv: list[str], cwd: Path, stdout: Path, stderr: Path, timeout_s: f
   with lock:
     state["exited"] = True
   timer.cancel()
+  disk.unwatch(process.pid)
   _, wait_status, usage = os.wait4(process.pid, 0)
   wall = time.perf_counter() - start
   process.returncode = os.waitstatus_to_exitcode(wait_status)
@@ -1101,6 +1252,8 @@ def classify(case: Case, outcome: RunOutcome, missing: list[str]) -> tuple[Statu
 
 
 def exit_detail(exit_code: int | None) -> str:
+  if exit_code == -signal.SIGXFSZ:
+    return "stopped by signal SIGXFSZ: a file reached the size limit (--max-file-size)"
   if exit_code is not None and exit_code < 0:
     return f"stopped by signal {signal.Signals(-exit_code).name}"
   return f"exit code {exit_code}"
@@ -1162,18 +1315,25 @@ def diff_run_dirs(case: Case, base_dir: Path, current_dir: Path) -> list[FileDif
       diffs.append(FileDiff(name, "only-baseline", "only in the baseline"))
     elif name not in base_files:
       diffs.append(FileDiff(name, "only-current", "only in the current run"))
-    else:
-      old, new = normalized_bytes(base_files[name]), normalized_bytes(current_files[name])
-      if old != new:
-        diffs.append(content_diff(name, old, new))
+    elif base_files[name].sha256 != current_files[name].sha256:
+      old, new = (normalized_bytes(name, files[name].read()) for files in (base_files, current_files))
+      diffs.append(content_diff(name, old, new))
   return diffs
 
 
-def compared_files(case: Case, run_dir: Path) -> dict[str, Path]:
+def compared_files(case: Case, run_dir: Path) -> dict[str, StoredOutput]:
+  """The compared files of a run: the outputs listed in outputs.json, and stdout when the case compares it."""
+  manifest_path = run_dir / OUTPUTS_FILE
+  manifest = json.loads(manifest_path.read_text()) if manifest_path.is_file() else {}
   out = run_dir / "out"
-  files = {p.relative_to(out).as_posix(): p for p in out.rglob("*") if p.is_file()} if out.is_dir() else {}
+  files = {
+    name: StoredOutput(out / f"{name}{COMPRESSED_SUFFIX}" if entry["compressed"] else out / name, entry["sha256"],
+                       entry["compressed"])
+    for name, entry in manifest.items()
+  }
   if case.compare_stdout:
-    files["<stdout>"] = run_dir / "stdout.txt"
+    stdout = run_dir / "stdout.txt"
+    files["<stdout>"] = StoredOutput(stdout, sha256_file(stdout), compressed=False)
   return files
 
 
@@ -1193,10 +1353,9 @@ def normalized_stderr(snapshot: Snapshot, case_id: str) -> str:
   return LOG_TIMESTAMP_RE.sub("", text.replace(str(snapshot.dir), "<snapshot>"))
 
 
-def normalized_bytes(path: Path) -> bytes:
-  """File content with the volatile fields removed; JSON files of those types are parsed and re-serialized."""
-  data = path.read_bytes()
-  key_path = next((keys for suffix, keys in VOLATILE_FIELDS.items() if path.name.endswith(suffix)), None)
+def normalized_bytes(name: str, data: bytes) -> bytes:
+  """Content of the output file `name` with the volatile fields removed; JSON files of those types are re-serialized."""
+  key_path = volatile_key_path(name)
   if key_path is None:
     return data
   try:
@@ -1209,6 +1368,10 @@ def normalized_bytes(path: Path) -> bytes:
   if isinstance(node, dict):
     node.pop(key_path[-1], None)
   return json.dumps(doc, indent=2, ensure_ascii=False).encode()
+
+
+def volatile_key_path(name: str) -> tuple[str, ...] | None:
+  return next((keys for suffix, keys in VOLATILE_FIELDS.items() if name.endswith(suffix)), None)
 
 
 def content_diff(name: str, old: bytes, new: bytes) -> FileDiff:
@@ -1453,9 +1616,9 @@ def display_path(path: Path) -> Path:
   return path.relative_to(PROJECT_ROOT) if path.is_relative_to(PROJECT_ROOT) else path
 
 
-def run_checked(command: list[str], cwd: Path = PROJECT_ROOT) -> None:
+def run_checked(command: list[str], cwd: Path = PROJECT_ROOT, env: dict[str, str] | None = None) -> None:
   log.info("+ %s", shlex.join(command))
-  result = subprocess.run(command, cwd=cwd, check=False)
+  result = subprocess.run(command, cwd=cwd, env={**os.environ, **env} if env else None, check=False)
   if result.returncode != 0:
     raise SmokeError(f"Command failed with exit code {result.returncode}: {shlex.join(command)} (in {cwd})")
 
@@ -1495,6 +1658,10 @@ def enum_value(value):
 
 class SmokeError(Exception):
   """A failure that prevents the script from completing (exit code 2)."""
+
+
+class DiskSpaceLow(Exception):
+  """The disk guard stopped a case because free disk space fell below the limit."""
 
 
 @dataclass(frozen=True)
@@ -1617,6 +1784,74 @@ class Snapshot:
   def read_meta(self) -> dict | None:
     path = self.dir / "snapshot.json"
     return json.loads(path.read_text()) if path.exists() else None
+
+
+@dataclass(frozen=True)
+class RunLimits:
+  memory_kib: int
+  max_file_bytes: int
+
+
+@dataclass(frozen=True)
+class StoredOutput:
+  """A compared file of a run: its stored path, the SHA-256 of its normalized content, and whether it is compressed."""
+
+  path: Path
+  sha256: str
+  compressed: bool
+
+  def read(self) -> bytes:
+    return zstd("-dcq", "--", str(self.path)) if self.compressed else self.path.read_bytes()
+
+
+class DiskGuard:
+  """Kill the watched processes and stop starting cases once free disk space on a file system falls below a limit.
+
+  A thread polls the free space every DISK_POLL_S seconds while the guard is entered. A process is killed only while it
+  has not exited, so the signal never reaches a reused pid.
+  """
+
+  def __init__(self, path: Path, min_free_bytes: int) -> None:
+    self.path = path
+    self.min_free_bytes = min_free_bytes
+    self.low_free_bytes: int | None = None
+    self.pids: set[int] = set()
+    self.lock = threading.Lock()
+    self.stop = threading.Event()
+    self.thread = threading.Thread(target=self.poll, daemon=True)
+
+  def __enter__(self) -> DiskGuard:
+    self.check()
+    self.thread.start()
+    return self
+
+  def __exit__(self, *_: object) -> None:
+    self.stop.set()
+    self.thread.join()
+
+  def watch(self, pid: int) -> None:
+    with self.lock:
+      self.pids.add(pid)
+      if self.low_free_bytes is not None:
+        os.kill(pid, signal.SIGKILL)
+
+  def unwatch(self, pid: int) -> None:
+    with self.lock:
+      self.pids.discard(pid)
+
+  def poll(self) -> None:
+    while not self.stop.wait(DISK_POLL_S):
+      self.check()
+
+  def check(self) -> None:
+    free = shutil.disk_usage(self.path).free
+    if free >= self.min_free_bytes:
+      return
+    with self.lock:
+      if self.low_free_bytes is None:
+        self.low_free_bytes = free
+      for pid in self.pids:
+        os.kill(pid, signal.SIGKILL)
 
 
 class InputHasher:
