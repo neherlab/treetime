@@ -5,12 +5,9 @@ use crate::version::{BUILD_MODE, LONG_VERSION, NIGHTLY_BUILD_MODE};
 use deser::Serialize;
 use eyre::{Report, WrapErr};
 use parking_lot::Mutex;
-use reqwest::blocking::Client;
-use rustls::crypto::CryptoProvider;
-use rustls::crypto::ring::default_provider;
 use schemars::JsonSchema;
-use std::fs::{self, File};
-use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
+use std::fs;
+use std::io::{ErrorKind, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
@@ -18,8 +15,13 @@ use std::time::{Duration, Instant};
 use tempfile::Builder;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::error::report_to_string;
-use treetime_utils::{make_error, make_report};
+use treetime_utils::make_error;
 use zip::ZipArchive;
+
+#[cfg(not(target_family = "wasm"))]
+use crate::examples_fetch::fetch;
+#[cfg(target_family = "wasm")]
+use std::fs::File;
 
 pub const EXAMPLES_ASSET: &str = "examples.zip";
 
@@ -29,13 +31,9 @@ const TEMPORARY_PREFIX: &str = ".treetime-examples-";
 
 const FINDER_METADATA_FILE: &str = ".DS_Store";
 
-const CHUNK_SIZE: usize = 1 << 16;
-
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(250);
 
 const DOWNLOAD_THREAD_NAME: &str = "treetime-examples";
-
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub fn examples_url() -> String {
   if BUILD_MODE == NIGHTLY_BUILD_MODE {
@@ -260,42 +258,9 @@ fn remove_stale_temporaries(parent: &Path) -> Result<(), Report> {
   Ok(())
 }
 
-fn fetch(url: &str, file: &mut File, progress: &mut impl FnMut(DownloadProgress)) -> Result<(), Report> {
-  install_crypto_provider()?;
-  let client = Client::builder()
-    .user_agent(concat!("treetime/", env!("CARGO_PKG_VERSION")))
-    .connect_timeout(CONNECT_TIMEOUT)
-    .timeout(None)
-    .build()
-    .wrap_err("When creating the HTTP client")?;
-  let mut response = client.get(url).send()?.error_for_status()?;
-  let total = response.content_length();
-  let mut received = 0;
-  let mut buffer = vec![0; CHUNK_SIZE];
-  progress(DownloadProgress { received, total });
-  loop {
-    let read = response.read(&mut buffer)?;
-    if read == 0 {
-      break;
-    }
-    file.write_all(&buffer[..read])?;
-    received += u64::try_from(read)?;
-    progress(DownloadProgress { received, total });
-  }
-  file.flush()?;
-  if let Some(total) = total.filter(|total| *total != received) {
-    return make_error!("the download ended after {received} of {total} bytes");
-  }
-  Ok(())
-}
-
-fn install_crypto_provider() -> Result<(), Report> {
-  if CryptoProvider::get_default().is_some() || default_provider().install_default().is_ok() {
-    return Ok(());
-  }
-  CryptoProvider::get_default()
-    .map(|_| ())
-    .ok_or_else(|| make_report!("the TLS crypto provider could not be installed"))
+#[cfg(target_family = "wasm")]
+fn fetch(_url: &str, _file: &mut File, _progress: &mut impl FnMut(DownloadProgress)) -> Result<(), Report> {
+  make_error!("the example datasets download only in the CLI and in the desktop app")
 }
 
 fn remove_empty_target(target: &Path) -> Result<(), Report> {

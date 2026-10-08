@@ -12,19 +12,23 @@ use crate::run_config::{RunConfigRequest, RunConfigResponse, run_config};
 use crate::run_limits::RunLimits;
 use crate::runs::errors::invalid;
 use crate::runs::files::RunFile;
-use crate::runs::manager::{ConfigHook, RunManager};
+use crate::runs::manager::{ConfigHook, RunManager, StartedRun};
 use crate::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use log::{error, info};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::thread;
 use treetime_schema::{VersionInfo, version_info};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_error;
+
+#[cfg(not(target_family = "wasm"))]
+use eyre::WrapErr;
+#[cfg(not(target_family = "wasm"))]
+use std::thread;
 
 pub trait InputPolicy: Send + Sync {
   fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report>;
@@ -170,20 +174,35 @@ impl AppService {
     };
     let started = self.runs.start(id, request, self.hook(command))?;
     let record = started.record().clone();
-    let run_id = id.clone();
-    thread::Builder::new()
-      .name(format!("run-{}", id.as_str()))
-      .spawn(move || {
-        let terminal = started.run();
-        match json_write_str(&terminal, JsonPretty(false)) {
-          Ok(terminal) => info!("Run {} ended: {terminal}", run_id.as_str()),
-          Err(err) => error!(
-            "Run {} ended; its terminal event cannot be shown: {err}",
-            run_id.as_str()
-          ),
-        }
-      })
-      .wrap_err_with(|| format!("When starting a thread for run `{}`", id.as_str()))?;
+    execute(id, started)?;
     Ok(record)
+  }
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn execute(id: &JobId, started: StartedRun) -> Result<(), Report> {
+  let run_id = id.clone();
+  thread::Builder::new()
+    .name(format!("run-{}", id.as_str()))
+    .spawn(move || finish(&run_id, started))
+    .wrap_err_with(|| format!("When starting a thread for run `{}`", id.as_str()))?;
+  Ok(())
+}
+
+#[cfg(target_family = "wasm")]
+#[expect(
+  clippy::unnecessary_wraps,
+  reason = "the native variant returns the error of the thread start; this one computes the run in the calling thread, because the WebAssembly worker has no threads"
+)]
+fn execute(id: &JobId, started: StartedRun) -> Result<(), Report> {
+  finish(id, started);
+  Ok(())
+}
+
+fn finish(id: &JobId, started: StartedRun) {
+  let terminal = started.run();
+  match json_write_str(&terminal, JsonPretty(false)) {
+    Ok(terminal) => info!("Run {} ended: {terminal}", id.as_str()),
+    Err(err) => error!("Run {} ended; its terminal event cannot be shown: {err}", id.as_str()),
   }
 }

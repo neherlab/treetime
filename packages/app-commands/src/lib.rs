@@ -14,6 +14,8 @@ pub mod commands;
 pub mod config;
 pub mod datasets;
 pub mod examples_download;
+#[cfg(not(target_family = "wasm"))]
+mod examples_fetch;
 pub mod job;
 pub mod json_float;
 pub mod json_value;

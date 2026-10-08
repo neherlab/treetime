@@ -47,8 +47,6 @@ miette = { workspace = true }
 parking_lot = { workspace = true }
 plotters = { workspace = true }
 rand = { workspace = true }
-reqwest = { workspace = true }
-rustls = { workspace = true }
 saphyr = { workspace = true }
 schemars = { workspace = true }
 serde_json = { workspace = true }
@@ -78,6 +76,12 @@ proptest = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
+
+# The HTTP client of the examples download of the local apps; reqwest has no
+# blocking client on WebAssembly targets.
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+reqwest = { workspace = true }
+rustls = { workspace = true }
 
 [lints]
 workspace = true
