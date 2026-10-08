@@ -1,4 +1,4 @@
-use app_commands::runs::errors::invalid;
+use app_server::port::{header_pairs, port_request};
 use axum::body::Body;
 use axum::http::{HeaderMap, Request};
 use eyre::Report;
@@ -23,13 +23,12 @@ impl PortRequest {
       body,
       ..
     } = self;
-    let builder = headers.into_iter().fold(
-      Request::builder().method(method.as_str()).uri(url.as_str()),
-      |builder, header| builder.header(header.name, header.value),
-    );
-    builder
-      .body(body.map_or_else(Body::empty, |bytes| Body::from(bytes.to_vec())))
-      .map_err(|err| invalid(format!("the request `{method} {url}` is malformed: {err}")))
+    port_request(
+      &method,
+      &url,
+      headers.into_iter().map(|header| (header.name, header.value)),
+      body.map(|bytes| bytes.to_vec()),
+    )
   }
 }
 
@@ -41,12 +40,9 @@ pub struct PortHeader {
 
 impl PortHeader {
   pub fn list(headers: &HeaderMap) -> Vec<Self> {
-    headers
-      .iter()
-      .map(|(name, value)| Self {
-        name: name.as_str().to_owned(),
-        value: String::from_utf8_lossy(value.as_bytes()).into_owned(),
-      })
+    header_pairs(headers)
+      .into_iter()
+      .map(|(name, value)| Self { name, value })
       .collect()
   }
 }

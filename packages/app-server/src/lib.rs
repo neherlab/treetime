@@ -7,6 +7,7 @@ mod confine;
 pub mod error;
 mod events;
 mod openapi;
+pub mod port;
 pub mod routes;
 pub mod state;
 pub mod web;
