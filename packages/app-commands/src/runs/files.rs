@@ -4,15 +4,20 @@ use app_output::output_plan::OutputSelection;
 use deser::Serialize;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
+use parking_lot::Mutex;
 use schemars::JsonSchema;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::fs::{self, File};
-use std::io::{self, Seek, Write};
+use std::io::{self, Read, Seek, Write};
+use std::mem;
 use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
 use treetime_schema::skip_serializing_optionals;
 use zip::CompressionMethod;
 use zip::ZipWriter;
-use zip::write::SimpleFileOptions;
+use zip::write::{SimpleFileOptions, StreamWriter};
+
+pub const RUN_DOWNLOAD_CHUNK_SIZE: usize = 1024 * 1024;
 
 /// One file in a run's `out/` folder.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
@@ -83,30 +88,8 @@ pub fn resolve_run_file(out_dir: &Path, relative: &str) -> Result<PathBuf, Repor
 }
 
 pub fn write_run_zip(out_dir: &Path, folder_name: &str, writer: impl Write + Seek) -> Result<(), Report> {
-  fill_run_zip(
-    ZipWriter::new(writer),
-    out_dir,
-    folder_name,
-    CompressionMethod::Deflated,
-  )
-}
-
-pub fn stream_run_zip(out_dir: &Path, folder_name: &str, writer: impl Write) -> Result<(), Report> {
-  fill_run_zip(
-    ZipWriter::new_stream(writer),
-    out_dir,
-    folder_name,
-    CompressionMethod::Stored,
-  )
-}
-
-fn fill_run_zip<W: Write + Seek>(
-  mut zip: ZipWriter<W>,
-  out_dir: &Path,
-  folder_name: &str,
-  method: CompressionMethod,
-) -> Result<(), Report> {
-  let options = SimpleFileOptions::default().compression_method(method);
+  let mut zip = ZipWriter::new(writer);
+  let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
   for path in walk_files(out_dir)? {
     let name = format!("{folder_name}/{}", relative_name(path.strip_prefix(out_dir)?));
     zip
@@ -117,6 +100,131 @@ fn fill_run_zip<W: Write + Seek>(
   }
   zip.finish().wrap_err("When finishing the archive")?;
   Ok(())
+}
+
+pub fn stream_run_zip(out_dir: &Path, folder_name: &str, mut writer: impl Write) -> Result<(), Report> {
+  for chunk in RunZipChunks::new(out_dir, folder_name)? {
+    writer.write_all(&chunk?).wrap_err("When writing the archive")?;
+  }
+  Ok(())
+}
+
+pub struct RunZipChunks {
+  zip: Option<ZipWriter<StreamWriter<SharedBuffer>>>,
+  buffer: SharedBuffer,
+  pending: VecDeque<(PathBuf, String)>,
+  current: Option<FileChunks>,
+}
+
+impl RunZipChunks {
+  pub fn new(out_dir: &Path, folder_name: &str) -> Result<Self, Report> {
+    let pending = walk_files(out_dir)?
+      .into_iter()
+      .map(|path| {
+        let name = format!("{folder_name}/{}", relative_name(path.strip_prefix(out_dir)?));
+        Ok((path, name))
+      })
+      .collect::<Result<_, Report>>()?;
+    let buffer = SharedBuffer::default();
+    Ok(Self {
+      zip: Some(ZipWriter::new_stream(buffer.clone())),
+      buffer,
+      pending,
+      current: None,
+    })
+  }
+
+  fn advance(&mut self) -> Result<Option<Vec<u8>>, Report> {
+    loop {
+      let written = self.buffer.take();
+      if !written.is_empty() {
+        return Ok(Some(written));
+      }
+      let Some(zip) = self.zip.as_mut() else {
+        return Ok(None);
+      };
+      if let Some(file) = self.current.as_mut() {
+        match file.next() {
+          Some(block) => zip.write_all(&block?).wrap_err("When writing the archive")?,
+          None => self.current = None,
+        }
+      } else if let Some((path, name)) = self.pending.pop_front() {
+        zip
+          .start_file(
+            name,
+            SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
+          )
+          .wrap_err_with(|| format!("When adding '{}' to the archive", path.display()))?;
+        self.current = Some(FileChunks::open(&path)?);
+      } else if let Some(zip) = self.zip.take() {
+        zip.finish().wrap_err("When finishing the archive")?;
+      }
+    }
+  }
+}
+
+impl Iterator for RunZipChunks {
+  type Item = Result<Vec<u8>, Report>;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    let chunk = self.advance().transpose();
+    if matches!(chunk, Some(Err(_))) {
+      self.zip = None;
+      self.current = None;
+      self.buffer.take();
+    }
+    chunk
+  }
+}
+
+pub struct FileChunks {
+  file: File,
+  path: PathBuf,
+}
+
+impl FileChunks {
+  pub fn open(path: &Path) -> Result<Self, Report> {
+    Ok(Self {
+      file: File::open(path).wrap_err_with(|| format!("When opening '{}'", path.display()))?,
+      path: path.to_owned(),
+    })
+  }
+}
+
+impl Iterator for FileChunks {
+  type Item = Result<Vec<u8>, Report>;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    let mut block = vec![0; RUN_DOWNLOAD_CHUNK_SIZE];
+    match self.file.read(&mut block) {
+      Ok(0) => None,
+      Ok(length) => {
+        block.truncate(length);
+        Some(Ok(block))
+      },
+      Err(error) => Some(Err(error).wrap_err_with(|| format!("When reading '{}'", self.path.display()))),
+    }
+  }
+}
+
+#[derive(Clone, Default)]
+struct SharedBuffer(Arc<Mutex<Vec<u8>>>);
+
+impl SharedBuffer {
+  fn take(&self) -> Vec<u8> {
+    mem::take(&mut *self.0.lock())
+  }
+}
+
+impl Write for SharedBuffer {
+  fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+    self.0.lock().extend_from_slice(bytes);
+    Ok(bytes.len())
+  }
+
+  fn flush(&mut self) -> io::Result<()> {
+    Ok(())
+  }
 }
 
 fn walk_files(dir: &Path) -> Result<Vec<PathBuf>, Report> {
