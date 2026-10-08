@@ -14,4 +14,17 @@ describe("content security policy", () => {
   test("the development server also allows the inline script of hot reloading", () => {
     expect(contentSecurityPolicy(true)).toContain("script-src 'self' 'unsafe-inline';");
   });
+
+  test("an application with a WebAssembly back end may compile WebAssembly, and nothing else is evaluated", () => {
+    expect([
+      contentSecurityPolicy(false, { webAssembly: true }),
+      contentSecurityPolicy(true, { webAssembly: true }),
+    ]).toStrictEqual([
+      contentSecurityPolicy(false).replace("script-src 'self';", "script-src 'self' 'wasm-unsafe-eval';"),
+      contentSecurityPolicy(true).replace(
+        "script-src 'self' 'unsafe-inline';",
+        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';",
+      ),
+    ]);
+  });
 });

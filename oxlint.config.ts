@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { projectConfig } from "./dev/lints/oxlint/config.ts";
 import { openApiEnums } from "./dev/lints/oxlint/rules/no-contract-enum-copy.ts";
 
-const WEB_SCOPES = ["packages/app-ui/src/**", "packages/app-web/src/**", "packages/app-desktop/renderer/**"];
+const WEB_SCOPES = [
+  "packages/app-ui/src/**",
+  "packages/app-web/src/**",
+  "packages/app-web2/src/**",
+  "packages/app-desktop/renderer/**",
+];
 
 export default projectConfig({
   root: import.meta.dirname,
@@ -61,6 +66,7 @@ export default projectConfig({
     { files: ["packages/app-desktop/renderer/**"], dir: "app-desktop", web: true, allow: [] },
     { files: ["packages/app-ui/src/**"], dir: "app-ui", web: true, allow: [] },
     { files: ["packages/app-web/src/**"], dir: "app-web", web: true, allow: [] },
+    { files: ["packages/app-web2/src/**"], dir: "app-web2", web: true, allow: [] },
   ],
 
   restrictionAllowances: [
@@ -76,6 +82,7 @@ export default projectConfig({
       allow: ["zod"],
     },
     { files: ["packages/app-ui/src/preferences/storage.ts"], dir: "app-ui", web: true, allow: ["zod", "jsonParse"] },
+    { files: ["packages/app-web2/src/backend/protocol.ts"], dir: "app-web2", web: true, allow: ["zod"] },
     { files: ["packages/app-desktop/src/napi-error.ts"], dir: "app-desktop", web: false, allow: ["jsonParse"] },
     { files: ["packages/app-desktop/src/ipc-main.ts"], dir: "app-desktop", web: false, allow: ["ipcMain"] },
     { files: ["packages/app-desktop/src/ipc-renderer.ts"], dir: "app-desktop", web: false, allow: ["ipcRenderer"] },
@@ -84,7 +91,7 @@ export default projectConfig({
   contracts: {
     package: "@neherlab/app-contracts",
     enums: openApiEnums(readFileSync(join(import.meta.dirname, "packages/app-contracts/openapi.json"), "utf8")),
-    files: ["packages/app-ui/src/**", "packages/app-web/src/**", "packages/app-desktop/**"],
+    files: ["packages/app-ui/src/**", "packages/app-web/src/**", "packages/app-web2/src/**", "packages/app-desktop/**"],
   },
 
   overrides: [
@@ -122,6 +129,7 @@ export default projectConfig({
         "packages/app-ui/src/App.tsx",
         "packages/app-ui/src/ui/fonts.ts",
         "packages/app-web/src/main.tsx",
+        "packages/app-web2/src/main.tsx",
         "packages/app-desktop/renderer/main.tsx",
       ],
       rules: {

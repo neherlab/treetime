@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": [],
+    "jsx": "react-jsx",
+    "outDir": "dist",
+    "rootDir": "src",
+    "noEmit": true,
+    "paths": {
+      "auspice/src/*": ["../app-ui/src/auspice/types/*"]
+    }
+  },
+  "include": ["src"],
+  "references": [{ "path": "../app-contracts/tsconfig.generated.json" }]
+}

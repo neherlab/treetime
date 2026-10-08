@@ -1,7 +1,18 @@
 import type { Plugin } from "vite";
 
-export function contentSecurityPolicy(devServer: boolean): string {
-  const scriptSources = devServer ? "'self' 'unsafe-inline'" : "'self'";
+export interface ContentSecurityPolicyOptions {
+  webAssembly?: boolean;
+}
+
+export function contentSecurityPolicy(
+  devServer: boolean,
+  { webAssembly = false }: ContentSecurityPolicyOptions = {},
+): string {
+  const scriptSources = [
+    "'self'",
+    ...(devServer ? ["'unsafe-inline'"] : []),
+    ...(webAssembly ? ["'wasm-unsafe-eval'"] : []),
+  ].join(" ");
 
   return [
     "default-src 'self'",
@@ -17,7 +28,7 @@ export function contentSecurityPolicy(devServer: boolean): string {
   ].join("; ");
 }
 
-export function contentSecurityPolicyMeta(): Plugin {
+export function contentSecurityPolicyMeta(options: ContentSecurityPolicyOptions = {}): Plugin {
   let devServer = false;
 
   return {
@@ -29,7 +40,7 @@ export function contentSecurityPolicyMeta(): Plugin {
       return [
         {
           tag: "meta",
-          attrs: { "http-equiv": "Content-Security-Policy", content: contentSecurityPolicy(devServer) },
+          attrs: { "http-equiv": "Content-Security-Policy", content: contentSecurityPolicy(devServer, options) },
           injectTo: "head-prepend",
         },
       ];

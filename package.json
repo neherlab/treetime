@@ -8,7 +8,8 @@
       "packages/app-napi",
       "packages/app-ui",
       "packages/app-wasm",
-      "packages/app-web"
+      "packages/app-web",
+      "packages/app-web2"
     ],
     "catalog": {
       "@tailwindcss/vite": "4.3.3",
@@ -22,6 +23,7 @@
       "tailwindcss": "4.3.3",
       "typescript": "7.0.2",
       "vite": "8.3.0",
+      "vite-plugin-compression2": "2.5.3",
       "vitest": "5.0.1",
       "zod": "4.6.5"
     }
@@ -30,6 +32,7 @@
   "scripts": {
     "build:desktop": "turbo run build --filter=@neherlab/app-desktop",
     "build:web": "turbo run build --filter=@neherlab/app-web",
+    "build:web2": "turbo run build --filter=@neherlab/app-web2",
     "coverage": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=text --coverage.reporter=html --coverage.reportsDirectory=tmp/coverage/ts --coverage.include=\"packages/*/src/**/*.{ts,tsx}\"",
     "dev:desktop": "turbo run dev --filter=@neherlab/app-desktop",
     "format": "bun --bun oxfmt --write .",

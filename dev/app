@@ -1,20 +1,26 @@
 #!/usr/bin/env bash
 #
-# Usage: $0 <up|serve|health|status>
+# Usage: $0 <up|serve|health|status|up-web2|serve-web2>
 #
 # Servers of the web app: the API server (treetime-server), and in development
-# the Vite dev server, which proxies /api to it.
+# the Vite dev server, which proxies /api to it. The web2 app needs no API
+# server: its back end is the WebAssembly build in a web worker of the page, so
+# it runs from one Vite server.
 #
-#   up       Start both development servers in the foreground until Ctrl-C
-#   serve    Build the web app and the API server for production and serve both
-#            from one port in the foreground until Ctrl-C
-#   health   Probe both development servers; exit 1 when one is absent, not
-#            answering, or started from another commit than the checkout HEAD
-#   status   Print the resolved ports and URLs and what each server was started from
+#   up          Start both development servers in the foreground until Ctrl-C
+#   serve       Build the web app and the API server for production and serve both
+#               from one port in the foreground until Ctrl-C
+#   health      Probe both development servers; exit 1 when one is absent, not
+#               answering, or started from another commit than the checkout HEAD
+#   status      Print the resolved ports and URLs and what each server was started from
+#   up-web2     Start the web2 development server in the foreground until Ctrl-C;
+#               the WebAssembly back end must be built (just build-wasm)
+#   serve-web2  Build the web2 app for production and serve it in the foreground
+#               until Ctrl-C; the WebAssembly back end must be built (just build-wasm prod)
 #
 # Each checkout resolves its own ports from its path, so worktrees run side by
-# side. TREETIME_API_PORT, TREETIME_WEB_PORT and TREETIME_SERVE_PORT override the
-# resolved ports.
+# side. TREETIME_API_PORT, TREETIME_WEB_PORT, TREETIME_SERVE_PORT,
+# TREETIME_WEB2_PORT and TREETIME_WEB2_SERVE_PORT override the resolved ports.
 #
 # Each mode keeps its runs in its own directory of the checkout:
 #
@@ -44,6 +50,8 @@ state_dir="${root}/${web_dev_dir}/servers"
 api_base_port=3100
 web_base_port=5173
 serve_base_port=4100
+web2_base_port=4620
+web2_serve_base_port=2580
 
 resolve() {
   local toplevel offset branch
@@ -52,6 +60,8 @@ resolve() {
   export TREETIME_API_PORT="${TREETIME_API_PORT:-$((api_base_port + offset))}"
   export TREETIME_WEB_PORT="${TREETIME_WEB_PORT:-$((web_base_port + offset))}"
   export TREETIME_SERVE_PORT="${TREETIME_SERVE_PORT:-$((serve_base_port + offset))}"
+  export TREETIME_WEB2_PORT="${TREETIME_WEB2_PORT:-$((web2_base_port + offset))}"
+  export TREETIME_WEB2_SERVE_PORT="${TREETIME_WEB2_SERVE_PORT:-$((web2_serve_base_port + offset))}"
 
   if [[ "$(git rev-parse --path-format=absolute --git-dir)" == "$(git rev-parse --path-format=absolute --git-common-dir)" ]]; then
     TREETIME_HOSTNAME="treetime"
@@ -194,6 +204,8 @@ status() {
   printf 'api   port %s\n' "${TREETIME_API_PORT}"
   printf 'web   port %s\n' "${TREETIME_WEB_PORT}"
   printf 'serve port %s\n' "${TREETIME_SERVE_PORT}"
+  printf 'web2  port %s\n' "${TREETIME_WEB2_PORT}"
+  printf 'web2 serve port %s\n' "${TREETIME_WEB2_SERVE_PORT}"
   printf 'portless name %s.localhost (TREETIME_PORTLESS=%s)\n' "${TREETIME_HOSTNAME}" "${TREETIME_PORTLESS:-allowed}"
   printf 'checkout HEAD %s\n' "$(commit)"
   local svc
@@ -206,8 +218,22 @@ status() {
   done
 }
 
+up_web2() {
+  resolve
+  printf 'Starting the web2 server on http://127.0.0.1:%s (Ctrl-C to stop)\n' "${TREETIME_WEB2_PORT}" >&2
+  exec bun run --cwd packages/app-web2 dev
+}
+
+serve_web2() {
+  resolve
+  bun run --silent build:web2
+  printf 'Serving the production web2 app on http://127.0.0.1:%s (Ctrl-C to stop)\n' "${TREETIME_WEB2_SERVE_PORT}" >&2
+  exec bun run --cwd packages/app-web2 preview
+}
+
 case "${1:-}" in
 up | serve | health | status) "${1}" ;;
+up-web2 | serve-web2) "${1//-/_}" ;;
 *)
   sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g" >&2
   exit 1

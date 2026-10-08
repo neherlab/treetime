@@ -518,6 +518,16 @@ health:
 status:
     dev/app status
 
+# Start the web2 dev server, the web app on the WebAssembly back end in a web worker, in the foreground until Ctrl-C; after a Rust change run `just build-wasm` again
+[group("app")]
+up-web2: _js (build-wasm "dev")
+    dev/app up-web2
+
+# Build the web2 app for production (WebAssembly back end of the dist profile) and serve it until Ctrl-C
+[group("app")]
+serve-web2: _js (build-wasm "prod")
+    dev/app serve-web2
+
 # Start the desktop app in development mode, with the Node addon of the dev profile (in the container: TREETIME_DOCKER_X11=1)
 [group("app")]
 desktop: _js (build-napi "dev")
@@ -532,6 +542,11 @@ desktop-prod: build-desktop
 [group("app")]
 build-web: _js
     bun run --silent build:web
+
+# Production build of the web2 app, with the WebAssembly back end of the dist profile
+[group("app")]
+build-web2: _js (build-wasm "prod")
+    bun run --silent build:web2
 
 # Production build of the desktop app, with the Node addon of the dist profile
 [group("app")]

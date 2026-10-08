@@ -1,0 +1,34 @@
+{
+  "name": "@neherlab/app-web2",
+  "version": "0.0.1",
+  "private": true,
+  "description": "TreeTime web application on the WebAssembly back end in a web worker",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit && tsc -p tsconfig.node.json --noEmit"
+  },
+  "dependencies": {
+    "@neherlab/app-contracts": "workspace:*",
+    "@neherlab/app-ui": "workspace:*",
+    "@neherlab/app-wasm": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "remeda": "2.50.0",
+    "ts-pattern": "5.9.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-compression2": "catalog:"
+  }
+}
