@@ -213,7 +213,7 @@ describe("zod_schemas error and enum shapes", () => {
     expect(zErrorResponse.safeParse({ code: "E_BAD", message: "bad input", causes: [] }).success).toBe(false);
   });
 
-  test.each(["trace", "debug", "info", "warn", "error"])("LogLevel accepts %s, the spelling Rust sends", (level) => {
+  test.each(["trace", "debug", "info", "warn", "error"])("zLogLevel accepts %s, the spelling Rust sends", (level) => {
     expect(zLogLevel.safeParse(level).success).toBe(true);
   });
 
