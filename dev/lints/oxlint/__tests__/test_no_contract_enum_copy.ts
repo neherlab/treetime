@@ -45,6 +45,7 @@ tester.run("custom/no-contract-enum-copy", noContractEnumCopyRule, {
     },
     {
       code: 'type Status = "valid" | "invalid";',
+      options: ENUMS,
       errors: [{ messageId: "enumCopy", data: { values: "valid, invalid" } }],
     },
   ],
