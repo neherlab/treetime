@@ -19,7 +19,7 @@ export function useRerun(record: RunRecord, command: AppCommand = record.command
       command,
       config: draft.config,
       sources: Object.fromEntries(
-        Object.entries(draft.inputLabels).map(([key, label]) => [key, { label, origin: "run" as const }]),
+        Object.entries(draft.inputLabels).map(([key, label]) => [key, { label, origin: "run" as const, run_id: record.id }]),
       ),
       from_run_id: record.id,
     });

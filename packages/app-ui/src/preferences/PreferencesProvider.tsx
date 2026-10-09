@@ -1,31 +1,47 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
+import { lostFilesMessage } from "../analysis/lostRuns";
+import { useApiContext } from "../api/context";
 import { LoadingState } from "../components/PageShell";
 import { toast } from "../ui/toast";
 import type { PreferencesStorage } from "./storage";
-import { applyPreferences, PreferencesSaver } from "./sync";
+import { applyPreferences, PreferencesSaver, restorePreferences } from "./sync";
 
 const PREFERENCES_KEY = ["preferences"] as const;
 
 export function PreferencesProvider({ storage, children }: { storage: PreferencesStorage; children: React.ReactNode }) {
   const { setTheme } = useTheme();
+  const { client } = useApiContext();
 
-  const { data: loaded, error } = useQuery({
+  const { data: restored, error } = useQuery({
     queryKey: PREFERENCES_KEY,
     queryFn: async () => {
-      applyPreferences(await storage.load(), setTheme);
+      const { preferences, dropped } = await restorePreferences(client, await storage.load(), reportToConsole);
 
-      return true;
+      applyPreferences(preferences, setTheme);
+
+      return { dropped };
     },
     staleTime: Infinity,
     gcTime: Infinity,
     retry: false,
   });
 
+  const loaded = restored !== undefined;
+  const dropped = restored?.dropped;
+  const reported = useRef(false);
+
   useEffect(() => {
-    if (loaded !== true) {
+    if (!reported.current && dropped !== undefined && dropped.length > 0) {
+      reported.current = true;
+      toast.add(lostFilesMessage(dropped));
+    }
+  }, [dropped]);
+
+  useEffect(() => {
+    if (!loaded) {
       return undefined;
     }
 
@@ -40,10 +56,14 @@ export function PreferencesProvider({ storage, children }: { storage: Preference
     throw error;
   }
 
-  return loaded === true ? children : <LoadingState text="Starting TreeTime" />;
+  return loaded ? children : <LoadingState text="Starting TreeTime" />;
 }
 
 function reportSaveFailure(message: string): void {
-  console.error(`[TreeTime] the preferences could not be saved: ${message}`);
+  reportToConsole(`the preferences could not be saved: ${message}`);
   toast.add({ title: "The preferences could not be saved", description: message });
+}
+
+function reportToConsole(message: string): void {
+  console.error(`[TreeTime] ${message}`);
 }

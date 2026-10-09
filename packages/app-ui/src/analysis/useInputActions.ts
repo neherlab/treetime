@@ -1,4 +1,4 @@
-import type { AppCommand, JsonValue, UiDraftOrigin } from "@neherlab/app-contracts";
+import type { AppCommand, JsonValue, UiDraftSource } from "@neherlab/app-contracts";
 import { runsCreate, runsUploadInput } from "@neherlab/app-contracts/client";
 import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
@@ -12,12 +12,14 @@ import { pendingUploadRun } from "./pendingUpload";
 
 interface InputActions {
   canPick: boolean;
-  assign: (key: string, value: JsonValue, label: string, origin: UiDraftOrigin, size?: number) => void;
-  assignAll: (assignments: readonly InputAssignment[], origin: UiDraftOrigin) => void;
+  assign: (key: string, value: JsonValue, source: UiDraftSource) => void;
+  assignAll: (assignments: readonly InputAssignment[], from: InputOrigin) => void;
   clear: (key: string, emptyValue: JsonValue | undefined) => void;
   addFile: (key: string, file: File, list: boolean) => Promise<void>;
   pick: (key: string, title: string, extensions: string[], list: boolean) => Promise<void>;
 }
+
+export type InputOrigin = Omit<UiDraftSource, "label" | "size">;
 
 export function useInputActions(command: AppCommand): InputActions {
   const { client } = useApiContext();
@@ -26,17 +28,17 @@ export function useInputActions(command: AppCommand): InputActions {
   const setSource = useDraftStore((state) => state.setSource);
 
   const assign = useCallback(
-    (key: string, value: JsonValue, label: string, origin: UiDraftOrigin, size?: number) => {
+    (key: string, value: JsonValue, source: UiDraftSource) => {
       setValue(key, toFormValue(value), { shouldDirty: true, shouldValidate: true });
-      setSource(key, size === undefined ? { label, origin } : { label, origin, size });
+      setSource(key, source);
     },
     [setSource, setValue],
   );
 
   const assignAll = useCallback(
-    (assignments: readonly InputAssignment[], origin: UiDraftOrigin) => {
+    (assignments: readonly InputAssignment[], from: InputOrigin) => {
       for (const assignment of assignments) {
-        assign(assignment.key, assignment.value, assignment.label, origin);
+        assign(assignment.key, assignment.value, { ...from, label: assignment.label });
       }
     },
     [assign],
@@ -72,19 +74,25 @@ export function useInputActions(command: AppCommand): InputActions {
     async (key: string, file: File, list: boolean) => {
       if (host !== null) {
         const path = host.pathForFile(file);
-        assign(key, list ? [path] : path, file.name, "local", file.size);
+        assign(key, list ? [path] : path, { label: file.name, origin: "local", size: file.size });
 
         return;
       }
 
+      const runId = await uploadRun();
       const { data: uploaded } = await runsUploadInput({
         client,
-        path: { id: await uploadRun(), name: file.name },
+        path: { id: runId, name: file.name },
         body: file,
         throwOnError: true,
       });
 
-      assign(key, list ? [uploaded.path] : uploaded.path, file.name, "upload", uploaded.size);
+      assign(key, list ? [uploaded.path] : uploaded.path, {
+        label: file.name,
+        origin: "upload",
+        size: uploaded.size,
+        run_id: runId,
+      });
     },
     [assign, client, host, uploadRun],
   );
@@ -99,7 +107,7 @@ export function useInputActions(command: AppCommand): InputActions {
       const [first] = paths;
 
       if (first !== undefined) {
-        assign(key, list ? paths : first, paths.map(baseName).join(", "), "local");
+        assign(key, list ? paths : first, { label: paths.map(baseName).join(", "), origin: "local" });
       }
     },
     [assign, host],

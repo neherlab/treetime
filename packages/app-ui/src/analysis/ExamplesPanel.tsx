@@ -96,7 +96,7 @@ function DatasetRow({ command, dataset, close }: { command: AppCommand; dataset:
   const inputs = useMemo(() => datasetInputs(dataset, command), [command, dataset]);
 
   const load = useCallback(() => {
-    actions.assignAll(inputs, "dataset");
+    actions.assignAll(inputs, { origin: "dataset" });
     close();
   }, [actions, close, inputs]);
 
@@ -210,9 +210,9 @@ function EarlierRow({
   const actions = useInputActions(command);
 
   const use = useCallback(() => {
-    actions.assignAll(inputs, "run");
+    actions.assignAll(inputs, { origin: "run", run_id: record.id });
     close();
-  }, [actions, close, inputs]);
+  }, [actions, close, inputs, record.id]);
 
   return (
     <TableRow>

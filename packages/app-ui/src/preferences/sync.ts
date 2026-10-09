@@ -1,6 +1,8 @@
 import { errorMessage, type UiSettings } from "@neherlab/app-contracts";
+import type { ApiClient } from "@neherlab/app-contracts/client";
 import { Debouncer } from "@tanstack/react-pacer";
 
+import { forgetLostRuns } from "../analysis/lostRuns";
 import { useDraftStore } from "../store/draft";
 import { usePreferencesStore } from "../store/preferences";
 import type { PreferencesStorage } from "./storage";
@@ -19,6 +21,31 @@ export function applyPreferences(loaded: UiSettings, setTheme: (theme: string) =
   if (preferences.theme !== undefined) {
     setTheme(preferences.theme);
   }
+}
+
+export async function restorePreferences(
+  client: ApiClient,
+  loaded: UiSettings,
+  reportFailure: (message: string) => void,
+): Promise<RestoredPreferences> {
+  if (loaded.draft === undefined) {
+    return { preferences: loaded, dropped: [] };
+  }
+
+  try {
+    const { draft, dropped } = await forgetLostRuns(client, loaded.draft);
+
+    return { preferences: { ...loaded, draft }, dropped };
+  } catch (error: unknown) {
+    reportFailure(`the runs of the saved form could not be checked: ${errorMessage(error)}`);
+
+    return { preferences: loaded, dropped: [] };
+  }
+}
+
+export interface RestoredPreferences {
+  preferences: UiSettings;
+  dropped: string[];
 }
 
 export function currentPreferences(): UiSettings {

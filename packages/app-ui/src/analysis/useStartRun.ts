@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import { useApiContext } from "../api/context";
 import { useDraftStore } from "../store/draft";
 import { useToastManager } from "../ui/toast";
+import { forgetLostRuns, lostFilesMessage } from "./lostRuns";
 import { pendingUploadRun } from "./pendingUpload";
 
 export function useStartRun(command: AppCommand) {
@@ -15,10 +16,19 @@ export function useStartRun(command: AppCommand) {
 
   return useCallback(
     async (config: SparseConfig) => {
-      const { draft, clearRuns } = useDraftStore.getState();
+      const { draft, clearRuns, load } = useDraftStore.getState();
 
       try {
-        const upload = await pendingUploadRun(client, draft.upload_run_id);
+        const kept = await forgetLostRuns(client, draft);
+
+        if (kept.dropped.length > 0) {
+          load(kept.draft);
+          toasts.add(lostFilesMessage(kept.dropped));
+
+          return;
+        }
+
+        const upload = await pendingUploadRun(client, kept.draft.upload_run_id);
 
         const { data: record } =
           upload === undefined

@@ -2,10 +2,11 @@ import type { UiSettings } from "@neherlab/app-contracts";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { PreferencesStorage } from "../preferences/storage";
-import { applyPreferences, currentPreferences, PreferencesSaver } from "../preferences/sync";
+import { applyPreferences, currentPreferences, PreferencesSaver, restorePreferences } from "../preferences/sync";
 import { useDraftStore } from "../store/draft";
 import { freshDraft } from "../store/draftSchema";
 import { usePreferencesStore } from "../store/preferences";
+import { FakeServer, json } from "./api_server";
 
 describe("sync preferences", () => {
   beforeEach(() => {
@@ -36,6 +37,50 @@ describe("sync preferences", () => {
     });
 
     expect([themes, currentPreferences()]).toStrictEqual([[], { draft: freshDraft("timetree") }]);
+  });
+});
+
+describe("restore preferences", () => {
+  const draft = {
+    ...freshDraft("clock"),
+    config: { ...freshDraft("clock").config, tree: "/treetime/runs/r1/inputs/tree.nwk" },
+    sources: { tree: { label: "tree.nwk", origin: "upload" as const, run_id: "r1" } },
+    upload_run_id: "r1",
+  };
+
+  test("a saved form loses the files of a run that the back end no longer has", async () => {
+    const server = new FakeServer({});
+
+    await expect(restorePreferences(server.client(), { theme: "dark", draft }, failTest)).resolves.toStrictEqual({
+      preferences: { theme: "dark", draft: freshDraft("clock") },
+      dropped: ["tree.nwk"],
+    });
+  });
+
+  test("preferences without a form ask the back end nothing", async () => {
+    const server = new FakeServer({});
+
+    await expect(restorePreferences(server.client(), { sidebar_width: 300 }, failTest)).resolves.toStrictEqual({
+      preferences: { sidebar_width: 300 },
+      dropped: [],
+    });
+    expect(server.keys()).toStrictEqual([]);
+  });
+
+  test("a failed lookup keeps the saved form and is reported", async () => {
+    const failures: string[] = [];
+    const server = new FakeServer({
+      "GET /api/runs/r1": () => json({ code: "internal_error", message: "the server is down", causes: [] }, 500),
+    });
+
+    const restored = await restorePreferences(server.client(), { draft }, (message) => {
+      failures.push(message);
+    });
+
+    expect([restored, failures]).toStrictEqual([
+      { preferences: { draft }, dropped: [] },
+      ["the runs of the saved form could not be checked: the server is down"],
+    ]);
   });
 });
 
