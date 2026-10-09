@@ -95,6 +95,8 @@ just run treetime timetree --tree=data/$v/tree.nwk --metadata=data/$v/metadata.t
 
 The custom dylint library and the oxlint plugin of `dev/lints/oxlint/` are both named `custom`, so a suppression reads `#[cfg_attr(dylint_lib = "custom", expect(no_comments, reason = ".."))]` or `// oxlint-disable-next-line custom/no-vague-identifiers -- reason`.
 
+Clippy rejects `#[allow]` on an item: suppress a lint on the narrowest item with `#[expect(<lint>, reason = "..")]`, which fails once the lint no longer fires, so a stale suppression cannot stay.
+
 The project settings of the lints are in these files:
 
 - `justfile` variables: `dylint_rustflags` (the lint levels of the custom library), the check groups `checks_*` with `check_fast` and `check_full`, `lint_fast`, `lint_full`, `public_api_crates`, `dockerfiles`, and `react_pin_reason`
