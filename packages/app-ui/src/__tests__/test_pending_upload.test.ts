@@ -45,10 +45,8 @@ describe("pending upload record", () => {
   test("only a created run is a pending upload", () => {
     const created = runRecord("r1", "created");
 
-    expect([pendingUpload(created), pendingUpload(runRecord("r1", "running")), pendingUpload(undefined)]).toStrictEqual([
-      created,
-      undefined,
-      undefined,
-    ]);
+    expect([pendingUpload(created), pendingUpload(runRecord("r1", "running")), pendingUpload(undefined)]).toStrictEqual(
+      [created, undefined, undefined],
+    );
   });
 });
