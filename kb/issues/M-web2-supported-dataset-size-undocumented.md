@@ -21,6 +21,9 @@ Measured with the release profile of `wasm32-unknown-emscripten` in Node 24, aga
 > [!IMPORTANT]
 > **Investigation required.** The measurements above ran in Node, one run per instance. Measure the memory of the worker in Chrome, Firefox, and Safari, and the memory after several large runs in one session, because the linear memory never shrinks and the run store keeps every output file in memory.
 
+> [!IMPORTANT]
+> **Investigation required.** web2 applies no grid point limit of its own: `browser_config()` in `packages/app-wasm/src/backend.rs` sets no `max_grid_points` and no app settings, so a run without `max_grid_points` uses the built-in 1 000 000 points ([kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md)). An allocation that fails in the module aborts it, and the abort loses every run of the page ([M-web2-wasm-panic-loses-the-back-end-state.md](M-web2-wasm-panic-loses-the-back-end-state.md)). Measure the peak linear memory of `mpox/clade-ii/1000` `timetree` with `--max-iter=1` at fixed clock rates from `1e-4` to `2e-3` in the module, as the decision measured the public server, and check whether any run reaches 4 GiB below the limit error. Only such a run justifies a lower default for web2. That default would fill runs without a value and accept higher values, unlike `RunLimits::Server`, which rejects them.
+
 ## Fix direction
 
 Document the dataset sizes that web2 supports, and show the CLI as the tool for larger datasets and for faster runs on several threads.
