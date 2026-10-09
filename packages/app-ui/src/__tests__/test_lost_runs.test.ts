@@ -10,7 +10,11 @@ const FRESH = freshDraft("clock");
 
 const DRAFT: UiDraft = {
   ...FRESH,
-  config: { ...FRESH.config, tree: "/treetime/runs/r1/inputs/tree.nwk", metadata: "/treetime/runs/r2/inputs/dates.tsv" },
+  config: {
+    ...FRESH.config,
+    tree: "/treetime/runs/r1/inputs/tree.nwk",
+    metadata: "/treetime/runs/r2/inputs/dates.tsv",
+  },
   sources: {
     tree: { label: "tree.nwk", origin: "upload", run_id: "r1" },
     metadata: { label: "dates.tsv", origin: "run", run_id: "r2" },
