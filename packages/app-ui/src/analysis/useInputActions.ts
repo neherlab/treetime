@@ -80,6 +80,7 @@ export function useInputActions(command: AppCommand): InputActions {
       }
 
       const runId = await uploadRun();
+
       const { data: uploaded } = await runsUploadInput({
         client,
         path: { id: runId, name: file.name },

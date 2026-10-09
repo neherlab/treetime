@@ -12,7 +12,7 @@ export async function forgetLostRuns(client: ApiClient, draft: UiDraft): Promise
   return lost.size === 0 ? { draft, dropped: [] } : forgetRuns(draft, lost);
 }
 
-export function lostFilesMessage(labels: readonly string[]): { title: string; description: string } {
+export function lostFilesMessage(labels: readonly string[]) {
   return {
     title: "Some input files are no longer available",
     description: `The back end no longer has ${labels.join(", ")}, so the form left them out. Add them again.`,

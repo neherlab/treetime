@@ -69,6 +69,7 @@ describe("restore preferences", () => {
 
   test("a failed lookup keeps the saved form and is reported", async () => {
     const failures: string[] = [];
+
     const server = new FakeServer({
       "GET /api/runs/r1": () => json({ code: "internal_error", message: "the server is down", causes: [] }, 500),
     });
