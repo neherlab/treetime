@@ -13,7 +13,7 @@ use strum_macros::Display;
 use treetime_utils::adapters::{Array2Rows, ArrayVec};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -138,7 +138,7 @@ pub struct JC69Params {
   pub(crate) alphabet: AlphabetName,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -162,7 +162,7 @@ pub struct K80Params {
   pub(crate) alphabet: AlphabetName,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -188,7 +188,7 @@ pub struct F81Params {
   pub(crate) alphabet: AlphabetName,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -325,7 +325,7 @@ fn create_transversion_transition_W(alphabet: &Alphabet, kappa: f64) -> Result<A
   Ok(W)
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

@@ -8,7 +8,7 @@ mod tests {
 
   proptest! {
     #[test]
-    #[allow(clippy::float_cmp, reason = "the peak is subtracted from itself, which is exactly zero")]
+    #[expect(clippy::float_cmp, reason = "the peak is subtracted from itself, which is exactly zero")]
     fn test_prop_distribution_normalize_peak_is_zero(y in generators::neglog_values()) {
       let normalized = helpers::normalized_values(&y);
       prop_assert_eq!(0.0, normalized.iter().copied().fold(f64::INFINITY, f64::min));

@@ -250,7 +250,7 @@ mod tests {
       assert_every_child_placed_once(&plan, children.len());
     }
 
-    #[allow(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
+    #[expect(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
     #[test]
     fn test_prop_sweep_resolves_fully_with_generous_window(seed in any::<u64>()) {
       let n_children = 8;
@@ -311,7 +311,7 @@ mod tests {
     Ok(())
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

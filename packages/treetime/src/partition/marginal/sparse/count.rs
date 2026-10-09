@@ -12,7 +12,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::array::ndarray::argmax_first;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -106,7 +106,7 @@ fn fixed_profile_for_var<'a>(dist: &'a SparseSeqDistribution, var: &'a VarPos) -
   dist.fixed.get(&var.state).unwrap_or(&var.dis)
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -157,7 +157,7 @@ fn accumulate_site_transition_weighted(
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

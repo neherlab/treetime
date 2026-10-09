@@ -93,7 +93,7 @@ impl ClockSet {
     (self.d_sum() - self.t_sum() * rate) / self.norm()
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
@@ -101,7 +101,7 @@ impl ClockSet {
     Array2::from_shape_vec((2, 2), vec![self.tsq_sum(), self.t_sum(), self.t_sum(), self.norm()]).unwrap()
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]

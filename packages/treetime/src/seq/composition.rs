@@ -40,7 +40,7 @@ impl Composition {
     self.add_histogram(&char_histogram(sequence.as_ref()));
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

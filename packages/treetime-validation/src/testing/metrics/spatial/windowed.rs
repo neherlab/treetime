@@ -44,7 +44,7 @@ pub struct WindowedSummary {
   pub(crate) sliding_max_max: f64,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

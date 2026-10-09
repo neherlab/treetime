@@ -15,7 +15,7 @@ use treetime_utils::interval::range::range_contains;
 
 const EPS: f64 = 1e-4;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -137,7 +137,7 @@ pub(crate) fn propagate_raw(
   message
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -199,7 +199,7 @@ fn is_site_resolved(dis: &Array1<f64>, epsilon: f64) -> bool {
   is_max_above(dis, 1.0 - epsilon)
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

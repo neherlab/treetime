@@ -37,7 +37,7 @@ pub(crate) fn process_backward_indexed(
   })
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   clippy::unwrap_used,
   reason = "expect on a value an upstream invariant guarantees is present; unwrap on a value an upstream invariant guarantees is present"

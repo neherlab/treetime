@@ -163,7 +163,7 @@ fn substitute_step_refs(
   })
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

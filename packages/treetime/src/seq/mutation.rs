@@ -387,7 +387,7 @@ impl Sub {
 impl FromStr for Sub {
   type Err = Report;
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]

@@ -30,7 +30,7 @@ pub fn get_exactly_one_mut<T>(x: &mut [T]) -> Result<&mut T, Report> {
   }
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "documented non-empty precondition; into_option is Some for a non-empty iterator"
 )]

@@ -101,7 +101,7 @@ pub(crate) fn fitch_backward(graph: &Graph, partition: &mut PartitionFitch) -> R
   Ok(())
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -185,7 +185,7 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: &mut PartitionFitch) -> Re
   Ok(())
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::expect_used,
   reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present"

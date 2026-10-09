@@ -77,7 +77,7 @@ mod tests {
   fn test_date_constraint_exact_constructor() {
     let c = DateConstraint::exact(2024.5);
     assert!(c.is_exact());
-    #[allow(clippy::float_cmp, reason = "exact literal round-trip, no arithmetic")]
+    #[expect(clippy::float_cmp, reason = "exact literal round-trip, no arithmetic")]
     {
       assert_eq!(2024.5, c.mean());
     }
@@ -103,7 +103,7 @@ mod tests {
       start: 2020.0,
       end: 2021.0,
     };
-    #[allow(clippy::float_cmp, reason = "exact subtraction of integer-valued literals")]
+    #[expect(clippy::float_cmp, reason = "exact subtraction of integer-valued literals")]
     {
       assert_eq!(1.0, r.width());
     }

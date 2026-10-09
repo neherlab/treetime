@@ -172,10 +172,10 @@ pub(crate) struct OptimizeLoopResult {
 
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
 
-  #[allow(dead_code, reason = "read only in test code")]
+  #[cfg_attr(not(test), expect(dead_code, reason = "read only in test code"))]
   pub lh_history: Vec<LogLh>,
 
-  #[allow(dead_code, reason = "read only in test code")]
+  #[cfg_attr(not(test), expect(dead_code, reason = "read only in test code"))]
   pub stopped_at: Option<(usize, ConvergenceReason)>,
 }
 
@@ -429,7 +429,7 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
   })
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

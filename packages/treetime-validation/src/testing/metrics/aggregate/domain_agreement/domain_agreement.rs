@@ -35,7 +35,7 @@ pub struct DomainAgreementMetrics {
 
 #[bon]
 impl DomainAgreementMetrics {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
@@ -147,7 +147,7 @@ impl DomainAgreementMetrics {
   )
 )]
 impl fmt::Display for DomainAgreementMetrics {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

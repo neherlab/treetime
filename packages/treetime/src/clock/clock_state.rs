@@ -57,7 +57,7 @@ impl ClockInputs {
     Self { nodes, edges }
   }
 
-  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
+  #[expect(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub fn node(&self, key: GraphNodeKey) -> &ClockNodeInput {
     self
@@ -66,7 +66,7 @@ impl ClockInputs {
       .unwrap_or_else(|| panic!("Clock inputs are missing node {key}"))
   }
 
-  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
+  #[expect(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub(crate) fn node_mut(&mut self, key: GraphNodeKey) -> &mut ClockNodeInput {
     self
@@ -75,7 +75,7 @@ impl ClockInputs {
       .unwrap_or_else(|| panic!("Clock inputs are missing node {key}"))
   }
 
-  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
+  #[expect(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub(crate) fn edge(&self, key: GraphEdgeKey) -> &ClockEdgeInput {
     self
@@ -133,7 +133,7 @@ impl ClockState {
       .unwrap_or_else(|| panic!("Clock state is missing node {key}"))
   }
 
-  #[allow(clippy::panic, reason = "panics on a violated internal invariant")]
+  #[expect(clippy::panic, reason = "panics on a violated internal invariant")]
   #[must_use]
   pub(crate) fn edge(&self, key: GraphEdgeKey) -> &ClockEdgeState {
     self

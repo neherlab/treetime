@@ -52,7 +52,7 @@ pub fn ndarray_pad_zeros_right(input: &Array1<f64>, target_length: usize) -> Arr
   result
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "grid length to f64; exact for any representable grid size"
 )]
@@ -253,7 +253,7 @@ pub fn sorted<T: FloatCore + Clone>(arr: &Array1<T>) -> Array1<T> {
   result
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "an owned Array1 is contiguous, so as_slice_mut is always Some"
 )]
@@ -263,7 +263,7 @@ pub fn sort_inplace<T: FloatCore>(arr: &mut Array1<T>) {
 
 const MAX_SPACING_ULPS: f64 = 64.0;
 
-#[allow(clippy::unwrap_used, reason = "MAX_SPACING_ULPS is representable in any Float T")]
+#[expect(clippy::unwrap_used, reason = "MAX_SPACING_ULPS is representable in any Float T")]
 pub fn has_uniform_spacing<T: Float>(grid: &Array1<T>) -> bool {
   if grid.len() < 2 {
     return true;

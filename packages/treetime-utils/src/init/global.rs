@@ -34,7 +34,7 @@ fn log_level_str(record: &Record) -> String {
   level_str
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "one-time process init; a failed hook install is unrecoverable and must abort startup"
 )]

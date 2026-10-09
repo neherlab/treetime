@@ -94,7 +94,7 @@ pub struct PointwiseErrorSummary {
   pub(crate) log_max: f64,
 }
 
-#[allow(clippy::integer_division, reason = "integer division is the intended floor division")]
+#[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
 fn compute_median(sorted: &[f64]) -> f64 {
   if sorted.is_empty() {
     return 0.0;

@@ -6,7 +6,7 @@ pub fn softmax_with_log_norm(log_vec: ArrayView1<'_, f64>) -> (Array1<f64>, f64)
   softmax_with_log_norm_owned(log_vec.to_owned())
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "element counts to f64 for uniform normalization; exact for any realistic length"
 )]

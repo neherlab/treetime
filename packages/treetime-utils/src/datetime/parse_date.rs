@@ -83,7 +83,7 @@ pub fn parse_date_range(date_range_str: &str, options: &DateParserOptions) -> Re
   make_error!("Unrecognized date range format: {date_range_str}")
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -111,7 +111,7 @@ pub fn parse_date_with_format(
 
 static DATE_RANGE_REGEX: LazyLock<Vec<(Regex, String)>> = LazyLock::new(create_date_range_regexes);
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]

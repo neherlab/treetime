@@ -8,7 +8,7 @@ pub fn suggestion_suffix(input: &str, candidates: &[&str]) -> String {
   }
 }
 
-#[allow(clippy::integer_division, reason = "integer division is the intended floor division")]
+#[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
 fn did_you_mean(input: &str, candidates: &[&str]) -> Option<String> {
   let threshold = (input.len() / 3).max(1) + 1;
   candidates

@@ -125,7 +125,7 @@ pub(crate) fn slide_bifurcating_root_for_child(
   Ok(())
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

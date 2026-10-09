@@ -23,7 +23,7 @@ pub(crate) fn expand_range(min_value: f64, max_value: f64) -> (f64, f64) {
   (min_value - padding, max_value + padding)
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

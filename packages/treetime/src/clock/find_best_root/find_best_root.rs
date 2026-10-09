@@ -14,7 +14,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::collections::container::get_exactly_one;
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

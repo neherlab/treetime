@@ -42,7 +42,7 @@ impl<T: InterpElem> Grid<T> {
     Ok(Self { x_min, dx, n_points })
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
@@ -100,7 +100,7 @@ impl<T: InterpElem> Grid<T> {
     self.x_min
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
@@ -123,7 +123,7 @@ impl<T: InterpElem> Grid<T> {
     self.n_points
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
@@ -134,7 +134,7 @@ impl<T: InterpElem> Grid<T> {
     self.x_min + self.dx * T::from(idx).unwrap()
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]

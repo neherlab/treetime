@@ -13,7 +13,7 @@ use tokio_stream::{self as stream, Stream, StreamExt as _};
 use tokio_util::sync::CancellationToken;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-#[allow(
+#[expect(
   clippy::disallowed_methods,
   reason = "the synchronous event log cannot await bounded sends, so SSE buffering does not apply backpressure"
 )]
@@ -28,7 +28,7 @@ pub(crate) fn run_events_sse(state: &AppState, id: &JobId, from: u64) -> Result<
   Ok(TypedSse::new(events, run_sse_event))
 }
 
-#[allow(
+#[expect(
   clippy::disallowed_methods,
   reason = "the synchronous event log cannot await bounded sends, so SSE buffering does not apply backpressure"
 )]

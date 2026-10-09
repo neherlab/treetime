@@ -82,7 +82,7 @@ impl From<VarPosMap> for BTreeMap<usize, VarPos> {
 impl Index<usize> for VarPosMap {
   type Output = VarPos;
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "indexing by a missing position is a caller bug, as with BTreeMap"
   )]

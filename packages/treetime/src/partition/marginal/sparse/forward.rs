@@ -62,7 +62,7 @@ pub(crate) fn process_forward_indexed(
   })
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -165,7 +165,7 @@ struct SparseEdgeForwardOut {
   subs_ml: Vec<Sub>,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::unwrap_used,
   reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"

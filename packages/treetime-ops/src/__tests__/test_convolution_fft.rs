@@ -63,7 +63,7 @@ mod tests {
       &f.conv_fft(g, ConvMode::Full, PaddingMode::Zeros).unwrap() * dx
     }
 
-    #[allow(clippy::as_conversions, reason = "small test indices convert exactly to f64")]
+    #[expect(clippy::as_conversions, reason = "small test indices convert exactly to f64")]
     fn values(len: usize, seed: usize) -> Array1<f64> {
       Array1::from_shape_fn(len, |i| ((i * 7 + seed * 13) as f64 * 0.37).sin().abs() + 0.01)
     }

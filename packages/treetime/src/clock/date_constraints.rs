@@ -9,10 +9,9 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::date::{DateConstraint, DateValue};
 
-#[allow(
+#[expect(
   clippy::as_conversions,
-  clippy::unwrap_used,
-  reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
+  reason = "count/index numeric cast is exact for the domain range"
 )]
 pub fn load_date_constraints(
   dates: &BTreeMap<GraphNodeKey, DateConstraint>,
@@ -106,7 +105,7 @@ fn validate_minimum_date_constraints(
   Ok(())
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

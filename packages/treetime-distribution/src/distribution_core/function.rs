@@ -102,7 +102,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.y()
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
@@ -128,7 +128,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(Array1::from_vec(values))
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]

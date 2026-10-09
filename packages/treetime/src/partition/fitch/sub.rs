@@ -202,7 +202,7 @@ pub(crate) fn finalize_sequence_forward(
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "table indices below 128 convert exactly to ASCII bytes"
 )]

@@ -27,7 +27,7 @@ impl Default for TopologyOrderSpec {
 }
 
 impl TopologyOrderSpec {
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -183,7 +183,7 @@ struct TopologyOrder {
   outbound_edges: BTreeMap<GraphNodeKey, Vec<GraphEdgeKey>>,
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -202,7 +202,7 @@ fn compute_descendant_counts(graph: &Graph, postorder: &[GraphNodeKey]) -> BTree
   counts
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -217,7 +217,7 @@ fn compute_heights(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphN
   heights
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -243,7 +243,7 @@ fn compute_divergences(
   divergences
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -294,7 +294,7 @@ pub enum TopologyOrderTargetAggregate {
   Median,
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -324,7 +324,7 @@ fn compute_target_scores_mean(
   Ok(scores)
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -354,7 +354,7 @@ fn compute_target_scores_median(
   Ok(scores)
 }
 
-#[allow(clippy::integer_division, reason = "integer division is the intended floor division")]
+#[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
 fn median_score(sorted_positions: &[usize]) -> TargetScore {
   let n = sorted_positions.len();
   let midpoint = n / 2;
@@ -378,7 +378,7 @@ struct TargetScore {
 }
 
 impl Ord for TargetScore {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

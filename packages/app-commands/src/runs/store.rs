@@ -186,7 +186,7 @@ impl RunStore {
   }
 }
 
-#[allow(
+#[expect(
   clippy::create_dir,
   reason = "creating a run directory must fail when the directory exists, so two runs never share one"
 )]

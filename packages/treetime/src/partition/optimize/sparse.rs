@@ -6,7 +6,7 @@ use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::iter::zip;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::unwrap_used,
   reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"

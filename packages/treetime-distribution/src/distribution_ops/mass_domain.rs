@@ -67,7 +67,7 @@ pub(crate) fn mass_bounded_domain(profile: &MassProfile, eps: f64) -> Result<(f6
   Ok((lo, hi))
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -154,7 +154,7 @@ fn soft_edge(profile: &MassProfile, slope: f64, tail_mass: f64, target: f64, sid
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

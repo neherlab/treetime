@@ -21,9 +21,9 @@ pub struct Backend {
 }
 
 #[napi]
-#[allow(
+#[expect(
   clippy::needless_pass_by_value,
-  reason = "napi passes JavaScript values as owned arguments; the napi macro re-emits the item, so expect cannot track it"
+  reason = "napi passes JavaScript values as owned arguments"
 )]
 impl Backend {
   #[napi(constructor)]

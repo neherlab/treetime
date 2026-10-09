@@ -218,7 +218,7 @@ pub(crate) fn indexed_forward(
   })
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -287,7 +287,7 @@ struct DenseEdgeForwardOut {
   indels: Vec<InDel>,
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

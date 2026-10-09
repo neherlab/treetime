@@ -160,7 +160,7 @@ fn multiply_range_function<Y: YAxisPolicy>(
   }
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -218,7 +218,7 @@ fn canonical_operand_order<'a, Y: YAxisPolicy>(
   ordered
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

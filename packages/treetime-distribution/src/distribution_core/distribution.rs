@@ -233,7 +233,7 @@ fn neglog_peak(minimum: f64, context: &str) -> Result<Option<f64>, Report> {
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

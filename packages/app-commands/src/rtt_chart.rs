@@ -75,7 +75,7 @@ fn write_clock_regression_chart_bitmap(
   Ok(DynamicImage::ImageRgb8(img))
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

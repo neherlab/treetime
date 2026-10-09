@@ -42,7 +42,7 @@ where
   Ok(result)
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]

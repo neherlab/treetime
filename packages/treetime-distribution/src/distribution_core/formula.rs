@@ -49,7 +49,7 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
     self.t_max
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

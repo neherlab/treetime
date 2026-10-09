@@ -21,7 +21,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::{RerootResult, StemRemovalInfo};
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -262,7 +262,7 @@ impl ClockRerootResult {
     })
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -276,7 +276,7 @@ impl ClockRerootResult {
     ClockModel::from_regression(&regression)
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -290,7 +290,7 @@ impl ClockRerootResult {
     ClockModel::from_regression_allow_negative(&regression, log)
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -321,7 +321,7 @@ fn clock_regression_backward(
   Ok(state)
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -376,7 +376,7 @@ fn clock_regression_backward_node(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -460,7 +460,7 @@ pub struct ClockVarianceParams {
   pub variance_offset_leaf: f64,
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

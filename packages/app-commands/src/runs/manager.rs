@@ -474,7 +474,7 @@ fn validate_upload_name(name: &str) -> Result<(), Report> {
   Ok(())
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::cast_precision_loss,
   reason = "sizes are formatted for a message; precision beyond two decimals is irrelevant"

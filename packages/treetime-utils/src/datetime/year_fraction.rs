@@ -13,7 +13,7 @@ pub fn date_range_to_year_fraction_range(date_range: &DateRange) -> (f64, f64) {
   (begin, end)
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -28,7 +28,7 @@ pub fn year_fraction_to_datestring(year_fraction: f64) -> String {
   year_fraction_to_date(year_fraction).format("%Y-%m-%d").to_string()
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::cast_precision_loss,
   reason = "a millisecond count between two dates is far below 2^52"
@@ -37,7 +37,7 @@ pub fn year_fraction_days_between(from: f64, to: f64) -> f64 {
   (year_fraction_to_date(to) - year_fraction_to_date(from)).num_milliseconds() as f64 / MILLISECONDS_PER_DAY
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::disallowed_methods,
   reason = "year and second counts cast to the width the chrono API needs; Duration::from_secs_f64 takes a within-year second span that is finite by construction"
@@ -51,7 +51,7 @@ pub fn year_fraction_to_date(year_fraction: f64) -> DateTime<Utc> {
   Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).unwrap() + dt
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

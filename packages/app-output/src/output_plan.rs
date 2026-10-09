@@ -15,7 +15,7 @@ use treetime_io::nwk::NwkStyle;
 use treetime_utils::io::file::is_path_stdout;
 use treetime_utils::make_error;
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

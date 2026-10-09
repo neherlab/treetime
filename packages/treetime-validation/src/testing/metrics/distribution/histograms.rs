@@ -4,7 +4,7 @@ use deser::Serialize;
 use ndarray::Array1;
 use treetime_utils::make_error;
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -78,7 +78,7 @@ pub struct HistogramSummary {
   spread_measure: f64,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

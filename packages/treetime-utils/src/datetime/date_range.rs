@@ -22,7 +22,7 @@ impl DateRange {
     Self::new(iso(begin.as_ref()), iso(end.as_ref()))
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     clippy::as_conversions,
     reason = "constructs a range from a caller-supplied valid (year, month, day); the year fits i32 and the components form a valid calendar instant"

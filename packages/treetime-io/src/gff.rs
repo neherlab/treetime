@@ -37,7 +37,7 @@ pub fn gff3_cds_read(mut reader: impl Read) -> Result<Vec<GffCdsFeature>, Report
   parse_gff3_cds_features(&contents).wrap_err("When reading GFF3")
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "each grouped feature has at least one row, so rows.first() is Some by construction"
 )]

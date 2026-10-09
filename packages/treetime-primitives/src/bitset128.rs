@@ -35,7 +35,7 @@ impl BitSet128 {
     self.bits == 0
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
@@ -43,7 +43,7 @@ impl BitSet128 {
     self.bits.count_ones() as usize
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     clippy::cast_possible_truncation,
     reason = "each half of the 128-bit set is selected before the cast, so no bit is truncated"
@@ -143,7 +143,7 @@ impl BitSet128 {
     }
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
@@ -155,7 +155,7 @@ impl BitSet128 {
     self.first()
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "crash-on-empty contract; get_one_maybe is the checked variant"
   )]
@@ -202,7 +202,7 @@ impl<'a> FromIterator<&'a u8> for BitSet128 {
 }
 
 impl FromIterator<char> for BitSet128 {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
@@ -212,7 +212,7 @@ impl FromIterator<char> for BitSet128 {
 }
 
 impl<'a> FromIterator<&'a char> for BitSet128 {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
@@ -252,7 +252,7 @@ impl From<u8> for BitSet128 {
 }
 
 impl From<char> for BitSet128 {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
@@ -269,7 +269,7 @@ impl From<char> for BitSet128 {
   )
 )]
 impl std::fmt::Display for BitSet128 {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

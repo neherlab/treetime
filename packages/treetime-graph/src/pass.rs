@@ -151,7 +151,7 @@ impl GraphPass {
     self.run_forward(edges, |index| take_input_slot(&slots, index), visit)
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -221,7 +221,7 @@ impl GraphPass {
     self.collect_map_outputs(completed)
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -337,7 +337,7 @@ impl GraphPass {
       .collect()
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -354,7 +354,7 @@ impl GraphPass {
       .expect("Indexed node must have an input")
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -389,7 +389,7 @@ impl GraphPass {
   }
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

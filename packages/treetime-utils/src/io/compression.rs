@@ -232,7 +232,7 @@ pub enum CompressionType {
   None,
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "default compression level 2 is representable in every NumCast integer target"
 )]

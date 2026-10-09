@@ -10,7 +10,7 @@ use std::sync::LazyLock;
 
 const SUPPORTED_YEARS: (u32, u32) = (1, 9999);
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -96,7 +96,7 @@ fn resolve_uncertain_date_component(s: impl AsRef<str>, bounds: (u32, u32)) -> R
 
 static DATE_UNCERTAIN_REGEXES: LazyLock<Vec<Regex>> = LazyLock::new(create_date_uncertain_regexes);
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]

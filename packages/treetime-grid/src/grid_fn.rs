@@ -47,7 +47,7 @@ impl<T: InterpElem> GridFn<T> {
     Self::from_grid_array(grid, y)
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
@@ -197,7 +197,7 @@ impl<T: InterpElem> GridFn<T> {
     Ok(self.interpolate_at(xi, idx))
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
@@ -215,7 +215,7 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  #[allow(
+  #[expect(
     clippy::unwrap_used,
     reason = "unwrap on a value an upstream invariant guarantees is present"
   )]
@@ -275,7 +275,7 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  #[allow(clippy::integer_division, reason = "integer division is the intended floor division")]
+  #[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
   pub fn negate_arg_inplace(&mut self) -> Result<(), Report>
   where
     T: Float,
@@ -323,7 +323,7 @@ impl<T: InterpElem> GridFn<T> {
   }
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]

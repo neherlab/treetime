@@ -16,7 +16,7 @@ use treetime_schema::TreetimeSchemaFormat;
 use treetime_utils::io::file::is_path_stdout;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

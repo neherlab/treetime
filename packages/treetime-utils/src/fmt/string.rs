@@ -7,7 +7,7 @@ macro_rules! o {
   };
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::unwrap_used,
   reason = "ASCII char sequence narrowed to bytes; the resulting buffer is valid UTF-8 by construction"
@@ -53,7 +53,7 @@ pub fn truncate_middle_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> Stri
   clippy::string_slice,
   reason = "the input is ASCII, so every byte index is a char boundary"
 )]
-#[allow(
+#[expect(
   clippy::integer_division,
   reason = "intentional halving of the budget for middle truncation; the remainder is assigned to the right half"
 )]

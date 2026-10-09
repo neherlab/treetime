@@ -197,7 +197,7 @@ fn gather_reconstruction_maps(
   (reconstructed_traits, confidences)
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -246,7 +246,7 @@ pub(crate) fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMa
   weights_arr / sum
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

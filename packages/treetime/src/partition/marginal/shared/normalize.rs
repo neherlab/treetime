@@ -3,7 +3,7 @@ use ndarray::{Array, Array2, Axis, Dimension, Zip};
 use treetime_primitives::LogLh;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

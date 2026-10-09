@@ -152,7 +152,7 @@ fn convolution_function_function<Y: SupportsConvolution>(
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -227,7 +227,7 @@ fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
   ))
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -254,7 +254,7 @@ fn to_peak_normalized_plain<Y: SupportsConvolution>(y: &Array1<f64>) -> (Array1<
   (plain, peak)
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::integer_division,
   reason = "count/index numeric cast is exact for the domain range; integer division is the intended floor division"

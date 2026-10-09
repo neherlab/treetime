@@ -7,7 +7,7 @@ pub struct LineFit {
 }
 
 impl LineFit {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "sample count to f64; exact for any realistic input length"
   )]

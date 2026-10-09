@@ -5,7 +5,7 @@ use eyre::{Report, WrapErr};
 pub(crate) const LAST_NANOSECOND_OF_DAY: (u32, u32, u32, u32) = (23, 59, 59, 999_999_999);
 const MILLISECONDS_PER_SECOND: i64 = 1000;
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -67,7 +67,7 @@ pub fn timestamp_format_safe(timestamp: i64) -> String {
   date_format_safe(&timestamp_to_date(timestamp))
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]
@@ -83,7 +83,7 @@ pub fn ymd(year: i32, month: u32, day: u32) -> DateTime<Utc> {
   Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap()
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::expect_used,
   reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present"

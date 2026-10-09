@@ -50,7 +50,7 @@ impl AsciiChar {
     Ok(Self(value))
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "narrowing char to u8 is exact after the is_ascii guard"
   )]

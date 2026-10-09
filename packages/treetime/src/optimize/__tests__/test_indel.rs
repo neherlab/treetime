@@ -40,7 +40,7 @@ mod tests {
     assert_abs_diff_eq!(metrics.second_derivative, -75.0, epsilon = 1e-12);
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

@@ -37,7 +37,7 @@ pub struct AlgorithmSummary {
 
 #[bon]
 impl AlgorithmSummary {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

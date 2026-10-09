@@ -139,7 +139,7 @@ struct ServerArgs {
   allowed_host: Vec<String>,
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "expect on a value an upstream invariant guarantees is present"
 )]

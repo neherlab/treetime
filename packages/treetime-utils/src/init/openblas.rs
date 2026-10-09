@@ -18,7 +18,7 @@ unsafe extern "C" {
   fn openblas_get_num_procs() -> c_int;
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]
@@ -26,7 +26,7 @@ pub fn get_openblas_info_str() -> String {
   json_write_str(&get_openblas_info(), JsonPretty(true)).unwrap()
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

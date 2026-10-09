@@ -17,7 +17,7 @@ pub struct QualityMetrics {
   pub(crate) quantile_95_error: f64,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -144,7 +144,7 @@ pub(crate) fn compute_symmetry_error(x: &Array1<f64>, actual: &Array1<f64>) -> f
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

@@ -3,7 +3,7 @@ use deser::Serialize;
 use ndarray::Array1;
 use treetime_utils::adapters::ArrayVec;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

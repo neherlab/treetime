@@ -34,7 +34,7 @@ pub(crate) fn print_clock_regression_chart(
   write_clock_regression_chart_text(&mut io::stderr().lock(), results, clock_model, terminal_size)
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

@@ -22,7 +22,7 @@ pub(crate) fn infer_gtr_fitch(
   GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

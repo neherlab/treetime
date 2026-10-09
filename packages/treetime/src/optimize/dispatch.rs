@@ -156,7 +156,7 @@ impl BifurcatingRootState {
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -233,7 +233,7 @@ struct EdgeOptimization {
   method: BranchOptMethod,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

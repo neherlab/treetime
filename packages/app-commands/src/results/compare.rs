@@ -181,7 +181,7 @@ pub fn compare_ancestors(first: &ResultTree, second: &ResultTree) -> AncestorCom
       })
     })
     .collect::<Vec<_>>();
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     clippy::cast_precision_loss,
     reason = "an ancestor count is far below 2^52"
@@ -195,7 +195,7 @@ pub fn compare_ancestors(first: &ResultTree, second: &ResultTree) -> AncestorCom
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::cast_possible_wrap,
   reason = "a sample count is far below i64::MAX"

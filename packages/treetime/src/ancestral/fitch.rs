@@ -8,7 +8,7 @@ pub(crate) fn ancestral_reconstruction_fitch(graph: &Graph, partitions: &mut [Pa
   graph.iter_depth_first_preorder_forward(|node| run_fitch_reconstruction(partitions, &node))
 }
 
-#[allow(
+#[expect(
   clippy::unwrap_used,
   reason = "unwrap on a value an upstream invariant guarantees is present"
 )]

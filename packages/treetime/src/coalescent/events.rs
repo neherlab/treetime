@@ -5,7 +5,7 @@ use ordered_float::OrderedFloat;
 use treetime_graph::graph::Graph;
 use treetime_utils::make_error;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

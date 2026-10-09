@@ -8,7 +8,7 @@ use argmin::solver::brent::BrentOpt;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

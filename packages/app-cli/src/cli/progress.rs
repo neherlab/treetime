@@ -28,7 +28,7 @@ impl Drop for BarProgress {
 }
 
 impl StageSink for BarProgress {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

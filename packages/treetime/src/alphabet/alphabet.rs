@@ -30,7 +30,7 @@ pub struct Alphabet {
 }
 
 impl Default for Alphabet {
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -177,10 +177,6 @@ impl Alphabet {
     Ok(profile)
   }
 
-  #[allow(
-    single_use_lifetimes,
-    reason = "stable Rust cannot elide a lifetime inside an argument-position impl Trait"
-  )]
   pub(crate) fn seq2prof<'a>(&self, chars: impl IntoIterator<Item = &'a AsciiChar>) -> Result<Array2<f64>, Report> {
     let profiles = chars
       .into_iter()
@@ -203,7 +199,7 @@ impl Alphabet {
     self.index_to_char[index]
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

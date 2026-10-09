@@ -10,7 +10,7 @@ pub fn get_random_number_generator(seed: u64) -> impl Rng + Send + Sync + Clone 
   Isaac64Rng::seed_from_u64(seed)
 }
 
-#[allow(
+#[expect(
   clippy::expect_used,
   reason = "from_rng only fails on a source RNG entropy error, which does not occur for an in-memory generator"
 )]

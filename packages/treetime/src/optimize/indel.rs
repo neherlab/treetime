@@ -9,7 +9,7 @@ use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
 use treetime_utils::{make_error, make_report};
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -67,7 +67,7 @@ pub(crate) fn total_indel_log_lh(
     .sum()
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

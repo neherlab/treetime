@@ -4,7 +4,7 @@ use itertools::izip;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -30,7 +30,7 @@ pub struct AbsoluteErrorStats {
   pub(crate) bias: f64,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   clippy::integer_division,
   reason = "count/index numeric cast is exact for the domain range; integer division is the intended floor division"

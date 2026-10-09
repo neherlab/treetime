@@ -277,7 +277,7 @@ fn observe_seq(seq: &Seq, alphabet: &Alphabet) -> SeqObservation {
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "table indices below 128 convert exactly to ASCII bytes"
 )]

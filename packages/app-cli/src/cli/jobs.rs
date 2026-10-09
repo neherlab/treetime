@@ -18,7 +18,7 @@ pub(crate) struct Jobs {
 }
 
 impl Serialize for Jobs {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

@@ -22,7 +22,7 @@ pub struct StatisticalMetrics {
   pub(crate) signed_error_stats: ErrorStatistics,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -87,7 +87,7 @@ pub(super) fn compute_std(data: &Array1<f64>) -> f64 {
   compute_std_from_sorted(&data.iter().copied().collect::<Vec<_>>(), mean)
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -99,7 +99,7 @@ fn compute_std_from_sorted(sorted_data: &[f64], mean: f64) -> f64 {
   variance.sqrt()
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -112,7 +112,7 @@ pub(super) fn compute_quantile(sorted: &[f64], q: f64) -> f64 {
   sorted[index.min(n - 1)]
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]
@@ -125,7 +125,7 @@ fn compute_skewness(sorted_data: &[f64], mean: f64, std: f64) -> f64 {
   (n / ((n - 1.0) * (n - 2.0))) * skew_sum
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

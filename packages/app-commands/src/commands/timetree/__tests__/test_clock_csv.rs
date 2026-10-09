@@ -178,7 +178,7 @@ mod tests {
       mean_d - rate * mean_t
     }
 
-    #[allow(clippy::as_conversions, reason = "point count is far below 2^52")]
+    #[expect(clippy::as_conversions, reason = "point count is far below 2^52")]
     pub(super) fn means(points: &[(f64, f64)]) -> (f64, f64) {
       let n = points.len() as f64;
       (

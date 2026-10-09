@@ -29,7 +29,7 @@ impl CoalescentModel {
     -self.expected_mergers.eval(time)
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

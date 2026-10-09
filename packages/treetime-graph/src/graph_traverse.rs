@@ -6,7 +6,7 @@ use itertools::Itertools;
 use std::collections::{BTreeSet, VecDeque};
 use treetime_utils::make_internal_report;
 
-#[allow(
+#[expect(
   clippy::multiple_inherent_impl,
   reason = "split across files by concern; see graph.rs for the primary impl"
 )]

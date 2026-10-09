@@ -1,5 +1,5 @@
 #[cfg(test)]
-#[allow(
+#[expect(
   clippy::float_cmp,
   reason = "integer-valued f64s from += 1.0 accumulation and explicit = 0.0 assignment"
 )]

@@ -112,7 +112,7 @@ impl Seq {
     self.data.reserve(additional);
   }
 
-  #[allow(unsafe_code, reason = "AsciiChar is transparent over a validated ASCII byte")]
+  #[expect(unsafe_code, reason = "AsciiChar is transparent over a validated ASCII byte")]
   pub fn as_str(&self) -> &str {
     // SAFETY: `self.data.as_ptr()` is valid for reads of `self.data.len()` elements and properly aligned
     // because `data` is a `Vec<AsciiChar>`, and `AsciiChar` is `repr(transparent)` over `u8`, which makes
@@ -124,7 +124,7 @@ impl Seq {
     unsafe { std::str::from_utf8_unchecked(byte_slice) }
   }
 
-  #[allow(unsafe_code, reason = "AsciiChar is transparent over a validated ASCII byte")]
+  #[expect(unsafe_code, reason = "AsciiChar is transparent over a validated ASCII byte")]
   pub fn into_string(self) -> String {
     let mut data = ManuallyDrop::new(self.data);
     // SAFETY: the pointer, length, and capacity come from a `Vec<AsciiChar>` that `ManuallyDrop` keeps from
@@ -320,7 +320,7 @@ impl IntoIterator for Seq {
   }
 }
 
-#[allow(unsafe_code, reason = "AsciiChar is transparent over a validated ASCII byte")]
+#[expect(unsafe_code, reason = "AsciiChar is transparent over a validated ASCII byte")]
 impl std::io::Read for Seq {
   fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
     let len = std::cmp::min(buf.len(), self.len());

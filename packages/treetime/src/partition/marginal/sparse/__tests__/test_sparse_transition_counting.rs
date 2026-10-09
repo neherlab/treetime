@@ -131,7 +131,7 @@ mod tests {
     )?;
 
     for i in 0..counts.nij.nrows() {
-      #[allow(clippy::float_cmp, reason = "diagonal is zero by construction, no arithmetic")]
+      #[expect(clippy::float_cmp, reason = "diagonal is zero by construction, no arithmetic")]
       {
         assert_eq!(0.0, counts.nij[[i, i]], "diagonal nij[{i},{i}] should be zero");
       }

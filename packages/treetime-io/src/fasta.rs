@@ -190,7 +190,7 @@ impl<R: BufRead, A: AlphabetLike> Iterator for FastaRecords<'_, R, A> {
   }
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "table indices below 128 convert exactly to ASCII bytes"
 )]

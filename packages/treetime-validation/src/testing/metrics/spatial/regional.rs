@@ -73,7 +73,7 @@ pub struct RegionalSummary {
   pub(crate) tail_region: RegionStats,
 }
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

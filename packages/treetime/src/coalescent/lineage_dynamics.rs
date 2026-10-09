@@ -8,7 +8,7 @@ use std::iter::once;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::make_error;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use treetime_utils::make_internal_report;
 
-#[allow(
+#[expect(
   clippy::disallowed_methods,
   reason = "the flagged call is required and safe in this context"
 )]
@@ -119,7 +119,7 @@ where
     });
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -158,7 +158,7 @@ where
     }
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]

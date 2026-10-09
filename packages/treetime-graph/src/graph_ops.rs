@@ -4,7 +4,7 @@ use crate::node::{GraphNodeKey, Node};
 use eyre::Report;
 use treetime_utils::{make_error, make_internal_report, make_report};
 
-#[allow(
+#[expect(
   clippy::multiple_inherent_impl,
   reason = "split across files by concern; see graph.rs for the primary impl"
 )]
@@ -40,7 +40,7 @@ impl Graph {
     Ok((removed_node, removed_edges))
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -86,7 +86,7 @@ impl Graph {
     Ok(edge_key)
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]
@@ -159,7 +159,7 @@ impl Graph {
     Ok(())
   }
 
-  #[allow(
+  #[expect(
     clippy::expect_used,
     reason = "expect on a value an upstream invariant guarantees is present"
   )]

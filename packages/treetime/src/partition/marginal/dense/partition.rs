@@ -36,7 +36,7 @@ pub struct PartitionMarginalDense {
 }
 
 impl PartitionMarginalDense {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]

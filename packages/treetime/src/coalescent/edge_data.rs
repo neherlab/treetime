@@ -11,7 +11,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 use treetime_utils::make_error;
 
-#[allow(
+#[expect(
   clippy::as_conversions,
   reason = "count/index numeric cast is exact for the domain range"
 )]

@@ -55,7 +55,7 @@ mod tests {
     assert!((12.0..14.0).contains(&d_max_aa), "d_max aa = {d_max_aa}");
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
@@ -72,7 +72,7 @@ mod tests {
     }
   }
 
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
