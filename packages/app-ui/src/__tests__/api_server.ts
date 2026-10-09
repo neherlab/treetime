@@ -1,3 +1,4 @@
+import type { JobId, RunRecord, RunStatus } from "@neherlab/app-contracts";
 import { createApiClient, type ApiClient } from "@neherlab/app-contracts/client";
 
 const BASE_URL = "http://treetime.test";
@@ -18,6 +19,10 @@ export const RECORD = {
   output_files: [],
   warnings: [],
 } as const;
+
+export function runRecord(id: JobId, status: RunStatus): RunRecord {
+  return { ...RECORD, id, status, inputs: [], changed_settings: [], output_files: [], warnings: [] };
+}
 
 export interface Sent {
   key: string;

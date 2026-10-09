@@ -1,13 +1,15 @@
-import type { RunRecord } from "@neherlab/app-contracts";
+import type { JobId, RunRecord } from "@neherlab/app-contracts";
 import { ApiError, runsGet, type ApiClient } from "@neherlab/app-contracts/client";
 
-export async function pendingUploadRun(client: ApiClient, id: string | undefined): Promise<RunRecord | undefined> {
-  const record = id === undefined ? undefined : await findRun(client, id);
+export async function pendingUploadRun(client: ApiClient, id: JobId | undefined): Promise<RunRecord | undefined> {
+  return pendingUpload(id === undefined ? undefined : await findRun(client, id));
+}
 
+export function pendingUpload(record: RunRecord | undefined): RunRecord | undefined {
   return record?.status === "created" ? record : undefined;
 }
 
-export async function findRun(client: ApiClient, id: string): Promise<RunRecord | undefined> {
+export async function findRun(client: ApiClient, id: JobId): Promise<RunRecord | undefined> {
   try {
     const { data: record } = await runsGet({ client, path: { id }, throwOnError: true });
 

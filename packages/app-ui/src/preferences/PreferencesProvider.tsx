@@ -6,7 +6,7 @@ import { lostFilesMessage } from "../analysis/lostRuns";
 import { useApiContext } from "../api/context";
 import { LoadingState } from "../components/PageShell";
 import { toast } from "../ui/toast";
-import type { PreferencesStorage } from "./storage";
+import { reportToConsole, type PreferencesStorage } from "./storage";
 import { applyPreferences, PreferencesSaver, restorePreferences } from "./sync";
 
 const PREFERENCES_KEY = ["preferences"] as const;
@@ -62,8 +62,4 @@ export function PreferencesProvider({ storage, children }: { storage: Preference
 function reportSaveFailure(message: string): void {
   reportToConsole(`the preferences could not be saved: ${message}`);
   toast.add({ title: "The preferences could not be saved", description: message });
-}
-
-function reportToConsole(message: string): void {
-  console.error(`[TreeTime] ${message}`);
 }

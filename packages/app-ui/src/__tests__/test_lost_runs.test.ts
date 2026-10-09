@@ -4,9 +4,13 @@ import { describe, expect, test } from "vitest";
 
 import { forgetLostRuns } from "../analysis/lostRuns";
 import { freshDraft } from "../store/draftSchema";
-import { FakeServer, json, RECORD } from "./api_server";
+import { FakeServer, json, runRecord } from "./api_server";
 
 const FRESH = freshDraft("clock");
+
+const R1 = runRecord("r1", "created");
+
+const R2 = runRecord("r2", "running");
 
 const DRAFT: UiDraft = {
   ...FRESH,
@@ -24,7 +28,7 @@ const DRAFT: UiDraft = {
 
 describe("lost runs of a draft", () => {
   test("the files of a run that the back end no longer has leave the form", async () => {
-    const server = new FakeServer({ "GET /api/runs/r2": () => json({ ...RECORD, id: "r2" }) });
+    const server = new FakeServer({ "GET /api/runs/r2": () => json(R2) });
 
     const expected: UiDraft = {
       ...FRESH,
@@ -35,30 +39,39 @@ describe("lost runs of a draft", () => {
     await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({
       draft: expected,
       dropped: ["tree.nwk"],
+      runs: new Map([["r2", R2]]),
     });
     expect(server.keys().toSorted()).toStrictEqual(["GET /api/runs/r1", "GET /api/runs/r2"]);
   });
 
   test("a draft whose runs all exist stays as it is", async () => {
-    const server = new FakeServer({
-      "GET /api/runs/r1": () => json({ ...RECORD, status: "created" }),
-      "GET /api/runs/r2": () => json({ ...RECORD, id: "r2" }),
-    });
+    const server = new FakeServer({ "GET /api/runs/r1": () => json(R1), "GET /api/runs/r2": () => json(R2) });
 
-    await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({ draft: DRAFT, dropped: [] });
+    await expect(forgetLostRuns(server.client(), DRAFT)).resolves.toStrictEqual({
+      draft: DRAFT,
+      dropped: [],
+      runs: new Map([
+        ["r1", R1],
+        ["r2", R2],
+      ]),
+    });
   });
 
   test("a draft without runs asks the back end nothing", async () => {
     const server = new FakeServer({});
 
-    await expect(forgetLostRuns(server.client(), FRESH)).resolves.toStrictEqual({ draft: FRESH, dropped: [] });
+    await expect(forgetLostRuns(server.client(), FRESH)).resolves.toStrictEqual({
+      draft: FRESH,
+      dropped: [],
+      runs: new Map(),
+    });
     expect(server.keys()).toStrictEqual([]);
   });
 
   test("a failed lookup is not taken for a lost run", async () => {
     const server = new FakeServer({
       "GET /api/runs/r1": () => json({ code: "internal_error", message: "the server is down", causes: [] }, 500),
-      "GET /api/runs/r2": () => json({ ...RECORD, id: "r2" }),
+      "GET /api/runs/r2": () => json(R2),
     });
 
     const error = await forgetLostRuns(server.client(), DRAFT).catch((failure: unknown) => failure);

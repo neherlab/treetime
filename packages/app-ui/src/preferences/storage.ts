@@ -53,6 +53,6 @@ function assertUiSettings(value: unknown): asserts value is UiSettings {
   zUiSettings.parse(value);
 }
 
-function reportToConsole(message: string): void {
+export function reportToConsole(message: string): void {
   console.error(`[TreeTime] ${message}`);
 }

@@ -2246,8 +2246,8 @@ export type UiDraftSource = {
    */
   size?: number;
   /**
-   * The run whose folder holds the file: the run that received the upload, or the earlier run whose input the file
-   * is. The form drops the file when this run no longer exists.
+   * The run the file came from: the run that received the upload, or the earlier run whose input the file is. The
+   * form drops the file when this run no longer exists, because the file may be stored in the folder of that run.
    */
   run_id?: JobId;
 };

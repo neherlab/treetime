@@ -7,7 +7,7 @@ import { useApiContext } from "../api/context";
 import { useDraftStore } from "../store/draft";
 import { useToastManager } from "../ui/toast";
 import { forgetLostRuns, lostFilesMessage } from "./lostRuns";
-import { pendingUploadRun } from "./pendingUpload";
+import { pendingUpload } from "./pendingUpload";
 
 export function useStartRun(command: AppCommand) {
   const { client } = useApiContext();
@@ -28,7 +28,8 @@ export function useStartRun(command: AppCommand) {
           return;
         }
 
-        const upload = await pendingUploadRun(client, kept.draft.upload_run_id);
+        const uploadRunId = kept.draft.upload_run_id;
+        const upload = pendingUpload(uploadRunId === undefined ? undefined : kept.runs.get(uploadRunId));
 
         const { data: record } =
           upload === undefined

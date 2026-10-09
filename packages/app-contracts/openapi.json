@@ -4831,7 +4831,7 @@
             "x-unset": true
           },
           "run_id": {
-            "description": "The run whose folder holds the file: the run that received the upload, or the earlier run whose input the file\nis. The form drops the file when this run no longer exists.",
+            "description": "The run the file came from: the run that received the upload, or the earlier run whose input the file is. The\nform drops the file when this run no longer exists, because the file may be stored in the folder of that run.",
             "$ref": "#/components/schemas/JobId",
             "x-unset": true
           }

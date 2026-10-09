@@ -19,7 +19,7 @@ interface InputActions {
   pick: (key: string, title: string, extensions: string[], list: boolean) => Promise<void>;
 }
 
-export type InputOrigin = Omit<UiDraftSource, "label" | "size">;
+type InputOrigin = Omit<UiDraftSource, "label" | "size">;
 
 export function useInputActions(command: AppCommand): InputActions {
   const { client } = useApiContext();

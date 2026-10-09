@@ -1,8 +1,8 @@
 import { ApiError } from "@neherlab/app-contracts/client";
 import { describe, expect, test } from "vitest";
 
-import { pendingUploadRun } from "../analysis/pendingUpload";
-import { FakeServer, json, RECORD } from "./api_server";
+import { pendingUpload, pendingUploadRun } from "../analysis/pendingUpload";
+import { FakeServer, json, RECORD, runRecord } from "./api_server";
 
 const { started_at: _startedAt, ...RUNNING } = RECORD;
 
@@ -38,5 +38,17 @@ describe("pending upload run", () => {
 
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ status: 500, response: { code: "internal_error", message: "the server is down" } });
+  });
+});
+
+describe("pending upload record", () => {
+  test("only a created run is a pending upload", () => {
+    const created = runRecord("r1", "created");
+
+    expect([pendingUpload(created), pendingUpload(runRecord("r1", "running")), pendingUpload(undefined)]).toStrictEqual([
+      created,
+      undefined,
+      undefined,
+    ]);
   });
 });
