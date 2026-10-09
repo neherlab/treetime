@@ -20,8 +20,8 @@ allow-indexing-slicing-in-tests = true
 disallowed-types = [
     { path = "std::sync::Mutex", reason = "use parking_lot::Mutex (poison-free, faster, supports lock_arc)" },
     { path = "std::sync::RwLock", reason = "use parking_lot::RwLock (poison-free, faster, supports read_arc/write_arc)" },
-    { path = "std::collections::HashMap", reason = "use BTreeMap for deterministic order, or IndexMap for insertion order; #[allow] with a reason in a profiled hot path" },
-    { path = "std::collections::HashSet", reason = "use BTreeSet for deterministic order, or IndexSet for insertion order; #[allow] with a reason in a profiled hot path" },
+    { path = "std::collections::HashMap", reason = "use BTreeMap for deterministic order, or IndexMap for insertion order; #[expect(.., reason = '..')] in a profiled hot path" },
+    { path = "std::collections::HashSet", reason = "use BTreeSet for deterministic order, or IndexSet for insertion order; #[expect(.., reason = '..')] in a profiled hot path" },
     { path = "rand::rngs::StdRng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible", allow-invalid = true },
     { path = "rand::rngs::SmallRng", reason = "use get_random_number_generator(seed) of treetime-utils so runs are reproducible", allow-invalid = true },
 ]
