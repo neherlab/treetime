@@ -1,7 +1,7 @@
 import { defineRule } from "@oxlint/plugins";
 import type { ESTree, SourceCode } from "@oxlint/plugins";
 
-import { rootCalleeName, TEST_CALLERS } from "./ast.ts";
+import { rootCalleeName } from "./ast.ts";
 import { bindingInitializer, bindingVariable } from "./binding.ts";
 import { functionName, isFunctionNode } from "./function-shape.ts";
 import type { FunctionNode } from "./function-shape.ts";
@@ -22,6 +22,8 @@ const PROMISE_FACTORIES = new Set(["resolve", "reject", "all", "allSettled", "an
 
 const PROMISE_CHAINS = new Set(["catch", "then", "finally"]);
 
+const SUITE_CALLERS = new Set(["describe", "suite"]);
+
 export const noFakeSuccessRule = defineRule({
   meta: {
     type: "problem",
@@ -30,7 +32,7 @@ export const noFakeSuccessRule = defineRule({
         "Disallow functions that ignore their inputs and return a fixed success value, and error handlers that turn an error into success.",
     },
     messages: {
-      empty: "A test with an empty body always passes. Assert observable behavior or delete it.",
+      empty: "A test suite with an empty body has no tests and always passes. Add tests or delete it.",
       ignoredInputs:
         "`{{name}}` never reads its parameters and returns a fixed success value. Implement the path or fail explicitly.",
       swallowedError:
@@ -81,7 +83,7 @@ export const noFakeSuccessRule = defineRule({
 
     return {
       CallExpression(node) {
-        if (!TEST_CALLERS.has(rootCalleeName(node) ?? "")) {
+        if (!SUITE_CALLERS.has(rootCalleeName(node) ?? "")) {
           return;
         }
 

@@ -40,16 +40,6 @@ export function functionName(node: FunctionNode, sourceCode: SourceCode): string
   return undefined;
 }
 
-export function memberRoot(expression: ESTree.Expression): ESTree.Expression {
-  let current = expression;
-
-  while (current.type === "MemberExpression" || current.type === "ChainExpression") {
-    current = current.type === "ChainExpression" ? current.expression : current.object;
-  }
-
-  return current;
-}
-
 function keyName(key: ESTree.PropertyKey, sourceCode: SourceCode): string {
   if (key.type === "Identifier" || key.type === "PrivateIdentifier") {
     return key.name;

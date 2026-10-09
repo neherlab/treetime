@@ -13,8 +13,6 @@ export const TYPOGRAPHIC = new RegExp(
   "u",
 );
 
-export const TEST_CALLERS = new Set(["it", "test", "describe", "bench", "suite"]);
-
 export function calleeName(node: ESTree.CallExpression): string | undefined {
   if (node.callee.type === "Identifier") {
     return node.callee.name;
@@ -30,8 +28,8 @@ export function calleeName(node: ESTree.CallExpression): string | undefined {
 export function rootCalleeName(node: ESTree.CallExpression): string | undefined {
   let current: ESTree.Expression | ESTree.Super = node.callee;
 
-  while (current.type === "MemberExpression") {
-    current = current.object;
+  while (current.type === "MemberExpression" || current.type === "CallExpression") {
+    current = current.type === "MemberExpression" ? current.object : current.callee;
   }
 
   return current.type === "Identifier" ? current.name : undefined;

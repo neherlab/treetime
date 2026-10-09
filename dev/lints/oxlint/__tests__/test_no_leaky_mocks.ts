@@ -8,5 +8,7 @@ tester.run("custom/no-leaky-mocks", noLeakyMocksRule, {
   invalid: [
     { code: "vi.spyOn(console, 'log')", errors: [{ messageId: "leakyMock" }] },
     { code: "vi.fn()", errors: [{ messageId: "leakyMock" }] },
+    { code: "run(vi.fn<() => void>())", errors: [{ messageId: "leakyMock" }] },
+    { code: "expect(() => run(vi.fn())).not.toThrow()", errors: [{ messageId: "leakyMock" }] },
   ],
 });

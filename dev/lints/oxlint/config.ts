@@ -22,6 +22,10 @@ const REJECTED_LIBRARY_PATTERNS = [
     group: ["lucide-react", "lucide-react/*"],
     message: 'Import icons from Iconify sets through unplugin-icons, e.g. `import XIcon from "~icons/lucide/x"`.',
   },
+  {
+    group: ["clsx", "tailwind-merge", "tailwind-merge/*"],
+    message: "Import `cn`, the class name helper of the themed ui module, which merges Tailwind classes.",
+  },
 ];
 
 const PACKAGE_GRAPH_MESSAGE =
@@ -210,9 +214,7 @@ export function projectConfig<R extends string>(settings: ProjectSettings<R>): O
       "custom/no-module-level-mutable": "error",
       "custom/no-versioned-names": "error",
       "custom/no-typographic-characters": "error",
-      "custom/use-class-name-helper": "error",
       "custom/require-io-timeout": "error",
-      "custom/no-async-array-predicate": "error",
       "custom/require-suppression-reason": "error",
       "custom/no-unbounded-suppression": "error",
       "custom/callers-before-callees": "error",
@@ -377,12 +379,10 @@ export function projectConfig<R extends string>(settings: ProjectSettings<R>): O
           "custom/no-tautological-assertion": "error",
           "custom/no-test-resource-access": "error",
           "custom/no-assertion-in-loop": "error",
-          "custom/no-uppercase-test-title": "error",
-          "custom/prefer-strict-equal": "error",
-          "custom/no-disabled-tests": "error",
-          "custom/no-focused-tests": "error",
-          "custom/prefer-test-over-it": "error",
           "custom/no-leaky-mocks": "error",
+          "vitest/consistent-test-it": ["error", { fn: "test", withinDescribe: "test" }],
+          "vitest/prefer-lowercase-title": "error",
+          "vitest/prefer-strict-equal": "error",
           "custom/no-contract-alias": "off",
           "custom/no-contract-enum-copy": "off",
           "custom/no-contract-parse": "off",
@@ -392,13 +392,6 @@ export function projectConfig<R extends string>(settings: ProjectSettings<R>): O
               toBeTruthy: "Assert an exact value, not truthiness.",
               toBeFalsy: "Assert an exact value, not falsiness.",
               toHaveBeenCalled: "Assert the call arguments with toHaveBeenCalledWith.",
-            },
-          ],
-          "vitest/no-restricted-vi-methods": [
-            "error",
-            {
-              mock: "Module mocking is banned. Inject collaborators instead.",
-              doMock: "Module mocking is banned. Inject collaborators instead.",
             },
           ],
         },
