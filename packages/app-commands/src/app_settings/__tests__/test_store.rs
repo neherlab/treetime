@@ -208,8 +208,9 @@ mod tests {
           json!({ "tree": "data/flu/h3n2/20/tree.nwk", "clock_rate": 0.003, "dates": { "column": "date" } }),
         ),
         sources: btreemap! {
-          o!("tree") => UiDraftSource { label: o!("tree.nwk"), origin: UiDraftOrigin::Dataset, size: Some(1234) },
-          o!("alignment") => UiDraftSource { label: o!("aln: \"x\".fasta"), origin: UiDraftOrigin::Local, size: None },
+          o!("tree") => UiDraftSource { label: o!("tree.nwk"), origin: UiDraftOrigin::Dataset, size: Some(1234), run_id: None },
+          o!("alignment") => UiDraftSource { label: o!("aln: \"x\".fasta"), origin: UiDraftOrigin::Local, size: None, run_id: None },
+          o!("metadata") => UiDraftSource { label: o!("dates.tsv"), origin: UiDraftOrigin::Upload, size: Some(80), run_id: Some(JobId::random()) },
         },
         from_run_id: Some(JobId::random()),
         upload_run_id: None,

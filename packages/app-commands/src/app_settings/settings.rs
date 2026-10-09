@@ -170,6 +170,9 @@ pub struct UiDraftSource {
   pub origin: UiDraftOrigin,
   /// Size of the file in bytes, when known.
   pub size: Option<u64>,
+  /// The run whose folder holds the file: the run that received the upload, or the earlier run whose input the file
+  /// is. The form drops the file when this run no longer exists.
+  pub run_id: Option<JobId>,
 }
 
 /// Where an input file of the form came from.

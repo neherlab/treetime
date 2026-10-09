@@ -4829,6 +4829,11 @@
             "format": "uint64",
             "minimum": 0,
             "x-unset": true
+          },
+          "run_id": {
+            "description": "The run whose folder holds the file: the run that received the upload, or the earlier run whose input the file\nis. The form drops the file when this run no longer exists.",
+            "$ref": "#/components/schemas/JobId",
+            "x-unset": true
           }
         },
         "additionalProperties": false,

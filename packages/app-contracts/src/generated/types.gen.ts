@@ -2245,6 +2245,11 @@ export type UiDraftSource = {
    * Size of the file in bytes, when known.
    */
   size?: number;
+  /**
+   * The run whose folder holds the file: the run that received the upload, or the earlier run whose input the file
+   * is. The form drops the file when this run no longer exists.
+   */
+  run_id?: JobId;
 };
 
 /**

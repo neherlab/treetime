@@ -1042,7 +1042,8 @@ export const zUiDraftOrigin = z.union([
 export const zUiDraftSource = z.strictObject({
   label: z.string(),
   origin: zUiDraftOrigin,
-  size: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
+  size: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
+  run_id: zJobId.optional()
 });
 
 /**
