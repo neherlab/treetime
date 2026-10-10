@@ -7,16 +7,21 @@ Each schedule provides the cumulative hazard Lambda(tau) = int_0^tau 1/Tc and it
 import numpy as np
 from Bio.Phylo.BaseTree import Clade, Tree
 
+PRESENT = 2025.0  # date of the most recent sample (tau = 0)
+
 
 class Constant:
     def __init__(self, tc=10.0):
-        self.tc = tc
+        self.tc0 = tc
+
+    def tc(self, tau):
+        return self.tc0 + 0 * np.asarray(tau)
 
     def cum(self, tau):
-        return tau / self.tc
+        return tau / self.tc0
 
     def inv(self, lam):
-        return lam * self.tc
+        return lam * self.tc0
 
 
 class Exponential:
@@ -24,6 +29,9 @@ class Exponential:
 
     def __init__(self, tc0=10.0, scale=5.0):
         self.tc0, self.scale = tc0, scale
+
+    def tc(self, tau):
+        return self.tc0 * np.exp(-np.asarray(tau) / self.scale)
 
     def cum(self, tau):
         return self.scale / self.tc0 * np.expm1(tau / self.scale)
@@ -40,6 +48,9 @@ class Piecewise:
         self.values = np.array(values)
         self.lam = np.concatenate([[0.0], np.cumsum(np.diff(self.breaks) / self.values[:-1])])
 
+    def tc(self, tau):
+        return self.values[np.searchsorted(self.breaks, tau, side='right') - 1]
+
     def cum(self, tau):
         i = np.searchsorted(self.breaks, tau, side='right') - 1
         return self.lam[i] + (tau - self.breaks[i]) / self.values[i]
@@ -52,7 +63,7 @@ class Piecewise:
 SCHEDULES = {'const': Constant, 'exp': Exponential, 'piecewise': Piecewise}
 
 
-def simulate(schedule, rng, n_per_batch=100, n_batches=40, interval=0.1):
+def simulate(schedule, rng, n_per_batch=10, n_batches=40, interval=0.1):
     """Return (tree, tau) where tau maps every clade to its time before the most recent sample."""
     sample_times = [i * interval for i in range(n_batches)]
     tau, active, n_tips, n_nodes = {}, [], 0, 0
