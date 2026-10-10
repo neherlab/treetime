@@ -8,6 +8,8 @@
 #
 # Two backends:
 #   samply (default)  Interactive Firefox Profiler UI. Best for exploration.
+#                     When stdout is not a terminal, records only and prints
+#                     the recording path (open it later with `samply load`).
 #   perf              Textual hotspots to stdout. Best for scripted or
 #                     agent-driven analysis and for pasting into reports.
 #
@@ -15,6 +17,8 @@
 #   --perf             Use perf, print textual self-time + call-graph report
 #   --samply           Use samply, open Firefox Profiler UI (default)
 #   --rate N           Sampling frequency in Hz (default: 1234)
+#   --inline           Resolve inlined frames in the perf call graph (slow: minutes
+#                      for large recordings)
 #   --output PATH      Recording output path (default: tmp/profiling/<program>.<ext>)
 #   --no-build         Skip the container build step, reuse existing binary
 #   -h, --help         Show this help
@@ -43,6 +47,7 @@ PROJECT_DIR="$(dirname "${THIS_DIR}")"
 
 BIN_DIR=".build/container/cargo/profiling"
 SAMPLE_RATE=1234
+INLINE_FLAG="--no-inline"
 
 build_binary() {
   local program="${1}"
@@ -56,13 +61,13 @@ profile_perf() {
 
   perf record -F "${SAMPLE_RATE}" --call-graph dwarf -o "${output}" -- "${binary}" "$@"
 
-  printf "\n===== Self-time (top 30, userspace) =====\n"
+  printf "\n===== Self-time (top 30) =====\n"
   perf report -i "${output}" --stdio --no-children -g none 2>/dev/null |
-    grep -vE '^\s*#' | head -30
+    grep -vE '^\s*#' | c++filt -s rust -i | awk 'NR <= 30'
 
   printf "\n===== Call graph (callers, >=1%%) =====\n"
-  perf report -i "${output}" --stdio -g graph,1,caller 2>/dev/null |
-    grep -vE '^\s*#' | head -60
+  perf report -i "${output}" --stdio -g graph,1,caller "${INLINE_FLAG}" 2>/dev/null |
+    grep -vE '^\s*#' | c++filt -s rust -i | awk 'NR <= 60'
 
   printf "\nRecording saved: %s\n" "${output}" >&2
 }
@@ -71,7 +76,12 @@ profile_samply() {
   local binary="${1}"
   local output="${2}"
   shift 2
-  samply record --rate="${SAMPLE_RATE}" -o "${output}" -- "${binary}" "$@"
+  if [[ -t 1 ]]; then
+    samply record --rate="${SAMPLE_RATE}" -o "${output}" -- "${binary}" "$@"
+  else
+    samply record --save-only --rate="${SAMPLE_RATE}" -o "${output}" -- "${binary}" "$@"
+    printf "\nRecording saved: %s (open with: samply load %s)\n" "${output}" "${output}" >&2
+  fi
 }
 
 main() {
@@ -101,6 +111,10 @@ main() {
     --rate)
       SAMPLE_RATE="${2}"
       shift 2
+      ;;
+    --inline)
+      INLINE_FLAG="--inline"
+      shift
       ;;
     --output)
       output="${2}"
