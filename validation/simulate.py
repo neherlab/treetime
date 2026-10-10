@@ -14,9 +14,7 @@ from Bio import Phylo
 from treetime.gtr import GTR
 from treetime.seqgen import SeqGen
 
-from coalescent import SCHEDULES, simulate
-
-PRESENT = 2025.0
+from coalescent import PRESENT, SCHEDULES, simulate
 
 
 def random_gtr(mu, rng):
@@ -57,17 +55,20 @@ def main():
     outdir.mkdir(parents=True, exist_ok=True)
 
     tree, tau = simulate(SCHEDULES[args.coal](), np.random.default_rng(key))
+    tree.ladderize()
     Phylo.write(tree, outdir / 'tree.nwk', 'newick', format_branch_length='%1.8f')
     write_dates(outdir / 'tip_dates.tsv', tree.get_terminals(), tau)
     write_dates(outdir / 'node_dates.tsv', tree.get_nonterminals(), tau)
 
     for L in args.lengths:
         for mu in args.mus:
+            sub = outdir / f'L{L}_mu{mu:g}'
+            if (sub / 'gtr.json').exists():  # written last, marks a complete set
+                continue
             rng = np.random.default_rng([*key, L, round(mu * 1e6)])
             gtr = random_gtr(mu, rng)
             sim = SeqGen(L, tree=copy.deepcopy(tree), gtr=gtr, rng_seed=int(rng.integers(2**32)), verbose=0)
             sim.evolve()
-            sub = outdir / f'L{L}_mu{mu:g}'
             sub.mkdir(exist_ok=True)
             write_fasta_xz(sub / 'tips.fasta.xz', sim.tree.get_terminals())
             write_fasta_xz(sub / 'internal.fasta.xz', sim.tree.get_nonterminals())
