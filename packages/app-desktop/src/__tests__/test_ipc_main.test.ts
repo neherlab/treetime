@@ -1,5 +1,4 @@
 import type { BackendStopped } from "@neherlab/app-ui/host";
-import { describe, expect, test } from "vitest";
 
 import { emit, handle, listenForPortRequests, sendPort, type IpcMainLike, type SenderEvent } from "../ipc-main";
 

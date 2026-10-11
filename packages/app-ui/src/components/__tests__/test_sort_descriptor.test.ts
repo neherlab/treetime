@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { sortDescriptor } from "../sortDescriptor";
 
 describe("sort descriptor", () => {

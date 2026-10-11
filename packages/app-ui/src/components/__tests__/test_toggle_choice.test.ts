@@ -1,5 +1,4 @@
 import { assert, constantFrom, property, subarray } from "fast-check";
-import { describe, expect, test } from "vitest";
 
 import { pressedChoice, toggledChoice } from "../toggleChoice";
 

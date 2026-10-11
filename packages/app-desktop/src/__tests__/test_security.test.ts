@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { APP_URL } from "../app-scheme";
 import { confineNavigation, isTrustedSender } from "../security";
 

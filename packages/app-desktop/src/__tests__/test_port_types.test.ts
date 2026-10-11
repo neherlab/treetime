@@ -1,6 +1,5 @@
 import type { PortMessage as AddonPortMessage, PortReply as AddonPortReply } from "@neherlab/app-napi";
 import { type PortMessage, type PortReply, portReplySchema } from "@neherlab/app-ui/port";
-import { describe, expect, expectTypeOf, test } from "vitest";
 
 describe("port_types of the addon and the shared transport", () => {
   test("every reply of the addon is a reply of the shared transport, and every message of the transport reaches the addon", () => {

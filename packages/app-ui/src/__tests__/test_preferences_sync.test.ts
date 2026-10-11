@@ -1,5 +1,4 @@
 import type { UiSettings } from "@neherlab/app-contracts";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { PreferencesStorage } from "../preferences/storage";
 import { applyPreferences, currentPreferences, PreferencesSaver, restorePreferences } from "../preferences/sync";
@@ -103,7 +102,8 @@ describe("sync saver", () => {
     usePreferencesStore.getState().setSidebarWidth(300);
     usePreferencesStore.getState().setSidebarWidth(310);
     useDraftStore.getState().update({ search: "clock" });
-    await vi.advanceTimersByTimeAsync(1_000);
+    vi.advanceTimersByTime(1_000);
+    await storage.untilSaved(1);
     saver.dispose();
 
     expect(storage.saved).toStrictEqual([
@@ -118,7 +118,7 @@ describe("sync saver", () => {
 
     usePreferencesStore.getState().setTheme("light");
     target.emit("pagehide");
-    await vi.advanceTimersByTimeAsync(0);
+    await storage.untilSaved(1);
     saver.dispose();
 
     expect(storage.saved.map((preferences) => preferences.theme)).toStrictEqual(["light"]);
@@ -132,7 +132,8 @@ describe("sync saver", () => {
     usePreferencesStore.getState().setTheme("dark");
     saver.dispose();
     usePreferencesStore.getState().setTheme("light");
-    await vi.advanceTimersByTimeAsync(1_000);
+    vi.advanceTimersByTime(1_000);
+    await storage.untilSaved(1);
 
     expect([storage.saved.map((preferences) => preferences.theme), target.listeners()]).toStrictEqual([["dark"], 0]);
   });
@@ -143,11 +144,11 @@ describe("sync saver", () => {
     const saver = new PreferencesSaver(storage, fakeTarget(), failTest);
 
     usePreferencesStore.getState().setTheme("dark");
-    await vi.advanceTimersByTimeAsync(1_000);
+    vi.advanceTimersByTime(1_000);
     usePreferencesStore.getState().setTheme("light");
-    await vi.advanceTimersByTimeAsync(1_000);
+    vi.advanceTimersByTime(1_000);
     firstSave.resolve(undefined);
-    await vi.advanceTimersByTimeAsync(0);
+    await storage.untilSaved(2);
     saver.dispose();
 
     expect(storage.saved.map((preferences) => preferences.theme)).toStrictEqual(["dark", "light"]);
@@ -155,6 +156,7 @@ describe("sync saver", () => {
 
   test("a failed save is reported", async () => {
     const failures: string[] = [];
+    const reported = Promise.withResolvers<undefined>();
 
     const storage: PreferencesStorage = {
       load: () => Promise.resolve({}),
@@ -163,10 +165,12 @@ describe("sync saver", () => {
 
     const saver = new PreferencesSaver(storage, fakeTarget(), (message) => {
       failures.push(message);
+      reported.resolve(undefined);
     });
 
     usePreferencesStore.getState().setTheme("dark");
-    await vi.advanceTimersByTimeAsync(1_000);
+    vi.advanceTimersByTime(1_000);
+    await reported.promise;
     saver.dispose();
 
     expect(failures).toStrictEqual(["the back end stopped"]);
@@ -175,12 +179,21 @@ describe("sync saver", () => {
 
 function recordingStorage(
   firstSave: Promise<undefined> = Promise.resolve(undefined),
-): PreferencesStorage & { saved: UiSettings[] } {
+): PreferencesStorage & { saved: UiSettings[]; untilSaved(count: number): Promise<undefined> } {
   const saved: UiSettings[] = [];
+  const waiters: Array<{ count: number; resolve: (value: undefined) => void }> = [];
   let calls = 0;
 
   return {
     saved,
+    untilSaved: (count) => {
+      const waiter = Promise.withResolvers<undefined>();
+
+      waiters.push({ count, resolve: waiter.resolve });
+      settleWaiters(saved, waiters);
+
+      return waiter.promise;
+    },
     load: () => Promise.resolve({}),
     save: async (preferences) => {
       calls += 1;
@@ -190,8 +203,20 @@ function recordingStorage(
       }
 
       saved.push(preferences);
+      settleWaiters(saved, waiters);
     },
   };
+}
+
+function settleWaiters(
+  saved: readonly UiSettings[],
+  waiters: ReadonlyArray<{ count: number; resolve: (value: undefined) => void }>,
+): void {
+  waiters
+    .filter((waiter) => saved.length >= waiter.count)
+    .forEach((waiter) => {
+      waiter.resolve(undefined);
+    });
 }
 
 function fakeTarget() {

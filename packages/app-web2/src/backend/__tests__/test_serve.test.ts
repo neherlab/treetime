@@ -1,5 +1,5 @@
 import type { PortReply } from "@neherlab/app-ui/port";
-import { describe, expect, test, vi } from "vitest";
+import pWaitFor from "p-wait-for";
 
 import {
   ExchangeServer,
@@ -64,13 +64,9 @@ describe("serve exchanges", () => {
 
     serve(endpoint, fakeBackend(exchange).backend);
     endpoint.receive(REQUEST);
-    await vi.waitFor(() => {
-      expect(endpoint.posted).toHaveLength(1);
-    });
+    await pWaitFor(() => endpoint.posted.length === 1);
     endpoint.receive({ kind: "abort", seq: 7 });
-    await vi.waitFor(() => {
-      expect(exchange.freed()).toBe(true);
-    });
+    await pWaitFor(() => exchange.freed());
 
     expect([exchange.aborted(), endpoint.posted.map(({ reply }) => reply.kind)]).toStrictEqual([true, ["head"]]);
   });
@@ -257,9 +253,7 @@ function fakeExchange({
 }
 
 async function ended(endpoint: FakeEndpoint, seq: number): Promise<void> {
-  await vi.waitFor(() => {
-    expect(
-      endpoint.posted.some(({ reply }) => reply.seq === seq && (reply.kind === "end" || reply.kind === "reset")),
-    ).toBe(true);
-  });
+  await pWaitFor(() =>
+    endpoint.posted.some(({ reply }) => reply.seq === seq && (reply.kind === "end" || reply.kind === "reset")),
+  );
 }

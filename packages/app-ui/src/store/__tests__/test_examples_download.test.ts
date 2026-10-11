@@ -1,5 +1,4 @@
 import type { ExamplesDownloadStatus } from "@neherlab/app-contracts";
-import { describe, expect, test } from "vitest";
 
 import { newerDownloadStatus } from "../examplesDownload";
 

@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { showNamesLabel } from "../RunWarnings";
 
 describe("run warnings", () => {

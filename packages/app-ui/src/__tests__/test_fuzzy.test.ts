@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { fuzzyFilter } from "../fuzzy";
 
 const TEXTS = ["rate of the clock", "clock filter", "ancestral reconstruction", "time tree"];

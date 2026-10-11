@@ -13,7 +13,6 @@ import {
   type ApiClient,
 } from "@neherlab/app-contracts/client";
 import { QueryClient } from "@tanstack/react-query";
-import { describe, expect, expectTypeOf, test } from "vitest";
 
 import { apiKey, apiQueryOptions, resetApiQueries } from "../api/hooks";
 import { requestKey, requestUrl, staleCoversKey, type ApiRequest } from "../api/keys";

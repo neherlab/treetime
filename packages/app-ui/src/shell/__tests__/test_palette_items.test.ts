@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { matchingPaletteItems, paletteGroups, paletteItem } from "../paletteItems";
 
 const NOOP = () => undefined;

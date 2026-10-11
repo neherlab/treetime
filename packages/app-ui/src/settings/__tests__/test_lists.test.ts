@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { formatList, parseList } from "../lists";
 
 describe("list settings", () => {

@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { firstWindowBounds } from "../window-bounds";
 
 const MIN_SIZE = { width: 816, height: 540 };

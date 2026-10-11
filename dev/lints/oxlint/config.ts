@@ -23,6 +23,11 @@ const REJECTED_LIBRARY_PATTERNS = [
     message: 'Import icons from Iconify sets through unplugin-icons, e.g. `import XIcon from "~icons/lucide/x"`.',
   },
   {
+    group: ["bun:test"],
+    message:
+      "Use the bun test globals (test, describe, expect, vi). The vitest lint rules recognize them, but not imports from bun:test.",
+  },
+  {
     group: ["clsx", "tailwind-merge", "tailwind-merge/*"],
     message: "Import `cn`, the class name helper of the themed ui module, which merges Tailwind classes.",
   },
@@ -39,6 +44,25 @@ const WEB_PROPERTIES = [
 ];
 
 const TEST_FILES = ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"];
+
+const DATE_GLOBAL = { name: "Date", message: "Use luxon DateTime instead of the built-in Date." };
+
+const TEST_GLOBALS = [
+  "afterAll",
+  "afterEach",
+  "beforeAll",
+  "beforeEach",
+  "describe",
+  "expect",
+  "expectTypeOf",
+  "it",
+  "jest",
+  "test",
+  "vi",
+  "xdescribe",
+  "xit",
+  "xtest",
+].map((name) => ({ name, message: "Test globals of bun test belong in test files only." }));
 
 const packageManifestSchema = z.object({
   name: z.string().optional(),
@@ -207,7 +231,7 @@ export function projectConfig<R extends string>(settings: ProjectSettings<R>): O
       "typescript/no-explicit-any": "error",
       "typescript/no-non-null-assertion": "error",
       "typescript/consistent-type-assertions": ["error", { assertionStyle: "never" }],
-      "no-restricted-globals": ["error", { name: "Date", message: "Use luxon DateTime instead of the built-in Date." }],
+      "no-restricted-globals": ["error", DATE_GLOBAL, ...TEST_GLOBALS],
 
       "custom/no-vague-identifiers": "error",
       "custom/no-exec-shell-string": "error",
@@ -370,6 +394,9 @@ export function projectConfig<R extends string>(settings: ProjectSettings<R>): O
       {
         files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx", "**/__tests__/**"],
         rules: {
+          "no-restricted-globals": ["error", DATE_GLOBAL],
+          "typescript/await-thenable": "off",
+          "typescript/no-confusing-void-expression": "off",
           "anti-slop/no-unknown-parameters": "off",
           "anti-slop/no-unknown-returns": "off",
           "anti-slop/no-unsafe-dictionary-type": "off",

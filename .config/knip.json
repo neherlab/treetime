@@ -22,7 +22,7 @@
     "packages/app-ui": {
       "entry": ["src/App.tsx!"],
       "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"],
-      "ignoreDependencies": ["tw-animate-css", "@svgr/plugin-jsx"]
+      "ignoreDependencies": ["tw-animate-css", "@svgr/plugin-jsx", "@oxc-project/runtime"]
     },
     "packages/app-web": {
       "entry": ["index.html!"],

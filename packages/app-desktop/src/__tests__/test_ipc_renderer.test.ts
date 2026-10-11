@@ -1,7 +1,6 @@
 import type { PortReply } from "@neherlab/app-napi";
 import { BACKEND_PORT_CHANNEL, BACKEND_PORT_REQUEST_CHANNEL, type BackendStopped } from "@neherlab/app-ui/host";
 import type { FetchPort } from "@neherlab/app-ui/port-fetch";
-import { describe, expect, test } from "vitest";
 
 import {
   createPreloadHost,

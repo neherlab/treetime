@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { contentSecurityPolicy } from "../content-security-policy-vite";
 
 describe("content security policy", () => {

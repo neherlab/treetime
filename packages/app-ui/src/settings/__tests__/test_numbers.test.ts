@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { parseNumber } from "../numbers";
 
 describe("number text", () => {

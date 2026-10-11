@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { commandSwitchNote } from "../commands";
 
 describe("command switch note", () => {

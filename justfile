@@ -269,7 +269,7 @@ test-list-rs *args:
 test-wasm: (build-wasm "dev")
     bun packages/app-wasm/smoke.ts
 
-# TypeScript tests (vitest)
+# TypeScript tests (bun test, one isolated worker per file)
 [group("test")]
 test-ts: _js
     bun run --silent test
@@ -322,11 +322,11 @@ coverage-rs:
     {{ uncached_env }} cargo llvm-cov nextest --locked --workspace --html --output-dir tmp/coverage/rs
     printf 'Rust coverage: tmp/coverage/rs/html/index.html\n'
 
-# TypeScript coverage report (vitest), never a gate
+# TypeScript coverage report (bun test), never a gate
 [group("report")]
 coverage-ts: _js
     bun run --silent coverage
-    printf 'TypeScript coverage: tmp/coverage/ts/index.html\n'
+    printf 'TypeScript coverage: tmp/coverage/ts/lcov.info\n'
 
 # Mutation testing of the code changed since the fork point (or since `rust`), never a gate
 [group("report")]

@@ -17,15 +17,14 @@
       "@types/react": "19.3.0",
       "@types/react-dom": "19.3.0",
       "@vitejs/plugin-react": "6.1.1",
-      "@vitest/coverage-v8": "5.0.1",
       "react": "19.3.0",
       "react-dom": "19.3.0",
       "tailwindcss": "4.3.3",
       "typescript": "7.0.2",
       "vite": "8.3.0",
       "vite-plugin-compression2": "2.5.3",
-      "vitest": "5.0.1",
-      "zod": "4.6.5"
+      "zod": "4.6.5",
+      "p-wait-for": "6.0.0"
     }
   },
   "type": "module",
@@ -33,7 +32,7 @@
     "build:desktop": "bun run --cwd packages/app-desktop build",
     "build:web": "bun run --cwd packages/app-web build",
     "build:web2": "bun run --cwd packages/app-web2 build",
-    "coverage": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=text --coverage.reporter=html --coverage.reportsDirectory=tmp/coverage/ts --coverage.include=\"packages/*/src/**/*.{ts,tsx}\"",
+    "coverage": "bun test --parallel --coverage --coverage-reporter=text --coverage-reporter=lcov --coverage-dir=tmp/coverage/ts",
     "dev:desktop": "bun run --cwd packages/app-desktop dev",
     "format": "bun --bun oxfmt --write .",
     "format:check": "bun --bun oxfmt --check .",
@@ -41,12 +40,12 @@
     "knip:production": "knip --config .config/knip.json --production",
     "lint": "bun --bun oxlint",
     "lint:fix": "bun --bun oxlint --fix",
-    "test": "vitest run"
+    "test": "bun test --parallel"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.83.0",
     "@types/node": "catalog:",
-    "@vitest/coverage-v8": "catalog:",
+    "bun-types": "1.4.2",
     "eslint-plugin-better-tailwindcss": "4.7.0",
     "eslint-plugin-no-comments": "1.2.1",
     "eslint-plugin-react-you-might-not-need-an-effect": "1.0.2",
@@ -58,8 +57,6 @@
     "oxlint-tsgolint": "7.0.2001",
     "react": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:",
     "zod": "catalog:"
   },
   "overrides": {
@@ -75,6 +72,7 @@
   },
   "packageManager": "bun@1.4.3",
   "patchedDependencies": {
-    "auspice@3.0.0": "patches/auspice@3.0.0.patch"
+    "auspice@3.0.0": "patches/auspice@3.0.0.patch",
+    "unplugin-icons@24.0.0": "patches/unplugin-icons@24.0.0.patch"
   }
 }

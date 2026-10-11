@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { bottomAxisLabel, leftAxisLabel, niceAxis, yearTick } from "../palette";
 
 describe("chart axes", () => {

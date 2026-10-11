@@ -1,5 +1,4 @@
 import type { DatasetCatalog, ExamplesDownloadStatus } from "@neherlab/app-contracts";
-import { describe, expect, test } from "vitest";
 
 import { examplesDownloadView } from "../examplesDownloadView";
 

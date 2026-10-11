@@ -2,9 +2,9 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2024"],
-    "types": ["node"],
+    "types": ["bun-types"],
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["oxlint.config.ts", "oxfmt.config.ts", "vitest.config.ts", "vitest.setup.ts"]
+  "include": ["oxlint.config.ts", "oxfmt.config.ts", "test.setup.ts"]
 }

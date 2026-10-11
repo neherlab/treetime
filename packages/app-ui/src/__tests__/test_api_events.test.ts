@@ -10,7 +10,7 @@ import {
   version,
 } from "@neherlab/app-contracts/client";
 import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
-import { describe, expect, test } from "vitest";
+import pWaitFor from "p-wait-for";
 import { ZodError } from "zod";
 
 import { followAppEvents, invalidateStale, runEventsQueryOptions, runEventStream } from "../api/events";
@@ -318,7 +318,7 @@ describe("api events run stream", () => {
     const observer = new QueryObserver(queryClient, options);
     const unsubscribe = observer.subscribe(() => undefined);
 
-    await expect.poll(() => observer.getCurrentResult().data?.terminal).toBeDefined();
+    await pWaitFor(() => observer.getCurrentResult().data?.terminal !== undefined);
     await invalidateStale(queryClient, [{ path: "/api/runs/r1", scope: "subtree" }]);
     unsubscribe();
 

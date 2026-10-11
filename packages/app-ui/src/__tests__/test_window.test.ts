@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { MAIN_PANEL_MIN_WIDTH, SIDEBAR_WIDTH_MIN } from "../ui/sidebar-width";
 import { WINDOW_BACKGROUND, WINDOW_MIN_SIZE, windowBackground } from "../window";
 

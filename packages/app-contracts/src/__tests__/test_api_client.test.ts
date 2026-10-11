@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import pWaitFor from "p-wait-for";
 import { ZodError } from "zod";
 
 import {
@@ -563,7 +563,7 @@ describe("api_client resumable streams", () => {
       }),
     );
 
-    await expect.poll(() => server.sent.length).toBe(1);
+    await pWaitFor(() => server.sent.length === 1);
     controller.abort();
 
     await expect(aborted).resolves.toStrictEqual([]);
@@ -602,6 +602,6 @@ describe("api_client resumable streams", () => {
     }
 
     expect(received).toStrictEqual([0]);
-    await expect.poll(() => cancelled).toBe(true);
+    await pWaitFor(() => cancelled);
   });
 });

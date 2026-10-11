@@ -1,5 +1,4 @@
 import type { SettingSpec } from "@neherlab/app-contracts";
-import { describe, expect, test } from "vitest";
 
 import { commandSettings } from "../catalog";
 import { carryOverConfig, changedSpecs, defaultConfig, isChanged, normalizeConfig, resetValue } from "../config";

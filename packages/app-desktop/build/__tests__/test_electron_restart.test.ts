@@ -1,5 +1,3 @@
-import { afterEach, describe, expect, test } from "vitest";
-
 import { restartChain, type ElectronChild } from "../electron-restart";
 
 const pendingDeadlines: Array<() => void> = [];

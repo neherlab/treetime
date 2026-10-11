@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { browserPreferencesStorage, PREFERENCES_STORAGE_KEY } from "../preferences/storage";
 
 describe("preferences storage browser", () => {

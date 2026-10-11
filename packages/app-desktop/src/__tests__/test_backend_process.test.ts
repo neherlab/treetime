@@ -1,5 +1,4 @@
 import type { ErrorResponse } from "@neherlab/app-contracts";
-import { describe, expect, test } from "vitest";
 
 import { backendStop, shouldRestart, stopReason } from "../backend-process";
 

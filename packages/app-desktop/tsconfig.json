@@ -2,11 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2024"],
-    "types": ["node"],
+    "types": ["node", "bun-types/test", "bun-types/test-globals"],
     "outDir": "dist-electron",
     "noEmit": true
   },
-  "include": ["src"],
+  "include": ["src", "../../test-matchers.d.ts"],
   "references": [
     {
       "path": "../app-contracts/tsconfig.generated.json"

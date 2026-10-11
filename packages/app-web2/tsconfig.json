@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "types": [],
+    "types": ["bun-types/test", "bun-types/test-globals"],
     "jsx": "react-jsx",
     "outDir": "dist",
     "rootDir": "src",
@@ -11,6 +11,10 @@
       "auspice/src/*": ["../app-ui/src/auspice/types/*"]
     }
   },
-  "include": ["src"],
-  "references": [{ "path": "../app-contracts/tsconfig.generated.json" }]
+  "include": ["src", "../../test-matchers.d.ts"],
+  "references": [
+    {
+      "path": "../app-contracts/tsconfig.generated.json"
+    }
+  ]
 }

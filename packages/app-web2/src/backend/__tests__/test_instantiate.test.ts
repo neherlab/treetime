@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { type EmscriptenOptions, instantiateBackend } from "../instantiate";
 
 const MODULE_EXPORTING_SEVEN = new WebAssembly.Module(

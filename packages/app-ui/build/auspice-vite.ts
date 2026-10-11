@@ -1,6 +1,6 @@
-import { transformWithOxc, type Plugin } from "vite";
+import type { Plugin } from "vite";
 
-const AUSPICE_SOURCE =
+export const AUSPICE_SOURCE =
   /[\\/]node_modules[\\/](?:\.bun[\\/][^\\/]+[\\/]node_modules[\\/])?auspice[\\/]src[\\/][^?]+\.js(?:\?.*)?$/u;
 
 const AUSPICE_ENTRIES = [
@@ -54,6 +54,8 @@ export async function transformAuspiceSource(code: string, id: string) {
   if (AUSPICE_TIMERS.test(id)) {
     return { code: AUSPICE_TIMERS_STUB, map: null };
   }
+
+  const { transformWithOxc } = await import("vite");
 
   const result = await transformWithOxc(code, id, {
     lang: "jsx",

@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { fromJsonFloat, nonFiniteLabel } from "../numbers";
 
 describe("non-finite numbers", () => {

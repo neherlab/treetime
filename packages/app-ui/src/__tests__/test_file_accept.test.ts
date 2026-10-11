@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { dropzoneAccept } from "../analysis/fileAccept";
 
 describe("file dialog accept filter", () => {

@@ -1,19 +1,27 @@
 import { createStateFromQueryOrJSONs } from "auspice/src/actions/recomputeReduxState";
 import { CLEAN_START, NEW_COLORS } from "auspice/src/actions/types";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { createAuspiceStore } from "../store";
 import { focusNode } from "../store-hooks";
 
 const NUC_ANNOTATION = { nuc: { start: 1, end: 3, strand: "+", type: "source" } };
 
+const RUNTIME_WINDOW = Object.getOwnPropertyDescriptor(globalThis, "window");
+
 describe("auspice store", () => {
   beforeEach(() => {
-    vi.stubGlobal("window", { innerWidth: 1280, innerHeight: 800, document: { body: { clientHeight: 800 } } });
+    Object.defineProperty(globalThis, "window", {
+      value: { innerWidth: 1280, innerHeight: 800, document: { body: { clientHeight: 800 } } },
+      configurable: true,
+    });
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    if (RUNTIME_WINDOW === undefined) {
+      Reflect.deleteProperty(globalThis, "window");
+    } else {
+      Object.defineProperty(globalThis, "window", RUNTIME_WINDOW);
+    }
   });
 
   test.each([

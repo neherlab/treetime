@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { APP_URL, resolveAppAsset } from "../app-scheme";
 
 const ROOT = "/opt/treetime/resources/app.asar/dist";

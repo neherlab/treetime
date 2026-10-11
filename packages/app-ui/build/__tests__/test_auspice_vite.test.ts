@@ -1,5 +1,3 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
-
 import { transformAuspiceSource } from "../auspice-vite";
 
 const AUSPICE_ROOT = "/repo/node_modules/.bun/auspice@3.0.0+ee1ed944166f6889/node_modules/auspice";
@@ -9,9 +7,13 @@ export const timerStart = (name) => { console.log("start", name); };
 export const timerEnd = (name) => { console.warn("end", name); };
 `;
 
+const RUNTIME_CONSOLE = Object.getOwnPropertyDescriptor(globalThis, "console");
+
 describe("auspice source transform", () => {
   afterEach(() => {
-    vi.unstubAllGlobals();
+    if (RUNTIME_CONSOLE !== undefined) {
+      Object.defineProperty(globalThis, "console", RUNTIME_CONSOLE);
+    }
   });
 
   test("the timing module becomes timers that print nothing", async () => {
@@ -21,7 +23,10 @@ describe("auspice source transform", () => {
       printed.push(args);
     };
 
-    vi.stubGlobal("console", { log: record, warn: record, error: record });
+    Object.defineProperty(globalThis, "console", {
+      value: { log: record, warn: record, error: record },
+      configurable: true,
+    });
 
     const { code } = await transformAuspiceSource(TIMERS_SOURCE, `${AUSPICE_ROOT}/src/util/perf.js`);
     const timers = await importModule(code);

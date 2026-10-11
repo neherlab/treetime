@@ -1,6 +1,6 @@
 import type { PortMessage, PortReply, PortRequest } from "@neherlab/app-napi";
+import { portMessageSchema, portReplySchema } from "@neherlab/app-ui/port";
 import { createPortFetch, type FetchPort } from "@neherlab/app-ui/port-fetch";
-import { describe, expect, test } from "vitest";
 
 import { serveFetch, type AddonBackend } from "../backend-host";
 import type { FetchEndpoint } from "../backend-protocol";
@@ -246,33 +246,37 @@ function addonWith(overrides: Partial<AddonBackend>): AddonBackend {
   };
 }
 
-type NodePort = InstanceType<typeof MessageChannel>["port1"];
+type ChannelPort = InstanceType<typeof MessageChannel>["port1"];
 
-function nodeEndpoint(port: NodePort): FetchEndpoint {
+function nodeEndpoint(port: ChannelPort): FetchEndpoint {
   return {
     post: (reply) => {
       port.postMessage(reply);
     },
     listen: (listener) => {
-      port.on("message", (message: PortMessage) => {
-        listener(message);
+      port.addEventListener("message", (event) => {
+        if (event instanceof MessageEvent) {
+          listener(portMessageSchema.parse(event.data));
+        }
       });
       port.start();
     },
     onClose: (listener) => {
-      port.on("close", listener);
+      port.addEventListener("close", listener);
     },
   };
 }
 
-function nodeFetchPort(port: NodePort): FetchPort {
+function nodeFetchPort(port: ChannelPort): FetchPort {
   return {
     postMessage: (message) => {
       port.postMessage(message);
     },
     addEventListener: (_type, listener) => {
-      port.on("message", (data: PortReply) => {
-        listener({ data });
+      port.addEventListener("message", (event) => {
+        if (event instanceof MessageEvent) {
+          listener({ data: portReplySchema.parse(event.data) });
+        }
       });
     },
     start: () => {

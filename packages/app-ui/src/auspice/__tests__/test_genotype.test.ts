@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { nucleotideColorBy, nucleotidePosition } from "../genotype";
 
 describe("genotype color-by keys", () => {

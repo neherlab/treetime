@@ -5,3 +5,9 @@ env = false
 [install]
 exact = true
 minimumReleaseAge = 604800
+
+[test]
+root = "packages"
+preload = ["./test.setup.ts"]
+randomize = true
+seed = 20260919

@@ -1,5 +1,4 @@
 import { assert, double, integer, property } from "fast-check";
-import { describe, expect, test } from "vitest";
 
 import {
   clampSidebarWidth,

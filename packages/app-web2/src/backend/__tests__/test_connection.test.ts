@@ -1,6 +1,6 @@
 import type { BackendStopped } from "@neherlab/app-ui/host";
 import type { FetchPort } from "@neherlab/app-ui/port-fetch";
-import { describe, expect, test } from "vitest";
+import pWaitFor from "p-wait-for";
 
 import { type BackendWorker, WorkerConnection, type WorkerHost } from "../connection";
 import type { WorkerStart } from "../protocol";
@@ -79,7 +79,7 @@ describe("connection failures", () => {
       stops.push(stop);
     });
     connection.onPort(() => undefined);
-    await expect.poll(() => stops).toHaveLength(1);
+    await pWaitFor(() => stops.length === 1);
 
     expect([stops, host.workers[0]?.posted]).toStrictEqual([
       [

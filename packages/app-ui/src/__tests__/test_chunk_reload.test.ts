@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { reloadOnChunkError, type ReloadTarget } from "../chunk-reload";
 
 function page(stored: string | null) {

@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { commandSettings } from "../catalog";
 import { defaultConfig } from "../config";
 import {

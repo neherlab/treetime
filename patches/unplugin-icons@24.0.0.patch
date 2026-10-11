@@ -1,0 +1,15 @@
+diff --git a/dist/index.d.mts b/dist/index.d.mts
+index 53f8781ff51ac0117538dfa2e170f0a4552bd4bf..e92c2b92a6cd4a42f87c9a1a6700072bf77297c2 100644
+--- a/dist/index.d.mts
++++ b/dist/index.d.mts
+@@ -1,7 +1,8 @@
+ import { t as CustomCompiler } from "./types-DyQMNcVB.mjs";
+ import { CustomCollectionIconLoader, CustomIconLoader, IconCustomizer, InlineCollection, Options, ResolvedOptions } from "./types.mjs";
++import * as unplugin$1 from "unplugin";
+ 
+ //#region src/index.d.ts
+-declare const unplugin: unplugin.UnpluginInstance<Options | undefined, boolean>;
++declare const unplugin: unplugin$1.UnpluginInstance<Options | undefined, boolean>;
+ //#endregion
+ export { CustomCollectionIconLoader, CustomCompiler, CustomIconLoader, IconCustomizer, InlineCollection, Options, ResolvedOptions, unplugin as default };
+\ No newline at end of file

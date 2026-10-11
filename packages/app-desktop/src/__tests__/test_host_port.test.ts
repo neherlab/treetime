@@ -2,7 +2,7 @@ import { ApiError } from "@neherlab/app-contracts/client";
 import type { PortMessage, PortReply } from "@neherlab/app-napi";
 import { portReplySchema } from "@neherlab/app-ui/port";
 import { createPortFetch } from "@neherlab/app-ui/port-fetch";
-import { describe, expect, test, vi } from "vitest";
+import pWaitFor from "p-wait-for";
 
 import { HostConnection, mainFetchPort, type MainPort } from "../host-port";
 
@@ -41,9 +41,7 @@ describe("host_port connection", () => {
     const saved = portFetch(`${ORIGIN}/api/runs/r1/save`, { method: "POST", body: "{}" });
     const second = fakeMainPort();
     connection.connect(mainFetchPort(second));
-    await vi.waitFor(() => {
-      expect(second.posted).toHaveLength(1);
-    });
+    await pWaitFor(() => second.posted.length === 1);
     second.deliver({ kind: "head", seq: 0, status: 200, headers: [] });
     second.deliver({ kind: "end", seq: 0 });
 

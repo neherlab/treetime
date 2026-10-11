@@ -24,6 +24,7 @@
     "@vitejs/plugin-react": "catalog:",
     "electron": "44.4.1",
     "electron-builder": "26.16.1",
+    "p-wait-for": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",

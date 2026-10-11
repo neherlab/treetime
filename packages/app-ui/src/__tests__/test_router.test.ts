@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { router } from "../router";
 
 const RUN_TABS = ["results", "settings", "log"] as const;
@@ -11,7 +9,7 @@ describe("root route", () => {
 });
 
 describe("run routes", () => {
-  test.each(RUN_TABS)("the %s tab of a run is a child of the run page route", (tab) => {
+  test.each([...RUN_TABS])("the %s tab of a run is a child of the run page route", (tab) => {
     expect(router.matchRoutes(`/runs/r1/${tab}`).map((match) => match.routeId)).toStrictEqual([
       "__root__",
       "/runs/$id",

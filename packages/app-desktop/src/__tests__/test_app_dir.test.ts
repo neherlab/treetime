@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import { appFolderEnv, checkoutEnv } from "../app-dir";
 
 describe("app_dir checkout", () => {

@@ -1,5 +1,4 @@
 import type { SettingChoice } from "@neherlab/app-contracts";
-import { describe, expect, test } from "vitest";
 
 import { choiceRow } from "../choices";
 

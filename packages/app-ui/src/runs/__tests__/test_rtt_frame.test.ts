@@ -1,5 +1,3 @@
-import { describe, expect, test } from "vitest";
-
 import type { RttPoint } from "../RootToTipPlot";
 import { placePoints, plotFrame } from "../rttFrame";
 

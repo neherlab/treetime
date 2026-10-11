@@ -1,6 +1,6 @@
 import type { ErrorResponse } from "@neherlab/app-contracts";
 import { ApiError } from "@neherlab/app-contracts/client";
-import { describe, expect, test, vi } from "vitest";
+import pWaitFor from "p-wait-for";
 
 import type { BackendStopped } from "../host";
 import type { PortMessage, PortReply } from "../port";
@@ -62,9 +62,7 @@ describe("port_fetch requests", () => {
     const backend = fakeBackend({ connected: true });
 
     void createPortFetch(backend.connection)(`${ORIGIN}/api/version`);
-    await vi.waitFor(() => {
-      expect(backend.posted).toHaveLength(1);
-    });
+    await pWaitFor(() => backend.posted.length === 1);
 
     expect(backend.posted).toStrictEqual([
       { kind: "request", request: { seq: 0, method: "GET", url: "/api/version", headers: [] } },
@@ -390,7 +388,5 @@ function fakeBackend({ connected = false } = {}): FakeBackend {
 }
 
 async function sent(backend: FakeBackend, count: number): Promise<void> {
-  await vi.waitFor(() => {
-    expect(backend.posted).toHaveLength(count);
-  });
+  await pWaitFor(() => backend.posted.length === count);
 }
