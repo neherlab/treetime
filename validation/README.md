@@ -47,7 +47,12 @@ python run.py --suite ancestral --set core      # also: --set smoke (rep00, L=10
 python run.py --suite timetree --set core
 python run.py --suite timetree --set extra      # rep00-02, L=1000, mu in {0.003, 0.001}
 python evaluate.py --suite timetree             # writes results/timetree.tsv, prints a summary
+python analyze.py                               # results/report/: summary.md and figures
+python analyze.py --baseline ../old/results     # also compare.md: per-run changes against an earlier run
 ```
+
+`analyze.py` needs `matplotlib`, `tabulate` and `biopython` in addition to `pandas`. Failed runs carry their TreeTime error message
+in the `error` column of the TSV.
 
 Jobs run in parallel (`-j`, default: available CPUs), skip finished runs, and record command, return code, run time
 and peak memory in `run.json`. `--binary` selects the treetime executable (default `../target/release/treetime`),

@@ -6,6 +6,7 @@ Per-run metrics are cached in metrics.json next to run.json.
 
 import argparse
 import json
+import re
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -112,6 +113,14 @@ def eval_timetree(out, set_dir, coal):
     return m
 
 
+def error_message(log):
+    """Innermost error of a failed run, without colors and numbers that differ between runs."""
+    lines = [re.sub(r'\x1b\[[0-9;]*m', '', x).strip() for x in log.read_text(errors='replace').splitlines()]
+    causes = [re.sub(r'^\d+: ', '', x) for x in lines if re.match(r'^\d+: ', x)]
+    msg = causes[-1] if causes else (lines[-1] if lines else 'killed (empty log)')
+    return re.sub(r'\s*(on\s+)?\[[^\]]*\]|\s*\([^)]*\)', '', msg).strip()
+
+
 def evaluate(out, suite, data):
     cache = out / 'metrics.json'
     if cache.exists() and cache.stat().st_mtime >= (out / 'run.json').stat().st_mtime:
@@ -120,10 +129,12 @@ def evaluate(out, suite, data):
     variant, coal, rep, setname = out.parts[-4:]
     L, mu = setname.removeprefix('L').split('_mu')
     row = {'variant': variant, 'coal': coal, 'rep': rep, 'L': int(L), 'mu': float(mu)}
-    row |= {'returncode': run['returncode'], 'seconds': run['seconds']}
+    row |= {'returncode': run['returncode'], 'seconds': run['seconds'], 'max_rss_mb': run.get('max_rss_mb')}
     if run['returncode'] == 0:
         set_dir = data / coal / rep / setname
         row |= eval_ancestral(out, set_dir) if suite == 'ancestral' else eval_timetree(out, set_dir, coal)
+    else:
+        row['error'] = error_message(out / 'log.txt')
     cache.write_text(json.dumps(row, indent=1, default=float))
     return row
 
