@@ -28,6 +28,10 @@ rustc_session::declare_lint! {
 
 pub type HelpDocs = Arc<Lock<FxHashSet<(BytePos, BytePos)>>>;
 
+#[expect(
+    clippy::arc_with_non_send_sync,
+    reason = "rustc's Lock is DynSync, and the pass closures that share it must be DynSend and DynSync, which Rc is not"
+)]
 pub fn new_help_docs() -> HelpDocs {
     Arc::new(Lock::new(FxHashSet::default()))
 }

@@ -131,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for PreferErrorMacros {
             return;
         };
         let snippet = snippet_with_applicability(cx, call_site, "", &mut applicability);
-        match snippet.find(|c| matches!(c, '(' | '[' | '{')) {
+        match snippet.find(['(', '[', '{']) {
             Some(delim) => span_lint_and_sugg(
                 cx,
                 PREFER_ERROR_MACROS,

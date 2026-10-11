@@ -56,20 +56,20 @@ impl<'tcx> LateLintPass<'tcx> for UnclearExports {
 
         // `Bar as _` is the idiomatic way to import a trait for its methods
         // without binding the name -- not a rename.
-        if let UseKind::Single(bound_ident) = *kind {
-            if let Some(last_seg) = path.segments.last() {
-                let original = last_seg.ident.name;
-                let bound = bound_ident.name;
-                if original != bound && bound != kw::Underscore {
-                    span_lint_and_help(
-                        cx,
-                        UNCLEAR_EXPORTS,
-                        item.span,
-                        RENAME_MSG,
-                        None,
-                        RENAME_HELP,
-                    );
-                }
+        if let UseKind::Single(bound_ident) = *kind
+            && let Some(last_seg) = path.segments.last()
+        {
+            let original = last_seg.ident.name;
+            let bound = bound_ident.name;
+            if original != bound && bound != kw::Underscore {
+                span_lint_and_help(
+                    cx,
+                    UNCLEAR_EXPORTS,
+                    item.span,
+                    RENAME_MSG,
+                    None,
+                    RENAME_HELP,
+                );
             }
         }
     }

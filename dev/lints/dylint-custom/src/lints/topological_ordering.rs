@@ -65,24 +65,24 @@ fn item_display_name(cx: &LateContext<'_>, item: &hir::Item<'_>) -> String {
     let def_id = item.owner_id.to_def_id();
     let kind = cx.tcx.def_kind(def_id);
 
-    if let DefKind::Impl { .. } = kind {
-        if let hir::ItemKind::Impl(impl_block) = &item.kind {
-            let ty_name = cx
+    if let DefKind::Impl { .. } = kind
+        && let hir::ItemKind::Impl(impl_block) = &item.kind
+    {
+        let ty_name = cx
+            .sess()
+            .source_map()
+            .span_to_snippet(impl_block.self_ty.span)
+            .unwrap_or_else(|_| "?".into());
+        return if let Some(trait_ref) = &impl_block.of_trait {
+            let trait_name = cx
                 .sess()
                 .source_map()
-                .span_to_snippet(impl_block.self_ty.span)
-                .unwrap_or_else(|_| "?".into());
-            return if let Some(trait_ref) = &impl_block.of_trait {
-                let trait_name = cx
-                    .sess()
-                    .source_map()
-                    .span_to_snippet(trait_ref.trait_ref.path.span)
-                    .unwrap_or_else(|_| "..".into());
-                format!("impl {trait_name} for {ty_name}")
-            } else {
-                format!("impl {ty_name}")
-            };
-        }
+                .span_to_snippet(trait_ref.trait_ref.path.span)
+                .unwrap_or_else(|_| "..".into());
+            format!("impl {trait_name} for {ty_name}")
+        } else {
+            format!("impl {ty_name}")
+        };
     }
 
     let name = cx
@@ -158,14 +158,11 @@ fn find_module_item(
     }
     let mut current = def_id.to_def_id();
     loop {
-        let parent = tcx.opt_parent(current);
-        let Some(parent) = parent else {
-            return None;
-        };
-        if let Some(local) = parent.as_local() {
-            if let Some(&result) = map.get(&local) {
-                return Some(result);
-            }
+        let parent = tcx.opt_parent(current)?;
+        if let Some(local) = parent.as_local()
+            && let Some(&result) = map.get(&local)
+        {
+            return Some(result);
         }
         current = parent;
     }
@@ -706,14 +703,15 @@ impl<'tcx> LateLintPass<'tcx> for TopologicalOrdering {
                 find_module_item(cx.tcx, raw_ref.target, &def_id_to_module_item)
             });
 
-            if let (Some((src_mod, src_idx)), Some((tgt_mod, tgt_idx))) = (source, target) {
-                if src_mod == tgt_mod && src_idx != tgt_idx {
-                    module_refs.entry(src_mod).or_default().push((
-                        src_idx,
-                        tgt_idx,
-                        raw_ref.ref_span,
-                    ));
-                }
+            if let (Some((src_mod, src_idx)), Some((tgt_mod, tgt_idx))) = (source, target)
+                && src_mod == tgt_mod
+                && src_idx != tgt_idx
+            {
+                module_refs.entry(src_mod).or_default().push((
+                    src_idx,
+                    tgt_idx,
+                    raw_ref.ref_span,
+                ));
             }
         }
 
