@@ -46,6 +46,7 @@ data/<coal>/rep<NN>/
 python run.py --suite ancestral --set core      # also: --set smoke (rep00, L=1000)
 python run.py --suite timetree --set core
 python run.py --suite timetree --set extra      # rep00-02, L=1000, mu in {0.003, 0.001}
+python run.py --suite optimize --set core       # branch length optimization
 python evaluate.py --suite timetree             # writes results/timetree.tsv, prints a summary
 python analyze.py                               # results/report/: summary.md and figures
 python analyze.py --baseline ../old/results     # also compare.md: per-run changes against an earlier run
@@ -59,7 +60,8 @@ and peak memory in `run.json`. `--binary` selects the treetime executable (defau
 `--filter` restricts jobs by a regex on the output path.
 
 Inputs (`inputs.py`, written to `data/.../inputs/`) are divergence trees on the true topology: `exact` (mu t),
-`realized` (true parent-child differences / L) and `rate` (realized times lognormal(0, 0.25) per branch).
+`realized` (true parent-child differences / L), `rate` (realized times lognormal(0, 0.25) per branch) and `perturbed`
+(exact times lognormal(0, 0.3) per branch).
 
 - `ancestral`: `exact` tree; marginal, marginal with `--gtr-iterations 3`, parsimony. Metrics: per-site error of
   internal sequences (by node age), error of pi, W and mu of the inferred GTR.
@@ -68,4 +70,11 @@ Inputs (`inputs.py`, written to `data/.../inputs/`) are divergence trees on the 
   root date, internal-node date bias and RMSE (by node age), root recovery, Tc error and coverage, 90% CI coverage
   (`extra` set), and the number of nodes dated before their parent.
 
-Nodes are matched to the truth by their set of descendant tips.
+- `optimize`: `perturbed` tree, alignment; variants `fixed-topo` (no collapsing, merging or flipping of branches),
+  `fixed-topo-dense` and `default`. Metrics, in substitutions (branch length times L): per-branch RMSE against the
+  realized branch lengths (also for the perturbed input, and by realized substitutions), total length against realized
+  and expected, zero and non-zero branches kept as such, squared deviation from mu t relative to Poisson noise, and the
+  sum of the two root branches, which is the only identifiable quantity at the root. Dense takes minutes per run;
+  `--filter '^(?!.*fixed-topo-dense/.*(rep0[3-9]|L10000))'` limits it to rep00-02 at L=1000.
+
+Nodes and branches are matched to the truth by their set of descendant tips.
