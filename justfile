@@ -26,12 +26,14 @@ export NEXTEST_NO_TESTS := "fail"
 # .build/container, so host and container artifacts, which link against
 # different system libraries, never mix. Builds and tests share one cargo target
 # directory; clippy, dylint, and hawk each have their own, so a lint never waits
-# on the build lock.
+# on the build lock. The lint libraries in dev/lints build with their own pinned
+# nightly into dev-lints.
 build_dir := env("TREETIME_BUILD_DIR", justfile_directory() / ".build/host")
 export CARGO_TARGET_DIR := build_dir / "cargo"
 lint_target_dir := build_dir / "lint"
 dylint_target_dir := build_dir / "dylint"
 hawk_target_dir := build_dir / "hawk"
+dev_lints_target_dir := build_dir / "dev-lints"
 
 # The kache compiler cache is optional. KACHE_STORE, in .env or the environment,
 # names the store directory; every build and clippy pass then compiles through
@@ -143,6 +145,11 @@ check-all: _js
 [group("check")]
 check-group group: _js
     recipes="$(just --evaluate "checks_$1")"; JS_READY=1 dev/run-checks --serial ${recipes}
+
+# Lints and tests of the lint libraries and oxlint plugins in dev/lints, keep-going; outside check and check-all
+[group("check")]
+check-dev: _js
+    JS_READY=1 dev/run-checks --serial lint-dev-rs test-dev-rs lint-dev-ts test-dev-ts
 
 # Apply the fast automatic lint fixes (clippy, oxlint), then format; stage your changes first
 [group("check")]
@@ -267,6 +274,19 @@ test-wasm: (build-wasm "dev")
 test-ts: _js
     bun run --silent test
 
+# Tests of the lint libraries in dev/lints (nextest, in each library's workspace and pinned nightly), keep-going
+[group("test")]
+[script]
+test-dev-rs *args:
+    status=0
+    for dir in dev/lints/dylint-*/; do (cd "${dir}" && {{ uncached_env }} CARGO_TARGET_DIR={{ quote(dev_lints_target_dir / "test") }} cargo nextest run --locked --workspace --no-tests=pass "$@") || status=1; done
+    exit "${status}"
+
+# Tests of the oxlint plugins in dev/lints (node --test, the runner of the oxlint RuleTester)
+[group("test")]
+test-dev-ts: _js
+    node --test 'dev/lints/oxlint/__tests__/test_*.ts' 'dev/lints/oxlint-anti-slop/**/*.test.ts'
+
 # Smoke-test the fast cases (datasets of at most 100 sequences) against the rust branch (host only, needs Docker): just smoke [--only REGEX] [--against REF]
 [group("test")]
 smoke *args:
@@ -388,6 +408,23 @@ dylint-fix:
 [group("lint")]
 dylint-baseline:
     DYLINT_RUSTFLAGS={{ quote(dylint_rustflags) }} MORDANT_BASELINE_WRITE=1 {{ dylint_cmd }} -- {{ dylint_cargo_args }} --keep-going
+
+# Clippy over the lint libraries in dev/lints, in each library's workspace and pinned nightly; reports the warnings of every library, then fails if there were any
+[group("lint")]
+[script]
+lint-dev-rs *args:
+    status=0
+    for dir in dev/lints/dylint-*/; do (cd "${dir}" && {{ uncached_env }} CARGO_TARGET_DIR={{ quote(dev_lints_target_dir / "lint") }} CARGO_BUILD_WARNINGS=deny cargo clippy --locked --workspace --all-targets --keep-going "$@") || status=1; done
+    exit "${status}"
+
+# Type checks (bun check) and lints (oxlint) of the oxlint plugins in dev/lints, keep-going
+[group("lint")]
+[script]
+lint-dev-ts: _js
+    status=0
+    for project in dev/lints/oxlint dev/lints/oxlint-anti-slop; do bun check --all -p "${project}" || status=1; done
+    bun --bun oxlint dev/lints || status=1
+    exit "${status}"
 
 # Unnecessary public surface (cargo-hawk), denying warnings
 [group("lint")]

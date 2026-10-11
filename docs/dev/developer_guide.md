@@ -68,6 +68,7 @@ Optional settings go into the gitignored `.env` in the checkout; `.env.example` 
 | Smoke test of the WebAssembly back end, in Bun   | `just test-wasm`                     |
 | TypeScript lints                                 | `just lint-ts`                       |
 | Format one toolchain                             | `just fmt-rs`, `fmt-ts`, `fmt-other` |
+| Lints and tests of the tools in `dev/lints`      | `just check-dev`                     |
 
 In the container, prefix each command with `./dev/docker/run`.
 
@@ -78,6 +79,8 @@ Recipe names follow one scheme:
 - **The suffix `-all`** adds the slow tools to the fast set of the same name: `fix-all` adds the dylint fixes, `lint-all` the lint libraries, hawk, and the dependency and config lints, and `check-all` the full gate
 
 While working on one toolchain, run its leaves (`just fmt-rs`, `just l`, `just t`) and leave the slow tools to `check-all`.
+
+The lint libraries and oxlint plugins in `dev/lints` have their own recipes, which `check` and `check-all` leave out: `just check-dev` runs `lint-dev-rs` and `test-dev-rs` for the dylint libraries, each in its own workspace with its pinned nightly, and `lint-dev-ts` and `test-dev-ts` for the oxlint plugins. Run them after a change in `dev/lints`.
 
 `check` and `check-all` run their checks in parallel through `dev/run-checks`, keep going past failures, and list the failed checks at the end. Each check writes its output to `tmp/checks/<check>.log`. Warnings fail the checks, and a missing tool is a failure, not a skipped check. The full gate consists of groups, one CI job each; `just check-group <group>` runs one group serially, as its CI job does.
 
