@@ -41,6 +41,7 @@ impl VarPosMap {
     self.entries.iter().map(|(pos, _)| pos)
   }
 
+  #[cfg(test)]
   pub(crate) fn values(&self) -> impl Iterator<Item = &VarPos> {
     self.entries.iter().map(|(_, value)| value)
   }

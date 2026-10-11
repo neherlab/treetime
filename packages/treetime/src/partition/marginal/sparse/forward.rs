@@ -237,7 +237,7 @@ fn compute_msg_to_child(
   Ok(seq_dis)
 }
 
-fn compute_ml_subs_for_nodes(
+pub(crate) fn compute_ml_subs_for_nodes(
   alphabet: &Alphabet,
   parent: &SparseNodeState,
   parent_obs: &SparseNodeObs,

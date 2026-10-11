@@ -9,7 +9,8 @@ Accepted and implemented. The `--gtr-iterations N` flag (default 0) on the ances
 Key implementation decisions:
 
 - The `TransitionCounting` trait in `partition/traits.rs` generalizes transition counting across all marginal partition types (dense, discrete, sparse), with each type implementing counting over its native data layout.
-- `MarginalData::count_transitions` provides the shared dense/discrete implementation. Sparse has its own implementation via private associated functions on `PartitionMarginalSparse`.
+- `MarginalData::count_transitions` provides the shared dense/discrete implementation: expected transition counts from the marginal messages, as v0's `infer_gtr(marginal=True)` (dense is golden-master tested against v0).
+- Sparse counts the most likely substitutions on each branch (`compute_ml_subs_for_nodes`) and the composition of the most likely node sequences (`map_seq`) with `count_branch_mutations` in `gtr/infer_gtr/common.rs`, the same counter as the initial Fitch inference (`get_mutation_counts_fitch`), not expected counts. Its counts do not depend on the current GTR, so sparse refinement settles after the first iteration, and sparse and dense refinement give slightly different models. An earlier message-based sparse count dropped every substitution at sites fixed on both sides of a branch and collapsed `mu` (validation, 2026-10).
 - `refine_gtr_iterative` in `gtr/refinement.rs` accepts any partition implementing `TransitionCounting + PartitionMarginalPasses + HasGtr`.
 - Rate optimization (`optimize_gtr_rate`) is configurable via `optimize_rate: bool`: mugration passes `true`, ancestral passes `false`. Per the proposal recommendation, Brent-style mu optimization is unnecessary for multi-site sequence data where `infer_gtr_impl` already estimates mu from large counts.
 - `get_branch_mutation_matrix` and `accumulate_mutation_counts` live in `gtr/infer_gtr/common.rs` alongside `MutationCounts` and `infer_gtr_impl`.

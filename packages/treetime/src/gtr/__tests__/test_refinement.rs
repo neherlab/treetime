@@ -4,7 +4,6 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::progress::NoopProgress;
   use eyre::Report;
-  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_refinement_sparse_rate_search_ends_at_log_lh_maximum_in_mu() -> Result<(), Report> {
@@ -41,58 +40,12 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  #[ignore = "sparse transition counts differ from dense: kb/issues/M-gtr-sparse-transition-counts-diverge-from-dense.md"]
-  fn test_refinement_sparse_gtr_and_rate_match_dense() -> Result<(), Report> {
-    let input = helpers::Input::new()?;
-    let (sparse, node_states) = input.sparse()?;
-    let dense = input.dense()?;
-    let sparse_start = sparse.marginal_update(&input.start_gtr, &input.graph, &input.branch_lengths, &node_states)?;
-    let dense_start = dense.marginal_update(&input.start_gtr, &input.graph, &input.branch_lengths, &())?;
-
-    let (sparse_gtr, sparse_refined) = refine_gtr_model_and_rate(
-      &sparse,
-      input.start_gtr.clone(),
-      sparse_start,
-      2,
-      None,
-      1.0,
-      None,
-      &input.graph,
-      &input.branch_lengths,
-      &NoopProgress,
-    )?;
-    let (dense_gtr, dense_refined) = refine_gtr_model_and_rate(
-      &dense,
-      input.start_gtr.clone(),
-      dense_start,
-      2,
-      None,
-      1.0,
-      None,
-      &input.graph,
-      &input.branch_lengths,
-      &NoopProgress,
-    )?;
-
-    pretty_assert_abs_diff_eq!(dense_gtr.mu, sparse_gtr.mu, epsilon = 1e-7);
-    pretty_assert_abs_diff_eq!(dense_gtr.pi, sparse_gtr.pi, epsilon = 1e-7);
-    pretty_assert_abs_diff_eq!(dense_gtr.W, sparse_gtr.W, epsilon = 1e-7);
-    pretty_assert_abs_diff_eq!(
-      dense_refined.log_lh.value(),
-      sparse_refined.log_lh.value(),
-      epsilon = 1e-7
-    );
-    Ok(())
-  }
-
   mod helpers {
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::branch_lengths::branch_lengths_or_zero;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::gtr::gtr::GTR;
     use crate::partition::fitch::passes::create_fitch_partition;
-    use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
     use crate::partition::storage::sparse::SparseNodeState;
     use crate::seq::alignment::NodeSeqInput;
@@ -148,10 +101,6 @@ mod tests {
       ) -> Result<(PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>), Report> {
         create_fitch_partition(&self.graph, Alphabet::new(AlphabetName::Nuc)?, self.node_inputs.clone())?
           .into_marginal_sparse(&self.graph)
-      }
-
-      pub(super) fn dense(&self) -> Result<PartitionMarginalDense, Report> {
-        PartitionMarginalDense::new(Alphabet::new(AlphabetName::Nuc)?, &self.graph, &self.node_inputs)
       }
     }
   }

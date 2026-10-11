@@ -1,10 +1,9 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
-use crate::gtr::infer_gtr::common::MutationCounts;
+use crate::gtr::infer_gtr::common::{MutationCounts, count_branch_mutations};
 use crate::partition::marginal::sample::{Resolve, SampleMode};
 use crate::partition::marginal::sequences::sample_internal_sequences;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalPasses};
-use crate::partition::marginal::sparse::count::count_transitions_sparse;
 use crate::partition::marginal::sparse::reconstruct::{
   map_seq, map_seq_overlay, map_seq_sampled, reconstruct_leaf_sequence,
 };
@@ -13,6 +12,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
 };
+use crate::seq::composition::Composition;
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use crate::seq::overlay::SeqOverlay;
 use crate::{make_error, make_internal_report};
@@ -215,16 +215,44 @@ impl MarginalPasses for PartitionMarginalSparse {
     forward::process_forward_indexed(self, gtr, graph, branch_lengths, node_states, backward)
   }
 
+  /// Counts the most likely substitutions on each branch and the composition of the most likely sequences, like the
+  /// Fitch inference (not expected transitions).
   fn count_transitions(
     &self,
-    gtr: &GTR,
+    _gtr: &GTR,
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-    backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
-    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+    _backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+    _forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
   ) -> Result<MutationCounts, Report> {
-    count_transitions_sparse(gtr, self.length, graph, branch_lengths, node_states, backward, forward)
+    let compositions: BTreeMap<GraphNodeKey, Composition> = node_states
+      .iter()
+      .map(|(&key, node)| {
+        let seq = map_seq(node, &self.alphabet);
+        (
+          key,
+          Composition::with_seq(seq, self.alphabet.canonical(), self.alphabet.gap()),
+        )
+      })
+      .collect();
+    let branches = graph
+      .get_edges()
+      .map(|edge| {
+        let (parent, child) = (edge.source(), edge.target());
+        let subs = forward::compute_ml_subs_for_nodes(
+          &self.alphabet,
+          &node_states[&parent],
+          &self.obs_nodes[&parent],
+          &node_states[&child],
+          &self.obs_nodes[&child],
+          &self.obs_edges[&edge.key()],
+        )?;
+        Ok((branch_lengths[&edge.key()], &compositions[&child], subs))
+      })
+      .collect::<Result<Vec<_>, Report>>()?;
+    let root_key = graph.get_exactly_one_root()?.key();
+    count_branch_mutations(&self.alphabet, &compositions[&root_key], branches)
   }
 }
 

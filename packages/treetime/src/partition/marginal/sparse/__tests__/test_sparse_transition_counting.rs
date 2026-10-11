@@ -165,7 +165,44 @@ mod tests {
       &recon.edges.forward,
     )?;
 
-    assert!(counts.root_state.sum() > 0.0, "root_state should be populated");
+    assert_eq!(8.0, counts.root_state.sum(), "root_state should count every root site");
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_sparse_transition_counting_counts_branch_substitution() -> Result<(), Report> {
+    // D differs from all others at site 0: one substitution A->C on the branch to D
+    let (graph, recon, branch_lengths) = setup_sparse(
+      "((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;",
+      indoc! {r#"
+      >A
+      AAAAAAAA
+      >B
+      AAAAAAAA
+      >C
+      AAAAAAAA
+      >D
+      CAAAAAAA
+      "#},
+    )?;
+
+    let counts = recon.partition.count_transitions(
+      &recon.gtr,
+      &graph,
+      &branch_lengths_or_zero(&branch_lengths),
+      &recon.node_states,
+      &recon.edges.backward,
+      &recon.edges.forward,
+    )?;
+
+    assert_eq!(1.0, counts.nij.sum(), "expected one substitution: {:?}", counts.nij);
+    assert_eq!(
+      1.0,
+      counts.nij[[1, 0]],
+      "the substitution is A (parent) -> C (child): {:?}",
+      counts.nij
+    );
 
     Ok(())
   }

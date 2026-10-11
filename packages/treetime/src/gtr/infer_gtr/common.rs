@@ -1,6 +1,9 @@
+use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::avg_transition;
 use crate::progress::LogSink;
 use crate::progress_warn;
+use crate::seq::composition::Composition;
+use crate::seq::mutation::Sub;
 use eyre::Report;
 use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
 use smart_default::SmartDefault;
@@ -77,6 +80,45 @@ pub(crate) fn infer_gtr_impl(
     );
   }
   Ok(InferGtrResult { W, pi, mu })
+}
+
+/// Substitution counts and time per state from the substitutions assigned to each branch.
+///
+/// Each branch is `(branch length, composition of the child sequence, substitutions)`. A substitution adds one count
+/// to `nij[child state, parent state]` and moves half the branch length from the child state to the parent state.
+#[allow(
+  clippy::as_conversions,
+  reason = "count/index numeric cast is exact for the domain range"
+)]
+pub(crate) fn count_branch_mutations<'a, S: AsRef<[Sub]>>(
+  alphabet: &Alphabet,
+  root_composition: &Composition,
+  branches: impl IntoIterator<Item = (f64, &'a Composition, S)>,
+) -> Result<MutationCounts, Report> {
+  let composition_vec = |composition: &Composition| {
+    Array1::<f64>::from_iter(alphabet.canonical().map(|nuc| composition.get(nuc).unwrap_or(0) as f64))
+  };
+
+  let N = alphabet.n_canonical();
+  let mut nij = Array2::zeros((N, N));
+  let mut Ti = Array1::zeros(N);
+  for (branch_length, child_composition, subs) in branches {
+    Ti += &(branch_length * composition_vec(child_composition));
+    for m in subs.as_ref() {
+      m.check_canonical(alphabet)?;
+      let i = alphabet.index(m.qry())?;
+      let j = alphabet.index(m.reff())?;
+      nij[[i, j]] += 1.0;
+      Ti[i] -= 0.5 * branch_length;
+      Ti[j] += 0.5 * branch_length;
+    }
+  }
+
+  Ok(MutationCounts {
+    nij,
+    Ti,
+    root_state: composition_vec(root_composition),
+  })
 }
 
 #[derive(Clone, Debug)]
