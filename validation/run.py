@@ -1,6 +1,6 @@
 """Run treetime on the simulated data. Resumable: a job with a successful run.json is skipped.
 
-Usage: python run.py --suite timetree --set core -j 16
+Usage: python run.py --suite timetree --set core -j 16   (suites: ancestral, timetree, optimize)
 Results: results/<suite>/<variant>/<coal>/rep<NN>/L<L>_mu<mu>/
 """
 
@@ -36,6 +36,12 @@ ANCESTRAL = {
     'marginal-gtr3': ('exact', ['--gtr-iterations', '3']),
     'parsimony': ('exact', ['--method-anc', 'parsimony']),
 }
+KEEP_TOPOLOGY = ['--no-collapse-short-branches', '--no-merge-siblings', '--no-flip-parent-child']
+OPTIMIZE = {
+    'fixed-topo': ('perturbed', KEEP_TOPOLOGY),
+    'fixed-topo-dense': ('perturbed', [*KEEP_TOPOLOGY, '--dense', 'true']),
+    'default': ('perturbed', []),
+}
 ROOTING = {'keep': ('realized', ['--keep-root']), 'reroot': ('realized', ['--reroot', 'least-squares'])}
 COALESCENT = {'none': [], 'opt': ['--coalescent-opt'], 'skyline': ['--coalescent-skyline']}
 CLOCK = {'est': [], 'fixed': ['--clock-rate', '{mu}']}  # {mu} is the true rate of the sequence set
@@ -65,6 +71,9 @@ def command(suite, binary, tree, set_dir, flags, out):
         if 'parsimony' not in flags:  # parsimony fits no GTR model
             outputs += ['--output-gtr', out / 'gtr.json']
         return [binary, 'ancestral', *aln, *flags, *COMMON, *map(str, outputs)]
+    if suite == 'optimize':
+        outputs = ['--output-tree-nwk', out / 'tree.nwk', '--output-gtr', out / 'gtr.json']
+        return [binary, 'optimize', *aln, *flags, *COMMON, *map(str, outputs)]
     dates = ['-d', str(set_dir.parent / 'tip_dates.tsv'), '--date-column', 'date', '--clock-filter', '0']
     outputs = ['--output-augur-node-data', out / 'node_data.json', '--output-tree-nwk', out / 'timetree.nwk',
                '--output-clock-model', out / 'clock.json']  # fmt: skip
@@ -89,7 +98,7 @@ def run_job(job):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--suite', choices=['ancestral', 'timetree'], required=True)
+    p.add_argument('--suite', choices=['ancestral', 'timetree', 'optimize'], required=True)
     p.add_argument('--set', choices=['smoke', 'core', 'extra'], default='smoke')
     p.add_argument('--filter', default='', help='regex on the job output path')
     p.add_argument('--binary', default=str(HERE.parent / 'target' / 'release' / 'treetime'))
@@ -98,7 +107,9 @@ def main():
     p.add_argument('-j', '--jobs', type=int, default=available_cpus())
     args = p.parse_args()
 
-    variants = ANCESTRAL if args.suite == 'ancestral' else TIMETREE_EXTRA if args.set == 'extra' else TIMETREE_CORE
+    variants = {'ancestral': ANCESTRAL, 'optimize': OPTIMIZE}.get(args.suite) or (
+        TIMETREE_EXTRA if args.set == 'extra' else TIMETREE_CORE
+    )
     sets = sorted(d for d in args.data.glob('*/rep*/L*') if (d / 'gtr.json').exists())
     sets = [d for d in sets if re.search({'smoke': SMOKE_SETS, 'core': '', 'extra': EXTRA_SETS}[args.set], str(d))]
 

@@ -113,6 +113,55 @@ def eval_timetree(out, set_dir, coal):
     return m
 
 
+SUBS_BINS = [0, 1, 3, 10, np.inf]  # realized substitutions on a branch
+
+
+def eval_optimize(out, set_dir):
+    """Optimized branch lengths against the realized (differences / L) and expected (mu t) ones, in substitutions.
+
+    Branches are matched by the tips below them. Only the sum of the two branches at the root is identifiable, so
+    those are scored as a sum and excluded from the per-branch metrics.
+    """
+    L = json.loads((set_dir / 'gtr.json').read_text())['L']
+
+    def by_tips(tree):
+        return {s: c.branch_length or 0.0 for c, s in tip_sets(tree).items() if c is not tree.root}
+
+    truth = Phylo.read(set_dir.parent / 'tree.nwk', 'newick')
+    root_sides = [tip_sets(truth)[c] for c in truth.root.clades]
+    realized, expected, start, optimized = (
+        by_tips(Phylo.read(p, 'newick'))
+        for p in [set_dir / 'inputs' / 'realized.nwk', set_dir / 'inputs' / 'exact.nwk',
+                  set_dir / 'inputs' / 'perturbed.nwk', out / 'tree.nwk']
+    )  # fmt: skip
+    keys = [k for k in realized if k in optimized and k not in root_sides]
+    R, E, S, O = (L * np.array([d[k] for k in keys]) for d in (realized, expected, start, optimized))
+
+    m = {'frac_branches_matched': len(keys) / (len(realized) - len(root_sides))}
+    m['input_rmse_subs'] = float(np.sqrt(np.mean((S - R) ** 2)))
+    m['rmse_subs'] = float(np.sqrt(np.mean((O - R) ** 2)))
+    m['bias_subs'] = float(np.mean(O - R))
+    m['length_ratio'] = float(O.sum() / R.sum())
+    m['length_ratio_expected'] = float(O.sum() / E.sum())
+    m['zero_recall'] = float(np.mean(O[R == 0] < 0.5)) if (R == 0).any() else np.nan
+    m['nonzero_recall'] = float(np.mean(O[R > 0] >= 0.5)) if (R > 0).any() else np.nan
+    # optimized vs expected relative to Poisson noise: about 1 when the optimum is as close to mu t as the data allow
+    m['dispersion_vs_expected'] = float(np.mean((O - E) ** 2) / np.mean(E))
+    m['rmse_subs_expected'] = float(np.sqrt(np.mean((O - E) ** 2)))
+    m['poisson_rmse_subs'] = float(np.sqrt(np.mean(E)))  # RMSE of Poisson counts around mu t
+    for a, b in zip(SUBS_BINS[:-1], SUBS_BINS[1:]):
+        sel = (R >= a) & (R < b)
+        m[f'rmse_subs_{a:g}-{b:g}'] = float(np.sqrt(np.mean((O[sel] - R[sel]) ** 2))) if sel.any() else np.nan
+    if all(s in optimized for s in root_sides):
+        root_true = L * sum(realized[s] for s in root_sides)
+        m['root_sum_error_subs'] = float(L * sum(optimized[s] for s in root_sides) - root_true)
+        m['root_sum_rel_error'] = m['root_sum_error_subs'] / root_true if root_true > 0 else np.nan
+        m['root_sum_rel_error_expected'] = float(
+            sum(optimized[s] for s in root_sides) / sum(expected[s] for s in root_sides) - 1
+        )
+    return m
+
+
 def error_message(log):
     """Innermost error of a failed run, without colors and numbers that differ between runs."""
     lines = [re.sub(r'\x1b\[[0-9;]*m', '', x).strip() for x in log.read_text(errors='replace').splitlines()]
@@ -132,7 +181,8 @@ def evaluate(out, suite, data):
     row |= {'returncode': run['returncode'], 'seconds': run['seconds'], 'max_rss_mb': run.get('max_rss_mb')}
     if run['returncode'] == 0:
         set_dir = data / coal / rep / setname
-        row |= eval_ancestral(out, set_dir) if suite == 'ancestral' else eval_timetree(out, set_dir, coal)
+        evaluators = {'ancestral': eval_ancestral, 'optimize': eval_optimize}
+        row |= evaluators[suite](out, set_dir) if suite in evaluators else eval_timetree(out, set_dir, coal)
     else:
         row['error'] = error_message(out / 'log.txt')
     cache.write_text(json.dumps(row, indent=1, default=float))
@@ -141,6 +191,9 @@ def evaluate(out, suite, data):
 
 SUMMARY = {
     'ancestral': ['site_error', 'pi_max_abs_error', 'W_log_rms_error', 'mu_inferred'],
+    'optimize': ['input_rmse_subs', 'rmse_subs', 'length_ratio', 'length_ratio_expected', 'zero_recall',
+                 'nonzero_recall', 'dispersion_vs_expected', 'root_sum_rel_error', 'root_sum_rel_error_expected',
+                 'frac_branches_matched'],
     'timetree': ['clock_rate_rel_error', 'root_date_error', 'date_bias', 'date_rmse', 'n_negative_branches',
                  'root_recovered', 'frac_nodes_matched', 'tc_log_bias', 'tc_log_mae', 'ci90_coverage'],
 }  # fmt: skip
@@ -148,7 +201,7 @@ SUMMARY = {
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--suite', choices=['ancestral', 'timetree'], required=True)
+    p.add_argument('--suite', choices=['ancestral', 'timetree', 'optimize'], required=True)
     p.add_argument('--data', type=Path, default=HERE / 'data')
     p.add_argument('--results', type=Path, default=HERE / 'results')
     p.add_argument('-j', '--jobs', type=int, default=available_cpus())

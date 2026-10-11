@@ -3,6 +3,7 @@
 exact      branch length mu * t
 realized   true parent-child differences / L
 rate       realized * lognormal(0, 0.25) per branch
+perturbed  exact * lognormal(0, 0.3) per branch: starting point for branch length optimization
 """
 
 import json
@@ -13,6 +14,7 @@ import numpy as np
 from Bio import Phylo, SeqIO
 
 RATE_SIGMA = 0.25
+PERTURB_SIGMA = 0.3
 
 
 def read_fasta_xz(path):
@@ -29,9 +31,11 @@ def divergence_tree(set_dir, kind):
     tree = Phylo.read(set_dir.parent / 'tree.nwk', 'newick')
     gtr = json.loads((set_dir / 'gtr.json').read_text())
 
-    if kind == 'exact':
+    if kind in ('exact', 'perturbed'):
         for c in tree.find_clades():
             c.branch_length = (c.branch_length or 0.0) * gtr['mu']
+            if kind == 'perturbed':
+                c.branch_length *= rng.lognormal(0.0, PERTURB_SIGMA)
     else:
         seqs = read_fasta_xz(set_dir / 'tips.fasta.xz') | read_fasta_xz(set_dir / 'internal.fasta.xz')
         for p in tree.get_nonterminals():

@@ -44,7 +44,7 @@ plt.rcParams.update({
 
 def load(results):
     tables = {}
-    for suite in ['ancestral', 'timetree']:
+    for suite in ['ancestral', 'timetree', 'optimize']:
         path = results / f'{suite}.tsv'
         if path.exists():
             d = pd.read_csv(path, sep='\t')
@@ -118,12 +118,34 @@ def summary(t):
                     md(bad.groupby(['coal', 'rep', 'L', 'mu', 'clock']).agg(
                         runs=('variant', 'size'), date_rmse=('date_rmse', 'median'),
                         clock_rate_rel_error=('clock_rate_rel_error', 'median')))]  # fmt: skip
+    if 'optimize' in t:
+        o = t['optimize'][t['optimize'].returncode == 0]
+        fixed = o[o.variant == 'fixed-topo']
+        out += ['\n## Branch length optimization\n',
+                'Per-branch RMSE in substitutions against the realized branch lengths (median over replicates; '
+                'the two root branches excluded). `input` is the perturbed starting tree\n',
+                md(o.pivot_table(index=['variant', 'coal'], columns=['L', 'mu'], values='rmse_subs', aggfunc='median')),
+                md(fixed.pivot_table(index='coal', columns=['L', 'mu'], values='input_rmse_subs', aggfunc='median')
+                   .rename(index=lambda c: f'input, {c}')),
+                '\nTotal length ratio, optimized over realized and over expected (mu t); fixed topology, median\n',
+                md(fixed.groupby(['L', 'mu'])[['length_ratio', 'length_ratio_expected']].median()),
+                '\nZero branches kept at zero, non-zero branches kept non-zero, and squared deviation from mu t relative '
+                'to Poisson noise (about 1 when optimal); fixed topology, mean\n',
+                md(fixed.groupby(['L', 'mu'])[['zero_recall', 'nonzero_recall', 'dispersion_vs_expected']].mean()),
+                '\nSum of the two root branches, relative error against realized and expected: median [10%, 90%]; '
+                'fixed topology\n',
+                md(fixed.groupby(['L', 'mu']).agg(
+                    realized=('root_sum_rel_error', q10_50_90), expected=('root_sum_rel_error_expected', q10_50_90))),
+                '\nFraction of true branches present after optimization with default settings (mean)\n',
+                md(o[o.variant == 'default'].pivot_table(index='coal', columns=['L', 'mu'],
+                                                         values='frac_branches_matched', aggfunc='mean'))]  # fmt: skip
     return ''.join(out)
 
 
 COMPARE = {
     'ancestral': ['site_error', 'W_log_rms_error', 'mu_inferred', 'seconds'],
     'timetree': ['date_rmse', 'date_bias', 'clock_rate_rel_error', 'tc_log_mae', 'seconds'],
+    'optimize': ['rmse_subs', 'length_ratio', 'root_sum_rel_error', 'seconds'],
 }
 KEY = ['variant', 'coal', 'rep', 'L', 'mu']
 
@@ -284,6 +306,56 @@ def fig_skylines(results, coal, path, variant='keep-skyline-fixed'):
     plt.close(fig)
 
 
+def slope_guide(ax, x, y, label='slope 1/2'):
+    """Dotted line of slope 1/2 on log-log axes through the point (x, y)."""
+    xs = np.geomspace(x / 30, x, 20)
+    ax.plot(xs, y * np.sqrt(xs / x), color=INK2, ls=':', lw=1.5, zorder=1)
+    ax.annotate(label, (xs[8], y * np.sqrt(xs[8] / x)), textcoords='offset points', xytext=(-10, 8), color=INK2)
+
+
+def fig_optimize(o, path):
+    """Branch length optimization with the true topology, against mu L (proportional to the substitution count)."""
+    o = o[(o.returncode == 0) & (o.variant == 'fixed-topo')].assign(muL=lambda d: d.mu * d.L)
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+    coal_style = {'const': (BLUE, 'o'), 'exp': (ORANGE, 's'), 'piecewise': (AQUA, '^')}
+    panels = [('rmse_subs_expected', 'poisson_rmse_subs', 'RMSE of optimized - mu t (substitutions)',
+               'Against expected mu t (grey: Poisson expectation)'),
+              ('rmse_subs', 'input_rmse_subs', 'RMSE of optimized - realized (substitutions)',
+               'Against realized differences (grey: perturbed input)')]  # fmt: skip
+    for ax, (value, reference, ylabel, title) in zip(axes, panels):
+        for (coal, (color, marker)), (L, ls) in itertools.product(coal_style.items(), L_LINESTYLE.items()):
+            s = o[(o.coal == coal) & (o.L == L)].groupby('muL')
+            mfc = SURFACE if L == 1000 else color
+            ax.plot(s[value].median().index, s[value].median(), color=color, marker=marker, ls=ls, mfc=mfc)
+            ax.plot(s[reference].median().index, s[reference].median(), color=GRID, ls=ls, lw=1.5, zorder=1)
+        ax.set(xscale='log', yscale='log', xlabel='mu L', ylabel=ylabel, title=title)
+    top = o.groupby('muL').rmse_subs_expected.median()
+    slope_guide(axes[0], top.index[-1], top.iloc[-1] * 2)
+    top = o.groupby('muL').rmse_subs.median()
+    slope_guide(axes[1], top.index[-1], top.iloc[-1] * 2)
+
+    for k, (L, (color, marker)) in enumerate(L_STYLE.items()):
+        for muL, g in o[o.L == L].groupby('muL'):
+            r = g.root_sum_rel_error_expected.dropna()
+            xs = muL * np.exp((k - 0.5) * 0.25 + np.linspace(-0.07, 0.07, len(r)))
+            axes[2].scatter(xs, r, color=color, marker=marker, s=14, edgecolor=SURFACE, linewidth=0.6, zorder=3)
+            xm = muL * np.exp((k - 0.5) * 0.25)
+            axes[2].plot([xm / 1.1, xm * 1.1], [r.median()] * 2, color=INK, lw=1.5)
+    axes[2].axhline(0, color=INK2, lw=1)
+    axes[2].set(xscale='log', xlabel='mu L', ylabel='relative error of the sum (one dot per replicate)',
+                title='Sum of the two root branches vs mu t')  # fmt: skip
+    axes[2].legend(handles=[plt.Line2D([], [], color=c, marker=m, ls='', label=f'L={L}') for L, (c, m) in L_STYLE.items()]
+                   + [plt.Line2D([], [], color=INK, label='median')], loc='upper right')  # fmt: skip
+    handles = legend_handles(coal_style) + [
+        plt.Line2D([], [], color=INK2, ls=ls, label=f'L={L}') for L, ls in L_LINESTYLE.items()]  # fmt: skip
+    fig.legend(handles=handles, loc='upper center', ncol=5, bbox_to_anchor=(0.36, 1.04))
+    fig.suptitle('Branch length optimization (true topology kept). RMSE over the branches of one tree, median over '
+                 'replicates; mu L is proportional to the number of substitutions', y=1.1, x=0.04, ha='left')  # fmt: skip
+    fig.tight_layout()
+    fig.savefig(path, dpi=130, bbox_inches='tight')
+    plt.close(fig)
+
+
 def fig_runtime(d, path):
     s = d[d.returncode == 0]
     fig, ax = plt.subplots(figsize=(5.5, 3.6))
@@ -319,6 +391,8 @@ def main():
             fig_skylines(args.results, coal, out / f'timetree_skyline_{coal}.png')
     if 'ancestral' in t:
         fig_ancestral(t['ancestral'], out / 'ancestral.png')
+    if 'optimize' in t:
+        fig_optimize(t['optimize'], out / 'optimize.png')
     if args.baseline:
         (out / 'compare.md').write_text(compare(t, load(args.baseline)))
     print(f'wrote {out}')
