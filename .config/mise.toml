@@ -11,7 +11,7 @@ dylint-link = "github:trailofbits/dylint"
 
 [tools]
 actionlint = "1.7.12"
-bun = "1.4.2"
+bun = "1.4.3"
 cargo-deny = "0.20.2"
 hadolint = "2.15.1"
 hyperfine = "1.20.0"
