@@ -1,0 +1,24 @@
+# Clippy configuration of the lint libraries in dev/lints.
+# https://doc.rust-lang.org/clippy/lint_configuration.html
+#
+# Clippy reads the first clippy.toml in the crate directory or a parent
+# directory and does not merge files, so this file replaces the root
+# clippy.toml for the lint libraries. It keeps the thresholds and test
+# exemptions of the root file and leaves out its disallowed types and methods:
+# those bans keep TreeTime results deterministic and its services bounded,
+# while the lint libraries run inside the compiler on rustc types and their
+# output never reaches a TreeTime result.
+
+# clippy::type_complexity
+type-complexity-threshold = 500
+
+# clippy::too_many_lines -- cap function bodies at 100 lines.
+too-many-lines-threshold = 100
+
+# Keep the panic-path restriction lints (unwrap_used, expect_used, panic,
+# indexing_slicing) active in library code but exempt inside tests, where a
+# panic is the correct failure mode for setup and assertions.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
