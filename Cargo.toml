@@ -45,8 +45,6 @@ members = [
   "packages/util-usher-mat",
 ]
 
-exclude = ["dev/templates/rust-crate"]
-
 
 # Dependencies build optimized in development and tests, so the math-heavy test
 # suites stay fast while the workspace crates keep fast incremental builds.
