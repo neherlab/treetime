@@ -20,6 +20,7 @@ mod test_initial_guess_mode;
 mod test_is_zero_branch_optimal;
 mod test_newton_convergence;
 mod test_no_indels;
+mod test_objective_matches_tree_likelihood;
 mod test_optimization_metrics;
 mod test_optimize_indel;
 mod test_optimize_method;
