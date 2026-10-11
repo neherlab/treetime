@@ -15,6 +15,5 @@
 /tmp*
 node_modules
 target
-.turbo
 dist
 dist-electron

@@ -158,7 +158,6 @@ run_flags=(
   --env="LANG=C.UTF-8"
   --env="DO_NOT_TRACK=1"
   --env="MISE_DISABLE_UPDATE_WARNING=1"
-  --env="TURBO_TELEMETRY_DISABLED=1"
 )
 if [[ -t 0 && -t 1 ]]; then
   run_flags+=(--tty)

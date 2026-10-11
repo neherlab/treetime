@@ -17,7 +17,6 @@ export default projectConfig({
   ignorePatterns: [
     "dist",
     "dist-electron",
-    ".turbo",
     ".build",
     "coverage",
     "packages/app-contracts/src/generated",
