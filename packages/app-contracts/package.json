@@ -10,14 +10,12 @@
     "./client": "./src/client.ts"
   },
   "scripts": {
-    "generate": "openapi-ts",
-    "typecheck": "../../node_modules/.bin/tsc -b tsconfig.generated.json && ../../node_modules/.bin/tsc --noEmit && ../../node_modules/.bin/tsc -p tsconfig.node.json --noEmit"
+    "generate": "openapi-ts"
   },
   "dependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@hey-api/openapi-ts": "0.0.0-next-20260824173136",
-    "typescript": "catalog:"
+    "@hey-api/openapi-ts": "0.0.0-next-20260824173136"
   }
 }

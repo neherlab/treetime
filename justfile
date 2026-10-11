@@ -404,13 +404,15 @@ deny:
 shear:
     cargo shear
 
-# TypeScript type checks of the packages and the tool configs, keep-going
+# TypeScript type checks of every project that tsconfig.json references (bun check), and the TypeScript version of bun check against the typescript catalog entry that editors run, keep-going
 [group("lint")]
 [script]
 typecheck: _js
     status=0
-    bun run --silent typecheck:packages || status=1
-    bun run --silent typecheck:tools || status=1
+    bun check -b --all || status=1
+    ts_bun="$(bun -p process.versions.typescript)"
+    ts_editor="$(jq -r '.workspaces.catalog.typescript' package.json)"
+    [[ "${ts_bun}" == "${ts_editor}" ]] || { printf 'bun check runs TypeScript %s, but the typescript catalog entry that editors run is %s: pin both to the same version\n' "${ts_bun}" "${ts_editor}" >&2; status=1; }
     exit "${status}"
 
 # Unused TypeScript files, exports, and dependencies (knip), keep-going

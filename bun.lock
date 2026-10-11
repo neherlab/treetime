@@ -33,7 +33,6 @@
       },
       "devDependencies": {
         "@hey-api/openapi-ts": "0.0.0-next-20260824173136",
-        "typescript": "catalog:",
       },
     },
     "packages/app-desktop": {
@@ -56,7 +55,6 @@
         "react": "catalog:",
         "react-dom": "catalog:",
         "tailwindcss": "catalog:",
-        "typescript": "catalog:",
         "vite": "catalog:",
         "vite-plugin-electron": "1.1.2",
       },
@@ -120,7 +118,6 @@
         "@types/react-dom": "catalog:",
         "@types/react-redux": "7.1.34",
         "@types/styled-components": "5.1.36",
-        "typescript": "catalog:",
         "unplugin-icons": "24.0.0",
         "vite": "catalog:",
       },
@@ -131,7 +128,6 @@
       "devDependencies": {
         "@neherlab/app-contracts": "workspace:*",
         "@types/node": "catalog:",
-        "typescript": "catalog:",
         "zod": "catalog:",
       },
     },
@@ -152,7 +148,6 @@
         "@vitejs/plugin-react": "catalog:",
         "portless": "0.15.6",
         "tailwindcss": "catalog:",
-        "typescript": "catalog:",
         "vite": "catalog:",
         "vite-plugin-compression2": "catalog:",
       },
@@ -177,7 +172,6 @@
         "@types/react-dom": "catalog:",
         "@vitejs/plugin-react": "catalog:",
         "tailwindcss": "catalog:",
-        "typescript": "catalog:",
         "vite": "catalog:",
         "vite-plugin-compression2": "catalog:",
       },

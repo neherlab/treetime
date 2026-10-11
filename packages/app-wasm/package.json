@@ -11,13 +11,9 @@
     },
     "./app_wasm.wasm": "./pkg/app_wasm.wasm"
   },
-  "scripts": {
-    "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit"
-  },
   "devDependencies": {
     "@neherlab/app-contracts": "workspace:*",
     "@types/node": "catalog:",
-    "typescript": "catalog:",
     "zod": "catalog:"
   }
 }

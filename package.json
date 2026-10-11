@@ -41,10 +41,7 @@
     "knip:production": "knip --config .config/knip.json --production",
     "lint": "bun --bun oxlint",
     "lint:fix": "bun --bun oxlint --fix",
-    "test": "vitest run",
-    "typecheck:packages": "turbo run typecheck --continue=always",
-    "typecheck:tools": "tsc -p tsconfig.tools.json",
-    "typecheck:vendor": "tsc -p dev/lints/oxlint-anti-slop/tsconfig.json"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.83.0",

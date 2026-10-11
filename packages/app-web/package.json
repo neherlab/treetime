@@ -6,8 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite",
-    "typecheck": "tsc -b ../app-contracts/tsconfig.generated.json && tsc --noEmit && tsc -p tsconfig.node.json --noEmit"
+    "dev": "vite"
   },
   "dependencies": {
     "@neherlab/app-contracts": "workspace:*",
@@ -23,7 +22,6 @@
     "@vitejs/plugin-react": "catalog:",
     "portless": "0.15.6",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-compression2": "catalog:"
   }

@@ -59,14 +59,14 @@ Local functional changes to the vendored tree require an entry in this file and 
 
 ## Style enforcement
 
-The vendored tree is excluded from Oxlint and Oxfmt style enforcement (see the `ignorePatterns` in `dev/lints/oxlint/config.ts` and `oxfmt.config.ts`). It is type-checked with its own `tsconfig.json`, which mirrors upstream's compiler options rather than the project's stricter first-party flags, so the tree type-checks verbatim. Its rule tests run with the tests of the project rules under `node --test`; no recipe runs them, so run them after a change to a rule.
+The vendored tree is excluded from Oxlint and Oxfmt style enforcement (see the `ignorePatterns` in `dev/lints/oxlint/config.ts` and `oxfmt.config.ts`). `just typecheck` checks it with its own `tsconfig.json`, which mirrors upstream's compiler options rather than the project's stricter first-party flags, so the tree type-checks verbatim. Its rule tests run with the tests of the project rules under `node --test`; no recipe runs them, so run them after a change to a rule.
 
 ## Verification
 
 Run these after `./dev/docker/run just test-ts` has installed the packages:
 
 - Rule tests, with those of the project rules: `./dev/docker/run node --test "dev/lints/oxlint/__tests__/test_*.ts" "dev/lints/oxlint-anti-slop/**/*.test.ts"`
-- Type check: `./dev/docker/run bun run --silent typecheck:vendor`
+- Type check: `./dev/docker/run just typecheck` (the root `tsconfig.json` references this tree's `tsconfig.json`)
 - Lint and format: `./dev/docker/run just check`
 
 ## Updating
