@@ -27,7 +27,7 @@ pub(crate) fn evaluate_site_contributions<'a>(
 
     for (multiplicity, coefficients) in sites {
       multiply_into(&mut k_exp, &coefficients, &exp_ev);
-      let site_lh = k_exp.sum();
+      let site_lh = site_likelihood(&k_exp);
       debug_assert!(site_lh.is_finite(), "Non-finite site likelihood: {site_lh}");
       log_lh += multiplicity * site_lh.ln();
 
@@ -47,7 +47,7 @@ pub(crate) fn evaluate_site_contributions<'a>(
   } else {
     for (multiplicity, coefficients) in sites {
       multiply_into(&mut k_exp, &coefficients, &exp_ev);
-      let site_lh = k_exp.sum();
+      let site_lh = site_likelihood(&k_exp);
       debug_assert!(site_lh.is_finite(), "Non-finite site likelihood: {site_lh}");
       log_lh += multiplicity * site_lh.ln();
     }
@@ -58,6 +58,12 @@ pub(crate) fn evaluate_site_contributions<'a>(
     derivative,
     second_derivative,
   ))
+}
+
+/// Sum of the eigen expansion of one site. For an impossible state pair (zero likelihood) cancellation can leave
+/// a tiny negative sum, so clamp to the smallest positive value as `GTR::expQt` clamps its entries.
+fn site_likelihood(terms: &Array1<f64>) -> f64 {
+  terms.sum().max(f64::MIN_POSITIVE)
 }
 
 fn multiply_into(out: &mut Array1<f64>, lhs: &ArrayView1<'_, f64>, rhs: &Array1<f64>) {
