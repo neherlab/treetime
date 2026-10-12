@@ -11,7 +11,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::{make_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
@@ -91,20 +91,33 @@ pub(crate) fn run_optimize_mixed_inner(
     validate_branch_length_value(branch_length).wrap_err_with(|| format!("Cannot optimize edge {edge_key}"))?;
   }
 
-  let root_state = BifurcatingRootState::capture(graph, branch_lengths)?;
+  let chains = SeriesChain::capture_all(graph, branch_lengths);
+  // The likelihood depends only on the sum of edges joined by a node without data of its own and with two edges (a
+  // bifurcating root or a single-child node). Optimizing one edge of such a chain with the others held at their current
+  // lengths therefore optimizes the sum; the held edges are skipped and the sum is redistributed by `restore`.
+  let held: BTreeSet<GraphEdgeKey> = chains.iter().flat_map(SeriesChain::held).collect();
+  let chain_indel_counts: BTreeMap<GraphEdgeKey, usize> = chains
+    .iter()
+    .map(|chain| (chain.optimized, chain.edges.iter().map(|e| indel_counts[e]).sum()))
+    .collect();
 
   let branch_lengths_in = &*branch_lengths;
   let optimized: Vec<(GraphEdgeKey, f64)> = graph
     .get_edges()
+    .filter(|edge_ref| !held.contains(&edge_ref.key()))
     .collect::<Vec<_>>()
     .into_par_iter()
     .map(|edge_ref| -> Result<(GraphEdgeKey, f64), Report> {
       let edge_key = edge_ref.key();
       let branch_length = branch_lengths_in[&edge_key]
         .ok_or_else(|| make_internal_report!("Validated edge {edge_key} lost its branch length"))?;
+      let indel_count = chain_indel_counts
+        .get(&edge_key)
+        .copied()
+        .unwrap_or_else(|| indel_counts[&edge_key]);
       let edge = EdgeOptimization {
         branch_length,
-        indel_count: if no_indels { 0 } else { indel_counts[&edge_key] },
+        indel_count: if no_indels { 0 } else { indel_count },
         indel_rate,
         one_mutation,
         method,
@@ -118,41 +131,90 @@ pub(crate) fn run_optimize_mixed_inner(
     branch_lengths.insert(edge_key, Some(new_branch_length));
   }
 
-  if let Some(state) = root_state {
-    state.restore(branch_lengths);
+  for chain in chains {
+    chain.restore(branch_lengths);
   }
 
   Ok(())
 }
 
-struct BifurcatingRootState {
-  edge0: GraphEdgeKey,
-  edge1: GraphEdgeKey,
-  ratio: f64,
+/// Edges in series: joined by nodes without data that have exactly two edges (bifurcating root, single-child nodes).
+struct SeriesChain {
+  edges: Vec<GraphEdgeKey>,
+  ratios: Vec<f64>,
+  /// Edge whose optimization yields the optimal sum (the longest one, so the zero clamp rarely binds).
+  optimized: GraphEdgeKey,
 }
 
-impl BifurcatingRootState {
-  fn capture(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Result<Option<Self>, Report> {
-    let root = graph.get_exactly_one_root()?;
-    let children = graph.children_of(root).collect::<Vec<_>>();
-    if children.len() == 2 {
-      let edge0 = children[0].1.key();
-      let edge1 = children[1].1.key();
-      let bl0 = branch_lengths[&edge0].unwrap_or(0.0);
-      let bl1 = branch_lengths[&edge1].unwrap_or(0.0);
-      let total = bl0 + bl1;
-      let ratio = if total > 0.0 { bl0 / total } else { 0.5 };
-      Ok(Some(Self { edge0, edge1, ratio }))
-    } else {
-      Ok(None)
+impl SeriesChain {
+  #[allow(
+    clippy::as_conversions,
+    reason = "count/index numeric cast is exact for the domain range"
+  )]
+  fn capture_all(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<Self> {
+    let mut chain_of: BTreeMap<GraphEdgeKey, usize> = BTreeMap::new();
+    let mut groups: Vec<Vec<GraphEdgeKey>> = vec![];
+    for node in graph.get_nodes() {
+      let incident = [node.inbound(), node.outbound()].concat();
+      if node.is_leaf() || incident.len() != 2 {
+        continue;
+      }
+      match (chain_of.get(&incident[0]).copied(), chain_of.get(&incident[1]).copied()) {
+        (None, None) => {
+          incident.iter().for_each(|&e| _ = chain_of.insert(e, groups.len()));
+          groups.push(incident);
+        },
+        (Some(g), None) | (None, Some(g)) => {
+          for e in incident {
+            if chain_of.insert(e, g).is_none() {
+              groups[g].push(e);
+            }
+          }
+        },
+        (Some(g0), Some(g1)) => {
+          let moved = std::mem::take(&mut groups[g1]);
+          moved.iter().for_each(|&e| _ = chain_of.insert(e, g0));
+          groups[g0].extend(moved);
+        },
+      }
     }
+
+    groups
+      .into_iter()
+      .filter(|edges| !edges.is_empty())
+      .map(|edges| {
+        let lengths: Vec<f64> = edges.iter().map(|e| branch_lengths[e].unwrap_or(0.0)).collect();
+        let total: f64 = lengths.iter().sum();
+        let ratios = if total > 0.0 {
+          lengths.iter().map(|bl| bl / total).collect()
+        } else {
+          vec![1.0 / edges.len() as f64; edges.len()]
+        };
+        let longest = (0..edges.len()).fold(0, |best, i| if lengths[i] > lengths[best] { i } else { best });
+        Self {
+          optimized: edges[longest],
+          edges,
+          ratios,
+        }
+      })
+      .collect()
+  }
+
+  fn held(&self) -> impl Iterator<Item = GraphEdgeKey> + '_ {
+    self.edges.iter().copied().filter(|&e| e != self.optimized)
   }
 
   fn restore(self, branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>) {
-    let Self { edge0, edge1, ratio } = self;
-    let total = branch_lengths[&edge0].unwrap_or(0.0) + branch_lengths[&edge1].unwrap_or(0.0);
-    branch_lengths.insert(edge0, Some(total * ratio));
-    branch_lengths.insert(edge1, Some(total * (1.0 - ratio)));
+    // A zero optimum of the optimized edge only bounds the sum by the held lengths; collapse it and let the next
+    // iteration, with all chain edges at zero, find the sum exactly.
+    let total = if branch_lengths[&self.optimized] == Some(0.0) {
+      0.0
+    } else {
+      self.edges.iter().map(|e| branch_lengths[e].unwrap_or(0.0)).sum()
+    };
+    for (edge, ratio) in self.edges.into_iter().zip(self.ratios) {
+      branch_lengths.insert(edge, Some(total * ratio));
+    }
   }
 }
 

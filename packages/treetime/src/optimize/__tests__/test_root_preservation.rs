@@ -196,4 +196,83 @@ mod tests {
     assert_abs_diff_eq!(ratio_before, ratio_after, epsilon = 1e-12);
     Ok(())
   }
+
+  #[test]
+  fn test_root_preservation_sum_converges_in_one_undamped_iteration() -> Result<(), Report> {
+    let tree = "((A:0.05,B:0.05)AB:0.9,(C:0.05,D:0.05)CD:0.3)root:0.0;";
+    let (graph, mut reconstruction, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
+    let total_length = reconstruction.sequence_length();
+
+    let mut sums = vec![];
+    for _ in 0..10 {
+      let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+      run_optimize_mixed_inner(
+        &graph,
+        total_length,
+        &contributions,
+        &indel_counts,
+        BranchOptMethod::BrentSqrt,
+        0.0,
+        true,
+        &mut branch_lengths,
+      )?;
+      let (bl0, bl1) = root_edge_branch_lengths(&graph, &branch_lengths);
+      sums.push(bl0 + bl1);
+      reconstruction = reconstruction
+        .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?
+        .0;
+    }
+
+    assert_abs_diff_eq!(sums[8], sums[9], epsilon = 1e-6);
+    Ok(())
+  }
+
+  #[test]
+  fn test_root_preservation_unary_node_joins_series_chain() -> Result<(), Report> {
+    let tree = "((A:0.05,B:0.05)AB:0.15,((C:0.05,D:0.05)CD:0.03)U:0.02)root:0.0;";
+    let (graph, mut reconstruction, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
+    let total_length = reconstruction.sequence_length();
+    let chain: Vec<GraphEdgeKey> = graph
+      .get_edges()
+      .filter(|edge| {
+        let bl = branch_lengths[&edge.key()].unwrap();
+        [0.15, 0.03, 0.02].iter().any(|x| (bl - x).abs() < 1e-12)
+      })
+      .map(|edge| edge.key())
+      .collect();
+    assert_eq!(3, chain.len());
+    let lengths_before: Vec<f64> = chain.iter().map(|e| branch_lengths[e].unwrap()).collect();
+
+    let mut sums = vec![];
+    for _ in 0..10 {
+      let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+      run_optimize_mixed_inner(
+        &graph,
+        total_length,
+        &contributions,
+        &indel_counts,
+        BranchOptMethod::BrentSqrt,
+        0.0,
+        true,
+        &mut branch_lengths,
+      )?;
+      sums.push(chain.iter().map(|e| branch_lengths[e].unwrap()).sum::<f64>());
+      reconstruction = reconstruction
+        .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?
+        .0;
+    }
+
+    let lengths_after: Vec<f64> = chain.iter().map(|e| branch_lengths[e].unwrap()).collect();
+    for i in 1..3 {
+      assert_abs_diff_eq!(
+        lengths_before[i] / lengths_before[0],
+        lengths_after[i] / lengths_after[0],
+        epsilon = 1e-12
+      );
+    }
+    assert_abs_diff_eq!(sums[8], sums[9], epsilon = 1e-6);
+    Ok(())
+  }
 }
