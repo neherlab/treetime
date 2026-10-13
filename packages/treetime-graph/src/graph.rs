@@ -2,7 +2,8 @@ use crate::edge::{Edge, GraphEdgeKey};
 use crate::node::{GraphNodeKey, Node};
 use deser::Serialize;
 use eyre::Report;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
+use std::ops::Index;
 use treetime_utils::{make_internal_error, make_internal_report};
 
 #[expect(
@@ -41,6 +42,14 @@ impl Graph {
 
   pub(crate) fn get_edge_mut(&mut self, key: GraphEdgeKey) -> Option<&mut Edge> {
     self.edges.get_mut(key.as_usize())?.as_mut()
+  }
+
+  pub(crate) fn node_mut(&mut self, key: GraphNodeKey) -> &mut Node {
+    self.get_node_mut(key).unwrap_or_else(|| missing_key("Node", key))
+  }
+
+  pub(crate) fn edge_mut(&mut self, key: GraphEdgeKey) -> &mut Edge {
+    self.get_edge_mut(key).unwrap_or_else(|| missing_key("Edge", key))
   }
 
   pub fn parents_of<'a>(&'a self, node: &'a Node) -> impl DoubleEndedIterator<Item = (&'a Node, &'a Edge)> + 'a {
@@ -257,8 +266,32 @@ impl Graph {
   }
 }
 
+impl Index<GraphNodeKey> for Graph {
+  type Output = Node;
+
+  fn index(&self, key: GraphNodeKey) -> &Node {
+    self.get_node(key).unwrap_or_else(|| missing_key("Node", key))
+  }
+}
+
+impl Index<GraphEdgeKey> for Graph {
+  type Output = Edge;
+
+  fn index(&self, key: GraphEdgeKey) -> &Edge {
+    self.get_edge(key).unwrap_or_else(|| missing_key("Edge", key))
+  }
+}
+
 impl Default for Graph {
   fn default() -> Self {
     Self::new()
   }
+}
+
+#[expect(
+  clippy::panic,
+  reason = "a key that is not in the graph is a programming error, as an absent key is for a map index"
+)]
+fn missing_key(kind: &str, key: impl Display) -> ! {
+  panic!("{kind} {key} is not in the graph")
 }

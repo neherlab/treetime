@@ -151,14 +151,10 @@ impl GraphPass {
     self.run_forward(edges, |index| take_input_slot(&slots, index), visit)
   }
 
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   fn run_backward<I, E, NodeOut, EdgeOut>(
     &self,
     edges: &BTreeMap<GraphEdgeKey, E>,
-    input_at: impl Fn(usize) -> I + Sync,
+    input_at: impl Fn(usize) -> Result<I, Report> + Sync,
     visit: impl Fn(
       GraphPassBackwardContext<'_, I, E, NodeOut, EdgeOut>,
     ) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
@@ -189,24 +185,26 @@ impl GraphPass {
         .iter()
         .map(|&child_index| {
           let child = &self.nodes[child_index];
-          let (_, edge_key) = child.parent_edge.expect("Backward child must have a parent edge");
+          let (_, edge_key) = child
+            .parent_edge
+            .ok_or_else(|| make_internal_report!("Backward child {} has no parent edge", child.key))?;
           let output = completed[child_index]
             .get()
-            .expect("Backward child must complete before its parent");
-          GraphPassChildBackward {
+            .ok_or_else(|| make_internal_report!("Backward child {} did not complete before its parent", child.key))?;
+          Ok(GraphPassChildBackward {
             node_key: child.key,
             edge_key,
             node: &output.node,
             edge: output.parent_message.as_ref(),
-          }
+          })
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, Report>>()?;
 
       let context = GraphPassBackwardContext {
         key: node.key,
         is_leaf: self.children[index].is_empty(),
         is_root: self.parents[index].is_none(),
-        input: input_at(index),
+        input: input_at(index)?,
         parent_edge,
         children: &children,
       };
@@ -221,14 +219,10 @@ impl GraphPass {
     self.collect_map_outputs(completed)
   }
 
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   fn run_forward<I, E, NodeOut, EdgeOut>(
     &self,
     edges: &BTreeMap<GraphEdgeKey, E>,
-    input_at: impl Fn(usize) -> I + Sync,
+    input_at: impl Fn(usize) -> Result<I, Report> + Sync,
     visit: impl Fn(GraphPassForwardContext<'_, I, E, NodeOut>) -> Result<GraphPassNodeOutput<NodeOut, EdgeOut>, Report>
     + Sync
     + Send,
@@ -253,19 +247,21 @@ impl GraphPass {
       let node = &self.nodes[index];
       let parent_edge = node.parent_edge.map(|(_, edge_key)| (edge_key, &edges[&edge_key]));
 
-      let parent = self.parents[index].map(|parent_index| {
-        &completed[parent_index]
-          .get()
-          .expect("Forward parent must complete before its child")
-          .node
-      });
+      let parent = self.parents[index]
+        .map(|parent_index| {
+          completed[parent_index]
+            .get()
+            .map(|output| &output.node)
+            .ok_or_else(|| make_internal_report!("Forward parent of node {} did not complete before it", node.key))
+        })
+        .transpose()?;
 
       let parent_key = self.parents[index].map(|parent_index| self.nodes[parent_index].key);
       let context = GraphPassForwardContext {
         key: node.key,
         is_leaf: self.children[index].is_empty(),
         is_root: self.parents[index].is_none(),
-        input: input_at(index),
+        input: input_at(index)?,
         parent_key,
         parent_edge,
         parent,
@@ -337,27 +333,19 @@ impl GraphPass {
       .collect()
   }
 
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   fn resolve_node<'a, N>(
     &self,
     nodes: &'a BTreeMap<GraphNodeKey, N>,
     created: &'a BTreeMap<GraphNodeKey, N>,
     index: usize,
-  ) -> &'a N {
+  ) -> Result<&'a N, Report> {
     let key = self.nodes[index].key;
     nodes
       .get(&key)
       .or_else(|| created.get(&key))
-      .expect("Indexed node must have an input")
+      .ok_or_else(|| make_internal_report!("Indexed node {key} has no input"))
   }
 
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   fn collect_map_outputs<NodeOut, EdgeOut>(
     &self,
     completed: Vec<OnceLock<GraphPassNodeOutput<NodeOut, EdgeOut>>>,
@@ -365,10 +353,10 @@ impl GraphPass {
     let mut nodes = BTreeMap::new();
     let mut edges = BTreeMap::new();
     for (index, slot) in completed.into_iter().enumerate() {
+      let key = self.nodes[index].key;
       let output = slot
         .into_inner()
-        .expect("Every indexed slot must publish an output after a successful map");
-      let key = self.nodes[index].key;
+        .ok_or_else(|| make_internal_report!("Node {key} published no output in a successful graph map"))?;
       if nodes.insert(key, output.node).is_some() {
         return Err(make_internal_report!(
           "Duplicate node {key} while collecting a graph map"
@@ -377,7 +365,7 @@ impl GraphPass {
       if let Some(edge) = output.parent_message {
         let (_, edge_key) = self.nodes[index]
           .parent_edge
-          .expect("Parent message must belong to a parent edge");
+          .ok_or_else(|| make_internal_report!("Node {key} sent a parent message without a parent edge"))?;
         if edges.insert(edge_key, edge).is_some() {
           return Err(make_internal_report!(
             "Duplicate edge {edge_key} while collecting a graph map"
@@ -389,15 +377,11 @@ impl GraphPass {
   }
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
-fn take_input_slot<N>(slots: &[Mutex<Option<N>>], index: usize) -> N {
+fn take_input_slot<N>(slots: &[Mutex<Option<N>>], index: usize) -> Result<N, Report> {
   slots[index]
     .lock()
     .take()
-    .expect("Dependency queue must visit each indexed slot once")
+    .ok_or_else(|| make_internal_report!("Dependency queue visited the node at index {index} twice"))
 }
 
 pub struct GraphPassBackwardContext<'a, I, E, NodeOut, EdgeOut> {
@@ -414,6 +398,17 @@ pub struct GraphPassChildBackward<'a, NodeOut, EdgeOut> {
   pub edge_key: GraphEdgeKey,
   pub node: &'a NodeOut,
   pub edge: Option<&'a EdgeOut>,
+}
+
+impl<'a, NodeOut, EdgeOut> GraphPassChildBackward<'a, NodeOut, EdgeOut> {
+  pub fn edge_message(&self) -> Result<&'a EdgeOut, Report> {
+    self.edge.ok_or_else(|| {
+      make_internal_report!(
+        "Backward child {} published no message for its parent edge",
+        self.node_key
+      )
+    })
+  }
 }
 
 pub struct GraphPassForwardContext<'a, I, E, NodeOut> {

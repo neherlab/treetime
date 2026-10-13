@@ -27,10 +27,6 @@ impl Default for TopologyOrderSpec {
 }
 
 impl TopologyOrderSpec {
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   pub fn apply(
     &self,
     graph: &mut Graph,
@@ -74,10 +70,7 @@ impl TopologyOrderSpec {
     }
 
     for (node_key, outbound_edges) in order.outbound_edges {
-      *graph
-        .get_node_mut(node_key)
-        .expect("Node presence validated above")
-        .outbound_mut() = outbound_edges;
+      *graph.node_mut(node_key).outbound_mut() = outbound_edges;
     }
     graph.roots = order.roots;
     graph.leaves = order.leaves;
@@ -183,14 +176,10 @@ struct TopologyOrder {
   outbound_edges: BTreeMap<GraphNodeKey, Vec<GraphEdgeKey>>,
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 fn compute_descendant_counts(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize> {
   let mut counts = BTreeMap::new();
   for &node_key in postorder {
-    let node = graph.get_node(node_key).unwrap();
+    let node = &graph[node_key];
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let count = if child_keys.is_empty() {
       1
@@ -202,14 +191,10 @@ fn compute_descendant_counts(graph: &Graph, postorder: &[GraphNodeKey]) -> BTree
   counts
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 fn compute_heights(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize> {
   let mut heights = BTreeMap::new();
   for &node_key in postorder {
-    let node = graph.get_node(node_key).unwrap();
+    let node = &graph[node_key];
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let height = child_keys.iter().map(|ck| heights[ck] + 1).max().unwrap_or(0);
     heights.insert(node_key, height);
@@ -217,10 +202,6 @@ fn compute_heights(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphN
   heights
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 fn compute_divergences(
   graph: &Graph,
   postorder: &[GraphNodeKey],
@@ -228,7 +209,7 @@ fn compute_divergences(
 ) -> BTreeMap<GraphNodeKey, OrderedFloat<f64>> {
   let mut divergences: BTreeMap<GraphNodeKey, OrderedFloat<f64>> = BTreeMap::new();
   for &node_key in postorder {
-    let node = graph.get_node(node_key).unwrap();
+    let node = &graph[node_key];
     let divergence = graph
       .children_of(node)
       .map(|(child, edge)| {
@@ -243,10 +224,6 @@ fn compute_divergences(
   divergences
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 fn compute_labels(
   graph: &Graph,
   postorder: &[GraphNodeKey],
@@ -254,7 +231,7 @@ fn compute_labels(
 ) -> Result<BTreeMap<GraphNodeKey, String>, Report> {
   let mut labels: BTreeMap<GraphNodeKey, String> = BTreeMap::new();
   for &node_key in postorder {
-    let node = graph.get_node(node_key).unwrap();
+    let node = &graph[node_key];
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let label = if child_keys.is_empty() {
       names[&node_key]
@@ -294,10 +271,6 @@ pub enum TopologyOrderTargetAggregate {
   Median,
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 fn compute_target_scores_mean(
   graph: &Graph,
   postorder: &[GraphNodeKey],
@@ -305,7 +278,7 @@ fn compute_target_scores_mean(
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
   let mut scores: BTreeMap<GraphNodeKey, TargetScore> = BTreeMap::new();
   for &node_key in postorder {
-    let node = graph.get_node(node_key).unwrap();
+    let node = &graph[node_key];
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let score = if child_keys.is_empty() {
       let pos = target_position(target_order, node_key)?;
@@ -324,10 +297,6 @@ fn compute_target_scores_mean(
   Ok(scores)
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 fn compute_target_scores_median(
   graph: &Graph,
   postorder: &[GraphNodeKey],
@@ -336,7 +305,7 @@ fn compute_target_scores_median(
   let mut positions: BTreeMap<GraphNodeKey, Vec<usize>> = BTreeMap::new();
   let mut scores = BTreeMap::new();
   for &node_key in postorder {
-    let node = graph.get_node(node_key).unwrap();
+    let node = &graph[node_key];
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
     let pos = if child_keys.is_empty() {
       vec![target_position(target_order, node_key)?]
@@ -380,7 +349,7 @@ struct TargetScore {
 impl Ord for TargetScore {
   #[expect(
     clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
+    reason = "usize widens into u128 without loss, so the cross products cannot overflow"
   )]
   fn cmp(&self, other: &Self) -> Ordering {
     ((self.numerator as u128) * (other.denominator as u128))

@@ -40,10 +40,6 @@ impl Graph {
     Ok((removed_node, removed_edges))
   }
 
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   pub fn add_edge(&mut self, source_key: GraphNodeKey, target_key: GraphNodeKey) -> Result<GraphEdgeKey, Report> {
     if source_key == target_key {
       return make_error!(
@@ -72,24 +68,12 @@ impl Graph {
 
     let edge_key = GraphEdgeKey(self.edges.len());
     self.edges.push(Some(Edge::new(edge_key, source_key, target_key)));
-    self
-      .get_node_mut(source_key)
-      .expect("Edge source node must exist")
-      .outbound_mut()
-      .push(edge_key);
-    self
-      .get_node_mut(target_key)
-      .expect("Edge target node must exist")
-      .inbound_mut()
-      .push(edge_key);
+    self.node_mut(source_key).outbound_mut().push(edge_key);
+    self.node_mut(target_key).inbound_mut().push(edge_key);
 
     Ok(edge_key)
   }
 
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   pub fn reparent_edge(&mut self, edge_key: GraphEdgeKey, new_source_key: GraphNodeKey) -> Result<(), Report> {
     let (old_source_key, target_key) = {
       let edge = self
@@ -127,15 +111,8 @@ impl Graph {
     if let Some(old_source) = self.get_node_mut(old_source_key) {
       old_source.outbound_mut().retain(|&e| e != edge_key);
     }
-    self
-      .get_node_mut(new_source_key)
-      .expect("New source node must exist")
-      .outbound_mut()
-      .push(edge_key);
-    self
-      .get_edge_mut(edge_key)
-      .expect("Edge must exist")
-      .set_source(new_source_key);
+    self.node_mut(new_source_key).outbound_mut().push(edge_key);
+    self.edge_mut(edge_key).set_source(new_source_key);
 
     Ok(())
   }
@@ -159,10 +136,6 @@ impl Graph {
     Ok(())
   }
 
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   pub fn collapse_edge(&mut self, edge_key: GraphEdgeKey) -> Result<(Node, Edge, Vec<GraphEdgeKey>), Report> {
     let (source_key, target_key) = {
       let edge = self
@@ -180,17 +153,10 @@ impl Graph {
 
     for &inbound_edge_key in &target_inbound {
       if inbound_edge_key != edge_key && self.get_edge(inbound_edge_key).is_some() {
-        self
-          .get_edge_mut(inbound_edge_key)
-          .expect("Inbound edge must exist")
-          .set_target(source_key);
+        self.edge_mut(inbound_edge_key).set_target(source_key);
         if let Some(source_node) = self.get_node(source_key) {
           if !source_node.inbound().contains(&inbound_edge_key) {
-            self
-              .get_node_mut(source_key)
-              .expect("Source node must exist")
-              .inbound_mut()
-              .push(inbound_edge_key);
+            self.node_mut(source_key).inbound_mut().push(inbound_edge_key);
           }
         }
       }
@@ -200,17 +166,10 @@ impl Graph {
     for &outbound_edge_key in &target_outbound {
       if outbound_edge_key != edge_key && self.get_edge(outbound_edge_key).is_some() {
         new_edges.push(outbound_edge_key);
-        self
-          .get_edge_mut(outbound_edge_key)
-          .expect("Outbound edge must exist")
-          .set_source(source_key);
+        self.edge_mut(outbound_edge_key).set_source(source_key);
         if let Some(source_node) = self.get_node(source_key) {
           if !source_node.outbound().contains(&outbound_edge_key) {
-            self
-              .get_node_mut(source_key)
-              .expect("Source node must exist")
-              .outbound_mut()
-              .push(outbound_edge_key);
+            self.node_mut(source_key).outbound_mut().push(outbound_edge_key);
           }
         }
       }

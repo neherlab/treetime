@@ -121,7 +121,7 @@ where
 
   #[expect(
     clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
+    reason = "the queue holds both ends of its channels until every worker returns, so a send cannot fail"
   )]
   fn run_worker(&self) {
     loop {
@@ -160,7 +160,7 @@ where
 
   #[expect(
     clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
+    reason = "the queue holds both ends of its channels until every worker returns, so a send cannot fail"
   )]
   fn stop(&self) {
     for _ in 0..self.worker_count {

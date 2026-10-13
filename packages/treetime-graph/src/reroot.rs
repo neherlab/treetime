@@ -47,10 +47,6 @@ pub fn remove_stem_root(graph: &mut Graph, root_key: GraphNodeKey) -> Result<Opt
   }))
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub fn split_edge(
   graph: &mut Graph,
   edge_key: GraphEdgeKey,
@@ -60,7 +56,7 @@ pub fn split_edge(
   let new_node_key = graph.add_node();
 
   let (source_key, target_key) = {
-    let edge = graph.get_edge(edge_key).expect("Edge not found");
+    let edge = &graph[edge_key];
     (edge.source(), edge.target())
   };
 
@@ -103,10 +99,6 @@ pub fn apply_reroot_topology(
   Ok(inverted_edge_keys)
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub fn remove_node_if_trivial(
   graph: &mut Graph,
   node_key: GraphNodeKey,
@@ -114,15 +106,15 @@ pub fn remove_node_if_trivial(
   child_branch: Option<f64>,
 ) -> Result<Option<EdgeMergeInfo>, Report> {
   let (parent_edge_key, child_edge_key) = {
-    let node = graph.get_node(node_key).expect("Node not found");
+    let node = &graph[node_key];
     if node.inbound().len() != 1 || node.outbound().len() != 1 {
       return Ok(None);
     }
     (node.inbound()[0], node.outbound()[0])
   };
 
-  let parent_key = graph.get_edge(parent_edge_key).expect("Parent edge not found").source();
-  let child_key = graph.get_edge(child_edge_key).expect("Child edge not found").target();
+  let parent_key = graph[parent_edge_key].source();
+  let child_key = graph[child_edge_key].target();
 
   let merged_branch_length = match (parent_branch, child_branch) {
     (Some(a), Some(b)) => Some(a + b),
@@ -144,16 +136,12 @@ pub fn remove_node_if_trivial(
   }))
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub fn trivial_node_branch_lengths(
   graph: &Graph,
   node_key: GraphNodeKey,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> (Option<f64>, Option<f64>) {
-  let node = graph.get_node(node_key).expect("Node not found");
+  let node = &graph[node_key];
   if node.inbound().len() != 1 || node.outbound().len() != 1 {
     return (None, None);
   }
