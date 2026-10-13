@@ -161,15 +161,11 @@ pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub reconstruct_tip_states: bool,
 
-  /// Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for
-  /// amino acids).
+  /// Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).
   ///
-  /// By default these mutations are omitted from the branch mutations of the Newick and Nexus
-  /// annotations, the Auspice JSON, and the `muts` and `aa_muts` lists of augur node data. Other
-  /// ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT
-  /// outputs, which store `N` as missing data and never contain these mutations, or the root
-  /// `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence`
-  /// reference and the inferred root and always omit `X` and gaps.
+  /// By default the Newick and Nexus annotations, the Auspice JSON, and the `muts` and `aa_muts` of augur node data
+  /// omit them. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT
+  /// outputs, which store `N` as missing data, or the root `aa_muts`, which always omit `X` and gaps.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub report_ambiguous: bool,
 
