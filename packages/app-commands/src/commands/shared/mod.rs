@@ -10,6 +10,7 @@ pub mod input_warnings;
 pub mod leaf_order;
 pub mod metadata;
 pub mod method_anc;
+pub mod mirror_enum;
 pub mod model;
 pub mod output_args;
 pub mod required;

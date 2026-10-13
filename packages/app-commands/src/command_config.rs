@@ -1,4 +1,4 @@
-use crate::command::{AppCommand, CommandArgs};
+use crate::command::{AppCommand, CommandArgs, command_of, settings_map};
 use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use crate::commands::clock::args::TreetimeClockArgsRaw;
 use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
@@ -13,8 +13,6 @@ use eyre::Report;
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
 use std::path::Path;
-use treetime_utils::io::json::to_json_value;
-use treetime_utils::make_error;
 
 /// A command with its complete configuration: every setting, defaults included.
 #[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
@@ -30,69 +28,38 @@ pub enum CommandConfig {
   Mugration { config: Box<TreetimeMugrationArgsRaw> },
 }
 
+macro_rules! each_config {
+  ($self:expr, |$config:ident| $body:expr) => {
+    match $self {
+      Self::Timetree { config: $config } => $body,
+      Self::Optimize { config: $config } => $body,
+      Self::Prune { config: $config } => $body,
+      Self::Ancestral { config: $config } => $body,
+      Self::Homoplasy { config: $config } => $body,
+      Self::Clock { config: $config } => $body,
+      Self::Mugration { config: $config } => $body,
+    }
+  };
+}
+
 impl CommandConfig {
   pub fn command(&self) -> AppCommand {
-    match self {
-      Self::Timetree { .. } => AppCommand::Timetree,
-      Self::Optimize { .. } => AppCommand::Optimize,
-      Self::Prune { .. } => AppCommand::Prune,
-      Self::Ancestral { .. } => AppCommand::Ancestral,
-      Self::Homoplasy { .. } => AppCommand::Homoplasy,
-      Self::Clock { .. } => AppCommand::Clock,
-      Self::Mugration { .. } => AppCommand::Mugration,
-    }
+    each_config!(self, |config| command_of(&**config))
   }
 
   pub fn args(&self) -> Result<CommandArgs, Report> {
-    match self {
-      Self::Timetree { config } => CommandArgs::try_from((**config).clone()),
-      Self::Optimize { config } => CommandArgs::try_from((**config).clone()),
-      Self::Prune { config } => CommandArgs::try_from((**config).clone()),
-      Self::Ancestral { config } => CommandArgs::try_from((**config).clone()),
-      Self::Homoplasy { config } => CommandArgs::try_from((**config).clone()),
-      Self::Clock { config } => CommandArgs::try_from((**config).clone()),
-      Self::Mugration { config } => CommandArgs::try_from((**config).clone()),
-    }
+    each_config!(self, |config| CommandArgs::try_from((**config).clone()))
   }
 
   pub fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-    match self {
-      Self::Timetree { config } => config.resolve_outputs(),
-      Self::Optimize { config } => config.resolve_outputs(),
-      Self::Prune { config } => config.resolve_outputs(),
-      Self::Ancestral { config } => config.resolve_outputs(),
-      Self::Homoplasy { config } => config.resolve_outputs(),
-      Self::Clock { config } => config.resolve_outputs(),
-      Self::Mugration { config } => config.resolve_outputs(),
-    }
+    each_config!(self, |config| config.resolve_outputs())
   }
 
   pub fn output_all(&self) -> Option<&Path> {
-    let output = match self {
-      Self::Timetree { config } => &config.output,
-      Self::Optimize { config } => &config.output,
-      Self::Prune { config } => &config.output,
-      Self::Ancestral { config } => &config.output,
-      Self::Homoplasy { config } => &config.output,
-      Self::Clock { config } => &config.output,
-      Self::Mugration { config } => &config.output,
-    };
-    output.output_all.as_deref()
+    each_config!(self, |config| config.output.output_all.as_deref())
   }
 
   pub fn settings(&self) -> Result<Map<String, Value>, Report> {
-    let value = match self {
-      Self::Timetree { config } => to_json_value(&config),
-      Self::Optimize { config } => to_json_value(&config),
-      Self::Prune { config } => to_json_value(&config),
-      Self::Ancestral { config } => to_json_value(&config),
-      Self::Homoplasy { config } => to_json_value(&config),
-      Self::Clock { config } => to_json_value(&config),
-      Self::Mugration { config } => to_json_value(&config),
-    }?;
-    match value {
-      Value::Object(settings) => Ok(settings),
-      _ => make_error!("a command configuration must serialize to a mapping of settings"),
-    }
+    each_config!(self, |config| settings_map(config))
   }
 }

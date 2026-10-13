@@ -1,3 +1,4 @@
+use crate::commands::shared::mirror_enum::impl_from_mirror;
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
@@ -51,12 +52,4 @@ pub enum GapFillCli {
   None,
 }
 
-impl From<GapFillCli> for GapFill {
-  fn from(mode: GapFillCli) -> Self {
-    match mode {
-      GapFillCli::OnlyTerminal => GapFill::OnlyTerminal,
-      GapFillCli::All => GapFill::All,
-      GapFillCli::None => GapFill::None,
-    }
-  }
-}
+impl_from_mirror!(GapFillCli => GapFill { OnlyTerminal, All, None });

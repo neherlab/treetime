@@ -3,6 +3,7 @@ use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::method_anc::MethodAncestralCli;
+use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{ClockOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
@@ -285,15 +286,7 @@ pub enum OptimizationMethodCli {
   GoldenSection,
 }
 
-impl From<OptimizationMethodCli> for OptimizationMethod {
-  fn from(method: OptimizationMethodCli) -> Self {
-    match method {
-      OptimizationMethodCli::Grid => OptimizationMethod::Grid,
-      OptimizationMethodCli::Brent => OptimizationMethod::Brent,
-      OptimizationMethodCli::GoldenSection => OptimizationMethod::GoldenSection,
-    }
-  }
-}
+impl_from_mirror!(OptimizationMethodCli => OptimizationMethod { Grid, Brent, GoldenSection });
 
 /// Configuration for grid search optimization
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]

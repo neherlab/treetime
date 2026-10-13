@@ -1,3 +1,4 @@
+use crate::commands::shared::mirror_enum::impl_from_mirror;
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
@@ -71,17 +72,4 @@ pub enum GtrModelNameCli {
   Jtt92,
 }
 
-impl From<GtrModelNameCli> for GtrModelName {
-  fn from(name: GtrModelNameCli) -> Self {
-    match name {
-      GtrModelNameCli::Infer => GtrModelName::Infer,
-      GtrModelNameCli::JC69 => GtrModelName::JC69,
-      GtrModelNameCli::K80 => GtrModelName::K80,
-      GtrModelNameCli::F81 => GtrModelName::F81,
-      GtrModelNameCli::HKY85 => GtrModelName::HKY85,
-      GtrModelNameCli::T92 => GtrModelName::T92,
-      GtrModelNameCli::TN93 => GtrModelName::TN93,
-      GtrModelNameCli::Jtt92 => GtrModelName::Jtt92,
-    }
-  }
-}
+impl_from_mirror!(GtrModelNameCli => GtrModelName { Infer, JC69, K80, F81, HKY85, T92, TN93, Jtt92 });

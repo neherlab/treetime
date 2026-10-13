@@ -4,6 +4,7 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::method_anc::MethodAncestralCli;
+use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{AncestralOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
@@ -346,12 +347,4 @@ pub enum SampleModeCli {
   All,
 }
 
-impl From<SampleModeCli> for SampleMode {
-  fn from(mode: SampleModeCli) -> Self {
-    match mode {
-      SampleModeCli::Argmax => SampleMode::Argmax,
-      SampleModeCli::Root => SampleMode::Root,
-      SampleModeCli::All => SampleMode::All,
-    }
-  }
-}
+impl_from_mirror!(SampleModeCli => SampleMode { Argmax, Root, All });

@@ -152,6 +152,8 @@ impl CommandArgs {
 }
 
 pub trait RawConfig: Serialize + DeserializeOwned + Default + JsonSchema + Clone + RawCli {
+  const COMMAND: AppCommand;
+
   type Args: TryFrom<Self, Error = Report>;
 
   fn wrap(args: Self::Args) -> CommandArgs;
@@ -246,6 +248,8 @@ impl RawConfigVisitor for CliOf {
 macro_rules! impl_raw_config {
   ($raw:ty, $args:ty, $variant:ident) => {
     impl RawConfig for $raw {
+      const COMMAND: AppCommand = AppCommand::$variant;
+
       type Args = $args;
 
       fn wrap(args: Self::Args) -> CommandArgs {
@@ -274,6 +278,10 @@ impl_raw_config!(TreetimeAncestralArgsRaw, TreetimeAncestralArgs, Ancestral);
 impl_raw_config!(TreetimeHomoplasyArgsRaw, TreetimeHomoplasyArgs, Homoplasy);
 impl_raw_config!(TreetimeClockArgsRaw, TreetimeClockArgs, Clock);
 impl_raw_config!(TreetimeMugrationArgsRaw, TreetimeMugrationArgs, Mugration);
+
+pub fn command_of<R: RawConfig>(_config: &R) -> AppCommand {
+  R::COMMAND
+}
 
 pub fn settings_map<R: Serialize>(raw: &R) -> Result<Map<String, Value>, Report> {
   match to_json_value(&raw)? {

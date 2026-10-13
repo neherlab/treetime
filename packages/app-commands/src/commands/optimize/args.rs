@@ -2,6 +2,7 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
+use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
@@ -337,14 +338,7 @@ pub enum BranchOptMethodCli {
   NewtonSqrt,
 }
 
-impl From<BranchOptMethodCli> for BranchOptMethod {
-  fn from(method: BranchOptMethodCli) -> Self {
-    match method {
-      BranchOptMethodCli::BrentSqrt => BranchOptMethod::BrentSqrt,
-      BranchOptMethodCli::NewtonSqrt => BranchOptMethod::NewtonSqrt,
-    }
-  }
-}
+impl_from_mirror!(BranchOptMethodCli => BranchOptMethod { BrentSqrt, NewtonSqrt });
 
 /// Controls whether marginal reconstruction estimates initial branch lengths
 /// from substitutions divided by effective alignment length. Preserving valid
@@ -366,12 +360,4 @@ pub enum InitialGuessModeCli {
   Never,
 }
 
-impl From<InitialGuessModeCli> for InitialGuessMode {
-  fn from(mode: InitialGuessModeCli) -> Self {
-    match mode {
-      InitialGuessModeCli::Auto => InitialGuessMode::Auto,
-      InitialGuessModeCli::Always => InitialGuessMode::Always,
-      InitialGuessModeCli::Never => InitialGuessMode::Never,
-    }
-  }
-}
+impl_from_mirror!(InitialGuessModeCli => InitialGuessMode { Auto, Always, Never });

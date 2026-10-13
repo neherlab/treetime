@@ -1,3 +1,4 @@
+use crate::commands::shared::mirror_enum::impl_from_mirror;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -86,16 +87,7 @@ pub enum RerootMethodCli {
   ClockFilter,
 }
 
-impl From<RerootMethodCli> for RerootMethod {
-  fn from(method: RerootMethodCli) -> Self {
-    match method {
-      RerootMethodCli::LeastSquares => RerootMethod::LeastSquares,
-      RerootMethodCli::MinDev => RerootMethod::MinDev,
-      RerootMethodCli::Oldest => RerootMethod::Oldest,
-      RerootMethodCli::ClockFilter => RerootMethod::ClockFilter,
-    }
-  }
-}
+impl_from_mirror!(RerootMethodCli => RerootMethod { LeastSquares, MinDev, Oldest, ClockFilter });
 
 #[cfg(test)]
 mod tests {

@@ -1,3 +1,4 @@
+use crate::commands::shared::mirror_enum::impl_from_mirror;
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
@@ -14,11 +15,4 @@ pub enum BranchLengthModeCli {
   Marginal,
 }
 
-impl From<BranchLengthModeCli> for BranchLengthMode {
-  fn from(mode: BranchLengthModeCli) -> Self {
-    match mode {
-      BranchLengthModeCli::Input => BranchLengthMode::Input,
-      BranchLengthModeCli::Marginal => BranchLengthMode::Marginal,
-    }
-  }
-}
+impl_from_mirror!(BranchLengthModeCli => BranchLengthMode { Input, Marginal });

@@ -5,6 +5,7 @@ use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::method_anc::MethodAncestralCli;
+use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection};
 use crate::commands::shared::required::missing_required_args;
@@ -546,12 +547,4 @@ pub enum TimeMarginalModeCli {
   OnlyFinal,
 }
 
-impl From<TimeMarginalModeCli> for TimeMarginalMode {
-  fn from(mode: TimeMarginalModeCli) -> Self {
-    match mode {
-      TimeMarginalModeCli::Never => TimeMarginalMode::Never,
-      TimeMarginalModeCli::Always => TimeMarginalMode::Always,
-      TimeMarginalModeCli::OnlyFinal => TimeMarginalMode::OnlyFinal,
-    }
-  }
-}
+impl_from_mirror!(TimeMarginalModeCli => TimeMarginalMode { Never, Always, OnlyFinal });

@@ -1,3 +1,4 @@
+use crate::commands::shared::mirror_enum::impl_from_mirror;
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
@@ -45,12 +46,4 @@ pub enum AlphabetNameCli {
   AaNoStop,
 }
 
-impl From<AlphabetNameCli> for AlphabetName {
-  fn from(name: AlphabetNameCli) -> Self {
-    match name {
-      AlphabetNameCli::Nuc => AlphabetName::Nuc,
-      AlphabetNameCli::Aa => AlphabetName::Aa,
-      AlphabetNameCli::AaNoStop => AlphabetName::AaNoStop,
-    }
-  }
-}
+impl_from_mirror!(AlphabetNameCli => AlphabetName { Nuc, Aa, AaNoStop });

@@ -1,3 +1,4 @@
+use crate::commands::shared::mirror_enum::impl_from_mirror;
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use treetime::ancestral::params::MethodAncestral;
@@ -13,11 +14,4 @@ pub enum MethodAncestralCli {
   Parsimony,
 }
 
-impl From<MethodAncestralCli> for MethodAncestral {
-  fn from(method: MethodAncestralCli) -> Self {
-    match method {
-      MethodAncestralCli::Marginal => MethodAncestral::Marginal,
-      MethodAncestralCli::Parsimony => MethodAncestral::Parsimony,
-    }
-  }
-}
+impl_from_mirror!(MethodAncestralCli => MethodAncestral { Marginal, Parsimony });
