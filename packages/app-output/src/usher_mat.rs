@@ -1,13 +1,13 @@
 use crate::annotated_graph::AnnotatedTreeView;
 use crate::mutation_filter::UnknownBridge;
-use eyre::{Report, WrapErr, eyre};
+use eyre::{Report, WrapErr};
 use std::collections::BTreeSet;
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_write_str};
 use treetime_io::usher_mat::{UsherMetadata, UsherMutation, UsherMutationList, UsherTree, UsherTreeNode};
 use treetime_primitives::AsciiChar;
-use treetime_utils::{make_error, make_internal_error};
+use treetime_utils::{make_error, make_internal_error, make_report};
 
 #[derive(Debug)]
 #[expect(
@@ -146,17 +146,17 @@ pub(crate) fn mat_mutation(
     );
   };
   let reference = reference.ok_or_else(|| {
-    eyre!("Node '{node_name}' has nucleotide mutations, but UShER MAT requires a root nucleotide reference")
+    make_report!("Node '{node_name}' has nucleotide mutations, but UShER MAT requires a root nucleotide reference")
   })?;
   let position = substitution
     .pos()
     .checked_add(1)
-    .ok_or_else(|| eyre!("Node '{node_name}' mutation coordinate overflow"))?;
+    .ok_or_else(|| make_report!("Node '{node_name}' mutation coordinate overflow"))?;
   let position = i32::try_from(position).wrap_err_with(|| {
     format!("Node '{node_name}' mutation position {position} exceeds the UShER MAT i32 coordinate range")
   })?;
   let reference_state = reference.as_bytes().get(substitution.pos()).copied().ok_or_else(|| {
-    eyre!(
+    make_report!(
       "Node '{node_name}' mutation position {} is outside the root nucleotide reference of length {}",
       substitution.pos() + 1,
       reference.len()
