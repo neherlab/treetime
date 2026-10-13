@@ -22,6 +22,13 @@ pub fn rewindow_to_mass(
   resample_to_mass_window(&sized.normalized, lo, hi, grid_points, max_points)
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    error_dropped_by_pattern,
+    reason = "a mass profile that cannot be computed means the distribution is not mass-sizable, and callers fall back to plain normalization"
+  )
+)]
 pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64, NegLog>) -> Option<MassSized> {
   let y_peak = f.grid_fn().y_min();
   if !y_peak.is_finite() {
@@ -34,6 +41,13 @@ pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64, NegL
   (profile.z.is_finite() && profile.z > 0.0).then_some(MassSized { normalized, profile })
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    error_dropped_by_pattern,
+    reason = "a mass profile that cannot be computed means the distribution is not mass-sizable, and callers fall back to plain normalization"
+  )
+)]
 pub(crate) fn mass_sizable_profile(f: &DistributionFunction<f64, NegLog>) -> Option<MassProfile> {
   let Ok(profile) = mass_profile(f) else {
     return None;
