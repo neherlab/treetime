@@ -26,15 +26,19 @@ pub(crate) fn fetch(url: &str, file: &mut File, progress: &mut impl FnMut(Downlo
   let mut buffer = vec![0; CHUNK_SIZE];
   progress(DownloadProgress { received, total });
   loop {
-    let read = response.read(&mut buffer)?;
+    let read = response
+      .read(&mut buffer)
+      .wrap_err_with(|| format!("When reading the response of '{url}'"))?;
     if read == 0 {
       break;
     }
-    file.write_all(&buffer[..read])?;
+    file
+      .write_all(&buffer[..read])
+      .wrap_err("When writing the downloaded data")?;
     received += u64::try_from(read)?;
     progress(DownloadProgress { received, total });
   }
-  file.flush()?;
+  file.flush().wrap_err("When writing the downloaded data")?;
   if let Some(total) = total.filter(|total| *total != received) {
     return make_error!("the download ended after {received} of {total} bytes");
   }

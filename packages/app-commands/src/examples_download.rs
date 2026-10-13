@@ -52,7 +52,10 @@ pub fn download_examples(url: &str, target: &Path, mut progress: impl FnMut(Down
     .tempfile_in(parent)
     .wrap_err_with(|| format!("When creating a temporary file in '{}'", parent.display()))?;
   fetch(url, archive.as_file_mut(), &mut progress).wrap_err_with(|| format!("When downloading '{url}'"))?;
-  archive.as_file_mut().seek(SeekFrom::Start(0))?;
+  archive
+    .as_file_mut()
+    .seek(SeekFrom::Start(0))
+    .wrap_err_with(|| format!("When rewinding the downloaded archive '{}'", archive.path().display()))?;
 
   let unpacked = Builder::new()
     .prefix(TEMPORARY_PREFIX)
@@ -102,7 +105,10 @@ fn remove_stale_temporaries(parent: &Path) -> Result<(), Report> {
       continue;
     }
     let path = entry.path();
-    let removed = if entry.file_type()?.is_dir() {
+    let file_type = entry
+      .file_type()
+      .wrap_err_with(|| format!("When reading the type of '{}'", path.display()))?;
+    let removed = if file_type.is_dir() {
       fs::remove_dir_all(&path)
     } else {
       fs::remove_file(&path)

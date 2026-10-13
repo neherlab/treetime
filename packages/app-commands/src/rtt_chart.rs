@@ -1,5 +1,5 @@
 use crate::rtt_chart_render::draw_chart;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use itertools::{Itertools, chain};
 use plotters::prelude::*;
 use std::path::Path;
@@ -29,7 +29,9 @@ pub fn write_clock_regression_chart_svg(
     draw_chart(results, clock_model, &svg)?;
     svg.present()?;
   }
-  write_file_with(filepath, |writer| Ok(writer.write_all(text.as_bytes())?))
+  write_file_with(filepath, |writer| {
+    writer.write_all(text.as_bytes()).wrap_err("When writing the SVG chart")
+  })
 }
 
 #[cfg(feature = "png")]
