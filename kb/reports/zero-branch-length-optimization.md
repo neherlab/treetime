@@ -12,7 +12,7 @@ This classification drives the entire zero-branch pipeline. Unimodal models get 
 
 ## Per-edge optimization pipeline
 
-Each edge goes through three phases inside `run_optimize_mixed_with_indel_rate()` ([optimize/dispatch.rs#L552](../../packages/treetime/src/optimize/dispatch.rs#L552)): input protection, the optimizer itself, and post-optimization reconciliation.
+Each edge goes through three phases inside `run_optimize_mixed_inner()` ([optimize/dispatch.rs#L46](../../packages/treetime/src/optimize/dispatch.rs#L46)): input protection, the optimizer itself, and post-optimization reconciliation.
 
 ### Phase 1: Input domain protection
 
@@ -98,7 +98,7 @@ graph TD
         prune --> coll
     end
 
-    run["run_optimize_mixed_with_indel_rate()"]
+    run["run_optimize_mixed_inner()"]
     run -->|"indel_count == 0"| is_zero
     is_zero -->|"true: set bl=0, skip solver"| done["edge.set_branch_length(0)"]
     is_zero -->|"false"| solver
