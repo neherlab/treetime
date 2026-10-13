@@ -8,7 +8,7 @@ v0's branch-length optimization loop (`TreeAnc.optimize_tree_marginal`) collapse
 
 ## What v1 does
 
-Once per iteration, [`prune_and_merge_in_loop()`](../../packages/treetime/src/optimize/run_loop.rs#L319) runs a single per-polytomy routine, [`resolve_polytomies()`](../../packages/treetime/src/optimize/topology/resolve_polytomy.rs#L31), after the zero-optimal edge collapse. Sparse partitions only; dense partitions carry no per-edge mutation lists. The routine applies three steps at each polytomy and iterates to a fixpoint:
+Once per iteration, [`prune_and_merge_in_loop()`](../../packages/treetime/src/optimize/run_loop.rs#L324) runs a single per-polytomy routine, [`resolve_polytomies()`](../../packages/treetime/src/optimize/topology/resolve_polytomy.rs#L31), after the zero-optimal edge collapse. Sparse partitions only; dense partitions carry no per-edge mutation lists. The routine applies three steps at each polytomy and iterates to a fixpoint:
 
 - Merge siblings that share substitutions under a helper node ([`merge_single_polytomy()`](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L64)). This canonicalizes several children reverting the same position into one reverting child.
 - Hoist the reverting child with the largest reversion count ([`hoist_reverting_child()`](../../packages/treetime/src/optimize/topology/hoist_reversions.rs#L74)), ties broken by edge key.
@@ -48,7 +48,7 @@ When every child of a polytomy reverts the same position, the merge reduces them
 
 ## Affected commands
 
-- [`optimize`](../../packages/treetime/src/optimize/run_loop.rs#L319) - runs the routine in its per-iteration topology-cleanup step
+- [`optimize`](../../packages/treetime/src/optimize/run_loop.rs#L324) - runs the routine in its per-iteration topology-cleanup step
 - `prune` is unchanged: it still calls the shared-mutation merge directly and does not adopt the reversion hoist
 
 ## Tests

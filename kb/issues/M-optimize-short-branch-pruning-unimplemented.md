@@ -26,7 +26,7 @@ After `run_optimize_loop()` and before the final marginal update:
 
 Compute $P(0)$ with the same sequence states and pattern multiplicities as `def TreeAnc.prune_short_branches()`. Do not substitute `fn is_zero_branch_optimal()`: it tests a likelihood derivative and has a different model domain.
 
-The existing `fn find_zero_optimal_internal_edges()` [packages/treetime/src/optimize/run_loop.rs#L236](../../packages/treetime/src/optimize/run_loop.rs#L236), called in every iteration of the loop, handles edges driven to exactly zero. Post-loop pruning catches edges that converged to small but nonzero values below the resolution of the alignment.
+The existing `fn find_zero_optimal_internal_edges()` [packages/treetime/src/optimize/run_loop.rs#L298](../../packages/treetime/src/optimize/run_loop.rs#L298), called in every iteration of the loop, handles edges driven to exactly zero. Post-loop pruning catches edges that converged to small but nonzero values below the resolution of the alignment.
 
 ## Locations
 

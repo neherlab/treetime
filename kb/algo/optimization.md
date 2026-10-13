@@ -109,7 +109,9 @@ Aggregate likelihood results and histories use `LogLh`; per-site coefficients, d
 
 - Small change: $|L_i - L_{i-1}| < \mathit{dp}$. Because this uses an absolute difference, it can also accept a small deterioration.
 - Two-cycle: $|L_i - L_{i-2}| < \mathit{dp}$ for $i\ge2$.
-- Decline after a best iteration: $i\ge2$, $L_i<L_{i-1}$, and $L_{i-1}\ge L_{\mathrm{best}}$; the saved branch lengths are restored and iteration stops.
+- Decline after a best iteration: $i\ge2$, $L_i<L_{i-1}$, and $L_{i-1}\ge L_{\mathrm{best}}$.
+
+When the loop exhausts `max_iter`, it evaluates the branch lengths of the last update once more. Whatever the stop reason, it returns the evaluated branch lengths with the highest $L_i$ since the last topology change. Simultaneous per-edge updates need not increase the likelihood: when edges in series overshoot together, $L_i$ can decline from the first iteration and never trigger the decline condition.
 
 The damping schedule applies a floor: $d_i = \max(d^{i+1},\, \texttt{DAMPING\_FLOOR})$ where $\texttt{DAMPING\_FLOOR} = 0.01$, preventing fully undamped late iterations that amplify the sparse discrete jump. A NaN/Inf guard breaks immediately on numerical instability.
 
