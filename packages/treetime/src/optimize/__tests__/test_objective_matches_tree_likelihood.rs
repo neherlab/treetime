@@ -84,11 +84,7 @@ mod tests {
         Ok((log_lh.value() - log_lh_0.value(), objective - objective_0))
       })
       .process_results(|changes| changes.unzip())?;
-    pretty_assert_abs_diff_eq!(
-      Array1::from_iter(expected),
-      Array1::from_iter(actual),
-      epsilon = 1e-8
-    );
+    pretty_assert_abs_diff_eq!(Array1::from_iter(expected), Array1::from_iter(actual), epsilon = 1e-8);
     Ok(())
   }
 }
