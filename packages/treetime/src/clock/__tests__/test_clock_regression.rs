@@ -10,7 +10,6 @@ mod tests {
   use crate::o;
   use crate::progress::NoopProgress;
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
-  use treetime_utils::assert_error;
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -21,6 +20,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::assert_error;
 
   fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
     let t: f64 = dates.values().sum();
