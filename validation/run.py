@@ -120,7 +120,8 @@ def main():
             if re.search(args.filter, str(out)):
                 plan.append((d, tree, flags, out))
 
-    inputs = sorted({(d, tree) for d, tree, _, _ in plan})
+    scored = {'optimize': ['realized', 'exact']}.get(args.suite, [])  # truth trees that evaluate.py reads
+    inputs = sorted({(d, tree) for d, tree, _, _ in plan} | {(d, kind) for d, *_ in plan for kind in scored})
     with ProcessPoolExecutor(args.jobs) as pool:  # input trees are shared between jobs, so write them first
         list(pool.map(divergence_tree, [d for d, _ in inputs], [t for _, t in inputs]))
 

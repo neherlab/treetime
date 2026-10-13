@@ -1,3 +1,5 @@
 data/
+data_n*/
 results/
+results_n*/
 __pycache__/
