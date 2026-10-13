@@ -5,7 +5,7 @@ use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::shared::alignment::pair_alignment;
 use crate::commands::shared::ancestral_trees::{AncestralOutputMaps, AncestralTrees, write_ancestral_trees};
 use crate::commands::shared::gtr_output::write_gtr_output;
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::sequence_inputs::{AncestralReadInputs, SequenceInputArgs, read_nwk_fasta};
 use app_output::augur_node_data_ancestral::AncestralNodeSequences;
 use app_output::mutation_filter::UnknownMutationFilter;

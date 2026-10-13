@@ -2,7 +2,7 @@ use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::shared::alignment::{pair_alignment, read_alignment};
 use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::leaf_order::leaf_order;
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::mutation_filter::UnknownMutationFilter;

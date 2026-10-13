@@ -4,7 +4,7 @@ use crate::commands::homoplasy::report::render_homoplasy_report;
 use crate::commands::homoplasy::result::HomoplasyResult;
 use crate::commands::homoplasy::summary::{ResultContext, homoplasy_result};
 use crate::commands::shared::ancestral_trees::{AncestralOutputMaps, AncestralTrees, write_ancestral_trees};
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::sequence_inputs::{AncestralReadInputs, SequenceInputArgs, read_nwk_fasta};
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};

@@ -5,7 +5,7 @@ use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
 use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
 use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use crate::commands::prune::args::TreetimePruneArgsRaw;
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use app_output::output_plan::ResolvedOutputs;
 use deser::{Deserialize, Serialize};

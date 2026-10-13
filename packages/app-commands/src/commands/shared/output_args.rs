@@ -1,7 +1,15 @@
+use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
+use crate::commands::clock::args::TreetimeClockArgsRaw;
+use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
+use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
+use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
+use crate::commands::prune::args::TreetimePruneArgsRaw;
+use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use app_output::output_plan::{self, CommandKind, OutputPlanRequest, OutputSelection, ResolvedOutputs};
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
+use itertools::Itertools;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
@@ -10,8 +18,8 @@ use treetime_io::nwk::NwkStyle;
 #[cfg(feature = "clap")]
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
-macro_rules! per_command_output_selection {
-  ($name:ident { $($extra:ident),* $(,)? }) => {
+macro_rules! command_outputs {
+  ($name:ident for $raw:ty, $kind:ident { $($extra:ident: $field:ident),* $(,)? }) => {
     #[derive(Copy, Clone, Debug, Eq, PartialEq, schemars::JsonSchema, strum_macros::EnumIter, Serialize, Deserialize)]
     #[schemars(rename_all = "kebab-case")]
     #[deser(rename_all = "kebab-case")]
@@ -43,44 +51,62 @@ macro_rules! per_command_output_selection {
         }
       }
     }
+
+    impl ResolveOutputs for $raw {
+      fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
+        let selection = self.output_selection.iter().copied().map(OutputSelection::from).collect_vec();
+        self.output.resolve(
+          CommandKind::$kind,
+          &selection,
+          &[$((OutputSelection::$extra, self.$field.as_deref())),*],
+        )
+      }
+    }
   };
 }
 
-per_command_output_selection!(AncestralOutputSelection {
-  AugurNodeData,
-  Gtr,
-  ReconstructedNucFasta,
-  ReconstructedAaFasta,
+pub trait ResolveOutputs {
+  fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report>;
+}
+
+command_outputs!(AncestralOutputSelection for TreetimeAncestralArgsRaw, Ancestral {
+  AugurNodeData: output_augur_node_data,
+  Gtr: output_gtr,
+  ReconstructedNucFasta: output_reconstructed_nuc_fasta,
+  ReconstructedAaFasta: output_reconstructed_aa_fasta,
 });
-per_command_output_selection!(TimetreeOutputSelection {
-  AugurNodeData,
-  Gtr,
-  ReconstructedNucFasta,
-  ClockModel,
-  ClockCsv,
-  ConfidenceTsv,
-  Tracelog,
-  CoalescentTsv,
-  CoalescentCsv,
-  CoalescentJson,
+command_outputs!(TimetreeOutputSelection for TreetimeTimetreeArgsRaw, Timetree {
+  AugurNodeData: output_augur_node_data,
+  Gtr: output_gtr,
+  ReconstructedNucFasta: output_reconstructed_nuc_fasta,
+  ClockModel: output_clock_model,
+  ClockCsv: output_clock_csv,
+  ConfidenceTsv: output_confidence_tsv,
+  Tracelog: output_tracelog,
+  CoalescentTsv: output_coalescent_tsv,
+  CoalescentCsv: output_coalescent_csv,
+  CoalescentJson: output_coalescent_json,
 });
-per_command_output_selection!(ClockOutputSelection {
-  ClockModel,
-  ClockCsv,
-  ClockChartSvg,
-  ClockChartPng,
+command_outputs!(ClockOutputSelection for TreetimeClockArgsRaw, Clock {
+  ClockModel: output_clock_model,
+  ClockCsv: output_clock_csv,
+  ClockChartSvg: output_clock_chart_svg,
+  ClockChartPng: output_clock_chart_png,
 });
-per_command_output_selection!(MugrationOutputSelection {
-  AugurNodeData,
-  Gtr,
-  ConfidenceCsv,
-  TraitsCsv,
+command_outputs!(MugrationOutputSelection for TreetimeMugrationArgsRaw, Mugration {
+  AugurNodeData: output_augur_node_data,
+  Gtr: output_gtr,
+  ConfidenceCsv: output_confidence_csv,
+  TraitsCsv: output_traits_csv,
 });
-per_command_output_selection!(OptimizeOutputSelection { AugurNodeData, Gtr });
-per_command_output_selection!(PruneOutputSelection { Gtr });
-per_command_output_selection!(HomoplasyOutputSelection {
-  HomoplasyStats,
-  HomoplasyReport,
+command_outputs!(OptimizeOutputSelection for TreetimeOptimizeArgsRaw, Optimize {
+  AugurNodeData: output_augur_node_data,
+  Gtr: output_gtr,
+});
+command_outputs!(PruneOutputSelection for TreetimePruneArgsRaw, Prune { Gtr: output_gtr });
+command_outputs!(HomoplasyOutputSelection for TreetimeHomoplasyArgsRaw, Homoplasy {
+  HomoplasyStats: output_homoplasy_stats,
+  HomoplasyReport: output_homoplasy_report,
 });
 
 /// Output selection shared by every tree-writing command. `--output-all`

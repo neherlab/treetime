@@ -1,6 +1,6 @@
 use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::output_args::DivergenceUnits;
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::trace::TimetreeTraceSink;

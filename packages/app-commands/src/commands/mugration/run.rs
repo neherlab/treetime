@@ -1,6 +1,6 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::shared::input_warnings::warn_duplicate_names;
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeTraits};
 use app_output::augur_node_data_traits::write_augur_node_data_traits;

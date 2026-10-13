@@ -488,59 +488,15 @@ pub enum OutputSelection {
 
 impl OutputSelection {
   pub const fn description(self) -> &'static str {
-    match self {
-      Self::All => "Every output of the command",
-      Self::Nwk => "Tree in Newick format",
-      Self::Nexus => "Tree with node annotations in Nexus format",
-      Self::Auspice => "Tree for Auspice and Nextstrain",
-      Self::MatPb => "Mutation-annotated tree (UShER protobuf)",
-      Self::MatJson => "Mutation-annotated tree (JSON)",
-      Self::GraphJson => "Tree as a graph (JSON)",
-      Self::Dot => "Tree as a graph (Graphviz)",
-      Self::AugurNodeData => "Node data for augur: dates, intervals, mutations",
-      Self::Gtr => "Substitution model",
-      Self::ClockModel => "Clock rate, intercept and regression statistics",
-      Self::ConfidenceTsv => "Date intervals of every node",
-      Self::ConfidenceCsv => "State probabilities of every node",
-      Self::ReconstructedNucFasta => "Sequences of samples and ancestors",
-      Self::ReconstructedAaFasta => "Protein sequences of samples and ancestors",
-      Self::TraitsCsv => "Inferred state of every node",
-      Self::ClockCsv => "Root-to-tip distance, date and clock prediction of every node",
-      Self::Tracelog => "Convergence values of every iteration",
-      Self::CoalescentTsv | Self::CoalescentCsv => "Coalescent time scale and effective population size",
-      Self::CoalescentJson => "Coalescent model and its likelihood",
-      Self::ClockChartSvg => "Root-to-tip regression chart (SVG)",
-      Self::ClockChartPng => "Root-to-tip regression chart (PNG)",
-      Self::HomoplasyStats => "Recurrent mutations: counts, histograms and ranked lists (JSON)",
-      Self::HomoplasyReport => "Recurrent mutations: text report",
-    }
+    self.facts().description
   }
 
   pub const fn table_format(self) -> Option<TableFormat> {
-    match self {
-      Self::ConfidenceTsv | Self::CoalescentTsv => Some(TableFormat::Tsv),
-      Self::ConfidenceCsv | Self::TraitsCsv | Self::ClockCsv | Self::Tracelog | Self::CoalescentCsv => {
-        Some(TableFormat::Csv)
-      },
-      Self::All
-      | Self::Nwk
-      | Self::Nexus
-      | Self::Auspice
-      | Self::MatPb
-      | Self::MatJson
-      | Self::GraphJson
-      | Self::Dot
-      | Self::AugurNodeData
-      | Self::Gtr
-      | Self::ClockModel
-      | Self::ReconstructedNucFasta
-      | Self::ReconstructedAaFasta
-      | Self::CoalescentJson
-      | Self::ClockChartSvg
-      | Self::ClockChartPng
-      | Self::HomoplasyStats
-      | Self::HomoplasyReport => None,
-    }
+    self.facts().table_format
+  }
+
+  pub const fn flag_name(self) -> &'static str {
+    self.facts().flag_name
   }
 
   fn is_tree(self) -> bool {
@@ -550,34 +506,8 @@ impl OutputSelection {
     )
   }
 
-  fn reads_tree(self) -> bool {
-    match self {
-      Self::Nwk
-      | Self::Nexus
-      | Self::Auspice
-      | Self::MatPb
-      | Self::MatJson
-      | Self::AugurNodeData
-      | Self::ConfidenceCsv
-      | Self::TraitsCsv => true,
-      Self::All
-      | Self::GraphJson
-      | Self::Dot
-      | Self::Gtr
-      | Self::ClockModel
-      | Self::ConfidenceTsv
-      | Self::ReconstructedNucFasta
-      | Self::ReconstructedAaFasta
-      | Self::ClockCsv
-      | Self::Tracelog
-      | Self::CoalescentTsv
-      | Self::CoalescentCsv
-      | Self::CoalescentJson
-      | Self::ClockChartSvg
-      | Self::ClockChartPng
-      | Self::HomoplasyStats
-      | Self::HomoplasyReport => false,
-    }
+  const fn reads_tree(self) -> bool {
+    self.facts().reads_tree
   }
 
   fn is_styled_tree(self) -> bool {
@@ -588,34 +518,8 @@ impl OutputSelection {
     matches!(self, Self::All)
   }
 
-  fn extension(self) -> &'static str {
-    match self {
-      Self::All => "",
-      Self::Nwk => ".nwk",
-      Self::Nexus => ".nexus",
-      Self::Auspice => ".auspice.json",
-      Self::MatPb => ".mat.pb",
-      Self::MatJson => ".mat.json",
-      Self::GraphJson => ".graph.json",
-      Self::Dot => ".dot",
-      Self::AugurNodeData => ".augur-node-data.json",
-      Self::Gtr => ".gtr.json",
-      Self::ClockModel => ".clock-model.json",
-      Self::ConfidenceTsv => ".confidence.tsv",
-      Self::ConfidenceCsv => ".confidence.csv",
-      Self::ReconstructedNucFasta => ".reconstructed-nuc.fasta",
-      Self::ReconstructedAaFasta => ".reconstructed-aa.{cds}.fasta",
-      Self::TraitsCsv => ".traits.csv",
-      Self::ClockCsv => ".clock.csv",
-      Self::Tracelog => ".tracelog.csv",
-      Self::CoalescentTsv => ".coalescent.tsv",
-      Self::CoalescentCsv => ".coalescent.csv",
-      Self::CoalescentJson => ".coalescent.json",
-      Self::ClockChartSvg => ".svg",
-      Self::ClockChartPng => ".png",
-      Self::HomoplasyStats => ".stats.json",
-      Self::HomoplasyReport => ".report.txt",
-    }
+  const fn extension(self) -> &'static str {
+    self.facts().extension
   }
 
   fn to_tree_write_kind(self) -> Option<TreeWriteKind> {
@@ -629,33 +533,62 @@ impl OutputSelection {
     }
   }
 
-  pub fn flag_name(self) -> &'static str {
+  #[rustfmt::skip]
+  const fn facts(self) -> OutputFacts {
+    const CSV: Option<TableFormat> = Some(TableFormat::Csv);
+    const TSV: Option<TableFormat> = Some(TableFormat::Tsv);
     match self {
-      Self::All => "--output-selection=all",
-      Self::Nwk => "--output-tree-nwk",
-      Self::Nexus => "--output-tree-nexus",
-      Self::Auspice => "--output-tree-auspice",
-      Self::MatPb => "--output-tree-mat-pb",
-      Self::MatJson => "--output-tree-mat-json",
-      Self::GraphJson => "--output-tree-graph-json",
-      Self::Dot => "--output-tree-dot",
-      Self::AugurNodeData => "--output-augur-node-data",
-      Self::Gtr => "--output-gtr",
-      Self::ClockModel => "--output-clock-model",
-      Self::ConfidenceTsv => "--output-confidence-tsv",
-      Self::ConfidenceCsv => "--output-confidence-csv",
-      Self::ReconstructedNucFasta => "--output-reconstructed-nuc-fasta",
-      Self::ReconstructedAaFasta => "--output-reconstructed-aa-fasta",
-      Self::TraitsCsv => "--output-traits-csv",
-      Self::ClockCsv => "--output-clock-csv",
-      Self::Tracelog => "--output-tracelog",
-      Self::CoalescentTsv => "--output-coalescent-tsv",
-      Self::CoalescentCsv => "--output-coalescent-csv",
-      Self::CoalescentJson => "--output-coalescent-json",
-      Self::ClockChartSvg => "--output-clock-chart-svg",
-      Self::ClockChartPng => "--output-clock-chart-png",
-      Self::HomoplasyStats => "--output-homoplasy-stats",
-      Self::HomoplasyReport => "--output-homoplasy-report",
+      Self::All                   => OutputFacts::new("",                              "--output-selection=all",          None, false, "Every output of the command"),
+      Self::Nwk                   => OutputFacts::new(".nwk",                          "--output-tree-nwk",               None, true,  "Tree in Newick format"),
+      Self::Nexus                 => OutputFacts::new(".nexus",                        "--output-tree-nexus",             None, true,  "Tree with node annotations in Nexus format"),
+      Self::Auspice               => OutputFacts::new(".auspice.json",                 "--output-tree-auspice",           None, true,  "Tree for Auspice and Nextstrain"),
+      Self::MatPb                 => OutputFacts::new(".mat.pb",                       "--output-tree-mat-pb",            None, true,  "Mutation-annotated tree (UShER protobuf)"),
+      Self::MatJson               => OutputFacts::new(".mat.json",                     "--output-tree-mat-json",          None, true,  "Mutation-annotated tree (JSON)"),
+      Self::GraphJson             => OutputFacts::new(".graph.json",                   "--output-tree-graph-json",        None, false, "Tree as a graph (JSON)"),
+      Self::Dot                   => OutputFacts::new(".dot",                          "--output-tree-dot",               None, false, "Tree as a graph (Graphviz)"),
+      Self::AugurNodeData         => OutputFacts::new(".augur-node-data.json",         "--output-augur-node-data",        None, true,  "Node data for augur: dates, intervals, mutations"),
+      Self::Gtr                   => OutputFacts::new(".gtr.json",                     "--output-gtr",                    None, false, "Substitution model"),
+      Self::ClockModel            => OutputFacts::new(".clock-model.json",             "--output-clock-model",            None, false, "Clock rate, intercept and regression statistics"),
+      Self::ConfidenceTsv         => OutputFacts::new(".confidence.tsv",               "--output-confidence-tsv",         TSV,  false, "Date intervals of every node"),
+      Self::ConfidenceCsv         => OutputFacts::new(".confidence.csv",               "--output-confidence-csv",         CSV,  true,  "State probabilities of every node"),
+      Self::ReconstructedNucFasta => OutputFacts::new(".reconstructed-nuc.fasta",      "--output-reconstructed-nuc-fasta", None, false, "Sequences of samples and ancestors"),
+      Self::ReconstructedAaFasta  => OutputFacts::new(".reconstructed-aa.{cds}.fasta", "--output-reconstructed-aa-fasta", None, false, "Protein sequences of samples and ancestors"),
+      Self::TraitsCsv             => OutputFacts::new(".traits.csv",                   "--output-traits-csv",             CSV,  true,  "Inferred state of every node"),
+      Self::ClockCsv              => OutputFacts::new(".clock.csv",                    "--output-clock-csv",              CSV,  false, "Root-to-tip distance, date and clock prediction of every node"),
+      Self::Tracelog              => OutputFacts::new(".tracelog.csv",                 "--output-tracelog",               CSV,  false, "Convergence values of every iteration"),
+      Self::CoalescentTsv         => OutputFacts::new(".coalescent.tsv",               "--output-coalescent-tsv",         TSV,  false, "Coalescent time scale and effective population size"),
+      Self::CoalescentCsv         => OutputFacts::new(".coalescent.csv",               "--output-coalescent-csv",         CSV,  false, "Coalescent time scale and effective population size"),
+      Self::CoalescentJson        => OutputFacts::new(".coalescent.json",              "--output-coalescent-json",        None, false, "Coalescent model and its likelihood"),
+      Self::ClockChartSvg         => OutputFacts::new(".svg",                          "--output-clock-chart-svg",        None, false, "Root-to-tip regression chart (SVG)"),
+      Self::ClockChartPng         => OutputFacts::new(".png",                          "--output-clock-chart-png",        None, false, "Root-to-tip regression chart (PNG)"),
+      Self::HomoplasyStats        => OutputFacts::new(".stats.json",                   "--output-homoplasy-stats",        None, false, "Recurrent mutations: counts, histograms and ranked lists (JSON)"),
+      Self::HomoplasyReport       => OutputFacts::new(".report.txt",                   "--output-homoplasy-report",       None, false, "Recurrent mutations: text report"),
+    }
+  }
+}
+
+struct OutputFacts {
+  extension: &'static str,
+  flag_name: &'static str,
+  table_format: Option<TableFormat>,
+  reads_tree: bool,
+  description: &'static str,
+}
+
+impl OutputFacts {
+  const fn new(
+    extension: &'static str,
+    flag_name: &'static str,
+    table_format: Option<TableFormat>,
+    reads_tree: bool,
+    description: &'static str,
+  ) -> Self {
+    Self {
+      extension,
+      flag_name,
+      table_format,
+      reads_tree,
+      description,
     }
   }
 }

@@ -1,7 +1,7 @@
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::shared::alignment::{PairedAlignment, pair_alignment, read_alignment};
 use crate::commands::shared::output_args::DivergenceUnits;
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::augur_node_data_refine::{RefineRun, write_augur_node_data_refine};

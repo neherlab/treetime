@@ -1,7 +1,7 @@
 use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, TreetimeClockArgs};
 use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
 use crate::rtt_chart::{write_clock_regression_chart_png, write_clock_regression_chart_svg};
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates};

@@ -14,7 +14,6 @@ pub mod model;
 pub mod output_args;
 pub mod required;
 pub mod reroot;
-pub mod resolve_outputs;
 pub mod seed;
 pub mod sequence_inputs;
 pub mod topology_order_args;

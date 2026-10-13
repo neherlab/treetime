@@ -11,7 +11,7 @@ use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgs
 use crate::commands::optimize::run::run_optimize;
 use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 use crate::commands::prune::run::run_prune;
-use crate::commands::shared::resolve_outputs::ResolveOutputs;
+use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
 use crate::commands::timetree::run::run_timetree_estimation;
 use crate::config::schema::command_schema;
