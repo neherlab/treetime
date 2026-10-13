@@ -8,7 +8,7 @@ use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::sequence_inputs::{AncestralReadInputs, SequenceInputArgs, read_nwk_fasta};
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use std::io::Write;
 use treetime::ancestral;
 use treetime::branch_lengths::branch_lengths_or_zero;
@@ -123,7 +123,9 @@ fn write_homoplasy_outputs(resolved: &ResolvedOutputs, result: &HomoplasyResult,
     json_write_file(path, result, JsonPretty(true))?;
   }
   if let Some(path) = resolved.path(OutputSelection::HomoplasyReport) {
-    write_file_with(path, |writer| Ok(writer.write_all(report.as_bytes())?))?;
+    write_file_with(path, |writer| {
+      writer.write_all(report.as_bytes()).wrap_err("When writing the report")
+    })?;
   }
   Ok(())
 }

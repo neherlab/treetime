@@ -75,8 +75,10 @@ impl AppSettingsStore {
     let text = self.format.write(settings)?;
     let dir = self.path.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(dir).wrap_err_with(|| format!("When creating the directory '{}'", dir.display()))?;
-    write_atomically(&self.path, |file| Ok(file.write_all(text.as_bytes())?))
-      .wrap_err_with(|| format!("When writing the settings file '{}'", self.path.display()))
+    write_atomically(&self.path, |file| {
+      file.write_all(text.as_bytes()).wrap_err("When writing the settings")
+    })
+    .wrap_err_with(|| format!("When writing the settings file '{}'", self.path.display()))
   }
 }
 
