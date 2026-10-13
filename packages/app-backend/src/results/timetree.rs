@@ -1,5 +1,5 @@
 use crate::json_float::JsonFloat;
-use crate::results::clock::{RootToTip, is_fixed, root_to_tip};
+use crate::results::clock::{RootToTip, has_fixed_rate, root_to_tip};
 use crate::results::tree::{DateInterval, ResultTree};
 use crate::results::year_date::YearDate;
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
@@ -124,7 +124,7 @@ fn timetree_estimates(
   config: &TreetimeTimetreeArgsRaw,
 ) -> TimetreeEstimates {
   let root = tree.root();
-  let fixed = outputs.clock_model.is_some_and(is_fixed);
+  let fixed = outputs.clock_model.is_some_and(has_fixed_rate);
   let r = outputs.clock_model.and_then(ClockModel::r_val);
   TimetreeEstimates {
     root_date: root.date.clone(),

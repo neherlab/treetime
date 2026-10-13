@@ -22,7 +22,7 @@ pub fn clock_results(
   ClockResults {
     estimates: ClockEstimates {
       clock_rate: model.map(ClockModel::clock_rate),
-      clock_rate_fixed: model.is_some_and(is_fixed),
+      clock_rate_fixed: model.is_some_and(has_fixed_rate),
       r: model.and_then(ClockModel::r_val),
       r_squared: model.and_then(ClockModel::r_squared),
       dated_samples: dated.len(),
@@ -134,6 +134,6 @@ pub struct RootToTipPoint {
   pub outlier: bool,
 }
 
-pub fn is_fixed(model: &ClockModel) -> bool {
+pub fn has_fixed_rate(model: &ClockModel) -> bool {
   matches!(model.stats(), ClockModelStats::Fixed)
 }

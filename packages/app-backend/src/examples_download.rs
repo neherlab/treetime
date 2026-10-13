@@ -40,6 +40,13 @@ impl ExampleDownloads {
     self.state.lock().clone()
   }
 
+  #[cfg_attr(
+    dylint_lib = "custom",
+    expect(
+      spawn_handle_dropped,
+      reason = "the thread publishes the download result as the download state that the app polls, and `download_examples` returns its failures as errors"
+    )
+  )]
   pub fn start(self: &Arc<Self>, runs: &Arc<RunManager>) -> Result<ExamplesDownloadStatus, Report> {
     let mut state = self.state.lock();
     if matches!(state.download, ExamplesDownload::Running { .. }) {

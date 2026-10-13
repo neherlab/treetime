@@ -335,6 +335,13 @@ fn read_metadata(
   metadata_read_file(path, delimiters, id_candidates, None, date_column).map(metadata_summary)
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "a table without a date column has no date facts, which the summary shows as `None`"
+  )
+)]
 pub(crate) fn metadata_summary(table: MetadataTable) -> MetadataRead {
   let (dates, date_problem) = if table.date_column.is_ok() {
     match table.dates() {
@@ -380,6 +387,13 @@ pub struct MetadataFacts {
   pub dates: Option<DateFacts>,
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "a date that does not parse as a calendar day has no day of month to count"
+  )
+)]
 fn date_facts(dates: &[(String, Option<DateConstraint>)]) -> DateFacts {
   let options = DateParserOptions::default();
   let exact_days = dates

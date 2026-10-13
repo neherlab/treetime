@@ -228,8 +228,10 @@ impl RunManager {
     let others: usize = fs::read_dir(&dir)
       .wrap_err_with(|| format!("When listing '{}'", dir.display()))?
       .map(|entry| -> Result<usize, Report> {
-        let entry = entry?;
-        let metadata = entry.metadata()?;
+        let entry = entry.wrap_err_with(|| format!("When listing '{}'", dir.display()))?;
+        let metadata = entry
+          .metadata()
+          .wrap_err_with(|| format!("When reading the size of '{}'", entry.path().display()))?;
         Ok(if metadata.is_file() && entry.path() != target {
           usize::try_from(metadata.len())?
         } else {

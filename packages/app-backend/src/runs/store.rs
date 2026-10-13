@@ -96,7 +96,7 @@ impl RunStore {
   pub fn write(&self, record: &RunRecord) -> Result<(), Report> {
     let path = self.run_dir(&record.id).join(RUN_FILE);
     let text = format!("{}\n", json_write_str(record, JsonPretty(true))?);
-    write_atomically(&path, |file| Ok(file.write_all(text.as_bytes())?))
+    write_atomically(&path, |file| file.write_all(text.as_bytes()).wrap_err("When writing the text"))
       .wrap_err_with(|| format!("When writing the run record '{}'", path.display()))
   }
 
@@ -166,13 +166,17 @@ impl RunStore {
   fn run_ids(&self) -> Result<Vec<JobId>, Report> {
     let mut ids = vec![];
     for entry in fs::read_dir(&self.root).wrap_err_with(|| format!("When listing '{}'", self.root.display()))? {
-      let entry = entry?;
+      let entry = entry.wrap_err_with(|| format!("When listing '{}'", self.root.display()))?;
       let name = entry.file_name().to_string_lossy().into_owned();
-      if !entry.file_type()?.is_dir() || !entry.path().join(RUN_FILE).is_file() {
+      let file_type = entry
+        .file_type()
+        .wrap_err_with(|| format!("When reading the type of '{}'", entry.path().display()))?;
+      if !file_type.is_dir() || !entry.path().join(RUN_FILE).is_file() {
         continue;
       }
-      if let Ok(id) = JobId::parse(&name) {
-        ids.push(id);
+      match JobId::parse(&name) {
+        Ok(id) => ids.push(id),
+        Err(error) => warn!("Skipping the folder '{name}' in the runs folder: {error}"),
       }
     }
     Ok(ids)

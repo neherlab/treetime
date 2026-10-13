@@ -168,7 +168,7 @@ impl Iterator for RunZipChunks {
 
   fn next(&mut self) -> Option<Self::Item> {
     let chunk = self.advance().transpose();
-    if matches!(chunk, Some(Err(_))) {
+    if chunk.as_ref().is_some_and(Result::is_err) {
       self.zip = None;
       self.current = None;
       self.buffer.take();
@@ -233,8 +233,10 @@ fn walk_files(dir: &Path) -> Result<Vec<PathBuf>, Report> {
     return Ok(files);
   }
   for entry in fs::read_dir(dir).wrap_err_with(|| format!("When listing '{}'", dir.display()))? {
-    let entry = entry?;
-    let file_type = entry.file_type()?;
+    let entry = entry.wrap_err_with(|| format!("When listing '{}'", dir.display()))?;
+    let file_type = entry
+      .file_type()
+      .wrap_err_with(|| format!("When reading the type of '{}'", entry.path().display()))?;
     if file_type.is_dir() {
       files.extend(walk_files(&entry.path())?);
     } else if !file_type.is_symlink() {

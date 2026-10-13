@@ -180,6 +180,13 @@ impl AppService {
 }
 
 #[cfg(not(target_family = "wasm"))]
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    spawn_handle_dropped,
+    reason = "the run thread catches a panic of the run and records every outcome in the run store, which the app reads"
+  )
+)]
 fn execute(id: &JobId, started: StartedRun) -> Result<(), Report> {
   let run_id = id.clone();
   thread::Builder::new()

@@ -394,7 +394,9 @@ fn existing_files(planned: &Path) -> Result<Vec<PathBuf>, Report> {
   }
   let mut files = vec![];
   for entry in fs::read_dir(dir).wrap_err_with(|| format!("When listing the outputs in '{}'", dir.display()))? {
-    let path = entry?.path();
+    let path = entry
+      .wrap_err_with(|| format!("When listing the outputs in '{}'", dir.display()))?
+      .path();
     let matches = path.file_name().is_some_and(|file| {
       let file = file.to_string_lossy();
       file.len() > prefix.len() + suffix.len() && file.starts_with(prefix) && file.ends_with(suffix)
