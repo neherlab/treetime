@@ -476,7 +476,8 @@ fn gather_results(
       &rate_susceptibility_dates,
       &state.names,
     )
-  });
+  })
+  .transpose()?;
 
   let coalescent_output = build_coalescent_output(
     coalescent.mode,

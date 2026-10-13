@@ -2,6 +2,8 @@ mod test_coalescent_timescale;
 mod test_confidence_combine;
 mod test_confidence_extract;
 mod test_confidence_rate;
+mod test_gm_max_posterior_region;
+mod test_max_posterior_region;
 mod test_params;
 mod test_pipeline;
 mod test_pre_loop;

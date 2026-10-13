@@ -4,6 +4,7 @@ use crate::make_error;
 use crate::progress::LogSink;
 use crate::timetree::inference::result::{NodePosterior, TimeInference};
 use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
+use crate::timetree::max_posterior_region::{PeakLocation, PosteriorRegion, max_posterior_region};
 use crate::{progress_info, progress_warn};
 use deser::Serialize;
 use eyre::{Report, WrapErr};
@@ -12,6 +13,7 @@ use ordered_float::OrderedFloat;
 use statrs::function::erf::erf_inv;
 use std::collections::BTreeMap;
 use std::f64::consts::SQRT_2;
+use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
@@ -81,45 +83,75 @@ pub fn extract_confidence_intervals(
   posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Vec<NodeConfidenceInterval> {
+) -> Result<Vec<NodeConfidenceInterval>, Report> {
   graph
     .get_nodes()
-    .filter_map(|node| {
+    .map(|node| {
       let key = node.key();
-      let node_posterior = &posterior[&key];
       let name = names[&key].clone().unwrap_or_default();
-      let date = node_posterior.time?;
-
-      let mutation_contribution: Option<(f64, f64)> = None;
-
-      let rate_contribution = rate_susceptibility_dates
-        .get(&key)
-        .map(|dates| date_uncertainty_due_to_rate(*dates, (CI_LOWER_QUANTILE, CI_UPPER_QUANTILE)));
-
-      let (lower, upper) = if rate_contribution.is_none() && mutation_contribution.is_none() {
-        (date, date)
-      } else {
-        let limits = node_posterior
-          .distribution
-          .as_ref()
-          .and_then(|dist| dist.time_bounds())
-          .unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
-        combine_confidence(date, limits, rate_contribution, mutation_contribution)
-      };
-
-      let lower = lower.min(date);
-      let upper = upper.max(date);
-
-      Some(NodeConfidenceInterval {
-        key,
-        name,
-        date,
-        lower,
-        upper,
-      })
+      node_confidence_interval(key, name, &posterior[&key], rate_susceptibility_dates.get(&key))
+        .wrap_err_with(|| format!("When computing the confidence interval of node {key}"))
     })
-    .sorted_by_key(|ci| ci.key)
-    .collect_vec()
+    .process_results(|intervals| intervals.flatten().sorted_by_key(|ci| ci.key).collect_vec())
+}
+
+fn node_confidence_interval(
+  key: GraphNodeKey,
+  name: String,
+  node_posterior: &NodePosterior,
+  rate_dates: Option<&[f64; 3]>,
+) -> Result<Option<NodeConfidenceInterval>, Report> {
+  let Some(date) = node_posterior.time else {
+    return Ok(None);
+  };
+
+  let distribution = node_posterior.distribution.as_deref();
+  let region = distribution
+    .map(|distribution| max_posterior_region(distribution, CI_FRACTION))
+    .transpose()?
+    .flatten();
+  let limits = distribution
+    .and_then(Distribution::time_bounds)
+    .unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
+
+  let (lower, upper) = combined_confidence(date, limits, region, rate_dates);
+
+  let lower = lower.min(date);
+  let upper = upper.max(date);
+
+  Ok(Some(NodeConfidenceInterval {
+    key,
+    name,
+    date,
+    lower,
+    upper,
+  }))
+}
+
+pub(crate) fn combined_confidence(
+  date: f64,
+  limits: (f64, f64),
+  region: Option<PosteriorRegion>,
+  rate_dates: Option<&[f64; 3]>,
+) -> (f64, f64) {
+  let mutation_contribution = region.map(|region| (region.lower, region.upper));
+  let rate_quantiles = region.map_or((CI_LOWER_QUANTILE, CI_UPPER_QUANTILE), |region| {
+    rate_quantiles_for_peak(region.peak)
+  });
+  let rate_contribution = rate_dates.map(|dates| date_uncertainty_due_to_rate(*dates, rate_quantiles));
+
+  if rate_contribution.is_none() && mutation_contribution.is_none() {
+    return (date, date);
+  }
+  combine_confidence(date, limits, rate_contribution, mutation_contribution)
+}
+
+const fn rate_quantiles_for_peak(peak: PeakLocation) -> (f64, f64) {
+  match peak {
+    PeakLocation::Earliest => (1.0 - CI_FRACTION, 1.0),
+    PeakLocation::Interior => (CI_LOWER_QUANTILE, CI_UPPER_QUANTILE),
+    PeakLocation::Latest => (0.0, CI_FRACTION),
+  }
 }
 
 pub(crate) fn date_uncertainty_due_to_rate(dates: [f64; 3], interval: (f64, f64)) -> (f64, f64) {

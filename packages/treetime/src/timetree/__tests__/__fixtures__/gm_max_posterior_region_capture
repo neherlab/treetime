@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""
+Golden master capture for the 90% maximum posterior region of node dates.
+
+For each dataset in gm_max_posterior_region_inputs.json, run a v0 marginal
+timetree with rate variation, and record for every node with a non-delta
+marginal time posterior:
+
+- the posterior grid as negated time before present (`-x`, increasing towards
+  the present like numeric dates), with its negative log-likelihood ordinates
+- the affine map from that grid to numeric dates:
+  `numdate = numdate_at_zero + t / clock_rate`
+- the numeric date of the node and its dates at the lower, central, and upper
+  clock rate (`numdate_rate_variation`)
+- which v0 branch `get_max_posterior_region` takes: peak at the earliest date,
+  peak at the latest date, or peak in the interior
+- `get_max_posterior_region(node, 0.9)` with the rate contribution, and again
+  after removing the rate variation, which leaves the posterior contribution
+
+Nodes whose grid has more than MAX_GRID_POINTS points are left out to keep the
+fixture small; the remaining nodes cover all three peak locations.
+
+v0 grids are in time before present. Its far tails are so wide that converting
+them to numeric dates merges neighboring grid points, so the grid is stored in
+its own unit. The map to numeric dates is affine, so mass fractions and level
+sets give the same region in either unit.
+
+Usage:
+    ./dev/docker/python python packages/treetime/src/timetree/__tests__/__fixtures__/gm_max_posterior_region_capture
+"""
+
+import copy
+import json
+import lzma
+from io import StringIO
+from pathlib import Path
+
+import numpy as np
+from Bio import AlignIO
+from treetime import TreeTime
+from treetime import utils as tt_utils
+
+SEED = 1010336213
+FRACTION = 0.9
+RATE_STD_FRACTION = 0.2
+MAX_GRID_POINTS = 1300
+
+PROJECT_ROOT: Path = Path(__file__).resolve().parents[6]
+FIXTURES_DIR: Path = Path(__file__).parent
+
+
+def alignment_length(path: Path) -> int:
+    with lzma.open(path, "rt") as f:
+        return AlignIO.read(StringIO(f.read()), "fasta").get_alignment_length()
+
+
+def peak_location(dist) -> str:
+    if dist.peak_pos == dist.xmin:
+        return "latest"
+    if dist.peak_pos == dist.xmax:
+        return "earliest"
+    return "interior"
+
+
+def capture_node(tt: TreeTime, node) -> dict:
+    dist = node.marginal_pos_LH
+    t = -np.asarray(dist.x)[::-1]
+    neglog = np.asarray(dist.y)[::-1]
+    region = tt.get_max_posterior_region(node, fraction=FRACTION)
+    rate_variation = node.numdate_rate_variation
+    del node.numdate_rate_variation
+    region_without_rate = tt.get_max_posterior_region(node, fraction=FRACTION)
+    node.numdate_rate_variation = rate_variation
+    return {
+        "t": [float(v) for v in t],
+        "numdate_at_zero": float(tt.date2dist.to_numdate(0.0)),
+        "clock_rate": float(abs(tt.date2dist.clock_rate)),
+        "neglog": [float(v) for v in neglog],
+        "numdate": float(node.numdate),
+        "rate_dates": [float(date) for _, date in rate_variation],
+        "peak": peak_location(dist),
+        "region": [float(v) for v in region],
+        "region_without_rate": [float(v) for v in region_without_rate],
+    }
+
+
+def capture_dataset(config: dict[str, str]) -> dict:
+    dates = tt_utils.parse_dates(str(PROJECT_ROOT / config["metadata_path"]))
+    seq_len = alignment_length(PROJECT_ROOT / config["aln_path"])
+    tt_clock = TreeTime(
+        dates=dates,
+        tree=str(PROJECT_ROOT / config["tree_path"]),
+        gtr="JC69",
+        seq_len=seq_len,
+        verbose=0,
+        rng_seed=SEED,
+    )
+    tt_clock.clock_filter(reroot="best", n_iqd=3, plot=False)
+    clock_rate = float(tt_clock.date2dist.clock_rate)
+
+    tt = TreeTime(
+        dates=dates,
+        tree=copy.deepcopy(tt_clock.tree),
+        gtr="JC69",
+        seq_len=seq_len,
+        verbose=0,
+        rng_seed=SEED,
+        branch_length_mode="input",
+    )
+    tt.run(
+        root=None,
+        resolve_polytomies=False,
+        max_iter=0,
+        fixed_clock_rate=clock_rate,
+        time_marginal="always",
+        branch_length_mode="input",
+        vary_rate=RATE_STD_FRACTION * clock_rate,
+    )
+    return {
+        node.name: capture_node(tt, node)
+        for node in tt.tree.find_clades()
+        if not node.bad_branch
+        and not node.marginal_pos_LH.is_delta
+        and len(node.marginal_pos_LH.x) <= MAX_GRID_POINTS
+    }
+
+
+def main() -> None:
+    with (FIXTURES_DIR / "gm_max_posterior_region_inputs.json").open() as f:
+        inputs: dict = json.load(f)
+    outputs = {name: capture_dataset(config) for name, config in inputs.items()}
+    with (FIXTURES_DIR / "gm_max_posterior_region_outputs.json").open("w") as f:
+        json.dump(outputs, f, indent=2)
+        f.write("\n")
+
+
+if __name__ == "__main__":
+    main()

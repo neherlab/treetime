@@ -10,6 +10,7 @@ mod tests {
   use helpers::add_named;
   use maplit::btreemap;
   use ndarray::Array1;
+  use statrs::distribution::{ContinuousCDF, Normal};
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
@@ -27,7 +28,7 @@ mod tests {
       &graph,
       &[(unnamed_key, Some(2020.0), None), (named_key, Some(2021.0), None)],
     );
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
     assert_eq!(2, intervals.len());
     assert_eq!("", intervals[0].name);
     assert_eq!("named", intervals[1].name);
@@ -42,7 +43,7 @@ mod tests {
     graph.build().unwrap();
 
     let state = helpers::state(&graph, &[(no_time_key, None, None), (has_time_key, Some(2021.0), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
     assert_eq!(1, intervals.len());
     assert_eq!("has_time", intervals[0].name);
   }
@@ -55,16 +56,15 @@ mod tests {
     graph.build().unwrap();
 
     let state = helpers::state(&graph, &[(key, Some(2020.5), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
     assert_eq!(1, intervals.len());
     assert_relative_eq!(intervals[0].date, 2020.5);
     assert_relative_eq!(intervals[0].lower, 2020.5);
     assert_relative_eq!(intervals[0].upper, 2020.5);
   }
 
-  #[ignore = "marginal-posterior HPD disabled pending NegLog-aware HPD"]
   #[test]
-  fn test_extract_confidence_intervals_with_distribution() {
+  fn test_extract_confidence_intervals_flat_distribution_extends_from_latest_date() {
     let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     let dist = Arc::new(Distribution::range((2019.0, 2021.0), 0.0));
@@ -72,11 +72,12 @@ mod tests {
     graph.build().unwrap();
 
     let state = helpers::state(&graph, &[(key, Some(2020.0), Some(dist))]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
     assert_eq!(1, intervals.len());
     assert_relative_eq!(intervals[0].date, 2020.0);
-    assert_relative_eq!(intervals[0].lower, 2019.1, epsilon = 1e-10);
-    assert_relative_eq!(intervals[0].upper, 2020.9, epsilon = 1e-10);
+    let uniform_mass_from_latest_date = (2021.0 - 0.9 * 2.0, 2021.0);
+    assert_relative_eq!(intervals[0].lower, uniform_mass_from_latest_date.0, epsilon = 1e-12);
+    assert_relative_eq!(intervals[0].upper, uniform_mass_from_latest_date.1, epsilon = 1e-12);
   }
 
   #[test]
@@ -96,7 +97,7 @@ mod tests {
         (middle_key, Some(2022.0), None),
       ],
     );
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
     assert_eq!(3, intervals.len());
     assert_eq!("zebra", intervals[0].name);
     assert_eq!("alpha", intervals[1].name);
@@ -112,34 +113,35 @@ mod tests {
     let rate_map = btreemap! { key => [2009.0, 2010.0, 2011.0] };
 
     let state = helpers::state(&graph, &[(key, Some(2010.0), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names);
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names).unwrap();
     assert_eq!(1, intervals.len());
     assert_relative_eq!(intervals[0].date, 2010.0);
     assert_relative_eq!(intervals[0].lower, 2008.355146, epsilon = 1e-4);
     assert_relative_eq!(intervals[0].upper, 2011.644854, epsilon = 1e-4);
   }
 
-  #[ignore = "marginal-posterior HPD disabled pending NegLog-aware HPD"]
   #[test]
   fn test_extract_confidence_intervals_combined_wider_than_either() {
     let mut graph = Graph::new();
     let mut names = BTreeMap::new();
-    let dist = Arc::new(Distribution::range((2008.0, 2012.0), 0.0));
+    let (mean, std_dev): (f64, f64) = (2010.0, 0.5);
+    let t = Array1::linspace(mean - 8.0 * std_dev, mean + 8.0 * std_dev, 16001);
+    let y = t.mapv(|x| (x - mean).powi(2) / (2.0 * std_dev * std_dev));
+    let dist = Arc::new(Distribution::function(t, y).unwrap());
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
     let rate_map = btreemap! { key => [2009.0, 2010.0, 2011.0] };
 
-    let state = helpers::state(&graph, &[(key, Some(2010.0), Some(dist))]);
-    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names);
+    let state = helpers::state(&graph, &[(key, Some(mean), Some(dist))]);
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names).unwrap();
     assert_eq!(1, intervals.len());
-    assert!(
-      intervals[0].lower < 2008.2,
-      "combined lower should be below mutation-only lower"
-    );
-    assert!(
-      intervals[0].upper > 2011.8,
-      "combined upper should be above mutation-only upper"
-    );
+
+    let z = Normal::standard().inverse_cdf(0.95);
+    let normal_hpd_half_width = z * std_dev;
+    let rate_half_width = z * 1.0;
+    let half_width = normal_hpd_half_width.hypot(rate_half_width);
+    assert_relative_eq!(intervals[0].lower, mean - half_width, epsilon = 1e-7);
+    assert_relative_eq!(intervals[0].upper, mean + half_width, epsilon = 1e-7);
   }
 
   #[test]
@@ -151,7 +153,7 @@ mod tests {
     let rate_map = btreemap! { key => [2019.9, 2020.0, 2020.1] };
 
     let state = helpers::state(&graph, &[(key, Some(2020.5), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names);
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names).unwrap();
     assert_eq!(1, intervals.len());
     assert!(intervals[0].lower <= intervals[0].date);
     assert!(intervals[0].date <= intervals[0].upper);
@@ -168,7 +170,7 @@ mod tests {
     let rate_map = btreemap! { key => [2019.9, 2020.0, 2020.1] };
 
     let state = helpers::state(&graph, &[(key, Some(2019.5), None)]);
-    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names);
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names).unwrap();
     assert_eq!(1, intervals.len());
     assert!(intervals[0].lower <= intervals[0].date);
     assert!(intervals[0].date <= intervals[0].upper);
@@ -176,10 +178,9 @@ mod tests {
     assert_relative_eq!(intervals[0].upper, 2020.1645, epsilon = 1e-3);
   }
 
-  #[ignore = "marginal-posterior HPD disabled pending NegLog-aware HPD"]
   #[test]
   fn test_extract_confidence_intervals_skewed_distribution_hpd() {
-    let n_points = 500;
+    let n_points = 10001;
     let x_min = 0.0;
     let dx = 10.0 / (n_points as f64 - 1.0);
     let y = Array1::from_shape_fn(n_points, |i| x_min + i as f64 * dx);
@@ -194,13 +195,13 @@ mod tests {
     graph.build().unwrap();
 
     let state = helpers::state(&graph, &[(key, Some(peak_time), Some(Arc::new(dist)))]);
-    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names);
+    let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
     assert_eq!(1, intervals.len());
 
     let hpd_lower = 0.0;
-    let hpd_upper = (0.1_f64).ln().abs();
-    assert_relative_eq!(intervals[0].lower, hpd_lower, epsilon = 1e-3);
-    assert_relative_eq!(intervals[0].upper, hpd_upper, epsilon = 1e-3);
+    let truncated_exponential_quantile = -(1.0 - 0.9 * (1.0 - (-10.0_f64).exp())).ln();
+    assert_relative_eq!(intervals[0].lower, hpd_lower, epsilon = 1e-12);
+    assert_relative_eq!(intervals[0].upper, truncated_exponential_quantile, epsilon = 1e-7);
   }
 
   mod helpers {

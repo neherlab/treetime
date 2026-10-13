@@ -39,7 +39,7 @@ mod tests {
         ..NodePosterior::default()
       },
     };
-    let intervals = extract_confidence_intervals(&graph, &posterior, &BTreeMap::new(), &names);
+    let intervals = extract_confidence_intervals(&graph, &posterior, &BTreeMap::new(), &names).unwrap();
 
     let mut buf = Vec::new();
     let mut csv = CsvWriter::new(&mut buf, OutputSelection::ConfidenceTsv.table_format().unwrap());
