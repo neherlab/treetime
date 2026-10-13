@@ -11,6 +11,8 @@
 
 Multiplying the eigenvalues by `mu` in `dense_eval.rs` and `sparse_eval.rs` makes the objective match the tree likelihood exactly (`test_branch_objective_matches_tree_likelihood_with_skewed_pi`, which currently sets `mu = 1`), but moves `test_gm_optimize` (JC69, no normalization) from v0's total branch length 0.128 to 0.170 = 0.128 / 0.75.
 
-## Open question
+## Fix direction
 
-Include `mu` in the evaluation, and decide whether v1 JC69 (and other named models) should have `mu = 1` like v0, so that both the objective and v0 parity hold.
+- Evaluate each site as $\sum_k c_k e^{\mu \lambda_k t}$, as `GTR::expQt` does, so that the objective matches the tree likelihood for any `mu`
+- Give named models the requested `mu` (default 1) after construction, as v0 does: `GTR.standard` builds the model and then sets `model.mu` ([packages/legacy/treetime/treetime/gtr.py#L460](../../packages/legacy/treetime/treetime/gtr.py#L460)). The v1 `GTR` builder keeps `mu` multiplied by the average rate of `W` ([packages/treetime/src/gtr/gtr.rs#L63](../../packages/treetime/src/gtr/gtr.rs#L63)), which gives JC69 `mu = 0.75`
+- With both changes, `test_gm_optimize` stays at v0's total branch length, and `test_branch_objective_matches_tree_likelihood_with_skewed_pi` no longer needs to set `mu = 1`
