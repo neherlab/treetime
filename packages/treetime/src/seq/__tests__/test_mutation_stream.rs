@@ -70,12 +70,13 @@ mod tests {
     let graph = nwk_read(TREE.as_bytes()).unwrap().graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
+    let (include_leaves, report_unknown) = (true, true);
     let result = stream_sequence_mutations(
       &graph,
       &alphabet,
       &MutationTrack::Nucleotide,
-      true,
-      true,
+      include_leaves,
+      report_unknown,
       |_| Err::<Seq, _>(failure.report()),
       |_| vec![],
       None,
@@ -140,6 +141,7 @@ mod tests {
       let names = parsed.names();
       let graph = parsed.graph;
       let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
+      let (include_leaves, report_unknown) = (true, true);
 
       let SequenceMutations {
         root_sequence,
@@ -148,8 +150,8 @@ mod tests {
         &graph,
         &alphabet,
         &MutationTrack::Nucleotide,
-        true,
-        true,
+        include_leaves,
+        report_unknown,
         |key| Seq::try_from_str(sequences[names[&key].as_deref().unwrap()]),
         |_| vec![],
         sink,

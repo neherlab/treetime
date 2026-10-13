@@ -5,7 +5,7 @@ mod tests {
   use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
-  use helpers::row;
+  use helpers::{Kind, row};
   use maplit::{btreemap, btreeset};
   use std::collections::BTreeMap;
   use treetime_io::nwk::nwk_read;
@@ -39,11 +39,11 @@ mod tests {
     actual.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
 
     let expected: Vec<ClockRegressionResult> = vec![
-      row("A", 2.0, Some(2005.0), 2004.0, Some(0.5), false, true),
-      row("AB", 1.0, None, 2002.0, None, false, false),
-      row("B", 3.0, None, 2006.0, None, false, true),
-      row("C", 4.0, Some(2007.0), 2008.0, Some(-0.5), true, true),
-      row("root", 0.0, None, 2000.0, None, false, false),
+      row("A", 2.0, Some(2005.0), 2004.0, Some(0.5), Kind::Leaf),
+      row("AB", 1.0, None, 2002.0, None, Kind::Internal),
+      row("B", 3.0, None, 2006.0, None, Kind::Leaf),
+      row("C", 4.0, Some(2007.0), 2008.0, Some(-0.5), Kind::OutlierLeaf),
+      row("root", 0.0, None, 2000.0, None, Kind::Internal),
     ];
     pretty_assert_eq!(expected, actual);
     Ok(())
@@ -59,8 +59,7 @@ mod tests {
       date: Option<f64>,
       predicted_date: f64,
       clock_deviation: Option<f64>,
-      is_outlier: bool,
-      is_leaf: bool,
+      kind: Kind,
     ) -> ClockRegressionResult {
       ClockRegressionResult {
         name: Some(o!(name)),
@@ -68,10 +67,17 @@ mod tests {
         date,
         predicted_date,
         clock_deviation,
-        is_outlier,
-        is_leaf,
+        is_outlier: matches!(kind, Kind::OutlierLeaf),
+        is_leaf: matches!(kind, Kind::Leaf | Kind::OutlierLeaf),
         date_source: None,
       }
+    }
+
+    #[derive(Clone, Copy)]
+    pub(super) enum Kind {
+      Internal,
+      Leaf,
+      OutlierLeaf,
     }
   }
 }

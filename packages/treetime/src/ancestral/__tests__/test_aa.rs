@@ -73,8 +73,9 @@ mod tests {
     let partition = helpers::fitch_partition(&graph, &names, &["AC", "AC"]);
     let reference = Seq::try_from_str("AA").unwrap();
 
+    let (include_leaves, report_unknown) = (false, true);
     let mutations = partition
-      .stream_sequences(&graph, &MutationTrack::AminoAcid(o!("S")), false, true, None)
+      .stream_sequences(&graph, &MutationTrack::AminoAcid(o!("S")), include_leaves, report_unknown, None)
       .unwrap();
     let unknown = partition.alphabet().unknown();
 

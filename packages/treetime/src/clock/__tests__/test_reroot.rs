@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
   use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use crate::clock::reroot::RerootParams;
   use crate::o;
@@ -300,7 +300,7 @@ mod tests {
     Ok(())
   }
 
-  mod helpers {
+  pub(crate) mod helpers {
     use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
     use crate::clock::clock_state::ClockInputs;
     use crate::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -342,7 +342,7 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn leaf_dates() -> BTreeMap<String, f64> {
+    pub(crate) fn leaf_dates() -> BTreeMap<String, f64> {
       btreemap! {
         o!("A") => 2013.0,
         o!("B") => 2022.0,

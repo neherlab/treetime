@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::clock::__tests__::test_reroot::tests::helpers::leaf_dates;
   use crate::clock::clock_model::{ClockModel, ClockRegression};
   use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_set::ClockSet;
@@ -87,12 +88,12 @@ mod tests {
     let options = ClockVarianceParams::default();
     let expected = helpers::root_regression(
       "((A:0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
-      &dates_4(),
+      &leaf_dates(),
       &options,
     )?;
     let actual = helpers::root_regression(
       "((A,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
-      &dates_4(),
+      &leaf_dates(),
       &options,
     )?;
 
@@ -104,14 +105,14 @@ mod tests {
   fn test_clock_regression_reroot_reads_a_missing_branch_length_as_zero() -> Result<(), Report> {
     let (_, expected) = helpers::fit(
       "((A:0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
-      &dates_4(),
+      &leaf_dates(),
       &[],
       false,
       None,
     )?;
     let (_, actual) = helpers::fit(
       "((A,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
-      &dates_4(),
+      &leaf_dates(),
       &[],
       false,
       None,
@@ -123,7 +124,7 @@ mod tests {
 
   #[test]
   fn test_clock_regression_points_are_root_to_tip_distances_of_the_leaves() -> Result<(), Report> {
-    let (_, points) = helpers::fit(TREE_4, &dates_4(), &[], true, None)?;
+    let (_, points) = helpers::fit(TREE_4, &leaf_dates(), &[], true, None)?;
 
     let expected_rows = vec![
       (o!("A"), Some(2013.0), false),
@@ -139,7 +140,7 @@ mod tests {
 
   #[test]
   fn test_clock_regression_points_use_clock_lengths_when_the_previous_rate_is_given() -> Result<(), Report> {
-    let (_, points) = helpers::fit(TREE_4, &dates_4(), &[], true, Some(0.01))?;
+    let (_, points) = helpers::fit(TREE_4, &leaf_dates(), &[], true, Some(0.01))?;
 
     let (_, divs) = helpers::rows_and_divs(&points);
     pretty_assert_abs_diff_eq!(array![0.6, 0.9, 0.75, 0.51], divs, epsilon = 1e-12);
@@ -192,7 +193,7 @@ mod tests {
   #[ignore = "outlier leaves still enter the regression through their parent edge: kb/issues/H-clock-regression-includes-filtered-outliers.md"]
   fn test_clock_regression_outliers_are_left_out_of_the_fit() -> Result<(), Report> {
     let (model, _) = helpers::fit(TREE_5, &dates_5(), &["E"], true, None)?;
-    let (model_without_e_date, _) = helpers::fit(TREE_5, &dates_4(), &[], true, None)?;
+    let (model_without_e_date, _) = helpers::fit(TREE_5, &leaf_dates(), &[], true, None)?;
 
     pretty_assert_abs_diff_eq!(model_without_e_date.clock_rate(), model.clock_rate(), epsilon = 1e-12);
     Ok(())
@@ -201,15 +202,6 @@ mod tests {
   const TREE_4: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
   const TREE_5: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.12,E:0.3)DE:0.07)CDE:0.05)root:0.01;";
-
-  fn dates_4() -> BTreeMap<String, f64> {
-    btreemap! {
-      o!("A") => 2013.0,
-      o!("B") => 2022.0,
-      o!("C") => 2017.0,
-      o!("D") => 2005.0,
-    }
-  }
 
   fn dates_5() -> BTreeMap<String, f64> {
     btreemap! {

@@ -43,7 +43,7 @@ mod tests {
     #[values(false, true)] impute: bool,
     #[values(false, true)] include_leaves: bool,
   ) -> Result<(), Report> {
-    let (expected, actual) = helpers::engine_and_derived_subs(
+    let subs = helpers::engine_and_derived_subs(
       dataset,
       "aln.fasta.xz",
       Alphabet::default(),
@@ -52,7 +52,7 @@ mod tests {
       impute,
       include_leaves,
     )?;
-    assert_eq!(expected, actual);
+    assert_eq!(subs.expected, subs.actual);
     Ok(())
   }
 
@@ -61,7 +61,7 @@ mod tests {
     #[values(Representation::Dense, Representation::Sparse)] representation: Representation,
     #[values(false, true)] impute: bool,
   ) -> Result<(), Report> {
-    let (expected, actual) = helpers::engine_and_derived_subs(
+    let subs = helpers::engine_and_derived_subs(
       "rsv/a/20",
       "translations/G.fasta.xz",
       Alphabet::new(AlphabetName::Aa)?,
@@ -70,7 +70,7 @@ mod tests {
       impute,
       true,
     )?;
-    assert_eq!(expected, actual);
+    assert_eq!(subs.expected, subs.actual);
     Ok(())
   }
 
@@ -129,6 +129,11 @@ mod tests {
 
     type EdgeSubs = BTreeMap<GraphEdgeKey, Vec<Sub>>;
 
+    pub(super) struct EngineAndDerivedSubs {
+      pub expected: EdgeSubs,
+      pub actual: EdgeSubs,
+    }
+
     pub(super) const fn fitch() -> ReconstructionPlan {
       ReconstructionPlan::Fitch
     }
@@ -149,7 +154,7 @@ mod tests {
       plan: ReconstructionPlan,
       impute: bool,
       include_leaves: bool,
-    ) -> Result<(EdgeSubs, EdgeSubs), Report> {
+    ) -> Result<EngineAndDerivedSubs, Report> {
       let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../data")
         .join(dataset);
@@ -221,7 +226,10 @@ mod tests {
           })
           .collect()
       };
-      Ok((outside(&expected), outside(&actual)))
+      Ok(EngineAndDerivedSubs {
+        expected: outside(&expected),
+        actual: outside(&actual),
+      })
     }
 
     fn ambiguous_columns(observed: &BTreeMap<GraphNodeKey, Seq>, alphabet: &Alphabet) -> BTreeSet<usize> {
