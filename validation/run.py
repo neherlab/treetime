@@ -105,13 +105,16 @@ def main():
     p.add_argument('--data', type=Path, default=HERE / 'data')
     p.add_argument('--results', type=Path, default=HERE / 'results')
     p.add_argument('-j', '--jobs', type=int, default=available_cpus())
+    p.add_argument('--shard', default='0/1', help='I/N: run only every N-th sequence set, starting at I (Slurm arrays)')
     args = p.parse_args()
+    shard, n_shards = map(int, args.shard.split('/'))
 
     variants = {'ancestral': ANCESTRAL, 'optimize': OPTIMIZE}.get(args.suite) or (
         TIMETREE_EXTRA if args.set == 'extra' else TIMETREE_CORE
     )
     sets = sorted(d for d in args.data.glob('*/rep*/L*') if (d / 'gtr.json').exists())
     sets = [d for d in sets if re.search({'smoke': SMOKE_SETS, 'core': '', 'extra': EXTRA_SETS}[args.set], str(d))]
+    sets = sets[shard::n_shards]  # whole sets per shard: jobs of one set share its input trees
 
     plan = []
     for d in sets:
