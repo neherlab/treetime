@@ -56,6 +56,33 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_gm_max_posterior_region_shallow_posterior_holds_fraction_where_v0_returns_support() -> Result<(), Report> {
+    let outputs: BTreeMap<String, BTreeMap<String, GoldenNode>> =
+      json_read_file(Path::new(FIXTURES_DIR).join("gm_max_posterior_region_outputs.json"))?;
+    let expected = &outputs["rsv_a_20"]["KP258696"];
+    let to_numdate = |t: f64| expected.numdate_at_zero + t / expected.clock_rate;
+    let support = (to_numdate(expected.t[0]), to_numdate(expected.t[expected.t.len() - 1]));
+    let v0_cdf = expected
+      .cdf
+      .as_ref()
+      .expect("interior-peak fixture node carries the v0 CDF");
+
+    let region = grid_max_posterior_region(&expected.t, &expected.neglog, CI_FRACTION)?;
+
+    let v0_mass =
+      (interpolate(&expected.t, v0_cdf, region.upper) - interpolate(&expected.t, v0_cdf, region.lower)).abs();
+    assert_eq!(PeakLocation::Interior, region.peak);
+    pretty_assert_abs_diff_eq!(support.0, expected.region_without_rate.0, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(support.1, expected.region_without_rate.1, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(CI_FRACTION, v0_mass, epsilon = 1e-11);
+    assert!(
+      to_numdate(region.lower) > support.0 + 0.1,
+      "region {region:?} must exclude the low-density start of the support"
+    );
+    Ok(())
+  }
+
   #[derive(Deserialize)]
   struct GoldenNode {
     #[deser(as = ArrayVec)]
@@ -69,6 +96,8 @@ mod tests {
     peak: GoldenPeak,
     region: (f64, f64),
     region_without_rate: (f64, f64),
+    #[deser(as = Option<ArrayVec>)]
+    cdf: Option<Array1<f64>>,
   }
 
   #[derive(Clone, Copy, Deserialize)]
@@ -77,6 +106,11 @@ mod tests {
     Earliest,
     Interior,
     Latest,
+  }
+
+  fn interpolate(t: &Array1<f64>, y: &Array1<f64>, x: f64) -> f64 {
+    let i = t.iter().position(|&ti| ti > x).unwrap_or(t.len() - 1).max(1);
+    y[i - 1] + (x - t[i - 1]) / (t[i] - t[i - 1]) * (y[i] - y[i - 1])
   }
 
   impl GoldenPeak {

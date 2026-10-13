@@ -16,6 +16,9 @@ marginal time posterior:
   peak at the latest date, or peak in the interior
 - `get_max_posterior_region(node, 0.9)` with the rate contribution, and again
   after removing the rate variation, which leaves the posterior contribution
+- for a peak in the interior, v0's cumulative distribution `marginal_cdf` at
+  every grid point, in the order of the stored grid, so a test can measure the
+  mass of any region with v0's own integration
 
 Nodes whose grid has more than MAX_GRID_POINTS points are left out to keep the
 fixture small; the remaining nodes cover all three peak locations.
@@ -71,7 +74,7 @@ def capture_node(tt: TreeTime, node) -> dict:
     del node.numdate_rate_variation
     region_without_rate = tt.get_max_posterior_region(node, fraction=FRACTION)
     node.numdate_rate_variation = rate_variation
-    return {
+    captured = {
         "t": [float(v) for v in t],
         "numdate_at_zero": float(tt.date2dist.to_numdate(0.0)),
         "clock_rate": float(abs(tt.date2dist.clock_rate)),
@@ -82,6 +85,9 @@ def capture_node(tt: TreeTime, node) -> dict:
         "region": [float(v) for v in region],
         "region_without_rate": [float(v) for v in region_without_rate],
     }
+    if captured["peak"] == "interior":
+        captured["cdf"] = [float(v) for v in node.marginal_cdf(np.asarray(dist.x))[::-1]]
+    return captured
 
 
 def capture_dataset(config: dict[str, str]) -> dict:
