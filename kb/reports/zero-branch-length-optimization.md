@@ -45,7 +45,7 @@ If the derivative is negative, the log-likelihood decreases as $t$ moves away fr
 
 After the solver returns a candidate branch length, `reconcile_zero_boundary()` ([optimize/dispatch.rs#L490](../../packages/treetime/src/optimize/dispatch.rs#L490)) checks for three failure modes ([optimize/dispatch.rs#L689](../../packages/treetime/src/optimize/dispatch.rs#L689)):
 
-1. Positive but worse than zero. The solver returned a tiny positive value (e.g. $10^{-12}$) when zero has higher likelihood. Methods like NewtonLog and Brent variants place a strictly positive lower bound on the bracket, so they cannot return exact zero even when zero is optimal. Detected by `is_zero_better_than_grid_best()` ([optimize/dispatch.rs#L281](../../packages/treetime/src/optimize/dispatch.rs#L281)), which compares the log-likelihood at zero against $\log L(t_{\text{best}})$ at the best positive candidate.
+1. Positive but worse than zero. The solver returned a tiny positive value (e.g. $10^{-12}$) when zero has higher likelihood. Brent's method places a strictly positive lower bound on the bracket, so it cannot return exact zero even when zero is optimal. Detected by `is_zero_better_than_grid_best()` ([optimize/dispatch.rs#L281](../../packages/treetime/src/optimize/dispatch.rs#L281)), which compares the log-likelihood at zero against $\log L(t_{\text{best}})$ at the best positive candidate.
 
 2. Exactly zero on a non-unimodal model. Newton/Brent clamped to zero via step limiting, but a better positive mode may exist. The K80 counterexample from <a id="cite-1b"></a>[Dinh and Matsen 2017](https://doi.org/10.1214/16-AAP1240) [[1](#ref-1)] with transition/transversion ratio $\kappa = 3$ has a mode near $t \approx 0.2$ that the solver misses when it clamps from a starting point $t_0 \approx 0.6$.
 
@@ -78,8 +78,8 @@ graph TD
     end
 
     subgraph solver ["Solver dispatch"]
-        newton["Newton / NewtonSqrt / NewtonLog"]
-        brent["Brent / BrentSqrt / BrentLog"]
+        newton["NewtonSqrt"]
+        brent["BrentSqrt"]
     end
 
     subgraph post ["Post-dispatch reconciliation"]

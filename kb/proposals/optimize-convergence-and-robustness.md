@@ -50,14 +50,14 @@ Per-edge Poisson term $\ell_{\text{indel}}(t) = k \ln(\mu t) - \mu t - \ln(k!)$ 
 
 ### Per-edge optimizers
 
-Six methods via `--opt-method`: Newton and Brent in $t$, $\sqrt{t}$, $\ln(t)$ spaces. Default `brent-sqrt` (matches v0). Grid search fallback for non-concave regions. See [optimize-newton-raphson-per-edge](../decisions/optimize-newton-raphson-per-edge.md).
+Two methods via `--opt-method`: Brent and Newton in $\sqrt{t}$ space. Default `brent-sqrt` (matches v0). Grid search fallback for non-concave regions. See [optimize-newton-raphson-per-edge](../decisions/optimize-newton-raphson-per-edge.md).
 
 ## Implemented features
 
 | ID  | Feature                                               | Reference                                                                                                                                                                        |
 | --- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | I1  | Exponential damping (`--damping`, default 0.75)       | `apply_damping()` [optimize/run.rs#L513](../../packages/treetime/src/commands/optimize/run.rs#L513)                                                                              |
-| I2  | Six per-edge methods (`--opt-method`)                 | [optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs), [optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)             |
+| I2  | Two per-edge methods (`--opt-method`)                 | [optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs), [optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)             |
 | I3  | Grid search fallback (100-point, non-concave regions) | [optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs)                                                                                                         |
 | I4  | `--model` wired to GTR dispatch                       | [optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs)                                                                                                          |
 | I5  | Gap-aware initial guess (`edge_effective_length`)     | [partition/optimization_contribution.rs](../../packages/treetime/src/partition/optimization_contribution.rs)                                                                     |
@@ -177,7 +177,7 @@ v0 code: [packages/legacy/treetime/treetime/treeanc.py#L1307-L1309](../../packag
 
 | Feature              | v0           | v1 (current)                               | RAxML-NG                     | IQ-TREE            |
 | -------------------- | ------------ | ------------------------------------------ | ---------------------------- | ------------------ |
-| Per-edge method      | Brent (sqrt) | 6 methods                                  | Newton (6 variants)          | Newton             |
+| Per-edge method      | Brent (sqrt) | Brent or Newton (sqrt)                     | Newton (6 variants)          | Newton             |
 | Outer damping        | exponential  | exponential + floor                        | none (per-edge step damping) | none               |
 | Convergence check    | signed delta | abs delta + oscillation detection + revert | per-round rollback           | per-round rollback |
 | Tolerance tightening | yes          | no                                         | no                           | no                 |
@@ -198,7 +198,7 @@ v0 code: [packages/legacy/treetime/treetime/treeanc.py#L1307-L1309](../../packag
 
 The optimizer convergence work progressed through three phases:
 
-1. Initial convergence fixes: damping (I1), gap-aware initial guess (I5), `--model` wiring (I4), six per-edge methods (I2). Damping alone is insufficient (see phase 2).
+1. Initial convergence fixes: damping (I1), gap-aware initial guess (I5), `--model` wiring (I4), per-edge method selection (I2). Damping alone is insufficient (see phase 2).
 
 2. Sparse 2-cycle discovery: investigation of non-convergence on sc2/2844 (M-optimize-sparse-em-2-cycle (resolved)) revealed that damping alone is insufficient. The sparse variable/fixed position classification oscillates between iterations, creating a discrete objective discontinuity. Dense mode has no such boundary and converges correctly. PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) commented out `estimate_indel_rate` in `initial_guess_mixed` based on incorrect root-cause analysis. v1 defaults at the time (`max_iter=20`, `dp=0.01`) diverged from v0 (`max_iter=10`, `LHtol=0.1`) without documented reason (now aligned). Peer review identified that v0's signed convergence check is a defect (see [errata](../v0-errata/optimize-signed-convergence-check.md)) and that variable-set freezing and indel-rate caching are model changes requiring separate validation.
 

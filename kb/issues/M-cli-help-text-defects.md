@@ -83,7 +83,7 @@ Commands: `timetree`, `optimize`, `ancestral`, `homoplasy`. `[possible values: t
 
 ### U2: `--opt-method` renders LaTeX in terminal
 
-Command: `optimize`. Possible value descriptions contain `$t$`, `$\sqrt{t}$`, `$\ln(t)$` which display as raw LaTeX in terminal output. Should be `t`, `sqrt(t)`, `ln(t)`.
+Command: `optimize`. The description and possible value descriptions contain `$\sqrt{t}$`, `$s = \sqrt{t}$`, `$O(1/t^2)$` which display as raw LaTeX in terminal output. Should be `sqrt(t)`, `s = sqrt(t)`, `O(1/t^2)`.
 
 ### U4: `--relax` uses unusual multi-value syntax
 

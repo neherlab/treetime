@@ -2,11 +2,7 @@
 
 ## Newton-Raphson for Branch Length Optimization
 
-Per-edge branch length optimization using Newton's method with analytical first and second derivatives of the log-likelihood. Three parameterizations trade off singularity handling near zero:
-
-- t-space (`newton_inner`): update `t_new = t - clamp(f'/f'', -1.0, t)`. Indel Hessian $-k/t^2$ dominates on short branches.
-- sqrt(t)-space (`newton_sqrt_inner`): chain rule with $s = \sqrt{t}$. Reduces indel singularity from $O(1/t^2)$ to $O(1/t)$.
-- ln(t)-space (`newton_log_inner`): chain rule with $u = \ln(t)$. Eliminates indel singularity entirely (bounded curvature $-\mu t$). Correct step clamping: upper $u - u_{\min}$, lower $-\ln(1 + 1/t)$.
+Per-edge branch length optimization using Newton's method with analytical first and second derivatives of the log-likelihood, in sqrt(t) space (`newton_sqrt_inner`): chain rule with $s = \sqrt{t}$, update $s_{\text{new}} = s - \operatorname{clamp}(\ell'_s/\ell''_s,\ s - \sqrt{s^2 + 1},\ s)$. The lower step bound limits one step to a $t$ increase of 1. The parameterization reduces the Poisson indel Hessian singularity from $O(1/t^2)$ in $t$ space to $O(1/t)$.
 
 A non-negative initial second derivative triggers a 100-point log-spaced grid search. If the second derivative becomes non-negative after a Newton step, the iteration stops and returns its current candidate.
 
@@ -14,7 +10,7 @@ Newton's method converges only from a start inside its basin of attraction. Inpu
 
 v1: [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/src/optimize/method_newton.rs).
 
-v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in $\sqrt{t}$ space with a Hamming-distance bracket. v1 ships six methods (Newton and Brent in $t$, $\sqrt{t}$, and $\ln(t)$ coordinates) selectable via `--opt-method`; `brent-sqrt` is the default. It uses the same square-root parameterization and corresponding substitution-likelihood objective form as v0, but the solver, bounds, tolerances, regularization, indel term, and resulting branch lengths are not exactly equivalent. The Newton variants compute analytical derivatives from cached eigenvalue-space coefficients. The implementation evaluates the second derivative in a centered eigenvalue form to reduce cancellation relative to subtracting two independently accumulated moments; its signed weights are not a posterior distribution or Welford recurrence. See [feature inventory](../features/optimize.md) for parity evidence and [intentional change](../decisions/optimize-newton-raphson-per-edge.md) for the per-method rationale.
+v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in $\sqrt{t}$ space with a Hamming-distance bracket. v1 ships two methods (Brent and Newton in $\sqrt{t}$ coordinates) selectable via `--opt-method`; `brent-sqrt` is the default. It uses the same square-root parameterization and corresponding substitution-likelihood objective form as v0, but the solver, bounds, tolerances, regularization, indel term, and resulting branch lengths are not exactly equivalent. The Newton method computes analytical derivatives from cached eigenvalue-space coefficients. The implementation evaluates the second derivative in a centered eigenvalue form to reduce cancellation relative to subtracting two independently accumulated moments; its signed weights are not a posterior distribution or Welford recurrence. See [feature inventory](../features/optimize.md) for parity evidence and [intentional change](../decisions/optimize-newton-raphson-per-edge.md) for the per-method rationale.
 
 The method is described in <a id="cite-1"></a>[Nocedal and Wright 2006](https://doi.org/10.1007/978-0-387-40065-5) [[1](#ref-1)], Chapter 2, and <a id="cite-2"></a>[Felsenstein 2003](https://www.oup.com.au/books/higher-education/biology/9780878931774) [[2](#ref-2)], Chapter 16.
 
@@ -22,11 +18,7 @@ The method is described in <a id="cite-1"></a>[Nocedal and Wright 2006](https://
 
 ## Brent's Method for Branch Length Optimization
 
-Per-edge branch length optimization using Brent's derivative-free method (<a id="cite-3"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[3](#ref-3)]) via `argmin::BrentOpt`. Three coordinate transformations change the bounds, curvature, and tolerance interpretation:
-
-- t-space (`brent_inner`): bracket $[\text{min\_bl}, \text{upper}]$, cost function evaluates $-\ell(t)$. Baseline derivative-free method.
-- sqrt(t)-space (`brent_sqrt_inner`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. This is the default and uses v0's parameterization. Tolerance $\epsilon_s$ in $s$-space maps locally to $t$-space precision $\approx 2s^* \epsilon_s$.
-- ln(t)-space (`brent_log_inner`): bracket $[\ln(\text{min\_bl}), \ln(\text{upper})]$, cost function evaluates $-\ell(e^u)$. Tolerance $\epsilon_u$ is locally a relative tolerance because $dt/t \approx du$.
+Per-edge branch length optimization using Brent's derivative-free method (<a id="cite-3"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[3](#ref-3)]) via `argmin::BrentOpt`, in sqrt(t) space (`brent_sqrt_inner`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. This is the default and uses v0's parameterization. Tolerance $\epsilon_s$ in $s$-space maps locally to $t$-space precision $\approx 2s^* \epsilon_s$.
 
 v1: [`packages/treetime/src/optimize/method_brent.rs`](../../packages/treetime/src/optimize/method_brent.rs).
 

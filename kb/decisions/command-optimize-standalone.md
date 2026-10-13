@@ -38,7 +38,7 @@ The command runs an iterative cycle of marginal ancestral reconstruction and per
 4. Iterate until convergence or `max-iter`:
    - Run marginal reconstruction, computing total log-likelihood.
    - Stop on the convergence conditions of `run_optimize_loop()`.
-   - Optimize each branch length independently with the method of `--opt-method`, by default Brent's method in $\sqrt{t}$ space as in v0. The Newton-Raphson methods are documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md).
+   - Optimize each branch length independently with the method of `--opt-method`, by default Brent's method in $\sqrt{t}$ space as in v0. The Newton-Raphson method is documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md).
 5. Write `annotated_tree.nwk`, `annotated_tree.nexus`, `gtr.json`, and `optimize.augur-node-data.json` to the output directory.
 
 ### Augur node data JSON output
@@ -105,7 +105,7 @@ Standard practice in phylogenetic ML software (RAxML, IQ-TREE, PhyML) is coordin
 | Exposure            | Internal method within `optimize_tree()` | Standalone CLI subcommand                                                                             |
 | Convergence control | Hardcoded parameters                     | User-specified `--max-iter` and `--dp`                                                                |
 | Outer loop damping  | Exponential decay (factor 0.75)          | Exponential decay (`--damping`, default 0.75)                                                         |
-| Per-branch method   | Brent's method in sqrt(t) space          | `--opt-method`: Brent or Newton-Raphson in t, sqrt(t), or ln(t) space; default Brent in sqrt(t) space |
+| Per-branch method   | Brent's method in sqrt(t) space          | `--opt-method`: Brent or Newton-Raphson in sqrt(t) space; default Brent |
 | Partition support   | Dense only                               | Dense or sparse (`--dense`)                                                                           |
 | Model selection     | GTR inferred internally                  | User-specified via `--model`                                                                          |
 
