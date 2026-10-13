@@ -107,6 +107,12 @@ never = [
 threshold = 32
 check_tests = false
 
+# try_io_result (Trail of Bits, supplementary): flags `?` on a `std::io::Result`,
+# whose error names no file or path. Test code is exempt: a failing test shows
+# the error with its own name, and the files it touches are its own fixtures.
+[try_io_result]
+check_tests = false
+
 # no_comments / doc_comment_limit: the project keeps no comments, except doc
 # comments that a configured render source carries into user-facing output (CLI
 # help, JSON schema, OpenAPI, TypeScript typings). Each render source lists the

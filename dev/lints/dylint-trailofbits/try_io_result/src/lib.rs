@@ -6,13 +6,15 @@ extern crate rustc_middle;
 extern crate rustc_span;
 
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::is_in_test;
 use dylint_internal::{match_def_path, paths};
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{GenericArgKind, Ty, TyKind};
 use rustc_span::sym;
+use serde::Deserialize;
 
-dylint_linting::declare_late_lint! {
+dylint_linting::impl_late_lint! {
     /// ### What it does
     ///
     /// Checks for `?` operators applied to values of type `std::io::Result`.
@@ -49,10 +51,40 @@ dylint_linting::declare_late_lint! {
     /// }
     /// ```
     ///
+    /// ### Configuration
+    ///
+    /// - `check_tests: bool` (default `true`): Whether to flag `?` operators in `#[test]` functions
+    ///   and `#[cfg(test)]` code.
+    ///
     /// [Error Handling Survey]: https://blog.yoshuawuyts.com/error-handling-survey/
     pub TRY_IO_RESULT,
     Warn,
-    "`?` operator applied to `std::io::Result`"
+    "`?` operator applied to `std::io::Result`",
+    TryIoResult::new()
+}
+
+#[derive(Deserialize)]
+#[serde(default)]
+struct Config {
+    check_tests: bool,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self { check_tests: true }
+    }
+}
+
+struct TryIoResult {
+    config: Config,
+}
+
+impl TryIoResult {
+    pub fn new() -> Self {
+        Self {
+            config: dylint_linting::config_or_default(env!("CARGO_PKG_NAME")),
+        }
+    }
 }
 
 impl<'tcx> LateLintPass<'tcx> for TryIoResult {
@@ -69,6 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for TryIoResult {
             // smoelius: If the body's return type is `std::io::Result`, do not flag, because the
             // return type cannot carry any additional information.
             && !is_io_result(cx, body_ty)
+            && (self.config.check_tests || !is_in_test(cx.tcx, expr.hir_id))
         {
             span_lint_and_help(
                 cx,

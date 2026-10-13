@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 clippy_utils = { workspace = true }
+serde = { workspace = true }
 
 dylint_internal = { workspace = true, features = ["match_def_path"] }
 dylint_linting = { workspace = true }
