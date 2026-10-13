@@ -1,3 +1,4 @@
+use crate::optimize::indel::IndelTerm;
 use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
 use crate::optimize::zero_boundary::GRID_SEARCH_MIN_UPPER;
 use crate::partition::optimize::contribution::OptimizationContribution;
@@ -11,18 +12,13 @@ const BRENT_MAX_ITER: u64 = 50;
 pub(super) fn brent_sqrt_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
+  indels: IndelTerm,
   min_branch_length: f64,
   one_mutation: f64,
 ) -> Result<f64, Report> {
   let BranchLengthBracket { lower, upper } = brent_bracket(branch_length, min_branch_length, one_mutation);
 
-  let cost_fn = SqrtBranchLengthCostFn {
-    contributions,
-    indel_count,
-    indel_rate,
-  };
+  let cost_fn = SqrtBranchLengthCostFn { contributions, indels };
 
   let solver = BrentOpt::new(lower.sqrt(), upper.sqrt());
   let res = Executor::new(&cost_fn, solver)
@@ -56,7 +52,7 @@ impl CostFunction for &SqrtBranchLengthCostFn<'_> {
 
   fn cost(&self, s: &Self::Param) -> Result<Self::Output, Error> {
     let t = s * s;
-    let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indel_count, self.indel_rate, t)
+    let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indels, t)
       .map_err(|error| Error::msg(error.to_string()))?;
     Ok(-log_lh)
   }
@@ -64,6 +60,5 @@ impl CostFunction for &SqrtBranchLengthCostFn<'_> {
 
 struct SqrtBranchLengthCostFn<'a> {
   contributions: &'a [OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
+  indels: IndelTerm,
 }

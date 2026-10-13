@@ -15,7 +15,7 @@ pub(super) mod tests {
   use crate::optimize::gather::{
     gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
   };
-  use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh, total_indel_log_lh};
+  use crate::optimize::indel::{IndelTerm, estimate_indel_rate, poisson_indel_log_lh, total_indel_log_lh};
   use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
@@ -580,7 +580,7 @@ pub(super) mod tests {
     );
 
     assert!(
-      !is_zero_better_than_grid_best(&contributions, indel_count, indel_rate, best_positive)
+      !is_zero_better_than_grid_best(&contributions, IndelTerm::new(indel_count, indel_rate), best_positive)
         .expect("valid branch length"),
       "Production helper must return false when indel_count > 0"
     );
@@ -594,7 +594,7 @@ pub(super) mod tests {
     let contributions = vec![contribution];
 
     assert!(
-      is_zero_better_than_grid_best(&contributions, 0, 0.0, 0.01).expect("valid branch length"),
+      is_zero_better_than_grid_best(&contributions, IndelTerm::new(0, 0.0), 0.01).expect("valid branch length"),
       "Production helper should return true when indel_count == 0 and zero is better for subs"
     );
   }

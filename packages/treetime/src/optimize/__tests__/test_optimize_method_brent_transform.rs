@@ -12,6 +12,7 @@ mod tests {
   use crate::optimize::__tests__::test_optimize_method::tests::helpers::*;
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
+  use crate::optimize::indel::IndelTerm;
   use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
   use crate::optimize::method_brent::{BranchLengthBracket, brent_bracket, brent_sqrt_inner};
   use crate::optimize::params::BranchOptMethod;
@@ -37,7 +38,7 @@ mod tests {
     let one_mutation = 1.0 / total_length as f64;
     let branch_length = 0.01;
 
-    let result = brent_sqrt_inner(branch_length, &contributions, 0, 0.0, 0.0, one_mutation).unwrap();
+    let result = brent_sqrt_inner(branch_length, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
     assert!(
       result >= 0.0,
       "brent_sqrt_inner result must be non-negative, got {result}"
@@ -47,14 +48,14 @@ mod tests {
       "brent_sqrt_inner result must be finite, got {result}"
     );
 
-    let lh_opt = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result)
+    let lh_opt = evaluate_with_indels_log_lh_only(&contributions, IndelTerm::new(0, 0.0), result)
       .expect("valid branch length")
       .value();
     if result > 1e-10 {
-      let lh_below = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 0.99)
+      let lh_below = evaluate_with_indels_log_lh_only(&contributions, IndelTerm::new(0, 0.0), result * 0.99)
         .expect("valid branch length")
         .value();
-      let lh_above = evaluate_with_indels_log_lh_only(&contributions, 0, 0.0, result * 1.01)
+      let lh_above = evaluate_with_indels_log_lh_only(&contributions, IndelTerm::new(0, 0.0), result * 1.01)
         .expect("valid branch length")
         .value();
       assert!(
@@ -83,7 +84,7 @@ mod tests {
 
     let input_bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
     let one_mutation = 1.0 / total_length as f64;
-    let min_bl = min_branch_length_for_indels(4, one_mutation);
+    let min_bl = min_branch_length_for_indels(IndelTerm::new(4, indel_rate), one_mutation);
     let BranchLengthBracket { lower, upper } = brent_bracket(input_bl, min_bl, one_mutation);
 
     run_optimize_mixed(

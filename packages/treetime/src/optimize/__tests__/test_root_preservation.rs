@@ -195,6 +195,18 @@ mod tests {
     "(A:0.05,B:0.05,(C:0.05,D:0.05)CD:0.9)AB:0.0;",
     0.0,
   )]
+  #[case::bifurcating_root_with_indels(
+    "((A:0.05,B:0.05)AB:0.9,(C:0.05,D:0.05)CD:0.3)root:0.0;",
+    &[("AB", 2), ("CD", 1)],
+    "(A:0.05,B:0.05,(C:0.05,D:0.05)CD:1.2)AB:0.0;",
+    3.0,
+  )]
+  #[case::single_child_node_with_indels(
+    "((A:0.05,B:0.05)AB:0.6,((C:0.05,D:0.05)CD:0.2)U:0.1)root:0.0;",
+    &[("AB", 1), ("U", 1), ("CD", 1)],
+    "(A:0.05,B:0.05,(C:0.05,D:0.05)CD:0.9)AB:0.0;",
+    3.0,
+  )]
   #[trace]
   fn test_root_preservation_chain_sum_matches_single_edge_of_rerooted_tree(
     #[case] tree: &str,
@@ -214,6 +226,36 @@ mod tests {
     let actual_sum: f64 = chain.iter().map(|(name, _)| setup.branch_length(name)).sum();
 
     assert_abs_diff_eq!(expected_sum, actual_sum, epsilon = 1e-5);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::without_indels(0, [0.0,                 0.0                ])]
+  #[case::with_indels(   1, [0.3 * (0.5 / 0.8),   0.3 * (0.3 / 0.8)  ])]
+  #[trace]
+  fn test_root_preservation_chain_with_zero_optimum_of_longest_edge(
+    #[case] indel_count: usize,
+    #[case] expected: [f64; 2],
+  ) -> Result<(), Report> {
+    let tree = "((A:0.05,B:0.05)AB:0.5,(C:0.05,D:0.05)CD:0.3)root:0.0;";
+    let identical = indoc! {r#"
+      >A
+      ACGTACGTAAGGACGT
+      >B
+      ACGTACGTAAGGACGT
+      >C
+      ACGTACGTAAGGACGT
+      >D
+      ACGTACGTAAGGACGT
+    "#};
+    let mut setup = DenseSetup::new(tree, identical)?;
+    let indel_counts = setup.indel_counts(&[("AB", indel_count)]);
+
+    optimize_once(&mut setup, &indel_counts, 1.0)?;
+
+    let actual = [setup.branch_length("AB"), setup.branch_length("CD")];
+    pretty_assert_abs_diff_eq!(Array1::from_iter(expected), Array1::from_iter(actual), epsilon = 1e-15);
     Ok(())
   }
 

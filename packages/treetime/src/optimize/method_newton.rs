@@ -1,3 +1,4 @@
+use crate::optimize::indel::IndelTerm;
 use crate::optimize::likelihood::evaluate_with_indels;
 use crate::optimize::zero_boundary::grid_search_inner;
 use crate::partition::optimize::contribution::OptimizationContribution;
@@ -13,19 +14,18 @@ const NEWTON_MAX_ITER: usize = 10;
 pub(super) fn newton_sqrt_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
+  indels: IndelTerm,
   min_branch_length: f64,
   one_mutation: f64,
 ) -> Result<f64, Report> {
-  let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
+  let metrics = evaluate_with_indels(contributions, indels, branch_length)?;
   let mut s = branch_length.sqrt();
   let min_s = min_branch_length.sqrt();
 
   let (ds, d2s) = chain_rule_sqrt(s, metrics.derivative, metrics.second_derivative);
 
   if d2s >= 0.0 {
-    return grid_search_inner(branch_length, contributions, indel_count, indel_rate, one_mutation);
+    return grid_search_inner(branch_length, contributions, indels, one_mutation);
   }
 
   let mut new_s = (s - clamp(ds / d2s, sqrt_step_lower_bound(s), s)).max(min_s);
@@ -35,7 +35,7 @@ pub(super) fn newton_sqrt_inner(
       break;
     }
     let t = new_s * new_s;
-    let new_metrics = evaluate_with_indels(contributions, indel_count, indel_rate, t)?;
+    let new_metrics = evaluate_with_indels(contributions, indels, t)?;
     let (ds_new, d2s_new) = chain_rule_sqrt(new_s, new_metrics.derivative, new_metrics.second_derivative);
     if d2s_new < 0.0 {
       s = new_s;

@@ -1,3 +1,4 @@
+use crate::optimize::indel::IndelTerm;
 use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::timetree::inference::runner::EPS;
@@ -27,7 +28,8 @@ pub(crate) fn compute_branch_length_distribution(
   debug_assert!(clock_rate > 0.0, "clock_rate must be positive, got {clock_rate:.6e}");
   debug_assert!(gamma > 0.0);
 
-  let finite_boundary = branch_length_has_finite_boundary(contributions, indel_count, indel_rate)?;
+  let indels = IndelTerm::new(indel_count, indel_rate);
+  let finite_boundary = branch_length_has_finite_boundary(contributions, indels)?;
   let min_bl = if finite_boundary {
     0.0
   } else {
@@ -36,7 +38,7 @@ pub(crate) fn compute_branch_length_distribution(
 
   let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points, min_bl);
 
-  let log_lh = evaluate_log_lh_on_grid(&grid, contributions, indel_count, indel_rate)?;
+  let log_lh = evaluate_log_lh_on_grid(&grid, contributions, indels)?;
 
   let log_lh = peak_normalize_neg_log(&log_lh)?;
 
@@ -84,15 +86,12 @@ fn create_simple_grid(center: f64, one_mutation: f64, n_points: usize, min_bl: f
 fn evaluate_log_lh_on_grid(
   grid: &Array1<f64>,
   contributions: &[OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
+  indels: IndelTerm,
 ) -> Result<Array1<f64>, Report> {
   grid
     .iter()
     .copied()
-    .map(|branch_len| {
-      evaluate_with_indels_log_lh_only(contributions, indel_count, indel_rate, branch_len).map(|lh| lh.value())
-    })
+    .map(|branch_len| evaluate_with_indels_log_lh_only(contributions, indels, branch_len).map(|lh| lh.value()))
     .collect()
 }
 
@@ -116,12 +115,11 @@ struct TimeRange {
 
 fn branch_length_has_finite_boundary(
   contributions: &[OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
+  indels: IndelTerm,
 ) -> Result<bool, Report> {
-  if indel_count > 0 {
+  if indels.requires_positive_length() {
     return Ok(false);
   }
-  let boundary_log_lh = evaluate_with_indels_log_lh_only(contributions, 0, indel_rate, 0.0)?.value();
+  let boundary_log_lh = evaluate_with_indels_log_lh_only(contributions, indels, 0.0)?.value();
   Ok(boundary_log_lh.is_finite())
 }

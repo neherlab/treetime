@@ -12,11 +12,17 @@ For a reversible model the likelihood depends only on the sum of edges joined by
 
 1. Chains are the connected groups of edges joined through non-leaf nodes with exactly two incident edges. Leaves are the only nodes with data. A single-child root has one edge, whose length the likelihood does not depend on; it is not part of a chain.
 2. Before the per-edge pass, each chain records its length ratios (equal split if the sum is zero) and picks its longest edge.
-3. The longest edge is optimized with the other chain edges held at their current lengths, using the indel count of the whole chain. Since the likelihood depends only on the sum, the result plus the held lengths is the optimal sum for the current messages. The held edges are skipped in the per-edge pass.
+3. The longest edge is optimized with the other chain edges held at their current lengths. The Poisson indel term uses the indel count of the whole chain and is evaluated at the sum: the optimized length plus the held lengths (`struct IndelTerm` in [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs)). Since the likelihood depends only on the sum, the result plus the held lengths is the optimal sum for the current messages. The held edges are skipped in the per-edge pass.
 4. The sum is distributed by the recorded ratios. Per-edge damping preserves the ratios.
-5. If the optimized edge's optimum is zero, the sum is only bounded by the held lengths; the chain is set to zero, and the next iteration optimizes the sum exactly from zero.
+5. If the optimized edge's optimum is zero, the optimal sum is at most the held lengths. Without indels on the chain, the chain is set to zero, and the next iteration optimizes the sum exactly from zero. With indels, a zero sum has likelihood zero, so the sum is set to the held lengths and the next iterations shrink it further.
 
-The indel term is approximate: with a fixed ratio it depends on the sum, but evaluating the combined count on the optimized edge alone does not reproduce it exactly.
+The indel term is exact. Indel counts $k_i$ belong to the individual edges, and the likelihood of the outer loop adds one Poisson term per edge. With the ratios $r_i$ fixed and $K = \sum_i k_i$,
+
+$$
+\sum_i \log \mathrm{Pois}(k_i \mid \mu r_i s) = \log \mathrm{Pois}(K \mid \mu s) + \log \mathrm{Mult}(k \mid K, r)
+$$
+
+The multinomial term does not depend on the sum $s$, so the Poisson term of the whole chain at the sum has the same maximum as the per-edge terms of the loop.
 
 ## Rationale
 
@@ -24,4 +30,4 @@ Optimizing the edges of a chain independently against the same messages gives $s
 
 ## Evidence
 
-Simulated data from `validation/` (fixed topology, perturbed start), damping 0, root sum relative to its converged value over iterations 1-4: independent updates 2-cycle (const rep00 L1000 mu0.01: 0.89, 1.12, 0.89, 1.11; exp rep07 L1000 mu0.01: 1.58, 0.65, 1.36, 0.65) and stop by the `Worsened` rule up to 5 log-lh below the best; joint sums are within 1.3% after one iteration and exact after one to three on all six sets tested. `test_root_preservation.rs` checks ratio preservation, the zero-start split, and convergence of the sum for the root and for a chain through a single-child node.
+Simulated data from `validation/` (fixed topology, perturbed start), damping 0, root sum relative to its converged value over iterations 1-4: independent updates 2-cycle (const rep00 L1000 mu0.01: 0.89, 1.12, 0.89, 1.11; exp rep07 L1000 mu0.01: 1.58, 0.65, 1.36, 0.65) and stop by the `Worsened` rule up to 5 log-lh below the best; joint sums are within 1.3% after one iteration and exact after one to three on all six sets tested. `test_root_preservation.rs` checks ratio preservation, the zero-start split, the zero optimum with and without indels, and that one step with fixed messages reaches the optimum of the single edge that replaces the chain after rerooting, for the root and for a chain through a single-child node, with and without indels.

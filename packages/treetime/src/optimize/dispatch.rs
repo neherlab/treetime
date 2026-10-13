@@ -1,7 +1,7 @@
 use crate::branch_lengths::one_mutation;
 use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
 use crate::optimize::gather::EdgeContributions;
-use crate::optimize::indel::estimate_indel_rate;
+use crate::optimize::indel::{IndelTerm, estimate_indel_rate};
 use crate::optimize::method_brent::brent_sqrt_inner;
 use crate::optimize::method_newton::newton_sqrt_inner;
 use crate::optimize::params::{BranchOptMethod, ExistingBranchLengths};
@@ -69,9 +69,12 @@ pub(crate) fn run_optimize_mixed_inner(
 
   let chains = SeriesChain::capture_all(graph, branch_lengths);
   let held: BTreeSet<GraphEdgeKey> = chains.iter().flat_map(SeriesChain::held).collect();
-  let chain_indel_counts: BTreeMap<GraphEdgeKey, usize> = chains
+  let chain_indels: BTreeMap<GraphEdgeKey, IndelTerm> = chains
     .iter()
-    .map(|chain| (chain.optimized, chain.edges.iter().map(|e| indel_counts[e]).sum()))
+    .map(|chain| {
+      let indels = chain.indel_term(indel_counts, indel_rate, no_indels, branch_lengths);
+      (chain.optimized, indels)
+    })
     .collect();
 
   let branch_lengths_in = &*branch_lengths;
@@ -84,14 +87,13 @@ pub(crate) fn run_optimize_mixed_inner(
       let edge_key = edge_ref.key();
       let branch_length = branch_lengths_in[&edge_key]
         .ok_or_else(|| make_internal_report!("Validated edge {edge_key} lost its branch length"))?;
-      let indel_count = chain_indel_counts
-        .get(&edge_key)
-        .copied()
-        .unwrap_or_else(|| indel_counts[&edge_key]);
+      let indels = chain_indels.get(&edge_key).copied().unwrap_or_else(|| {
+        let indel_count = if no_indels { 0 } else { indel_counts[&edge_key] };
+        IndelTerm::new(indel_count, indel_rate)
+      });
       let edge = EdgeOptimization {
         branch_length,
-        indel_count: if no_indels { 0 } else { indel_count },
-        indel_rate,
+        indels,
         one_mutation,
         method,
       };
@@ -105,7 +107,8 @@ pub(crate) fn run_optimize_mixed_inner(
   }
 
   for chain in chains {
-    chain.restore(branch_lengths);
+    let indels = chain_indels[&chain.optimized];
+    chain.restore(indels, branch_lengths);
   }
 
   Ok(())
@@ -175,8 +178,26 @@ impl SeriesChain {
     self.edges.iter().copied().filter(|&e| e != self.optimized)
   }
 
-  fn restore(self, branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>) {
-    let total = if branch_lengths[&self.optimized] == Some(0.0) {
+  fn indel_term(
+    &self,
+    indel_counts: &BTreeMap<GraphEdgeKey, usize>,
+    indel_rate: f64,
+    no_indels: bool,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> IndelTerm {
+    IndelTerm {
+      count: if no_indels {
+        0
+      } else {
+        self.edges.iter().map(|e| indel_counts[e]).sum()
+      },
+      rate: indel_rate,
+      held_length: self.held().map(|e| branch_lengths[&e].unwrap_or(0.0)).sum(),
+    }
+  }
+
+  fn restore(self, indels: IndelTerm, branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>) {
+    let total = if branch_lengths[&self.optimized] == Some(0.0) && indels.count == 0 {
       0.0
     } else {
       self.edges.iter().map(|e| branch_lengths[e].unwrap_or(0.0)).sum()
@@ -258,8 +279,7 @@ pub(crate) fn initial_guess_mixed(
 #[derive(Clone, Copy)]
 struct EdgeOptimization {
   branch_length: f64,
-  indel_count: usize,
-  indel_rate: f64,
+  indels: IndelTerm,
   one_mutation: f64,
   method: BranchOptMethod,
 }
@@ -271,15 +291,14 @@ struct EdgeOptimization {
 fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimization) -> Result<f64, Report> {
   let EdgeOptimization {
     mut branch_length,
-    indel_count,
-    indel_rate,
+    indels,
     one_mutation,
     method,
   } = *edge;
 
-  if branch_length == 0.0 && indel_count > 0 {
-    branch_length = if indel_rate > 0.0 {
-      (indel_count as f64 / indel_rate).max(one_mutation)
+  if branch_length == 0.0 && indels.requires_positive_length() {
+    branch_length = if indels.rate > 0.0 {
+      (indels.count as f64 / indels.rate).max(one_mutation)
     } else {
       one_mutation
     };
@@ -289,39 +308,23 @@ fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimiza
     branch_length = one_mutation;
   }
 
-  if indel_count == 0 && is_zero_branch_optimal(contributions) {
+  if indels.count == 0 && is_zero_branch_optimal(contributions) {
     return Ok(0.0);
   }
 
-  let min_branch_length = min_branch_length_for_indels(indel_count, one_mutation);
+  let min_branch_length = min_branch_length_for_indels(indels, one_mutation);
 
   let new_branch_length = match method {
-    BranchOptMethod::BrentSqrt => brent_sqrt_inner(
-      branch_length,
-      contributions,
-      indel_count,
-      indel_rate,
-      min_branch_length,
-      one_mutation,
-    ),
-    BranchOptMethod::NewtonSqrt => newton_sqrt_inner(
-      branch_length,
-      contributions,
-      indel_count,
-      indel_rate,
-      min_branch_length,
-      one_mutation,
-    ),
+    BranchOptMethod::BrentSqrt => {
+      brent_sqrt_inner(branch_length, contributions, indels, min_branch_length, one_mutation)
+    },
+    BranchOptMethod::NewtonSqrt => {
+      newton_sqrt_inner(branch_length, contributions, indels, min_branch_length, one_mutation)
+    },
   }?;
 
-  let new_branch_length = reconcile_zero_boundary(
-    new_branch_length,
-    branch_length,
-    contributions,
-    indel_count,
-    indel_rate,
-    one_mutation,
-  )?;
+  let new_branch_length =
+    reconcile_zero_boundary(new_branch_length, branch_length, contributions, indels, one_mutation)?;
 
   Ok(new_branch_length)
 }
