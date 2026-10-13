@@ -23,6 +23,13 @@ use treetime_utils::{make_error, make_report};
   dead_code,
   reason = "the type only describes the file shape for the generated schema; the loader reads files in a staged pass"
 )]
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    json_value_in_schema,
+    reason = "a pipeline variable in `vars` may hold any JSON value, `null` included, as the staged loader accepts it"
+  )
+)]
 pub(crate) struct Pipeline {
   #[schemars(rename = "$schema", skip_serializing_if = "Option::is_none")]
   schema_ref: Option<String>,
