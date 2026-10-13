@@ -537,6 +537,13 @@ async fn events(
   app_events_sse(&state, resume_from(&headers, &query))
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "a `Last-Event-ID` header that does not parse as an event number gives no resume point, as an absent one"
+  )
+)]
 fn resume_from(headers: &HeaderMap, query: &EventsQuery) -> Option<u64> {
   headers
     .get(LAST_EVENT_ID)

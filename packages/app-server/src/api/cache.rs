@@ -65,7 +65,7 @@ impl<T: OperationOutput> OperationOutput for Revalidated<T> {
   ) -> Vec<(Option<openapi::StatusCode>, openapi::Response)> {
     let mut responses = T::inferred_responses(ctx, operation);
     responses.push((
-      Some(openapi::StatusCode::Code(304)),
+      Some(openapi::StatusCode::Code(StatusCode::NOT_MODIFIED.as_u16())),
       openapi::Response {
         description: "The answer is unchanged since the response that carried the `If-None-Match` tag".to_owned(),
         ..openapi::Response::default()

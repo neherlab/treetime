@@ -80,6 +80,13 @@ fn file_response(path: &Path, _request: Request) -> Ready<Result<Response, AppEr
 }
 
 #[cfg(not(target_family = "wasm"))]
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    spawn_handle_dropped,
+    reason = "the archive task logs its error and ends the body stream, which the client sees as a cut download"
+  )
+)]
 fn archive_body(out_dir: &Path, folder: &str) -> Body {
   let (reader, writer) = tokio::io::duplex(ARCHIVE_BUFFER_SIZE);
   let bridge = SyncIoBridge::new(writer);

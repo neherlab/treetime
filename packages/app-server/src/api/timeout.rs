@@ -5,11 +5,11 @@ use app_backend::bridge::error::ErrorCode;
 use axum::BoxError;
 use axum::error_handling::HandleErrorLayer;
 use axum::response::{IntoResponse, Response};
-use eyre::eyre;
 use std::sync::Arc;
 use std::time::Duration;
 use tower::ServiceBuilder;
 use tower::timeout::error::Elapsed;
+use treetime_utils::make_report;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 
@@ -28,6 +28,6 @@ async fn timed_out(error: BoxError) -> Response {
       format!("the request took longer than {} seconds", REQUEST_TIMEOUT.as_secs()),
     )
   } else {
-    AppError::from(eyre!(error)).into_response()
+    AppError::from(make_report!(error)).into_response()
   }
 }

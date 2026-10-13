@@ -9,7 +9,7 @@ use deser::Serialize;
 use std::convert;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio_stream::{self as stream, Stream, StreamExt as _};
+use tokio_stream::{Stream, StreamExt as _};
 use tokio_util::sync::CancellationToken;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
@@ -46,12 +46,12 @@ fn until_shutdown<T: Send + 'static>(
   items: impl Stream<Item = T> + Send + 'static,
   shutdown: CancellationToken,
 ) -> impl Stream<Item = T> + Send + 'static {
-  let stop = stream::once(())
+  let stop = tokio_stream::once(())
     .then(move |()| shutdown.clone().cancelled_owned())
     .map(|()| None);
   items
     .map(Some)
-    .chain(stream::once(None))
+    .chain(tokio_stream::once(None))
     .merge(stop)
     .map_while(convert::identity)
 }

@@ -1,9 +1,7 @@
 use crate::api::response::binary;
 use crate::error::AppError;
 use aide::generate::GenContext;
-use aide::openapi::{
-  MediaType, Operation, RequestBody, Response as ApiResponse, SchemaObject, StatusCode as ApiStatusCode,
-};
+use aide::openapi::{self, MediaType, Operation, RequestBody, SchemaObject};
 use aide::operation::set_body;
 use aide::{OperationInput, OperationOutput};
 use app_backend::runs::errors::invalid;
@@ -71,11 +69,14 @@ impl<T: Serialize> IntoResponse for ApiJson<T> {
 impl<T: JsonSchema> OperationOutput for ApiJson<T> {
   type Inner = T;
 
-  fn operation_response(ctx: &mut GenContext, operation: &mut Operation) -> Option<ApiResponse> {
+  fn operation_response(ctx: &mut GenContext, operation: &mut Operation) -> Option<openapi::Response> {
     Json::<T>::operation_response(ctx, operation)
   }
 
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
+  fn inferred_responses(
+    ctx: &mut GenContext,
+    operation: &mut Operation,
+  ) -> Vec<(Option<openapi::StatusCode>, openapi::Response)> {
     Json::<T>::inferred_responses(ctx, operation)
   }
 }
@@ -169,6 +170,10 @@ impl OperationInput for OctetStream {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(result_defaulted, reason = "a `Content-Type` header that does not parse is not JSON")
+)]
 fn is_json(headers: &HeaderMap) -> bool {
   headers
     .get(CONTENT_TYPE)

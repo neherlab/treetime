@@ -2,7 +2,7 @@ use crate::api::extract::ApiJson;
 use crate::error::AppError;
 use aide::OperationOutput;
 use aide::generate::GenContext;
-use aide::openapi::{MediaType, Operation, Response as ApiResponse, SchemaObject, StatusCode as ApiStatusCode};
+use aide::openapi::{self, MediaType, Operation, SchemaObject};
 use app_backend::bridge::error::ErrorResponse;
 use axum::body::Body;
 use axum::http::{HeaderValue, StatusCode, header};
@@ -27,12 +27,15 @@ const ZIP: &str = "application/zip";
 impl OperationOutput for AppError {
   type Inner = ErrorResponse;
 
-  fn operation_response(ctx: &mut GenContext, _operation: &mut Operation) -> Option<ApiResponse> {
+  fn operation_response(ctx: &mut GenContext, _operation: &mut Operation) -> Option<openapi::Response> {
     let schema = ctx.schema.subschema_for::<ErrorResponse>();
     Some(content_response("The error, with its causes", JSON, schema))
   }
 
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
+  fn inferred_responses(
+    ctx: &mut GenContext,
+    operation: &mut Operation,
+  ) -> Vec<(Option<openapi::StatusCode>, openapi::Response)> {
     Self::operation_response(ctx, operation)
       .map(|response| (None, response))
       .into_iter()
@@ -51,7 +54,7 @@ impl<T: Serialize> IntoResponse for Accepted<T> {
 impl<T: JsonSchema> OperationOutput for Accepted<T> {
   type Inner = T;
 
-  fn operation_response(ctx: &mut GenContext, _operation: &mut Operation) -> Option<ApiResponse> {
+  fn operation_response(ctx: &mut GenContext, _operation: &mut Operation) -> Option<openapi::Response> {
     let schema = ctx.schema.subschema_for::<T>();
     Some(content_response(
       "The request was accepted and runs in the background",
@@ -60,9 +63,12 @@ impl<T: JsonSchema> OperationOutput for Accepted<T> {
     ))
   }
 
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
+  fn inferred_responses(
+    ctx: &mut GenContext,
+    operation: &mut Operation,
+  ) -> Vec<(Option<openapi::StatusCode>, openapi::Response)> {
     Self::operation_response(ctx, operation)
-      .map(|response| (Some(ApiStatusCode::Code(202)), response))
+      .map(|response| (Some(openapi::StatusCode::Code(StatusCode::ACCEPTED.as_u16())), response))
       .into_iter()
       .collect()
   }
@@ -94,7 +100,7 @@ impl<T> IntoResponse for TypedSse<T> {
 impl<T: JsonSchema> OperationOutput for TypedSse<T> {
   type Inner = T;
 
-  fn operation_response(ctx: &mut GenContext, _operation: &mut Operation) -> Option<ApiResponse> {
+  fn operation_response(ctx: &mut GenContext, _operation: &mut Operation) -> Option<openapi::Response> {
     let schema = ctx.schema.subschema_for::<T>();
     Some(content_response(
       "Stream of server-sent events; the data of each event is one JSON item",
@@ -103,7 +109,10 @@ impl<T: JsonSchema> OperationOutput for TypedSse<T> {
     ))
   }
 
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
+  fn inferred_responses(
+    ctx: &mut GenContext,
+    operation: &mut Operation,
+  ) -> Vec<(Option<openapi::StatusCode>, openapi::Response)> {
     success(Self::operation_response(ctx, operation))
   }
 }
@@ -119,11 +128,14 @@ impl IntoResponse for FileContent {
 impl OperationOutput for FileContent {
   type Inner = Self;
 
-  fn operation_response(_ctx: &mut GenContext, _operation: &mut Operation) -> Option<ApiResponse> {
+  fn operation_response(_ctx: &mut GenContext, _operation: &mut Operation) -> Option<openapi::Response> {
     Some(content_response("Contents of the file", OCTET_STREAM, binary()))
   }
 
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
+  fn inferred_responses(
+    ctx: &mut GenContext,
+    operation: &mut Operation,
+  ) -> Vec<(Option<openapi::StatusCode>, openapi::Response)> {
     success(Self::operation_response(ctx, operation))
   }
 }
@@ -149,24 +161,27 @@ impl IntoResponse for ZipAttachment {
 impl OperationOutput for ZipAttachment {
   type Inner = Self;
 
-  fn operation_response(_ctx: &mut GenContext, _operation: &mut Operation) -> Option<ApiResponse> {
+  fn operation_response(_ctx: &mut GenContext, _operation: &mut Operation) -> Option<openapi::Response> {
     Some(content_response("Zip archive", ZIP, binary()))
   }
 
-  fn inferred_responses(ctx: &mut GenContext, operation: &mut Operation) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
+  fn inferred_responses(
+    ctx: &mut GenContext,
+    operation: &mut Operation,
+  ) -> Vec<(Option<openapi::StatusCode>, openapi::Response)> {
     success(Self::operation_response(ctx, operation))
   }
 }
 
-fn success(response: Option<ApiResponse>) -> Vec<(Option<ApiStatusCode>, ApiResponse)> {
+fn success(response: Option<openapi::Response>) -> Vec<(Option<openapi::StatusCode>, openapi::Response)> {
   response
-    .map(|response| (Some(ApiStatusCode::Code(200)), response))
+    .map(|response| (Some(openapi::StatusCode::Code(StatusCode::OK.as_u16())), response))
     .into_iter()
     .collect()
 }
 
-fn content_response(description: &str, content_type: &str, schema: Schema) -> ApiResponse {
-  ApiResponse {
+fn content_response(description: &str, content_type: &str, schema: Schema) -> openapi::Response {
+  openapi::Response {
     description: description.to_owned(),
     content: IndexMap::from_iter([(
       content_type.to_owned(),
@@ -179,7 +194,7 @@ fn content_response(description: &str, content_type: &str, schema: Schema) -> Ap
         ..MediaType::default()
       },
     )]),
-    ..ApiResponse::default()
+    ..openapi::Response::default()
   }
 }
 

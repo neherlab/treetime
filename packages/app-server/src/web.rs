@@ -142,6 +142,13 @@ fn compress_predicate() -> impl Predicate {
     .and(NotForContentType::const_new("font/"))
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "a `Host` header that does not parse as an authority counts as absent"
+  )
+)]
 async fn check_host(State(hosts): State<Arc<AllowedHosts>>, request: Request, next: Next) -> Response {
   let host = request
     .headers()
