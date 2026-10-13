@@ -2611,10 +2611,11 @@ export type TimetreeConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * Written as <structure>,<annotations>. Structures: classic (plain labels and branch lengths), enewick (hybrid
-   * nodes such as x#H1), rich (eNewick with support and probability fields). Annotations: plain (comments are text),
-   * beast ([&key=value]), nhx ([&&NHX:key=value]), mrbayes ([&B name value]). TreeTime reads trees only, so a
-   * network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -2978,10 +2979,15 @@ export type TimetreeConfig = {
   /**
    * Write all default output files into this directory.
    *
-   * Writes the default outputs of the command to `<dir>/<command>.<ext>`. `--output-selection` restricts them, and
-   * per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or add files. An output that the
-   * run has no data for, such as the substitution model of a run that fits none, is skipped without a message; a
-   * per-file flag for such an output fails.
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string;
   /**
@@ -3206,10 +3212,11 @@ export type ClockConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * Written as <structure>,<annotations>. Structures: classic (plain labels and branch lengths), enewick (hybrid
-   * nodes such as x#H1), rich (eNewick with support and probability fields). Annotations: plain (comments are text),
-   * beast ([&key=value]), nhx ([&&NHX:key=value]), mrbayes ([&B name value]). TreeTime reads trees only, so a
-   * network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -3301,10 +3308,15 @@ export type ClockConfig = {
   /**
    * Write all default output files into this directory.
    *
-   * Writes the default outputs of the command to `<dir>/<command>.<ext>`. `--output-selection` restricts them, and
-   * per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or add files. An output that the
-   * run has no data for, such as the substitution model of a run that fits none, is skipped without a message; a
-   * per-file flag for such an output fails.
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string;
   /**
@@ -3509,10 +3521,11 @@ export type AncestralConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * Written as <structure>,<annotations>. Structures: classic (plain labels and branch lengths), enewick (hybrid
-   * nodes such as x#H1), rich (eNewick with support and probability fields). Annotations: plain (comments are text),
-   * beast ([&key=value]), nhx ([&&NHX:key=value]), mrbayes ([&B name value]). TreeTime reads trees only, so a
-   * network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -3581,11 +3594,15 @@ export type AncestralConfig = {
    */
   reconstruct_tip_states?: boolean;
   /**
-   * Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).
+   * Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for
+   * amino acids).
    *
-   * By default the Newick and Nexus annotations, the Auspice JSON, and the `muts` and `aa_muts` of augur node data
-   * omit them. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT
-   * outputs, which store `N` as missing data, or the root `aa_muts`, which always omit `X` and gaps.
+   * By default these mutations are omitted from the branch mutations of the Newick and Nexus
+   * annotations, the Auspice JSON, and the `muts` and `aa_muts` lists of augur node data. Other
+   * ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT
+   * outputs, which store `N` as missing data and never contain these mutations, or the root
+   * `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence`
+   * reference and the inferred root and always omit `X` and gaps.
    */
   report_ambiguous?: boolean;
   /**
@@ -3660,10 +3677,15 @@ export type AncestralConfig = {
   /**
    * Write all default output files into this directory.
    *
-   * Writes the default outputs of the command to `<dir>/<command>.<ext>`. `--output-selection` restricts them, and
-   * per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or add files. An output that the
-   * run has no data for, such as the substitution model of a run that fits none, is skipped without a message; a
-   * per-file flag for such an output fails.
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string;
   /**
@@ -3853,10 +3875,11 @@ export type HomoplasyConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * Written as <structure>,<annotations>. Structures: classic (plain labels and branch lengths), enewick (hybrid
-   * nodes such as x#H1), rich (eNewick with support and probability fields). Annotations: plain (comments are text),
-   * beast ([&key=value]), nhx ([&&NHX:key=value]), mrbayes ([&B name value]). TreeTime reads trees only, so a
-   * network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -3997,10 +4020,15 @@ export type HomoplasyConfig = {
   /**
    * Write all default output files into this directory.
    *
-   * Writes the default outputs of the command to `<dir>/<command>.<ext>`. `--output-selection` restricts them, and
-   * per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or add files. An output that the
-   * run has no data for, such as the substitution model of a run that fits none, is skipped without a message; a
-   * per-file flag for such an output fails.
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string;
   /**
@@ -4149,10 +4177,11 @@ export type MugrationConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * Written as <structure>,<annotations>. Structures: classic (plain labels and branch lengths), enewick (hybrid
-   * nodes such as x#H1), rich (eNewick with support and probability fields). Annotations: plain (comments are text),
-   * beast ([&key=value]), nhx ([&&NHX:key=value]), mrbayes ([&B name value]). TreeTime reads trees only, so a
-   * network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -4249,10 +4278,15 @@ export type MugrationConfig = {
   /**
    * Write all default output files into this directory.
    *
-   * Writes the default outputs of the command to `<dir>/<command>.<ext>`. `--output-selection` restricts them, and
-   * per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or add files. An output that the
-   * run has no data for, such as the substitution model of a run that fits none, is skipped without a message; a
-   * per-file flag for such an output fails.
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string;
   /**
@@ -4422,10 +4456,11 @@ export type OptimizeConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * Written as <structure>,<annotations>. Structures: classic (plain labels and branch lengths), enewick (hybrid
-   * nodes such as x#H1), rich (eNewick with support and probability fields). Annotations: plain (comments are text),
-   * beast ([&key=value]), nhx ([&&NHX:key=value]), mrbayes ([&B name value]). TreeTime reads trees only, so a
-   * network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -4459,10 +4494,15 @@ export type OptimizeConfig = {
   /**
    * Write all default output files into this directory.
    *
-   * Writes the default outputs of the command to `<dir>/<command>.<ext>`. `--output-selection` restricts them, and
-   * per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or add files. An output that the
-   * run has no data for, such as the substitution model of a run that fits none, is skipped without a message; a
-   * per-file flag for such an output fails.
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string;
   /**
@@ -4727,10 +4767,11 @@ export type PruneConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * Written as <structure>,<annotations>. Structures: classic (plain labels and branch lengths), enewick (hybrid
-   * nodes such as x#H1), rich (eNewick with support and probability fields). Annotations: plain (comments are text),
-   * beast ([&key=value]), nhx ([&&NHX:key=value]), mrbayes ([&B name value]). TreeTime reads trees only, so a
-   * network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -4743,10 +4784,15 @@ export type PruneConfig = {
   /**
    * Write all default output files into this directory.
    *
-   * Writes the default outputs of the command to `<dir>/<command>.<ext>`. `--output-selection` restricts them, and
-   * per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or add files. An output that the
-   * run has no data for, such as the substitution model of a run that fits none, is skipped without a message; a
-   * per-file flag for such an output fails.
+   * Produces the default set of tree and non-tree outputs for the command, using
+   * `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+   * outputs are written.
+   *
+   * Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+   * supplement the files produced by `--output-all`.
+   *
+   * An output that the run has no data for is skipped without a message, for example the
+   * substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_all?: string;
   /**

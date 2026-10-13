@@ -48,10 +48,11 @@ pub fn read_input_tree(path: &Path, dialect: NewickDialect, log: &dyn LogSink) -
 pub struct TreeDialectArgs {
   /// Newick dialect of the tree inputs (the tree and the reference topology)
   ///
-  /// Written as <structure>,<annotations>. Structures: classic (plain labels and branch lengths), enewick (hybrid
-  /// nodes such as x#H1), rich (eNewick with support and probability fields). Annotations: plain (comments are text),
-  /// beast ([&key=value]), nhx ([&&NHX:key=value]), mrbayes ([&B name value]). TreeTime reads trees only, so a
-  /// network input is an error.
+  /// A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
+  /// is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
+  /// and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
+  /// ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
+  /// and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
   #[cfg_attr(
     feature = "clap",
     clap(long, value_enum, default_value_t = TreeDialectArg::default(), help_heading = "Input data")

@@ -122,10 +122,15 @@ command_outputs!(HomoplasyOutputSelection for TreetimeHomoplasyArgsRaw, Homoplas
 pub struct OutputCoreArgs {
   /// Write all default output files into this directory.
   ///
-  /// Writes the default outputs of the command to `<dir>/<command>.<ext>`. `--output-selection` restricts them, and
-  /// per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or add files. An output that the
-  /// run has no data for, such as the substitution model of a run that fits none, is skipped without a message; a
-  /// per-file flag for such an output fails.
+  /// Produces the default set of tree and non-tree outputs for the command, using
+  /// `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
+  /// outputs are written.
+  ///
+  /// Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+  /// supplement the files produced by `--output-all`.
+  ///
+  /// An output that the run has no data for is skipped without a message, for example the
+  /// substitution model of a run that fits none. A per-file flag for such an output fails.
   #[cfg_attr(feature = "clap", clap(long, short = 'O', value_hint = ValueHint::DirPath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_all: Option<PathBuf>,

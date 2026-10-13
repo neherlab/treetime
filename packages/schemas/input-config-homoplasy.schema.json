@@ -22,7 +22,7 @@
       "x-cli-flag": "--tree"
     },
     "tree_dialect": {
-      "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nWritten as <structure>,<annotations>. Structures: classic (plain labels and branch lengths), enewick (hybrid\nnodes such as x#H1), rich (eNewick with support and probability fields). Annotations: plain (comments are text),\nbeast ([&key=value]), nhx ([&&NHX:key=value]), mrbayes ([&B name value]). TreeTime reads trees only, so a\nnetwork input is an error.",
+      "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
       "type": "string",
       "enum": [
         "classic,plain",
@@ -169,7 +169,7 @@
       "x-cli-flag": "--num-mut"
     },
     "output_all": {
-      "description": "Write all default output files into this directory.\n\nWrites the default outputs of the command to `<dir>/<command>.<ext>`. `--output-selection` restricts them, and\nper-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or add files. An output that the\nrun has no data for, such as the substitution model of a run that fits none, is skipped without a message; a\nper-file flag for such an output fails.",
+      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
