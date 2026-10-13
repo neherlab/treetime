@@ -88,8 +88,6 @@ pub(crate) fn api_doc_with(settings: &SchemaSettings) -> Result<Value, Report> {
   Ok(serde_json::to_value(api)?)
 }
 
-/// Routers of a local app: the host router also saves run files to a path that the caller names, so only the process
-/// that hosts the app may reach it.
 pub struct LocalRouters {
   pub host: Router,
   pub renderer: Router,
