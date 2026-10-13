@@ -23,7 +23,9 @@ mod tests {
       for _ in 0..1000 {
         writer.write_all(small).wrap_err("When writing a small piece")?;
       }
-      writer.write_all(&oversized).wrap_err("When writing the oversized piece")?;
+      writer
+        .write_all(&oversized)
+        .wrap_err("When writing the oversized piece")?;
       writer.write_all(small).wrap_err("When writing the last piece")?;
       Ok(())
     })?;

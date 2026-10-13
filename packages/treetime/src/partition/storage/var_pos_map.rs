@@ -12,7 +12,11 @@ pub struct VarPosMap {
 impl VarPosMap {
   pub(crate) fn get(&self, pos: usize) -> Option<&VarPos> {
     let index = self.entries.partition_point(|(key, _)| *key < pos);
-    self.entries.get(index).filter(|(key, _)| *key == pos).map(|(_, value)| value)
+    self
+      .entries
+      .get(index)
+      .filter(|(key, _)| *key == pos)
+      .map(|(_, value)| value)
   }
 
   pub(crate) fn contains_key(&self, pos: usize) -> bool {

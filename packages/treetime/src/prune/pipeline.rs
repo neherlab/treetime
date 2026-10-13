@@ -11,13 +11,13 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::progress::LogSink;
 use crate::prune::prune::prune_nodes;
 use crate::seq::alignment::NodeSeqInput;
-use treetime_utils::make_report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem::take;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_utils::make_report;
 
 pub fn run(
   params: &PruneParams,

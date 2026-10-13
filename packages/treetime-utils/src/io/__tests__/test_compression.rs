@@ -38,7 +38,9 @@ mod tests {
   #[test]
   fn test_compression_finish_returns_the_flush_error() -> Result<(), Report> {
     let mut compressor = Compressor::new(FailingFlush, &CompressionType::None)?;
-    compressor.write_all(CONTENT.as_bytes()).wrap_err("When writing the content")?;
+    compressor
+      .write_all(CONTENT.as_bytes())
+      .wrap_err("When writing the content")?;
     assert_error!(compressor.finish(), "While finishing compressed file: disk full");
     Ok(())
   }
@@ -63,7 +65,9 @@ mod tests {
       let mut bytes = vec![];
       let mut compressor = Compressor::new(&mut bytes, compression_type)?;
       for _ in 0..100 {
-        compressor.write_all(CONTENT.as_bytes()).wrap_err("When writing the content")?;
+        compressor
+          .write_all(CONTENT.as_bytes())
+          .wrap_err("When writing the content")?;
       }
       if finish {
         compressor.finish()?;
