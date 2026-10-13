@@ -48,12 +48,6 @@ pub fn create_router(config: ServerConfig, options: &WebOptions) -> Result<Route
   Ok(web_router(api, options))
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct WebOptions {
-  pub static_dir: Option<PathBuf>,
-  pub allowed_hosts: Vec<String>,
-}
-
 pub(crate) fn web_router(api: Router, options: &WebOptions) -> Router {
   let fallback = Router::new()
     .route("/api", any(not_found))
@@ -89,6 +83,12 @@ pub(crate) fn web_router(api: Router, options: &WebOptions) -> Router {
         .map(|(name, value)| (HeaderName::from_static(name), HeaderValue::from_static(value)).into())
         .collect(),
     ))
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct WebOptions {
+  pub static_dir: Option<PathBuf>,
+  pub allowed_hosts: Vec<String>,
 }
 
 fn web_files(dir: &Path) -> ServeDir {

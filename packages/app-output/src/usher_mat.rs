@@ -9,64 +9,6 @@ use treetime_io::usher_mat::{UsherMetadata, UsherMutation, UsherMutationList, Us
 use treetime_primitives::AsciiChar;
 use treetime_utils::{make_error, make_internal_error, make_report};
 
-#[derive(Debug)]
-#[expect(
-  clippy::field_scoped_visibility_modifiers,
-  reason = "crate-internal fields are the record interface"
-)]
-pub(crate) struct MatOutput {
-  pub(crate) tree: UsherTree,
-  pub(crate) gaps: MatGapCounts,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[expect(
-  clippy::field_scoped_visibility_modifiers,
-  reason = "crate-internal fields are the record interface"
-)]
-pub(crate) struct MatGapCounts {
-  pub(crate) deletions: usize,
-  pub(crate) insertions: usize,
-  pub(crate) substitutions: usize,
-}
-
-impl MatGapCounts {
-  pub(crate) fn warning(self) -> Option<String> {
-    let mut clauses = vec![];
-    if self.deletions > 0 {
-      clauses.push(format!("wrote {} deletion(s) as missing data (N)", self.deletions));
-    }
-    if self.insertions > 0 || self.substitutions > 0 {
-      clauses.push(format!(
-        "left out {} insertion(s) and {} substitution(s) in alignment columns where the root sequence, which is the MAT reference, has a gap",
-        self.insertions, self.substitutions
-      ));
-    }
-    (!clauses.is_empty()).then(|| format!("UShER MAT has no gap state: {}", clauses.join("; ")))
-  }
-
-  fn count(&mut self, mutations: &[Mutation], reference_gaps: &BTreeSet<usize>) {
-    for mutation in mutations
-      .iter()
-      .filter(|mutation| mutation.track == MutationTrack::Nucleotide)
-    {
-      match &mutation.event {
-        MutationEvent::Deletion(_) => self.deletions += 1,
-        MutationEvent::Insertion(segment) => {
-          if reference_gaps.range(segment.range.0..segment.range.1).next().is_some() {
-            self.insertions += 1;
-          }
-        },
-        MutationEvent::Substitution(substitution) => {
-          if reference_gaps.contains(&substitution.pos()) {
-            self.substitutions += 1;
-          }
-        },
-      }
-    }
-  }
-}
-
 pub(crate) fn mat_tree(tree: &AnnotatedTreeView<'_>) -> Result<MatOutput, Report> {
   let graph = tree.graph();
   let sequences = graph.sequences.as_ref();
@@ -127,6 +69,64 @@ pub(crate) fn mat_tree(tree: &AnnotatedTreeView<'_>) -> Result<MatOutput, Report
     },
     gaps,
   })
+}
+
+#[derive(Debug)]
+#[expect(
+  clippy::field_scoped_visibility_modifiers,
+  reason = "crate-internal fields are the record interface"
+)]
+pub(crate) struct MatOutput {
+  pub(crate) tree: UsherTree,
+  pub(crate) gaps: MatGapCounts,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[expect(
+  clippy::field_scoped_visibility_modifiers,
+  reason = "crate-internal fields are the record interface"
+)]
+pub(crate) struct MatGapCounts {
+  pub(crate) deletions: usize,
+  pub(crate) insertions: usize,
+  pub(crate) substitutions: usize,
+}
+
+impl MatGapCounts {
+  pub(crate) fn warning(self) -> Option<String> {
+    let mut clauses = vec![];
+    if self.deletions > 0 {
+      clauses.push(format!("wrote {} deletion(s) as missing data (N)", self.deletions));
+    }
+    if self.insertions > 0 || self.substitutions > 0 {
+      clauses.push(format!(
+        "left out {} insertion(s) and {} substitution(s) in alignment columns where the root sequence, which is the MAT reference, has a gap",
+        self.insertions, self.substitutions
+      ));
+    }
+    (!clauses.is_empty()).then(|| format!("UShER MAT has no gap state: {}", clauses.join("; ")))
+  }
+
+  fn count(&mut self, mutations: &[Mutation], reference_gaps: &BTreeSet<usize>) {
+    for mutation in mutations
+      .iter()
+      .filter(|mutation| mutation.track == MutationTrack::Nucleotide)
+    {
+      match &mutation.event {
+        MutationEvent::Deletion(_) => self.deletions += 1,
+        MutationEvent::Insertion(segment) => {
+          if reference_gaps.range(segment.range.0..segment.range.1).next().is_some() {
+            self.insertions += 1;
+          }
+        },
+        MutationEvent::Substitution(substitution) => {
+          if reference_gaps.contains(&substitution.pos()) {
+            self.substitutions += 1;
+          }
+        },
+      }
+    }
+  }
 }
 
 pub(crate) fn mat_mutation(

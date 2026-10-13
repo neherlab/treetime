@@ -13,23 +13,6 @@ use treetime_primitives::Seq;
 use treetime_primitives::date::DateConstraint;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
-pub struct AnnotatedGraph<'a> {
-  pub graph: &'a Graph,
-  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  pub divergence_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub time_branch_lengths: Option<&'a BTreeMap<GraphEdgeKey, Option<f64>>>,
-  pub divergence: Divergence<'a>,
-  pub sequences: Option<TreeSequences<'a>>,
-  pub dates: Option<TreeDates<'a>>,
-  pub traits: Option<TreeTraits<'a>>,
-}
-
-impl AnnotatedGraph<'_> {
-  pub fn tree_branch_lengths(&self) -> &BTreeMap<GraphEdgeKey, Option<f64>> {
-    self.time_branch_lengths.unwrap_or(self.divergence_branch_lengths)
-  }
-}
-
 pub struct AnnotatedTreeView<'a> {
   graph: &'a AnnotatedGraph<'a>,
   tree: TreeView<'a>,
@@ -49,6 +32,23 @@ impl<'a> AnnotatedTreeView<'a> {
 
   pub fn tree(&self) -> &TreeView<'a> {
     &self.tree
+  }
+}
+
+pub struct AnnotatedGraph<'a> {
+  pub graph: &'a Graph,
+  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub divergence_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub time_branch_lengths: Option<&'a BTreeMap<GraphEdgeKey, Option<f64>>>,
+  pub divergence: Divergence<'a>,
+  pub sequences: Option<TreeSequences<'a>>,
+  pub dates: Option<TreeDates<'a>>,
+  pub traits: Option<TreeTraits<'a>>,
+}
+
+impl AnnotatedGraph<'_> {
+  pub fn tree_branch_lengths(&self) -> &BTreeMap<GraphEdgeKey, Option<f64>> {
+    self.time_branch_lengths.unwrap_or(self.divergence_branch_lengths)
   }
 }
 

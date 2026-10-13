@@ -243,18 +243,6 @@ impl ResolvedOutputs {
   }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PlannedFile {
-  pub path: PathBuf,
-  pub requested: Requested,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Requested {
-  Named,
-  All,
-}
-
 pub fn output_unavailable(
   selection: OutputSelection,
   file: &PlannedFile,
@@ -270,15 +258,16 @@ pub fn output_unavailable(
   }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub enum TreeWriteKind {
-  Nwk(NwkStyle),
-  Nexus(NwkStyle),
-  Auspice,
-  MatPb,
-  MatJson,
-  GraphJson,
-  Dot,
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PlannedFile {
+  pub path: PathBuf,
+  pub requested: Requested,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Requested {
+  Named,
+  All,
 }
 
 fn tree_write_kind_selection(kind: TreeWriteKind) -> OutputSelection {
@@ -559,6 +548,17 @@ impl OutputSelection {
       Self::HomoplasyReport       => OutputFacts::new(".report.txt",                   "--output-homoplasy-report",       None, false, "Recurrent mutations: text report"),
     }
   }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub enum TreeWriteKind {
+  Nwk(NwkStyle),
+  Nexus(NwkStyle),
+  Auspice,
+  MatPb,
+  MatJson,
+  GraphJson,
+  Dot,
 }
 
 struct OutputFacts {

@@ -15,24 +15,6 @@ use treetime_grid::MaxGridPoints;
 
 pub const DEFAULT_MAX_UPLOAD_SIZE: usize = 1 << 30;
 
-#[derive(Clone, Debug)]
-pub struct ServerConfig {
-  pub examples_dir: PathBuf,
-  pub runs_dir: PathBuf,
-  pub max_upload_size: usize,
-  pub max_grid_points: Option<MaxGridPoints>,
-  pub shutdown: CancellationToken,
-  pub settings: Option<LocalSettings>,
-}
-
-#[derive(Clone, Debug)]
-pub struct LocalSettings {
-  pub store: Arc<AppSettingsStore>,
-  pub paths: AppPaths,
-  pub runs_error: Option<String>,
-  pub examples: Arc<ExampleDownloads>,
-}
-
 pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> {
   PathPolicy::new(&config.examples_dir, &[])?;
   let runs = RunManager::open(&config.runs_dir)?;
@@ -55,6 +37,24 @@ pub(crate) struct AppState {
   pub service: Arc<AppService>,
   pub openapi: Value,
   pub instance: u64,
+}
+
+#[derive(Clone, Debug)]
+pub struct ServerConfig {
+  pub examples_dir: PathBuf,
+  pub runs_dir: PathBuf,
+  pub max_upload_size: usize,
+  pub max_grid_points: Option<MaxGridPoints>,
+  pub shutdown: CancellationToken,
+  pub settings: Option<LocalSettings>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalSettings {
+  pub store: Arc<AppSettingsStore>,
+  pub paths: AppPaths,
+  pub runs_error: Option<String>,
+  pub examples: Arc<ExampleDownloads>,
 }
 
 struct ServerInputs {

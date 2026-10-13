@@ -24,10 +24,6 @@ impl<E: Into<Report>> From<E> for AppError {
   }
 }
 
-pub fn error_response(body: ErrorResponse) -> Response {
-  (http_status(body.code), ApiJson(body)).into_response()
-}
-
 pub(crate) fn plain_error(code: ErrorCode, message: impl Into<String>) -> Response {
   error_response(ErrorResponse {
     code,
@@ -40,6 +36,10 @@ pub(crate) fn panic_response(payload: &(dyn Any + Send)) -> Response {
   let body = ErrorResponse::from_panic(payload);
   error!("{}: {}", body.message, body.causes.join(": "));
   error_response(body)
+}
+
+pub fn error_response(body: ErrorResponse) -> Response {
+  (http_status(body.code), ApiJson(body)).into_response()
 }
 
 fn http_status(code: ErrorCode) -> StatusCode {

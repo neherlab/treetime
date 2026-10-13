@@ -64,50 +64,6 @@ pub(crate) fn auspice_tree(
   })
 }
 
-pub(crate) fn ensure_finite(value: f64, node_name: &str, field: &str) -> Result<(), Report> {
-  if value.is_finite() {
-    Ok(())
-  } else {
-    make_error!("Node '{node_name}' has non-finite {field}={value}")
-  }
-}
-
-pub(crate) fn group_mutations(mutations: &[Mutation]) -> Result<BTreeMap<String, Vec<String>>, Report> {
-  let mut grouped: BTreeMap<String, Vec<String>> = BTreeMap::new();
-  for mutation in mutations {
-    let track = match &mutation.track {
-      MutationTrack::Nucleotide if !matches!(mutation.event, MutationEvent::Substitution(_)) => continue,
-      MutationTrack::Nucleotide => NUC_TRACK,
-      MutationTrack::AminoAcid(track) => auspice_track_name(track)?,
-    };
-    grouped
-      .entry(track.to_owned())
-      .or_default()
-      .extend(mutation_event_strings(&mutation.event)?);
-  }
-  Ok(grouped)
-}
-
-#[expect(
-  clippy::expect_used,
-  reason = "Rust writes a finite float in scientific notation that parses back as a float"
-)]
-pub(crate) fn format_number(number: f64, precision: usize) -> f64 {
-  if number == 0.0 || !number.is_finite() {
-    return number;
-  }
-  let integral = number.abs().trunc();
-  let integer_digits = if integral >= 1.0 {
-    f64_to_usize_saturating(integral.log10().floor()) + 1
-  } else {
-    0
-  };
-  let significant_figures = (integer_digits + precision).max(1);
-  format!("{number:.*e}", significant_figures - 1)
-    .parse()
-    .expect("a float formatted in scientific notation must parse back")
-}
-
 fn auspice_data(
   tree: &AnnotatedTreeView<'_>,
   command: CommandKind,
@@ -307,6 +263,22 @@ fn node_mutations(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey) -> Result<BTr
   Ok(grouped)
 }
 
+pub(crate) fn group_mutations(mutations: &[Mutation]) -> Result<BTreeMap<String, Vec<String>>, Report> {
+  let mut grouped: BTreeMap<String, Vec<String>> = BTreeMap::new();
+  for mutation in mutations {
+    let track = match &mutation.track {
+      MutationTrack::Nucleotide if !matches!(mutation.event, MutationEvent::Substitution(_)) => continue,
+      MutationTrack::Nucleotide => NUC_TRACK,
+      MutationTrack::AminoAcid(track) => auspice_track_name(track)?,
+    };
+    grouped
+      .entry(track.to_owned())
+      .or_default()
+      .extend(mutation_event_strings(&mutation.event)?);
+  }
+  Ok(grouped)
+}
+
 fn auspice_track_name(track: &str) -> Result<&str, Report> {
   let valid = !track.is_empty()
     && track
@@ -364,6 +336,34 @@ fn date_confidence([lower, upper]: [f64; 2], node_name: &str) -> Result<[f64; 2]
   ensure_finite(lower, node_name, "date confidence lower bound")?;
   ensure_finite(upper, node_name, "date confidence upper bound")?;
   Ok([format_number(lower, 3), format_number(upper, 3)])
+}
+
+pub(crate) fn ensure_finite(value: f64, node_name: &str, field: &str) -> Result<(), Report> {
+  if value.is_finite() {
+    Ok(())
+  } else {
+    make_error!("Node '{node_name}' has non-finite {field}={value}")
+  }
+}
+
+#[expect(
+  clippy::expect_used,
+  reason = "Rust writes a finite float in scientific notation that parses back as a float"
+)]
+pub(crate) fn format_number(number: f64, precision: usize) -> f64 {
+  if number == 0.0 || !number.is_finite() {
+    return number;
+  }
+  let integral = number.abs().trunc();
+  let integer_digits = if integral >= 1.0 {
+    f64_to_usize_saturating(integral.log10().floor()) + 1
+  } else {
+    0
+  };
+  let significant_figures = (integer_digits + precision).max(1);
+  format!("{number:.*e}", significant_figures - 1)
+    .parse()
+    .expect("a float formatted in scientific notation must parse back")
 }
 
 fn auspice_cds_annotations(

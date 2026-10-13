@@ -93,13 +93,6 @@ pub struct LocalRouters {
   pub renderer: Router,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum RouteScope {
-  Public,
-  Renderer,
-  Host,
-}
-
 fn app_state(service: Arc<AppService>, config: ServerConfig, api: &OpenApi) -> Result<Arc<AppState>, Report> {
   Ok(Arc::new(AppState {
     config,
@@ -154,6 +147,13 @@ fn build_api(scope: RouteScope, settings: &SchemaSettings) -> Result<(Router<Arc
   add_components(&mut api, settings)?;
   add_discriminators(&mut api)?;
   Ok((router, api))
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RouteScope {
+  Public,
+  Renderer,
+  Host,
 }
 
 fn api_routes() -> ApiRouter<Arc<AppState>> {
@@ -325,6 +325,13 @@ fn timed_routes() -> ApiRouter<Arc<AppState>> {
     )
 }
 
+async fn health() -> ApiJson<HealthStatus> {
+  ApiJson(HealthStatus {
+    status: HEALTH_STATUS.to_owned(),
+    version: version_info().version.to_owned(),
+  })
+}
+
 /// Liveness of the server.
 #[derive(Clone, Debug, JsonSchema, Serialize)]
 struct HealthStatus {
@@ -332,57 +339,6 @@ struct HealthStatus {
   status: String,
   /// Version of TreeTime.
   version: String,
-}
-
-/// Path of a run.
-#[derive(Clone, Debug, JsonSchema, Deserialize)]
-#[schemars(inline)]
-pub(crate) struct RunPath {
-  /// Id of the run.
-  pub(crate) id: JobId,
-}
-
-/// Path of two runs.
-#[derive(Clone, Debug, JsonSchema, Deserialize)]
-#[schemars(inline)]
-struct RunPairPath {
-  /// Id of the first run.
-  id: JobId,
-  /// Id of the run compared with the first.
-  other: JobId,
-}
-
-/// Path of an input file of a run.
-#[derive(Clone, Debug, JsonSchema, Deserialize)]
-#[schemars(inline)]
-struct InputPath {
-  /// Id of a run that has not started.
-  id: JobId,
-  /// File name inside the run's `inputs/` folder.
-  name: String,
-}
-
-/// Query of the run event stream.
-#[derive(Clone, Debug, JsonSchema, Deserialize)]
-#[schemars(inline)]
-struct EventsQuery {
-  /// Sequence number of the first event to send.
-  from: Option<u64>,
-}
-
-/// Query of a run file.
-#[derive(Clone, Debug, JsonSchema, Deserialize)]
-#[schemars(inline)]
-struct FileQuery {
-  /// Path of the file relative to the run's `out/` folder.
-  path: String,
-}
-
-async fn health() -> ApiJson<HealthStatus> {
-  ApiJson(HealthStatus {
-    status: HEALTH_STATUS.to_owned(),
-    version: version_info().version.to_owned(),
-  })
 }
 
 async fn openapi(State(state): State<Arc<AppState>>) -> axum::Json<Value> {
@@ -511,6 +467,16 @@ async fn runs_compare(
   .await
 }
 
+/// Path of two runs.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(inline)]
+struct RunPairPath {
+  /// Id of the first run.
+  id: JobId,
+  /// Id of the run compared with the first.
+  other: JobId,
+}
+
 async fn clade_in_runs(
   State(state): State<Arc<AppState>>,
   ApiJson(request): ApiJson<CladeRequest>,
@@ -553,6 +519,14 @@ fn resume_from(headers: &HeaderMap, query: &EventsQuery) -> Option<u64> {
     .or(query.from)
 }
 
+/// Query of the run event stream.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(inline)]
+struct EventsQuery {
+  /// Sequence number of the first event to send.
+  from: Option<u64>,
+}
+
 async fn runs_upload_input(
   State(state): State<Arc<AppState>>,
   ApiPath(InputPath { id, name }): ApiPath<InputPath>,
@@ -562,6 +536,16 @@ async fn runs_upload_input(
   let limit = state.config.max_upload_size;
   let uploaded = read_body_blocking(body, move |reader| runs.upload_input(&id, &name, reader, limit)).await?;
   Ok(ApiJson(uploaded))
+}
+
+/// Path of an input file of a run.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(inline)]
+struct InputPath {
+  /// Id of a run that has not started.
+  id: JobId,
+  /// File name inside the run's `inputs/` folder.
+  name: String,
 }
 
 async fn runs_file(
@@ -574,6 +558,14 @@ async fn runs_file(
   serve_run_file(path, request).await
 }
 
+/// Query of a run file.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(inline)]
+struct FileQuery {
+  /// Path of the file relative to the run's `out/` folder.
+  path: String,
+}
+
 async fn runs_archive(
   State(state): State<Arc<AppState>>,
   ApiPath(RunPath { id }): ApiPath<RunPath>,
@@ -581,6 +573,14 @@ async fn runs_archive(
   let name = id.as_str().to_owned();
   let out_dir = call(&state, move |service| service.runs().out_dir(&id)).await?;
   stream_run_archive(&out_dir, &name)
+}
+
+/// Path of a run.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(inline)]
+pub(crate) struct RunPath {
+  /// Id of the run.
+  pub(crate) id: JobId,
 }
 
 async fn revalidated<T, F>(

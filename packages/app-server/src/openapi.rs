@@ -83,12 +83,6 @@ pub(crate) fn add_discriminators(api: &mut OpenApi) -> Result<(), Report> {
   Ok(())
 }
 
-struct TaggedUnion {
-  name: String,
-  schema: Schema,
-  variants: Vec<(String, Schema)>,
-}
-
 fn tagged_union(name: &str, schema: &Schema) -> Result<Option<TaggedUnion>, Report> {
   let Some(root) = schema.as_object() else {
     return Ok(None);
@@ -150,6 +144,12 @@ fn tagged_union(name: &str, schema: &Schema) -> Result<Option<TaggedUnion>, Repo
     schema: Schema::try_from(Value::Object(union))?,
     variants: named_variants,
   }))
+}
+
+struct TaggedUnion {
+  name: String,
+  schema: Schema,
+  variants: Vec<(String, Schema)>,
 }
 
 fn tag_property<'a>(name: &str, variants: &[&'a Map<String, Value>]) -> Result<Option<(String, Vec<&'a str>)>, Report> {
