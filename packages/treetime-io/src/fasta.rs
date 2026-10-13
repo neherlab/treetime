@@ -190,12 +190,8 @@ impl<R: BufRead, A: AlphabetLike> Iterator for FastaRecords<'_, R, A> {
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "table indices below 128 convert exactly to ASCII bytes"
-)]
 fn accepted_bytes<A: AlphabetLike>(alphabet: &A) -> [bool; 128] {
-  std::array::from_fn(|byte| alphabet.contains(AsciiChar::from_byte_unchecked((byte as u8).to_ascii_uppercase())))
+  AsciiChar::table(|c| alphabet.contains(AsciiChar::from_byte_unchecked(c.inner().to_ascii_uppercase())))
 }
 
 pub(crate) fn fasta_write_record(

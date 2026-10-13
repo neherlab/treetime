@@ -2,6 +2,7 @@ use eyre::Report;
 use ndarray::Array1;
 use num::Float;
 use std::cmp::min;
+use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::make_error;
 
 pub(crate) fn interp_nonuniform<T, F>(
@@ -42,10 +43,6 @@ where
   Ok(result)
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 fn find_interval<T>(x: &Array1<T>, xi: T) -> usize
 where
   T: Float,
@@ -54,7 +51,7 @@ where
   debug_assert!(xi >= x[0] && xi <= x[x.len() - 1], "xi must be within x range");
 
   let n = x.len();
-  let idx = x.as_slice().unwrap().partition_point(|&val| val <= xi);
+  let idx = partition_point(x, |&val| val <= xi);
   min(idx.saturating_sub(1), n - 2)
 }
 

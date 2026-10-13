@@ -12,6 +12,7 @@ use ndarray_stats::errors::MinMaxError;
 use std::fmt::Debug;
 use strum_macros::Display;
 use treetime_grid::{BoundaryBehavior, Side};
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
 const TIME_LIMIT: f64 = 1e10;
@@ -233,14 +234,10 @@ fn neglog_peak(minimum: f64, context: &str) -> Result<Option<f64>, Report> {
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn discretize_formula<Y: YAxisPolicy>(f: &DistributionFormula<Y>) -> Result<DistributionFunction<f64, Y>, Report> {
   let n_points = FORMULA_GRID_SIZE;
   let t = Array1::from_shape_fn(n_points, |i| {
-    f.t_min() + (f.t_max() - f.t_min()) * (i as f64 / (n_points - 1) as f64)
+    f.t_min() + (f.t_max() - f.t_min()) * (i.to_f64_exact() / (n_points - 1).to_f64_exact())
   });
   let values = f.eval_many(&t)?;
   DistributionFunction::from_range_values((f.t_min(), f.t_max()), values)

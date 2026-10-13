@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::*;
@@ -12,6 +7,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::assert_error;
+  use treetime_utils::cast::ToF64Exact;
 
   fn make_neglog_power_law_grid(t_hard: f64, a: f64, b: f64, x_min: f64, x_max: f64, n: usize) -> GridFn<f64> {
     let y = Array1::linspace(x_min, x_max, n).mapv(|t| a - b * (t - t_hard).abs().ln());
@@ -130,10 +126,10 @@ mod tests {
     let closed_form = law.mass(GridEdge { t: t_edge, y: y_edge });
 
     let edge = GridEdge { t: t_edge, y: y_edge };
-    let dt = (t_edge - t_hard) / (N as f64 - 1.0);
+    let dt = (t_edge - t_hard) / (N.to_f64_exact() - 1.0);
     let quad: f64 = (0..N)
       .map(|i| {
-        let u = t_hard + i as f64 * dt;
+        let u = t_hard + i.to_f64_exact() * dt;
         let weight = if i == 0 || i == N - 1 { 0.5 } else { 1.0 };
         let density = (-law.eval(edge, u)).exp();
         weight * density * dt

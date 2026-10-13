@@ -1,5 +1,7 @@
-use crate::datetime::datetime::{LAST_NANOSECOND_OF_DAY, iso};
-use chrono::{DateTime, Duration, NaiveDate, Utc};
+use crate::datetime::datetime::{LAST_NANOSECOND, iso};
+use crate::make_report;
+use chrono::{DateTime, Duration, NaiveDate, NaiveTime, Utc};
+use eyre::{Report, WrapErr};
 use getset::Getters;
 use smart_default::SmartDefault;
 
@@ -22,26 +24,12 @@ impl DateRange {
     Self::new(iso(begin.as_ref()), iso(end.as_ref()))
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    clippy::as_conversions,
-    reason = "constructs a range from a caller-supplied valid (year, month, day); the year fits i32 and the components form a valid calendar instant"
-  )]
-  pub fn from_ymd(begin: (u32, u32, u32), end: (u32, u32, u32)) -> Self {
-    let begin = NaiveDate::from_ymd_opt(begin.0 as i32, begin.1, begin.2)
-      .unwrap()
-      .and_hms_opt(0, 0, 0)
-      .unwrap()
-      .and_utc();
+  pub fn from_ymd(begin: (u32, u32, u32), end: (u32, u32, u32)) -> Result<Self, Report> {
+    let begin = naive_date(begin)?.and_time(NaiveTime::MIN).and_utc();
 
-    let (hour, minute, second, nanosecond) = LAST_NANOSECOND_OF_DAY;
-    let end = NaiveDate::from_ymd_opt(end.0 as i32, end.1, end.2)
-      .unwrap()
-      .and_hms_nano_opt(hour, minute, second, nanosecond)
-      .unwrap()
-      .and_utc();
+    let end = naive_date(end)?.and_time(LAST_NANOSECOND).and_utc();
 
-    Self::new(begin, end)
+    Ok(Self::new(begin, end))
   }
 
   pub fn is_valid(&self) -> bool {
@@ -55,4 +43,10 @@ impl DateRange {
   pub fn mean(&self) -> DateTime<Utc> {
     self.begin + (self.len() / 2)
   }
+}
+
+fn naive_date((year, month, day): (u32, u32, u32)) -> Result<NaiveDate, Report> {
+  let signed_year = i32::try_from(year).wrap_err_with(|| format!("Year {year} is outside the supported date range"))?;
+  NaiveDate::from_ymd_opt(signed_year, month, day)
+    .ok_or_else(|| make_report!("Date {year:04}-{month:02}-{day:02} is not a valid calendar date"))
 }

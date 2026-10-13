@@ -1,13 +1,15 @@
-use crate::make_error;
-use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, Utc};
+use crate::{make_error, make_report};
+use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, NaiveTime, Utc};
 use eyre::{Report, WrapErr};
 
-pub(crate) const LAST_NANOSECOND_OF_DAY: (u32, u32, u32, u32) = (23, 59, 59, 999_999_999);
+pub(crate) const NOON: NaiveTime = NaiveTime::from_hms_opt(12, 0, 0).expect("12:00:00 is a valid time");
+pub(crate) const LAST_NANOSECOND: NaiveTime =
+  NaiveTime::from_hms_nano_opt(23, 59, 59, 999_999_999).expect("23:59:59.999999999 is a valid time");
 const MILLISECONDS_PER_SECOND: i64 = 1000;
 
 #[expect(
   clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
+  reason = "parses date literals written in code, where a malformed literal is a programming error"
 )]
 pub fn iso(date_str: impl AsRef<str>) -> DateTime<Utc> {
   date_from_iso(date_str).unwrap()
@@ -45,30 +47,24 @@ pub fn date_format_precise(datetime: &DateTime<Utc>) -> String {
   datetime.format("%Y-%m-%d %H:%M:%S%.3f").to_string()
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
-pub fn timestamp_to_date(timestamp: i64) -> DateTime<Utc> {
-  DateTime::from_timestamp_millis(timestamp).expect("timestamp out of DateTime range")
+pub fn timestamp_to_date(timestamp: i64) -> Result<DateTime<Utc>, Report> {
+  DateTime::from_timestamp_millis(timestamp)
+    .ok_or_else(|| make_report!("Timestamp {timestamp} ms is outside the supported date range"))
 }
 
 pub fn date_format_safe(datetime: &DateTime<Utc>) -> String {
   datetime.format("%Y-%m-%d_%H-%M-%S").to_string()
 }
 
-#[expect(
-  clippy::as_conversions,
-  clippy::expect_used,
-  reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present"
-)]
 pub fn days_in_month(year: u32, month: u32) -> Result<u32, Report> {
   if !(1..=12).contains(&month) {
     return make_error!("Invalid month: {month}");
   }
   let (next_year, next_month) = if month == 12 { (year + 1, 1) } else { (year, month + 1) };
-  let last_day = NaiveDate::from_ymd_opt(next_year as i32, next_month, 1)
+  let signed_next_year =
+    i32::try_from(next_year).wrap_err_with(|| format!("Year {next_year} is outside the supported date range"))?;
+  let last_day = NaiveDate::from_ymd_opt(signed_next_year, next_month, 1)
     .and_then(|first_of_next_month| first_of_next_month.pred_opt())
-    .expect("a validated 1-12 month always has a last day");
+    .ok_or_else(|| make_report!("Year {year} is outside the supported date range"))?;
   Ok(last_day.day())
 }

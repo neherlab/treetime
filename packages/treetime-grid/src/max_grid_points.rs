@@ -6,6 +6,7 @@ use num_traits::ToPrimitive;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use std::borrow::Cow;
 use std::str::FromStr;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
@@ -29,10 +30,6 @@ impl MaxGridPoints {
     self.0
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "the limit is far below 2^53, so the conversion to f64 is exact"
-  )]
   pub fn point_count(self, required: f64, range: (f64, f64), dx: f64) -> Result<usize, Report> {
     if required.is_nan() {
       return make_error!(
@@ -42,7 +39,7 @@ impl MaxGridPoints {
         number_text(dx)
       );
     }
-    if required > self.0 as f64 {
+    if required > self.0.to_f64_exact() {
       return Err(Report::new(GridPointLimitExceeded {
         required,
         limit: self,

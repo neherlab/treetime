@@ -1,13 +1,13 @@
 #![expect(
-  trivial_numeric_casts,
   unsafe_code,
   clippy::multiple_unsafe_ops_per_block,
   clippy::undocumented_unsafe_blocks,
-  reason = "OpenBLAS returns C integer types that differ by platform; calls OpenBLAS introspection functions through FFI; each block reads one C string returned by OpenBLAS; the OpenBLAS introspection functions take no arguments and return static data"
+  reason = "calls OpenBLAS introspection functions through FFI; each block reads one C string returned by OpenBLAS; the OpenBLAS introspection functions take no arguments and return static data"
 )]
 
 use crate::io::json::{JsonPretty, json_write_str};
 use deser::Serialize;
+use eyre::Report;
 use std::ffi::{CStr, c_char, c_int};
 
 unsafe extern "C" {
@@ -18,18 +18,10 @@ unsafe extern "C" {
   fn openblas_get_num_procs() -> c_int;
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
-pub fn get_openblas_info_str() -> String {
-  json_write_str(&get_openblas_info(), JsonPretty(true)).unwrap()
+pub fn get_openblas_info_str() -> Result<String, Report> {
+  json_write_str(&get_openblas_info(), JsonPretty(true))
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub fn get_openblas_info() -> OpenBlasInfo {
   unsafe {
     let config = get_c_string(openblas_get_config());
@@ -47,8 +39,8 @@ pub fn get_openblas_info() -> OpenBlasInfo {
       config,
       core_name: corename,
       parallel_mode,
-      num_threads: num_threads as i32,
-      num_procs: num_procs as i32,
+      num_threads,
+      num_procs,
     }
   }
 }

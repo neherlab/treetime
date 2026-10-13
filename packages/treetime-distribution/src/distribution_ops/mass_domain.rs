@@ -3,6 +3,7 @@ use crate::{Distribution, DistributionFunction};
 use eyre::Report;
 use ndarray::Array1;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, MaxGridPoints, Side, SoftTailLaw};
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
 pub fn rewindow_to_mass(
@@ -67,10 +68,6 @@ pub(crate) fn mass_bounded_domain(profile: &MassProfile, eps: f64) -> Result<(f6
   Ok((lo, hi))
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn resample_to_mass_window(
   normalized: &DistributionFunction<f64, NegLog>,
   lo: f64,
@@ -83,9 +80,11 @@ pub(crate) fn resample_to_mass_window(
   }
   let mass_width = hi - lo;
   let floor_dx = normalized.dx();
-  let target_dx = mass_width / (grid_points.saturating_sub(1).max(1) as f64);
+  let target_dx = mass_width / grid_points.saturating_sub(1).max(1).to_f64_exact();
   let dx = target_dx.min(floor_dx);
-  let required = ((mass_width / dx).ceil() + 1.0).max(grid_points as f64).max(2.0);
+  let required = ((mass_width / dx).ceil() + 1.0)
+    .max(grid_points.to_f64_exact())
+    .max(2.0);
   let n_points = max_points.point_count(required, (lo, hi), dx)?;
   let resampled = normalized.resample_range_n_points((lo, hi), n_points)?;
   let resampled = refit_soft_tails(resampled)?;
@@ -154,10 +153,6 @@ fn soft_edge(profile: &MassProfile, slope: f64, tail_mass: f64, target: f64, sid
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn trim_into_grid(profile: &MassProfile, grid_target: f64, side: Side) -> f64 {
   let plain = &profile.plain;
   let dx = profile.dx;
@@ -178,7 +173,7 @@ fn trim_into_grid(profile: &MassProfile, grid_target: f64, side: Side) -> f64 {
         Side::Right => plain[j] + 0.5 * dp - remaining,
       };
       let h = solve_cell_fraction(plain[j], dp, q);
-      return profile.x_min + (j as f64 + h) * dx;
+      return profile.x_min + (j.to_f64_exact() + h) * dx;
     }
     acc += cell_mass;
   }

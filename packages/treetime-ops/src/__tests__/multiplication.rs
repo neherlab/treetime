@@ -1,14 +1,10 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::multiplication::*;
   use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use std::iter::repeat_n;
+  use treetime_utils::cast::ToF64Exact;
 
   #[test]
   fn test_multiply_many_empty() {
@@ -51,7 +47,7 @@ mod tests {
     assert!(!result.normalized.is_empty());
     assert!(result.log_scale.is_finite());
 
-    let expected_log_scale = (n as f64) * small_val.ln();
+    let expected_log_scale = n.to_f64_exact() * small_val.ln();
     assert_ulps_eq!(result.log_scale, expected_log_scale, max_ulps = 4);
   }
 

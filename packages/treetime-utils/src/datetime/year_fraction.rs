@@ -1,3 +1,4 @@
+use crate::cast::ToF64Exact;
 use crate::datetime::date_range::DateRange;
 use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 use chronoutil::RelativeDuration;
@@ -13,47 +14,41 @@ pub fn date_range_to_year_fraction_range(date_range: &DateRange) -> (f64, f64) {
   (begin, end)
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub fn date_to_year_fraction(date: &DateTime<Utc>) -> f64 {
   let year = date.year();
   assert!(year >= 1);
-  let frac = (date.ordinal() as f64 - 0.5) / days_in_year(year) as f64;
-  year as f64 + frac
+  let frac = (date.ordinal().to_f64_exact() - 0.5) / days_in_year(year).to_f64_exact();
+  year.to_f64_exact() + frac
 }
 
 pub fn year_fraction_to_datestring(year_fraction: f64) -> String {
   year_fraction_to_date(year_fraction).format("%Y-%m-%d").to_string()
 }
 
-#[expect(
-  clippy::as_conversions,
-  clippy::cast_precision_loss,
-  reason = "a millisecond count between two dates is far below 2^52"
-)]
 pub fn year_fraction_days_between(from: f64, to: f64) -> f64 {
-  (year_fraction_to_date(to) - year_fraction_to_date(from)).num_milliseconds() as f64 / MILLISECONDS_PER_DAY
+  (year_fraction_to_date(to) - year_fraction_to_date(from))
+    .num_milliseconds()
+    .to_f64_exact()
+    / MILLISECONDS_PER_DAY
 }
 
 #[expect(
   clippy::as_conversions,
   clippy::disallowed_methods,
-  reason = "year and second counts cast to the width the chrono API needs; Duration::from_secs_f64 takes a within-year second span that is finite by construction"
+  reason = "the integer part of the year fraction casts to the i32 year that chrono takes; Duration::from_secs_f64 panics on the negative span of a year before 1 CE, see kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md"
 )]
 pub fn year_fraction_to_date(year_fraction: f64) -> DateTime<Utc> {
   let year = year_fraction.trunc() as i32;
   let fraction = year_fraction.fract();
-  let seconds_in_year = (days_in_year(year) as u64) * SECONDS_PER_DAY;
-  let seconds_since_year_start = seconds_in_year as f64 * fraction;
+  let seconds_in_year = u64::from(days_in_year(year)) * SECONDS_PER_DAY;
+  let seconds_since_year_start = seconds_in_year.to_f64_exact() * fraction;
   let dt = RelativeDuration::from(Duration::from_secs_f64(seconds_since_year_start));
   Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).unwrap() + dt
 }
 
 #[expect(
   clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
+  reason = "December 31 exists in every year that chrono represents, and the callers take the year from a chrono date or pass it on to chrono"
 )]
 fn days_in_year(year: i32) -> u32 {
   NaiveDate::from_ymd_opt(year, 12, 31)

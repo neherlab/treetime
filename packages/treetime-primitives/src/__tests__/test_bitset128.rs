@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::{AsciiChar, BitSet128, BitSet128Status, bitset128};
@@ -310,7 +305,7 @@ mod tests {
 
     assert_eq!(
       cases.len(),
-      subsets.len().pow(n_children as u32),
+      subsets.len().pow(u32::try_from(n_children).unwrap()),
       "enumerated every case"
     );
     assert_eq!(Vec::<String>::new(), disagreements);

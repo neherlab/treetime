@@ -1,7 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
 #![expect(clippy::op_ref, reason = "tests exercise the operator implementations on references")]
 
 #[cfg(test)]

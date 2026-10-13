@@ -7,6 +7,7 @@ use ndarray::Array1;
 use num_traits::Float;
 use std::cmp::min;
 use treetime_utils::array::ndarray::has_uniform_spacing;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
 impl<T: InterpElem> IntoIterator for &Grid<T>
@@ -42,10 +43,6 @@ impl<T: InterpElem> Grid<T> {
     Ok(Self { x_min, dx, n_points })
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   pub fn from_range_n_points(x_min: T, x_max: T, n_points: usize) -> Result<Self, Report>
   where
     T: Float,
@@ -56,7 +53,7 @@ impl<T: InterpElem> Grid<T> {
     if x_max <= x_min {
       return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
     }
-    let dx = (x_max - x_min) / T::from(n_points - 1).unwrap();
+    let dx = (x_max - x_min) / from_count::<T>(n_points - 1);
     Ok(Self { x_min, dx, n_points })
   }
 
@@ -71,7 +68,7 @@ impl<T: InterpElem> Grid<T> {
       return make_error!("x_max ({x_max:?}) must be greater than x_min ({x_min:?})");
     }
     let required = ((x_max - x_min) / dx + T::one()).round();
-    let n_points = max_points.point_count(to_f64(required), (to_f64(x_min), to_f64(x_max)), to_f64(dx))?;
+    let n_points = max_points.point_count(required.into(), (x_min.into(), x_max.into()), dx.into())?;
     if n_points < 2 {
       return make_error!("Grid must have at least 2 points, got {n_points}");
     }
@@ -100,15 +97,11 @@ impl<T: InterpElem> Grid<T> {
     self.x_min
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   pub(crate) fn x_max(&self) -> T
   where
     T: Float,
   {
-    self.x_min + self.dx * T::from(self.n_points - 1).unwrap()
+    self.x_min + self.dx * from_count::<T>(self.n_points - 1)
   }
 
   pub(crate) fn dx(&self) -> T {
@@ -123,21 +116,13 @@ impl<T: InterpElem> Grid<T> {
     self.n_points
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   pub(crate) fn x_at(&self, idx: usize) -> T
   where
     T: Float,
   {
-    self.x_min + self.dx * T::from(idx).unwrap()
+    self.x_min + self.dx * from_count::<T>(idx)
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   pub(crate) fn find_interval_index(&self, x: T) -> usize
   where
     T: Float,
@@ -146,8 +131,11 @@ impl<T: InterpElem> Grid<T> {
     if rel < T::zero() {
       return 0;
     }
-    let idx = rel.floor().to_usize().unwrap();
-    min(idx, self.n_points - 2)
+    let last_interval = self.n_points - 2;
+    rel
+      .floor()
+      .to_usize()
+      .map_or(last_interval, |idx| min(idx, last_interval))
   }
 
   pub fn to_array(&self) -> Array1<T>
@@ -165,6 +153,6 @@ impl<T: InterpElem> Grid<T> {
   }
 }
 
-pub(crate) fn to_f64<T: Float>(value: T) -> f64 {
-  value.to_f64().unwrap_or(f64::NAN)
+pub(crate) fn from_count<T: InterpElem>(count: usize) -> T {
+  count.to_f64_exact().into()
 }

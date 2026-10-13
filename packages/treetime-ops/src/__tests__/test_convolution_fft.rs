@@ -49,6 +49,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn interleaved_lengths() -> Vec<(usize, usize)> {
       let sizes: Vec<(usize, usize)> = (100..1000).step_by(50).map(|g_len| (g_len * 3 + 7, g_len)).collect();
@@ -63,9 +64,8 @@ mod tests {
       &f.conv_fft(g, ConvMode::Full, PaddingMode::Zeros).unwrap() * dx
     }
 
-    #[expect(clippy::as_conversions, reason = "small test indices convert exactly to f64")]
     fn values(len: usize, seed: usize) -> Array1<f64> {
-      Array1::from_shape_fn(len, |i| ((i * 7 + seed * 13) as f64 * 0.37).sin().abs() + 0.01)
+      Array1::from_shape_fn(len, |i| ((i * 7 + seed * 13).to_f64_exact() * 0.37).sin().abs() + 0.01)
     }
   }
 }

@@ -11,11 +11,12 @@ use liblzma::read::XzDecoder;
 use liblzma::write::XzEncoder;
 use log::{debug, error};
 use num::Integer;
-use num_traits::NumCast;
 use std::error::Error;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+const DEFAULT_COMPRESSION_LEVEL: u8 = 2;
 
 // TODO: keep an eye on alternative crates that don't rely on C, and replace when they are stable enough.
 
@@ -232,13 +233,9 @@ pub enum CompressionType {
   None,
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "default compression level 2 is representable in every NumCast integer target"
-)]
 fn get_comp_level<I>(ext: &str) -> Result<I, Report>
 where
-  I: FromStr + Integer + NumCast,
+  I: FromStr + Integer + From<u8>,
   I::Err: Error + Send + Sync + 'static,
 {
   let var_name = format!("{}_COMPRESSION", ext.to_uppercase());
@@ -246,6 +243,6 @@ where
     Some(value) => value
       .parse::<I>()
       .wrap_err_with(|| format!("When parsing compression level '{value}' from environment variable '{var_name}'")),
-    None => Ok(NumCast::from(2).unwrap()),
+    None => Ok(<I as From<u8>>::from(DEFAULT_COMPRESSION_LEVEL)),
   }
 }

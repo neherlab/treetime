@@ -1,4 +1,7 @@
-#![allow(clippy::unwrap_used, reason = "benchmark code: a failed read aborts the benchmark")]
+#![expect(
+  clippy::unwrap_used,
+  reason = "benchmark setup: a failed step aborts the benchmark, as it fails a test"
+)]
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::fmt::Write;

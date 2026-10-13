@@ -36,7 +36,7 @@ fn log_level_str(record: &Record) -> String {
 
 #[expect(
   clippy::expect_used,
-  reason = "one-time process init; a failed hook install is unrecoverable and must abort startup"
+  reason = "the error report hook is installed once per process, before any code that could install another"
 )]
 pub fn global_init() {
   color_eyre::config::HookBuilder::default()

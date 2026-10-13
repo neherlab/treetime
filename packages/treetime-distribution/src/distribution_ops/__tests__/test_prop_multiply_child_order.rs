@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::__tests__::aliases::DistributionPlain;
@@ -14,6 +9,7 @@ mod tests {
   use proptest::prelude::*;
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, SoftTailLaw};
+  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{pretty_assert_ulps_eq, prop_assert_ulps_eq};
 
   const SOFT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.001 });
@@ -88,9 +84,9 @@ mod tests {
 
   fn make_child_message((center, width, sigma, n_points): (f64, f64, f64, usize)) -> DistributionPlain {
     let x_min = center - width / 2.0;
-    let dx = width / (n_points - 1) as f64;
+    let dx = width / (n_points - 1).to_f64_exact();
     let y = Array1::from_shape_fn(n_points, |i| {
-      let x = x_min + dx * i as f64;
+      let x = x_min + dx * i.to_f64_exact();
       (-0.5 * ((x - center) / sigma).powi(2)).exp()
     });
     let f = DistributionFunction::<f64, Plain>::from_start_dx_values(x_min, dx, y)

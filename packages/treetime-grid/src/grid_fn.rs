@@ -1,17 +1,18 @@
 use crate::InterpElem;
 use crate::boundary_behavior::BoundaryBehavior;
-use crate::grid::{Grid, to_f64};
+use crate::grid::{Grid, from_count};
 use crate::grid_edge::GridEdge;
 use crate::hard_approach_law::Side;
 use crate::interp_nonuniform::interp_nonuniform;
 use crate::max_grid_points::MaxGridPoints;
 use approx::{UlpsEq, ulps_eq};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use ndarray::{Array1, s};
 use ndarray_stats::QuantileExt;
 use num::Float;
 use std::fmt::Debug;
 use treetime_utils::array::ndarray::has_uniform_spacing;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,14 +48,6 @@ impl<T: InterpElem> GridFn<T> {
     Self::from_grid_array(grid, y)
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
-  #[expect(
-    clippy::as_conversions,
-    reason = "an array length is far below 2^53, so the conversion to f64 is exact"
-  )]
   pub fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>, max_points: MaxGridPoints) -> Result<Self, Report>
   where
     T: Float + UlpsEq,
@@ -72,9 +65,9 @@ impl<T: InterpElem> GridFn<T> {
 
     let x_min = x[0];
     let x_max = x[x.len() - 1];
-    let range = (to_f64(x_min), to_f64(x_max));
-    let input_dx = (range.1 - range.0) / (x.len() - 1) as f64;
-    max_points.point_count(x.len() as f64, range, input_dx)?;
+    let range = (x_min.into(), x_max.into());
+    let input_dx = (range.1 - range.0) / (x.len() - 1).to_f64_exact();
+    max_points.point_count(x.len().to_f64_exact(), range, input_dx)?;
 
     if has_uniform_spacing(x) {
       let grid = Grid::from_array(x)?;
@@ -83,8 +76,8 @@ impl<T: InterpElem> GridFn<T> {
 
     let dx = find_min_spacing(x)?;
     let required = ((x_max - x_min) / dx).ceil() + T::one();
-    let n_points = max_points.point_count(to_f64(required), range, to_f64(dx))?;
-    let dx = (x_max - x_min) / T::from(n_points - 1).unwrap();
+    let n_points = max_points.point_count(required.into(), range, dx.into())?;
+    let dx = (x_max - x_min) / from_count::<T>(n_points - 1);
 
     let grid = Grid::from_start_dx(x_min, dx, n_points)?;
     let y_uniform = interp_nonuniform(x, y, n_points, |i| grid.x_at(i))?;
@@ -197,10 +190,6 @@ impl<T: InterpElem> GridFn<T> {
     Ok(self.interpolate_at(xi, idx))
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   fn edge(&self, side: Side) -> GridEdge
   where
     T: Float,
@@ -210,31 +199,27 @@ impl<T: InterpElem> GridFn<T> {
       Side::Right => (self.grid.x_max(), self.y[self.grid.n_points() - 1]),
     };
     GridEdge {
-      t: t.to_f64().unwrap(),
-      y: y.to_f64().unwrap(),
+      t: t.into(),
+      y: y.into(),
     }
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   fn extrapolate(&self, behavior: BoundaryBehavior, xi: T, side: Side) -> Result<T, Report>
   where
     T: Float,
   {
     match behavior {
       BoundaryBehavior::Linear(law) => {
-        let value = law.eval(self.edge(side), xi.to_f64().unwrap());
-        Ok(T::from(value).unwrap())
+        let value = law.eval(self.edge(side), xi.into());
+        Ok(value.into())
       },
       BoundaryBehavior::HardApproach(law) => {
-        let xi_f64 = xi.to_f64().unwrap();
+        let xi_f64: f64 = xi.into();
         if (side == Side::Left && xi_f64 < law.t_hard) || (side == Side::Right && xi_f64 > law.t_hard) {
           return Ok(T::zero());
         }
         let value = law.eval(self.edge(side), xi_f64);
-        Ok(T::from(value).unwrap())
+        Ok(value.into())
       },
       BoundaryBehavior::Hard => Ok(T::zero()),
       BoundaryBehavior::Error => {
@@ -323,10 +308,6 @@ impl<T: InterpElem> GridFn<T> {
   }
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 fn find_min_spacing<T>(x: &Array1<T>) -> Result<T, Report>
 where
   T: Float + Debug,
@@ -341,7 +322,9 @@ where
     return make_error!("x array must be sorted in ascending order");
   }
 
-  let min_dx = *diffs.min().unwrap();
+  let min_dx = *diffs
+    .min()
+    .wrap_err("When finding the smallest spacing of the input array")?;
 
   if !min_dx.is_finite() || min_dx <= T::zero() {
     return make_error!("Invalid spacing in input array: {min_dx:?}");

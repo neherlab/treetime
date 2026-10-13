@@ -1,3 +1,4 @@
+use crate::cast::ToF64Exact;
 use eyre::Report;
 use ndarray::{Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, ShapeBuilder, Zip};
 use ndarray_rand::RandomExt;
@@ -130,25 +131,32 @@ pub fn sorted<T: FloatCore + Clone>(arr: &Array1<T>) -> Array1<T> {
   result
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "an owned Array1 is contiguous, so as_slice_mut is always Some"
-)]
+pub fn partition_point<T>(arr: &Array1<T>, mut pred: impl FnMut(&T) -> bool) -> usize {
+  if let Some(values) = arr.as_slice() {
+    values.partition_point(pred)
+  } else {
+    arr.iter().take_while(|&value| pred(value)).count()
+  }
+}
+
 pub fn sort_inplace<T: FloatCore>(arr: &mut Array1<T>) {
-  arr.as_slice_mut().unwrap().sort_by_key(|x| OrderedFloat(*x));
+  if let Some(values) = arr.as_slice_mut() {
+    values.sort_by_key(|x| OrderedFloat(*x));
+  } else {
+    *arr = Array1::from_iter(arr.iter().copied().sorted_by_key(|x| OrderedFloat(*x)));
+  }
 }
 
 const MAX_SPACING_ULPS: f64 = 64.0;
 
-#[expect(clippy::unwrap_used, reason = "MAX_SPACING_ULPS is representable in any Float T")]
-pub fn has_uniform_spacing<T: Float>(grid: &Array1<T>) -> bool {
+pub fn has_uniform_spacing<T: Float + From<f64>>(grid: &Array1<T>) -> bool {
   if grid.len() < 2 {
     return true;
   }
 
   let spacing = grid[1] - grid[0];
   let scale = grid[0].abs().max(grid[grid.len() - 1].abs());
-  let tolerance = T::from(MAX_SPACING_ULPS).unwrap() * scale * T::epsilon();
+  let tolerance = <T as From<f64>>::from(MAX_SPACING_ULPS) * scale * T::epsilon();
   grid
     .windows(2)
     .into_iter()

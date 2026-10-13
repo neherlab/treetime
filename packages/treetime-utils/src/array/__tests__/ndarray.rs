@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   #![expect(
@@ -187,10 +182,11 @@ mod tests {
   }
 
   mod helpers {
+    use crate::cast::ToF64Exact;
     use ndarray::Array1;
 
     pub(super) fn regenerate_uniform(x_min: f64, dx: f64, n: usize) -> Array1<f64> {
-      Array1::from_shape_fn(n, |i| x_min + dx * i as f64)
+      Array1::from_shape_fn(n, |i| x_min + dx * i.to_f64_exact())
     }
   }
 }

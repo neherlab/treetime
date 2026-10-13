@@ -1,5 +1,6 @@
 use crate::piecewise_fn::PiecewiseFnBase;
 use ndarray::Array1;
+use treetime_utils::array::ndarray::partition_point;
 
 #[derive(Debug, Clone)]
 pub struct PiecewiseLinearFn {
@@ -43,7 +44,7 @@ impl PiecewiseLinearFn {
       return self.base.values()[n - 1];
     }
 
-    let idx = self.base.breakpoints_slice().partition_point(|&bp| bp < t);
+    let idx = partition_point(self.base.breakpoints(), |&bp| bp < t);
     let i = idx.saturating_sub(1);
 
     let t0 = self.base.breakpoints()[i];

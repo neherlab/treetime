@@ -1,11 +1,7 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "small index and state counts convert to f64 exactly"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::array::softmax_with_log_norm::*;
+  use crate::cast::ToF64Exact;
   use crate::pretty_assert_neg_inf;
   use approx::assert_ulps_eq;
   use ndarray::Array1;
@@ -72,7 +68,7 @@ mod tests {
     let log_vec = Array1::from_elem(n_states, NEG_INF);
     let (normalized, log_norm) = softmax_with_log_norm(log_vec.view());
 
-    let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states as f64);
+    let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact());
     assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
     pretty_assert_neg_inf!(log_norm, "expected NEG_INFINITY, got {log_norm}");
   }
@@ -87,7 +83,7 @@ mod tests {
     let log_vec = Array1::from_elem(n_states, 0.0);
     let (normalized, log_norm) = softmax_with_log_norm(log_vec.view());
 
-    let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states as f64);
+    let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact());
     assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
     assert!(log_norm.is_finite());
   }

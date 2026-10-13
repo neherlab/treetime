@@ -50,15 +50,11 @@ impl AsciiChar {
     Ok(Self(value))
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "narrowing char to u8 is exact after the is_ascii guard"
-  )]
   pub fn try_from_char(value: char) -> Result<Self, Report> {
     if !value.is_ascii() {
       return make_error!("AsciiChar: '{value}' is not ASCII");
     }
-    Ok(Self(value as u8))
+    Ok(Self(u8::try_from(value)?))
   }
 
   pub const fn from_byte_unchecked(value: u8) -> Self {
@@ -68,6 +64,15 @@ impl AsciiChar {
 
   pub const fn inner(&self) -> u8 {
     self.0
+  }
+
+  pub fn table<T>(mut entry: impl FnMut(AsciiChar) -> T) -> [T; 128] {
+    let mut byte = 0_u8;
+    [(); 128].map(|()| {
+      let c = Self(byte);
+      byte += 1;
+      entry(c)
+    })
   }
 }
 

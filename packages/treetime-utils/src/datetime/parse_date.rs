@@ -1,9 +1,9 @@
 use crate::datetime::date_range::DateRange;
-use crate::datetime::datetime::LAST_NANOSECOND_OF_DAY;
+use crate::datetime::datetime::{LAST_NANOSECOND, NOON};
 use crate::datetime::options::{DateParserOptions, TimeOfDay};
 use crate::datetime::year_fraction::year_fraction_to_date;
 use crate::make_error;
-use chrono::{DateTime, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, NaiveDate, NaiveTime, TimeZone, Utc};
 use eyre::{Report, WrapErr};
 use regex::Regex;
 use std::sync::LazyLock;
@@ -83,10 +83,6 @@ pub fn parse_date_range(date_range_str: &str, options: &DateParserOptions) -> Re
   make_error!("Unrecognized date range format: {date_range_str}")
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 pub fn parse_date_with_format(
   date_str: impl AsRef<str>,
   format: impl AsRef<str>,
@@ -94,26 +90,23 @@ pub fn parse_date_with_format(
 ) -> Result<DateTime<Utc>, Report> {
   let date_str = date_str.as_ref();
   let format = format.as_ref();
-  NaiveDate::parse_from_str(date_str, format)
-    .map(|naive_date| match options.default_time_of_day {
-      TimeOfDay::Dawn => naive_date.and_hms_opt(0, 0, 0).unwrap(),
-      TimeOfDay::Noon => naive_date.and_hms_opt(12, 0, 0).unwrap(),
-      TimeOfDay::Dusk => {
-        let (hour, minute, second, nanosecond) = LAST_NANOSECOND_OF_DAY;
-        naive_date.and_hms_nano_opt(hour, minute, second, nanosecond).unwrap()
-      },
-      TimeOfDay::Custom(time) => naive_date.and_time(time),
-      TimeOfDay::CustomFn(func) => naive_date.and_time(func(&naive_date)),
-    })
-    .map(|naive_datetime| Utc.from_utc_datetime(&naive_datetime))
-    .wrap_err_with(|| format!("When parsing date '{date_str}' using format '{format}'"))
+  let naive_date = NaiveDate::parse_from_str(date_str, format)
+    .wrap_err_with(|| format!("When parsing date '{date_str}' using format '{format}'"))?;
+  let time = match options.default_time_of_day {
+    TimeOfDay::Dawn => NaiveTime::MIN,
+    TimeOfDay::Noon => NOON,
+    TimeOfDay::Dusk => LAST_NANOSECOND,
+    TimeOfDay::Custom(time) => time,
+    TimeOfDay::CustomFn(func) => func(&naive_date),
+  };
+  Ok(Utc.from_utc_datetime(&naive_date.and_time(time)))
 }
 
 static DATE_RANGE_REGEX: LazyLock<Vec<(Regex, String)>> = LazyLock::new(create_date_range_regexes);
 
 #[expect(
   clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
+  reason = "the patterns combine fixed date and separator literals, and the date parsing tests compile every one of them"
 )]
 fn create_date_range_regexes() -> Vec<(Regex, String)> {
   #[rustfmt::skip]

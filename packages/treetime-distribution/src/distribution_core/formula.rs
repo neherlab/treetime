@@ -5,6 +5,7 @@ use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
 use std::fmt;
 use std::sync::Arc;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error};
 
 const FORMULA_GRID_SIZE: usize = 200;
@@ -49,14 +50,10 @@ impl<Y: YAxisPolicy> DistributionFormula<Y> {
     self.t_max
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   pub(crate) fn likely_time(&self) -> Result<f64> {
     let n_points = FORMULA_GRID_SIZE;
     let t = Array1::from_shape_fn(n_points, |i| {
-      self.t_min + (self.t_max - self.t_min) * (i as f64 / (n_points - 1) as f64)
+      self.t_min + (self.t_max - self.t_min) * (i.to_f64_exact() / (n_points - 1).to_f64_exact())
     });
     let values = self.eval_many(&t).wrap_err_with(|| {
       format!(

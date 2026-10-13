@@ -1,3 +1,4 @@
+use crate::cast::ToF64Exact;
 const SINGULAR_DENOM_EPS: f64 = 1e-30;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -7,12 +8,8 @@ pub struct LineFit {
 }
 
 impl LineFit {
-  #[expect(
-    clippy::as_conversions,
-    reason = "sample count to f64; exact for any realistic input length"
-  )]
   pub fn least_squares(xs: &[f64], ys: &[f64]) -> LineFit {
-    let n = xs.len() as f64;
+    let n = xs.len().to_f64_exact();
     let sum_x: f64 = xs.iter().sum();
     let sum_y: f64 = ys.iter().sum();
     let sum_xx: f64 = xs.iter().map(|x| x * x).sum();

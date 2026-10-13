@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::__tests__::aliases::DistributionPlain;
@@ -15,6 +10,7 @@ mod tests {
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
+  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   const SOFT: BoundaryBehavior = BoundaryBehavior::Linear(SoftTailLaw { slope: -0.001 });
@@ -150,9 +146,9 @@ mod tests {
   fn make_gaussian(mu: f64, sigma: f64, n_points: usize) -> DistributionPlain {
     let x_min = mu - 5.0 * sigma;
     let x_max = mu + 5.0 * sigma;
-    let dx = (x_max - x_min) / (n_points - 1) as f64;
+    let dx = (x_max - x_min) / (n_points - 1).to_f64_exact();
     let y = Array1::from_shape_fn(n_points, |i| {
-      let x = x_min + dx * (i as f64);
+      let x = x_min + dx * i.to_f64_exact();
       (-0.5 * ((x - mu) / sigma).powi(2)).exp()
     });
     let f = DistributionFunction::<f64, Plain>::from_start_dx_values(x_min, dx, y).unwrap();
@@ -191,9 +187,9 @@ mod tests {
   }
 
   fn make_function(x_min: f64, x_max: f64, n: usize, peak_at: f64, sigma: f64) -> DistributionFunction<f64, Plain> {
-    let dx = (x_max - x_min) / (n - 1) as f64;
+    let dx = (x_max - x_min) / (n - 1).to_f64_exact();
     let y = Array1::from_shape_fn(n, |i| {
-      let x = x_min + dx * (i as f64);
+      let x = x_min + dx * i.to_f64_exact();
       (-0.5 * ((x - peak_at) / sigma).powi(2)).exp()
     });
     DistributionFunction::<f64, Plain>::from_start_dx_values(x_min, dx, y).unwrap()

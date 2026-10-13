@@ -160,18 +160,14 @@ fn multiply_range_function<Y: YAxisPolicy>(
   }
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub(crate) fn multiply_functions<Y: YAxisPolicy>(
   functions: &[&DistributionFunction<f64, Y>],
   max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   let ordered = canonical_operand_order(functions);
-  let (&first, rest) = ordered
-    .split_first()
-    .expect("multiply_functions requires at least one operand");
+  let Some((&first, rest)) = ordered.split_first() else {
+    return make_internal_error!("Multiplication of distribution functions requires at least one operand");
+  };
 
   let domains: Vec<HardDomain> = ordered.iter().copied().map(function_hard_domain).collect();
   match multiplication_support_intersection(&domains) {
@@ -184,11 +180,7 @@ pub(crate) fn multiply_functions<Y: YAxisPolicy>(
       Ok(Distribution::point(t, amplitude))
     },
     SupportIntersection::Interval(bounds) => {
-      let dx = ordered
-        .iter()
-        .map(|f| f.dx())
-        .reduce(f64::min)
-        .expect("multiply_functions requires at least one operand");
+      let dx = rest.iter().map(|f| f.dx()).fold(first.dx(), f64::min);
       let n_points = distribution_support_n_points(bounds, dx, max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
 
@@ -218,19 +210,11 @@ fn canonical_operand_order<'a, Y: YAxisPolicy>(
   ordered
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
-fn compose_product_tail(tails: impl Iterator<Item = BoundaryBehavior>) -> Result<BoundaryBehavior, Report> {
-  let mut composed: Option<BoundaryBehavior> = None;
-  for tail in tails {
-    composed = Some(match composed {
-      None => tail,
-      Some(current) => compose_multiplication_tail(current, tail)?,
-    });
-  }
-  Ok(composed.expect("compose_product_tail requires at least one operand"))
+fn compose_product_tail(mut tails: impl Iterator<Item = BoundaryBehavior>) -> Result<BoundaryBehavior, Report> {
+  let Some(first) = tails.next() else {
+    return make_internal_error!("Composition of product tails requires at least one operand");
+  };
+  tails.try_fold(first, compose_multiplication_tail)
 }
 
 fn multiply_formula_formula<Y: YAxisPolicy>(

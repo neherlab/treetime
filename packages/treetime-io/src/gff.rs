@@ -37,10 +37,6 @@ pub fn gff3_cds_read(mut reader: impl Read) -> Result<Vec<GffCdsFeature>, Report
   parse_gff3_cds_features(&contents).wrap_err("When reading GFF3")
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "each grouped feature has at least one row, so rows.first() is Some by construction"
-)]
 fn parse_gff3_cds_features(contents: &str) -> Result<Vec<GffCdsFeature>, Report> {
   let mut raw_features: BTreeMap<String, Vec<RawCdsRow>> = BTreeMap::new();
 
@@ -95,8 +91,11 @@ fn parse_gff3_cds_features(contents: &str) -> Result<Vec<GffCdsFeature>, Report>
     .into_iter()
     .map(|(name, mut rows)| {
       rows.sort_by_key(|row| (row.start, row.end));
-      let strand = rows.first().expect("features are non-empty").strand.clone();
-      let seqid = rows.first().expect("features are non-empty").seqid.clone();
+      let Some(first) = rows.first() else {
+        return make_error!("CDS '{name}' has no feature rows");
+      };
+      let strand = first.strand.clone();
+      let seqid = first.seqid.clone();
 
       if rows.iter().any(|row| row.strand != strand) {
         return make_error!("CDS feature rows for CDS '{name}' use multiple strands");

@@ -10,6 +10,7 @@ use ndarray::{Array1, array, s};
 use treetime_grid::{BoundaryBehavior, MaxGridPoints};
 use treetime_ops::convolve_fft;
 use treetime_utils::array::ndarray::{has_uniform_spacing, max_or, min_or};
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
 const CONV_TRUST_FRACTION: f64 = 1e-13;
@@ -152,10 +153,6 @@ fn convolution_function_function<Y: SupportsConvolution>(
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn convolution_function_function_fine<Y: SupportsConvolution>(
   a: &DistributionFunction<f64, Y>,
   b: &DistributionFunction<f64, Y>,
@@ -198,7 +195,7 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
   }
 
   let result_range = (a.x_min() + b.x_min(), a.x_max() + b.x_max());
-  max_points.point_count((a.len() + b.len() - 1) as f64, result_range, dx)?;
+  max_points.point_count((a.len() + b.len() - 1).to_f64_exact(), result_range, dx)?;
   let conv = convolve_fft(dx, &pa, &pb)?;
 
   let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx)? else {
@@ -207,7 +204,7 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
     return guarded_empty_result("convolution", a_domain, b_domain);
   };
 
-  let x_min = a.x_min() + b.x_min() + (reconstructed.start_offset as f64) * dx;
+  let x_min = a.x_min() + b.x_min() + reconstructed.start_offset.to_f64_exact() * dx;
 
   let offset = peak_a + peak_b;
   let y = reconstructed.neg_log.mapv(|v| Y::from_neg_log(v + offset));
@@ -227,18 +224,14 @@ fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
   ))
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(super) fn coarsen_convolution<Y: SupportsConvolution>(
   conv_distr: DistributionFunction<f64, Y>,
   coarse_dx: f64,
   max_points: MaxGridPoints,
 ) -> Result<Distribution<Y>, Report> {
   let range = conv_distr.x_max() - conv_distr.x_min();
-  let coarse_points = (range / coarse_dx).round() as usize + 1;
-  if coarse_points < 2 {
+  let coarse_intervals = (range / coarse_dx).round();
+  if coarse_intervals.is_nan() || coarse_intervals < 1.0 {
     return Ok(Distribution::Function(conv_distr));
   }
   Ok(Distribution::Function(conv_distr.resample_dx(coarse_dx, max_points)?))
@@ -254,11 +247,7 @@ fn to_peak_normalized_plain<Y: SupportsConvolution>(y: &Array1<f64>) -> (Array1<
   (plain, peak)
 }
 
-#[expect(
-  clippy::as_conversions,
-  clippy::integer_division,
-  reason = "count/index numeric cast is exact for the domain range; integer division is the intended floor division"
-)]
+#[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
 fn reconstruct_neg_log_tails(conv: &Array1<f64>, dx: f64) -> Result<Option<ReconstructedConv>, Report> {
   let peak = max_or(conv, 0.0);
   if peak <= 0.0 {
@@ -279,8 +268,8 @@ fn reconstruct_neg_log_tails(conv: &Array1<f64>, dx: f64) -> Result<Option<Recon
     return make_error!("Convolution left too few trusted points to reconstruct tails");
   }
 
-  let left_slope = (trusted_y[margin] - trusted_y[0]) / (margin as f64 * dx);
-  let right_slope = (trusted_y[n - 1] - trusted_y[n - 1 - margin]) / (margin as f64 * dx);
+  let left_slope = (trusted_y[margin] - trusted_y[0]) / (margin.to_f64_exact() * dx);
+  let right_slope = (trusted_y[n - 1] - trusted_y[n - 1 - margin]) / (margin.to_f64_exact() * dx);
 
   let left_start = if first > 0 && left_slope < 0.0 { 0 } else { first };
   let right_end = if last + 1 < conv.len() && right_slope > 0.0 {
@@ -294,10 +283,10 @@ fn reconstruct_neg_log_tails(conv: &Array1<f64>, dx: f64) -> Result<Option<Recon
     neg_log[i - left_start] = trusted_y[i - first];
   }
   for i in left_start..first {
-    neg_log[i - left_start] = trusted_y[0] + left_slope * ((i as f64 - first as f64) * dx);
+    neg_log[i - left_start] = trusted_y[0] + left_slope * ((i.to_f64_exact() - first.to_f64_exact()) * dx);
   }
   for i in (last + 1)..=right_end {
-    neg_log[i - left_start] = trusted_y[n - 1] + right_slope * ((i as f64 - last as f64) * dx);
+    neg_log[i - left_start] = trusted_y[n - 1] + right_slope * ((i.to_f64_exact() - last.to_f64_exact()) * dx);
   }
 
   Ok(Some(ReconstructedConv {

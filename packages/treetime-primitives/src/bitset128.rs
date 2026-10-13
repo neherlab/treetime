@@ -2,6 +2,7 @@ use crate::seq_char::AsciiChar;
 use auto_ops::{impl_op_ex, impl_op_ex_commutative};
 use itertools::Itertools;
 use std::borrow::Borrow;
+use treetime_utils::cast::u32_to_usize;
 
 #[expect(
   variant_size_differences,
@@ -35,12 +36,8 @@ impl BitSet128 {
     self.bits == 0
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   pub fn len(&self) -> usize {
-    self.bits.count_ones() as usize
+    u32_to_usize(self.bits.count_ones())
   }
 
   #[expect(
@@ -145,7 +142,7 @@ impl BitSet128 {
 
   #[expect(
     clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
+    reason = "the trailing zero count of a non-empty 128-bit set is below 128"
   )]
   fn first(&self) -> Option<AsciiChar> {
     (!self.is_empty()).then_some(AsciiChar::from_byte_unchecked(self.bits.trailing_zeros() as u8))
@@ -157,7 +154,7 @@ impl BitSet128 {
 
   #[expect(
     clippy::expect_used,
-    reason = "crash-on-empty contract; get_one_maybe is the checked variant"
+    reason = "callers ask for the state of a set they know to be non-empty"
   )]
   pub fn get_one(&self) -> AsciiChar {
     self.get_one_maybe().expect("BitSet128 is empty")
@@ -202,22 +199,16 @@ impl<'a> FromIterator<&'a u8> for BitSet128 {
 }
 
 impl FromIterator<char> for BitSet128 {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> Self {
-    iter.into_iter().map(|c| c as u8).collect()
+    let mut set = Self::new();
+    set.extend(iter.into_iter().map(u32::from));
+    set
   }
 }
 
 impl<'a> FromIterator<&'a char> for BitSet128 {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> Self {
-    iter.into_iter().map(|&c| c as u8).collect()
+    iter.into_iter().copied().collect()
   }
 }
 
@@ -252,12 +243,8 @@ impl From<u8> for BitSet128 {
 }
 
 impl From<char> for BitSet128 {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   fn from(c: char) -> Self {
-    BitSet128 { bits: 1 << (c as u8) }
+    Self::from_char(c)
   }
 }
 
@@ -269,14 +256,10 @@ impl From<char> for BitSet128 {
   )
 )]
 impl std::fmt::Display for BitSet128 {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let chars: String = (0..128)
+    let chars: String = (0..128_u8)
       .filter(|&i| (self.bits & (1 << i)) != 0)
-      .map(|c| c as u8 as char)
+      .map(char::from)
       .join(", ");
     write!(f, "{{{chars}}}")
   }

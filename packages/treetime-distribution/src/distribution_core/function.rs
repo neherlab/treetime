@@ -102,10 +102,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.y()
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   pub(crate) fn interp(&self, x: T) -> Result<T, Report>
   where
     T: Float + UlpsEq,
@@ -113,7 +109,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     let val = self
       .grid_fn
       .interp_with_extrap(x, self.left_extrap, self.right_extrap)?;
-    let prob_zero = T::from(Y::probability_zero()).unwrap();
+    let prob_zero: T = Y::probability_zero().into();
     if prob_zero != T::zero() && val == T::zero() && self.is_beyond_hard_boundary(x) {
       return Ok(prob_zero);
     }
@@ -128,23 +124,21 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(Array1::from_vec(values))
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   fn is_beyond_hard_boundary(&self, x: T) -> bool
   where
     T: Float,
   {
-    let x_f64 = x.to_f64().unwrap();
-    if x_f64 < self.x_min().to_f64().unwrap() {
+    let x_f64: f64 = x.into();
+    let x_min: f64 = self.x_min().into();
+    let x_max: f64 = self.x_max().into();
+    if x_f64 < x_min {
       return match self.left_extrap() {
         BoundaryBehavior::Hard => true,
         BoundaryBehavior::HardApproach(law) => x_f64 < law.t_hard,
         _ => false,
       };
     }
-    if x_f64 > self.x_max().to_f64().unwrap() {
+    if x_f64 > x_max {
       return match self.right_extrap() {
         BoundaryBehavior::Hard => true,
         BoundaryBehavior::HardApproach(law) => x_f64 > law.t_hard,

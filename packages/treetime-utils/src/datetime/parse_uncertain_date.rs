@@ -10,10 +10,6 @@ use std::sync::LazyLock;
 
 const SUPPORTED_YEARS: (u32, u32) = (1, 9999);
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 #[cfg_attr(
   dylint_lib = "custom",
   expect(
@@ -24,16 +20,12 @@ const SUPPORTED_YEARS: (u32, u32) = (1, 9999);
 pub fn parse_date_uncertain(date_uncertain_str: &str, _options: &DateParserOptions) -> Result<DateRange, Report> {
   for regex in DATE_UNCERTAIN_REGEXES.iter() {
     if let Some(caps) = regex.captures(date_uncertain_str) {
-      let (year, month, day) = ["year", "month", "day"]
-        .iter()
-        .map(|name| {
-          caps.name(name).and_then(|s| {
-            let s = s.as_str();
-            if s.chars().all(|c| c == 'X') { None } else { Some(s) }
-          })
+      let [year, month, day] = ["year", "month", "day"].map(|name| {
+        caps.name(name).and_then(|s| {
+          let s = s.as_str();
+          if s.chars().all(|c| c == 'X') { None } else { Some(s) }
         })
-        .collect_tuple()
-        .unwrap();
+      });
 
       if let Ok(Some(range)) = determine_date_range(year, month, day) {
         return Ok(range);
@@ -68,7 +60,7 @@ fn determine_date_range(
 
   match (year, month, day) {
     (Some((year_min, year_max)), Some((month_min, month_max)), Some((day_min, day_max))) => Ok(Some(
-      DateRange::from_ymd((year_min, month_min, day_min), (year_max, month_max, day_max)),
+      DateRange::from_ymd((year_min, month_min, day_min), (year_max, month_max, day_max))?,
     )),
     (Some((year_min, year_max)), Some((month_min, month_max)), None) => {
       let day_min = 1;
@@ -77,12 +69,12 @@ fn determine_date_range(
         Ok(Some(DateRange::from_ymd(
           (year_min, month_min, day_min),
           (year_max, month_max, day_max),
-        )))
+        )?))
       } else {
         Ok(None)
       }
     },
-    (Some((year_min, year_max)), None, None) => Ok(Some(DateRange::from_ymd((year_min, 1, 1), (year_max, 12, 31)))),
+    (Some((year_min, year_max)), None, None) => Ok(Some(DateRange::from_ymd((year_min, 1, 1), (year_max, 12, 31))?)),
     _ => Ok(None),
   }
 }
@@ -98,7 +90,7 @@ static DATE_UNCERTAIN_REGEXES: LazyLock<Vec<Regex>> = LazyLock::new(create_date_
 
 #[expect(
   clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
+  reason = "the formats are fixed literals, and the uncertain date tests compile every one of them"
 )]
 fn create_date_uncertain_regexes() -> Vec<Regex> {
   #[rustfmt::skip]
