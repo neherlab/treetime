@@ -257,7 +257,8 @@ fn prepare_inputs(
     DateConstraints::default()
   };
 
-  let final_sequences = if !params.sequence_outputs_requested || params.branch_length_mode != BranchLengthMode::Marginal {
+  let final_sequences = if !params.sequence_outputs_requested || params.branch_length_mode != BranchLengthMode::Marginal
+  {
     FinalSequences::Skip
   } else if time_marginal.runs_final_round() {
     FinalSequences::FromLastRound

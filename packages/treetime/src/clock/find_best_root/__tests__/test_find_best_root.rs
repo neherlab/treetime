@@ -100,11 +100,7 @@ mod tests {
     let estimated = search_root(&dates_positive_rate(), &brent, true, None)?;
 
     assert_eq!(Some((o!("root"), o!("AB"))), fixed.split_edge);
-    pretty_assert_abs_diff_eq!(
-      0.1675,
-      fixed.split,
-      epsilon = 1e-7
-    );
+    pretty_assert_abs_diff_eq!(0.1675, fixed.split, epsilon = 1e-7);
     assert_eq!(Some((o!("root"), o!("CD"))), estimated.split_edge);
     let intercept = (0.92 - rate * 8057.0) / 4.0;
     pretty_assert_abs_diff_eq!(
@@ -150,11 +146,7 @@ mod tests {
       regression.clock_rate()
     );
     assert_eq!(Some((o!("root"), o!("AB"))), search.split_edge);
-    pretty_assert_abs_diff_eq!(
-      expected_split,
-      search.split,
-      epsilon = 1e-7
-    );
+    pretty_assert_abs_diff_eq!(expected_split, search.split, epsilon = 1e-7);
     pretty_assert_abs_diff_eq!(expected_chisq, regression.chisq(), epsilon = 1e-12);
     Ok(())
   }
@@ -171,11 +163,7 @@ mod tests {
     )?;
 
     assert_eq!(Some((o!("root"), o!("AB"))), search.split_edge);
-    pretty_assert_abs_diff_eq!(
-      0.225,
-      search.split,
-      epsilon = 1e-7
-    );
+    pretty_assert_abs_diff_eq!(0.225, search.split, epsilon = 1e-7);
     let fit = search.result.into_clock_fit()?;
     let intercept = (0.92 - rate * 8054.0) / 4.0;
     pretty_assert_abs_diff_eq!(intercept, fit.model.intercept(), epsilon = 1e-12);

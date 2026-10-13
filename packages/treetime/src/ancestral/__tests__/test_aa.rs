@@ -75,7 +75,13 @@ mod tests {
 
     let (include_leaves, report_unknown) = (false, true);
     let mutations = partition
-      .stream_sequences(&graph, &MutationTrack::AminoAcid(o!("S")), include_leaves, report_unknown, None)
+      .stream_sequences(
+        &graph,
+        &MutationTrack::AminoAcid(o!("S")),
+        include_leaves,
+        report_unknown,
+        None,
+      )
       .unwrap();
     let unknown = partition.alphabet().unknown();
 
