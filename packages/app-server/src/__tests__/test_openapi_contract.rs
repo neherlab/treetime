@@ -381,7 +381,7 @@ mod tests {
       match separated.as_slice() {
         [] => false,
         [CaseStyle::Kebab | CaseStyle::Snake] => false,
-        [_] => styles.contains(&CaseStyle::Lower),
+        [CaseStyle::Lower | CaseStyle::Pascal | CaseStyle::Other] => styles.contains(&CaseStyle::Lower),
         _ => true,
       }
     }

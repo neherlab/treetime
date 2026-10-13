@@ -163,6 +163,7 @@ mod tests {
     use app_backend::app_paths::{AppFolderEnv, AppPaths};
     use app_backend::app_settings::settings::AppPathSettings;
     use app_backend::app_settings::store::AppSettingsStore;
+    use axum::Router;
     use serde_json::json;
     use std::sync::Arc;
     use tempfile::{TempDir, tempdir};
@@ -174,25 +175,11 @@ mod tests {
     }
 
     pub(super) fn local_host() -> LocalApp {
-      let (routers, runs_dir, settings) = local_routers();
-      LocalApp {
-        app: TestApp {
-          router: routers.host,
-          runs_dir,
-        },
-        _settings: settings,
-      }
+      local_app(|routers| routers.host)
     }
 
     pub(super) fn local_renderer() -> LocalApp {
-      let (routers, runs_dir, settings) = local_routers();
-      LocalApp {
-        app: TestApp {
-          router: routers.renderer,
-          runs_dir,
-        },
-        _settings: settings,
-      }
+      local_app(|routers| routers.renderer)
     }
 
     pub(super) async fn finished_run(test: &TestApp) -> String {
@@ -211,7 +198,7 @@ mod tests {
       id
     }
 
-    fn local_routers() -> (LocalRouters, TempDir, TempDir) {
+    fn local_app(router: impl FnOnce(LocalRouters) -> Router) -> LocalApp {
       let dir = tempdir().unwrap();
       let runs_dir = tempdir().unwrap();
       let paths = AppPaths::resolve(
@@ -236,7 +223,13 @@ mod tests {
         }),
       };
       let routers = local_api_routers(server_service(&config).unwrap(), config).unwrap();
-      (routers, runs_dir, dir)
+      LocalApp {
+        app: TestApp {
+          router: router(routers),
+          runs_dir,
+        },
+        _settings: dir,
+      }
     }
   }
 }
