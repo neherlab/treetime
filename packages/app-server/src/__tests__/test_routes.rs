@@ -795,6 +795,13 @@ pub(crate) mod tests {
       })
     }
 
+    #[cfg_attr(
+      dylint_lib = "custom",
+      expect(
+        test_real_sleep,
+        reason = "the test watches the run status through the HTTP API, as a client does, and polls it with a deadline"
+      )
+    )]
     pub(crate) async fn wait_for_status(test: &TestApp, id: &str, status: &str) -> Value {
       for _ in 0..600 {
         let (_, record) = request(test, "GET", &format!("/api/runs/{id}"), None).await;

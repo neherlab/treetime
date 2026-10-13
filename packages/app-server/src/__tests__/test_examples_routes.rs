@@ -15,14 +15,16 @@ mod tests {
     let (status, started) = request(&local.app, "POST", "/api/examples/download", None).await;
     server.release();
     let mut download_events = vec![];
+    let mut kinds = vec![];
     while download_events
       .last()
       .is_none_or(|data: &Value| data["state"] == "running")
     {
       let event = take_events(&mut events, 1).await.remove(0);
       download_events.push(event.data["download"].clone());
-      assert_eq!(json!("examples-download"), event.data["kind"]);
+      kinds.push(event.data["kind"].clone());
     }
+    assert_eq!(vec![json!("examples-download"); kinds.len()], kinds);
     let last = download_events.last().unwrap().clone();
     let (_, state) = request(&local.app, "GET", "/api/examples/download", None).await;
     let (_, catalog) = request(&local.app, "GET", "/api/datasets", None).await;
@@ -157,6 +159,13 @@ mod tests {
       }
     }
 
+    #[cfg_attr(
+      dylint_lib = "custom",
+      expect(
+        spawn_handle_dropped,
+        reason = "the test server serves until the test process ends, so there is no end to join"
+      )
+    )]
     pub(super) fn serve_examples() -> ExamplesServer {
       let gate = Arc::new(Notify::new());
       let waiting = Arc::clone(&gate);
