@@ -1,8 +1,8 @@
 use crate::dialect::NewickAnnotations;
-use crate::grammar::{Rule, matches, parse};
+use crate::grammar::{Rule, matches, parse_match};
 use crate::read::error::{Location, NewickError, NewickErrorKind};
 use crate::read::options::{NewickReadOptions, NewickTree};
-use crate::read::source::{Scan, TextSource, scan_to_semicolon};
+use crate::read::source::{Scan, TextSource, scan_to_semicolon, valid_utf8_prefix};
 use crate::read::tree_text::read_tree_text;
 use std::io::Read;
 use std::str;
@@ -38,7 +38,7 @@ pub fn newick_from_reader(mut reader: impl Read, options: &NewickReadOptions) ->
     Ok(input) => newick_from_str(input, options),
     Err(error) => {
       let valid = bytes.get(..error.valid_up_to()).unwrap_or_default();
-      let location = Location::START.advanced_by(str::from_utf8(valid).unwrap_or_default());
+      let location = Location::START.advanced_by(valid_utf8_prefix(valid));
       Err(NewickError::new(
         NewickErrorKind::InvalidUtf8,
         location,
@@ -126,8 +126,7 @@ fn scan_prefix(text: &str, at_end: bool, annotations: NewickAnnotations) -> usiz
     (false, false) => Rule::tree_scan_plain,
     (false, true) => Rule::tree_scan_plain_final,
   };
-  parse(rule, text)
-    .ok()
+  parse_match(rule, text)
     .and_then(|mut pairs| pairs.next())
     .map_or(0, |prefix| prefix.as_str().len())
 }

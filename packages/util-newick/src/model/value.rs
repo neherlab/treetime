@@ -1,3 +1,4 @@
+use crate::number::parse_number;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
@@ -15,7 +16,7 @@ impl NewickValue {
   pub fn as_f64(&self) -> Option<f64> {
     match self {
       Self::Number(number) => Some(*number),
-      Self::NumberText(text) => text.parse().ok(),
+      Self::NumberText(text) => parse_number(text),
       Self::Boolean(_) | Self::String(_) | Self::Color(_) | Self::Array(_) => None,
     }
   }

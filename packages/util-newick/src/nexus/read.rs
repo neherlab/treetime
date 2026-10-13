@@ -2,8 +2,9 @@ use crate::grammar;
 use crate::grammar::comment_rule;
 use crate::model::comment::NewickComment;
 use crate::model::graph::NewickGraph;
-use crate::nexus::grammar::{Rule, matches, parse, rule_name};
+use crate::nexus::grammar::{Rule, matches, parse, parse_match, rule_name};
 use crate::nexus::types::{NexusCommand, NexusFile, NexusTree};
+use crate::number::parse_number;
 use crate::read::comments::{read_comment, unquote};
 use crate::read::context::MapContext;
 use crate::read::error::{Location, NewickError, NewickErrorKind, NewickWarning, TextIndex};
@@ -181,7 +182,7 @@ enum Header {
 }
 
 fn read_header(text: &str, at_end: bool, location: Location) -> Header {
-  if let Ok(mut pairs) = parse(Rule::nexus_header, text)
+  if let Some(mut pairs) = parse_match(Rule::nexus_header, text)
     && let Some(header) = pairs.next()
   {
     return Header::Found(header.as_span().end());
@@ -202,8 +203,7 @@ fn scan_prefix(text: &str, at_end: bool) -> usize {
   } else {
     Rule::command_scan
   };
-  parse(rule, text)
-    .ok()
+  parse_match(rule, text)
     .and_then(|mut pairs| pairs.next())
     .map_or(0, |prefix| prefix.as_str().len())
 }
@@ -386,7 +386,7 @@ impl CommandReader<'_> {
     for pair in words.chunks(2) {
       if let [key, value] = pair
         && key.eq_ignore_ascii_case("ntax")
-        && let Ok(ntax) = value.parse::<usize>()
+        && let Some(ntax) = parse_number::<usize>(value)
       {
         self.state.ntax = Some(ntax);
       }
@@ -444,11 +444,7 @@ impl CommandReader<'_> {
         (Some(translated), _) => Some(translated.clone()),
         (None, Some(taxa)) if taxa.known.contains(name) => None,
         (None, Some(taxa)) => {
-          if let Some(label) = name
-            .parse::<usize>()
-            .ok()
-            .and_then(|number| taxa.labels.get(number.checked_sub(1)?))
-          {
+          if let Some(label) = parse_number::<usize>(name).and_then(|number| taxa.labels.get(number.checked_sub(1)?)) {
             Some(label.clone())
           } else {
             let message = format!("The tree label {name:?} is neither a taxon label nor a 'Translate' key");

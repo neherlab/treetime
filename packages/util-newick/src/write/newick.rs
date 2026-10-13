@@ -1,6 +1,6 @@
 use crate::dialect::NewickAnnotations;
 use crate::error::{NewickWriteError, WriteContext, write_error};
-use crate::grammar::{Rule, matches, parse};
+use crate::grammar::{Rule, matches, parse_match};
 use crate::model::comment::{EdgeComment, LabelSide, NewickComment, NodeComment, ValueSide};
 use crate::model::data::{NewickEdgeData, SupportSource};
 use crate::model::graph::NewickGraph;
@@ -410,7 +410,7 @@ impl TreeWriter<'_> {
 
 fn splits_back(name: &str, tag: &str) -> bool {
   let text = format!("{name}{tag}");
-  let Ok(pairs) = parse(Rule::network_label_exact, &text) else {
+  let Some(pairs) = parse_match(Rule::network_label_exact, &text) else {
     return false;
   };
   let parts: Vec<(Rule, &str)> = pairs

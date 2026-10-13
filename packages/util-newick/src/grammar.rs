@@ -17,6 +17,17 @@ pub(crate) fn matches(rule: Rule, input: &str) -> bool {
   NewickParser::parse(rule, input).is_ok()
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "a parse failure means that the input does not match the rule, which is the answer the callers ask for"
+  )
+)]
+pub(crate) fn parse_match(rule: Rule, input: &str) -> Option<Pairs<'_, Rule>> {
+  NewickParser::parse(rule, input).ok()
+}
+
 pub(crate) const fn start_rule(dialect: NewickDialect, mode: ReadMode) -> Rule {
   match (dialect.structure, dialect.annotations, mode) {
     (NewickStructure::Classic, NewickAnnotations::Plain, ReadMode::Strict) => Rule::classic_plain_strict,

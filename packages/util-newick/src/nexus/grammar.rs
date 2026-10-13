@@ -15,6 +15,17 @@ pub(crate) fn matches(rule: Rule, input: &str) -> bool {
   NexusParser::parse(rule, input).is_ok()
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "a parse failure means that the input does not match the rule, which is the answer the callers ask for"
+  )
+)]
+pub(crate) fn parse_match(rule: Rule, input: &str) -> Option<Pairs<'_, Rule>> {
+  NexusParser::parse(rule, input).ok()
+}
+
 pub(crate) const fn rule_name(rule: Rule) -> &'static str {
   match rule {
     Rule::header | Rule::nexus_header => "'#NEXUS' header",

@@ -39,8 +39,7 @@ impl<R: Read> TextSource<R> {
         is_invalid: false,
       },
       Err(error) => {
-        let valid = available.get(..error.valid_up_to()).unwrap_or_default();
-        let text = str::from_utf8(valid).unwrap_or_default();
+        let text = valid_utf8_prefix(available);
         let waits_for_more = error.error_len().is_none() && !self.eof;
         Window {
           text,
@@ -125,4 +124,8 @@ pub(crate) fn scan_to_semicolon<'t>(
     ReadMode::Strict => Scan::Unterminated(text),
     ReadMode::Tolerant => Scan::Found(text),
   }
+}
+
+pub(crate) fn valid_utf8_prefix(bytes: &[u8]) -> &str {
+  bytes.utf8_chunks().next().map_or("", |chunk| chunk.valid())
 }

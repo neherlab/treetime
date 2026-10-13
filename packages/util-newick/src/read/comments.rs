@@ -1,8 +1,8 @@
-use crate::grammar::{Rule, matches, parse};
+use crate::grammar::{Rule, matches, parse_match};
 use crate::model::comment::{MrBayesComment, MrBayesKind, NewickComment};
 use crate::model::value::{NewickArray, NewickValue};
 use crate::nhx::{DUPLICATION_VALUES, NhxType};
-use crate::number::format_shortest;
+use crate::number::{format_shortest, parse_hex_byte, parse_number};
 use crate::read::context::MapContext;
 use crate::read::error::{NewickError, NewickErrorKind};
 use pest::iterators::Pair;
@@ -53,9 +53,9 @@ pub(crate) fn is_comment_rule(rule: Rule) -> bool {
 }
 
 pub(crate) fn number_value(text: &str) -> NewickValue {
-  match text.parse::<f64>() {
-    Ok(number) if format_shortest(number).is_ok_and(|shortest| shortest == text) => NewickValue::Number(number),
-    Ok(_) | Err(_) => NewickValue::NumberText(text.to_owned()),
+  match parse_number::<f64>(text) {
+    Some(number) if format_shortest(number).is_ok_and(|shortest| shortest == text) => NewickValue::Number(number),
+    Some(_) | None => NewickValue::NumberText(text.to_owned()),
   }
 }
 
@@ -122,10 +122,7 @@ fn parse_hex_color(token: &Pair<'_, Rule>) -> Option<[u8; 3]> {
   let text = token.as_str();
   let mut color = [0_u8; 3];
   for (channel, start) in color.iter_mut().zip([1, 3, 5]) {
-    *channel = match text.get(start..start + 2).map(|hex| u8::from_str_radix(hex, 16)) {
-      Some(Ok(value)) => value,
-      Some(Err(_)) | None => return None,
-    };
+    *channel = parse_hex_byte(text.get(start..start + 2)?)?;
   }
   Some(color)
 }
@@ -179,16 +176,12 @@ fn nhx_scalar(text: &str, expected: NhxType) -> Option<NewickValue> {
 }
 
 fn nhx_color(text: &str) -> Option<NewickValue> {
-  let channels = match parse(Rule::nhx_color_exact, text) {
-    Ok(pairs) => pairs.flatten().filter(|pair| pair.as_rule() == Rule::color_channel),
-    Err(_) => return None,
-  };
+  let channels = parse_match(Rule::nhx_color_exact, text)?
+    .flatten()
+    .filter(|pair| pair.as_rule() == Rule::color_channel);
   let mut color = [0_u8; 3];
   for (slot, channel) in color.iter_mut().zip(channels) {
-    *slot = match channel.as_str().parse::<u8>() {
-      Ok(value) => value,
-      Err(_) => return None,
-    };
+    *slot = parse_number::<u8>(channel.as_str())?;
   }
   Some(NewickValue::Color(color))
 }

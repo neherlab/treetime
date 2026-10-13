@@ -1,5 +1,6 @@
 use crate::error::{NewickWriteError, WriteContext, write_error};
 use pretty_dtoa::{FmtFloatConfig, dtoa};
+use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct NumberFormat {
@@ -12,6 +13,28 @@ impl NumberFormat {
   pub fn format(&self, value: f64) -> Result<String, NewickWriteError> {
     format_number(value, *self)
   }
+}
+
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "a text that does not parse is not a number of this kind, and the callers keep the text or skip it"
+  )
+)]
+pub(crate) fn parse_number<T: FromStr>(text: &str) -> Option<T> {
+  text.parse().ok()
+}
+
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "a text that does not parse is not a number of this kind, and the callers keep the text or skip it"
+  )
+)]
+pub(crate) fn parse_hex_byte(text: &str) -> Option<u8> {
+  u8::from_str_radix(text, 16).ok()
 }
 
 pub(crate) fn format_shortest(value: f64) -> Result<String, NewickWriteError> {
