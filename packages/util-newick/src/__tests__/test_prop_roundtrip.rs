@@ -156,7 +156,8 @@ mod tests {
             .filter(|&node| !below[node] && !graph.children(node).any(|child| child == hybrid))
             .collect();
           if let Some(&parent) = candidates.get(parent_pick % candidates.len().max(1)) {
-            let mut data = self.edge_data(edge, false, true, true);
+            let (child_internal, child_labeled, child_hybrid) = (false, true, true);
+            let mut data = self.edge_data(edge, child_internal, child_labeled, child_hybrid);
             data
               .occurrence_comments_mut()
               .extend(occurrence_comments(&edge.occurrence, true));

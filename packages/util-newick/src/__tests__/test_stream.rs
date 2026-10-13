@@ -3,6 +3,7 @@ mod tests {
   use crate::__tests__::test_read_basic::tests::helpers::summary;
   use crate::dialect::NewickDialect;
   use crate::model::comment::NewickComment;
+  use crate::read::error::{NewickError, NewickErrorKind};
   use crate::read::options::{NewickReadOptions, ReadMode};
   use crate::read::stream::newick_trees;
   use helpers::{names_and_errors, split_at_first_read};
@@ -46,10 +47,10 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::strict(    ReadMode::Strict,   vec![Ok(vec!["- ".to_owned(), "A ".to_owned()]), Err("line 2, column 4: The tree does not end with ';'".to_owned())])]
+  #[case::strict(    ReadMode::Strict,   vec![Ok(vec!["- ".to_owned(), "A ".to_owned()]), Err(NewickError { kind: NewickErrorKind::Incomplete, offset: 8, line: 2, column: 4, message: "The tree does not end with ';'".to_owned() })])]
   #[case::tolerant(  ReadMode::Tolerant, vec![Ok(vec!["- ".to_owned(), "A ".to_owned()]), Ok(vec!["- ".to_owned(), "B ".to_owned()])])]
   #[trace]
-  fn test_stream_last_tree_without_semicolon(#[case] mode: ReadMode, #[case] expected: Vec<Result<Vec<String>, String>>) {
+  fn test_stream_last_tree_without_semicolon(#[case] mode: ReadMode, #[case] expected: Vec<Result<Vec<String>, NewickError>>) {
     let options = NewickReadOptions {
       mode,
       ..NewickReadOptions::default()
@@ -65,7 +66,13 @@ mod tests {
     assert_eq!(
       vec![
         Ok(vec!["- ".to_owned(), "A ".to_owned()]),
-        Err("line 2, column 3: The input is not valid UTF-8".to_owned()),
+        Err(NewickError {
+          kind: NewickErrorKind::InvalidUtf8,
+          offset: 7,
+          line: 2,
+          column: 3,
+          message: "The input is not valid UTF-8".to_owned(),
+        }),
       ],
       actual
     );
@@ -102,7 +109,7 @@ mod tests {
   #[case::plain_comments_end_at_bracket(  NewickDialect::CLASSIC, vec![Ok(vec!["- ", "A ", "B "]), Ok(vec!["- ", "C ", "D "])])]
   #[case::beast_string_holds_semicolon(   NewickDialect::BEAST,   vec![Ok(vec!["- ", "A ", "B "])])]
   #[trace]
-  fn test_stream_tree_ends_follow_the_annotation_convention(#[case] dialect: NewickDialect, #[case] expected: Vec<Result<Vec<&str>, &str>>) {
+  fn test_stream_tree_ends_follow_the_annotation_convention(#[case] dialect: NewickDialect, #[case] expected: Vec<Result<Vec<&str>, NewickError>>) {
     let options = NewickReadOptions {
       dialect,
       ..NewickReadOptions::default()
@@ -110,24 +117,28 @@ mod tests {
 
     let actual = names_and_errors(b"(A,B)[&a=\"];(C,D)[x\"];".as_slice(), &options);
 
-    let expected: Vec<Result<Vec<String>, String>> = expected
+    let expected: Vec<Result<Vec<String>, NewickError>> = expected
       .into_iter()
-      .map(|tree| tree.map(|names| names.into_iter().map(str::to_owned).collect()).map_err(str::to_owned))
+      .map(|tree| tree.map(|names| names.into_iter().map(str::to_owned).collect()))
       .collect();
     assert_eq!(expected, actual);
   }
 
   mod helpers {
     use super::summary;
+    use crate::read::error::NewickError;
     use crate::read::options::NewickReadOptions;
     use crate::read::stream::newick_trees;
     use std::io::Read;
 
     const FIRST_READ_SIZE: usize = 64 * 1024;
 
-    pub(super) fn names_and_errors(reader: impl Read, options: &NewickReadOptions) -> Vec<Result<Vec<String>, String>> {
+    pub(super) fn names_and_errors(
+      reader: impl Read,
+      options: &NewickReadOptions,
+    ) -> Vec<Result<Vec<String>, NewickError>> {
       newick_trees(reader, options.clone())
-        .map(|tree| tree.map(|tree| summary(&tree.graph)).map_err(|error| error.to_string()))
+        .map(|tree| tree.map(|tree| summary(&tree.graph)))
         .collect()
     }
 

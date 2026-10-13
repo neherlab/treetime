@@ -104,7 +104,9 @@ mod tests {
       let leaf = tree.graph.children(tree.graph.root()).next().unwrap();
       match &tree.graph.node(leaf).comments()[0].comment {
         NewickComment::Plain(text) => text.len(),
-        other => panic!("unexpected comment {other:?}"),
+        other @ (NewickComment::Beast(_) | NewickComment::Nhx(_) | NewickComment::MrBayesMcmc(_)) => {
+          panic!("unexpected comment {other:?}")
+        },
       }
     });
 
