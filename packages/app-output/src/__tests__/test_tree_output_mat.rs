@@ -1,9 +1,7 @@
 #[cfg(test)]
 mod tests {
 
-  use crate::__tests__::test_tree_output::tests::helpers::{
-    Mutations, all_mat_documents, branch_length, c, topology_from,
-  };
+  use crate::__tests__::test_support::tests::{Mutations, all_mat_documents, branch_length, c, topology_from};
   use crate::usher_mat::{MatGapCounts, mat_mutation};
   use eyre::Report;
   use maplit::btreemap;
@@ -209,7 +207,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::test_tree_output::tests::helpers::{
+    use crate::__tests__::test_support::tests::{
       Mutations, NUC_ALPHABET, ancestral_graph, ancestral_setup, annotated, no_mutations, parent_edge, topology_from,
     };
     use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};

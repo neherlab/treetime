@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_tree_output::tests::helpers::{
-    Mutations, NUC_ALPHABET, ancestral_graph, ancestral_setup, auspice, dated_graph, dated_setup, mutation_on,
+  use crate::__tests__::test_support::tests::{
+    Mutations, NUC_ALPHABET, ancestral_graph, ancestral_setup, auspice_tree_of, dated_graph, dated_setup, mutation_on,
   };
   use crate::annotated_graph::{AnnotatedGraph, TreeSequences};
   use crate::output_plan::CommandKind;
@@ -36,7 +36,7 @@ mod tests {
   #[trace]
   fn test_auspice_color_by_needs_a_nucleotide_substitution(#[case] mutations: Mutations) -> Result<(), Report> {
     let setup = ancestral_setup(mutations)?;
-    let actual = auspice(&ancestral_graph(&setup), CommandKind::Ancestral)?;
+    let actual = auspice_tree_of(&ancestral_graph(&setup), CommandKind::Ancestral)?;
     assert_eq!(None, actual.data.meta.display_defaults.color_by);
     Ok(())
   }
@@ -56,14 +56,14 @@ mod tests {
       }),
       ..dated_graph(&setup, None)
     };
-    let actual = auspice(&graph, CommandKind::Timetree)?;
+    let actual = auspice_tree_of(&graph, CommandKind::Timetree)?;
     assert_eq!(Some(o!("bad_branch")), actual.data.meta.display_defaults.color_by);
     Ok(())
   }
 
   mod helpers {
-    use crate::__tests__::test_tree_output::tests::helpers::{
-      NUC_ALPHABET, annotated, auspice, no_mutations, parent_edge, topology_from,
+    use crate::__tests__::test_support::tests::{
+      NUC_ALPHABET, annotated, auspice_tree_of, no_mutations, parent_edge, topology_from,
     };
     use crate::annotated_graph::{AnnotatedGraph, TreeSequences};
     use crate::output_plan::CommandKind;
@@ -95,7 +95,7 @@ mod tests {
         ..annotated(&topology)
       };
       Ok(
-        auspice(&graph, CommandKind::Ancestral)?
+        auspice_tree_of(&graph, CommandKind::Ancestral)?
           .data
           .meta
           .display_defaults

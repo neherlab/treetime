@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_tree_output::tests::helpers::{mugration_graph, mugration_setup, node_key, topology_from};
+  use crate::__tests__::test_support::tests::{mugration_graph, mugration_setup, node_key, topology_from};
   use crate::annotated_graph::AnnotatedTreeView;
   use crate::augur_node_data_traits::build_augur_node_data_traits;
   use crate::trait_tables::{write_trait_confidence_rows, write_traits_rows};

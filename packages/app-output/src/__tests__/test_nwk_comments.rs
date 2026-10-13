@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_tree_output::tests::helpers::{
+  use crate::__tests__::test_support::tests::{
     NUC_ALPHABET, annotated, dated_graph, dated_setup, mugration_graph, mugration_setup, no_mutations, node_key,
     parent_edge, substitution, topology_from,
   };
@@ -195,7 +195,7 @@ mod tests {
   }
 
   #[test]
-  fn test_nwk_comments_mutations_precede_date_as_in_v0() -> Result<(), Report> {
+  fn test_nwk_comments_v0_order_puts_mutations_before_date() -> Result<(), Report> {
     let setup = dated_setup()?;
     let mut edge_mutations = no_mutations(&setup.topology);
     edge_mutations.insert(
@@ -231,7 +231,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::test_tree_output::tests::helpers::{
+    use crate::__tests__::test_support::tests::{
       NUC_ALPHABET, annotated, no_mutations, node_key, parent_edge, topology_from,
     };
     use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
