@@ -212,7 +212,7 @@
       "description": "Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,\nwhere $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;\nzero disables damping. Must be in $[0,1)$.",
       "type": "number",
       "format": "double",
-      "default": 0.75,
+      "default": 0.0,
       "x-cli-flag": "--damping"
     },
     "branch_length_initial_guess": {

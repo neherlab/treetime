@@ -569,7 +569,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
   Default value: `0.1`
 * `--damping <DAMPING>` — Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$, where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation; zero disables damping. Must be in $[0,1)$
 
-  Default value: `0.75`
+  Default value: `0`
 * `--branch-length-initial-guess <BRANCH_LENGTH_INITIAL_GUESS>` — Initial branch length estimate before Newton optimization.
 
    - auto: estimate only edges with missing or invalid branch lengths, preserve valid input values (default) - always: estimate all edges, overwriting input branch lengths - never: use input branch lengths as-is; fails if any are missing
