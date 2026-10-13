@@ -48,7 +48,7 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 
 - CLI entrypoint and `MethodAncestral` parsing: no end-to-end coverage
 - Stdin FASTA path: no multi-record test
-- `fn get_common_length()` error branches: untested
+- `fn common_length()` error branches: untested
 - `fn write_graph()` output files: untested for existence and parse-back
 
 ### Optimize command

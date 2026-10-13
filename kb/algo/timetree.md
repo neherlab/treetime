@@ -31,10 +31,10 @@ separate output, so a refined posterior never feeds back as evidence. See
 
 Before time inference, the timetree pipeline runs one pass of per-edge ML branch-length optimization to seed the belief propagation with better branch lengths than raw input values. This matches v0's `optimize_tree(max_iter=1)` calls (<a id="cite-3"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/10.1093/ve/vex042) [[3](#ref-3)], pipeline description).
 
-v1: `fn optimize_branch_lengths` [packages/treetime/src/timetree/pre_loop.rs#L268](../../packages/treetime/src/timetree/pre_loop.rs#L268), called through `fn ml_optimize` [packages/treetime/src/timetree/pre_loop.rs#L164](../../packages/treetime/src/timetree/pre_loop.rs#L164) twice: before and after rerooting ([packages/treetime/src/timetree/pre_loop.rs#L27-L34](../../packages/treetime/src/timetree/pre_loop.rs#L27-L34)).
+v1: `fn optimize_branch_lengths` [packages/treetime/src/timetree/pre_loop.rs#L209](../../packages/treetime/src/timetree/pre_loop.rs#L209), called through `fn ml_optimize` [packages/treetime/src/timetree/pre_loop.rs#L115](../../packages/treetime/src/timetree/pre_loop.rs#L115) twice: before and after rerooting ([packages/treetime/src/timetree/pre_loop.rs#L27-L71](../../packages/treetime/src/timetree/pre_loop.rs#L27-L71)).
 v0: `optimize_tree(max_iter=1)` in [`packages/legacy/treetime/treetime/treetime.py`](../../packages/legacy/treetime/treetime/treetime.py) at lines 243 and 266.
 
-The pre-step gathers the per-edge contributions of the marginal reconstruction and calls `fn run_optimize_mixed` of the optimize command, or `fn run_optimize_mixed_inner` with a zero indel rate when indels are off [packages/treetime/src/timetree/pre_loop.rs#L277-L300](../../packages/treetime/src/timetree/pre_loop.rs#L277-L300). It uses the `BrentSqrt` method (matching v0's Brent in sqrt(t) space).
+The pre-step gathers the per-edge contributions of the marginal reconstruction and calls `fn run_optimize_mixed` of the optimize command, or `fn run_optimize_mixed_inner` with a zero indel rate when indels are off [packages/treetime/src/timetree/pre_loop.rs#L220-L240](../../packages/treetime/src/timetree/pre_loop.rs#L220-L240). It uses the `BrentSqrt` method (matching v0's Brent in sqrt(t) space).
 
 ---
 
