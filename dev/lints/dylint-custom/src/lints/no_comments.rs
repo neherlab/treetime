@@ -248,7 +248,7 @@ impl EarlyLintPass for NoComments {
             .filter(|file| match &file.name {
                 FileName::Real(name) => name
                     .local_path()
-                    .is_some_and(|path| !is_generated_path(path, self.cargo_out_dir.as_deref())),
+                    .is_some_and(|path| is_checked_path(path, self.cargo_out_dir.as_deref())),
                 _ => false,
             })
             .cloned()
@@ -313,8 +313,10 @@ struct ScannedComment {
     kept: bool,
 }
 
-fn is_generated_path(path: &Path, cargo_out_dir: Option<&Path>) -> bool {
-    cargo_out_dir.is_some_and(|cargo_out_dir| path.starts_with(cargo_out_dir))
+fn is_checked_path(path: &Path, cargo_out_dir: Option<&Path>) -> bool {
+    let is_rust = path.extension().is_some_and(|ext| ext == "rs");
+    let is_generated = cargo_out_dir.is_some_and(|cargo_out_dir| path.starts_with(cargo_out_dir));
+    is_rust && !is_generated
 }
 
 fn report(cx: &EarlyContext<'_>, delete: Span, doc: bool) {
@@ -461,7 +463,9 @@ fn list_has_word(list: &[MetaItemInner], word: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::scan_comments;
+    use std::path::Path;
+
+    use super::{is_checked_path, scan_comments};
 
     fn kept(src: &str) -> Vec<(String, bool)> {
         let prefixes = ["SAFETY:", "TODO", "HACK"].map(str::to_owned);
@@ -469,6 +473,20 @@ mod tests {
             .into_iter()
             .map(|comment| (src[comment.start..comment.end].to_owned(), comment.kept))
             .collect()
+    }
+
+    #[test]
+    fn test_is_checked_path_rust_source_only() {
+        let out_dir = Path::new("/target/debug/build/foo-1/out");
+        assert_eq!(
+            [true, false, false, false],
+            [
+                is_checked_path(Path::new("/src/lib.rs"), Some(out_dir)),
+                is_checked_path(Path::new("/src/newick.pest"), Some(out_dir)),
+                is_checked_path(Path::new("/src/data.json"), None),
+                is_checked_path(&out_dir.join("generated.rs"), Some(out_dir)),
+            ]
+        );
     }
 
     #[test]
