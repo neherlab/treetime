@@ -83,6 +83,13 @@ impl DesktopService {
     Ok(Self { routers, runtime })
   }
 
+  #[cfg_attr(
+    dylint_lib = "custom",
+    expect(
+      spawn_handle_dropped,
+      reason = "the watcher task only reports a panic of the exchange to the port; the returned abort handle stops the exchange"
+    )
+  )]
   pub fn fetch(
     &self,
     request: PortRequest,

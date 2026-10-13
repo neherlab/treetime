@@ -624,22 +624,25 @@ mod tests {
         body: vec![],
         ended: Ended::End,
       };
+      let mut seqs = vec![];
       loop {
         let reply = replies.recv_timeout(Duration::from_secs(120)).unwrap();
-        assert_eq!(7, reply.seq());
+        seqs.push(reply.seq());
         match reply {
           PortReply::Head { status, headers, .. } => {
             exchange.status = status;
             exchange.headers = headers.into_iter().map(|header| (header.name, header.value)).collect();
           },
           PortReply::Chunk { data, .. } => exchange.body.extend_from_slice(&data),
-          PortReply::End { .. } => return exchange,
+          PortReply::End { .. } => break,
           PortReply::Reset { message, .. } => {
             exchange.ended = Ended::Reset(message);
-            return exchange;
+            break;
           },
         }
       }
+      assert_eq!(vec![7; seqs.len()], seqs);
+      exchange
     }
 
     pub(super) fn fetch_json(service: &DesktopService, method: &str, url: &str, body: Option<&Value>) -> (u16, Value) {
