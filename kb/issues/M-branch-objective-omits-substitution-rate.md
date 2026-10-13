@@ -1,18 +1,40 @@
-# The branch-length objective ignores the substitution rate of the GTR
+# The branch-length objective omits the GTR rate `mu`
 
-`fn evaluate_site_contributions` in [packages/treetime/src/optimize/eval.rs](../../packages/treetime/src/optimize/eval.rs) evaluates each site as $\sum_k c_k e^{\lambda_k t}$, while the marginal passes use `GTR::expQt`, $e^{\mu \lambda_k t}$. The per-branch objective therefore matches the tree likelihood only when `gtr.mu == 1`.
+The per-branch objective of `optimize` and of the timetree branch-length likelihoods drops the overall rate of the GTR. It matches the tree likelihood only when `mu = 1`.
 
-## Where it matters
+## Problem
 
-- `optimize` rescales the model to `mu = 1` (`fn normalize_partition_rates`) only for `--model infer`. With a named model it keeps the model's `mu`: JC69 in v1 has `mu = 0.75` (average substitution rate 0.75), JC69 in v0 has `mu = 1.0`. The omission makes `optimize --model jc69` return v0's branch lengths, while its reported likelihood uses `mu = 0.75`.
-- `timetree` builds branch-length likelihoods from the same contributions ([packages/treetime/src/timetree/inference/branch_length_likelihood.rs](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs)) and does not normalize the rate, so they are on a time scale off by `mu` (inferred models have `mu` around 0.9 to 1.1).
+`fn evaluate_site_contributions` [packages/treetime/src/optimize/eval.rs#L20](../../packages/treetime/src/optimize/eval.rs#L20) evaluates the first expression below. `fn GTR::expQt` [packages/treetime/src/gtr/gtr.rs#L129](../../packages/treetime/src/gtr/gtr.rs#L129) and the marginal passes use the second:
 
-## Evidence
+$$
+\ell_{\text{objective}}(t) = \sum_k c_k\, e^{\lambda_k t}, \qquad \ell_{\text{tree}}(t) = \sum_k c_k\, e^{\mu \lambda_k t}
+$$
 
-Multiplying the eigenvalues by `mu` in `dense_eval.rs` and `sparse_eval.rs` makes the objective match the tree likelihood exactly (`test_branch_objective_matches_tree_likelihood_with_skewed_pi`, which currently sets `mu = 1`), but moves `test_gm_optimize` (JC69, no normalization) from v0's total branch length 0.128 to 0.170 = 0.128 / 0.75.
+where:
+
+- $t$ -- branch length
+- $c_k$ -- coefficient of eigenmode $k$, built from the two messages on the branch
+- $\lambda_k$ -- eigenvalue $k$ of the normalized rate matrix (`gtr.eigvals`)
+- $\mu$ -- overall rate of the GTR (`gtr.mu`)
+
+Named models also differ from v0 in $\mu$. v1 multiplies the requested rate by the average rate of the unnormalized matrix [packages/treetime/src/gtr/gtr.rs#L62-L63](../../packages/treetime/src/gtr/gtr.rs#L62-L63), so JC69 gets $\mu = 0.75$. v0 `GTR.standard` sets $\mu$ back to the requested value, default 1, after it builds the model [packages/legacy/treetime/treetime/gtr.py#L460](../../packages/legacy/treetime/treetime/gtr.py#L460).
+
+## Impact
+
+- `optimize --model infer`: `fn normalize_partition_rates` [packages/treetime/src/optimize/run_loop.rs#L436](../../packages/treetime/src/optimize/run_loop.rs#L436) rescales to $\mu = 1$, so the objective is correct
+- `optimize` with a named model: the two errors cancel, and the branch lengths equal v0's. The reported likelihood uses $\mu = 0.75$ for JC69
+- `timetree`: the branch-length likelihoods [packages/treetime/src/timetree/inference/branch_length_likelihood.rs](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs) use the same contributions without rescaling, so their time scale is off by $\mu$ (about 0.9 to 1.1 for inferred models)
 
 ## Fix direction
 
-- Evaluate each site as $\sum_k c_k e^{\mu \lambda_k t}$, as `GTR::expQt` does, so that the objective matches the tree likelihood for any `mu`
-- Give named models the requested `mu` (default 1) after construction, as v0 does: `GTR.standard` builds the model and then sets `model.mu` ([packages/legacy/treetime/treetime/gtr.py#L460](../../packages/legacy/treetime/treetime/gtr.py#L460)). The v1 `GTR` builder keeps `mu` multiplied by the average rate of `W` ([packages/treetime/src/gtr/gtr.rs#L63](../../packages/treetime/src/gtr/gtr.rs#L63)), which gives JC69 `mu = 0.75`
-- With both changes, `test_gm_optimize` stays at v0's total branch length, and `test_branch_objective_matches_tree_likelihood_with_skewed_pi` no longer needs to set `mu = 1`
+Match v0. Both changes are needed together:
+
+- Multiply the eigenvalues by $\mu$ in the objective: [packages/treetime/src/optimize/dense_eval.rs#L12](../../packages/treetime/src/optimize/dense_eval.rs#L12), [packages/treetime/src/optimize/sparse_eval.rs#L15](../../packages/treetime/src/optimize/sparse_eval.rs#L15)
+- Give named models the requested $\mu$ (default 1) after construction, as v0 does. The constructors start at `fn jc69` [packages/treetime/src/gtr/get_gtr.rs#L122](../../packages/treetime/src/gtr/get_gtr.rs#L122)
+
+The first change alone moves the total branch length of `test_gm_optimize` (JC69) from v0's 0.128 to 0.170 = 0.128 / 0.75.
+
+## Validation
+
+- `test_branch_objective_matches_tree_likelihood_with_skewed_pi` [packages/treetime/src/optimize/__tests__/test_objective_matches_tree_likelihood.rs#L25](../../packages/treetime/src/optimize/__tests__/test_objective_matches_tree_likelihood.rs#L25) passes without its `mu = 1` workaround and with a case where $\mu \neq 1$
+- `test_gm_optimize` passes unchanged

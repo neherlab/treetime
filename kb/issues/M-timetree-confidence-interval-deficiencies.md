@@ -29,7 +29,7 @@ After combining the contributions, the code widens `[lower, upper]` so that it c
 
 ### Mutation contribution is not used
 
-`fn extract_confidence_intervals()` fixes `mutation_contribution` to `None` ([`packages/treetime/src/timetree/confidence.rs#L93`](../../packages/treetime/src/timetree/confidence.rs#L93)). v0 passes the marginal inverse-CDF quantiles of the node time as `c2` to `combine_confidence` ([`packages/legacy/treetime/treetime/clock_tree.py#L1138`](../../packages/legacy/treetime/treetime/clock_tree.py#L1138)). Without a rate contribution, v1 reports the degenerate interval `[date, date]`.
+Tracked in [M-timetree-confidence-marginal-hpd-disabled-under-neglog.md](M-timetree-confidence-marginal-hpd-disabled-under-neglog.md).
 
 ### num_date_confidence composition diverges from augur's marginal HPD
 

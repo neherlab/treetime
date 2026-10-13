@@ -8,6 +8,10 @@ Node confidence intervals combine two sources: the highest-posterior-density (HP
 - A node with both sources reports only the rate contribution, so the combined interval is never wider than the rate source alone.
 - v0 uses `get_max_posterior_region(fraction=0.9)`, the narrowest interval holding 90% of the mass, which is narrower than an equal-tailed interval for skewed posteriors. v1 currently emits no marginal contribution at all.
 
+## Evidence
+
+The `keep-skyline-est-ci` variant of the validation timetree suite ([validation/README.md](../../validation/README.md), `--time-marginal only-final` without `--clock-std-dev`) writes `num_date_confidence = [numdate, numdate]` for every node.
+
 ## Root cause
 
 An HPD region integrates a probability density. Under `NegLog` the stored ordinate is `-ln p`, so a region must either convert to peak-normalized plain probabilities before integrating or integrate directly in neg-log space. Neither is implemented.
@@ -24,4 +28,4 @@ The ignored tests already store their distributions on the neg-log axis, so they
 
 ## Fix approach
 
-Implement a NegLog-aware HPD region and pass its interval as `mutation_contribution` in `extract_confidence_intervals`, then remove the `#[ignore]` from the three tests. Tracked under the log-space distribution work in [kb/proposals/distribution-log-space-and-hard-soft-boundaries.md](../proposals/distribution-log-space-and-hard-soft-boundaries.md) (HPD is Part B/D there).
+Implement a NegLog-aware HPD region that matches v0 `get_max_posterior_region` [packages/legacy/treetime/treetime/clock_tree.py#L1146](../../packages/legacy/treetime/treetime/clock_tree.py#L1146), which the v0 CLI writes as the interval of each node [packages/legacy/treetime/treetime/CLI_io.py#L152](../../packages/legacy/treetime/treetime/CLI_io.py#L152). Pass its interval as `mutation_contribution` in `extract_confidence_intervals`, then remove the `#[ignore]` from the three tests. Tracked under the log-space distribution work in [kb/proposals/distribution-log-space-and-hard-soft-boundaries.md](../proposals/distribution-log-space-and-hard-soft-boundaries.md) (HPD is Part B/D there).

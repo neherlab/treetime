@@ -1,12 +1,12 @@
 # Sparse GTR refinement counts transitions differently from dense
 
 > [!IMPORTANT]
-> **Decision required.** Which counts should sparse GTR refinement fit the model to?
+> **Decision required.** Which counts should sparse GTR refinement fit the model to? Both options keep Fitch counts for the initial GTR, as dense does ([kb/decisions/dense-fitch-gtr-inference.md](../decisions/dense-fitch-gtr-inference.md)):
 >
-> - Expected counts, with fixed sites weighted by their counts and one root state per site, as dense refinement does (`fn count_transitions_dense` in [packages/treetime/src/partition/marginal/shared/data.rs](../../packages/treetime/src/partition/marginal/shared/data.rs)). Sparse and dense then reach the same GTR, so dense stays an independent check of sparse. The count needs the parent and child states paired across each branch, including positions whose fixed state differs between the two sides, as `fn get_coefficients` of the sparse branch objective already does ([packages/treetime/src/partition/optimize/sparse.rs](../../packages/treetime/src/partition/optimize/sparse.rs))
-> - Most likely substitutions on each branch and the composition of the most likely sequences, with the counter of the initial Fitch inference, as a commit on the `validation` branch does ([9351d4e3](https://github.com/neherlab/treetime/commit/9351d4e3c2deffe136f02a8270e790898711bfd5)). The model then fits the mutations the outputs list. The counts do not depend on the GTR, so refinement stops changing after the first iteration, and repeated substitutions at one site on one branch are not counted
+> - Expected counts, with fixed sites weighted by their counts and one root state per site, as dense refinement does (`fn count_transitions_dense` [packages/treetime/src/partition/marginal/shared/data.rs#L15-L56](../../packages/treetime/src/partition/marginal/shared/data.rs#L15-L56)). Sparse and dense then reach the same GTR, so dense stays an independent check of sparse. The count needs the parent and child states paired across each branch, including positions whose fixed state differs between the two sides, as `fn get_coefficients` of the sparse branch objective already does ([packages/treetime/src/partition/optimize/sparse.rs#L14](../../packages/treetime/src/partition/optimize/sparse.rs#L14))
+> - Most likely substitutions on each branch and the composition of the most likely sequences, with the counter of the initial Fitch inference. The counts do not depend on the GTR, so refinement stops changing after the first iteration, and repeated substitutions at one site on one branch are not counted. An implementation exists on the `validation` branch: [fix(treetime): count sparse GTR refinement transitions from branch mutations](https://github.com/neherlab/treetime/commit/9351d4e3c2deffe136f02a8270e790898711bfd5)
 >
-> Evidence: the measurements below. Dense is the v0-equivalent reference: v0 counts per site (`get_branch_mutation_matrix` and the root counts of `_ml_anc_marginal` in [packages/legacy/treetime/treetime/treeanc.py](../../packages/legacy/treetime/treetime/treeanc.py)), and v1 dense starts from Fitch counts and refines with expected counts.
+> Evidence: the measurements below. Dense is the v0-equivalent reference: v0 counts per site (`def get_branch_mutation_matrix` [packages/legacy/treetime/treetime/treeanc.py#L1085](../../packages/legacy/treetime/treetime/treeanc.py#L1085) and the root counts of `def _ml_anc_marginal` [packages/legacy/treetime/treetime/treeanc.py#L762](../../packages/legacy/treetime/treetime/treeanc.py#L762)), and v1 dense starts from Fitch counts and refines with expected counts.
 
 ## Problem
 
@@ -22,8 +22,6 @@ Measured on 4 leaves, 16 gap-free sites, JC69 start, 2 iterations: dense gives m
 
 ## Evidence
 
+On simulated alignments with a known GTR and `--gtr-iterations 3` (variant `marginal-gtr3` of the ancestral suite in [validation/README.md](../../validation/README.md)), with alignment length $L$ and simulated substitution rate $\mu_{\text{true}}$, the inferred sparse rate collapses to about $1/(L \mu_{\text{true}})$ and the equilibrium frequencies drift toward uniform. Two defects of `fn count_transitions_sparse` [packages/treetime/src/partition/marginal/sparse/count.rs#L19](../../packages/treetime/src/partition/marginal/sparse/count.rs#L19) explain it: it pairs the two messages of a branch by character, so it never counts a substitution at a site that is fixed on both sides, and it reduces the root composition to one count.
+
 Ignored red test: `test_refinement_sparse_gtr_and_rate_match_dense` in [packages/treetime/src/gtr/__tests__/test_refinement.rs](../../packages/treetime/src/gtr/__tests__/test_refinement.rs).
-
-## Validation on simulated data
-
-The validation suite (`validation/`, `ancestral` suite, variant `marginal-gtr3`: marginal reconstruction with `--gtr-iterations 3` on simulated alignments with a known GTR) shows the effect at scale: the inferred `mu` collapses to about $1/(L \mu_\text{true})$, and the equilibrium frequencies drift toward uniform. The commit on the `validation` branch names the causes in the current count: it pairs the two messages of a branch by character, so substitutions at sites fixed on both sides of the branch are never counted, and it reduces the root composition to one count.
