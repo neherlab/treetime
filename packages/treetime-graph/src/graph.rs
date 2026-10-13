@@ -52,13 +52,6 @@ impl Graph {
     self.get_edge_mut(key).unwrap_or_else(|| missing_key("Edge", key))
   }
 
-  pub fn parents_of<'a>(&'a self, node: &'a Node) -> impl DoubleEndedIterator<Item = (&'a Node, &'a Edge)> + 'a {
-    node.inbound().iter().filter_map(move |&edge_key| {
-      let edge = self.get_edge(edge_key)?;
-      Some((self.get_node(edge.source())?, edge))
-    })
-  }
-
   pub(crate) fn parents_keys_of<'a>(
     &'a self,
     node: &'a Node,

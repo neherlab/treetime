@@ -55,8 +55,6 @@ pub trait AppCommandExt {
 
   fn prepare_text(self, source_name: &str, text: &str) -> Result<PreparedCommand, Report>;
 
-  fn prepare_value(self, config: &Value) -> Result<PreparedCommand, Report>;
-
   fn prepare_run(self, config: &Value, out_dir: &Path) -> Result<PreparedCommand, Report>;
 
   fn remove_output_paths(self, settings: &mut Map<String, Value>) -> Result<(), Report>;
@@ -167,11 +165,6 @@ impl AppCommandExt for AppCommand {
 
   fn prepare_text(self, source_name: &str, text: &str) -> Result<PreparedCommand, Report> {
     prepare_source(self, source_name, text, None)
-  }
-
-  fn prepare_value(self, config: &Value) -> Result<PreparedCommand, Report> {
-    let text = json_write_str(&As::<_, Serde>::new(config), JsonPretty(true))?;
-    self.prepare_text("config.json", &text)
   }
 
   fn prepare_run(self, config: &Value, out_dir: &Path) -> Result<PreparedCommand, Report> {

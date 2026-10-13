@@ -9,12 +9,6 @@ use std::borrow::Cow;
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deref, DerefMut, From, Into, Serialize, Deserialize)]
 pub struct SparseConfig(#[deser(as = Serde)] pub Map<String, Value>);
 
-impl SparseConfig {
-  pub fn into_value(self) -> Value {
-    Value::Object(self.0)
-  }
-}
-
 impl JsonSchema for SparseConfig {
   fn schema_name() -> Cow<'static, str> {
     Cow::Borrowed("SparseConfig")

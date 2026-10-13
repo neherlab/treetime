@@ -3,10 +3,11 @@ use crate::graph::Graph;
 use crate::node::GraphNodeKey;
 use eyre::Report;
 use itertools::Itertools;
+use std::marker::PhantomData;
 use treetime_utils::{make_error, make_internal_report, make_report};
 
 pub struct TreeView<'g> {
-  graph: &'g Graph,
+  graph: PhantomData<&'g Graph>,
   root: GraphNodeKey,
   preorder: Vec<GraphNodeKey>,
   parents: Vec<Option<(GraphNodeKey, GraphEdgeKey)>>,
@@ -24,17 +25,13 @@ impl<'g> TreeView<'g> {
       return Err(cycle_error(graph, &preorder, &parents));
     }
     Ok(Self {
-      graph,
+      graph: PhantomData,
       root,
       preorder,
       parents,
       child_offsets,
       children,
     })
-  }
-
-  pub fn graph(&self) -> &'g Graph {
-    self.graph
   }
 
   pub fn root(&self) -> GraphNodeKey {

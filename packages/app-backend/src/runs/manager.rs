@@ -43,10 +43,6 @@ const APP_EVENT_CAPACITY: usize = 1024;
 
 const UNSTARTED_RUN_LIFETIME: TimeDelta = TimeDelta::days(1);
 
-pub fn unconfined() -> ConfigHook {
-  Box::new(|_config: &mut Value| Ok(()))
-}
-
 pub struct RunManager {
   store: RunStore,
   active: Mutex<BTreeMap<JobId, Arc<ActiveRun>>>,

@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::command::{AppCommandExt, run_command};
+  use crate::command::run_command;
   use crate::job::{CancelToken, JobEvent, JobId, JobProgress, TerminalEvent, run_job};
+  use crate::__tests__::test_support::tests::prepare_value;
   use app_commands::command::AppCommand;
   use eyre::Report;
   use helpers::{status, timetree_config};
@@ -23,8 +24,7 @@ mod tests {
     let job_id = JobId::parse("job-1").unwrap();
     let terminal = run_job(&job_id, &NoopCancel, || {
       run_command(
-        &AppCommand::Timetree
-          .prepare_value(&timetree_config(outdir.path()))?
+        &prepare_value(AppCommand::Timetree, &timetree_config(outdir.path()))?
           .args,
         &NoopCancel,
         &NoopProgress,
@@ -52,8 +52,7 @@ mod tests {
     let job_id = JobId::parse("job-2").unwrap();
     let terminal = run_job(&job_id, &NoopCancel, || {
       run_command(
-        &AppCommand::Clock
-          .prepare_value(&json!({ "tree": "t.nwk", "no_such_setting": 1 }))?
+        &prepare_value(AppCommand::Clock, &json!({ "tree": "t.nwk", "no_such_setting": 1 }))?
           .args,
         &NoopCancel,
         &NoopProgress,
@@ -78,7 +77,7 @@ mod tests {
     config["metadata"] = json!(outdir.path().join("missing.tsv"));
     let terminal = run_job(&JobId::parse("job-3").unwrap(), &NoopCancel, || {
       run_command(
-        &AppCommand::Timetree.prepare_value(&config)?.args,
+        &prepare_value(AppCommand::Timetree, &config)?.args,
         &NoopCancel,
         &NoopProgress,
         &NoopProgress,
@@ -102,8 +101,7 @@ mod tests {
     let terminal = run_job(&JobId::parse("job-4").unwrap(), &token, || {
       token.check()?;
       run_command(
-        &AppCommand::Timetree
-          .prepare_value(&timetree_config(outdir.path()))?
+        &prepare_value(AppCommand::Timetree, &timetree_config(outdir.path()))?
           .args,
         &token,
         &NoopProgress,
@@ -158,8 +156,7 @@ mod tests {
         let cancel_on_first_event = JobProgress::new(|_event| first.cancel());
         run_job(&JobId::parse("first").unwrap(), &first, || {
           run_command(
-            &AppCommand::Timetree
-              .prepare_value(&timetree_config(dir_first.path()))?
+            &prepare_value(AppCommand::Timetree, &timetree_config(dir_first.path()))?
               .args,
             &first,
             &cancel_on_first_event,
@@ -170,8 +167,7 @@ mod tests {
       let second_job = scope.spawn(|| {
         run_job(&JobId::parse("second").unwrap(), &second, || {
           run_command(
-            &AppCommand::Timetree
-              .prepare_value(&timetree_config(dir_second.path()))?
+            &prepare_value(AppCommand::Timetree, &timetree_config(dir_second.path()))?
               .args,
             &second,
             &NoopProgress,

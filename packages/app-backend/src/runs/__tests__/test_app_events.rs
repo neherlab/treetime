@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::runs::app_events::{AppChange, AppEventLog, StalePath};
-  use crate::runs::manager::{RunManager, unconfined};
+  use crate::__tests__::test_support::tests::unconfined;
+  use crate::runs::manager::RunManager;
   use crate::runs::record::{StartRunRequest, UpdateRunRequest};
   use helpers::{Change, changes, collect, create, recorded, seqs, summarize};
   use pretty_assertions::assert_eq;

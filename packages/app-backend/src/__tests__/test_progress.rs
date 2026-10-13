@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::command::AppCommandExt;
   use crate::command::run_command;
+  use crate::__tests__::test_support::tests::prepare_value;
   use app_commands::command::AppCommand;
   use helpers::{RecordingProgress, config_for};
   use itertools::Itertools;
@@ -23,7 +23,7 @@ mod tests {
   #[trace]
   fn test_progress_fractions_increase_and_done_comes_last(#[case] command: AppCommand) {
     let outdir = tempdir().unwrap();
-    let prepared = command.prepare_value(&config_for(command, outdir.path())).unwrap();
+    let prepared = prepare_value(command, &config_for(command, outdir.path())).unwrap();
     let progress = RecordingProgress::new(outdir.path().to_path_buf());
     let outcome = run_command(&prepared.args, &NoopCancel, &progress, &NoopProgress).unwrap();
 
@@ -69,7 +69,7 @@ mod tests {
     let outdir = tempdir().unwrap();
     let mut config = config_for(AppCommand::Ancestral, outdir.path());
     config["method_anc"] = "parsimony".into();
-    let prepared = AppCommand::Ancestral.prepare_value(&config).unwrap();
+    let prepared = prepare_value(AppCommand::Ancestral, &config).unwrap();
     let progress = RecordingProgress::new(outdir.path().to_path_buf());
     run_command(&prepared.args, &NoopCancel, &progress, &NoopProgress).unwrap();
     let stages: Vec<String> = progress.events().into_iter().map(|event| event.stage).collect();

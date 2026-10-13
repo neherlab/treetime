@@ -83,7 +83,8 @@ impl AppEventLog {
     state.subscribers.push(subscriber);
   }
 
-  pub fn head(&self) -> u64 {
+  #[cfg(test)]
+  pub(crate) fn head(&self) -> u64 {
     self.state.lock().next_seq - 1
   }
 }

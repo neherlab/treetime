@@ -43,11 +43,11 @@ mod tests {
     for (name, branch) in &input.branches {
       let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
-      let (_, edge) = graph
-        .parents_of(node)
-        .next()
+      let edge_key = *node
+        .inbound()
+        .first()
         .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
-      branches.insert(edge.key(), time_branch(Some(branch.clock_length / input.clock_rate)));
+      branches.insert(edge_key, time_branch(Some(branch.clock_length / input.clock_rate)));
     }
 
     let gammas = apply_relaxed_clock(
@@ -65,11 +65,11 @@ mod tests {
       .map(|name| {
         let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
         let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
-        let (_, edge) = graph
-          .parents_of(node)
-          .next()
+        let edge_key = *node
+          .inbound()
+          .first()
           .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
-        let gamma = gammas[&edge.key()];
+        let gamma = gammas[&edge_key];
         Ok((name.to_owned(), gamma))
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;

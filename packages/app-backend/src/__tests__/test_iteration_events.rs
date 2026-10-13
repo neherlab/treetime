@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::command::AppCommandExt;
   use crate::command::run_command;
   use crate::job::{IterationEvent, JobEvent, JobProgress};
+  use crate::__tests__::test_support::tests::prepare_value;
   use app_commands::command::AppCommand;
   use helpers::{timetree_config, tracelog_rows};
   use parking_lot::Mutex;
@@ -16,8 +16,7 @@ mod tests {
   #[test]
   fn test_iteration_events_match_the_tracelog_rows() {
     let outdir = tempdir().unwrap();
-    let prepared = AppCommand::Timetree
-      .prepare_value(&timetree_config(outdir.path()))
+    let prepared = prepare_value(AppCommand::Timetree, &timetree_config(outdir.path()))
       .unwrap();
     let events = Mutex::new(vec![]);
     let progress = JobProgress::new(|event| {
@@ -60,8 +59,7 @@ mod tests {
   #[test]
   fn test_iteration_events_carry_the_estimated_clock_rate_and_r_squared() {
     let outdir = tempdir().unwrap();
-    let prepared = AppCommand::Timetree
-      .prepare_value(&timetree_config(outdir.path()))
+    let prepared = prepare_value(AppCommand::Timetree, &timetree_config(outdir.path()))
       .unwrap();
     let events: Mutex<Vec<IterationEvent>> = Mutex::new(vec![]);
     let progress = JobProgress::new(|event| {
@@ -86,7 +84,7 @@ mod tests {
     let outdir = tempdir().unwrap();
     let mut config = timetree_config(outdir.path());
     config["clock_rate"] = json!(0.0008);
-    let prepared = AppCommand::Timetree.prepare_value(&config).unwrap();
+    let prepared = prepare_value(AppCommand::Timetree, &config).unwrap();
     let events: Mutex<Vec<IterationEvent>> = Mutex::new(vec![]);
     let progress = JobProgress::new(|event| {
       if let JobEvent::Iteration { data: iteration } = event {

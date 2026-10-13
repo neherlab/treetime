@@ -100,10 +100,6 @@ impl Seq {
     self.data.is_empty()
   }
 
-  pub fn clear(&mut self) {
-    self.data.clear();
-  }
-
   pub fn push(&mut self, byte: AsciiChar) {
     self.data.push(byte);
   }
