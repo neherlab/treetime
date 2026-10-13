@@ -6,5 +6,5 @@ set -euo pipefail
 cd "$(dirname "$0")"
 cpus=$(awk '$1 != "max" {print int($1 / $2); exit} {exit 1}' /sys/fs/cgroup/cpu.max 2>/dev/null || nproc)  # cgroup quota, which nproc does not see
 reps=${1:-10}; jobs=${2:-$cpus}
-for coal in const exp piecewise; do for rep in $(seq 0 $((reps - 1))); do echo "$coal $rep"; done; done |
-  xargs -P "$jobs" -L 1 sh -c 'python simulate.py --coal $0 --rep $1 --out data'
+for coal in const exp piecewise; do for rep in $(seq 0 $((reps - 1))); do echo "--coal $coal --rep $rep"; done; done |
+  xargs -P "$jobs" -L 1 python simulate.py --out data
