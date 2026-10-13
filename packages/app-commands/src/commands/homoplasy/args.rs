@@ -12,6 +12,7 @@ use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -37,33 +38,14 @@ pub fn homoplasy_ancestral_params(args: &TreetimeHomoplasyArgs, seed: u64) -> An
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub struct TreetimeHomoplasyArgs {
-  pub(crate) alignment: AlignmentArgs,
+  #[deref]
+  #[deref_mut]
+  pub(crate) raw: TreetimeHomoplasyArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) tree_dialect: TreeDialectArgs,
-  pub(crate) alphabet_args: AlphabetArgs,
-  pub(crate) model_args: ModelArgs,
   pub(crate) method_anc: MethodAncestral,
-  pub(crate) dense: Option<bool>,
-  pub(crate) gap_fill_args: GapFillArgs,
-  pub(crate) zero_based: bool,
-  pub(crate) impute_missing_data: bool,
-  pub(crate) ignore_missing_alns: bool,
-  pub(crate) gtr_iterations: usize,
-  pub(crate) site_specific_gtr: bool,
   pub(crate) sample_from_profile: SampleMode,
-  pub(crate) seed_args: SeedArgs,
-  pub(crate) constant_sites: usize,
-  pub(crate) rescale: f64,
-  pub(crate) detailed: bool,
-  pub(crate) drms: Option<PathBuf>,
-  pub(crate) num_mut: usize,
-  pub(crate) output: OutputCoreArgs,
-  pub(crate) output_homoplasy_stats: Option<PathBuf>,
-  pub(crate) output_homoplasy_report: Option<PathBuf>,
-  pub(crate) output_selection: Vec<HomoplasyOutputSelection>,
-  pub(crate) topology_order: TopologyOrderArgs,
 }
 
 impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
@@ -72,36 +54,16 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
   fn try_from(raw: TreetimeHomoplasyArgsRaw) -> Result<Self, Report> {
     let tree = raw
       .tree
+      .clone()
       .ok_or_else(|| missing_required_args::<TreetimeHomoplasyArgsRaw>(&["tree"]))?;
     if !raw.rescale.is_finite() || raw.rescale <= 0.0 {
       return make_error!("--rescale must be a positive finite number, but got {}", raw.rescale);
     }
     Ok(Self {
-      alignment: raw.alignment,
       tree,
-      tree_dialect: raw.tree_dialect,
-      alphabet_args: raw.alphabet_args,
-      model_args: raw.model_args,
       method_anc: raw.method_anc.into(),
-      dense: raw.dense,
-      gap_fill_args: raw.gap_fill_args,
-      zero_based: raw.zero_based,
-      impute_missing_data: raw.impute_missing_data,
-      ignore_missing_alns: raw.ignore_missing_alns,
-      gtr_iterations: raw.gtr_iterations,
-      site_specific_gtr: raw.site_specific_gtr,
       sample_from_profile: raw.sample_from_profile.into(),
-      seed_args: raw.seed_args,
-      constant_sites: raw.constant_sites,
-      rescale: raw.rescale,
-      detailed: raw.detailed,
-      drms: raw.drms,
-      num_mut: raw.num_mut,
-      output: raw.output,
-      output_homoplasy_stats: raw.output_homoplasy_stats,
-      output_homoplasy_report: raw.output_homoplasy_report,
-      output_selection: raw.output_selection,
-      topology_order: raw.topology_order,
+      raw,
     })
   }
 }

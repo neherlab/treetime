@@ -14,12 +14,12 @@ use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
-use treetime::ancestral::params::MethodAncestral;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::timetree::params::TimeMarginalMode;
 use treetime_grid::MaxGridPoints;
@@ -35,108 +35,17 @@ fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
   Ok(n)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub struct TreetimeTimetreeArgs {
-  pub(crate) alignment: AlignmentArgs,
+  #[deref]
+  #[deref_mut]
+  pub(crate) raw: TreetimeTimetreeArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) tree_dialect: TreeDialectArgs,
-  #[expect(
-    dead_code,
-    reason = "VCF input is not implemented, see kb/issues/M-io-vcf-input-output-unimplemented.md"
-  )]
-  pub(crate) vcf_reference: Option<PathBuf>,
-  pub(crate) metadata: Option<PathBuf>,
-  pub(crate) metadata_id: MetadataIdArgs,
-  pub(crate) date_column: DateColumnArgs,
-  pub(crate) sequence_length: Option<usize>,
-  pub(crate) clock_rate: Option<f64>,
-  pub(crate) clock_std_dev: Option<f64>,
   pub(crate) branch_length_mode: BranchLengthMode,
   pub(crate) time_marginal: TimeMarginalMode,
-  pub(crate) confidence: bool,
   pub(crate) max_grid_points: MaxGridPoints,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) keep_polytomies: bool,
-  pub(crate) resolve_polytomies: bool,
-  pub(crate) relax: Vec<f64>,
-  pub(crate) max_iter: usize,
-  pub(crate) coalescent: Option<f64>,
-  pub(crate) coalescent_opt: bool,
-  pub(crate) coalescent_skyline: bool,
-  pub(crate) skyline_n_points: usize,
-  pub(crate) skyline_stiffness: f64,
-  pub(crate) coalescent_confidence: f64,
-  pub(crate) n_branches_posterior: Option<usize>,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) tip_labels: bool,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) no_tip_labels: bool,
-  pub(crate) clock_filter: f64,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) n_iqd: Option<f64>,
-  pub(crate) reroot: RerootArgs,
-  pub(crate) keep_root: bool,
-  pub(crate) allow_negative_rate: bool,
-  pub(crate) tip_slack: Option<f64>,
-  pub(crate) covariation: bool,
-  pub(crate) model_args: ModelArgs,
-  #[expect(dead_code, reason = "see kb/issues/M-timetree-method-anc-ignored.md")]
-  pub(crate) method_anc: MethodAncestral,
-  pub(crate) alphabet_args: AlphabetArgs,
-  pub(crate) dense: Option<bool>,
-  pub(crate) gap_fill_args: GapFillArgs,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) zero_based: bool,
   pub(crate) include_leaves: bool,
   pub(crate) impute_missing_data: bool,
-  pub(crate) report_ambiguous: bool,
-  pub(crate) no_indels: bool,
-  pub(crate) divergence_units: DivergenceUnits,
-  pub(crate) output_augur_node_data: Option<PathBuf>,
-  pub(crate) output_gtr: Option<PathBuf>,
-  pub(crate) output_reconstructed_nuc_fasta: Option<PathBuf>,
-  pub(crate) output_clock_model: Option<PathBuf>,
-  pub(crate) output_clock_csv: Option<PathBuf>,
-  pub(crate) output_confidence_tsv: Option<PathBuf>,
-  pub(crate) output_tracelog: Option<PathBuf>,
-  pub(crate) output_coalescent_tsv: Option<PathBuf>,
-  pub(crate) output_coalescent_csv: Option<PathBuf>,
-  pub(crate) output_coalescent_json: Option<PathBuf>,
-  pub(crate) output: OutputCoreArgs,
-  pub(crate) output_selection: Vec<TimetreeOutputSelection>,
-  pub(crate) topology_order: TopologyOrderArgs,
-  pub(crate) seed_args: SeedArgs,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) aa: bool,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) custom_gtr: Option<PathBuf>,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) clock_filter_method: Option<String>,
-  pub(crate) gen_per_year: f64,
 }
 
 impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
@@ -151,71 +60,16 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
     }
     let tree = raw
       .tree
+      .clone()
       .ok_or_else(|| missing_required_args::<TreetimeTimetreeArgsRaw>(&["tree"]))?;
     Ok(Self {
-      alignment: raw.alignment,
       tree,
-      tree_dialect: raw.tree_dialect,
-      vcf_reference: raw.vcf_reference,
-      metadata: raw.metadata,
-      metadata_id: raw.metadata_id,
-      date_column: raw.date_column,
-      sequence_length: raw.sequence_length,
-      clock_rate: raw.clock_rate,
-      clock_std_dev: raw.clock_std_dev,
       branch_length_mode: raw.branch_length_mode.into(),
       time_marginal: raw.time_marginal.into(),
-      confidence: raw.confidence,
       max_grid_points: raw.max_grid_points.unwrap_or_default(),
-      keep_polytomies: raw.keep_polytomies,
-      resolve_polytomies: raw.resolve_polytomies,
-      relax: raw.relax,
-      max_iter: raw.max_iter,
-      coalescent: raw.coalescent,
-      coalescent_opt: raw.coalescent_opt,
-      coalescent_skyline: raw.coalescent_skyline,
-      skyline_n_points: raw.skyline_n_points,
-      skyline_stiffness: raw.skyline_stiffness,
-      coalescent_confidence: raw.coalescent_confidence,
-      n_branches_posterior: raw.n_branches_posterior,
-      tip_labels: raw.tip_labels,
-      no_tip_labels: raw.no_tip_labels,
-      clock_filter: raw.clock_filter,
-      n_iqd: raw.n_iqd,
-      reroot: raw.reroot,
-      keep_root: raw.keep_root,
-      allow_negative_rate: raw.allow_negative_rate,
-      tip_slack: raw.tip_slack,
-      covariation: raw.covariation,
-      model_args: raw.model_args,
-      method_anc: raw.method_anc.into(),
-      alphabet_args: raw.alphabet_args,
-      dense: raw.dense,
-      gap_fill_args: raw.gap_fill_args,
-      zero_based: raw.zero_based,
       include_leaves: raw.include_leaves || raw.reconstruct_tip_states,
       impute_missing_data: raw.impute_missing_data || raw.reconstruct_tip_states,
-      report_ambiguous: raw.report_ambiguous,
-      no_indels: raw.no_indels,
-      divergence_units: raw.divergence_units,
-      output_augur_node_data: raw.output_augur_node_data,
-      output_gtr: raw.output_gtr,
-      output_reconstructed_nuc_fasta: raw.output_reconstructed_nuc_fasta,
-      output_clock_model: raw.output_clock_model,
-      output_clock_csv: raw.output_clock_csv,
-      output_confidence_tsv: raw.output_confidence_tsv,
-      output_tracelog: raw.output_tracelog,
-      output_coalescent_tsv: raw.output_coalescent_tsv,
-      output_coalescent_csv: raw.output_coalescent_csv,
-      output_coalescent_json: raw.output_coalescent_json,
-      output: raw.output,
-      output_selection: raw.output_selection,
-      topology_order: raw.topology_order,
-      seed_args: raw.seed_args,
-      aa: raw.aa,
-      custom_gtr: raw.custom_gtr,
-      clock_filter_method: raw.clock_filter_method,
-      gen_per_year: raw.gen_per_year,
+      raw,
     })
   }
 }

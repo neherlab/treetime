@@ -11,86 +11,24 @@ use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::{Path, PathBuf};
-use treetime::ancestral::params::MethodAncestral;
 use treetime::clock::clock_regression::ClockVarianceParams;
 use treetime::clock::find_best_root::params::{BrentParams, GoldenSectionParams, GridSearchParams, OptimizationMethod};
-use treetime::optimize::params::BranchLengthMode;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub struct TreetimeClockArgs {
-  #[expect(
-    dead_code,
-    reason = "the alignment is not used yet, see kb/issues/M-clock-alignment-ignored.md"
-  )]
-  pub(crate) alignment: AlignmentArgs,
+  #[deref]
+  #[deref_mut]
+  pub(crate) raw: TreetimeClockArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) tree_dialect: TreeDialectArgs,
-  #[expect(
-    dead_code,
-    reason = "VCF input is not implemented, see kb/issues/M-io-vcf-input-output-unimplemented.md"
-  )]
-  pub(crate) vcf_reference: Option<PathBuf>,
   pub(crate) metadata: PathBuf,
-  pub(crate) metadata_id: MetadataIdArgs,
-  pub(crate) date_column: DateColumnArgs,
-  pub(crate) sequence_length: Option<usize>,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) model_args: ModelArgs,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) branch_length_mode: BranchLengthMode,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) method_anc: MethodAncestral,
-  pub(crate) clock_filter: f64,
-  pub(crate) reroot: RerootArgs,
-  pub(crate) keep_root: bool,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) prune_short: bool,
-  pub(crate) tip_slack: Option<f64>,
-  pub(crate) covariation: bool,
-  pub(crate) allow_negative_rate: bool,
-  pub(crate) output: OutputCoreArgs,
-  pub(crate) output_clock_model: Option<PathBuf>,
-  pub(crate) output_clock_csv: Option<PathBuf>,
-  pub(crate) output_clock_chart_svg: Option<PathBuf>,
-  pub(crate) output_clock_chart_png: Option<PathBuf>,
-  pub(crate) output_selection: Vec<ClockOutputSelection>,
-  pub(crate) topology_order: TopologyOrderArgs,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) clock_filter_method: Option<String>,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) plot_rtt: Option<PathBuf>,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) prune_outliers: bool,
-  pub(crate) branch_split: BranchSplitArgs,
-  pub(crate) clock_regression: ClockRegressionArgs,
 }
 
 impl TreetimeClockArgs {
@@ -103,7 +41,7 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
   type Error = Report;
 
   fn try_from(raw: TreetimeClockArgsRaw) -> Result<Self, Report> {
-    let (tree, metadata) = match (raw.tree, raw.metadata) {
+    let (tree, metadata) = match (raw.tree.clone(), raw.metadata.clone()) {
       (Some(tree), Some(metadata)) => (tree, metadata),
       (tree, metadata) => {
         let missing = [("tree", tree.is_none()), ("metadata", metadata.is_none())]
@@ -113,38 +51,7 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
         return Err(missing_required_args::<TreetimeClockArgsRaw>(&missing));
       },
     };
-    Ok(Self {
-      alignment: raw.alignment,
-      tree,
-      tree_dialect: raw.tree_dialect,
-      vcf_reference: raw.vcf_reference,
-      metadata,
-      metadata_id: raw.metadata_id,
-      date_column: raw.date_column,
-      sequence_length: raw.sequence_length,
-      model_args: raw.model_args,
-      branch_length_mode: raw.branch_length_mode.into(),
-      method_anc: raw.method_anc.into(),
-      clock_filter: raw.clock_filter,
-      reroot: raw.reroot,
-      keep_root: raw.keep_root,
-      prune_short: raw.prune_short,
-      tip_slack: raw.tip_slack,
-      covariation: raw.covariation,
-      allow_negative_rate: raw.allow_negative_rate,
-      output: raw.output,
-      output_clock_model: raw.output_clock_model,
-      output_clock_csv: raw.output_clock_csv,
-      output_clock_chart_svg: raw.output_clock_chart_svg,
-      output_clock_chart_png: raw.output_clock_chart_png,
-      output_selection: raw.output_selection,
-      topology_order: raw.topology_order,
-      clock_filter_method: raw.clock_filter_method,
-      plot_rtt: raw.plot_rtt,
-      prune_outliers: raw.prune_outliers,
-      branch_split: raw.branch_split,
-      clock_regression: raw.clock_regression,
-    })
+    Ok(Self { raw, tree, metadata })
   }
 }
 

@@ -47,7 +47,7 @@ mod tests {
         args.constant_sites,
         args.rescale,
         args.detailed,
-        args.drms,
+        args.drms.clone(),
         args.num_mut,
         args.zero_based
       )

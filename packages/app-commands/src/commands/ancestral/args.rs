@@ -12,6 +12,7 @@ use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -37,60 +38,15 @@ pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralPar
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub struct TreetimeAncestralArgs {
-  pub(crate) alignment: AlignmentArgs,
-  #[expect(
-    dead_code,
-    reason = "VCF input is not implemented, see kb/issues/M-io-vcf-input-output-unimplemented.md"
-  )]
-  pub(crate) vcf_reference: Option<PathBuf>,
+  #[deref]
+  #[deref_mut]
+  pub(crate) raw: TreetimeAncestralArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) tree_dialect: TreeDialectArgs,
-  pub(crate) alphabet_args: AlphabetArgs,
-  pub(crate) model_args: ModelArgs,
   pub(crate) method_anc: MethodAncestral,
-  pub(crate) dense: Option<bool>,
-  pub(crate) gap_fill_args: GapFillArgs,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) zero_based: bool,
   pub(crate) include_leaves: bool,
   pub(crate) impute_missing_data: bool,
-  pub(crate) report_ambiguous: bool,
-  pub(crate) ignore_missing_alns: bool,
-  pub(crate) output_augur_node_data: Option<PathBuf>,
-  pub(crate) output_gtr: Option<PathBuf>,
-  pub(crate) output_reconstructed_nuc_fasta: Option<PathBuf>,
-  pub(crate) translations: Option<String>,
-  pub(crate) cdses: Vec<String>,
-  pub(crate) annotation: Option<PathBuf>,
-  pub(crate) aa_root_sequence: Option<PathBuf>,
-  pub(crate) aa_model: AaModelName,
-  pub(crate) output_reconstructed_aa_fasta: Option<PathBuf>,
-  pub(crate) output: OutputCoreArgs,
-  pub(crate) output_selection: Vec<AncestralOutputSelection>,
-  pub(crate) topology_order: TopologyOrderArgs,
-  pub(crate) gtr_iterations: usize,
-  pub(crate) site_specific_gtr: bool,
-  pub(crate) seed_args: SeedArgs,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) aa: bool,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) marginal: bool,
-  #[expect(
-    dead_code,
-    reason = "parsed but not implemented, see kb/issues/M-cli-flags-parsed-but-ignored.md"
-  )]
-  pub(crate) custom_gtr: Option<PathBuf>,
   pub(crate) sample_from_profile: SampleMode,
 }
 
@@ -106,41 +62,15 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
   fn try_from(raw: TreetimeAncestralArgsRaw) -> Result<Self, Report> {
     let tree = raw
       .tree
+      .clone()
       .ok_or_else(|| missing_required_args::<TreetimeAncestralArgsRaw>(&["tree"]))?;
     Ok(Self {
-      alignment: raw.alignment,
-      vcf_reference: raw.vcf_reference,
       tree,
-      tree_dialect: raw.tree_dialect,
-      alphabet_args: raw.alphabet_args,
-      model_args: raw.model_args,
       method_anc: raw.method_anc.into(),
-      dense: raw.dense,
-      gap_fill_args: raw.gap_fill_args,
-      zero_based: raw.zero_based,
       include_leaves: raw.include_leaves || raw.reconstruct_tip_states,
       impute_missing_data: raw.impute_missing_data || raw.reconstruct_tip_states,
-      report_ambiguous: raw.report_ambiguous,
-      ignore_missing_alns: raw.ignore_missing_alns,
-      output_augur_node_data: raw.output_augur_node_data,
-      output_gtr: raw.output_gtr,
-      output_reconstructed_nuc_fasta: raw.output_reconstructed_nuc_fasta,
-      translations: raw.translations,
-      cdses: raw.cdses,
-      annotation: raw.annotation,
-      aa_root_sequence: raw.aa_root_sequence,
-      aa_model: raw.aa_model,
-      output_reconstructed_aa_fasta: raw.output_reconstructed_aa_fasta,
-      output: raw.output,
-      output_selection: raw.output_selection,
-      topology_order: raw.topology_order,
-      gtr_iterations: raw.gtr_iterations,
-      site_specific_gtr: raw.site_specific_gtr,
-      seed_args: raw.seed_args,
-      aa: raw.aa,
-      marginal: raw.marginal,
-      custom_gtr: raw.custom_gtr,
       sample_from_profile: raw.sample_from_profile.into(),
+      raw,
     })
   }
 }

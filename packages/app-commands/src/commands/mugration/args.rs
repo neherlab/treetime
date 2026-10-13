@@ -6,6 +6,7 @@ use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -13,28 +14,14 @@ use smart_default::SmartDefault;
 use std::path::{Path, PathBuf};
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub struct TreetimeMugrationArgs {
+  #[deref]
+  #[deref_mut]
+  pub(crate) raw: TreetimeMugrationArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) tree_dialect: TreeDialectArgs,
-  pub(crate) attribute: String,
   pub(crate) metadata: PathBuf,
-  pub(crate) weights: Option<PathBuf>,
-  pub(crate) metadata_id: MetadataIdArgs,
-  pub(crate) output_confidence_csv: Option<PathBuf>,
-  pub(crate) pc: Option<f64>,
-  pub(crate) missing_data: String,
-  pub(crate) missing_weights_threshold: f64,
-  pub(crate) iterations: usize,
-  pub(crate) sampling_bias_correction: Option<f64>,
-  pub(crate) smooth_initial_pi: bool,
-  pub(crate) filter_uninformative_root: bool,
-  pub(crate) output_augur_node_data: Option<PathBuf>,
-  pub(crate) output_gtr: Option<PathBuf>,
-  pub(crate) output_traits_csv: Option<PathBuf>,
-  pub(crate) output: OutputCoreArgs,
-  pub(crate) output_selection: Vec<MugrationOutputSelection>,
-  pub(crate) topology_order: TopologyOrderArgs,
+  pub(crate) attribute: String,
 }
 
 impl TreetimeMugrationArgs {
@@ -51,28 +38,12 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
   type Error = Report;
 
   fn try_from(raw: TreetimeMugrationArgsRaw) -> Result<Self, Report> {
-    match (raw.tree, raw.metadata, raw.attribute) {
+    match (raw.tree.clone(), raw.metadata.clone(), raw.attribute.clone()) {
       (Some(tree), Some(metadata), Some(attribute)) => Ok(Self {
+        raw,
         tree,
-        tree_dialect: raw.tree_dialect,
-        attribute,
         metadata,
-        weights: raw.weights,
-        metadata_id: raw.metadata_id,
-        output_confidence_csv: raw.output_confidence_csv,
-        pc: raw.pc,
-        missing_data: raw.missing_data,
-        missing_weights_threshold: raw.missing_weights_threshold,
-        iterations: raw.iterations,
-        sampling_bias_correction: raw.sampling_bias_correction,
-        smooth_initial_pi: raw.smooth_initial_pi,
-        filter_uninformative_root: raw.filter_uninformative_root,
-        output_augur_node_data: raw.output_augur_node_data,
-        output_gtr: raw.output_gtr,
-        output_traits_csv: raw.output_traits_csv,
-        output: raw.output,
-        output_selection: raw.output_selection,
-        topology_order: raw.topology_order,
+        attribute,
       }),
       (tree, metadata, attribute) => {
         let mut missing = Vec::new();

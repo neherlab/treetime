@@ -4,7 +4,7 @@ The ancestral reconstruction method is always marginal in the timetree pipeline,
 
 ## Root cause
 
-`args.method_anc` is declared in [`args.rs#L90-L91`](../../packages/app-commands/src/commands/timetree/args.rs#L90-L91) (with `#[expect(dead_code)]`) but never read in the timetree pipeline. The pipeline always calls `initialize_marginal()` and `update_marginal()` regardless of the specified method.
+The `method_anc` field of `TreetimeTimetreeArgsRaw` in [`args.rs`](../../packages/app-commands/src/commands/timetree/args.rs) is never read in the timetree pipeline. The pipeline always calls `initialize_marginal()` and `update_marginal()` regardless of the specified method.
 
 The ancestral command implements method selection correctly.
 

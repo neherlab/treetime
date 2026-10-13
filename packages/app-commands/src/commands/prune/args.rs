@@ -7,6 +7,7 @@ use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -14,23 +15,12 @@ use smart_default::SmartDefault;
 use std::path::{Path, PathBuf};
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub struct TreetimePruneArgs {
-  pub(crate) alignment: AlignmentArgs,
+  #[deref]
+  #[deref_mut]
+  pub(crate) raw: TreetimePruneArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) tree_dialect: TreeDialectArgs,
-  pub(crate) alphabet_args: AlphabetArgs,
-  pub(crate) output: OutputCoreArgs,
-  pub(crate) output_gtr: Option<PathBuf>,
-  pub(crate) output_selection: Vec<PruneOutputSelection>,
-  pub(crate) topology_order: TopologyOrderArgs,
-  pub(crate) prune_short: Option<f64>,
-  pub(crate) prune_empty: bool,
-  pub(crate) merge_shared_mutations: bool,
-  pub(crate) prune_nodes_list: Option<String>,
-  pub(crate) prune_nodes_list_delimiter: char,
-  pub(crate) prune_nodes_list_file: Option<PathBuf>,
-  pub(crate) prune_nodes_list_file_delimiter: char,
 }
 
 impl TreetimePruneArgs {
@@ -45,24 +35,9 @@ impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
   fn try_from(raw: TreetimePruneArgsRaw) -> Result<Self, Report> {
     let tree = raw
       .tree
+      .clone()
       .ok_or_else(|| missing_required_args::<TreetimePruneArgsRaw>(&["tree"]))?;
-    Ok(Self {
-      alignment: raw.alignment,
-      tree,
-      tree_dialect: raw.tree_dialect,
-      alphabet_args: raw.alphabet_args,
-      output: raw.output,
-      output_gtr: raw.output_gtr,
-      output_selection: raw.output_selection,
-      topology_order: raw.topology_order,
-      prune_short: raw.prune_short,
-      prune_empty: raw.prune_empty,
-      merge_shared_mutations: raw.merge_shared_mutations,
-      prune_nodes_list: raw.prune_nodes_list,
-      prune_nodes_list_delimiter: raw.prune_nodes_list_delimiter,
-      prune_nodes_list_file: raw.prune_nodes_list_file,
-      prune_nodes_list_file_delimiter: raw.prune_nodes_list_file_delimiter,
-    })
+    Ok(Self { raw, tree })
   }
 }
 

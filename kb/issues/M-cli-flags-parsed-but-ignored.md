@@ -5,9 +5,9 @@
 
 Several command-line flags are accepted by the parser, validated, and then never read. A user who sets one of them gets no error and no effect. This is the same class of defect as a silently wrong result: the command reports success while ignoring part of its input.
 
-The command's resolved argument struct (`Treetime<Command>Args` in `packages/app-commands/src/commands/<command>/args.rs`) stores the value, and no code reads it. The compiler detects these fields because the command modules are crate-private; each field carries `#[expect(dead_code, reason = "...")]` that points here, so the expectation fails the build's lint check as soon as a flag is wired.
+The command's argument struct (`Treetime<Command>ArgsRaw` in `packages/app-commands/src/commands/<command>/args.rs`) stores the value, and no code reads it. The struct derives `Serialize` and the clap parser, which read every field, so the compiler does not report these fields; the table below is the list to keep current when a flag is wired or removed.
 
-## Resolved argument fields never read
+## Argument fields never read
 
 Flags marked _hidden_ are accepted but not listed in `--help`.
 
@@ -17,9 +17,9 @@ Flags marked _hidden_ are accepted but not listed in `--help`.
 | `clock`     | `--model`/`--gtr`, `--model-params`/`--gtr-params`, `--branch-length-mode`, `--method-anc`, `--prune-short`, `--clock-filter-method` (hidden), `--plot-rtt` (hidden), `--prune-outliers` (hidden)                                                            |
 | `timetree`  | `--model-params`/`--gtr-params`, `--tip-labels`, `--no-tip-labels`, `--n-iqd`, `--keep-polytomies`, `--zero-based`, `--aa` (hidden), `--custom-gtr` (hidden), `--clock-filter-method` (hidden) |
 
-`optimize` and `homoplasy` also accept `--model-params`/`--gtr-params` and never read it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. `ModelArgs` derives `Serialize`, which reads every field, so no `dead_code` expectation marks the field. For example, `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
+`optimize` and `homoplasy` also accept `--model-params`/`--gtr-params` and never read it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. For example, `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
 
-`clock` and `timetree` accept `--date-format` (config key `date_format`, default `%Y-%m-%d`) and never read it. The flag lives in the shared `DateColumnArgs` struct in `packages/app-commands/src/commands/shared/metadata.rs`, which also derives `Serialize`, so no `dead_code` expectation marks the field. The date reader in `packages/treetime-io/src/dates_csv.rs` parses every date cell with `DateParserOptions::default()`, and `struct DateParserOptions` has no format field, so a string date in a format outside the built-in list stays unreadable whatever `--date-format` says.
+`clock` and `timetree` accept `--date-format` (config key `date_format`, default `%Y-%m-%d`) and never read it. The flag lives in the shared `DateColumnArgs` struct in `packages/app-commands/src/commands/shared/metadata.rs`. The date reader in `packages/treetime-io/src/dates_csv.rs` parses every date cell with `DateParserOptions::default()`, and `struct DateParserOptions` has no format field, so a string date in a format outside the built-in list stays unreadable whatever `--date-format` says.
 
 Tracked elsewhere, with their own `expect` reasons:
 

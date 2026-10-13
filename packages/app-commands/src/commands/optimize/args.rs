@@ -10,6 +10,7 @@ use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::TreeDialectArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
+use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -22,31 +23,15 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 pub struct TreetimeOptimizeArgs {
-  pub(crate) alignment: AlignmentArgs,
+  #[deref]
+  #[deref_mut]
+  pub(crate) raw: TreetimeOptimizeArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) tree_dialect: TreeDialectArgs,
-  pub(crate) alphabet_args: AlphabetArgs,
-  pub(crate) model_args: ModelArgs,
-  pub(crate) dense: Option<bool>,
-  pub(crate) output: OutputCoreArgs,
-  pub(crate) divergence_units: DivergenceUnits,
-  pub(crate) output_augur_node_data: Option<PathBuf>,
-  pub(crate) output_gtr: Option<PathBuf>,
-  pub(crate) output_selection: Vec<OptimizeOutputSelection>,
-  pub(crate) topology_order: TopologyOrderArgs,
-  pub(crate) max_iter: usize,
-  pub(crate) dp: f64,
-  pub(crate) damping: f64,
   pub(crate) branch_length_initial_guess: InitialGuessMode,
   pub(crate) opt_method: BranchOptMethod,
-  pub(crate) no_indels: bool,
-  pub(crate) reroot: Option<OptimizeRerootMethod>,
-  pub(crate) reroot_tips: Vec<String>,
-  pub(crate) keep_root: bool,
   pub(crate) topology_ops: TopologyOps,
-  pub(crate) gap_fill_args: GapFillArgs,
 }
 
 impl TreetimeOptimizeArgs {
@@ -85,35 +70,18 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
   fn try_from(raw: TreetimeOptimizeArgsRaw) -> Result<Self, Report> {
     let tree = raw
       .tree
+      .clone()
       .ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
     Ok(Self {
-      alignment: raw.alignment,
       tree,
-      tree_dialect: raw.tree_dialect,
-      alphabet_args: raw.alphabet_args,
-      model_args: raw.model_args,
-      dense: raw.dense,
-      output: raw.output,
-      divergence_units: raw.divergence_units,
-      output_augur_node_data: raw.output_augur_node_data,
-      output_gtr: raw.output_gtr,
-      output_selection: raw.output_selection,
-      topology_order: raw.topology_order,
-      max_iter: raw.max_iter,
-      dp: raw.dp,
-      damping: raw.damping,
       branch_length_initial_guess: raw.branch_length_initial_guess.into(),
       opt_method: raw.opt_method.into(),
-      no_indels: raw.no_indels,
-      reroot: raw.reroot,
-      reroot_tips: raw.reroot_tips,
-      keep_root: raw.keep_root,
       topology_ops: TopologyOps {
         collapse_short_branches: !raw.no_collapse_short_branches,
         merge_siblings: !raw.no_merge_siblings,
         flip_parent_child: !raw.no_flip_parent_child,
       },
-      gap_fill_args: raw.gap_fill_args,
+      raw,
     })
   }
 }
