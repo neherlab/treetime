@@ -167,7 +167,7 @@ mod tests {
 
     let (log_lh, recon) = run_dense_marginal(&graph, &branch_lengths, &names, &ALN_7_TAXON, gtr)?;
 
-    pretty_assert_ulps_eq!(-57.712498930787206, log_lh, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(-56.82091109765779, log_lh, epsilon = 1e-6);
 
     let max_ulps = 4;
 

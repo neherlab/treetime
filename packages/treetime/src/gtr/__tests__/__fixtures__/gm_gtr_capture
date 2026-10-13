@@ -9,6 +9,10 @@ The outputs serve as the oracle for validating Rust v1 implementation.
 Rust tests in test_gm_gtr.rs load these outputs and compare against
 v1 results to ensure scientific agreement between implementations.
 
+Named models are built through GTR.standard, the entry point of every v0
+command. It sets mu to the requested average substitution rate after the
+model constructor has folded the scale of W into mu.
+
 Usage:
     ./dev/docker/python python packages/treetime/src/gtr/__tests__/__fixtures__/gm_gtr_capture
 """
@@ -18,7 +22,6 @@ from pathlib import Path
 
 import numpy as np
 from treetime.gtr import GTR
-from treetime.nuc_models import JC69, K80, F81, HKY85, T92
 
 FIXTURES_DIR = Path(__file__).parent
 TIMES = [0.0, 0.1, 0.5, 1.0, 5.0]
@@ -39,7 +42,7 @@ def serialize_outputs(gtr: GTR) -> dict:
 def capture_jc69(cases: dict) -> dict:
     """Capture JC69 outputs."""
     return {
-        key: serialize_outputs(JC69(mu=params["mu"], alphabet="nuc_nogap"))
+        key: serialize_outputs(GTR.standard("jc69", mu=params["mu"], alphabet="nuc_nogap"))
         for key, params in cases.items()
     }
 
@@ -47,7 +50,7 @@ def capture_jc69(cases: dict) -> dict:
 def capture_k80(cases: dict) -> dict:
     """Capture K80 outputs."""
     return {
-        key: serialize_outputs(K80(mu=params["mu"], kappa=params["kappa"]))
+        key: serialize_outputs(GTR.standard("k80", mu=params["mu"], kappa=params["kappa"]))
         for key, params in cases.items()
     }
 
@@ -56,7 +59,9 @@ def capture_f81(cases: dict) -> dict:
     """Capture F81 outputs."""
     return {
         key: serialize_outputs(
-            F81(mu=params["mu"], pi=np.array(params["pi"]) if params["pi"] else None, alphabet="nuc_nogap")
+            GTR.standard(
+                "f81", mu=params["mu"], pi=np.array(params["pi"]) if params["pi"] else None, alphabet="nuc_nogap"
+            )
         )
         for key, params in cases.items()
     }
@@ -66,7 +71,9 @@ def capture_hky85(cases: dict) -> dict:
     """Capture HKY85 outputs."""
     return {
         key: serialize_outputs(
-            HKY85(mu=params["mu"], kappa=params["kappa"], pi=np.array(params["pi"]) if params["pi"] else None)
+            GTR.standard(
+                "hky85", mu=params["mu"], kappa=params["kappa"], pi=np.array(params["pi"]) if params["pi"] else None
+            )
         )
         for key, params in cases.items()
     }
@@ -75,7 +82,7 @@ def capture_hky85(cases: dict) -> dict:
 def capture_t92(cases: dict) -> dict:
     """Capture T92 outputs."""
     return {
-        key: serialize_outputs(T92(mu=params["mu"], kappa=params["kappa"], pi_GC=params["pi_gc"]))
+        key: serialize_outputs(GTR.standard("t92", mu=params["mu"], kappa=params["kappa"], pi_GC=params["pi_gc"]))
         for key, params in cases.items()
     }
 
@@ -84,7 +91,8 @@ def capture_tn93(cases: dict) -> dict:
     """Capture TN93 outputs.
 
     NOTE: Python v0 TN93 has a bug (uses 5-state alphabet with 4x4 W matrix).
-    We construct TN93 correctly using GTR.custom with 4 states.
+    We construct TN93 correctly using GTR.custom with 4 states, then set mu
+    as GTR.standard does for every named model.
     """
     def build_tn93(params: dict) -> GTR:
         kappa1, kappa2 = params["kappa1"], params["kappa2"]
@@ -95,7 +103,9 @@ def capture_tn93(cases: dict) -> dict:
             [kappa1, kappa2, kappa1, 1.0],
         ])
         pi = np.array(params["pi"]) if params["pi"] else np.array([0.25, 0.25, 0.25, 0.25])
-        return GTR.custom(mu=params["mu"], pi=pi, W=W, alphabet="nuc_nogap")
+        gtr = GTR.custom(mu=params["mu"], pi=pi, W=W, alphabet="nuc_nogap")
+        gtr.mu = params["mu"]
+        return gtr
 
     return {key: serialize_outputs(build_tn93(params)) for key, params in cases.items()}
 

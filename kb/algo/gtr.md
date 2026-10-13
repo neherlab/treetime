@@ -16,7 +16,9 @@ Time-reversible models satisfy detailed balance $Q_{ij}\pi_j = Q_{ji}\pi_i$: in 
 
 $$Q_{ij} = \pi_i W_{ij} \quad (i \neq j)$$
 
-The average rate is $-\sum_i \pi_i Q_{ii} = \sum_{ij} \pi_i W_{ij} \pi_j$. The constructor `GTR::new()` [`packages/treetime/src/gtr/gtr.rs#L54-L72`](../../packages/treetime/src/gtr/gtr.rs#L54-L72) symmetrizes $W$, zeroes its diagonal, normalizes $\pi$, divides $W$ by the average rate (`avg_transition()` [`packages/treetime/src/gtr/gtr.rs#L154-L156`](../../packages/treetime/src/gtr/gtr.rs#L154-L156)), and multiplies the scalar rate `mu` by it. The stored $W$ therefore has average rate 1, and `mu` carries the overall scale: $P(t) = e^{\mu \mathbf{Q} t}$.
+The average rate is $-\sum_i \pi_i Q_{ii} = \sum_{ij} \pi_i W_{ij} \pi_j$. The constructor `GTR::new()` [`packages/treetime/src/gtr/gtr.rs#L26-L91`](../../packages/treetime/src/gtr/gtr.rs#L26-L91) symmetrizes $W$, zeroes its diagonal, normalizes $\pi$, divides $W$ by the average rate (`avg_transition()` [`packages/treetime/src/gtr/gtr.rs#L166-L168`](../../packages/treetime/src/gtr/gtr.rs#L166-L168)), and sets the scalar rate `mu` according to the rate scale below. The stored $W$ therefore has average rate 1, and `mu` carries the overall scale: $P(t) = e^{\mu \mathbf{Q} t}$.
+
+The builder argument `rate_scale` (`RateScale` [`packages/treetime/src/gtr/gtr.rs#L159-L164`](../../packages/treetime/src/gtr/gtr.rs#L159-L164)) decides what `mu` means. With the default `RateScale::FromMatrix`, `mu` multiplies the given $W$, so the model keeps the absolute rates of $W$; custom, inferred, and mugration models use it, as v0 `GTR.custom()` and `GTR.infer()` do through `assign_rates()`. The named models (JC69, K80, F81, HKY85, T92, TN93, JTT92) use `RateScale::Normalized`: `mu` is the average substitution rate of the finished model, 1 by default, so branch lengths are expected substitutions per site. v0 does the same in two steps: the model constructor folds the scale of $W$ into `mu`, and `GTR.standard()` then sets `mu` to the requested rate [`packages/legacy/treetime/treetime/gtr.py#L460`](../../packages/legacy/treetime/treetime/gtr.py#L460).
 
 Consumers of $P(t)$:
 

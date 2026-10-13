@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::gtr::gtr::GTR;
+use crate::gtr::gtr::{GTR, RateScale};
 use crate::make_error;
 use crate::progress::LogSink;
 use crate::progress_info;
@@ -124,7 +124,13 @@ pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = Array1::<f64>::ones(n_states);
-  let mut gtr = GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()?;
+  let mut gtr = GTR::builder()
+    .n_states(n_states)
+    .mu(mu)
+    .maybe_W(W)
+    .pi(pi)
+    .rate_scale(RateScale::Normalized)
+    .build()?;
   gtr.unimodal_branch_likelihood = true;
   Ok(gtr)
 }
@@ -147,7 +153,13 @@ pub(crate) fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, R
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = Array1::<f64>::ones(n_states) / (n_states as f64);
-  GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
+  GTR::builder()
+    .n_states(n_states)
+    .mu(mu)
+    .maybe_W(W)
+    .pi(pi)
+    .rate_scale(RateScale::Normalized)
+    .build()
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -171,7 +183,13 @@ pub(crate) fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Repo
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
-  let mut gtr = GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()?;
+  let mut gtr = GTR::builder()
+    .n_states(n_states)
+    .mu(mu)
+    .maybe_W(W)
+    .pi(pi)
+    .rate_scale(RateScale::Normalized)
+    .build()?;
   gtr.unimodal_branch_likelihood = true;
   Ok(gtr)
 }
@@ -204,7 +222,13 @@ pub(crate) fn hky85(
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
-  GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
+  GTR::builder()
+    .n_states(n_states)
+    .mu(mu)
+    .maybe_W(W)
+    .pi(pi)
+    .rate_scale(RateScale::Normalized)
+    .build()
 }
 
 #[derive(Clone, Debug, SmartDefault)]
@@ -238,7 +262,13 @@ pub(crate) fn t92(
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
   let pi = array![(1.0 - pi_GC) * 0.5, pi_GC * 0.5, pi_GC * 0.5, (1.0 - pi_GC) * 0.5];
-  GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
+  GTR::builder()
+    .n_states(n_states)
+    .mu(mu)
+    .maybe_W(W)
+    .pi(pi)
+    .rate_scale(RateScale::Normalized)
+    .build()
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -303,7 +333,13 @@ pub(crate) fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Re
   }
 
   let n_states = alphabet.n_canonical();
-  GTR::builder().n_states(n_states).mu(mu).W(w).pi(pi).build()
+  GTR::builder()
+    .n_states(n_states)
+    .mu(mu)
+    .W(w)
+    .pi(pi)
+    .rate_scale(RateScale::Normalized)
+    .build()
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -352,7 +388,13 @@ pub(crate) fn tn93(
   let pi = pi.unwrap_or_else(|| Array1::ones(n_states) / (n_states as f64));
   let pi = &pi / pi.sum();
 
-  GTR::builder().n_states(n_states).mu(mu).maybe_W(W).pi(pi).build()
+  GTR::builder()
+    .n_states(n_states)
+    .mu(mu)
+    .maybe_W(W)
+    .pi(pi)
+    .rate_scale(RateScale::Normalized)
+    .build()
 }
 
 #[derive(Clone, Debug, SmartDefault)]

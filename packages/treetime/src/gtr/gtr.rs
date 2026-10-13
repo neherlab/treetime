@@ -24,7 +24,13 @@ pub struct GTR {
 #[bon]
 impl GTR {
   #[builder]
-  pub fn new(n_states: usize, mu: f64, W: Option<Array2<f64>>, pi: Array1<f64>) -> Result<Self, Report> {
+  pub fn new(
+    n_states: usize,
+    mu: f64,
+    W: Option<Array2<f64>>,
+    pi: Array1<f64>,
+    #[builder(default)] rate_scale: RateScale,
+  ) -> Result<Self, Report> {
     let n = n_states;
 
     if pi.shape() != [n] {
@@ -60,7 +66,10 @@ impl GTR {
     };
 
     let average_rate = avg_transition(&W, &pi)?;
-    let mu = mu * average_rate;
+    let mu = match rate_scale {
+      RateScale::FromMatrix => mu * average_rate,
+      RateScale::Normalized => mu,
+    };
     let W = W / average_rate;
 
     let (eigvals, v, v_inv) = eig_single_site(&W, pi.view())?;
@@ -141,6 +150,13 @@ impl GTR {
   fn exp_lt_scaled(&self, t: f64, rate: f64) -> Array1<f64> {
     (self.mu * rate * t * &self.eigvals).mapv(f64::exp)
   }
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum RateScale {
+  #[default]
+  FromMatrix,
+  Normalized,
 }
 
 pub(crate) fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> Result<f64, Report> {

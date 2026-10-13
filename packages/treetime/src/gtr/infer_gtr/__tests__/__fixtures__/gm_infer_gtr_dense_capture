@@ -63,7 +63,6 @@ import numpy as np
 from Bio import AlignIO, Phylo
 from treetime import TreeAnc
 from treetime.gtr import GTR
-from treetime.nuc_models import JC69
 
 SEED = 1010336213
 random.seed(SEED)
@@ -99,7 +98,9 @@ def capture_infer_gtr(tree_nwk: str, alignment_fasta: str, case_name: str) -> di
 
     # nuc_nogap: 4 states (A, C, G, T), gaps treated as unknown.
     # Matches Rust's Alphabet::n_canonical().
-    gtr = JC69(mu=1.0, alphabet="nuc_nogap")
+    # GTR.standard is the entry point of v0 commands: it sets mu to the
+    # requested average substitution rate, 1 by default.
+    gtr = GTR.standard("jc69", alphabet="nuc_nogap")
 
     tt = TreeAnc(
         tree=tree,
