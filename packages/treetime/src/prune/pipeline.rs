@@ -11,7 +11,7 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::progress::LogSink;
 use crate::prune::prune::prune_nodes;
 use crate::seq::alignment::NodeSeqInput;
-use eyre::eyre;
+use treetime_utils::make_report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem::take;
 use treetime_graph::assign_node_names::assign_node_names;
@@ -34,7 +34,7 @@ pub fn run(
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
   let (mut partitions, gtr) = if needs_sequences {
     let node_inputs = take(&mut input.sequences).ok_or_else(|| {
-      OperationError::InvalidInput(eyre!(
+      OperationError::InvalidInput(make_report!(
         "Sequences required for --prune-empty or --merge-shared-mutations"
       ))
     })?;

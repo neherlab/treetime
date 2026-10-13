@@ -11,11 +11,8 @@ pub struct VarPosMap {
 
 impl VarPosMap {
   pub(crate) fn get(&self, pos: usize) -> Option<&VarPos> {
-    self
-      .entries
-      .binary_search_by_key(&pos, |(key, _)| *key)
-      .ok()
-      .map(|index| &self.entries[index].1)
+    let index = self.entries.partition_point(|(key, _)| *key < pos);
+    self.entries.get(index).filter(|(key, _)| *key == pos).map(|(_, value)| value)
   }
 
   pub(crate) fn contains_key(&self, pos: usize) -> bool {
