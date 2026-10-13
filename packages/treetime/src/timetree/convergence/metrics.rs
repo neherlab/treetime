@@ -4,6 +4,13 @@ use treetime_primitives::LogLh;
 
 pub(crate) const NODE_TIME_TOLERANCE_YEARS: f64 = 1e-2;
 
+#[derive(Clone, Debug)]
+pub struct IterationRecord {
+  pub iteration: usize,
+  pub metrics: ConvergenceMetrics,
+  pub clock: IterationClock,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConvergenceMetrics {
   pub n_diff: usize,
@@ -38,11 +45,4 @@ impl IterationClock {
       r_squared: clock_model.r_squared(),
     }
   }
-}
-
-#[derive(Clone, Debug)]
-pub struct IterationRecord {
-  pub iteration: usize,
-  pub metrics: ConvergenceMetrics,
-  pub clock: IterationClock,
 }

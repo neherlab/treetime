@@ -220,29 +220,12 @@ pub struct FitchSeqInfo {
 }
 
 #[derive(Clone, Debug)]
-pub struct FitchSeqDistribution {
-  pub(crate) variable: BTreeMap<usize, StateSet>,
-
-  pub(crate) variable_indel: BTreeSet<(usize, usize)>,
-
-  pub(crate) chosen_state: BTreeMap<usize, AsciiChar>,
-}
-
-#[derive(Clone, Debug)]
 pub struct VarPos {
   pub(crate) dis: Array1<f64>,
   pub(crate) state: AsciiChar,
 }
 
 impl VarPos {}
-
-struct SeqObservation {
-  unknown: Vec<(usize, usize)>,
-  gaps: Vec<(usize, usize)>,
-  non_char: Vec<(usize, usize)>,
-  composition: Composition,
-  fitch: FitchSeqDistribution,
-}
 
 fn observe_seq(seq: &Seq, alphabet: &Alphabet) -> SeqObservation {
   let flags = char_flags(alphabet);
@@ -275,6 +258,23 @@ fn observe_seq(seq: &Seq, alphabet: &Alphabet) -> SeqObservation {
       chosen_state: btreemap! {},
     },
   }
+}
+
+struct SeqObservation {
+  unknown: Vec<(usize, usize)>,
+  gaps: Vec<(usize, usize)>,
+  non_char: Vec<(usize, usize)>,
+  composition: Composition,
+  fitch: FitchSeqDistribution,
+}
+
+#[derive(Clone, Debug)]
+pub struct FitchSeqDistribution {
+  pub(crate) variable: BTreeMap<usize, StateSet>,
+
+  pub(crate) variable_indel: BTreeSet<(usize, usize)>,
+
+  pub(crate) chosen_state: BTreeMap<usize, AsciiChar>,
 }
 
 fn char_flags(alphabet: &Alphabet) -> [u8; 128] {

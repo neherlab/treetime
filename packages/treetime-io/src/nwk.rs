@@ -176,8 +176,6 @@ pub fn nwk_write(
   Ok(())
 }
 
-pub type NwkNodeComments = BTreeMap<GraphNodeKey, Vec<(String, NewickValue)>>;
-
 pub(crate) fn newick_graph(
   tree: &TreeView<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -219,6 +217,8 @@ pub(crate) fn newick_graph(
   Ok(graph)
 }
 
+pub type NwkNodeComments = BTreeMap<GraphNodeKey, Vec<(String, NewickValue)>>;
+
 pub(crate) fn newick_write_options(options: &NwkWriteOptions) -> NewickWriteOptions {
   NewickWriteOptions {
     numbers: NumberFormat {
@@ -238,6 +238,16 @@ pub(crate) fn format_weight(weight: f64, options: &NwkWriteOptions) -> String {
   )
 }
 
+#[derive(Clone, SmartDefault)]
+pub struct NwkWriteOptions {
+  #[default(NwkStyle::Plain)]
+  pub style: NwkStyle,
+
+  pub weight_significant_digits: Option<u8>,
+
+  pub weight_decimal_digits: Option<i8>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SmartDefault)]
 pub enum NwkStyle {
   #[default]
@@ -254,14 +264,4 @@ impl NwkStyle {
       Self::Nhx => NewickDialect::NHX,
     }
   }
-}
-
-#[derive(Clone, SmartDefault)]
-pub struct NwkWriteOptions {
-  #[default(NwkStyle::Plain)]
-  pub style: NwkStyle,
-
-  pub weight_significant_digits: Option<u8>,
-
-  pub weight_decimal_digits: Option<i8>,
 }

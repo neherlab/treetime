@@ -93,13 +93,6 @@ pub(crate) struct Window<'b> {
   pub(crate) is_invalid: bool,
 }
 
-pub(crate) enum Scan<'t> {
-  Found(&'t str),
-  Unterminated(&'t str),
-  Trivia,
-  NeedMore,
-}
-
 pub(crate) fn scan_to_semicolon<'t>(
   text: &'t str,
   at_end: bool,
@@ -124,6 +117,13 @@ pub(crate) fn scan_to_semicolon<'t>(
     ReadMode::Strict => Scan::Unterminated(text),
     ReadMode::Tolerant => Scan::Found(text),
   }
+}
+
+pub(crate) enum Scan<'t> {
+  Found(&'t str),
+  Unterminated(&'t str),
+  Trivia,
+  NeedMore,
 }
 
 pub(crate) fn valid_utf8_prefix(bytes: &[u8]) -> &str {

@@ -2,12 +2,6 @@ use crate::cancel::CancelledError;
 use derive_more::Display;
 use eyre::Report;
 
-#[derive(Debug, Display)]
-#[display("{_0}")]
-pub struct InputError(String);
-
-impl std::error::Error for InputError {}
-
 pub(crate) fn input_error(message: impl Into<String>) -> Report {
   Report::new(InputError(message.into()))
 }
@@ -68,3 +62,9 @@ impl std::error::Error for OperationError {
     error.source()
   }
 }
+
+#[derive(Debug, Display)]
+#[display("{_0}")]
+pub struct InputError(String);
+
+impl std::error::Error for InputError {}

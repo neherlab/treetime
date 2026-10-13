@@ -20,26 +20,6 @@ pub fn leaf_properties(schema: &Value) -> Result<Vec<LeafProperty>, Report> {
   Ok(leaves)
 }
 
-pub struct LeafProperty {
-  pub key_path: Vec<String>,
-  pub schema_pointer: String,
-  pub path_role: Option<PathRole>,
-}
-
-impl LeafProperty {
-  pub fn key(&self) -> &str {
-    self.key_path.last().map_or("", String::as_str)
-  }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumString)]
-#[strum(serialize_all = "kebab-case")]
-pub enum PathRole {
-  Input,
-  InputTemplate,
-  Output,
-}
-
 fn collect_leaves(
   schema: &Value,
   object_pointer: &str,
@@ -85,6 +65,26 @@ fn collect_leaves(
     }
   }
   Ok(())
+}
+
+pub struct LeafProperty {
+  pub key_path: Vec<String>,
+  pub schema_pointer: String,
+  pub path_role: Option<PathRole>,
+}
+
+impl LeafProperty {
+  pub fn key(&self) -> &str {
+    self.key_path.last().map_or("", String::as_str)
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumString)]
+#[strum(serialize_all = "kebab-case")]
+pub enum PathRole {
+  Input,
+  InputTemplate,
+  Output,
 }
 
 fn nested_object_def(schema: &Value, property: &Value) -> Option<String> {

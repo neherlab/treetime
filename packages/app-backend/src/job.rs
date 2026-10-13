@@ -19,38 +19,77 @@ use treetime_utils::make_error;
 
 const JOB_ID_MAX_LEN: usize = 128;
 
-/// Identifier of one command run, unique among the jobs of a process.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, Serialize, Deserialize)]
-#[schemars(try_from = "String")]
-#[deser(deserialize_as = TryFromInto<String>)]
-pub struct JobId(String);
-
-impl JobId {
-  pub fn random() -> Self {
-    Self(format!("{:032x}", rand::random::<u128>()))
-  }
-
-  pub fn parse(id: &str) -> Result<Self, Report> {
-    let valid = !id.is_empty()
-      && id.len() <= JOB_ID_MAX_LEN
-      && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
-    if valid {
-      Ok(Self(id.to_owned()))
-    } else {
-      make_error!("invalid job id `{id}`: expected 1 to {JOB_ID_MAX_LEN} ASCII letters, digits, `-` or `_`")
-    }
-  }
-
-  pub fn as_str(&self) -> &str {
-    &self.0
+pub fn run_job(
+  job_id: &JobId,
+  cancel: &dyn Cancel,
+  work: impl FnOnce() -> Result<CommandOutcome, Report>,
+) -> TerminalEvent {
+  let outcome = catch_unwind(AssertUnwindSafe(work));
+  match outcome {
+    Ok(Ok(result)) => TerminalEvent::Ok {
+      job_id: job_id.clone(),
+      result,
+    },
+    Ok(Err(report)) => TerminalEvent::from_report(job_id.clone(), &report, cancel),
+    Err(payload) => TerminalEvent::from_panic(job_id.clone(), payload.as_ref()),
   }
 }
 
-impl TryFrom<String> for JobId {
-  type Error = Report;
+#[derive(Debug, Default)]
+pub struct CancelToken(AtomicBool);
 
-  fn try_from(id: String) -> Result<Self, Report> {
-    Self::parse(&id)
+impl CancelToken {
+  pub fn cancel(&self) {
+    self.0.store(true, Ordering::SeqCst);
+  }
+}
+
+impl Cancel for CancelToken {
+  fn is_cancelled(&self) -> bool {
+    self.0.load(Ordering::SeqCst)
+  }
+}
+
+pub struct JobProgress<F: Fn(JobEvent) + Send + Sync> {
+  emit: F,
+}
+
+impl<F: Fn(JobEvent) + Send + Sync> JobProgress<F> {
+  pub const fn new(emit: F) -> Self {
+    Self { emit }
+  }
+}
+
+impl<F: Fn(JobEvent) + Send + Sync> StageSink for JobProgress<F> {
+  fn report(&self, stage: &str, fraction: f64, message: &str) {
+    (self.emit)(JobEvent::Progress {
+      data: ProgressEvent {
+        stage: stage.to_owned(),
+        fraction,
+        message: message.to_owned(),
+      },
+    });
+  }
+
+  fn iteration(&self, record: &IterationRecord) {
+    (self.emit)(JobEvent::Iteration {
+      data: IterationEvent::from(record),
+    });
+  }
+}
+
+impl<F: Fn(JobEvent) + Send + Sync> LogSink for JobProgress<F> {
+  fn log(&self, level: LogLevel, message: &str) {
+    (self.emit)(JobEvent::Log {
+      data: LogEvent {
+        level,
+        message: message.to_owned(),
+      },
+    });
+  }
+
+  fn log_enabled(&self, _level: LogLevel) -> bool {
+    true
   }
 }
 
@@ -172,76 +211,37 @@ impl TerminalEvent {
   }
 }
 
-pub fn run_job(
-  job_id: &JobId,
-  cancel: &dyn Cancel,
-  work: impl FnOnce() -> Result<CommandOutcome, Report>,
-) -> TerminalEvent {
-  let outcome = catch_unwind(AssertUnwindSafe(work));
-  match outcome {
-    Ok(Ok(result)) => TerminalEvent::Ok {
-      job_id: job_id.clone(),
-      result,
-    },
-    Ok(Err(report)) => TerminalEvent::from_report(job_id.clone(), &report, cancel),
-    Err(payload) => TerminalEvent::from_panic(job_id.clone(), payload.as_ref()),
+/// Identifier of one command run, unique among the jobs of a process.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, JsonSchema, Serialize, Deserialize)]
+#[schemars(try_from = "String")]
+#[deser(deserialize_as = TryFromInto<String>)]
+pub struct JobId(String);
+
+impl JobId {
+  pub fn random() -> Self {
+    Self(format!("{:032x}", rand::random::<u128>()))
+  }
+
+  pub fn parse(id: &str) -> Result<Self, Report> {
+    let valid = !id.is_empty()
+      && id.len() <= JOB_ID_MAX_LEN
+      && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+    if valid {
+      Ok(Self(id.to_owned()))
+    } else {
+      make_error!("invalid job id `{id}`: expected 1 to {JOB_ID_MAX_LEN} ASCII letters, digits, `-` or `_`")
+    }
+  }
+
+  pub fn as_str(&self) -> &str {
+    &self.0
   }
 }
 
-#[derive(Debug, Default)]
-pub struct CancelToken(AtomicBool);
+impl TryFrom<String> for JobId {
+  type Error = Report;
 
-impl CancelToken {
-  pub fn cancel(&self) {
-    self.0.store(true, Ordering::SeqCst);
-  }
-}
-
-impl Cancel for CancelToken {
-  fn is_cancelled(&self) -> bool {
-    self.0.load(Ordering::SeqCst)
-  }
-}
-
-pub struct JobProgress<F: Fn(JobEvent) + Send + Sync> {
-  emit: F,
-}
-
-impl<F: Fn(JobEvent) + Send + Sync> JobProgress<F> {
-  pub const fn new(emit: F) -> Self {
-    Self { emit }
-  }
-}
-
-impl<F: Fn(JobEvent) + Send + Sync> StageSink for JobProgress<F> {
-  fn report(&self, stage: &str, fraction: f64, message: &str) {
-    (self.emit)(JobEvent::Progress {
-      data: ProgressEvent {
-        stage: stage.to_owned(),
-        fraction,
-        message: message.to_owned(),
-      },
-    });
-  }
-
-  fn iteration(&self, record: &IterationRecord) {
-    (self.emit)(JobEvent::Iteration {
-      data: IterationEvent::from(record),
-    });
-  }
-}
-
-impl<F: Fn(JobEvent) + Send + Sync> LogSink for JobProgress<F> {
-  fn log(&self, level: LogLevel, message: &str) {
-    (self.emit)(JobEvent::Log {
-      data: LogEvent {
-        level,
-        message: message.to_owned(),
-      },
-    });
-  }
-
-  fn log_enabled(&self, _level: LogLevel) -> bool {
-    true
+  fn try_from(id: String) -> Result<Self, Report> {
+    Self::parse(&id)
   }
 }

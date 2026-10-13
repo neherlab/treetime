@@ -110,17 +110,6 @@ pub fn run_optimize(
   Ok(())
 }
 
-struct OptimizeTrees<'a> {
-  graph: &'a Graph,
-  alphabet: &'a Alphabet,
-  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &'a OptimizeOutputMaps,
-  mutation_units: bool,
-  alignment: Option<&'a Path>,
-  input_tree: &'a Path,
-}
-
 fn write_optimize_trees(
   trees: &OptimizeTrees<'_>,
   resolved: &ResolvedOutputs,
@@ -157,6 +146,17 @@ fn write_optimize_trees(
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
   Ok(())
+}
+
+struct OptimizeTrees<'a> {
+  graph: &'a Graph,
+  alphabet: &'a Alphabet,
+  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  maps: &'a OptimizeOutputMaps,
+  mutation_units: bool,
+  alignment: Option<&'a Path>,
+  input_tree: &'a Path,
 }
 
 fn gather_optimize_output_maps(

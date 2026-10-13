@@ -52,22 +52,6 @@ pub(crate) fn is_comment_rule(rule: Rule) -> bool {
   )
 }
 
-pub(crate) fn number_value(text: &str) -> NewickValue {
-  match parse_number::<f64>(text) {
-    Some(number) if format_shortest(number).is_ok_and(|shortest| shortest == text) => NewickValue::Number(number),
-    Some(_) | None => NewickValue::NumberText(text.to_owned()),
-  }
-}
-
-pub(crate) fn unquote(text: &str, quote: char) -> String {
-  let doubled: String = [quote, quote].iter().collect();
-  text
-    .strip_prefix(quote)
-    .and_then(|inner| inner.strip_suffix(quote))
-    .unwrap_or(text)
-    .replace(&doubled, &quote.to_string())
-}
-
 fn comment_body(text: &str) -> &str {
   text
     .strip_prefix('[')
@@ -116,6 +100,15 @@ fn beast_text(token: &Pair<'_, Rule>) -> String {
     Rule::single_quoted => unquote(token.as_str(), '\''),
     _ => token.as_str().to_owned(),
   }
+}
+
+pub(crate) fn unquote(text: &str, quote: char) -> String {
+  let doubled: String = [quote, quote].iter().collect();
+  text
+    .strip_prefix(quote)
+    .and_then(|inner| inner.strip_suffix(quote))
+    .unwrap_or(text)
+    .replace(&doubled, &quote.to_string())
 }
 
 fn parse_hex_color(token: &Pair<'_, Rule>) -> Option<[u8; 3]> {
@@ -172,6 +165,13 @@ fn nhx_scalar(text: &str, expected: NhxType) -> Option<NewickValue> {
       .contains(&text)
       .then(|| NewickValue::String(text.to_owned())),
     NhxType::Color => nhx_color(text),
+  }
+}
+
+pub(crate) fn number_value(text: &str) -> NewickValue {
+  match parse_number::<f64>(text) {
+    Some(number) if format_shortest(number).is_ok_and(|shortest| shortest == text) => NewickValue::Number(number),
+    Some(_) | None => NewickValue::NumberText(text.to_owned()),
   }
 }
 

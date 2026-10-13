@@ -19,13 +19,6 @@ impl From<LogLh> for JsonFloat {
   }
 }
 
-#[derive(Deserialize)]
-#[deser(untagged)]
-enum JsonFloatRepr {
-  Number(f64),
-  Text(String),
-}
-
 impl JsonSchema for JsonFloat {
   fn schema_name() -> Cow<'static, str> {
     Cow::Borrowed("JsonFloat")
@@ -80,4 +73,11 @@ impl TryFrom<JsonFloatRepr> for JsonFloat {
       },
     }
   }
+}
+
+#[derive(Deserialize)]
+#[deser(untagged)]
+enum JsonFloatRepr {
+  Number(f64),
+  Text(String),
 }

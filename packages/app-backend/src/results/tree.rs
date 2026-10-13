@@ -23,17 +23,6 @@ const BAD_BRANCH_YES: &str = "Yes";
 
 const NUCLEOTIDE_MUTATIONS: &str = "nuc";
 
-pub fn preorder(root: &AuspiceTreeNode) -> Vec<(&AuspiceTreeNode, Option<usize>)> {
-  let mut nodes = vec![];
-  let mut stack = vec![(root, None)];
-  while let Some((node, parent)) = stack.pop() {
-    let index = nodes.len();
-    nodes.push((node, parent));
-    stack.extend(node.children.iter().rev().map(|child| (child, Some(index))));
-  }
-  nodes
-}
-
 /// A tree a run wrote, read from its Auspice file.
 #[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
@@ -86,6 +75,120 @@ impl ResultTree {
   pub fn find(&self, name: &str) -> Option<usize> {
     self.nodes.iter().position(|node| node.name == name)
   }
+}
+
+pub fn result_colorings(tree: &AuspiceTree) -> Result<Vec<ResultColoring>, Report> {
+  let order = preorder(&tree.tree);
+  tree
+    .data
+    .meta
+    .colorings
+    .iter()
+    .map(|coloring| {
+      let states = if coloring.type_ == CATEGORICAL {
+        order
+          .iter()
+          .map(|(node, _)| node.node_attrs.attr(&coloring.key))
+          .filter_map_ok(|attr| attr.map(|attr| attr.value().to_owned()))
+          .collect::<Result<BTreeSet<_>, Report>>()?
+          .into_iter()
+          .collect()
+      } else {
+        vec![]
+      };
+      let scale = coloring_scale(coloring, &states);
+      Ok(ResultColoring {
+        key: coloring.key.clone(),
+        title: coloring.title.clone(),
+        kind: coloring.type_.clone(),
+        states,
+        scale,
+      })
+    })
+    .collect()
+}
+
+pub fn preorder(root: &AuspiceTreeNode) -> Vec<(&AuspiceTreeNode, Option<usize>)> {
+  let mut nodes = vec![];
+  let mut stack = vec![(root, None)];
+  while let Some((node, parent)) = stack.pop() {
+    let index = nodes.len();
+    nodes.push((node, parent));
+    stack.extend(node.children.iter().rev().map(|child| (child, Some(index))));
+  }
+  nodes
+}
+
+/// A coloring of the Auspice tree.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct ResultColoring {
+  /// Node attribute the coloring reads.
+  pub key: String,
+  /// Title of the coloring.
+  pub title: String,
+  /// Kind of scale, for example `categorical` or `continuous`.
+  pub kind: String,
+  /// Distinct states of a categorical coloring, sorted; empty for other kinds.
+  pub states: Vec<String>,
+  /// Colors of the states in the displayed Auspice tree; empty when Auspice chooses them.
+  pub scale: Vec<StateColor>,
+}
+
+fn coloring_scale(coloring: &AuspiceColoring, states: &[String]) -> Vec<StateColor> {
+  let muted = coloring.type_ == CATEGORICAL
+    && coloring.key != GENOTYPE
+    && coloring.key != BAD_BRANCH
+    && (1..=MUTED_PALETTE.len()).contains(&states.len());
+  if muted {
+    izip!(states, MUTED_PALETTE)
+      .map(|(state, color)| StateColor {
+        state: state.clone(),
+        color: color.to_owned(),
+      })
+      .collect()
+  } else {
+    coloring
+      .scale
+      .iter()
+      .map(|[state, color]| StateColor {
+        state: state.clone(),
+        color: color.clone(),
+      })
+      .collect()
+  }
+}
+
+/// Color of one state of a categorical coloring.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct StateColor {
+  /// Value of the node attribute.
+  pub state: String,
+  /// CSS hex color.
+  pub color: String,
+}
+
+fn result_node(node: &AuspiceTreeNode, parent: Option<usize>) -> Result<ResultNode, Report> {
+  let attrs = &node.node_attrs;
+  let num_date = attrs.num_date.as_ref();
+  let excluded = attrs.attr(BAD_BRANCH)?.map(|attr| attr.value() == BAD_BRANCH_YES);
+  Ok(ResultNode {
+    name: node.name.clone(),
+    parent,
+    children: vec![],
+    tips: 0,
+    div: attrs.div,
+    date: num_date.map(|date| YearDate::new(date.value)),
+    date_interval: num_date
+      .and_then(|date| date.confidence)
+      .and_then(|[lower, upper]| DateInterval::new(lower, upper)),
+    excluded,
+    mutations: node
+      .branch_attrs
+      .mutations
+      .get(NUCLEOTIDE_MUTATIONS)
+      .cloned()
+      .unwrap_or_default(),
+  })
 }
 
 /// One node of a result tree.
@@ -141,107 +244,4 @@ impl DateInterval {
       level: CI_FRACTION,
     })
   }
-}
-
-/// A coloring of the Auspice tree.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct ResultColoring {
-  /// Node attribute the coloring reads.
-  pub key: String,
-  /// Title of the coloring.
-  pub title: String,
-  /// Kind of scale, for example `categorical` or `continuous`.
-  pub kind: String,
-  /// Distinct states of a categorical coloring, sorted; empty for other kinds.
-  pub states: Vec<String>,
-  /// Colors of the states in the displayed Auspice tree; empty when Auspice chooses them.
-  pub scale: Vec<StateColor>,
-}
-
-/// Color of one state of a categorical coloring.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct StateColor {
-  /// Value of the node attribute.
-  pub state: String,
-  /// CSS hex color.
-  pub color: String,
-}
-
-pub fn result_colorings(tree: &AuspiceTree) -> Result<Vec<ResultColoring>, Report> {
-  let order = preorder(&tree.tree);
-  tree
-    .data
-    .meta
-    .colorings
-    .iter()
-    .map(|coloring| {
-      let states = if coloring.type_ == CATEGORICAL {
-        order
-          .iter()
-          .map(|(node, _)| node.node_attrs.attr(&coloring.key))
-          .filter_map_ok(|attr| attr.map(|attr| attr.value().to_owned()))
-          .collect::<Result<BTreeSet<_>, Report>>()?
-          .into_iter()
-          .collect()
-      } else {
-        vec![]
-      };
-      let scale = coloring_scale(coloring, &states);
-      Ok(ResultColoring {
-        key: coloring.key.clone(),
-        title: coloring.title.clone(),
-        kind: coloring.type_.clone(),
-        states,
-        scale,
-      })
-    })
-    .collect()
-}
-
-fn coloring_scale(coloring: &AuspiceColoring, states: &[String]) -> Vec<StateColor> {
-  let muted = coloring.type_ == CATEGORICAL
-    && coloring.key != GENOTYPE
-    && coloring.key != BAD_BRANCH
-    && (1..=MUTED_PALETTE.len()).contains(&states.len());
-  if muted {
-    izip!(states, MUTED_PALETTE)
-      .map(|(state, color)| StateColor {
-        state: state.clone(),
-        color: color.to_owned(),
-      })
-      .collect()
-  } else {
-    coloring
-      .scale
-      .iter()
-      .map(|[state, color]| StateColor {
-        state: state.clone(),
-        color: color.clone(),
-      })
-      .collect()
-  }
-}
-
-fn result_node(node: &AuspiceTreeNode, parent: Option<usize>) -> Result<ResultNode, Report> {
-  let attrs = &node.node_attrs;
-  let num_date = attrs.num_date.as_ref();
-  let excluded = attrs.attr(BAD_BRANCH)?.map(|attr| attr.value() == BAD_BRANCH_YES);
-  Ok(ResultNode {
-    name: node.name.clone(),
-    parent,
-    children: vec![],
-    tips: 0,
-    div: attrs.div,
-    date: num_date.map(|date| YearDate::new(date.value)),
-    date_interval: num_date
-      .and_then(|date| date.confidence)
-      .and_then(|[lower, upper]| DateInterval::new(lower, upper)),
-    excluded,
-    mutations: node
-      .branch_attrs
-      .mutations
-      .get(NUCLEOTIDE_MUTATIONS)
-      .cloned()
-      .unwrap_or_default(),
-  })
 }

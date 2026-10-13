@@ -15,6 +15,47 @@ use util_augur_node_data_json::AugurNodeDataJsonClock;
 
 const INTERVAL_EDGE_FRACTION: f64 = 0.05;
 
+pub fn timetree_results(outputs: &TimetreeOutputs<'_>, config: &TreetimeTimetreeArgsRaw) -> TimetreeResults {
+  TimetreeResults {
+    estimates: outputs.tree.map(|tree| timetree_estimates(tree, outputs, config)),
+    root_to_tip: outputs
+      .clock_rows
+      .map(|rows| root_to_tip(outputs.tree, outputs.clock_model, rows)),
+    iterations: outputs
+      .trace
+      .iter()
+      .enumerate()
+      .map(|(iteration, metrics)| IterationRow {
+        iteration,
+        max_time_change: metrics.max_time_change.map(JsonFloat),
+        rms_time_change: metrics.rms_time_change.map(JsonFloat),
+        log_lh_seq: metrics.log_lh_seq.map(JsonFloat::from),
+        log_lh_pos: metrics.log_lh_pos.map(JsonFloat::from),
+        log_lh_coal: metrics.log_lh_coal.map(JsonFloat::from),
+        log_lh_total: metrics.log_lh_total.map(JsonFloat::from),
+      })
+      .collect(),
+    skyline: outputs
+      .coalescent
+      .iter()
+      .map(|row| SkylineSegment {
+        start: row.segment_start,
+        end: row.segment_end,
+        tc: Band {
+          value: row.tc_value,
+          lower: row.tc_lower,
+          upper: row.tc_upper,
+        },
+        ne: Band {
+          value: row.ne_value,
+          lower: row.ne_lower,
+          upper: row.ne_upper,
+        },
+      })
+      .collect(),
+  }
+}
+
 /// Results of a `timetree` run.
 #[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
@@ -28,73 +69,6 @@ pub struct TimetreeResults {
   pub iterations: Vec<IterationRow>,
   /// Segments of the coalescent time scale, from the coalescent table.
   pub skyline: Vec<SkylineSegment>,
-}
-
-/// Estimates of a `timetree` run.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct TimetreeEstimates {
-  /// Date of the root.
-  pub root_date: Option<YearDate>,
-  /// Confidence interval of the root date.
-  pub root_interval: Option<DateInterval>,
-  /// Whether the root date lies within 5% of the interval width from a bound of its interval.
-  pub root_near_interval_edge: bool,
-  /// Clock rate in substitutions per site per year.
-  pub clock_rate: Option<f64>,
-  /// Standard deviation of the clock rate: the estimate's, or the one given with a fixed rate.
-  pub clock_rate_std: Option<f64>,
-  /// Whether the clock rate was fixed by the user instead of estimated.
-  pub clock_rate_fixed: bool,
-  /// Correlation coefficient of the final clock model; absent for a fixed rate.
-  pub r: Option<f64>,
-  /// Coefficient of determination of the final clock model.
-  pub r_squared: Option<f64>,
-  /// Number of samples in the tree.
-  pub samples: usize,
-  /// Number of samples the clock model left out: without a usable date or clock outliers.
-  pub excluded_samples: usize,
-  /// Coalescent prior the run used.
-  pub coalescent_prior: CoalescentPrior,
-  /// Relaxed clock the run used.
-  pub relaxed_clock: Option<RelaxedClock>,
-  /// Total log likelihood of the last iteration.
-  pub log_likelihood: Option<JsonFloat>,
-  /// Number of iterations the tracelog records.
-  pub iterations: usize,
-}
-
-/// Coalescent prior of a `timetree` run.
-#[derive(Clone, Copy, Debug, PartialEq, JsonSchema, Serialize)]
-#[schemars(tag = "kind", rename_all = "kebab-case")]
-#[deser(tag = "kind", rename_all = "kebab-case")]
-pub enum CoalescentPrior {
-  /// No coalescent prior.
-  None,
-  /// Constant population size with a fixed time scale.
-  Fixed {
-    /// Coalescent time scale in years.
-    tc: f64,
-  },
-  /// Constant population size with an optimized time scale.
-  Optimized,
-  /// Piecewise-constant population size.
-  Skyline {
-    /// Number of grid points.
-    points: usize,
-    /// Stiffness of the skyline.
-    stiffness: f64,
-  },
-}
-
-/// Parameters of a relaxed clock.
-#[derive(Clone, Copy, Debug, PartialEq, JsonSchema, Serialize)]
-pub struct RelaxedClock {
-  /// Slack: how far the rate of a branch may vary.
-  pub slack: f64,
-  /// Coupling: how strongly the rates of parent and child branches are tied.
-  pub coupling: f64,
 }
 
 /// Convergence values of one iteration.
@@ -144,75 +118,6 @@ pub struct Band {
   pub upper: Option<f64>,
 }
 
-pub struct TimetreeOutputs<'a> {
-  pub tree: Option<&'a ResultTree>,
-  pub clock_model: Option<&'a ClockModel>,
-  pub clock_rows: Option<&'a [ClockRegressionResult]>,
-  pub node_data_clock: Option<&'a AugurNodeDataJsonClock>,
-  pub trace: &'a [ConvergenceMetrics],
-  pub coalescent: &'a [CoalescentSegmentRow],
-}
-
-pub fn timetree_results(outputs: &TimetreeOutputs<'_>, config: &TreetimeTimetreeArgsRaw) -> TimetreeResults {
-  TimetreeResults {
-    estimates: outputs.tree.map(|tree| timetree_estimates(tree, outputs, config)),
-    root_to_tip: outputs
-      .clock_rows
-      .map(|rows| root_to_tip(outputs.tree, outputs.clock_model, rows)),
-    iterations: outputs
-      .trace
-      .iter()
-      .enumerate()
-      .map(|(iteration, metrics)| IterationRow {
-        iteration,
-        max_time_change: metrics.max_time_change.map(JsonFloat),
-        rms_time_change: metrics.rms_time_change.map(JsonFloat),
-        log_lh_seq: metrics.log_lh_seq.map(JsonFloat::from),
-        log_lh_pos: metrics.log_lh_pos.map(JsonFloat::from),
-        log_lh_coal: metrics.log_lh_coal.map(JsonFloat::from),
-        log_lh_total: metrics.log_lh_total.map(JsonFloat::from),
-      })
-      .collect(),
-    skyline: outputs
-      .coalescent
-      .iter()
-      .map(|row| SkylineSegment {
-        start: row.segment_start,
-        end: row.segment_end,
-        tc: Band {
-          value: row.tc_value,
-          lower: row.tc_lower,
-          upper: row.tc_upper,
-        },
-        ne: Band {
-          value: row.ne_value,
-          lower: row.ne_lower,
-          upper: row.ne_upper,
-        },
-      })
-      .collect(),
-  }
-}
-
-pub fn coalescent_prior(config: &TreetimeTimetreeArgsRaw) -> CoalescentPrior {
-  match coalescent_mode(config.coalescent, config.coalescent_opt, config.coalescent_skyline) {
-    CoalescentMode::Skyline => CoalescentPrior::Skyline {
-      points: config.skyline_n_points,
-      stiffness: config.skyline_stiffness,
-    },
-    CoalescentMode::Constant => CoalescentPrior::Optimized,
-    CoalescentMode::Fixed(tc) => CoalescentPrior::Fixed { tc },
-    CoalescentMode::Disabled => CoalescentPrior::None,
-  }
-}
-
-pub fn relaxed_clock(config: &TreetimeTimetreeArgsRaw) -> Option<RelaxedClock> {
-  match config.relax.as_slice() {
-    &[slack, coupling] => Some(RelaxedClock { slack, coupling }),
-    _ => None,
-  }
-}
-
 fn timetree_estimates(
   tree: &ResultTree,
   outputs: &TimetreeOutputs<'_>,
@@ -251,6 +156,101 @@ fn timetree_estimates(
       .and_then(|metrics| metrics.log_lh_total.map(JsonFloat::from)),
     iterations: outputs.trace.len(),
   }
+}
+
+/// Estimates of a `timetree` run.
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct TimetreeEstimates {
+  /// Date of the root.
+  pub root_date: Option<YearDate>,
+  /// Confidence interval of the root date.
+  pub root_interval: Option<DateInterval>,
+  /// Whether the root date lies within 5% of the interval width from a bound of its interval.
+  pub root_near_interval_edge: bool,
+  /// Clock rate in substitutions per site per year.
+  pub clock_rate: Option<f64>,
+  /// Standard deviation of the clock rate: the estimate's, or the one given with a fixed rate.
+  pub clock_rate_std: Option<f64>,
+  /// Whether the clock rate was fixed by the user instead of estimated.
+  pub clock_rate_fixed: bool,
+  /// Correlation coefficient of the final clock model; absent for a fixed rate.
+  pub r: Option<f64>,
+  /// Coefficient of determination of the final clock model.
+  pub r_squared: Option<f64>,
+  /// Number of samples in the tree.
+  pub samples: usize,
+  /// Number of samples the clock model left out: without a usable date or clock outliers.
+  pub excluded_samples: usize,
+  /// Coalescent prior the run used.
+  pub coalescent_prior: CoalescentPrior,
+  /// Relaxed clock the run used.
+  pub relaxed_clock: Option<RelaxedClock>,
+  /// Total log likelihood of the last iteration.
+  pub log_likelihood: Option<JsonFloat>,
+  /// Number of iterations the tracelog records.
+  pub iterations: usize,
+}
+
+pub struct TimetreeOutputs<'a> {
+  pub tree: Option<&'a ResultTree>,
+  pub clock_model: Option<&'a ClockModel>,
+  pub clock_rows: Option<&'a [ClockRegressionResult]>,
+  pub node_data_clock: Option<&'a AugurNodeDataJsonClock>,
+  pub trace: &'a [ConvergenceMetrics],
+  pub coalescent: &'a [CoalescentSegmentRow],
+}
+
+pub fn coalescent_prior(config: &TreetimeTimetreeArgsRaw) -> CoalescentPrior {
+  match coalescent_mode(config.coalescent, config.coalescent_opt, config.coalescent_skyline) {
+    CoalescentMode::Skyline => CoalescentPrior::Skyline {
+      points: config.skyline_n_points,
+      stiffness: config.skyline_stiffness,
+    },
+    CoalescentMode::Constant => CoalescentPrior::Optimized,
+    CoalescentMode::Fixed(tc) => CoalescentPrior::Fixed { tc },
+    CoalescentMode::Disabled => CoalescentPrior::None,
+  }
+}
+
+/// Coalescent prior of a `timetree` run.
+#[derive(Clone, Copy, Debug, PartialEq, JsonSchema, Serialize)]
+#[schemars(tag = "kind", rename_all = "kebab-case")]
+#[deser(tag = "kind", rename_all = "kebab-case")]
+pub enum CoalescentPrior {
+  /// No coalescent prior.
+  None,
+  /// Constant population size with a fixed time scale.
+  Fixed {
+    /// Coalescent time scale in years.
+    tc: f64,
+  },
+  /// Constant population size with an optimized time scale.
+  Optimized,
+  /// Piecewise-constant population size.
+  Skyline {
+    /// Number of grid points.
+    points: usize,
+    /// Stiffness of the skyline.
+    stiffness: f64,
+  },
+}
+
+pub fn relaxed_clock(config: &TreetimeTimetreeArgsRaw) -> Option<RelaxedClock> {
+  match config.relax.as_slice() {
+    &[slack, coupling] => Some(RelaxedClock { slack, coupling }),
+    _ => None,
+  }
+}
+
+/// Parameters of a relaxed clock.
+#[derive(Clone, Copy, Debug, PartialEq, JsonSchema, Serialize)]
+pub struct RelaxedClock {
+  /// Slack: how far the rate of a branch may vary.
+  pub slack: f64,
+  /// Coupling: how strongly the rates of parent and child branches are tied.
+  pub coupling: f64,
 }
 
 fn near_interval_edge(date: f64, interval: &DateInterval) -> bool {

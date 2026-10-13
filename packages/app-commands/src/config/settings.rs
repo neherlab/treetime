@@ -5,13 +5,6 @@ pub fn setting_ref<'a>(settings: &'a Map<String, Value>, key_path: &[String]) ->
   rest.iter().try_fold(settings.get(first)?, |value, key| value.get(key))
 }
 
-pub fn setting_mut<'a>(settings: &'a mut Map<String, Value>, key_path: &[String]) -> Option<&'a mut Value> {
-  let (first, rest) = key_path.split_first()?;
-  rest
-    .iter()
-    .try_fold(settings.get_mut(first)?, |value, key| value.get_mut(key))
-}
-
 pub fn remove_setting(settings: &mut Map<String, Value>, key_path: &[String]) {
   let Some((last, parents)) = key_path.split_last() else {
     return;
@@ -24,6 +17,13 @@ pub fn remove_setting(settings: &mut Map<String, Value>, key_path: &[String]) {
   if let Some(parent) = parent {
     parent.remove(last);
   }
+}
+
+pub fn setting_mut<'a>(settings: &'a mut Map<String, Value>, key_path: &[String]) -> Option<&'a mut Value> {
+  let (first, rest) = key_path.split_first()?;
+  rest
+    .iter()
+    .try_fold(settings.get_mut(first)?, |value, key| value.get_mut(key))
 }
 
 pub fn has_path(value: &Value) -> bool {

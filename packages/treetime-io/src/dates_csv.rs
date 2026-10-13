@@ -10,41 +10,6 @@ use treetime_utils::datetime::year_fraction::{date_range_to_year_fraction_range,
 use treetime_utils::io::file::read_file_with;
 use treetime_utils::{make_internal_report, make_report, vec_of_owned};
 
-#[derive(Debug)]
-pub struct MetadataTable {
-  pub delimiter: char,
-  pub columns: Vec<String>,
-  pub id_column: String,
-  pub date_column: Result<String, Report>,
-  pub rows: Vec<MetadataRow>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MetadataRow {
-  pub name: String,
-  pub date: Option<String>,
-}
-
-impl MetadataTable {
-  pub fn dates(&self) -> Result<Vec<(String, Option<DateConstraint>)>, Report> {
-    let column = self.date_column.as_ref().map_err(|report| make_report!("{report}"))?;
-    let options = DateParserOptions::default();
-    self
-      .rows
-      .iter()
-      .enumerate()
-      .map(|(index, row)| {
-        let raw = row
-          .date
-          .as_deref()
-          .ok_or_else(|| make_internal_report!("Row '{index}' has no value in date column '{column}'"))?;
-        let date = read_date(raw, &options).wrap_err_with(|| format!("When reading row {index}, column '{column}'"))?;
-        Ok((row.name.clone(), date))
-      })
-      .collect()
-  }
-}
-
 pub fn metadata_read_file(
   filepath: impl AsRef<Path>,
   delimiters: &[char],
@@ -120,6 +85,41 @@ pub fn metadata_read(
     columns,
     rows,
   })
+}
+
+#[derive(Debug)]
+pub struct MetadataTable {
+  pub delimiter: char,
+  pub columns: Vec<String>,
+  pub id_column: String,
+  pub date_column: Result<String, Report>,
+  pub rows: Vec<MetadataRow>,
+}
+
+impl MetadataTable {
+  pub fn dates(&self) -> Result<Vec<(String, Option<DateConstraint>)>, Report> {
+    let column = self.date_column.as_ref().map_err(|report| make_report!("{report}"))?;
+    let options = DateParserOptions::default();
+    self
+      .rows
+      .iter()
+      .enumerate()
+      .map(|(index, row)| {
+        let raw = row
+          .date
+          .as_deref()
+          .ok_or_else(|| make_internal_report!("Row '{index}' has no value in date column '{column}'"))?;
+        let date = read_date(raw, &options).wrap_err_with(|| format!("When reading row {index}, column '{column}'"))?;
+        Ok((row.name.clone(), date))
+      })
+      .collect()
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MetadataRow {
+  pub name: String,
+  pub date: Option<String>,
 }
 
 #[cfg_attr(

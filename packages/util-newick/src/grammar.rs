@@ -4,11 +4,6 @@ use pest::Parser;
 use pest::iterators::Pairs;
 use pest_derive::Parser;
 
-#[derive(Parser)]
-#[grammar = "common.pest"]
-#[grammar = "newick.pest"]
-pub(crate) struct NewickParser;
-
 pub(crate) fn parse(rule: Rule, input: &str) -> Result<Pairs<'_, Rule>, Box<pest::error::Error<Rule>>> {
   NewickParser::parse(rule, input).map_err(Box::new)
 }
@@ -27,6 +22,11 @@ pub(crate) fn matches(rule: Rule, input: &str) -> bool {
 pub(crate) fn parse_match(rule: Rule, input: &str) -> Option<Pairs<'_, Rule>> {
   NewickParser::parse(rule, input).ok()
 }
+
+#[derive(Parser)]
+#[grammar = "common.pest"]
+#[grammar = "newick.pest"]
+pub(crate) struct NewickParser;
 
 pub(crate) const fn start_rule(dialect: NewickDialect, mode: ReadMode) -> Rule {
   match (dialect.structure, dialect.annotations, mode) {

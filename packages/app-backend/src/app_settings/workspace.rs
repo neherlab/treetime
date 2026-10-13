@@ -18,11 +18,6 @@ pub fn active_workspace(paths: &AppPaths, error: Option<&str>) -> Workspace {
   }
 }
 
-pub struct OpenedRuns {
-  pub runs: Arc<RunManager>,
-  pub error: Option<String>,
-}
-
 pub fn open_runs_folder(paths: &mut AppPaths, named_in: Option<&Path>) -> Result<OpenedRuns, Report> {
   let source = |folder: &AppFolderPath| match (folder.fixed_by, named_in) {
     (Some(variable), _) => format!(", set by {variable}"),
@@ -54,6 +49,11 @@ pub fn open_runs_folder(paths: &mut AppPaths, named_in: Option<&Path>) -> Result
     runs,
     error: Some(format!("{error}. The default runs folder is in use.")),
   })
+}
+
+pub struct OpenedRuns {
+  pub runs: Arc<RunManager>,
+  pub error: Option<String>,
 }
 
 pub fn prepare_workspace(paths: &AppPaths, path: &Path) -> Result<PathBuf, Report> {

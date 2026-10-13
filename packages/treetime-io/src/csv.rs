@@ -14,21 +14,6 @@ use treetime_utils::make_report;
 
 pub const DELIMITED_EXTENSIONS: [(&str, u8); 3] = [("csv", b','), ("tsv", b'\t'), ("ssv", b';')];
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TableFormat {
-  Csv,
-  Tsv,
-}
-
-impl TableFormat {
-  pub const fn delimiter(self) -> u8 {
-    match self {
-      Self::Csv => b',',
-      Self::Tsv => b'\t',
-    }
-  }
-}
-
 pub fn csv_read_file<T: DeserializeOwned>(filepath: impl AsRef<Path>, format: TableFormat) -> Result<Vec<T>, Report> {
   read_file_with(filepath, |reader| csv_read(reader, format))
 }
@@ -123,12 +108,19 @@ impl CsvWriter<FileWriter> {
   }
 }
 
-pub(crate) fn table_records<R: Read>(reader: R, delimiter: u8) -> Reader<R, StreamDeserializer> {
-  DeserializerConfig::new()
-    .delimiter(delimiter)
-    .trim(Trim::All)
-    .headers(Headers::None)
-    .reader(reader)
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TableFormat {
+  Csv,
+  Tsv,
+}
+
+impl TableFormat {
+  pub const fn delimiter(self) -> u8 {
+    match self {
+      Self::Csv => b',',
+      Self::Tsv => b'\t',
+    }
+  }
 }
 
 const fn table_config(delimiter: u8) -> DeserializerConfig {
@@ -237,6 +229,14 @@ fn csv_headers(sample: &[u8], delimiter: u8) -> Result<Vec<String>, Report> {
     .read::<Vec<String>>()?
     .map(|headers| normalize_csv_headers(&headers))
     .ok_or_else(|| make_report!("The table is empty"))
+}
+
+pub(crate) fn table_records<R: Read>(reader: R, delimiter: u8) -> Reader<R, StreamDeserializer> {
+  DeserializerConfig::new()
+    .delimiter(delimiter)
+    .trim(Trim::All)
+    .headers(Headers::None)
+    .reader(reader)
 }
 
 pub(crate) fn normalize_csv_headers(headers: &[String]) -> Vec<String> {

@@ -51,8 +51,6 @@ pub(crate) struct PipelineStep {
   command: PipelineStepCommand,
 }
 
-/// A single analysis command invocation within a pipeline: the command name as the key, and the command's settings,
-/// in the shape the per-command `--config` accepts, as the value.
 #[derive(Debug)]
 pub(crate) struct PipelineStepCommand;
 

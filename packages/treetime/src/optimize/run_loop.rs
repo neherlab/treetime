@@ -148,20 +148,6 @@ pub(crate) struct OptimizeLoopResult {
   pub stopped_at: Option<(usize, ConvergenceReason)>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ConvergenceReason {
-  Converged,
-  Oscillating,
-  Worsened,
-  NumericalFailure,
-}
-
-struct BestIteration {
-  iteration: usize,
-  log_lh: LogLh,
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-}
-
 fn record_if_best(
   best: &mut Option<BestIteration>,
   iteration: usize,
@@ -175,6 +161,12 @@ fn record_if_best(
       branch_lengths: branch_lengths.clone(),
     });
   }
+}
+
+struct BestIteration {
+  iteration: usize,
+  log_lh: LogLh,
+  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 fn stop_reason(
@@ -194,6 +186,14 @@ fn stop_reason(
   } else {
     None
   }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ConvergenceReason {
+  Converged,
+  Oscillating,
+  Worsened,
+  NumericalFailure,
 }
 
 fn update_branch_lengths(

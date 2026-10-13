@@ -24,6 +24,70 @@ pub fn run_stale_paths(id: &JobId) -> Vec<StalePath> {
   ]
 }
 
+pub struct AppEventLog {
+  capacity: usize,
+  state: Mutex<AppEventLogState>,
+}
+
+impl AppEventLog {
+  pub fn new(capacity: usize, first_seq: u64) -> Self {
+    Self {
+      capacity,
+      state: Mutex::new(AppEventLogState {
+        events: VecDeque::with_capacity(capacity),
+        next_seq: first_seq.max(1),
+        subscribers: vec![],
+      }),
+    }
+  }
+
+  pub fn append(&self, change: AppChange, stale: Vec<StalePath>) -> AppEvent {
+    let mut state = self.state.lock();
+    let event = AppEvent {
+      seq: state.next_seq,
+      time: Utc::now(),
+      stale,
+      change,
+    };
+    state.next_seq += 1;
+    state.subscribers.retain_mut(|subscriber| subscriber(&event));
+    state.events.push_back(event.clone());
+    while state.events.len() > self.capacity {
+      state.events.pop_front();
+    }
+    event
+  }
+
+  pub fn subscribe(&self, from: Option<u64>, mut subscriber: AppSubscriber) {
+    let mut state = self.state.lock();
+    if let Some(from) = from {
+      let oldest = state.events.front().map_or(state.next_seq, |event| event.seq);
+      if from < oldest || from > state.next_seq {
+        let resync = AppEvent {
+          seq: state.next_seq - 1,
+          time: Utc::now(),
+          stale: resync_stale_paths(),
+          change: AppChange::Resync,
+        };
+        if !subscriber(&resync) {
+          return;
+        }
+      } else {
+        for event in state.events.iter().filter(|event| event.seq >= from) {
+          if !subscriber(event) {
+            return;
+          }
+        }
+      }
+    }
+    state.subscribers.push(subscriber);
+  }
+
+  pub fn head(&self) -> u64 {
+    self.state.lock().next_seq - 1
+  }
+}
+
 pub fn resync_stale_paths() -> Vec<StalePath> {
   vec![
     StalePath::subtree(RUNS_PATH),
@@ -32,6 +96,14 @@ pub fn resync_stale_paths() -> Vec<StalePath> {
     StalePath::exact(EXAMPLES_DOWNLOAD_PATH),
   ]
 }
+
+struct AppEventLogState {
+  events: VecDeque<AppEvent>,
+  next_seq: u64,
+  subscribers: Vec<AppSubscriber>,
+}
+
+pub type AppSubscriber = Box<dyn FnMut(&AppEvent) -> bool + Send>;
 
 /// Change of the app's runs, sent on the app-wide event stream.
 #[derive(Clone, Debug, JsonSchema, Serialize)]
@@ -112,76 +184,4 @@ pub enum AppChange {
   /// event belongs to a previous server. Every path in `stale` must be read again; the stream continues with the
   /// events after this one.
   Resync,
-}
-
-pub type AppSubscriber = Box<dyn FnMut(&AppEvent) -> bool + Send>;
-
-pub struct AppEventLog {
-  capacity: usize,
-  state: Mutex<AppEventLogState>,
-}
-
-struct AppEventLogState {
-  events: VecDeque<AppEvent>,
-  next_seq: u64,
-  subscribers: Vec<AppSubscriber>,
-}
-
-impl AppEventLog {
-  pub fn new(capacity: usize, first_seq: u64) -> Self {
-    Self {
-      capacity,
-      state: Mutex::new(AppEventLogState {
-        events: VecDeque::with_capacity(capacity),
-        next_seq: first_seq.max(1),
-        subscribers: vec![],
-      }),
-    }
-  }
-
-  pub fn append(&self, change: AppChange, stale: Vec<StalePath>) -> AppEvent {
-    let mut state = self.state.lock();
-    let event = AppEvent {
-      seq: state.next_seq,
-      time: Utc::now(),
-      stale,
-      change,
-    };
-    state.next_seq += 1;
-    state.subscribers.retain_mut(|subscriber| subscriber(&event));
-    state.events.push_back(event.clone());
-    while state.events.len() > self.capacity {
-      state.events.pop_front();
-    }
-    event
-  }
-
-  pub fn subscribe(&self, from: Option<u64>, mut subscriber: AppSubscriber) {
-    let mut state = self.state.lock();
-    if let Some(from) = from {
-      let oldest = state.events.front().map_or(state.next_seq, |event| event.seq);
-      if from < oldest || from > state.next_seq {
-        let resync = AppEvent {
-          seq: state.next_seq - 1,
-          time: Utc::now(),
-          stale: resync_stale_paths(),
-          change: AppChange::Resync,
-        };
-        if !subscriber(&resync) {
-          return;
-        }
-      } else {
-        for event in state.events.iter().filter(|event| event.seq >= from) {
-          if !subscriber(event) {
-            return;
-          }
-        }
-      }
-    }
-    state.subscribers.push(subscriber);
-  }
-
-  pub fn head(&self) -> u64 {
-    self.state.lock().next_seq - 1
-  }
 }

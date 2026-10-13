@@ -4,6 +4,15 @@ use std::iter::Map;
 use std::ops::Index;
 use std::slice::Iter;
 
+impl<'a> IntoIterator for &'a VarPosMap {
+  type Item = (&'a usize, &'a VarPos);
+  type IntoIter = Map<Iter<'a, (usize, VarPos)>, fn(&'a (usize, VarPos)) -> (&'a usize, &'a VarPos)>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.entries.iter().map(|(pos, value)| (pos, value))
+  }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct VarPosMap {
   entries: Vec<(usize, VarPos)>,
@@ -54,15 +63,6 @@ impl FromIterator<(usize, VarPos)> for VarPosMap {
       map.insert(pos, value);
     }
     map
-  }
-}
-
-impl<'a> IntoIterator for &'a VarPosMap {
-  type Item = (&'a usize, &'a VarPos);
-  type IntoIter = Map<Iter<'a, (usize, VarPos)>, fn(&'a (usize, VarPos)) -> (&'a usize, &'a VarPos)>;
-
-  fn into_iter(self) -> Self::IntoIter {
-    self.entries.iter().map(|(pos, value)| (pos, value))
   }
 }
 

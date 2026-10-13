@@ -106,12 +106,6 @@ fn propagate_distributions_forward_node(
   })
 }
 
-#[derive(Clone, Copy)]
-struct ParentEdge<'a> {
-  branch: &'a BranchLikelihood,
-  msg_to_parent: Option<&'a Distribution<NegLog>>,
-}
-
 fn refine_distribution_from_parent(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
@@ -162,6 +156,12 @@ fn refine_distribution_from_parent(
     return Ok(ForwardRefinement::ContradictedGivenDate);
   }
   Ok(ForwardRefinement::Refined(combined))
+}
+
+#[derive(Clone, Copy)]
+struct ParentEdge<'a> {
+  branch: &'a BranchLikelihood,
+  msg_to_parent: Option<&'a Distribution<NegLog>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

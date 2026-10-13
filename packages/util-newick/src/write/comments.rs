@@ -139,16 +139,6 @@ fn push_double_quoted(text: &mut String, value: &str) {
   text.push('"');
 }
 
-fn checked_number_text(text: &str) -> Result<&str, NewickWriteError> {
-  if matches(Rule::number_exact, text) {
-    Ok(text)
-  } else {
-    Err(write_error!(
-      "The value {text:?} is marked as a number, but it is not a number"
-    ))
-  }
-}
-
 fn nhx_value(key: &str, value: &NewickValue) -> Result<Option<String>, NewickWriteError> {
   let expected = NhxType::of(key);
   let text = match (value, expected) {
@@ -191,6 +181,16 @@ fn nhx_parts(key: &str, values: &[NewickValue]) -> Result<String, NewickWriteErr
     })
     .collect::<Result<Vec<_>, _>>()?;
   Ok(parts.join(">"))
+}
+
+fn checked_number_text(text: &str) -> Result<&str, NewickWriteError> {
+  if matches(Rule::number_exact, text) {
+    Ok(text)
+  } else {
+    Err(write_error!(
+      "The value {text:?} is marked as a number, but it is not a number"
+    ))
+  }
 }
 
 fn nhx_part<'s>(key: &str, text: &'s str) -> Result<&'s str, NewickWriteError> {

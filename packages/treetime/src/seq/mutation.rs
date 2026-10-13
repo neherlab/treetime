@@ -18,12 +18,6 @@ use treetime_primitives::AsciiChar;
 use treetime_primitives::Seq;
 use treetime_utils::error::{report_to_string, to_eyre_error};
 
-#[derive(Clone, Debug)]
-pub(crate) struct SequenceMutations {
-  pub(crate) root_sequence: Seq,
-  pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-}
-
 pub(crate) fn stream_sequence_mutations(
   graph: &Graph,
   alphabet: &Alphabet,
@@ -83,6 +77,12 @@ pub(crate) fn stream_sequence_mutations(
     root_sequence,
     edge_mutations,
   })
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct SequenceMutations {
+  pub(crate) root_sequence: Seq,
+  pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }
 
 pub(crate) fn emit_sequences(

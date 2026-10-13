@@ -43,8 +43,6 @@ const APP_EVENT_CAPACITY: usize = 1024;
 
 const UNSTARTED_RUN_LIFETIME: TimeDelta = TimeDelta::days(1);
 
-pub type ConfigHook = Box<dyn FnOnce(&mut Value) -> Result<(), Report> + Send>;
-
 pub fn unconfined() -> ConfigHook {
   Box::new(|_config: &mut Value| Ok(()))
 }
@@ -330,19 +328,6 @@ impl RunManager {
   }
 }
 
-/// A file uploaded into a run's `inputs/` folder.
-#[derive(Clone, Debug, JsonSchema, Serialize)]
-pub struct UploadedInput {
-  /// File name inside the run's `inputs/` folder.
-  pub name: String,
-  /// Path to use for the file in the run's configuration.
-  pub path: PathBuf,
-  /// Size in bytes.
-  pub size: usize,
-  /// SHA-256 of the contents, as lowercase hexadecimal.
-  pub sha256: String,
-}
-
 pub struct StartedRun {
   manager: Arc<RunManager>,
   record: RunRecord,
@@ -434,6 +419,21 @@ impl StartedRun {
     manager.finish(&id);
     terminal
   }
+}
+
+pub type ConfigHook = Box<dyn FnOnce(&mut Value) -> Result<(), Report> + Send>;
+
+/// A file uploaded into a run's `inputs/` folder.
+#[derive(Clone, Debug, JsonSchema, Serialize)]
+pub struct UploadedInput {
+  /// File name inside the run's `inputs/` folder.
+  pub name: String,
+  /// Path to use for the file in the run's configuration.
+  pub path: PathBuf,
+  /// Size in bytes.
+  pub size: usize,
+  /// SHA-256 of the contents, as lowercase hexadecimal.
+  pub sha256: String,
 }
 
 struct ActiveRun {

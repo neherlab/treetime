@@ -23,12 +23,6 @@ pub fn newick_to_writer(
   Ok(())
 }
 
-pub fn newick_to_string(graph: &NewickGraph, options: &NewickWriteOptions) -> Result<String, NewickWriteError> {
-  let mut text = String::new();
-  write_tree(&mut text, graph, options, None).context("When writing Newick")?;
-  Ok(text)
-}
-
 pub fn write_newick_trees<'g>(
   writer: &mut impl io::Write,
   trees: impl IntoIterator<Item = &'g NewickGraph>,
@@ -40,6 +34,12 @@ pub fn write_newick_trees<'g>(
     writer.write_all(text.as_bytes()).context("When writing Newick")?;
   }
   Ok(())
+}
+
+pub fn newick_to_string(graph: &NewickGraph, options: &NewickWriteOptions) -> Result<String, NewickWriteError> {
+  let mut text = String::new();
+  write_tree(&mut text, graph, options, None).context("When writing Newick")?;
+  Ok(text)
 }
 
 pub(crate) fn write_tree(

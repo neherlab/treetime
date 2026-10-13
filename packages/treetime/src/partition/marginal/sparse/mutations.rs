@@ -112,16 +112,6 @@ pub(crate) fn differing_positions<'a>(parent: &'a Arc<Seq>, child: &'a Arc<Seq>)
   Either::Right(positions)
 }
 
-fn internal_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
-  let state = node.sequence[pos];
-  if state == alphabet.gap() {
-    return state;
-  }
-  node.profile.variable.get(pos).map_or(state, |var| {
-    alphabet.char(resolve_profile(var.dis.view(), &mut Resolve::Argmax))
-  })
-}
-
 struct EdgeChild<'a> {
   state: &'a SparseNodeState,
   obs: &'a SparseNodeObs,
@@ -163,6 +153,16 @@ impl<'a> EdgeChild<'a> {
       Some(leaf) => leaf.state_at(self.state, self.obs, pos, alphabet),
     }
   }
+}
+
+fn internal_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
+  let state = node.sequence[pos];
+  if state == alphabet.gap() {
+    return state;
+  }
+  node.profile.variable.get(pos).map_or(state, |var| {
+    alphabet.char(resolve_profile(var.dis.view(), &mut Resolve::Argmax))
+  })
 }
 
 struct LeafImputation<'a> {

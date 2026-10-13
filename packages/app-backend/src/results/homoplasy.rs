@@ -158,56 +158,6 @@ pub struct HomoplasyStatistics {
   pub ambiguous_site_count: usize,
 }
 
-/// A mutation that occurs on two or more branches.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct RecurrentMutation {
-  /// The mutation, such as `G9343A` or `del:100-102:ACG`.
-  pub mutation: String,
-  /// Position counted from 1, as in the tree: the site of a substitution, the first column of an
-  /// insertion or deletion.
-  pub position: usize,
-  /// Position counted as the run reports positions.
-  pub display_position: usize,
-  /// Number of branches the mutation occurs on.
-  pub branches: usize,
-  /// Number of terminal branches the mutation occurs on.
-  pub terminal_branches: usize,
-  /// Names of the nodes below the branches.
-  pub branch_names: Vec<String>,
-  /// Drug resistance annotation from `--drms`.
-  pub drm: Option<DrmAnnotation>,
-}
-
-/// A site with substitutions on two or more branches.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct HomoplasySite {
-  /// Position counted from 1, as in the tree.
-  pub position: usize,
-  /// Position counted as the run reports positions.
-  pub display_position: usize,
-  /// Number of branches with a substitution at the site.
-  pub branches: usize,
-  /// Every substitution at the site, most branches first.
-  pub substitutions: Vec<SiteSubstitution>,
-}
-
-/// A substitution at a site hit more than once.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct SiteSubstitution {
-  /// The substitution, such as `G9343A`.
-  pub mutation: String,
-  /// Number of branches the substitution occurs on.
-  pub branches: usize,
-  /// Names of the nodes below the branches.
-  pub branch_names: Vec<String>,
-  /// Drug resistance annotation from `--drms`.
-  pub drm: Option<DrmAnnotation>,
-}
-
 /// A site with changes involving ambiguous characters.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct AmbiguousSite {
@@ -239,6 +189,28 @@ fn recurrent_rows(all: &[RankedMutation], terminal: &[RankedMutation], tree_offs
     .collect()
 }
 
+/// A mutation that occurs on two or more branches.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct RecurrentMutation {
+  /// The mutation, such as `G9343A` or `del:100-102:ACG`.
+  pub mutation: String,
+  /// Position counted from 1, as in the tree: the site of a substitution, the first column of an
+  /// insertion or deletion.
+  pub position: usize,
+  /// Position counted as the run reports positions.
+  pub display_position: usize,
+  /// Number of branches the mutation occurs on.
+  pub branches: usize,
+  /// Number of terminal branches the mutation occurs on.
+  pub terminal_branches: usize,
+  /// Names of the nodes below the branches.
+  pub branch_names: Vec<String>,
+  /// Drug resistance annotation from `--drms`.
+  pub drm: Option<DrmAnnotation>,
+}
+
 fn recurrent_sites(all: &[RankedMutation], tree_offset: usize) -> Vec<HomoplasySite> {
   all
     .iter()
@@ -261,6 +233,34 @@ fn recurrent_sites(all: &[RankedMutation], tree_offset: usize) -> Vec<HomoplasyS
     .filter(|site| site.branches >= 2)
     .sorted_by_key(|site| site.position)
     .collect()
+}
+
+/// A site with substitutions on two or more branches.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct HomoplasySite {
+  /// Position counted from 1, as in the tree.
+  pub position: usize,
+  /// Position counted as the run reports positions.
+  pub display_position: usize,
+  /// Number of branches with a substitution at the site.
+  pub branches: usize,
+  /// Every substitution at the site, most branches first.
+  pub substitutions: Vec<SiteSubstitution>,
+}
+
+/// A substitution at a site hit more than once.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct SiteSubstitution {
+  /// The substitution, such as `G9343A`.
+  pub mutation: String,
+  /// Number of branches the substitution occurs on.
+  pub branches: usize,
+  /// Names of the nodes below the branches.
+  pub branch_names: Vec<String>,
+  /// Drug resistance annotation from `--drms`.
+  pub drm: Option<DrmAnnotation>,
 }
 
 fn expected_sites_hit_more_than_once(genome_length: usize, site_hits: &[SiteHitsRow]) -> f64 {

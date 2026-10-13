@@ -66,10 +66,6 @@ impl Read for Decompressor<'_> {
   }
 }
 
-trait Encoder: Write + Send {
-  fn finish_encoding(self: Box<Self>) -> io::Result<()>;
-}
-
 impl<W: Write + Send> Encoder for BzEncoder<W> {
   fn finish_encoding(self: Box<Self>) -> io::Result<()> {
     self.finish()?.flush()
@@ -91,24 +87,6 @@ impl<W: Write + Send> Encoder for zstd::Encoder<'_, W> {
 impl<W: Write + Send> Encoder for GzEncoder<W> {
   fn finish_encoding(self: Box<Self>) -> io::Result<()> {
     self.finish()?.flush()
-  }
-}
-
-struct Uncompressed<W>(W);
-
-impl<W: Write> Write for Uncompressed<W> {
-  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-    self.0.write(buf)
-  }
-
-  fn flush(&mut self) -> io::Result<()> {
-    self.0.flush()
-  }
-}
-
-impl<W: Write + Send> Encoder for Uncompressed<W> {
-  fn finish_encoding(mut self: Box<Self>) -> io::Result<()> {
-    self.0.flush()
   }
 }
 
@@ -196,6 +174,28 @@ impl Drop for Compressor<'_> {
     {
       error!("Failed to finish compressed file on drop: {}", report_to_string(&e));
     }
+  }
+}
+
+trait Encoder: Write + Send {
+  fn finish_encoding(self: Box<Self>) -> io::Result<()>;
+}
+
+struct Uncompressed<W>(W);
+
+impl<W: Write> Write for Uncompressed<W> {
+  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    self.0.write(buf)
+  }
+
+  fn flush(&mut self) -> io::Result<()> {
+    self.0.flush()
+  }
+}
+
+impl<W: Write + Send> Encoder for Uncompressed<W> {
+  fn finish_encoding(mut self: Box<Self>) -> io::Result<()> {
+    self.0.flush()
   }
 }
 

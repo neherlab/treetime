@@ -80,38 +80,6 @@ pub(crate) fn run_pre_loop(
   .wrap_err("Failed to reroot tree (post-ancestral)")
 }
 
-pub(crate) struct PreLoopInputs<'a> {
-  pub params: &'a TimetreeParams,
-  pub context: &'a TimetreeContext,
-  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  pub has_alignment: bool,
-}
-
-pub(crate) struct PreLoopState {
-  pub graph: Graph,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub branch_model: BranchModel,
-  pub clock_fit: ClockFit,
-  pub outliers: BTreeSet<GraphNodeKey>,
-}
-
-impl PreLoopState {
-  pub(crate) fn new(
-    graph: Graph,
-    branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-    branch_model: BranchModel,
-    clock_fit: ClockFit,
-  ) -> Self {
-    Self {
-      graph,
-      branch_lengths,
-      branch_model,
-      clock_fit,
-      outliers: BTreeSet::new(),
-    }
-  }
-}
-
 fn ml_optimize(state: PreLoopState, no_indels: bool, label: &str, log: &dyn LogSink) -> Result<PreLoopState, Report> {
   let BranchModel::Marginal(partition) = state.branch_model else {
     return Ok(state);
@@ -204,6 +172,38 @@ fn filter_clock_outliers(
     log,
   );
   Ok(PreLoopState { outliers, ..state })
+}
+
+pub(crate) struct PreLoopInputs<'a> {
+  pub params: &'a TimetreeParams,
+  pub context: &'a TimetreeContext,
+  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub has_alignment: bool,
+}
+
+pub(crate) struct PreLoopState {
+  pub graph: Graph,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_model: BranchModel,
+  pub clock_fit: ClockFit,
+  pub outliers: BTreeSet<GraphNodeKey>,
+}
+
+impl PreLoopState {
+  pub(crate) fn new(
+    graph: Graph,
+    branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_model: BranchModel,
+    clock_fit: ClockFit,
+  ) -> Self {
+    Self {
+      graph,
+      branch_lengths,
+      branch_model,
+      clock_fit,
+      outliers: BTreeSet::new(),
+    }
+  }
 }
 
 fn optimize_branch_lengths(

@@ -250,6 +250,27 @@ pub struct AuspiceTreeNodeAttrs {
   pub other: Map,
 }
 
+impl AuspiceTreeNodeAttrs {
+  pub fn attr(&self, key: &str) -> Result<Option<AuspiceTreeNodeAttr>, Report> {
+    let named = match key {
+      "bad_branch" => &self.bad_branch,
+      "clade_membership" => &self.clade_membership,
+      "region" => &self.region,
+      "country" => &self.country,
+      "division" => &self.division,
+      _ => {
+        return self
+          .other
+          .get(key)
+          .map(from_value)
+          .transpose()
+          .wrap_err_with(|| format!("When reading the node attribute `{key}`"));
+      },
+    };
+    Ok(named.clone())
+  }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuspiceTreeNodeAttr {
   value: String,
@@ -277,27 +298,6 @@ impl AuspiceTreeNodeAttr {
         .wrap_err("When reading the state probabilities of a node attribute"),
       _ => Ok(None),
     }
-  }
-}
-
-impl AuspiceTreeNodeAttrs {
-  pub fn attr(&self, key: &str) -> Result<Option<AuspiceTreeNodeAttr>, Report> {
-    let named = match key {
-      "bad_branch" => &self.bad_branch,
-      "clade_membership" => &self.clade_membership,
-      "region" => &self.region,
-      "country" => &self.country,
-      "division" => &self.division,
-      _ => {
-        return self
-          .other
-          .get(key)
-          .map(from_value)
-          .transpose()
-          .wrap_err_with(|| format!("When reading the node attribute `{key}`"));
-      },
-    };
-    Ok(named.clone())
   }
 }
 

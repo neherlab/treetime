@@ -127,116 +127,6 @@ pub struct CommandSettings {
   pub settings: Vec<SettingSpec>,
 }
 
-/// One setting of a command.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct SettingSpec {
-  /// Key path of the setting joined with `.`, for example `branch_split.method`.
-  pub key: String,
-  /// Key path of the setting in the configuration.
-  pub path: Vec<String>,
-  /// Name of the setting as the form shows it, for example `Clock rate std. dev.`.
-  pub label: String,
-  /// Command-line flag, for example `--clock-rate`.
-  pub flag: String,
-  /// Heading of the setting in `--help`.
-  pub group: String,
-  /// What the setting names: a file, or a value.
-  pub role: SettingRole,
-  /// Form of the value, which selects the control that edits it.
-  pub kind: SettingKind,
-  /// Whether the setting can be unset.
-  pub nullable: bool,
-  /// Allowed values of an `enum` or `enum-list` setting.
-  pub options: Vec<SettingOption>,
-  /// Type of the items of a `list` setting.
-  pub item_kind: ListItemKind,
-  /// Value of the setting when the configuration does not set it; absent when the setting has no default.
-  pub default_value: Option<JsonValue>,
-  /// Smallest allowed value of a number, when there is one.
-  pub minimum: Option<f64>,
-  /// Typical values of the setting, as the configuration spells them; the first one is the value the form fills in
-  /// when the setting is turned on.
-  pub examples: Vec<JsonValue>,
-  /// Names of the values the command-line flag takes, in order, for example `SLACK` and `COUPLING`.
-  pub value_names: Vec<String>,
-  /// Keys of the settings this setting cannot be used together with, as the command line rejects them.
-  pub conflicts: Vec<String>,
-  /// First paragraph of the setting's description.
-  pub help: String,
-  /// Remaining paragraphs of the setting's description.
-  pub more: String,
-}
-
-/// What a setting names.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-pub enum SettingRole {
-  /// A value that controls the analysis.
-  Setting,
-  /// Path of an input file.
-  Input,
-  /// Path template of input files, with a placeholder.
-  InputTemplate,
-  /// Path of an output file.
-  Output,
-}
-
-impl From<Option<PathRole>> for SettingRole {
-  fn from(role: Option<PathRole>) -> Self {
-    match role {
-      None => Self::Setting,
-      Some(PathRole::Input) => Self::Input,
-      Some(PathRole::InputTemplate) => Self::InputTemplate,
-      Some(PathRole::Output) => Self::Output,
-    }
-  }
-}
-
-/// Form of a setting's value.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-pub enum SettingKind {
-  /// On or off.
-  Switch,
-  /// On, off, or unset.
-  Tristate,
-  /// One of a set of values.
-  Enum,
-  /// A whole number.
-  Integer,
-  /// A number.
-  Number,
-  /// Text.
-  Text,
-  /// A list of text or numbers.
-  List,
-  /// A list of values from a set.
-  EnumList,
-}
-
-/// Type of the items of a list setting.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-pub enum ListItemKind {
-  String,
-  Number,
-  Integer,
-}
-
-/// One allowed value of a setting.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct SettingOption {
-  /// The value, as the configuration spells it.
-  pub value: String,
-  /// Description of the value, when it has one.
-  pub help: String,
-}
-
 fn setting_spec(
   schema: &Value,
   leaf: &LeafProperty,
@@ -328,6 +218,97 @@ fn setting_spec(
   })
 }
 
+/// One setting of a command.
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct SettingSpec {
+  /// Key path of the setting joined with `.`, for example `branch_split.method`.
+  pub key: String,
+  /// Key path of the setting in the configuration.
+  pub path: Vec<String>,
+  /// Name of the setting as the form shows it, for example `Clock rate std. dev.`.
+  pub label: String,
+  /// Command-line flag, for example `--clock-rate`.
+  pub flag: String,
+  /// Heading of the setting in `--help`.
+  pub group: String,
+  /// What the setting names: a file, or a value.
+  pub role: SettingRole,
+  /// Form of the value, which selects the control that edits it.
+  pub kind: SettingKind,
+  /// Whether the setting can be unset.
+  pub nullable: bool,
+  /// Allowed values of an `enum` or `enum-list` setting.
+  pub options: Vec<SettingOption>,
+  /// Type of the items of a `list` setting.
+  pub item_kind: ListItemKind,
+  /// Value of the setting when the configuration does not set it; absent when the setting has no default.
+  pub default_value: Option<JsonValue>,
+  /// Smallest allowed value of a number, when there is one.
+  pub minimum: Option<f64>,
+  /// Typical values of the setting, as the configuration spells them; the first one is the value the form fills in
+  /// when the setting is turned on.
+  pub examples: Vec<JsonValue>,
+  /// Names of the values the command-line flag takes, in order, for example `SLACK` and `COUPLING`.
+  pub value_names: Vec<String>,
+  /// Keys of the settings this setting cannot be used together with, as the command line rejects them.
+  pub conflicts: Vec<String>,
+  /// First paragraph of the setting's description.
+  pub help: String,
+  /// Remaining paragraphs of the setting's description.
+  pub more: String,
+}
+
+/// What a setting names.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum SettingRole {
+  /// A value that controls the analysis.
+  Setting,
+  /// Path of an input file.
+  Input,
+  /// Path template of input files, with a placeholder.
+  InputTemplate,
+  /// Path of an output file.
+  Output,
+}
+
+impl From<Option<PathRole>> for SettingRole {
+  fn from(role: Option<PathRole>) -> Self {
+    match role {
+      None => Self::Setting,
+      Some(PathRole::Input) => Self::Input,
+      Some(PathRole::InputTemplate) => Self::InputTemplate,
+      Some(PathRole::Output) => Self::Output,
+    }
+  }
+}
+
+/// Form of a setting's value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum SettingKind {
+  /// On or off.
+  Switch,
+  /// On, off, or unset.
+  Tristate,
+  /// One of a set of values.
+  Enum,
+  /// A whole number.
+  Integer,
+  /// A number.
+  Number,
+  /// Text.
+  Text,
+  /// A list of text or numbers.
+  List,
+  /// A list of values from a set.
+  EnumList,
+}
+
 fn list_item_kind(types: &[&str], key: &str) -> Result<ListItemKind, Report> {
   if types.contains(&"integer") {
     Ok(ListItemKind::Integer)
@@ -338,6 +319,16 @@ fn list_item_kind(types: &[&str], key: &str) -> Result<ListItemKind, Report> {
   } else {
     make_error!("list setting `{key}` has items the settings form does not render")
   }
+}
+
+/// Type of the items of a list setting.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum ListItemKind {
+  String,
+  Number,
+  Integer,
 }
 
 fn is_nullable(property: &Value) -> bool {
@@ -365,6 +356,15 @@ fn enum_options(schema: &Value, node: &Value) -> Result<Vec<SettingOption>, Repo
     options.extend(enum_options(schema, branch)?);
   }
   Ok(options)
+}
+
+/// One allowed value of a setting.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct SettingOption {
+  /// The value, as the configuration spells it.
+  pub value: String,
+  /// Description of the value, when it has one.
+  pub help: String,
 }
 
 fn deref<'a>(schema: &'a Value, node: &'a Value) -> Result<&'a Value, Report> {

@@ -25,12 +25,6 @@ pub fn cli_rule_diagnostics(command: AppCommand, config: &Map<String, Value>) ->
   Ok(conflicts.chain(counts).collect())
 }
 
-struct GivenSetting<'a> {
-  spec: &'a SettingSpec,
-  arg: &'a Arg,
-  value: &'a Value,
-}
-
 fn given_settings<'a>(
   settings: &'a CommandSettings,
   cli: &'a Command,
@@ -116,6 +110,12 @@ fn value_count_diagnostic(setting: &GivenSetting<'_>) -> Option<RawDiagnostic> {
     .at(setting_pointer(setting.spec))
     .build(),
   )
+}
+
+struct GivenSetting<'a> {
+  spec: &'a SettingSpec,
+  arg: &'a Arg,
+  value: &'a Value,
 }
 
 const fn plural<'a>(count: usize, one: &'a str, many: &'a str) -> &'a str {

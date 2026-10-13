@@ -25,13 +25,6 @@ const INPUTS_DIR: &str = "inputs";
 const OUT_DIR: &str = "out";
 const DEFAULT_TITLE_FORMAT: &str = "Run %Y-%m-%d %H:%M";
 
-pub fn default_title<Tz: TimeZone>(created_at: &DateTime<Tz>) -> String
-where
-  Tz::Offset: Display,
-{
-  created_at.format(DEFAULT_TITLE_FORMAT).to_string()
-}
-
 #[derive(Clone, Debug)]
 pub struct RunStore {
   root: PathBuf,
@@ -184,6 +177,13 @@ impl RunStore {
     }
     Ok(ids)
   }
+}
+
+pub fn default_title<Tz: TimeZone>(created_at: &DateTime<Tz>) -> String
+where
+  Tz::Offset: Display,
+{
+  created_at.format(DEFAULT_TITLE_FORMAT).to_string()
 }
 
 #[expect(

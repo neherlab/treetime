@@ -150,29 +150,6 @@ pub(crate) fn build_coalescent_output(
   Ok(Some(output))
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum CoalescentMode {
-  Disabled,
-  Fixed(f64),
-  Constant,
-  Skyline,
-}
-
-impl CoalescentMode {
-  pub(crate) fn is_optimized(self) -> bool {
-    matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
-  }
-
-  pub(crate) fn output_mode(self) -> Option<CoalescentOutputMode> {
-    match self {
-      CoalescentMode::Disabled => None,
-      CoalescentMode::Fixed(_) => Some(CoalescentOutputMode::Fixed),
-      CoalescentMode::Constant => Some(CoalescentOutputMode::Constant),
-      CoalescentMode::Skyline => Some(CoalescentOutputMode::Skyline),
-    }
-  }
-}
-
 pub(crate) struct CoalescentTimescale {
   pub distribution: Distribution,
   pub schedule: PiecewiseConstantFn,
@@ -209,5 +186,28 @@ pub(crate) struct CoalescentSetup {
 impl CoalescentSetup {
   pub(crate) fn prior_wanted(&self) -> bool {
     self.mode != CoalescentMode::Disabled
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CoalescentMode {
+  Disabled,
+  Fixed(f64),
+  Constant,
+  Skyline,
+}
+
+impl CoalescentMode {
+  pub(crate) fn is_optimized(self) -> bool {
+    matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
+  }
+
+  pub(crate) fn output_mode(self) -> Option<CoalescentOutputMode> {
+    match self {
+      CoalescentMode::Disabled => None,
+      CoalescentMode::Fixed(_) => Some(CoalescentOutputMode::Fixed),
+      CoalescentMode::Constant => Some(CoalescentOutputMode::Constant),
+      CoalescentMode::Skyline => Some(CoalescentOutputMode::Skyline),
+    }
   }
 }

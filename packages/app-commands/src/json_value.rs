@@ -6,29 +6,6 @@ use schemars::{JsonSchema, Schema, json_schema};
 use serde_json::{Map, Value};
 use std::borrow::Cow;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Deref, DerefMut, From, Into, Serialize)]
-pub struct JsonValue(#[deser(as = Serde)] pub Value);
-
-impl JsonSchema for JsonValue {
-  fn schema_name() -> Cow<'static, str> {
-    Cow::Borrowed("JsonValue")
-  }
-
-  fn json_schema(generator: &mut SchemaGenerator) -> Schema {
-    let value = generator.subschema_for::<Self>();
-    json_schema!({
-      "description": "A JSON value other than `null`: a boolean, a number, a string, a list, or a mapping of them.",
-      "anyOf": [
-        { "type": "boolean" },
-        { "type": "number" },
-        { "type": "string" },
-        { "type": "array", "items": value },
-        { "type": "object", "additionalProperties": value },
-      ],
-    })
-  }
-}
-
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deref, DerefMut, From, Into, Serialize, Deserialize)]
 pub struct SparseConfig(#[deser(as = Serde)] pub Map<String, Value>);
 
@@ -50,6 +27,29 @@ impl JsonSchema for SparseConfig {
         their defaults.",
       "type": "object",
       "additionalProperties": value,
+    })
+  }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deref, DerefMut, From, Into, Serialize)]
+pub struct JsonValue(#[deser(as = Serde)] pub Value);
+
+impl JsonSchema for JsonValue {
+  fn schema_name() -> Cow<'static, str> {
+    Cow::Borrowed("JsonValue")
+  }
+
+  fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+    let value = generator.subschema_for::<Self>();
+    json_schema!({
+      "description": "A JSON value other than `null`: a boolean, a number, a string, a list, or a mapping of them.",
+      "anyOf": [
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        { "type": "array", "items": value },
+        { "type": "object", "additionalProperties": value },
+      ],
     })
   }
 }

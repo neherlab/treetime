@@ -115,14 +115,6 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   ))
 }
 
-struct RootSearch<'a> {
-  outliers: &'a BTreeSet<GraphNodeKey>,
-  options: &'a ClockVarianceParams,
-  optimization_params: &'a BranchPointOptimizationParams,
-  reroot_params: &'a RerootParams,
-  prev_clock_rate: Option<f64>,
-}
-
 fn reroot_at_best_root(
   tree: ClockTree,
   state: ClockState,
@@ -218,37 +210,19 @@ fn search_root(
   )
 }
 
+struct RootSearch<'a> {
+  outliers: &'a BTreeSet<GraphNodeKey>,
+  options: &'a ClockVarianceParams,
+  optimization_params: &'a BranchPointOptimizationParams,
+  reroot_params: &'a RerootParams,
+  prev_clock_rate: Option<f64>,
+}
+
 #[derive(Clone, Debug)]
 pub struct ClockRerootResult {
   estimate: ClockEstimate,
   reroot_result: Option<RerootResult>,
   points: Vec<ClockRegressionPoint>,
-}
-
-#[derive(Clone, Debug)]
-enum ClockEstimate {
-  Estimated(ClockRegression),
-  Fixed(ClockModel),
-}
-
-pub(crate) struct ClockTree {
-  pub graph: Graph,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub inputs: ClockInputs,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct ClockFit {
-  pub model: ClockModel,
-  pub points: Vec<ClockRegressionPoint>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct ClockRegressionPoint {
-  pub key: GraphNodeKey,
-  pub date: Option<f64>,
-  pub div: f64,
-  pub is_outlier: bool,
 }
 
 impl ClockRerootResult {
@@ -284,6 +258,24 @@ impl ClockRerootResult {
   pub(crate) fn reroot_result(&self) -> Option<&RerootResult> {
     self.reroot_result.as_ref()
   }
+}
+
+#[derive(Clone, Debug)]
+enum ClockEstimate {
+  Estimated(ClockRegression),
+  Fixed(ClockModel),
+}
+
+pub(crate) struct ClockTree {
+  pub graph: Graph,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub inputs: ClockInputs,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ClockFit {
+  pub model: ClockModel,
+  pub points: Vec<ClockRegressionPoint>,
 }
 
 fn clock_regression_backward(
@@ -419,6 +411,14 @@ fn clock_regression_points(
     Ok(())
   })?;
   Ok(points)
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ClockRegressionPoint {
+  pub key: GraphNodeKey,
+  pub date: Option<f64>,
+  pub div: f64,
+  pub is_outlier: bool,
 }
 
 #[derive(Debug, Clone, SmartDefault)]

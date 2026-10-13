@@ -69,48 +69,6 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
   }
 }
 
-/// Outcome of checking a configuration without running it.
-#[derive(Clone, Debug, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-#[schemars(tag = "status", rename_all = "kebab-case")]
-#[deser(tag = "status", rename_all = "kebab-case")]
-pub enum CheckConfigResponse {
-  /// The configuration is accepted.
-  Valid {
-    /// Command the configuration is for.
-    command: AppCommand,
-    /// The configuration with every default filled in and without output paths, which the app sets for each run.
-    config: SparseConfig,
-    /// The command line and the YAML config that reproduce the configuration.
-    code: ConfigCode,
-    /// Findings about the configuration and its input files.
-    checks: Vec<RunCheck>,
-    /// The option of each choice of the command that the configuration selects.
-    choices: Vec<ActiveChoice>,
-  },
-  /// The configuration is rejected.
-  Invalid {
-    /// Command the configuration is for.
-    command: AppCommand,
-    /// The error, as the CLI prints it.
-    message: String,
-    /// The errors that caused `message`, outermost first.
-    causes: Vec<String>,
-    /// Problems found by parsing and by the schema check, empty for other errors.
-    problems: Vec<ConfigProblem>,
-    /// The problems drawn against the configuration text, when the text could be parsed.
-    rendered: Option<String>,
-    /// The problems as a user reads them: each parse and schema problem with its help, or the error and its causes.
-    messages: Vec<String>,
-    /// Findings about the configuration and its input files; the rejection is among them.
-    checks: Vec<RunCheck>,
-    /// The option of each choice of the command that the configuration selects, when the configuration could be
-    /// merged over the defaults.
-    choices: Vec<ActiveChoice>,
-  },
-}
-
 /// Request to check a configuration.
 #[derive(Clone, Debug, JsonSchema, Deserialize)]
 #[schemars(transform = skip_serializing_optionals)]
@@ -172,6 +130,48 @@ fn invalid(
     causes,
     problems,
   }
+}
+
+/// Outcome of checking a configuration without running it.
+#[derive(Clone, Debug, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(tag = "status", rename_all = "kebab-case")]
+#[deser(tag = "status", rename_all = "kebab-case")]
+pub enum CheckConfigResponse {
+  /// The configuration is accepted.
+  Valid {
+    /// Command the configuration is for.
+    command: AppCommand,
+    /// The configuration with every default filled in and without output paths, which the app sets for each run.
+    config: SparseConfig,
+    /// The command line and the YAML config that reproduce the configuration.
+    code: ConfigCode,
+    /// Findings about the configuration and its input files.
+    checks: Vec<RunCheck>,
+    /// The option of each choice of the command that the configuration selects.
+    choices: Vec<ActiveChoice>,
+  },
+  /// The configuration is rejected.
+  Invalid {
+    /// Command the configuration is for.
+    command: AppCommand,
+    /// The error, as the CLI prints it.
+    message: String,
+    /// The errors that caused `message`, outermost first.
+    causes: Vec<String>,
+    /// Problems found by parsing and by the schema check, empty for other errors.
+    problems: Vec<ConfigProblem>,
+    /// The problems drawn against the configuration text, when the text could be parsed.
+    rendered: Option<String>,
+    /// The problems as a user reads them: each parse and schema problem with its help, or the error and its causes.
+    messages: Vec<String>,
+    /// Findings about the configuration and its input files; the rejection is among them.
+    checks: Vec<RunCheck>,
+    /// The option of each choice of the command that the configuration selects, when the configuration could be
+    /// merged over the defaults.
+    choices: Vec<ActiveChoice>,
+  },
 }
 
 fn top_level_keys(document: &Value) -> BTreeSet<String> {

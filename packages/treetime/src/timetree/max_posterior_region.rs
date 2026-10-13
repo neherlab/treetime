@@ -28,20 +28,6 @@ pub fn max_posterior_region(
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct PosteriorRegion {
-  pub lower: f64,
-  pub upper: f64,
-  pub peak: PeakLocation,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PeakLocation {
-  Earliest,
-  Interior,
-  Latest,
-}
-
 pub(crate) fn grid_max_posterior_region(
   t: &Array1<f64>,
   neglog: &Array1<f64>,
@@ -101,6 +87,20 @@ pub(crate) fn grid_max_posterior_region(
     }
   };
   Ok(region)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PosteriorRegion {
+  pub lower: f64,
+  pub upper: f64,
+  pub peak: PeakLocation,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PeakLocation {
+  Earliest,
+  Interior,
+  Latest,
 }
 
 fn latest_peak_index(neglog: &Array1<f64>) -> usize {

@@ -5,6 +5,12 @@ use eyre::Report;
 use napi::bindgen_prelude::Uint8Array;
 use napi_derive::napi;
 
+#[napi(discriminant = "kind", discriminant_case = "lowercase")]
+pub enum PortMessage {
+  Request { request: PortRequest },
+  Abort { seq: u32 },
+}
+
 #[napi(object)]
 pub struct PortRequest {
   pub seq: u32,
@@ -32,27 +38,6 @@ impl PortRequest {
   }
 }
 
-#[napi(object)]
-pub struct PortHeader {
-  pub name: String,
-  pub value: String,
-}
-
-impl PortHeader {
-  pub fn list(headers: &HeaderMap) -> Vec<Self> {
-    header_pairs(headers)
-      .into_iter()
-      .map(|(name, value)| Self { name, value })
-      .collect()
-  }
-}
-
-#[napi(discriminant = "kind", discriminant_case = "lowercase")]
-pub enum PortMessage {
-  Request { request: PortRequest },
-  Abort { seq: u32 },
-}
-
 #[napi(discriminant = "kind", discriminant_case = "lowercase")]
 pub enum PortReply {
   Head {
@@ -78,5 +63,20 @@ impl PortReply {
     match self {
       Self::Head { seq, .. } | Self::Chunk { seq, .. } | Self::End { seq } | Self::Reset { seq, .. } => *seq,
     }
+  }
+}
+
+#[napi(object)]
+pub struct PortHeader {
+  pub name: String,
+  pub value: String,
+}
+
+impl PortHeader {
+  pub fn list(headers: &HeaderMap) -> Vec<Self> {
+    header_pairs(headers)
+      .into_iter()
+      .map(|(name, value)| Self { name, value })
+      .collect()
   }
 }

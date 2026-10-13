@@ -254,13 +254,6 @@ pub(crate) fn reconstructed_nuc_fasta_path(
   }
 }
 
-struct TreeOutputInputs {
-  alphabet: Alphabet,
-  input_leaf_order: Vec<GraphNodeKey>,
-  filter: UnknownMutationFilter,
-  mutation_units: bool,
-}
-
 fn write_result_outputs(
   args: &TreetimeTimetreeArgs,
   resolved: &ResolvedOutputs,
@@ -316,20 +309,11 @@ fn write_result_outputs(
   write_timetree_trees(&trees, &run, resolved, log)
 }
 
-struct TimetreeTrees<'a> {
-  graph: &'a Graph,
-  alphabet: &'a Alphabet,
-  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  date_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  divergences: &'a BTreeMap<GraphNodeKey, f64>,
-  maps: &'a TimetreeOutputMaps,
-  mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
-  node_dates: &'a BTreeMap<GraphNodeKey, Option<f64>>,
-  confidence_intervals: Option<&'a [NodeConfidenceInterval]>,
-  outliers: &'a BTreeSet<GraphNodeKey>,
-  bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
-  input_dates: Option<&'a BTreeMap<GraphNodeKey, DateConstraint>>,
+struct TreeOutputInputs {
+  alphabet: Alphabet,
+  input_leaf_order: Vec<GraphNodeKey>,
+  filter: UnknownMutationFilter,
+  mutation_units: bool,
 }
 
 fn write_timetree_trees(
@@ -385,6 +369,22 @@ fn write_timetree_trees(
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
   Ok(())
+}
+
+struct TimetreeTrees<'a> {
+  graph: &'a Graph,
+  alphabet: &'a Alphabet,
+  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  date_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  divergences: &'a BTreeMap<GraphNodeKey, f64>,
+  maps: &'a TimetreeOutputMaps,
+  mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
+  node_dates: &'a BTreeMap<GraphNodeKey, Option<f64>>,
+  confidence_intervals: Option<&'a [NodeConfidenceInterval]>,
+  outliers: &'a BTreeSet<GraphNodeKey>,
+  bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
+  input_dates: Option<&'a BTreeMap<GraphNodeKey, DateConstraint>>,
 }
 
 fn mutation_divergences(

@@ -28,72 +28,11 @@ pub struct HomoplasyParams {
   pub constant_sites: usize,
 }
 
-pub struct HomoplasyInput<'a> {
-  pub graph: &'a Graph,
-  pub bridged_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  pub raw_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  pub branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
-  pub alphabet: &'a Alphabet,
-  pub sequence_length: usize,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct HomoplasyOutput {
   pub substitutions: SubstitutionStats,
   pub ambiguous: AmbiguousStats,
   pub indels: IndelStats,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct SubstitutionStats {
-  pub total_branch_length: f64,
-  pub terminal_branch_length: f64,
-  pub all: RecurrenceTable<Sub>,
-  pub terminal: RecurrenceTable<Sub>,
-  pub sites: SiteHistogram,
-  pub leaves: BTreeMap<GraphNodeKey, Vec<Sub>>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AmbiguousStats {
-  pub all: RecurrenceTable<Sub>,
-  pub sites: Vec<SiteBranches>,
-  pub leaves: BTreeMap<GraphNodeKey, usize>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct IndelStats {
-  pub all: RecurrenceTable<IndelKey>,
-  pub terminal: RecurrenceTable<IndelKey>,
-  pub leaves: BTreeMap<GraphNodeKey, usize>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct IndelKey {
-  pub kind: InDelKind,
-  pub range: (usize, usize),
-  pub sequence: Seq,
-}
-
-impl IndelKey {
-  fn from_event(event: &MutationEvent) -> Option<Self> {
-    let (kind, AlignedMutation { range, sequence }) = match event {
-      MutationEvent::Insertion(segment) => (InDelKind::Insertion, segment),
-      MutationEvent::Deletion(segment) => (InDelKind::Deletion, segment),
-      MutationEvent::Substitution(_) => return None,
-    };
-    Some(Self {
-      kind,
-      range: *range,
-      sequence: sequence.clone(),
-    })
-  }
-}
-
-struct Branch {
-  edge: GraphEdgeKey,
-  node: GraphNodeKey,
-  terminal: bool,
 }
 
 fn branches(input: &HomoplasyInput<'_>) -> Vec<Branch> {
@@ -106,38 +45,6 @@ fn branches(input: &HomoplasyInput<'_>) -> Vec<Branch> {
       terminal: input.graph.is_leaf(edge.target()),
     })
     .collect()
-}
-
-fn events_of_class<'a>(
-  input: &'a HomoplasyInput<'_>,
-  mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  branch: &'a Branch,
-  class: MutationClass,
-) -> impl Iterator<Item = &'a MutationEvent> + 'a {
-  mutations[&branch.edge]
-    .iter()
-    .map(|mutation| &mutation.event)
-    .filter(move |event| classify_mutation(event, input.alphabet) == class)
-}
-
-fn substitutions<'a>(
-  input: &'a HomoplasyInput<'_>,
-  mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  branch: &'a Branch,
-  class: MutationClass,
-) -> impl Iterator<Item = &'a Sub> + 'a {
-  events_of_class(input, mutations, branch, class).filter_map(|event| match event {
-    MutationEvent::Substitution(sub) => Some(sub),
-    MutationEvent::Insertion(_) | MutationEvent::Deletion(_) => None,
-  })
-}
-
-fn substitution_order(a: &Sub, b: &Sub) -> Ordering {
-  (a.pos(), a.reff(), a.qry()).cmp(&(b.pos(), b.reff(), b.qry()))
-}
-
-fn indel_order(a: &IndelKey, b: &IndelKey) -> Ordering {
-  (a.range, a.kind, &a.sequence).cmp(&(b.range, b.kind, &b.sequence))
 }
 
 fn substitution_stats(
@@ -188,6 +95,16 @@ fn substitution_stats(
   })
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct SubstitutionStats {
+  pub total_branch_length: f64,
+  pub terminal_branch_length: f64,
+  pub all: RecurrenceTable<Sub>,
+  pub terminal: RecurrenceTable<Sub>,
+  pub sites: SiteHistogram,
+  pub leaves: BTreeMap<GraphNodeKey, Vec<Sub>>,
+}
+
 fn odd_substitution_probability(branch_length: f64) -> f64 {
   -0.5 * (-2.0 * branch_length).exp_m1()
 }
@@ -217,6 +134,29 @@ fn ambiguous_stats(input: &HomoplasyInput<'_>, branches: &[Branch]) -> Ambiguous
   AmbiguousStats { all, sites, leaves }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AmbiguousStats {
+  pub all: RecurrenceTable<Sub>,
+  pub sites: Vec<SiteBranches>,
+  pub leaves: BTreeMap<GraphNodeKey, usize>,
+}
+
+fn substitutions<'a>(
+  input: &'a HomoplasyInput<'_>,
+  mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  branch: &'a Branch,
+  class: MutationClass,
+) -> impl Iterator<Item = &'a Sub> + 'a {
+  events_of_class(input, mutations, branch, class).filter_map(|event| match event {
+    MutationEvent::Substitution(sub) => Some(sub),
+    MutationEvent::Insertion(_) | MutationEvent::Deletion(_) => None,
+  })
+}
+
+fn substitution_order(a: &Sub, b: &Sub) -> Ordering {
+  (a.pos(), a.reff(), a.qry()).cmp(&(b.pos(), b.reff(), b.qry()))
+}
+
 fn indel_stats(input: &HomoplasyInput<'_>, branches: &[Branch]) -> IndelStats {
   let mutations = input.raw_mutations;
   let events = || {
@@ -243,4 +183,64 @@ fn indel_stats(input: &HomoplasyInput<'_>, branches: &[Branch]) -> IndelStats {
   }
 
   IndelStats { all, terminal, leaves }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IndelStats {
+  pub all: RecurrenceTable<IndelKey>,
+  pub terminal: RecurrenceTable<IndelKey>,
+  pub leaves: BTreeMap<GraphNodeKey, usize>,
+}
+
+fn events_of_class<'a>(
+  input: &'a HomoplasyInput<'_>,
+  mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  branch: &'a Branch,
+  class: MutationClass,
+) -> impl Iterator<Item = &'a MutationEvent> + 'a {
+  mutations[&branch.edge]
+    .iter()
+    .map(|mutation| &mutation.event)
+    .filter(move |event| classify_mutation(event, input.alphabet) == class)
+}
+
+pub struct HomoplasyInput<'a> {
+  pub graph: &'a Graph,
+  pub bridged_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  pub raw_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  pub branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
+  pub alphabet: &'a Alphabet,
+  pub sequence_length: usize,
+}
+
+struct Branch {
+  edge: GraphEdgeKey,
+  node: GraphNodeKey,
+  terminal: bool,
+}
+
+fn indel_order(a: &IndelKey, b: &IndelKey) -> Ordering {
+  (a.range, a.kind, &a.sequence).cmp(&(b.range, b.kind, &b.sequence))
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct IndelKey {
+  pub kind: InDelKind,
+  pub range: (usize, usize),
+  pub sequence: Seq,
+}
+
+impl IndelKey {
+  fn from_event(event: &MutationEvent) -> Option<Self> {
+    let (kind, AlignedMutation { range, sequence }) = match event {
+      MutationEvent::Insertion(segment) => (InDelKind::Insertion, segment),
+      MutationEvent::Deletion(segment) => (InDelKind::Deletion, segment),
+      MutationEvent::Substitution(_) => return None,
+    };
+    Some(Self {
+      kind,
+      range: *range,
+      sequence: sequence.clone(),
+    })
+  }
 }

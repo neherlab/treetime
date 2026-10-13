@@ -259,7 +259,9 @@ mod tests {
     while !String::from_utf8_lossy(&body).contains("\n\n") {
       match replies.recv_timeout(Duration::from_secs(60)).unwrap() {
         PortReply::Chunk { data, .. } => body.extend_from_slice(&data),
-        _ => panic!("the app event stream ended"),
+        PortReply::Head { .. } | PortReply::End { .. } | PortReply::Reset { .. } => {
+          panic!("the app event stream ended")
+        },
       }
     }
     abort.abort();

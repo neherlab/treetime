@@ -65,6 +65,31 @@ pub(crate) fn total_indel_log_lh(
     .sum()
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct IndelTerm {
+  pub(crate) count: usize,
+  pub(crate) rate: f64,
+  pub(crate) held_length: f64,
+}
+
+impl IndelTerm {
+  pub(crate) fn new(count: usize, rate: f64) -> Self {
+    Self {
+      count,
+      rate,
+      held_length: 0.0,
+    }
+  }
+
+  pub(crate) fn metrics(&self, branch_length: f64) -> Result<OptimizationMetrics, Report> {
+    poisson_indel_log_lh(self.count, self.rate, branch_length + self.held_length)
+  }
+
+  pub(crate) fn requires_positive_length(&self) -> bool {
+    self.count > 0 && self.held_length == 0.0
+  }
+}
+
 pub(crate) fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMetrics, Report> {
   validate_branch_length_value(t)?;
 
@@ -95,29 +120,4 @@ pub(crate) fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<Optimiza
     derivative,
     second_derivative,
   ))
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct IndelTerm {
-  pub(crate) count: usize,
-  pub(crate) rate: f64,
-  pub(crate) held_length: f64,
-}
-
-impl IndelTerm {
-  pub(crate) fn new(count: usize, rate: f64) -> Self {
-    Self {
-      count,
-      rate,
-      held_length: 0.0,
-    }
-  }
-
-  pub(crate) fn metrics(&self, branch_length: f64) -> Result<OptimizationMetrics, Report> {
-    poisson_indel_log_lh(self.count, self.rate, branch_length + self.held_length)
-  }
-
-  pub(crate) fn requires_positive_length(&self) -> bool {
-    self.count > 0 && self.held_length == 0.0
-  }
 }

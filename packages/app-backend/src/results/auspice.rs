@@ -11,11 +11,6 @@ use schemars::JsonSchema;
 use serde_json::{Map, Value};
 use treetime_io::auspice_types::AuspiceTree;
 
-/// Auspice JSON of a run, with the color scales the app displays.
-#[derive(Clone, Debug, JsonSchema, Serialize)]
-#[schemars(transparent)]
-pub struct AuspiceDocument(#[schemars(with = "Map<String, Value>")] pub AuspiceTree);
-
 pub fn run_auspice(manager: &RunManager, id: &JobId) -> Result<AuspiceDocument, Report> {
   let record = finished_record(manager, id)?;
   let auspice = read_auspice(&manager.store().out_dir(id), &record.output_files)
@@ -31,3 +26,8 @@ pub fn display_auspice(mut auspice: AuspiceTree) -> Result<AuspiceDocument, Repo
   }
   Ok(AuspiceDocument(auspice))
 }
+
+/// Auspice JSON of a run, with the color scales the app displays.
+#[derive(Clone, Debug, JsonSchema, Serialize)]
+#[schemars(transparent)]
+pub struct AuspiceDocument(#[schemars(with = "Map<String, Value>")] pub AuspiceTree);

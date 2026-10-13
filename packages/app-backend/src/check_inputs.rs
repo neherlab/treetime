@@ -27,195 +27,6 @@ use treetime_utils::io::json::from_json_value;
 
 const ROUND_DAYS: [u32; 2] = [1, 15];
 
-/// A command configuration whose input files to inspect before a run.
-#[derive(Clone, Debug, JsonSchema, Deserialize)]
-#[schemars(deny_unknown_fields)]
-#[deser(deny_unknown_fields)]
-pub struct CheckInputsRequest {
-  /// Command the configuration is for.
-  pub command: AppCommand,
-  /// Settings of the command; the input files and the metadata settings are read from it, the rest is ignored.
-  pub config: SparseConfig,
-}
-
-#[derive(Clone, Debug, Default, Deserialize)]
-#[deser(default)]
-struct InputSettings {
-  tree: Option<PathBuf>,
-  #[deser(as = DisplayFromStr)]
-  tree_dialect: TreeDialectArg,
-  metadata: Option<PathBuf>,
-  alignment: Vec<PathBuf>,
-  metadata_id_columns: Vec<String>,
-  metadata_delimiters: Vec<char>,
-  date_column: Option<String>,
-}
-
-impl InputSettings {
-  fn of(command: AppCommand, config: &Map<String, Value>) -> Result<Self, Report> {
-    let settings: Self = from_json_value(&Value::Object(config.clone())).wrap_err("When reading the input settings")?;
-    let reads = |kind: InputKind| command.inputs().iter().any(|input| input.kind == kind);
-    Ok(Self {
-      tree: settings.tree.filter(|_| reads(InputKind::Tree)),
-      metadata: settings.metadata.filter(|_| reads(InputKind::Metadata)),
-      alignment: if reads(InputKind::Alignment) {
-        settings.alignment
-      } else {
-        vec![]
-      },
-      ..settings
-    })
-  }
-}
-
-/// Facts about the input files of a run, read with the readers the commands use.
-#[derive(Clone, Debug, Default, JsonSchema, Serialize, Deserialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct InputFacts {
-  /// Facts about the tree, when it could be read.
-  pub tree: Option<TreeFacts>,
-  /// Facts about the alignment, when it could be read.
-  pub alignment: Option<AlignmentFacts>,
-  /// Facts about the metadata table, when it could be read.
-  pub metadata: Option<MetadataFacts>,
-  /// Tree tips without a metadata row; present when both the tree and the metadata could be read.
-  pub tips_without_metadata: Option<Vec<String>>,
-  /// Tree tips without a sequence; present when both the tree and the alignment could be read.
-  pub tips_without_sequence: Option<Vec<String>>,
-  /// Inputs that could not be read, with the reason.
-  pub problems: Vec<InputProblem>,
-}
-
-/// Facts about a tree.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
-pub struct TreeFacts {
-  /// Number of tips.
-  pub tips: usize,
-  /// Number of internal nodes, the root included.
-  pub internal_nodes: usize,
-  /// Number of internal nodes with more than two children.
-  pub polytomies: usize,
-  /// Number of tips without a name.
-  pub unnamed_tips: usize,
-  /// Node names that occur more than once, tips and internal nodes alike, sorted.
-  pub duplicate_node_names: Vec<String>,
-}
-
-/// Facts about an alignment.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
-pub struct AlignmentFacts {
-  /// Number of sequences.
-  pub sequences: usize,
-  /// Length of the shortest sequence.
-  pub min_length: usize,
-  /// Length of the longest sequence; equal to `min_length` for an alignment.
-  pub max_length: usize,
-  /// Sequence names that occur more than once.
-  pub duplicate_names: Vec<String>,
-}
-
-/// Facts about a metadata table.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct MetadataFacts {
-  /// Number of data rows.
-  pub rows: usize,
-  /// Column names, in file order.
-  pub columns: Vec<String>,
-  /// Column that holds the sample names.
-  pub id_column: String,
-  /// Column that holds the sampling dates, when one was found.
-  pub date_column: Option<String>,
-  /// Facts about the sampling dates, when the date column could be read.
-  pub dates: Option<DateFacts>,
-}
-
-/// Facts about the sampling dates of a metadata table.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
-pub struct DateFacts {
-  /// Samples with a date the date parser reads.
-  pub readable: usize,
-  /// Samples whose date cannot be read, by name.
-  pub unreadable: Vec<String>,
-  /// Samples whose date is a calendar day.
-  pub exact_days: usize,
-  /// Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month.
-  pub on_day_1_or_15: usize,
-}
-
-/// An input that could not be read.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
-pub struct InputProblem {
-  /// Input the problem concerns.
-  pub input: InputKind,
-  /// The error, with its causes.
-  pub message: String,
-}
-
-/// Kind of input file.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Display, Serialize, Deserialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum InputKind {
-  Tree,
-  Metadata,
-  Alignment,
-}
-
-impl InputKind {
-  pub const fn setting(self) -> &'static str {
-    match self {
-      Self::Tree => "tree",
-      Self::Metadata => "metadata",
-      Self::Alignment => "alignment",
-    }
-  }
-
-  pub const fn label(self) -> &'static str {
-    match self {
-      Self::Tree => "Tree",
-      Self::Metadata => "Metadata",
-      Self::Alignment => "Alignment",
-    }
-  }
-
-  pub const fn formats(self) -> &'static str {
-    match self {
-      Self::Tree => "Newick or Nexus",
-      Self::Metadata => "CSV, TSV or SSV table",
-      Self::Alignment => "Aligned FASTA",
-    }
-  }
-
-  pub fn extensions(self) -> Vec<String> {
-    let formats: Vec<&str> = match self {
-      Self::Tree => TREE_EXTENSIONS.to_vec(),
-      Self::Metadata => DELIMITED_EXTENSIONS.iter().map(|(extension, _)| *extension).collect(),
-      Self::Alignment => FASTA_EXTENSIONS.to_vec(),
-    };
-    formats
-      .into_iter()
-      .chain(COMPRESSION_EXTENSIONS)
-      .map(str::to_owned)
-      .collect()
-  }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CommandInput {
-  pub kind: InputKind,
-  pub need: InputNeed,
-}
-
-impl CommandInput {
-  pub const fn new(kind: InputKind, need: InputNeed) -> Self {
-    Self { kind, need }
-  }
-}
-
 /// An input file of a command, as the form asks for it.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct InputSlot {
@@ -243,6 +54,18 @@ impl InputSlot {
       extensions: input.kind.extensions(),
       list,
     }
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CommandInput {
+  pub kind: InputKind,
+  pub need: InputNeed,
+}
+
+impl CommandInput {
+  pub const fn new(kind: InputKind, need: InputNeed) -> Self {
+    Self { kind, need }
   }
 }
 
@@ -326,6 +149,125 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
   Ok(facts)
 }
 
+/// A command configuration whose input files to inspect before a run.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(deny_unknown_fields)]
+#[deser(deny_unknown_fields)]
+pub struct CheckInputsRequest {
+  /// Command the configuration is for.
+  pub command: AppCommand,
+  /// Settings of the command; the input files and the metadata settings are read from it, the rest is ignored.
+  pub config: SparseConfig,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[deser(default)]
+struct InputSettings {
+  tree: Option<PathBuf>,
+  #[deser(as = DisplayFromStr)]
+  tree_dialect: TreeDialectArg,
+  metadata: Option<PathBuf>,
+  alignment: Vec<PathBuf>,
+  metadata_id_columns: Vec<String>,
+  metadata_delimiters: Vec<char>,
+  date_column: Option<String>,
+}
+
+impl InputSettings {
+  fn of(command: AppCommand, config: &Map<String, Value>) -> Result<Self, Report> {
+    let settings: Self = from_json_value(&Value::Object(config.clone())).wrap_err("When reading the input settings")?;
+    let reads = |kind: InputKind| command.inputs().iter().any(|input| input.kind == kind);
+    Ok(Self {
+      tree: settings.tree.filter(|_| reads(InputKind::Tree)),
+      metadata: settings.metadata.filter(|_| reads(InputKind::Metadata)),
+      alignment: if reads(InputKind::Alignment) {
+        settings.alignment
+      } else {
+        vec![]
+      },
+      ..settings
+    })
+  }
+}
+
+/// Facts about the input files of a run, read with the readers the commands use.
+#[derive(Clone, Debug, Default, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct InputFacts {
+  /// Facts about the tree, when it could be read.
+  pub tree: Option<TreeFacts>,
+  /// Facts about the alignment, when it could be read.
+  pub alignment: Option<AlignmentFacts>,
+  /// Facts about the metadata table, when it could be read.
+  pub metadata: Option<MetadataFacts>,
+  /// Tree tips without a metadata row; present when both the tree and the metadata could be read.
+  pub tips_without_metadata: Option<Vec<String>>,
+  /// Tree tips without a sequence; present when both the tree and the alignment could be read.
+  pub tips_without_sequence: Option<Vec<String>>,
+  /// Inputs that could not be read, with the reason.
+  pub problems: Vec<InputProblem>,
+}
+
+/// An input that could not be read.
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+pub struct InputProblem {
+  /// Input the problem concerns.
+  pub input: InputKind,
+  /// The error, with its causes.
+  pub message: String,
+}
+
+/// Kind of input file.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Display, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum InputKind {
+  Tree,
+  Metadata,
+  Alignment,
+}
+
+impl InputKind {
+  pub const fn setting(self) -> &'static str {
+    match self {
+      Self::Tree => "tree",
+      Self::Metadata => "metadata",
+      Self::Alignment => "alignment",
+    }
+  }
+
+  pub const fn label(self) -> &'static str {
+    match self {
+      Self::Tree => "Tree",
+      Self::Metadata => "Metadata",
+      Self::Alignment => "Alignment",
+    }
+  }
+
+  pub const fn formats(self) -> &'static str {
+    match self {
+      Self::Tree => "Newick or Nexus",
+      Self::Metadata => "CSV, TSV or SSV table",
+      Self::Alignment => "Aligned FASTA",
+    }
+  }
+
+  pub fn extensions(self) -> Vec<String> {
+    let formats: Vec<&str> = match self {
+      Self::Tree => TREE_EXTENSIONS.to_vec(),
+      Self::Metadata => DELIMITED_EXTENSIONS.iter().map(|(extension, _)| *extension).collect(),
+      Self::Alignment => FASTA_EXTENSIONS.to_vec(),
+    };
+    formats
+      .into_iter()
+      .chain(COMPRESSION_EXTENSIONS)
+      .map(str::to_owned)
+      .collect()
+  }
+}
+
 fn read_tree(path: &Path, dialect: NewickDialect) -> Result<(TreeFacts, Vec<String>), Report> {
   let parsed = tree_read_file(path, dialect)?;
   let names = parsed.names();
@@ -343,6 +285,21 @@ fn read_tree(path: &Path, dialect: NewickDialect) -> Result<(TreeFacts, Vec<Stri
   Ok((facts, named_tips))
 }
 
+/// Facts about a tree.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+pub struct TreeFacts {
+  /// Number of tips.
+  pub tips: usize,
+  /// Number of internal nodes, the root included.
+  pub internal_nodes: usize,
+  /// Number of internal nodes with more than two children.
+  pub polytomies: usize,
+  /// Number of tips without a name.
+  pub unnamed_tips: usize,
+  /// Node names that occur more than once, tips and internal nodes alike, sorted.
+  pub duplicate_node_names: Vec<String>,
+}
+
 fn read_sequence_names(paths: &[PathBuf]) -> Result<(AlignmentFacts, BTreeSet<String>), Report> {
   let records = read_alignment(paths, &Alphabet::default())?;
   let names = records.iter().map(|record| record.seq_name.clone()).collect_vec();
@@ -356,10 +313,17 @@ fn read_sequence_names(paths: &[PathBuf]) -> Result<(AlignmentFacts, BTreeSet<St
   Ok((facts, names.into_iter().collect()))
 }
 
-pub(crate) struct MetadataRead {
-  pub(crate) facts: MetadataFacts,
-  pub(crate) names: BTreeSet<String>,
-  pub(crate) date_problem: Option<Report>,
+/// Facts about an alignment.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+pub struct AlignmentFacts {
+  /// Number of sequences.
+  pub sequences: usize,
+  /// Length of the shortest sequence.
+  pub min_length: usize,
+  /// Length of the longest sequence; equal to `min_length` for an alignment.
+  pub max_length: usize,
+  /// Sequence names that occur more than once.
+  pub duplicate_names: Vec<String>,
 }
 
 fn read_metadata(
@@ -393,6 +357,29 @@ pub(crate) fn metadata_summary(table: MetadataTable) -> MetadataRead {
   }
 }
 
+pub(crate) struct MetadataRead {
+  pub(crate) facts: MetadataFacts,
+  pub(crate) names: BTreeSet<String>,
+  pub(crate) date_problem: Option<Report>,
+}
+
+/// Facts about a metadata table.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct MetadataFacts {
+  /// Number of data rows.
+  pub rows: usize,
+  /// Column names, in file order.
+  pub columns: Vec<String>,
+  /// Column that holds the sample names.
+  pub id_column: String,
+  /// Column that holds the sampling dates, when one was found.
+  pub date_column: Option<String>,
+  /// Facts about the sampling dates, when the date column could be read.
+  pub dates: Option<DateFacts>,
+}
+
 fn date_facts(dates: &[(String, Option<DateConstraint>)]) -> DateFacts {
   let options = DateParserOptions::default();
   let exact_days = dates
@@ -415,6 +402,19 @@ fn date_facts(dates: &[(String, Option<DateConstraint>)]) -> DateFacts {
     exact_days: exact_days.len(),
     on_day_1_or_15: exact_days.iter().filter(|day| ROUND_DAYS.contains(day)).count(),
   }
+}
+
+/// Facts about the sampling dates of a metadata table.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+pub struct DateFacts {
+  /// Samples with a date the date parser reads.
+  pub readable: usize,
+  /// Samples whose date cannot be read, by name.
+  pub unreadable: Vec<String>,
+  /// Samples whose date is a calendar day.
+  pub exact_days: usize,
+  /// Samples whose date is a calendar day on the 1st or 15th of a month, which often marks a date rounded to the month.
+  pub on_day_1_or_15: usize,
 }
 
 fn missing(tips: &[String], names: &BTreeSet<String>) -> Vec<String> {

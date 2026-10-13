@@ -24,27 +24,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::{make_internal_report, make_report};
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum ReconstructionPlan {
-  Fitch,
-  Marginal {
-    representation: Representation,
-    model: GtrModelName,
-    gtr_refinement: Option<usize>,
-  },
-}
-
-pub(crate) struct ReconstructionOptions {
-  pub(crate) impute: bool,
-  pub(crate) sample_mode: SampleMode,
-}
-
-impl ReconstructionOptions {
-  pub(crate) const fn new(impute: bool, sample_mode: SampleMode) -> Self {
-    Self { impute, sample_mode }
-  }
-}
-
 pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPlan, OperationError> {
   if params.site_specific_gtr {
     return Err(OperationError::InvalidParams(make_report!(
@@ -110,6 +89,16 @@ pub(crate) fn reconstruct_partition(
   }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ReconstructionPlan {
+  Fitch,
+  Marginal {
+    representation: Representation,
+    model: GtrModelName,
+    gtr_refinement: Option<usize>,
+  },
+}
+
 fn reconstruct_fitch(
   graph: &Graph,
   alphabet: Alphabet,
@@ -159,6 +148,17 @@ fn reconstruct_marginal(
     sampled,
     impute: options.impute,
   })
+}
+
+pub(crate) struct ReconstructionOptions {
+  pub(crate) impute: bool,
+  pub(crate) sample_mode: SampleMode,
+}
+
+impl ReconstructionOptions {
+  pub(crate) const fn new(impute: bool, sample_mode: SampleMode) -> Self {
+    Self { impute, sample_mode }
+  }
 }
 
 fn refine_gtr(

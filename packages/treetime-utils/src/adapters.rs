@@ -59,14 +59,6 @@ impl<'de> DeserializeAs<'de, bool> for TrueOrNull {
   }
 }
 
-struct Elements<'a, T>(Iter<'a, T, Ix1>);
-
-impl<T: Serialize> SeqEmitter for Elements<'_, T> {
-  fn next(&mut self, _state: &mut State) -> Result<Option<SerializeHandle<'_>>, Error> {
-    Ok(self.0.next().map(SerializeHandle::to))
-  }
-}
-
 struct RowsEmitter<'a, T> {
   array: &'a Array2<T>,
   row: usize,
@@ -92,6 +84,14 @@ impl<T: Serialize> Serialize for Row<'_, T> {
 
   fn container_shape(&self) -> ContainerShape {
     ContainerShape::new().with_len(self.0.len())
+  }
+}
+
+struct Elements<'a, T>(Iter<'a, T, Ix1>);
+
+impl<T: Serialize> SeqEmitter for Elements<'_, T> {
+  fn next(&mut self, _state: &mut State) -> Result<Option<SerializeHandle<'_>>, Error> {
+    Ok(self.0.next().map(SerializeHandle::to))
   }
 }
 

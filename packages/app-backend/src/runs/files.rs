@@ -19,21 +19,6 @@ use zip::write::{SimpleFileOptions, StreamWriter};
 
 pub const RUN_DOWNLOAD_CHUNK_SIZE: usize = 1024 * 1024;
 
-/// One file in a run's `out/` folder.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct RunFile {
-  /// Path relative to the run's `out/` folder, with `/` separators.
-  pub path: String,
-  /// Size in bytes.
-  pub size: usize,
-  /// Output selection that produced the file; absent for files the output plan does not name.
-  pub kind: Option<OutputSelection>,
-  /// What the file holds; empty for files the output plan does not name.
-  pub description: String,
-}
-
 pub fn list_run_files(out_dir: &Path, output_files: &[OutputFile]) -> Result<Vec<RunFile>, Report> {
   let kinds: BTreeMap<String, OutputSelection> = output_files
     .iter()
@@ -57,6 +42,21 @@ pub fn list_run_files(out_dir: &Path, output_files: &[OutputFile]) -> Result<Vec
     });
   }
   Ok(files.into_iter().sorted_by(|a, b| a.path.cmp(&b.path)).collect())
+}
+
+/// One file in a run's `out/` folder.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct RunFile {
+  /// Path relative to the run's `out/` folder, with `/` separators.
+  pub path: String,
+  /// Size in bytes.
+  pub size: usize,
+  /// Output selection that produced the file; absent for files the output plan does not name.
+  pub kind: Option<OutputSelection>,
+  /// What the file holds; empty for files the output plan does not name.
+  pub description: String,
 }
 
 pub fn resolve_run_file(out_dir: &Path, relative: &str) -> Result<PathBuf, Report> {

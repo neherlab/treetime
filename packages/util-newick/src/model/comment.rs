@@ -1,47 +1,6 @@
 use crate::model::value::NewickValue;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum NewickComment {
-  Beast(Vec<(String, NewickValue)>),
-  Nhx(Vec<(String, NewickValue)>),
-  MrBayesMcmc(MrBayesComment),
-  Plain(String),
-}
-
-impl NewickComment {
-  pub fn pairs(&self) -> &[(String, NewickValue)] {
-    match self {
-      Self::Beast(pairs) | Self::Nhx(pairs) => pairs,
-      Self::MrBayesMcmc(_) | Self::Plain(_) => &[],
-    }
-  }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct MrBayesComment {
-  pub kind: MrBayesKind,
-  pub name: String,
-  pub values: Vec<String>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum MrBayesKind {
-  E,
-  B,
-  N,
-}
-
-impl MrBayesKind {
-  pub const fn letter(self) -> &'static str {
-    match self {
-      Self::E => "E",
-      Self::B => "B",
-      Self::N => "N",
-    }
-  }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NodeComment {
   pub position: LabelSide,
   pub comment: NewickComment,
@@ -101,4 +60,45 @@ pub(crate) fn annotation_pairs<'a>(
   comments: impl Iterator<Item = &'a NewickComment>,
 ) -> impl Iterator<Item = (&'a str, &'a NewickValue)> {
   comments.flat_map(|comment| comment.pairs().iter().map(|(key, value)| (key.as_str(), value)))
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NewickComment {
+  Beast(Vec<(String, NewickValue)>),
+  Nhx(Vec<(String, NewickValue)>),
+  MrBayesMcmc(MrBayesComment),
+  Plain(String),
+}
+
+impl NewickComment {
+  pub fn pairs(&self) -> &[(String, NewickValue)] {
+    match self {
+      Self::Beast(pairs) | Self::Nhx(pairs) => pairs,
+      Self::MrBayesMcmc(_) | Self::Plain(_) => &[],
+    }
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MrBayesComment {
+  pub kind: MrBayesKind,
+  pub name: String,
+  pub values: Vec<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum MrBayesKind {
+  E,
+  B,
+  N,
+}
+
+impl MrBayesKind {
+  pub const fn letter(self) -> &'static str {
+    match self {
+      Self::E => "E",
+      Self::B => "B",
+      Self::N => "N",
+    }
+  }
 }

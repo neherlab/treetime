@@ -8,6 +8,30 @@ use treetime::clock::rtt::{ClockDateSource, ClockRegressionResult};
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
+pub fn clock_results(
+  tree: Option<&ResultTree>,
+  model: Option<&ClockModel>,
+  rows: Option<&[ClockRegressionResult]>,
+) -> ClockResults {
+  let root_to_tip = rows.map(|rows| root_to_tip(tree, model, rows));
+  let dated = root_to_tip
+    .iter()
+    .flat_map(|regression| &regression.points)
+    .filter(|point| point.date.is_some())
+    .collect::<Vec<_>>();
+  ClockResults {
+    estimates: ClockEstimates {
+      clock_rate: model.map(ClockModel::clock_rate),
+      clock_rate_fixed: model.is_some_and(is_fixed),
+      r: model.and_then(ClockModel::r_val),
+      r_squared: model.and_then(ClockModel::r_squared),
+      dated_samples: dated.len(),
+      outliers: dated.iter().filter(|point| point.outlier).count(),
+    },
+    root_to_tip,
+  }
+}
+
 /// Results of a `clock` run.
 #[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
@@ -36,6 +60,37 @@ pub struct ClockEstimates {
   pub dated_samples: usize,
   /// Number of dated samples the clock filter flagged as outliers.
   pub outliers: usize,
+}
+
+pub fn root_to_tip(tree: Option<&ResultTree>, model: Option<&ClockModel>, rows: &[ClockRegressionResult]) -> RootToTip {
+  let tips: Option<BTreeSet<&str>> = tree.map(|tree| tree.tips().map(|tip| tip.name.as_str()).collect());
+  let points = rows
+    .iter()
+    .filter_map(|row| {
+      let name = row.name.as_deref()?;
+      let listed = tips
+        .as_ref()
+        .map_or_else(|| row.date.is_some(), |tips| tips.contains(name));
+      listed.then(|| RootToTipPoint {
+        name: name.to_owned(),
+        date: row.date.map(YearDate::new),
+        date_source: row.date_source,
+        div: row.div,
+        predicted_date: YearDate::new(row.predicted_date),
+        residual_days: row
+          .date
+          .map(|date| year_fraction_days_between(row.predicted_date, date)),
+        outlier: row.is_outlier,
+      })
+    })
+    .collect();
+  RootToTip {
+    points,
+    line: model.map(|model| ClockLine {
+      rate: model.clock_rate(),
+      intercept: model.intercept(),
+    }),
+  }
 }
 
 /// The points and line of a root-to-tip regression, as TreeTime fitted it.
@@ -77,61 +132,6 @@ pub struct RootToTipPoint {
   pub residual_days: Option<f64>,
   /// Whether the clock filter flagged the sample as an outlier.
   pub outlier: bool,
-}
-
-pub fn clock_results(
-  tree: Option<&ResultTree>,
-  model: Option<&ClockModel>,
-  rows: Option<&[ClockRegressionResult]>,
-) -> ClockResults {
-  let root_to_tip = rows.map(|rows| root_to_tip(tree, model, rows));
-  let dated = root_to_tip
-    .iter()
-    .flat_map(|regression| &regression.points)
-    .filter(|point| point.date.is_some())
-    .collect::<Vec<_>>();
-  ClockResults {
-    estimates: ClockEstimates {
-      clock_rate: model.map(ClockModel::clock_rate),
-      clock_rate_fixed: model.is_some_and(is_fixed),
-      r: model.and_then(ClockModel::r_val),
-      r_squared: model.and_then(ClockModel::r_squared),
-      dated_samples: dated.len(),
-      outliers: dated.iter().filter(|point| point.outlier).count(),
-    },
-    root_to_tip,
-  }
-}
-
-pub fn root_to_tip(tree: Option<&ResultTree>, model: Option<&ClockModel>, rows: &[ClockRegressionResult]) -> RootToTip {
-  let tips: Option<BTreeSet<&str>> = tree.map(|tree| tree.tips().map(|tip| tip.name.as_str()).collect());
-  let points = rows
-    .iter()
-    .filter_map(|row| {
-      let name = row.name.as_deref()?;
-      let listed = tips
-        .as_ref()
-        .map_or_else(|| row.date.is_some(), |tips| tips.contains(name));
-      listed.then(|| RootToTipPoint {
-        name: name.to_owned(),
-        date: row.date.map(YearDate::new),
-        date_source: row.date_source,
-        div: row.div,
-        predicted_date: YearDate::new(row.predicted_date),
-        residual_days: row
-          .date
-          .map(|date| year_fraction_days_between(row.predicted_date, date)),
-        outlier: row.is_outlier,
-      })
-    })
-    .collect();
-  RootToTip {
-    points,
-    line: model.map(|model| ClockLine {
-      rate: model.clock_rate(),
-      intercept: model.intercept(),
-    }),
-  }
 }
 
 pub fn is_fixed(model: &ClockModel) -> bool {

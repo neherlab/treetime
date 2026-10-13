@@ -7,6 +7,14 @@ const CITATION_DOI: &str = "10.1093/ve/vex042";
 
 const DOI_RESOLVER: &str = "https://doi.org/";
 
+pub fn citation() -> Citation {
+  Citation {
+    text: CITATION_TEXT.to_owned(),
+    doi: CITATION_DOI.to_owned(),
+    url: format!("{DOI_RESOLVER}{CITATION_DOI}"),
+  }
+}
+
 /// The publication to cite for TreeTime.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct Citation {
@@ -16,12 +24,4 @@ pub struct Citation {
   pub doi: String,
   /// Link to the publication.
   pub url: String,
-}
-
-pub fn citation() -> Citation {
-  Citation {
-    text: CITATION_TEXT.to_owned(),
-    doi: CITATION_DOI.to_owned(),
-    url: format!("{DOI_RESOLVER}{CITATION_DOI}"),
-  }
 }

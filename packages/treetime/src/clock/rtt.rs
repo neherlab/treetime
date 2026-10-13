@@ -37,6 +37,27 @@ pub(crate) fn gather_clock_regression_results(
     .collect()
 }
 
+pub(crate) fn clock_fit_regression_results(
+  model: &ClockModel,
+  points: &[ClockRegressionPoint],
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  date_source: impl Fn(GraphNodeKey) -> ClockDateSource,
+) -> Vec<ClockRegressionResult> {
+  points
+    .iter()
+    .map(|point| ClockRegressionResult {
+      name: names[&point.key].clone(),
+      div: point.div,
+      date: point.date,
+      predicted_date: model.date(point.div),
+      clock_deviation: point.date.map(|date| model.clock_deviation(date, point.div)),
+      is_outlier: point.is_outlier,
+      is_leaf: true,
+      date_source: Some(point.date.map_or(ClockDateSource::Missing, |_| date_source(point.key))),
+    })
+    .collect()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClockRegressionResult {
   #[deser(as = SkipBlank<Option<_>>)]
@@ -64,25 +85,4 @@ pub enum ClockDateSource {
   Inferred,
   /// No date; the sample did not enter the regression.
   Missing,
-}
-
-pub(crate) fn clock_fit_regression_results(
-  model: &ClockModel,
-  points: &[ClockRegressionPoint],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  date_source: impl Fn(GraphNodeKey) -> ClockDateSource,
-) -> Vec<ClockRegressionResult> {
-  points
-    .iter()
-    .map(|point| ClockRegressionResult {
-      name: names[&point.key].clone(),
-      div: point.div,
-      date: point.date,
-      predicted_date: model.date(point.div),
-      clock_deviation: point.date.map(|date| model.clock_deviation(date, point.div)),
-      is_outlier: point.is_outlier,
-      is_leaf: true,
-      date_source: Some(point.date.map_or(ClockDateSource::Missing, |_| date_source(point.key))),
-    })
-    .collect()
 }

@@ -11,45 +11,9 @@ use treetime_utils::io::fs::read_file_to_string_if_exists;
 use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use treetime_utils::make_error;
 
-/// Event of a run, as stored in the run's `events.jsonl` and sent to subscribers.
-#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
-pub struct RunEvent {
-  /// Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
-  pub seq: u64,
-  /// Time the event was recorded.
-  #[schemars(with = "String")]
-  pub time: DateTime<Utc>,
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub event: JobEvent,
-}
-
-pub fn read_events(path: &Path, from: u64) -> Result<Vec<RunEvent>, Report> {
-  let Some(text) = read_file_to_string_if_exists(path)? else {
-    return Ok(vec![]);
-  };
-  text
-    .lines()
-    .filter(|line| !line.trim().is_empty())
-    .map(|line| {
-      json_read_str::<RunEvent>(line).wrap_err_with(|| format!("When reading an event from '{}'", path.display()))
-    })
-    .filter(|event| event.as_ref().map_or(true, |event| event.seq >= from))
-    .collect()
-}
-
-pub type Subscriber = Box<dyn FnMut(&RunEvent) -> bool + Send>;
-
 pub struct EventLog {
   path: PathBuf,
   state: Mutex<EventLogState>,
-}
-
-struct EventLogState {
-  file: File,
-  events: Vec<RunEvent>,
-  subscribers: Vec<Subscriber>,
-  closed: bool,
 }
 
 impl EventLog {
@@ -114,4 +78,40 @@ impl EventLog {
   pub fn is_closed(&self) -> bool {
     self.state.lock().closed
   }
+}
+
+pub fn read_events(path: &Path, from: u64) -> Result<Vec<RunEvent>, Report> {
+  let Some(text) = read_file_to_string_if_exists(path)? else {
+    return Ok(vec![]);
+  };
+  text
+    .lines()
+    .filter(|line| !line.trim().is_empty())
+    .map(|line| {
+      json_read_str::<RunEvent>(line).wrap_err_with(|| format!("When reading an event from '{}'", path.display()))
+    })
+    .filter(|event| event.as_ref().map_or(true, |event| event.seq >= from))
+    .collect()
+}
+
+struct EventLogState {
+  file: File,
+  events: Vec<RunEvent>,
+  subscribers: Vec<Subscriber>,
+  closed: bool,
+}
+
+pub type Subscriber = Box<dyn FnMut(&RunEvent) -> bool + Send>;
+
+/// Event of a run, as stored in the run's `events.jsonl` and sent to subscribers.
+#[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+pub struct RunEvent {
+  /// Position of the event in the run's event stream, starting at 0. Subscribing from `seq + 1` resumes after it.
+  pub seq: u64,
+  /// Time the event was recorded.
+  #[schemars(with = "String")]
+  pub time: DateTime<Utc>,
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub event: JobEvent,
 }

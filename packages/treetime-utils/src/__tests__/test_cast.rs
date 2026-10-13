@@ -45,7 +45,8 @@ mod tests {
 
   #[test]
   fn test_cast_u32_to_usize_keeps_the_largest_value() {
-    assert_eq!(usize::try_from(u32::MAX).unwrap(), u32_to_usize(u32::MAX));
+    let expected = usize::try_from(u32::MAX).unwrap();
+    assert_eq!(expected, u32_to_usize(u32::MAX));
   }
 
   #[rustfmt::skip]

@@ -269,14 +269,6 @@ pub(crate) fn initial_guess_mixed(
   Ok(())
 }
 
-#[derive(Clone, Copy)]
-struct EdgeOptimization {
-  branch_length: f64,
-  indels: IndelTerm,
-  one_mutation: f64,
-  method: BranchOptMethod,
-}
-
 fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimization) -> Result<f64, Report> {
   let EdgeOptimization {
     mut branch_length,
@@ -316,4 +308,12 @@ fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimiza
     reconcile_zero_boundary(new_branch_length, branch_length, contributions, indels, one_mutation)?;
 
   Ok(new_branch_length)
+}
+
+#[derive(Clone, Copy)]
+struct EdgeOptimization {
+  branch_length: f64,
+  indels: IndelTerm,
+  one_mutation: f64,
+  method: BranchOptMethod,
 }

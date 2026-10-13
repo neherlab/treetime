@@ -18,31 +18,6 @@ pub fn fasta_read<A: AlphabetLike>(reader: impl BufRead, alphabet: &A) -> Result
   FastaRecords::new(reader, alphabet).collect()
 }
 
-#[derive(Clone, Default, Debug, Eq, PartialEq)]
-pub struct FastaRecord {
-  pub seq_name: String,
-  pub desc: Option<String>,
-  pub seq: Seq,
-}
-
-impl From<FastaRecord> for AlignmentRecord {
-  fn from(record: FastaRecord) -> Self {
-    Self {
-      name: record.seq_name,
-      seq: record.seq,
-    }
-  }
-}
-
-impl FastaRecord {
-  fn header(&self) -> String {
-    match &self.desc {
-      Some(desc) => format!(">{} {}", self.seq_name, desc),
-      None => format!(">{}", self.seq_name),
-    }
-  }
-}
-
 pub struct FastaWriter {
   writer: FileWriter,
 }
@@ -187,6 +162,31 @@ impl<R: BufRead, A: AlphabetLike> Iterator for FastaRecords<'_, R, A> {
 
   fn next(&mut self) -> Option<Self::Item> {
     self.read_record().transpose()
+  }
+}
+
+#[derive(Clone, Default, Debug, Eq, PartialEq)]
+pub struct FastaRecord {
+  pub seq_name: String,
+  pub desc: Option<String>,
+  pub seq: Seq,
+}
+
+impl From<FastaRecord> for AlignmentRecord {
+  fn from(record: FastaRecord) -> Self {
+    Self {
+      name: record.seq_name,
+      seq: record.seq,
+    }
+  }
+}
+
+impl FastaRecord {
+  fn header(&self) -> String {
+    match &self.desc {
+      Some(desc) => format!(">{} {}", self.seq_name, desc),
+      None => format!(">{}", self.seq_name),
+    }
   }
 }
 

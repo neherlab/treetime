@@ -73,30 +73,6 @@ impl InvalidConfig {
   }
 }
 
-/// One problem found in a configuration.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct ConfigProblem {
-  /// Stable diagnostic code, for example `config::unknown-field`.
-  pub code: String,
-  /// Human-readable description of the problem.
-  pub message: String,
-  /// Byte offset and length of the offending text in the config, when known.
-  pub span: Option<ConfigSpan>,
-  /// Suggestion for fixing the problem.
-  pub help: Option<String>,
-}
-
-/// Location of a problem in the configuration text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct ConfigSpan {
-  /// Byte offset of the first character.
-  pub offset: usize,
-  /// Length in bytes.
-  pub length: usize,
-}
-
 pub struct RawDiagnostic {
   pub pointer: Option<String>,
   pub use_key_span: bool,
@@ -250,6 +226,30 @@ impl Diagnostic for ConfigDiagnostic {
     let label = LabeledSpan::new_with_span(Some(self.label.clone()), span);
     Some(Box::new(std::iter::once(label)))
   }
+}
+
+/// One problem found in a configuration.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct ConfigProblem {
+  /// Stable diagnostic code, for example `config::unknown-field`.
+  pub code: String,
+  /// Human-readable description of the problem.
+  pub message: String,
+  /// Byte offset and length of the offending text in the config, when known.
+  pub span: Option<ConfigSpan>,
+  /// Suggestion for fixing the problem.
+  pub help: Option<String>,
+}
+
+/// Location of a problem in the configuration text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct ConfigSpan {
+  /// Byte offset of the first character.
+  pub offset: usize,
+  /// Length in bytes.
+  pub length: usize,
 }
 
 fn index_node(spans: &mut BTreeMap<String, NodeSpan>, table: &[usize], node: &MarkedYaml, pointer: &str) {

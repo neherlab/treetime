@@ -34,6 +34,24 @@ pub fn setting_differences(first: &RunRecord, second: &RunRecord) -> Result<Vec<
   )
 }
 
+fn setting_value(settings: &Map<String, Value>, spec: &SettingSpec) -> Option<JsonValue> {
+  setting_ref(settings, &spec.path).cloned().map(JsonValue)
+}
+
+fn input_difference(spec: &SettingSpec, first: &RunRecord, second: &RunRecord) -> Option<SettingDifference> {
+  let first_inputs = inputs_of(first, &spec.key);
+  let second_inputs = inputs_of(second, &spec.key);
+  let first_paths = first_inputs.iter().map(|input| input.path.clone()).collect_vec();
+  let second_paths = second_inputs.iter().map(|input| input.path.clone()).collect_vec();
+  let same_content = contents(&first_inputs) == contents(&second_inputs);
+  (first_paths != second_paths || !same_content).then(|| SettingDifference::Input {
+    key: spec.key.clone(),
+    first: first_paths,
+    second: second_paths,
+    same_content,
+  })
+}
+
 /// A setting whose value differs between two runs.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
@@ -61,24 +79,6 @@ pub enum SettingDifference {
     /// Whether the files of both runs have the same contents.
     same_content: bool,
   },
-}
-
-fn setting_value(settings: &Map<String, Value>, spec: &SettingSpec) -> Option<JsonValue> {
-  setting_ref(settings, &spec.path).cloned().map(JsonValue)
-}
-
-fn input_difference(spec: &SettingSpec, first: &RunRecord, second: &RunRecord) -> Option<SettingDifference> {
-  let first_inputs = inputs_of(first, &spec.key);
-  let second_inputs = inputs_of(second, &spec.key);
-  let first_paths = first_inputs.iter().map(|input| input.path.clone()).collect_vec();
-  let second_paths = second_inputs.iter().map(|input| input.path.clone()).collect_vec();
-  let same_content = contents(&first_inputs) == contents(&second_inputs);
-  (first_paths != second_paths || !same_content).then(|| SettingDifference::Input {
-    key: spec.key.clone(),
-    first: first_paths,
-    second: second_paths,
-    same_content,
-  })
 }
 
 fn inputs_of<'a>(record: &'a RunRecord, key: &str) -> Vec<&'a RunInput> {

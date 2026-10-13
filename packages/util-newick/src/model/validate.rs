@@ -38,13 +38,6 @@ pub(crate) fn validate_graph(graph: &NewickGraph) -> Result<(), NewickWriteError
   Ok(())
 }
 
-pub(crate) fn describe_node(graph: &NewickGraph, node: usize) -> String {
-  match (node < graph.node_count()).then(|| graph.node(node).name()).flatten() {
-    Some(name) => format!("node {node} ('{name}')"),
-    None => format!("node {node}"),
-  }
-}
-
 fn validate_edges(graph: &NewickGraph) -> Result<(), NewickWriteError> {
   let node_count = graph.node_count();
   for (idx, edge) in graph.edges() {
@@ -125,4 +118,11 @@ fn validate_node(graph: &NewickGraph, node: usize) -> Result<(), NewickWriteErro
     ));
   }
   Ok(())
+}
+
+pub(crate) fn describe_node(graph: &NewickGraph, node: usize) -> String {
+  match (node < graph.node_count()).then(|| graph.node(node).name()).flatten() {
+    Some(name) => format!("node {node} ('{name}')"),
+    None => format!("node {node}"),
+  }
 }

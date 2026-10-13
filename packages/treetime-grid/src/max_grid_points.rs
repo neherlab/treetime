@@ -111,20 +111,6 @@ impl JsonSchema for MaxGridPoints {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, Error)]
-#[display("the grid point limit must be at least {} points, got {points}", MaxGridPoints::MIN)]
-pub struct InvalidMaxGridPoints {
-  #[error(not(source))]
-  pub points: usize,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Display, Error)]
-#[display("{message}")]
-pub struct InvalidMaxGridPointsText {
-  #[error(not(source))]
-  message: String,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Display, Error)]
 #[display(
   "A grid over [{}, {}] with spacing {} needs {} the limit of {limit}",
@@ -150,8 +136,18 @@ impl GridPointLimitExceeded {
   }
 }
 
-fn required_points(required: f64) -> Option<usize> {
-  required.is_finite().then(|| required.to_usize()).flatten()
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, Error)]
+#[display("the grid point limit must be at least {} points, got {points}", MaxGridPoints::MIN)]
+pub struct InvalidMaxGridPoints {
+  #[error(not(source))]
+  pub points: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Display, Error)]
+#[display("{message}")]
+pub struct InvalidMaxGridPointsText {
+  #[error(not(source))]
+  message: String,
 }
 
 fn number_text(value: f64) -> String {
@@ -163,4 +159,8 @@ fn required_text(required: f64) -> String {
     || "more points than".to_owned(),
     |points| format!("{points} points, more than"),
   )
+}
+
+fn required_points(required: f64) -> Option<usize> {
+  required.is_finite().then(|| required.to_usize()).flatten()
 }

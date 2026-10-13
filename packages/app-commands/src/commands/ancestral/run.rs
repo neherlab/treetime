@@ -128,13 +128,6 @@ pub fn run_ancestral_reconstruction(
   Ok(())
 }
 
-struct AaRunInputs<'a> {
-  graph: &'a Graph,
-  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  seed: u64,
-}
-
 fn plan_aa_reconstructions<'a>(
   args: &'a TreetimeAncestralArgs,
   resolved: &ResolvedOutputs,
@@ -179,13 +172,6 @@ fn planned_aa_fasta_paths(
       .map(|(cds, path)| (format!("{flag} for CDS '{cds}'"), path.as_path())),
   )?;
   Ok(paths)
-}
-
-struct AaPlan<'a> {
-  translations: &'a str,
-  annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
-  cdses: Vec<String>,
-  fasta_paths: Option<BTreeMap<String, PathBuf>>,
 }
 
 struct AncestralSeqSink {
@@ -310,6 +296,13 @@ fn run_aa_reconstructions(
   Ok((node_data, cds_annotations))
 }
 
+struct AaPlan<'a> {
+  translations: &'a str,
+  annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
+  cdses: Vec<String>,
+  fasta_paths: Option<BTreeMap<String, PathBuf>>,
+}
+
 fn read_cds_translations(
   translations: &str,
   cds: &str,
@@ -342,6 +335,13 @@ fn read_cds_translations(
   }
   let paths = [path];
   Ok(pair_alignment(sequences, &paths, inputs.graph, inputs.names, log).sequences)
+}
+
+struct AaRunInputs<'a> {
+  graph: &'a Graph,
+  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  seed: u64,
 }
 
 struct AaFastaSink {

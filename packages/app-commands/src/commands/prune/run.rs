@@ -164,12 +164,6 @@ fn prune_output_consumes_maps(kind: TreeWriteKind) -> bool {
   }
 }
 
-#[derive(Debug, Default)]
-struct PruneOutputMaps {
-  root_sequence: Option<Seq>,
-  edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-}
-
 fn gather_prune_output_maps(
   graph: &Graph,
   partitions: &[PartitionMarginalSparse],
@@ -192,6 +186,12 @@ fn gather_prune_output_maps(
     root_sequence: Some(partition.fitch_root_sequence()),
     edge_mutations: filter.reported_edge_mutations(graph, edge_mutations)?,
   })
+}
+
+#[derive(Debug, Default)]
+struct PruneOutputMaps {
+  root_sequence: Option<Seq>,
+  edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {

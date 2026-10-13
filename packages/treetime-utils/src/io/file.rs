@@ -8,6 +8,15 @@ use std::path::{Path, PathBuf};
 
 pub const DEFAULT_FILE_BUF_SIZE: usize = 256 * 1024;
 
+pub fn read_file_with<T>(
+  filepath: impl AsRef<Path>,
+  read: impl FnOnce(BufReader<Decompressor<'static>>) -> Result<T, Report>,
+) -> Result<T, Report> {
+  let filepath = filepath.as_ref();
+  let reader = open_file_or_stdin(filepath)?;
+  read(reader).wrap_err_with(|| format!("When reading file '{}'", filepath.display()))
+}
+
 pub fn open_file_or_stdin(filepath: impl AsRef<Path>) -> Result<BufReader<Decompressor<'static>>, Report> {
   let filepath = filepath.as_ref();
   if is_path_stdin(filepath) {
@@ -29,13 +38,34 @@ fn open_stdin() -> Result<BufReader<Decompressor<'static>>, Report> {
   Ok(BufReader::with_capacity(DEFAULT_FILE_BUF_SIZE, decompressor))
 }
 
-pub fn read_file_with<T>(
+pub fn write_file_with(
   filepath: impl AsRef<Path>,
-  read: impl FnOnce(BufReader<Decompressor<'static>>) -> Result<T, Report>,
-) -> Result<T, Report> {
+  write: impl FnOnce(&mut FileWriter) -> Result<(), Report>,
+) -> Result<(), Report> {
   let filepath = filepath.as_ref();
-  let reader = open_file_or_stdin(filepath)?;
-  read(reader).wrap_err_with(|| format!("When reading file '{}'", filepath.display()))
+  let mut writer = create_file_or_stdout(filepath)?;
+  write(&mut writer).wrap_err_with(|| format!("When writing file '{}'", filepath.display()))?;
+  writer.finish()
+}
+
+pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<FileWriter, Report> {
+  let filepath = filepath.as_ref();
+
+  let file: Box<dyn Write + Sync + Send> = if is_path_stdout(filepath) {
+    info!("File path is '{}'. Writing to standard output.", filepath.display());
+    Box::new(BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, stdout()))
+  } else {
+    ensure_dir(filepath)?;
+    Box::new(File::create(filepath).wrap_err_with(|| format!("When creating file '{}'", filepath.display()))?)
+  };
+
+  let buf_file = BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, file);
+  let compressor = Compressor::from_path(buf_file, filepath)?;
+  let buf_compressor = BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, compressor);
+  Ok(FileWriter {
+    inner: buf_compressor,
+    filepath: filepath.to_owned(),
+  })
 }
 
 pub struct FileWriter {
@@ -72,36 +102,6 @@ impl Write for FileWriter {
   fn flush(&mut self) -> std::io::Result<()> {
     self.inner.flush()
   }
-}
-
-pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<FileWriter, Report> {
-  let filepath = filepath.as_ref();
-
-  let file: Box<dyn Write + Sync + Send> = if is_path_stdout(filepath) {
-    info!("File path is '{}'. Writing to standard output.", filepath.display());
-    Box::new(BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, stdout()))
-  } else {
-    ensure_dir(filepath)?;
-    Box::new(File::create(filepath).wrap_err_with(|| format!("When creating file '{}'", filepath.display()))?)
-  };
-
-  let buf_file = BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, file);
-  let compressor = Compressor::from_path(buf_file, filepath)?;
-  let buf_compressor = BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, compressor);
-  Ok(FileWriter {
-    inner: buf_compressor,
-    filepath: filepath.to_owned(),
-  })
-}
-
-pub fn write_file_with(
-  filepath: impl AsRef<Path>,
-  write: impl FnOnce(&mut FileWriter) -> Result<(), Report>,
-) -> Result<(), Report> {
-  let filepath = filepath.as_ref();
-  let mut writer = create_file_or_stdout(filepath)?;
-  write(&mut writer).wrap_err_with(|| format!("When writing file '{}'", filepath.display()))?;
-  writer.finish()
 }
 
 pub fn is_path_stdin(filepath: impl AsRef<Path>) -> bool {

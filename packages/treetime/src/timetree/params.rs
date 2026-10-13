@@ -43,20 +43,6 @@ pub(crate) fn compute_effective_time_marginal(
   }
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault)]
-pub enum TimeMarginalMode {
-  #[default]
-  Never,
-  Always,
-  OnlyFinal,
-}
-
-impl TimeMarginalMode {
-  pub(crate) fn runs_final_round(self) -> bool {
-    self == Self::OnlyFinal
-  }
-}
-
 pub(crate) fn build_covariation_clock_params(
   covariation: bool,
   sequence_length: Option<usize>,
@@ -131,4 +117,18 @@ pub(crate) struct TimetreeContext {
   pub date_constraints: DateConstraints,
   pub covariation_clock_params: ClockVarianceParams,
   pub branch_params: BranchPointOptimizationParams,
+}
+
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault)]
+pub enum TimeMarginalMode {
+  #[default]
+  Never,
+  Always,
+  OnlyFinal,
+}
+
+impl TimeMarginalMode {
+  pub(crate) fn runs_final_round(self) -> bool {
+    self == Self::OnlyFinal
+  }
 }

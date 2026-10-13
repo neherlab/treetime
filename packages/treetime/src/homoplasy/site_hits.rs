@@ -6,20 +6,6 @@ use std::collections::BTreeMap;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::cast::usize_to_u64;
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct SiteHits {
-  pub hits: usize,
-  pub sites: usize,
-  pub expected: f64,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct SiteHistogram {
-  pub genome_length: usize,
-  pub rows: Vec<SiteHits>,
-  pub log_likelihood_difference: f64,
-}
-
 pub(crate) fn site_histogram(
   genome_length: usize,
   hits_per_site: &BTreeMap<usize, usize>,
@@ -87,4 +73,18 @@ pub(crate) fn site_histogram(
     rows,
     log_likelihood_difference: observed - length * expected,
   })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SiteHistogram {
+  pub genome_length: usize,
+  pub rows: Vec<SiteHits>,
+  pub log_likelihood_difference: f64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SiteHits {
+  pub hits: usize,
+  pub sites: usize,
+  pub expected: f64,
 }

@@ -32,106 +32,6 @@ pub fn run_checks(context: &CheckContext<'_>) -> Vec<RunCheck> {
   RULES.iter().flat_map(|rule| rule(context)).collect()
 }
 
-pub fn rejection_messages(rejection: &ConfigRejection<'_>, problems_only: bool) -> Vec<String> {
-  let problems = rejection
-    .problems
-    .iter()
-    .map(|problem| match problem.help.as_deref() {
-      Some(help) if !help.is_empty() => format!("{} ({help})", problem.message),
-      _ => problem.message.clone(),
-    })
-    .collect_vec();
-  if !problems.is_empty() || problems_only {
-    return problems;
-  }
-  vec![
-    iter::once(rejection.message)
-      .chain(rejection.causes.iter().map(String::as_str))
-      .join(": "),
-  ]
-}
-
-pub struct CheckContext<'a> {
-  pub command: AppCommand,
-  pub config: Option<&'a Map<String, Value>>,
-  pub rejection: Option<ConfigRejection<'a>>,
-  pub facts: Option<&'a InputFacts>,
-}
-
-pub struct ConfigRejection<'a> {
-  pub message: &'a str,
-  pub causes: &'a [String],
-  pub problems: &'a [ConfigProblem],
-}
-
-/// A finding about a configuration and its input files, before a run.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct RunCheck {
-  /// Identifier of the check, stable across calls for the same finding.
-  pub id: String,
-  /// How the finding affects the run.
-  pub level: CheckLevel,
-  /// The finding, as a sentence.
-  pub text: String,
-  /// Keys of the settings the finding concerns.
-  pub settings: Vec<String>,
-  /// Change of settings that resolves the finding, when there is one.
-  pub fix: Option<CheckFix>,
-}
-
-/// How a finding affects the run.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-pub enum CheckLevel {
-  /// The run cannot start.
-  Block,
-  /// The run starts, with a result the user may not expect.
-  Warn,
-  /// A hint about the inputs.
-  Advice,
-}
-
-/// Change of settings that resolves a finding.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct CheckFix {
-  /// Label of the action, for example `Use covariation`.
-  pub label: String,
-  /// Settings to set.
-  pub patch: Vec<SettingPatch>,
-}
-
-/// New value of one setting.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct SettingPatch {
-  /// Key path of the setting.
-  pub path: Vec<String>,
-  /// The value to set; absent: the setting is removed and takes its default.
-  pub value: Option<JsonValue>,
-}
-
-fn missing_inputs(context: &CheckContext<'_>) -> Vec<RunCheck> {
-  let Some(config) = context.config else {
-    return vec![];
-  };
-  context
-    .command
-    .inputs()
-    .iter()
-    .filter(|input| input.need == InputNeed::Required && !config.get(input.kind.setting()).is_some_and(has_path))
-    .map(|input| {
-      block(
-        format!("missing-{}", input.kind),
-        format!("Add {} {} file.", article(input.kind), input.kind),
-      )
-    })
-    .collect()
-}
-
 fn unreadable_inputs(context: &CheckContext<'_>) -> Vec<RunCheck> {
   context
     .facts
@@ -160,6 +60,43 @@ fn rejected_config(context: &CheckContext<'_>) -> Vec<RunCheck> {
     .into_iter()
     .enumerate()
     .map(|(index, message)| block(format!("config-{index}"), message))
+    .collect()
+}
+
+pub fn rejection_messages(rejection: &ConfigRejection<'_>, problems_only: bool) -> Vec<String> {
+  let problems = rejection
+    .problems
+    .iter()
+    .map(|problem| match problem.help.as_deref() {
+      Some(help) if !help.is_empty() => format!("{} ({help})", problem.message),
+      _ => problem.message.clone(),
+    })
+    .collect_vec();
+  if !problems.is_empty() || problems_only {
+    return problems;
+  }
+  vec![
+    iter::once(rejection.message)
+      .chain(rejection.causes.iter().map(String::as_str))
+      .join(": "),
+  ]
+}
+
+fn missing_inputs(context: &CheckContext<'_>) -> Vec<RunCheck> {
+  let Some(config) = context.config else {
+    return vec![];
+  };
+  context
+    .command
+    .inputs()
+    .iter()
+    .filter(|input| input.need == InputNeed::Required && !config.get(input.kind.setting()).is_some_and(has_path))
+    .map(|input| {
+      block(
+        format!("missing-{}", input.kind),
+        format!("Add {} {} file.", article(input.kind), input.kind),
+      )
+    })
     .collect()
 }
 
@@ -331,6 +268,19 @@ fn dates_rounded_to_the_month(context: &CheckContext<'_>) -> Vec<RunCheck> {
   }
 }
 
+pub struct CheckContext<'a> {
+  pub command: AppCommand,
+  pub config: Option<&'a Map<String, Value>>,
+  pub rejection: Option<ConfigRejection<'a>>,
+  pub facts: Option<&'a InputFacts>,
+}
+
+pub struct ConfigRejection<'a> {
+  pub message: &'a str,
+  pub causes: &'a [String],
+  pub problems: &'a [ConfigProblem],
+}
+
 fn reads(command: AppCommand, kind: InputKind) -> bool {
   command.inputs().iter().any(|input| input.kind == kind)
 }
@@ -362,6 +312,23 @@ fn warn(id: impl Into<String>, text: String) -> RunCheck {
   }
 }
 
+/// A finding about a configuration and its input files, before a run.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct RunCheck {
+  /// Identifier of the check, stable across calls for the same finding.
+  pub id: String,
+  /// How the finding affects the run.
+  pub level: CheckLevel,
+  /// The finding, as a sentence.
+  pub text: String,
+  /// Keys of the settings the finding concerns.
+  pub settings: Vec<String>,
+  /// Change of settings that resolves the finding, when there is one.
+  pub fix: Option<CheckFix>,
+}
+
 impl RunCheck {
   fn concerning(self, settings: &[&str]) -> Self {
     Self {
@@ -369,4 +336,37 @@ impl RunCheck {
       ..self
     }
   }
+}
+
+/// How a finding affects the run.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum CheckLevel {
+  /// The run cannot start.
+  Block,
+  /// The run starts, with a result the user may not expect.
+  Warn,
+  /// A hint about the inputs.
+  Advice,
+}
+
+/// Change of settings that resolves a finding.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct CheckFix {
+  /// Label of the action, for example `Use covariation`.
+  pub label: String,
+  /// Settings to set.
+  pub patch: Vec<SettingPatch>,
+}
+
+/// New value of one setting.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct SettingPatch {
+  /// Key path of the setting.
+  pub path: Vec<String>,
+  /// The value to set; absent: the setting is removed and takes its default.
+  pub value: Option<JsonValue>,
 }

@@ -161,7 +161,6 @@ impl DesktopService {
   }
 }
 
-/// The router a message port reaches: the host port of the main process also saves run files to chosen paths.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, EnumString)]
 #[strum(serialize_all = "lowercase")]
 pub enum PortScope {

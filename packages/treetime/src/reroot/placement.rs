@@ -7,6 +7,18 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
+pub(crate) fn root_moves(
+  graph: &Graph,
+  edge_key: Option<GraphEdgeKey>,
+  split: f64,
+  split_edge: bool,
+) -> Result<bool, Report> {
+  let Some(edge_key) = edge_key else {
+    return Ok(false);
+  };
+  Ok(RootTarget::on_edge(graph, edge_key, split, split_edge)? != RootTarget::Node(graph.root_key()?))
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum RootTarget {
   Node(GraphNodeKey),
@@ -28,18 +40,6 @@ impl RootTarget {
       Self::Node(target_key)
     })
   }
-}
-
-pub(crate) fn root_moves(
-  graph: &Graph,
-  edge_key: Option<GraphEdgeKey>,
-  split: f64,
-  split_edge: bool,
-) -> Result<bool, Report> {
-  let Some(edge_key) = edge_key else {
-    return Ok(false);
-  };
-  Ok(RootTarget::on_edge(graph, edge_key, split, split_edge)? != RootTarget::Node(graph.root_key()?))
 }
 
 pub(crate) fn leaf_keys(graph: &Graph) -> BTreeSet<GraphNodeKey> {

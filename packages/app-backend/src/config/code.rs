@@ -49,17 +49,6 @@ pub fn config_code(command: AppCommand, config: &Map<String, Value>) -> Result<C
   })
 }
 
-pub fn setting_tokens(arg: &Arg, flag: &str, value: &Value) -> Option<Vec<String>> {
-  if !arg.get_action().takes_values() {
-    return (value == &Value::Bool(true)).then(|| vec![flag.to_owned()]);
-  }
-  match value {
-    Value::Null => None,
-    Value::Array(items) => list_tokens(arg, flag, items),
-    _ => Some(vec![flag.to_owned(), cli_value(value)]),
-  }
-}
-
 /// A command line and a YAML config that reproduce a configuration.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct ConfigCode {
@@ -75,36 +64,6 @@ pub struct ConfigCode {
   pub config_file: String,
   /// The command line that runs the saved YAML config.
   pub config_command: String,
-}
-
-/// One line of a command line or a YAML config.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct CodeLine {
-  /// Text of the line.
-  pub text: String,
-  /// What the line sets.
-  pub kind: CodeLineKind,
-}
-
-/// What a line of a command line or a YAML config sets.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-pub enum CodeLineKind {
-  /// The command.
-  Command,
-  /// An input file.
-  Input,
-  /// A setting that differs from its default.
-  Changed,
-  /// The output directory.
-  Output,
-  /// A comment.
-  Comment,
-}
-
-fn config_command(command: AppCommand) -> String {
-  format!("treetime {command} --config {CONFIG_FILE}")
 }
 
 fn changed_settings<'a>(settings: &'a CommandSettings, config: &Map<String, Value>) -> Vec<(&'a SettingSpec, Value)> {
@@ -159,6 +118,17 @@ fn command_line(
   Ok(lines)
 }
 
+pub fn setting_tokens(arg: &Arg, flag: &str, value: &Value) -> Option<Vec<String>> {
+  if !arg.get_action().takes_values() {
+    return (value == &Value::Bool(true)).then(|| vec![flag.to_owned()]);
+  }
+  match value {
+    Value::Null => None,
+    Value::Array(items) => list_tokens(arg, flag, items),
+    _ => Some(vec![flag.to_owned(), cli_value(value)]),
+  }
+}
+
 fn command_line_text(lines: &[CodeLine]) -> String {
   lines
     .iter()
@@ -208,6 +178,10 @@ fn yaml(
   Ok(lines)
 }
 
+fn config_command(command: AppCommand) -> String {
+  format!("treetime {command} --config {CONFIG_FILE}")
+}
+
 fn yaml_entry(key: &str, value: &Value, kind: CodeLineKind) -> Result<Vec<CodeLine>, Report> {
   let text = yaml_text(key, value)?;
   Ok(
@@ -219,6 +193,32 @@ fn yaml_entry(key: &str, value: &Value, kind: CodeLineKind) -> Result<Vec<CodeLi
       })
       .collect(),
   )
+}
+
+/// One line of a command line or a YAML config.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct CodeLine {
+  /// Text of the line.
+  pub text: String,
+  /// What the line sets.
+  pub kind: CodeLineKind,
+}
+
+/// What a line of a command line or a YAML config sets.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum CodeLineKind {
+  /// The command.
+  Command,
+  /// An input file.
+  Input,
+  /// A setting that differs from its default.
+  Changed,
+  /// The output directory.
+  Output,
+  /// A comment.
+  Comment,
 }
 
 fn insert_at(map: &mut Map<String, Value>, path: &[String], value: Value) -> Result<(), Report> {

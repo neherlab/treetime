@@ -12,12 +12,6 @@ use treetime::seq::mutation::Sub;
 use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::node::GraphNodeKey;
 
-pub struct ResultContext<'a> {
-  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  pub drms: Option<&'a DrmTable>,
-  pub zero_based: bool,
-}
-
 pub fn homoplasy_result(output: &HomoplasyOutput, context: &ResultContext<'_>) -> HomoplasyResult {
   let substitutions = &output.substitutions;
   let sub_name = |sub: &Sub| substitution_name(sub, context.zero_based);
@@ -64,14 +58,6 @@ pub fn homoplasy_result(output: &HomoplasyOutput, context: &ResultContext<'_>) -
     },
     taxa: taxa(output, context),
   }
-}
-
-fn offset(zero_based: bool) -> usize {
-  if zero_based { 0 } else { 1 }
-}
-
-fn substitution_name(sub: &Sub, zero_based: bool) -> String {
-  format!("{}{}{}", sub.reff(), sub.pos() + offset(zero_based), sub.qry())
 }
 
 fn substitution_drm(sub: &Sub, drms: Option<&DrmTable>) -> Option<DrmAnnotation> {
@@ -158,4 +144,18 @@ fn taxa(output: &HomoplasyOutput, context: &ResultContext<'_>) -> Vec<TaxonResul
         .then_with(|| a.name.cmp(&b.name))
     })
     .collect()
+}
+
+pub struct ResultContext<'a> {
+  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub drms: Option<&'a DrmTable>,
+  pub zero_based: bool,
+}
+
+fn substitution_name(sub: &Sub, zero_based: bool) -> String {
+  format!("{}{}{}", sub.reff(), sub.pos() + offset(zero_based), sub.qry())
+}
+
+fn offset(zero_based: bool) -> usize {
+  if zero_based { 0 } else { 1 }
 }

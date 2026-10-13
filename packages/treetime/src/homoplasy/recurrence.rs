@@ -3,18 +3,6 @@ use std::collections::BTreeMap;
 use treetime_graph::node::GraphNodeKey;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Recurrence<K> {
-  pub mutation: K,
-  pub branches: Vec<GraphNodeKey>,
-}
-
-impl<K> Recurrence<K> {
-  pub fn multiplicity(&self) -> usize {
-    self.branches.len()
-  }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RecurrenceTable<K> {
   pub count: usize,
   pub histogram: BTreeMap<usize, usize>,
@@ -59,5 +47,17 @@ impl<K: Ord> RecurrenceTable<K> {
       .iter()
       .map(|recurrence| (&recurrence.mutation, recurrence.multiplicity()))
       .collect()
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Recurrence<K> {
+  pub mutation: K,
+  pub branches: Vec<GraphNodeKey>,
+}
+
+impl<K> Recurrence<K> {
+  pub fn multiplicity(&self) -> usize {
+    self.branches.len()
   }
 }

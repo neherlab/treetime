@@ -21,61 +21,6 @@ use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
 use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
-/// Results of a finished run, read from its output files.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct RunResults {
-  /// Tree of the run's Auspice file; absent when the run wrote none.
-  pub tree: Option<ResultTree>,
-  /// Results specific to the command of the run.
-  pub results: CommandResults,
-  /// The publication to cite.
-  pub citation: Citation,
-  /// Output files that could not be read.
-  pub problems: Vec<OutputProblem>,
-}
-
-/// Results specific to the command of a run.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
-#[schemars(tag = "command", content = "data", rename_all = "kebab-case")]
-#[deser(tag = "command", content = "data", rename_all = "kebab-case")]
-pub enum CommandResults {
-  Timetree(Box<TimetreeResults>),
-  Clock(ClockResults),
-  Ancestral(AncestralResults),
-  Homoplasy(Box<HomoplasyResults>),
-  Mugration(MugrationResults),
-  Optimize(TreeSummary),
-  Prune(TreeSummary),
-}
-
-/// Summary of a tree an `optimize` or `prune` run wrote.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct TreeSummary {
-  /// Number of samples.
-  pub samples: usize,
-  /// Number of internal nodes.
-  pub internal_nodes: usize,
-  /// Number of nucleotide mutations on all branches.
-  pub mutations: usize,
-  /// Sum of the branch lengths in the node data file.
-  pub total_branch_length: Option<f64>,
-  /// Substitution model the run fitted.
-  pub substitution_model: Option<SubstitutionModel>,
-}
-
-/// A fitted substitution model.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
-pub struct SubstitutionModel {
-  /// Name of the model.
-  pub name: String,
-  /// Overall substitution rate.
-  pub mu: f64,
-}
-
 pub fn run_results(manager: &RunManager, id: &JobId) -> Result<RunResults, Report> {
   let record = finished_record(manager, id)?;
   results_of_record(&record, &manager.store().out_dir(id))
@@ -148,6 +93,35 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
   })
 }
 
+/// Results of a finished run, read from its output files.
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct RunResults {
+  /// Tree of the run's Auspice file; absent when the run wrote none.
+  pub tree: Option<ResultTree>,
+  /// Results specific to the command of the run.
+  pub results: CommandResults,
+  /// The publication to cite.
+  pub citation: Citation,
+  /// Output files that could not be read.
+  pub problems: Vec<OutputProblem>,
+}
+
+/// Results specific to the command of a run.
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
+#[schemars(tag = "command", content = "data", rename_all = "kebab-case")]
+#[deser(tag = "command", content = "data", rename_all = "kebab-case")]
+pub enum CommandResults {
+  Timetree(Box<TimetreeResults>),
+  Clock(ClockResults),
+  Ancestral(AncestralResults),
+  Homoplasy(Box<HomoplasyResults>),
+  Mugration(MugrationResults),
+  Optimize(TreeSummary),
+  Prune(TreeSummary),
+}
+
 fn tree_summary(
   tree: Option<&ResultTree>,
   node_data: Option<&AugurNodeDataJsonRefine>,
@@ -166,4 +140,30 @@ fn tree_summary(
       mu: gtr.mu(),
     }),
   }
+}
+
+/// Summary of a tree an `optimize` or `prune` run wrote.
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct TreeSummary {
+  /// Number of samples.
+  pub samples: usize,
+  /// Number of internal nodes.
+  pub internal_nodes: usize,
+  /// Number of nucleotide mutations on all branches.
+  pub mutations: usize,
+  /// Sum of the branch lengths in the node data file.
+  pub total_branch_length: Option<f64>,
+  /// Substitution model the run fitted.
+  pub substitution_model: Option<SubstitutionModel>,
+}
+
+/// A fitted substitution model.
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
+pub struct SubstitutionModel {
+  /// Name of the model.
+  pub name: String,
+  /// Overall substitution rate.
+  pub mu: f64,
 }

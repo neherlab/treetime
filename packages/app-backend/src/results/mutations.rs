@@ -9,38 +9,6 @@ use treetime::homoplasy::classify::MutationClass;
 use treetime::homoplasy::site_branches::sites_by_branch_count;
 use treetime::seq::mutation::{MutationEvent, Sub};
 
-/// Results of an `ancestral` run.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct AncestralResults {
-  /// Number of nucleotide mutations on all branches.
-  pub mutations: usize,
-  /// Branches with at least one mutation, most mutations first.
-  pub branches: Vec<BranchMutations>,
-  /// Sequence positions with substitutions between determined states on more than one branch, most
-  /// branches first.
-  pub recurrent_sites: Vec<RecurrentSite>,
-}
-
-/// Mutations on the branch above one node.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct BranchMutations {
-  /// Name of the node below the branch.
-  pub name: String,
-  /// Number of samples below the branch.
-  pub tips: usize,
-  /// Mutations on the branch.
-  pub mutations: Vec<String>,
-}
-
-/// A sequence position that mutates on several branches.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct RecurrentSite {
-  /// Position in the sequence, from 1.
-  pub position: usize,
-  /// Number of branches with a mutation at the position.
-  pub branches: usize,
-}
-
 pub fn ancestral_results(tree: Option<&ResultTree>, alphabet: &Alphabet) -> Result<AncestralResults, Report> {
   let Some(tree) = tree else {
     return Ok(AncestralResults {
@@ -90,6 +58,38 @@ pub fn ancestral_results(tree: Option<&ResultTree>, alphabet: &Alphabet) -> Resu
     branches,
     recurrent_sites,
   })
+}
+
+/// Results of an `ancestral` run.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct AncestralResults {
+  /// Number of nucleotide mutations on all branches.
+  pub mutations: usize,
+  /// Branches with at least one mutation, most mutations first.
+  pub branches: Vec<BranchMutations>,
+  /// Sequence positions with substitutions between determined states on more than one branch, most
+  /// branches first.
+  pub recurrent_sites: Vec<RecurrentSite>,
+}
+
+/// Mutations on the branch above one node.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct BranchMutations {
+  /// Name of the node below the branch.
+  pub name: String,
+  /// Number of samples below the branch.
+  pub tips: usize,
+  /// Mutations on the branch.
+  pub mutations: Vec<String>,
+}
+
+/// A sequence position that mutates on several branches.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct RecurrentSite {
+  /// Position in the sequence, from 1.
+  pub position: usize,
+  /// Number of branches with a mutation at the position.
+  pub branches: usize,
 }
 
 fn substitution_event(mutation: &str, alphabet: &Alphabet) -> Result<Option<MutationEvent>, Report> {

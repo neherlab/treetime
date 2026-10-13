@@ -39,14 +39,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
 
-pub(crate) struct InitialRound {
-  pub state: RoundState,
-  pub leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
-  pub outliers: BTreeSet<GraphNodeKey>,
-  pub coalescent: CoalescentSetup,
-  pub timescale: CoalescentTimescale,
-}
-
 pub(crate) fn run_initial_round(
   params: &TimetreeParams,
   context: &TimetreeContext,
@@ -113,6 +105,14 @@ pub(crate) fn run_initial_round(
   })
 }
 
+pub(crate) struct InitialRound {
+  pub state: RoundState,
+  pub leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
+  pub outliers: BTreeSet<GraphNodeKey>,
+  pub coalescent: CoalescentSetup,
+  pub timescale: CoalescentTimescale,
+}
+
 pub(crate) fn refinement_round(
   inputs: &RoundInputs<'_>,
   merger_rate: &PiecewiseConstantFn,
@@ -162,88 +162,10 @@ pub(crate) fn final_marginal_round(
   .marginal_update()
 }
 
-pub(crate) struct RoundState {
-  pub graph: Graph,
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
-  pub branch_model: BranchModel,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub clock_model: ClockModel,
-  pub clock_points: Vec<ClockRegressionPoint>,
-  pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
-  pub gammas: BTreeMap<GraphEdgeKey, f64>,
-  pub time_inference: TimeInference,
-}
-
-impl RoundState {
-  pub(crate) fn time_inference_inputs<'a>(&'a self, inputs: &'a RoundInputs<'_>) -> TimeInferenceInputs<'a> {
-    TimeInferenceInputs {
-      graph: &self.graph,
-      date_constraints: &inputs.context.date_constraints,
-      leaf_bad_branches: inputs.leaf_bad_branches,
-      gammas: &self.gammas,
-      branch_model: &self.branch_model,
-      branch_lengths: &self.branch_lengths,
-      names: &self.names,
-      clock_model: &self.clock_model,
-      clock_rate_fixed: inputs.params.clock_rate.is_some(),
-      no_indels: inputs.params.no_indels,
-      max_grid_points: inputs.params.max_grid_points,
-    }
-  }
-
-  fn blend_clock_branch_lengths(self, damping: f64, log: &dyn LogSink) -> Self {
-    let clock_branch_lengths = blended_clock_branch_lengths(
-      &self.graph,
-      self.clock_model.clock_rate(),
-      damping,
-      &self.clock_branch_lengths,
-      &self.time_inference.node_times(),
-      &self.gammas,
-      log,
-    );
-    Self {
-      clock_branch_lengths,
-      ..self
-    }
-  }
-
-  fn marginal_update(self) -> Result<Self, Report> {
-    let timetree_lengths = timetree_branch_lengths(&self.graph, &self.branch_lengths, &self.clock_branch_lengths);
-    let branch_model = self.branch_model.marginal_update(&self.graph, &timetree_lengths)?;
-    Ok(Self { branch_model, ..self })
-  }
-}
-
-pub(crate) struct RoundInputs<'a> {
-  pub params: &'a TimetreeParams,
-  pub context: &'a TimetreeContext,
-  pub leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
-  pub outliers: &'a BTreeSet<GraphNodeKey>,
-}
-
 pub(crate) struct RoundOutcome {
   pub sequence_changes: usize,
   pub time_change: NodeTimeChange,
   pub topology: TopologyOutcome,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum TopologyOutcome {
-  Unchanged,
-  Changed { resolved_nodes: usize },
-}
-
-impl TopologyOutcome {
-  fn changed(self) -> bool {
-    matches!(self, Self::Changed { .. })
-  }
-
-  pub(crate) fn resolved_nodes(self) -> usize {
-    match self {
-      Self::Unchanged => 0,
-      Self::Changed { resolved_nodes } => resolved_nodes,
-    }
-  }
 }
 
 fn relax_clock(relax: &[f64], state: RoundState, total_length: usize, log: &dyn LogSink) -> Result<RoundState, Report> {
@@ -343,6 +265,25 @@ fn refine_topology(
   Ok((state, TopologyOutcome::Changed { resolved_nodes }))
 }
 
+#[derive(Clone, Copy)]
+pub(crate) enum TopologyOutcome {
+  Unchanged,
+  Changed { resolved_nodes: usize },
+}
+
+impl TopologyOutcome {
+  fn changed(self) -> bool {
+    matches!(self, Self::Changed { .. })
+  }
+
+  pub(crate) fn resolved_nodes(self) -> usize {
+    match self {
+      Self::Unchanged => 0,
+      Self::Changed { resolved_nodes } => resolved_nodes,
+    }
+  }
+}
+
 fn refresh_times(
   inputs: &RoundInputs<'_>,
   prior: Option<&CoalescentModel>,
@@ -424,6 +365,65 @@ fn update_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn Log
     clock_points: points,
     ..state
   })
+}
+
+pub(crate) struct RoundState {
+  pub graph: Graph,
+  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub branch_model: BranchModel,
+  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub clock_model: ClockModel,
+  pub clock_points: Vec<ClockRegressionPoint>,
+  pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+  pub gammas: BTreeMap<GraphEdgeKey, f64>,
+  pub time_inference: TimeInference,
+}
+
+impl RoundState {
+  pub(crate) fn time_inference_inputs<'a>(&'a self, inputs: &'a RoundInputs<'_>) -> TimeInferenceInputs<'a> {
+    TimeInferenceInputs {
+      graph: &self.graph,
+      date_constraints: &inputs.context.date_constraints,
+      leaf_bad_branches: inputs.leaf_bad_branches,
+      gammas: &self.gammas,
+      branch_model: &self.branch_model,
+      branch_lengths: &self.branch_lengths,
+      names: &self.names,
+      clock_model: &self.clock_model,
+      clock_rate_fixed: inputs.params.clock_rate.is_some(),
+      no_indels: inputs.params.no_indels,
+      max_grid_points: inputs.params.max_grid_points,
+    }
+  }
+
+  fn blend_clock_branch_lengths(self, damping: f64, log: &dyn LogSink) -> Self {
+    let clock_branch_lengths = blended_clock_branch_lengths(
+      &self.graph,
+      self.clock_model.clock_rate(),
+      damping,
+      &self.clock_branch_lengths,
+      &self.time_inference.node_times(),
+      &self.gammas,
+      log,
+    );
+    Self {
+      clock_branch_lengths,
+      ..self
+    }
+  }
+
+  fn marginal_update(self) -> Result<Self, Report> {
+    let timetree_lengths = timetree_branch_lengths(&self.graph, &self.branch_lengths, &self.clock_branch_lengths);
+    let branch_model = self.branch_model.marginal_update(&self.graph, &timetree_lengths)?;
+    Ok(Self { branch_model, ..self })
+  }
+}
+
+pub(crate) struct RoundInputs<'a> {
+  pub params: &'a TimetreeParams,
+  pub context: &'a TimetreeContext,
+  pub leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
+  pub outliers: &'a BTreeSet<GraphNodeKey>,
 }
 
 fn setup_coalescent(

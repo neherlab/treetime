@@ -125,66 +125,11 @@ pub fn active_choices(settings: &[SettingSpec], config: &Map<String, Value>) -> 
     .collect()
 }
 
-/// Settings that the form shows as one choice between options, for example the coalescent prior.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct SettingChoice {
-  pub choice: ChoiceName,
-  /// Keys of the settings the choice controls.
-  pub keys: Vec<String>,
-  /// The options, in the order the form shows them.
-  pub options: Vec<ChoiceOption>,
-}
-
-/// One option of a choice.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct ChoiceOption {
-  pub option: ChoiceOptionName,
-  /// Changes that picking the option makes: settings it writes, and settings it removes so that they take their
-  /// defaults.
-  pub patch: Vec<SettingPatch>,
-  /// Keys of the settings the form shows while the option is picked.
-  pub settings: Vec<String>,
-}
-
 /// The option of a choice that a configuration selects.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct ActiveChoice {
   pub choice: ChoiceName,
   pub option: ChoiceOptionName,
-}
-
-/// A group of settings that the form shows as one choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-pub enum ChoiceName {
-  /// Estimate the clock rate, or fix it.
-  ClockRate,
-  /// The prior on node times.
-  CoalescentPrior,
-  /// Reroot the tree, or keep the input root.
-  Root,
-}
-
-/// An option of a choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-pub enum ChoiceOptionName {
-  /// Estimate the clock rate from the data.
-  Estimate,
-  /// A fixed value: the clock rate, or the coalescent time scale Tc.
-  Fixed,
-  /// No coalescent prior.
-  None,
-  /// One constant coalescent time scale Tc, fitted to the tree.
-  Optimized,
-  /// A coalescent time scale that changes over time.
-  Skyline,
-  /// Find the root that fits the molecular clock best.
-  Reroot,
-  /// Keep the root of the input tree.
-  Keep,
 }
 
 struct ChoiceDef {
@@ -209,6 +154,29 @@ impl ChoiceDef {
         .try_collect()?,
     })
   }
+}
+
+/// Settings that the form shows as one choice between options, for example the coalescent prior.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct SettingChoice {
+  pub choice: ChoiceName,
+  /// Keys of the settings the choice controls.
+  pub keys: Vec<String>,
+  /// The options, in the order the form shows them.
+  pub options: Vec<ChoiceOption>,
+}
+
+/// A group of settings that the form shows as one choice.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum ChoiceName {
+  /// Estimate the clock rate, or fix it.
+  ClockRate,
+  /// The prior on node times.
+  CoalescentPrior,
+  /// Reroot the tree, or keep the input root.
+  Root,
 }
 
 struct OptionDef {
@@ -240,6 +208,38 @@ impl OptionDef {
       settings: self.settings.iter().map(|key| (*key).to_owned()).collect(),
     })
   }
+}
+
+/// One option of a choice.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct ChoiceOption {
+  pub option: ChoiceOptionName,
+  /// Changes that picking the option makes: settings it writes, and settings it removes so that they take their
+  /// defaults.
+  pub patch: Vec<SettingPatch>,
+  /// Keys of the settings the form shows while the option is picked.
+  pub settings: Vec<String>,
+}
+
+/// An option of a choice.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum ChoiceOptionName {
+  /// Estimate the clock rate from the data.
+  Estimate,
+  /// A fixed value: the clock rate, or the coalescent time scale Tc.
+  Fixed,
+  /// No coalescent prior.
+  None,
+  /// One constant coalescent time scale Tc, fitted to the tree.
+  Optimized,
+  /// A coalescent time scale that changes over time.
+  Skyline,
+  /// Find the root that fits the molecular clock best.
+  Reroot,
+  /// Keep the root of the input tree.
+  Keep,
 }
 
 enum PickedValue {

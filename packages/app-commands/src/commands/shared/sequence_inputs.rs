@@ -15,21 +15,6 @@ use treetime::seq::gap_fill::apply_gap_fill;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::nwk::NewickDialect;
 
-pub(crate) struct SequenceInputArgs<'a> {
-  pub(crate) alignment: &'a AlignmentArgs,
-  pub(crate) tree: &'a Path,
-  pub(crate) tree_dialect: NewickDialect,
-  pub(crate) alphabet_args: &'a AlphabetArgs,
-  pub(crate) gap_fill_args: &'a GapFillArgs,
-  pub(crate) ignore_missing_alns: bool,
-}
-
-pub(crate) struct AncestralReadInputs {
-  pub(crate) input: AncestralInput,
-  pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
-  pub(crate) n_records: usize,
-}
-
 pub(crate) fn read_nwk_fasta(
   args: &SequenceInputArgs<'_>,
   cancel: &dyn Cancel,
@@ -87,4 +72,19 @@ pub(crate) fn read_nwk_fasta(
     descs,
     n_records,
   })
+}
+
+pub(crate) struct SequenceInputArgs<'a> {
+  pub(crate) alignment: &'a AlignmentArgs,
+  pub(crate) tree: &'a Path,
+  pub(crate) tree_dialect: NewickDialect,
+  pub(crate) alphabet_args: &'a AlphabetArgs,
+  pub(crate) gap_fill_args: &'a GapFillArgs,
+  pub(crate) ignore_missing_alns: bool,
+}
+
+pub(crate) struct AncestralReadInputs {
+  pub(crate) input: AncestralInput,
+  pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
+  pub(crate) n_records: usize,
 }

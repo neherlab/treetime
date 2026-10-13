@@ -17,11 +17,6 @@ use treetime_utils::io::json::{JsonPretty, json_write_str};
 
 const HASH_BUFFER_SIZE: usize = 1 << 16;
 
-pub struct HashedInputs {
-  pub inputs: Vec<RunInput>,
-  pub config_hash: String,
-}
-
 pub fn hash_inputs(command: AppCommand, config: &Map<String, Value>) -> Result<HashedInputs, Report> {
   let mut canonical = config.clone();
   let mut inputs = vec![];
@@ -60,33 +55,13 @@ pub fn hash_inputs(command: AppCommand, config: &Map<String, Value>) -> Result<H
   })
 }
 
-pub fn file_sha256(path: &Path) -> Result<(usize, String), Report> {
-  let mut file = File::open(path).wrap_err_with(|| format!("When opening input '{}'", path.display()))?;
-  let mut hasher = Sha256::new();
-  let mut buffer = vec![0_u8; HASH_BUFFER_SIZE];
-  let mut size: usize = 0;
-  loop {
-    let read = file
-      .read(&mut buffer)
-      .wrap_err_with(|| format!("When reading input '{}'", path.display()))?;
-    if read == 0 {
-      break;
-    }
-    hasher.update(&buffer[..read]);
-    size += read;
-  }
-  Ok((size, hex(&hasher.finalize())?))
+pub struct HashedInputs {
+  pub inputs: Vec<RunInput>,
+  pub config_hash: String,
 }
 
 pub fn sha256_hex(bytes: &[u8]) -> Result<String, Report> {
   Ok(hex(&Sha256::digest(bytes))?)
-}
-
-fn hex(bytes: &[u8]) -> Result<String, fmt::Error> {
-  bytes.iter().try_fold(String::new(), |mut hex, byte| {
-    write!(hex, "{byte:02x}")?;
-    Ok(hex)
-  })
 }
 
 fn hash_path_values(setting: &str, value: &mut Value, inputs: &mut Vec<RunInput>) -> Result<(), Report> {
@@ -113,6 +88,31 @@ fn record_input(setting: &str, path: &Path) -> Result<RunInput, Report> {
     path: path.to_path_buf(),
     size,
     sha256,
+  })
+}
+
+pub fn file_sha256(path: &Path) -> Result<(usize, String), Report> {
+  let mut file = File::open(path).wrap_err_with(|| format!("When opening input '{}'", path.display()))?;
+  let mut hasher = Sha256::new();
+  let mut buffer = vec![0_u8; HASH_BUFFER_SIZE];
+  let mut size: usize = 0;
+  loop {
+    let read = file
+      .read(&mut buffer)
+      .wrap_err_with(|| format!("When reading input '{}'", path.display()))?;
+    if read == 0 {
+      break;
+    }
+    hasher.update(&buffer[..read]);
+    size += read;
+  }
+  Ok((size, hex(&hasher.finalize())?))
+}
+
+fn hex(bytes: &[u8]) -> Result<String, fmt::Error> {
+  bytes.iter().try_fold(String::new(), |mut hex, byte| {
+    write!(hex, "{byte:02x}")?;
+    Ok(hex)
   })
 }
 

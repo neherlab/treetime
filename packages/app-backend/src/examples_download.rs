@@ -92,6 +92,34 @@ impl ExampleDownloads {
   }
 }
 
+fn publish(state: &mut ExamplesDownloadStatus, runs: &RunManager, download: ExamplesDownload) {
+  let mut stale = vec![StalePath::exact(EXAMPLES_DOWNLOAD_PATH)];
+  if matches!(download, ExamplesDownload::Done { .. }) {
+    stale.push(StalePath::exact(DATASETS_PATH));
+  }
+  let event = runs.app_events().append(
+    AppChange::ExamplesDownload {
+      download: download.clone(),
+    },
+    stale,
+  );
+  *state = ExamplesDownloadStatus {
+    download,
+    seq: Some(event.seq),
+  };
+}
+
+/// The download of the example datasets, with the app event that reported it last.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct ExamplesDownloadStatus {
+  pub download: ExamplesDownload,
+  /// Sequence number of the last app event about the download. A client keeps whichever of this answer and the
+  /// events it received has the higher number.
+  pub seq: Option<u64>,
+}
+
 /// Stage of the download of the example datasets.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[deser(skip_serializing_optionals)]
@@ -118,32 +146,4 @@ pub enum ExamplesDownload {
     /// What failed.
     message: String,
   },
-}
-
-/// The download of the example datasets, with the app event that reported it last.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct ExamplesDownloadStatus {
-  pub download: ExamplesDownload,
-  /// Sequence number of the last app event about the download. A client keeps whichever of this answer and the
-  /// events it received has the higher number.
-  pub seq: Option<u64>,
-}
-
-fn publish(state: &mut ExamplesDownloadStatus, runs: &RunManager, download: ExamplesDownload) {
-  let mut stale = vec![StalePath::exact(EXAMPLES_DOWNLOAD_PATH)];
-  if matches!(download, ExamplesDownload::Done { .. }) {
-    stale.push(StalePath::exact(DATASETS_PATH));
-  }
-  let event = runs.app_events().append(
-    AppChange::ExamplesDownload {
-      download: download.clone(),
-    },
-    stale,
-  );
-  *state = ExamplesDownloadStatus {
-    download,
-    seq: Some(event.seq),
-  };
 }

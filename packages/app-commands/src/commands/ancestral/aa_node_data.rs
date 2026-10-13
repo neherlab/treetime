@@ -120,17 +120,17 @@ pub(crate) fn translation_path(template: &str, cds: &str) -> PathBuf {
   PathBuf::from(expand_cds_placeholders(template, cds))
 }
 
-fn template_has_cds_placeholder(template: &str) -> bool {
-  CDS_PLACEHOLDERS
-    .iter()
-    .any(|placeholder| template.contains(placeholder))
-}
-
 fn cds_output_template_name(path: &Path) -> Option<&str> {
   path
     .file_name()
     .and_then(OsStr::to_str)
     .filter(|name| template_has_cds_placeholder(name))
+}
+
+fn template_has_cds_placeholder(template: &str) -> bool {
+  CDS_PLACEHOLDERS
+    .iter()
+    .any(|placeholder| template.contains(placeholder))
 }
 
 fn expand_cds_placeholders(template: &str, cds: &str) -> String {

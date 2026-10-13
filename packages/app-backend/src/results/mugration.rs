@@ -9,51 +9,6 @@ use treetime_schema::skip_serializing_optionals;
 
 pub const UNCERTAIN_STATE_PROBABILITY: f64 = 0.8;
 
-/// Results of a `mugration` run.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
-#[deser(skip_serializing_optionals)]
-#[schemars(transform = skip_serializing_optionals)]
-pub struct MugrationResults {
-  /// The reconstructed attribute.
-  pub attribute: String,
-  /// Number of distinct states among the samples.
-  pub states: usize,
-  /// Changes of state from parent to child, counted over branches, most frequent first.
-  pub state_changes: Vec<StateChange>,
-  /// Number of branches whose state differs from the parent's.
-  pub changed_branches: usize,
-  /// Probability below which an ancestor's most probable state counts as uncertain.
-  pub uncertain_below: f64,
-  /// Ancestors whose most probable state is uncertain, least certain first.
-  pub uncertain_ancestors: Vec<AncestorState>,
-  /// Most probable state of the root.
-  pub root: Option<AncestorState>,
-}
-
-/// A change of state along branches.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct StateChange {
-  /// State of the parent.
-  pub from: String,
-  /// State of the child.
-  pub to: String,
-  /// Number of branches with this change.
-  pub branches: usize,
-}
-
-/// Most probable state of an ancestor.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
-pub struct AncestorState {
-  /// Name of the ancestor.
-  pub name: String,
-  /// Number of samples below the ancestor.
-  pub tips: usize,
-  /// Most probable state.
-  pub state: String,
-  /// Probability of the state.
-  pub probability: f64,
-}
-
 pub fn mugration_results(
   auspice: Option<&AuspiceTree>,
   tree: Option<&ResultTree>,
@@ -139,4 +94,49 @@ pub fn mugration_results(
       .sorted_by(|a, b| a.probability.total_cmp(&b.probability))
       .collect(),
   })
+}
+
+/// Results of a `mugration` run.
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct MugrationResults {
+  /// The reconstructed attribute.
+  pub attribute: String,
+  /// Number of distinct states among the samples.
+  pub states: usize,
+  /// Changes of state from parent to child, counted over branches, most frequent first.
+  pub state_changes: Vec<StateChange>,
+  /// Number of branches whose state differs from the parent's.
+  pub changed_branches: usize,
+  /// Probability below which an ancestor's most probable state counts as uncertain.
+  pub uncertain_below: f64,
+  /// Ancestors whose most probable state is uncertain, least certain first.
+  pub uncertain_ancestors: Vec<AncestorState>,
+  /// Most probable state of the root.
+  pub root: Option<AncestorState>,
+}
+
+/// A change of state along branches.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct StateChange {
+  /// State of the parent.
+  pub from: String,
+  /// State of the child.
+  pub to: String,
+  /// Number of branches with this change.
+  pub branches: usize,
+}
+
+/// Most probable state of an ancestor.
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
+pub struct AncestorState {
+  /// Name of the ancestor.
+  pub name: String,
+  /// Number of samples below the ancestor.
+  pub tips: usize,
+  /// Most probable state.
+  pub state: String,
+  /// Probability of the state.
+  pub probability: f64,
 }

@@ -2,19 +2,6 @@ use crate::error::{NewickWriteError, WriteContext, write_error};
 use pretty_dtoa::{FmtFloatConfig, dtoa};
 use std::str::FromStr;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct NumberFormat {
-  pub significant_digits: Option<u8>,
-  pub decimal_digits: Option<i8>,
-  pub point_zero: bool,
-}
-
-impl NumberFormat {
-  pub fn format(&self, value: f64) -> Result<String, NewickWriteError> {
-    format_number(value, *self)
-  }
-}
-
 #[cfg_attr(
   dylint_lib = "custom",
   expect(
@@ -39,6 +26,19 @@ pub(crate) fn parse_hex_byte(text: &str) -> Option<u8> {
 
 pub(crate) fn format_shortest(value: f64) -> Result<String, NewickWriteError> {
   format_number(value, NumberFormat::default())
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct NumberFormat {
+  pub significant_digits: Option<u8>,
+  pub decimal_digits: Option<i8>,
+  pub point_zero: bool,
+}
+
+impl NumberFormat {
+  pub fn format(&self, value: f64) -> Result<String, NewickWriteError> {
+    format_number(value, *self)
+  }
 }
 
 fn format_number(value: f64, format: NumberFormat) -> Result<String, NewickWriteError> {

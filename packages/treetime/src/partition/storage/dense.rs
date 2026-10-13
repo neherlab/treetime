@@ -13,6 +13,12 @@ pub struct DenseNodeState {
   pub profile: DenseSeqDistribution,
 }
 
+impl MarginalNodeState for DenseNodeState {
+  fn log_lh(&self) -> LogLh {
+    self.profile.log_lh
+  }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct DenseLeafObs {
   sequence: Seq,
@@ -46,12 +52,6 @@ impl DenseLeafObs {
       variable_indel: BTreeSet::new(),
       sequence: self.sequence.clone(),
     }
-  }
-}
-
-impl MarginalNodeState for DenseNodeState {
-  fn log_lh(&self) -> LogLh {
-    self.profile.log_lh
   }
 }
 

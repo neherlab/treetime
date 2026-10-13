@@ -15,20 +15,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
-pub(crate) struct AncestralTrees<'a> {
-  pub(crate) graph: &'a Graph,
-  pub(crate) alphabet: &'a Alphabet,
-  pub(crate) names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  pub(crate) branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub(crate) maps: &'a AncestralOutputMaps,
-  pub(crate) amino_acids: Option<&'a (AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>,
-}
-
-pub(crate) struct AncestralOutputMaps {
-  pub(crate) root_sequence: Seq,
-  pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-}
-
 pub(crate) fn write_ancestral_trees(
   trees: &AncestralTrees<'_>,
   node_sequences: Option<AncestralNodeSequences<'_>>,
@@ -66,4 +52,18 @@ pub(crate) fn write_ancestral_trees(
     return Ok(());
   };
   write_tree_outputs(&tree, &resolved.tree_outputs, command, log)
+}
+
+pub(crate) struct AncestralTrees<'a> {
+  pub(crate) graph: &'a Graph,
+  pub(crate) alphabet: &'a Alphabet,
+  pub(crate) names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub(crate) branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub(crate) maps: &'a AncestralOutputMaps,
+  pub(crate) amino_acids: Option<&'a (AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>,
+}
+
+pub(crate) struct AncestralOutputMaps {
+  pub(crate) root_sequence: Seq,
+  pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }

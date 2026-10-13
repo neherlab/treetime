@@ -74,37 +74,6 @@ impl fmt::Display for NewickWarning {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Location {
-  pub offset: usize,
-  pub line: usize,
-  pub column: usize,
-}
-
-impl Location {
-  pub const START: Self = Self {
-    offset: 0,
-    line: 1,
-    column: 1,
-  };
-
-  pub(crate) fn advanced_by(self, text: &str) -> Self {
-    let offset = self.offset + text.len();
-    match text.rfind('\n') {
-      Some(last_newline) => Self {
-        offset,
-        line: self.line + text.matches('\n').count(),
-        column: text.get(last_newline + 1..).map_or(0, |rest| rest.chars().count()) + 1,
-      },
-      None => Self {
-        offset,
-        line: self.line,
-        column: self.column + text.chars().count(),
-      },
-    }
-  }
-}
-
 pub(crate) struct TextIndex<'i> {
   text: &'i str,
   base: Location,
@@ -145,6 +114,37 @@ impl<'i> TextIndex<'i> {
         line: self.base.line + line,
         column: column + 1,
       }
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Location {
+  pub offset: usize,
+  pub line: usize,
+  pub column: usize,
+}
+
+impl Location {
+  pub const START: Self = Self {
+    offset: 0,
+    line: 1,
+    column: 1,
+  };
+
+  pub(crate) fn advanced_by(self, text: &str) -> Self {
+    let offset = self.offset + text.len();
+    match text.rfind('\n') {
+      Some(last_newline) => Self {
+        offset,
+        line: self.line + text.matches('\n').count(),
+        column: text.get(last_newline + 1..).map_or(0, |rest| rest.chars().count()) + 1,
+      },
+      None => Self {
+        offset,
+        line: self.line,
+        column: self.column + text.chars().count(),
+      },
     }
   }
 }

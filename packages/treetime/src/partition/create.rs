@@ -15,22 +15,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum Representation {
-  Dense,
-  Sparse,
-}
-
-impl Representation {
-  pub(crate) fn resolve(dense: Option<bool>) -> Self {
-    if dense.unwrap_or_else(infer_dense) {
-      Self::Dense
-    } else {
-      Self::Sparse
-    }
-  }
-}
-
 pub(crate) fn build_marginal_partition(
   representation: Representation,
   model: GtrModelName,
@@ -61,6 +45,22 @@ pub(crate) fn build_marginal_partition(
       MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
     },
   })
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Representation {
+  Dense,
+  Sparse,
+}
+
+impl Representation {
+  pub(crate) fn resolve(dense: Option<bool>) -> Self {
+    if dense.unwrap_or_else(infer_dense) {
+      Self::Dense
+    } else {
+      Self::Sparse
+    }
+  }
 }
 
 pub(crate) fn build_sparse_reconstruction(

@@ -18,6 +18,13 @@ const DOCUMENT_START: &str = "---\n";
 
 const YAML: DeserializerConfig = DeserializerConfig::new().track_locations(true);
 
+pub fn yaml_value_read_str(text: &str) -> Result<Value, Report> {
+  let value: deser_value::Value = yaml_read_str(text)?;
+  ensure_finite_numbers(&value)?;
+  let value: As<Value, Serde> = deser_value::from_value(&value).map_err(Report::new)?;
+  Ok(value.into_inner())
+}
+
 pub fn yaml_read_str<T: DeserializeOwned>(text: &str) -> Result<T, Report> {
   Deserializer::from_str_with_config(text, &YAML)
     .deserialize_with(|driver| {
@@ -25,13 +32,6 @@ pub fn yaml_read_str<T: DeserializeOwned>(text: &str) -> Result<T, Report> {
       driver.push_layer(PlainBooleanWords { text: Arc::from(text) });
     })
     .map_err(Report::new)
-}
-
-pub fn yaml_value_read_str(text: &str) -> Result<Value, Report> {
-  let value: deser_value::Value = yaml_read_str(text)?;
-  ensure_finite_numbers(&value)?;
-  let value: As<Value, Serde> = deser_value::from_value(&value).map_err(Report::new)?;
-  Ok(value.into_inner())
 }
 
 pub fn yaml_text(key: &str, value: &Value) -> Result<String, Report> {

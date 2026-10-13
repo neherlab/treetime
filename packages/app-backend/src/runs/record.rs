@@ -78,26 +78,6 @@ impl RunRecord {
   }
 }
 
-/// State of a run.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Display, Serialize, Deserialize)]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum RunStatus {
-  /// Created and waiting to be started, for example while its inputs upload.
-  Created,
-  /// The computation is running.
-  Running,
-  /// The command ran to completion.
-  Ok,
-  /// The command failed: its inputs could not be read, or the computation failed.
-  Error,
-  /// The run stopped because cancellation was requested.
-  Cancelled,
-  /// The run stopped because the process that ran it stopped.
-  Interrupted,
-}
-
 /// One input file of a run.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct RunInput {
@@ -118,6 +98,15 @@ pub struct RunError {
   pub message: String,
   /// The errors that caused `message`, outermost first.
   pub causes: Vec<String>,
+}
+
+/// Runs, newest first, and the number of runs computing now.
+#[derive(Clone, Debug, JsonSchema, Serialize)]
+pub struct RunList {
+  /// Runs, newest first.
+  pub runs: Vec<RunSummary>,
+  /// Number of runs whose computation is running now. Every run shares one pool of processing threads.
+  pub active_runs: usize,
 }
 
 /// Entry of a run list.
@@ -151,13 +140,24 @@ pub struct RunSummary {
   pub headline: RunHeadline,
 }
 
-/// Runs, newest first, and the number of runs computing now.
-#[derive(Clone, Debug, JsonSchema, Serialize)]
-pub struct RunList {
-  /// Runs, newest first.
-  pub runs: Vec<RunSummary>,
-  /// Number of runs whose computation is running now. Every run shares one pool of processing threads.
-  pub active_runs: usize,
+/// State of a run.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Display, Serialize, Deserialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum RunStatus {
+  /// Created and waiting to be started, for example while its inputs upload.
+  Created,
+  /// The computation is running.
+  Running,
+  /// The command ran to completion.
+  Ok,
+  /// The command failed: its inputs could not be read, or the computation failed.
+  Error,
+  /// The run stopped because cancellation was requested.
+  Cancelled,
+  /// The run stopped because the process that ran it stopped.
+  Interrupted,
 }
 
 /// Request to create a run.

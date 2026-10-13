@@ -3,67 +3,6 @@ use std::fmt;
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum NewickStructure {
-  #[default]
-  Classic,
-  ENewick,
-  Rich,
-}
-
-impl NewickStructure {
-  pub const ALL: [Self; 3] = [Self::Classic, Self::ENewick, Self::Rich];
-
-  pub const fn hybrid_tags(self) -> bool {
-    matches!(self, Self::ENewick | Self::Rich)
-  }
-
-  pub const fn field_count(self) -> usize {
-    match self {
-      Self::Rich => 3,
-      Self::Classic | Self::ENewick => 1,
-    }
-  }
-
-  pub const fn weight(self) -> bool {
-    matches!(self, Self::Rich)
-  }
-
-  pub const fn name(self) -> &'static str {
-    match self {
-      Self::Classic => "classic",
-      Self::ENewick => "enewick",
-      Self::Rich => "rich",
-    }
-  }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum NewickAnnotations {
-  #[default]
-  Plain,
-  Beast,
-  Nhx,
-  MrBayes,
-}
-
-impl NewickAnnotations {
-  pub const ALL: [Self; 4] = [Self::Plain, Self::Beast, Self::Nhx, Self::MrBayes];
-
-  pub const fn reserves_annotations(self) -> bool {
-    !matches!(self, Self::Plain)
-  }
-
-  pub const fn name(self) -> &'static str {
-    match self {
-      Self::Plain => "plain",
-      Self::Beast => "beast",
-      Self::Nhx => "nhx",
-      Self::MrBayes => "mrbayes",
-    }
-  }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NewickDialect {
   pub structure: NewickStructure,
   pub annotations: NewickAnnotations,
@@ -128,5 +67,66 @@ impl FromStr for NewickDialect {
       .find(|candidate| candidate.name() == annotations)
       .ok_or_else(error)?;
     Ok(Self::new(structure, annotations))
+  }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NewickStructure {
+  #[default]
+  Classic,
+  ENewick,
+  Rich,
+}
+
+impl NewickStructure {
+  pub const ALL: [Self; 3] = [Self::Classic, Self::ENewick, Self::Rich];
+
+  pub const fn hybrid_tags(self) -> bool {
+    matches!(self, Self::ENewick | Self::Rich)
+  }
+
+  pub const fn field_count(self) -> usize {
+    match self {
+      Self::Rich => 3,
+      Self::Classic | Self::ENewick => 1,
+    }
+  }
+
+  pub const fn weight(self) -> bool {
+    matches!(self, Self::Rich)
+  }
+
+  pub const fn name(self) -> &'static str {
+    match self {
+      Self::Classic => "classic",
+      Self::ENewick => "enewick",
+      Self::Rich => "rich",
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NewickAnnotations {
+  #[default]
+  Plain,
+  Beast,
+  Nhx,
+  MrBayes,
+}
+
+impl NewickAnnotations {
+  pub const ALL: [Self; 4] = [Self::Plain, Self::Beast, Self::Nhx, Self::MrBayes];
+
+  pub const fn reserves_annotations(self) -> bool {
+    !matches!(self, Self::Plain)
+  }
+
+  pub const fn name(self) -> &'static str {
+    match self {
+      Self::Plain => "plain",
+      Self::Beast => "beast",
+      Self::Nhx => "nhx",
+      Self::MrBayes => "mrbayes",
+    }
   }
 }

@@ -25,15 +25,6 @@ pub fn read_auspice(out_dir: &Path, output_files: &[OutputFile]) -> Result<Optio
     .transpose()
 }
 
-/// An output file of a run that could not be read.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct OutputProblem {
-  /// Path of the file relative to the run's `out/` folder.
-  pub path: String,
-  /// Why the file could not be read.
-  pub message: String,
-}
-
 #[derive(Default)]
 pub struct RunOutputs {
   pub auspice: Option<AuspiceTree>,
@@ -82,6 +73,15 @@ impl RunOutputs {
     }
     Ok(())
   }
+}
+
+/// An output file of a run that could not be read.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+pub struct OutputProblem {
+  /// Path of the file relative to the run's `out/` folder.
+  pub path: String,
+  /// Why the file could not be read.
+  pub message: String,
 }
 
 fn result_outputs(command: AppCommand) -> &'static [OutputSelection] {

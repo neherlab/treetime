@@ -5,14 +5,6 @@ use crate::read::context::MapContext;
 use crate::read::error::{NewickError, NewickErrorKind};
 use pest::iterators::Pair;
 
-pub(crate) struct LabelToken {
-  pub(crate) text: String,
-  pub(crate) name: Option<String>,
-  pub(crate) support: Option<Vec<f64>>,
-  pub(crate) hybrid: Option<NewickHybrid>,
-  pub(crate) is_acceptor: bool,
-}
-
 pub(crate) fn read_label(label: Pair<'_, Rule>, context: &MapContext<'_, '_>) -> Result<LabelToken, NewickError> {
   let mut token = LabelToken {
     text: label.as_str().to_owned(),
@@ -69,6 +61,14 @@ pub(crate) fn read_label(label: Pair<'_, Rule>, context: &MapContext<'_, '_>) ->
     }
   }
   Ok(token)
+}
+
+pub(crate) struct LabelToken {
+  pub(crate) text: String,
+  pub(crate) name: Option<String>,
+  pub(crate) support: Option<Vec<f64>>,
+  pub(crate) hybrid: Option<NewickHybrid>,
+  pub(crate) is_acceptor: bool,
 }
 
 fn read_hybrid_tag(tag: &Pair<'_, Rule>, context: &MapContext<'_, '_>) -> Result<(NewickHybrid, bool), NewickError> {

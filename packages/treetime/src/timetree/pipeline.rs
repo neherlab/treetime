@@ -199,12 +199,6 @@ pub struct TimetreeOutput {
   pub sequences: Option<TimetreeSequences>,
 }
 
-pub struct TimetreeSequences {
-  pub root_sequence: Seq,
-  pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  pub edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
-}
-
 fn validate_params(params: &TimetreeParams, has_seq_sink: bool) -> Result<(), OperationError> {
   if params.n_branches_posterior.is_some() {
     return Err(OperationError::InvalidParams(make_report!(
@@ -361,12 +355,6 @@ fn report_coalescent_size(
   }
 }
 
-struct FinalTimes {
-  state: RoundState,
-  rate_std: Option<f64>,
-  rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
-}
-
 fn refine_final_times(
   inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,
@@ -416,14 +404,6 @@ fn refine_final_times(
     rate_std,
     rate_susceptibility_dates,
   })
-}
-
-struct FinalResults {
-  state: RoundState,
-  confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
-  coalescent_output: Option<CoalescentOutput>,
-  divergences: BTreeMap<GraphNodeKey, f64>,
-  clock_regression: Vec<ClockRegressionResult>,
 }
 
 fn gather_results(
@@ -482,6 +462,20 @@ fn gather_results(
   })
 }
 
+struct FinalTimes {
+  state: RoundState,
+  rate_std: Option<f64>,
+  rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
+}
+
+struct FinalResults {
+  state: RoundState,
+  confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
+  coalescent_output: Option<CoalescentOutput>,
+  divergences: BTreeMap<GraphNodeKey, f64>,
+  clock_regression: Vec<ClockRegressionResult>,
+}
+
 fn reconstruct_final_sequences(
   params: &TimetreeParams,
   context: &TimetreeContext,
@@ -533,6 +527,12 @@ fn reconstruct_final_sequences(
     edge_mutations,
     edge_mutation_counts,
   }))
+}
+
+pub struct TimetreeSequences {
+  pub root_sequence: Seq,
+  pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  pub edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
 }
 
 pub(crate) fn date_branch_lengths(
