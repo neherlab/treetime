@@ -76,14 +76,14 @@ pub fn run(
   let (graph, branch_lengths, clock_fit) =
     estimate_initial_clock(params, &context, graph, branch_lengths, &names, log).map_err(OperationError::classify)?;
   let has_alignment = sequences.is_some();
-  let init = initialize_branch_model(params, &graph, &branch_lengths, alphabet, sequences, &names, log)?;
+  let branch_model = initialize_branch_model(params, &graph, &branch_lengths, alphabet, sequences, &names, log)?;
   let pre_loop_inputs = PreLoopInputs {
     params,
     context: &context,
     names: &names,
     has_alignment,
   };
-  let pre_loop_state = PreLoopState::new(graph, branch_lengths, init.branch_model, clock_fit);
+  let pre_loop_state = PreLoopState::new(graph, branch_lengths, branch_model, clock_fit);
   let pre_loop =
     run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, stages, log).map_err(OperationError::classify)?;
 
@@ -115,27 +115,13 @@ pub fn run(
     refine_final_times(&round_inputs, coalescent, &timescale, state, log).map_err(OperationError::classify)?;
   let results =
     gather_results(params, &context, coalescent, &timescale, final_times).map_err(OperationError::classify)?;
-  let gtr = init.gtr;
-  let model_name = init.model_name;
-  assemble_output(
-    params,
-    &context,
-    seq_sink,
-    gtr,
-    model_name,
-    initial.outliers,
-    dates,
-    results,
-    log,
-  )
+  assemble_output(params, &context, seq_sink, initial.outliers, dates, results, log)
 }
 
 fn assemble_output(
   params: &TimetreeParams,
   context: &TimetreeContext,
   seq_sink: Option<&mut dyn SeqSink>,
-  gtr: Option<GTR>,
-  model_name: Option<GtrModelName>,
   outliers: BTreeSet<GraphNodeKey>,
   dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
   results: FinalResults,
@@ -151,6 +137,8 @@ fn assemble_output(
     time_inference,
     ..
   } = results.state;
+  let gtr = branch_model.gtr().cloned();
+  let model_name = branch_model.is_marginal().then_some(params.model);
   let sequences = reconstruct_final_sequences(
     params,
     context,
@@ -312,12 +300,6 @@ fn estimate_initial_clock(
   Ok((graph, branch_lengths, clock_reroot.into_clock_fit()?))
 }
 
-struct BranchModelInit {
-  branch_model: BranchModel,
-  gtr: Option<GTR>,
-  model_name: Option<GtrModelName>,
-}
-
 fn initialize_branch_model(
   params: &TimetreeParams,
   graph: &Graph,
@@ -326,15 +308,11 @@ fn initialize_branch_model(
   aln: Option<BTreeMap<GraphNodeKey, NodeSeqInput>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
-) -> Result<BranchModelInit, OperationError> {
+) -> Result<BranchModel, OperationError> {
   match params.branch_length_mode {
     BranchLengthMode::Input => {
       progress_info!(log, "Branch length mode: Input - using tree branch lengths");
-      Ok(BranchModelInit {
-        branch_model: BranchModel::Input,
-        gtr: None,
-        model_name: None,
-      })
+      Ok(BranchModel::Input)
     },
     BranchLengthMode::Marginal => {
       progress_info!(
@@ -353,11 +331,7 @@ fn initialize_branch_model(
         log,
       )
       .map_err(OperationError::classify)?;
-      Ok(BranchModelInit {
-        gtr: Some(reconstruction.gtr().clone()),
-        branch_model: BranchModel::Marginal(reconstruction),
-        model_name: Some(params.model),
-      })
+      Ok(BranchModel::Marginal(reconstruction))
     },
   }
 }
