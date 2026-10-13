@@ -10,6 +10,7 @@ mod tests {
   use crate::o;
   use crate::progress::NoopProgress;
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
+  use treetime_utils::assert_error;
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -80,6 +81,16 @@ mod tests {
 
     assert_eq!(helpers::regression_bits(&expected), helpers::regression_bits(&actual));
     Ok(())
+  }
+
+  #[test]
+  fn test_clock_regression_reports_an_edge_without_branch_length() {
+    let result = helpers::root_regression(
+      "((A,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
+      &dates_4(),
+      &ClockVarianceParams::default(),
+    );
+    assert_error!(result, "Edge 0 has no branch length");
   }
 
   #[test]

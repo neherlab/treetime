@@ -442,7 +442,7 @@ args = "--date-column=date"
 variant = "tree-without-branch-lengths"
 datasets = ["zika/20"]
 args = "--tree={data}/smoke/zika-20-tree-without-branch-lengths.nwk"
-fail = "kb/issues/M-clock-regression-panics-on-missing-branch-length.md"
+fail = "kb/issues/M-clock-regression-missing-branch-length-diverges-from-v0.md"
 
 
 [[homoplasy]]

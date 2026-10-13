@@ -20,6 +20,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::{RerootResult, StemRemovalInfo};
+use treetime_utils::make_report;
 
 #[expect(
   clippy::unwrap_used,
@@ -355,11 +356,12 @@ fn clock_regression_backward_node(
     edge.clock_to_parent = q_to_parent;
     let edge_input = inputs.edge(edge_key);
     let edge_len = edge_divergence(
+      edge_key,
       branch_lengths[&edge_key],
       edge_input.time_length,
       edge_input.gamma,
       prev_clock_rate,
-    );
+    )?;
     let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
     edge.clock_from_child = if is_leaf {
       branch_variance += options.variance_offset_leaf;
@@ -399,11 +401,12 @@ fn clock_regression_forward(
 
       let edge_input = inputs.edge(edge_key);
       let edge_len = edge_divergence(
+        edge_key,
         branch_lengths[&edge_key],
         edge_input.time_length,
         edge_input.gamma,
         prev_clock_rate,
-      );
+      )?;
       let branch_variance = options.variance_factor * edge_len + options.variance_offset;
       let mut q_dest = edge.clock_to_parent.clone();
       q_dest += edge.clock_to_child.propagate_averages(edge_len, branch_variance);
@@ -424,15 +427,22 @@ fn clock_regression_points(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<Vec<ClockRegressionPoint>, Report> {
-  let divergences = root_to_node_divergences(graph, |edge_key| {
-    let edge_input = inputs.edge(edge_key);
-    edge_divergence(
-      branch_lengths[&edge_key],
-      edge_input.time_length,
-      edge_input.gamma,
-      prev_clock_rate,
-    )
-  })?;
+  let edge_lengths: BTreeMap<GraphEdgeKey, f64> = graph
+    .get_edges()
+    .map(|edge| {
+      let edge_key = edge.key();
+      let edge_input = inputs.edge(edge_key);
+      let length = edge_divergence(
+        edge_key,
+        branch_lengths[&edge_key],
+        edge_input.time_length,
+        edge_input.gamma,
+        prev_clock_rate,
+      )?;
+      Ok((edge_key, length))
+    })
+    .collect::<Result<_, Report>>()?;
+  let divergences = root_to_node_divergences(graph, |edge_key| edge_lengths[&edge_key])?;
   let mut points = vec![];
   graph.iter_depth_first_preorder_forward(|node| {
     if node.is_leaf {
@@ -460,20 +470,17 @@ pub struct ClockVarianceParams {
   pub variance_offset_leaf: f64,
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn edge_divergence(
+  edge_key: GraphEdgeKey,
   branch_length: Option<f64>,
   time_length: Option<f64>,
   gamma: f64,
   prev_clock_rate: Option<f64>,
-) -> f64 {
+) -> Result<f64, Report> {
   if let Some(rate) = prev_clock_rate {
     if let Some(tl) = time_length {
-      return tl * rate * gamma;
+      return Ok(tl * rate * gamma);
     }
   }
-  branch_length.expect("Encountered an edge without a weight")
+  branch_length.ok_or_else(|| make_report!("Edge {edge_key} has no branch length"))
 }

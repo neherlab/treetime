@@ -10,7 +10,7 @@ Multiple locations suppress errors by substituting default values for semantical
 
 - `branch_lengths.rs:4-16:` `branch_lengths_or_zero()` and `branch_length_or_zero()` map a missing branch length to 0.0. Every pipeline calls them before the marginal passes and before the divergence sums
 - `clock/clock_filter.rs:37:` branch length defaults to 0.0 through `branch_length_or_zero()`
-- `clock/pipeline.rs:68:` branch length defaults to 0.0 through `branch_length_or_zero()` in the divergences that the RTT output reads. The clock regression panics on the same input instead: [M-clock-regression-panics-on-missing-branch-length.md](M-clock-regression-panics-on-missing-branch-length.md)
+- `clock/pipeline.rs:68:` branch length defaults to 0.0 through `branch_length_or_zero()` in the divergences that the RTT output reads. The clock regression rejects the same input with an error instead: [M-clock-regression-missing-branch-length-diverges-from-v0.md](M-clock-regression-missing-branch-length-diverges-from-v0.md)
 - `partition/marginal/discrete/partition.rs:42:` and `partition/marginal/discrete/input.rs:30:` node name defaults to empty string
 - `optimize/topology/merge_shared_mutations.rs:100:` and `:212:` indels default to an empty slice (`map_or(empty_indels, ..)`) when the edge has no observation
 - `timetree/optimization/relaxed_clock.rs:30:` branch length defaults to 0.0
