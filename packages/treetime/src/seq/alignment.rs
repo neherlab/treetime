@@ -121,11 +121,7 @@ pub struct NodeSeqInput {
   pub seq: Option<Seq>,
 }
 
-pub fn get_common_length(aln: &[AlignmentRecord]) -> Result<usize, Report> {
-  common_length(aln.iter().map(|record| (record.name.as_str(), &record.seq)))
-}
-
-fn common_length<'a>(seqs: impl IntoIterator<Item = (&'a str, &'a Seq)>) -> Result<usize, Report> {
+pub(crate) fn common_length<'a>(seqs: impl IntoIterator<Item = (&'a str, &'a Seq)>) -> Result<usize, Report> {
   let lengths = seqs
     .into_iter()
     .into_group_map_by(|(_, seq)| seq.len())

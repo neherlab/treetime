@@ -1,11 +1,12 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
+use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::partition::marginal::dense::partition::assign_sequence;
-use crate::partition::marginal::shared::data::DenseInputs;
+use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_dense};
 use crate::partition::marginal::shared::normalize::{
   divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_from_log, normalize_inplace,
 };
-use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward};
+use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses};
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseLeafObs, DenseNodeState, DenseSeqDistribution,
   DenseSeqInfo,
@@ -327,4 +328,73 @@ fn forward_post_dense(
     node.seq.sequence[unknown.0..unknown.1].fill(alphabet.unknown());
   }
   Ok(indels)
+}
+
+pub(crate) trait IndexedPartition {
+  fn inputs(&self) -> &DenseInputs;
+
+  fn indexed_kind(&self) -> IndexedKind<'_>;
+}
+
+impl<P: IndexedPartition> MarginalPasses for P {
+  type Node = DenseNodeState;
+  type BackwardInput = ();
+  type Backward = DenseEdgeBackward;
+  type Forward = DenseEdgeForward;
+  type Estimate = DenseEdgeEstimate;
+
+  fn backward_input(_node_states: &BTreeMap<GraphNodeKey, DenseNodeState>) -> &Self::BackwardInput {
+    &()
+  }
+
+  fn fresh_backward_input(_node_states: &BTreeMap<GraphNodeKey, DenseNodeState>) -> Self::BackwardInput {}
+
+  fn marginal_backward(
+    &self,
+    gtr: &GTR,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    (): &(),
+  ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
+    indexed_backward(self.inputs(), gtr, self.indexed_kind(), graph, branch_lengths)
+  }
+
+  fn marginal_forward(
+    &self,
+    gtr: &GTR,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
+    backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+  ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
+    indexed_forward(
+      self.inputs(),
+      gtr,
+      self.indexed_kind(),
+      graph,
+      branch_lengths,
+      node_states,
+      backward,
+    )
+  }
+
+  fn count_transitions(
+    &self,
+    gtr: &GTR,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+    forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
+  ) -> Result<MutationCounts, Report> {
+    count_transitions_dense(
+      self.inputs(),
+      gtr,
+      graph,
+      branch_lengths,
+      node_states,
+      backward,
+      forward,
+    )
+  }
 }

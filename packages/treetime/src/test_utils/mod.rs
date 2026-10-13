@@ -1,3 +1,4 @@
+mod alignment;
 mod clock;
 mod graph_lookup;
 mod indel;
@@ -6,6 +7,7 @@ mod mugration;
 mod sparse;
 mod timetree;
 
+pub(crate) use alignment::get_common_length;
 pub(crate) use clock::{dates_by_node, half_residual_sum_of_squares};
 pub(crate) use graph_lookup::{find_edge_key, find_node_key_by_name, node_keys_named};
 pub(crate) use indel::{deletion, insertion};

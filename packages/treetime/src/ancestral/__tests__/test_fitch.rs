@@ -5,7 +5,7 @@ pub(super) mod tests {
   use crate::o;
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::fitch::passes::{attach_seqs_to_graph, compress_sequences, fitch_backward, fitch_forward};
-  use crate::seq::alignment::get_common_length;
+  use crate::test_utils::get_common_length;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{internal_node_keys, node_keys};
   use eyre::Report;

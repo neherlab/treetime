@@ -8,8 +8,8 @@ mod tests {
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::pretty_assert_ulps_eq;
-  use crate::seq::alignment::get_common_length;
   use crate::test_utils::find_node_key_by_name;
+  use crate::test_utils::get_common_length;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use ndarray::array;

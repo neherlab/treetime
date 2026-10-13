@@ -6,7 +6,7 @@ pub(super) mod tests {
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
-  use crate::seq::alignment::get_common_length;
+  use crate::test_utils::get_common_length;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use treetime_graph::graph::Graph;

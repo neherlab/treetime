@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::partition::fitch::partition::PartitionFitch;
   use crate::partition::fitch::passes::compress_sequences;
-  use crate::seq::alignment::get_common_length;
+  use crate::test_utils::get_common_length;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
