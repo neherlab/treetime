@@ -33,7 +33,7 @@ pub fn gff3_cds_read_file(filepath: impl AsRef<Path>) -> Result<Vec<GffCdsFeatur
 
 pub fn gff3_cds_read(mut reader: impl Read) -> Result<Vec<GffCdsFeature>, Report> {
   let mut contents = String::new();
-  reader.read_to_string(&mut contents)?;
+  reader.read_to_string(&mut contents).wrap_err("When reading GFF3")?;
   parse_gff3_cds_features(&contents).wrap_err("When reading GFF3")
 }
 

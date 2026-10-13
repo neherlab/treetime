@@ -146,7 +146,7 @@ pub fn nwk_write_file(
 ) -> Result<(), Report> {
   write_file_with(filepath, |writer| {
     nwk_write(&mut *writer, tree, names, weights, options, comments)?;
-    writeln!(writer)?;
+    writeln!(writer).wrap_err("When writing the final newline")?;
     Ok(())
   })
 }

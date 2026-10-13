@@ -30,6 +30,13 @@ pub fn metadata_read_file(
   })
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "rows of a table without a date column have no date; the table keeps the error in `date_column`, and reading the dates reports it"
+  )
+)]
 pub fn metadata_read(
   mut reader: impl BufRead,
   path_delimiter: Option<u8>,
