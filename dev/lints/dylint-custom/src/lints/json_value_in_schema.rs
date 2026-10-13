@@ -3,9 +3,9 @@
 //! Such a field becomes an open schema, which the generated TypeScript types
 //! render as `unknown`, so every client has to re-parse it by hand.
 
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use rustc_hir::def::Res;
-use rustc_hir::{Attribute, Item, ItemKind};
+use rustc_hir::{Attribute, HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -65,8 +65,15 @@ impl<'tcx> LateLintPass<'tcx> for JsonValueInSchema {
         for field in adt.all_fields() {
             let field_ty = cx.tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
             let span = cx.tcx.def_span(field.did);
+            let Some(local) = field.did.as_local() else {
+                continue;
+            };
+            // The derived `JsonSchema` impl carries no attributes, so the
+            // diagnostic is emitted at the field, where an `#[expect]` on the
+            // field or its type can reach it.
+            let hir_id = cx.tcx.local_def_id_to_hir_id(local);
             if is_untyped_json(cx, field_ty) || names_untyped_json_in_attribute(cx, field.did) {
-                report(cx, span, field.name.as_str(), type_name.as_str());
+                report(cx, hir_id, span, field.name.as_str(), type_name.as_str());
             }
         }
     }
@@ -99,13 +106,17 @@ fn names_untyped_json_in_attribute(cx: &LateContext<'_>, field: DefId) -> bool {
     })
 }
 
-fn report(cx: &LateContext<'_>, span: Span, field: &str, type_name: &str) {
-    span_lint_and_help(
+fn report(cx: &LateContext<'_>, hir_id: HirId, span: Span, field: &str, type_name: &str) {
+    span_lint_hir_and_then(
         cx,
         JSON_VALUE_IN_SCHEMA,
+        hir_id,
         span,
         format!("field `{field}` of `{type_name}` is untyped JSON in a schema type"),
-        None,
-        "give the field a typed struct or enum, or the named JSON type `JsonValue` when the data is free-form by design",
+        |diag| {
+            diag.help(
+                "give the field a typed struct or enum, or the named JSON type `JsonValue` when the data is free-form by design",
+            );
+        },
     );
 }
