@@ -1,11 +1,11 @@
 # Grid numeric generic has only one supported type
 
-`InterpElem` has one implementation, `f64`, but its type parameter propagates through `Grid<T>`, `GridFn<T>`, and `DistributionFunction<T, Y>` [`packages/treetime-grid/src/lib.rs#L12`](../../packages/treetime-grid/src/lib.rs#L12) [`packages/treetime-grid/src/grid.rs#L24`](../../packages/treetime-grid/src/grid.rs#L24) [`packages/treetime-grid/src/grid_fn.rs#L31`](../../packages/treetime-grid/src/grid_fn.rs#L31) [`packages/treetime-distribution/src/distribution_core/function.rs#L12`](../../packages/treetime-distribution/src/distribution_core/function.rs#L12).
+`InterpElem` has one implementation, `f64`, but its type parameter propagates through `Grid<T>`, `GridFn<T>`, and `DistributionFunction<T, Y>` [`packages/treetime-grid/src/lib.rs#L17`](../../packages/treetime-grid/src/lib.rs#L17) [`packages/treetime-grid/src/grid.rs#L26`](../../packages/treetime-grid/src/grid.rs#L26) [`packages/treetime-grid/src/grid_fn.rs#L19`](../../packages/treetime-grid/src/grid_fn.rs#L19) [`packages/treetime-distribution/src/distribution_core/function.rs#L13`](../../packages/treetime-distribution/src/distribution_core/function.rs#L13).
 
 ## Cost in the current API
 
 - Numeric trait bounds repeat across grid construction, interpolation, serialization, and distribution composition.
-- `NumCast` conversions introduce fallible-looking conversion points whose production instantiation is always `f64`.
+- `InterpElem` requires `From<f64> + Into<f64>` so that grid code converts to and from `f64` without fallible `NumCast` calls; only `f64` can meet this bound in practice.
 - Generic serialization bounds and error messages obscure the actual wire and numerical contract.
 - Reviewers must reason about unsupported numeric types even though no second implementation can instantiate the abstraction.
 
@@ -22,4 +22,4 @@ No second coordinate type or requirement is currently identified, so O1 is the s
 
 - Semantic impact analysis covers `treetime-grid` and `treetime-distribution` public types.
 - Grid, interpolation, distribution, serialization, and property tests produce identical `f64` results.
-- No conversion unwrap remains solely to recover `f64` from the removed abstraction.
+- The `From<f64> + Into<f64>` bounds of `InterpElem` disappear with the type parameter.

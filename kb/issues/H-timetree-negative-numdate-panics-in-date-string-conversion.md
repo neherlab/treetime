@@ -23,14 +23,14 @@ The offending value is the negative `numdate` of the root.
 
 1. The clock model places the root before 1 CE, so its `numdate` is negative
 2. Augur-node-data output writer calls `year_fraction_to_datestring(numdate)` for every node ([packages/app-output/src/augur_node_data_refine.rs#L126](../../packages/app-output/src/augur_node_data_refine.rs#L126))
-3. `year_fraction_to_datestring` delegates to `year_fraction_to_date` ([packages/treetime-utils/src/datetime/year_fraction.rs#L27-L29](../../packages/treetime-utils/src/datetime/year_fraction.rs#L27-L29))
+3. `year_fraction_to_datestring` delegates to `year_fraction_to_date` ([packages/treetime-utils/src/datetime/year_fraction.rs#L24-L26](../../packages/treetime-utils/src/datetime/year_fraction.rs#L24-L26))
 4. `year_fraction.fract()` returns `-0.59` (sign-preserving for negative inputs)
-5. `seconds_in_year as f64 * fraction` produces a negative number of seconds
+5. `seconds_in_year.to_f64_exact() * fraction` produces a negative number of seconds
 6. `StdDuration::from_secs_f64(negative)` panics -- `std::time::Duration` is unsigned
 
 ## Affected locations
 
-- [packages/treetime-utils/src/datetime/year_fraction.rs#L45-L52](../../packages/treetime-utils/src/datetime/year_fraction.rs#L45-L52): `fn year_fraction_to_date`, the partial function. Its lint suppression assumes a within-year second span, but a negative input gives a negative span
+- [packages/treetime-utils/src/datetime/year_fraction.rs#L35-L47](../../packages/treetime-utils/src/datetime/year_fraction.rs#L35-L47): `fn year_fraction_to_date`, the partial function. Its lint suppression of `Duration::from_secs_f64` names this panic
 - [packages/app-output/src/augur_node_data_refine.rs#L126](../../packages/app-output/src/augur_node_data_refine.rs#L126): the node-data writer, which converts every node date
 - [packages/app-backend/src/results/year_date.rs#L18](../../packages/app-backend/src/results/year_date.rs#L18): the run results of the app, which convert dates the same way
 - [packages/treetime-utils/src/datetime/parse_date.rs#L28](../../packages/treetime-utils/src/datetime/parse_date.rs#L28): converts input dates, which are positive
