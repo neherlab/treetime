@@ -14,7 +14,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::sync::random::get_random_number_generator;
   use eyre::Report;
-  use ndarray::{Array0, Array1, Array2, Axis, arr0, array};
+  use ndarray::{Array1, Array2, Axis, array};
   use rstest::rstest;
   use std::sync::LazyLock;
 
@@ -29,26 +29,6 @@ mod tests {
       [0.12705805, 0.37184099, 0.21907519, 0.27300161, 0.00902417],
     ]
   });
-
-  #[rstest]
-  fn computes_argmin_axis_0() {
-    assert_eq!(argmin_axis(&INPUT, Axis(0)), array![3, 3, 4, 0, 6]);
-  }
-
-  #[rstest]
-  fn computes_argmin_axis_1() {
-    assert_eq!(argmin_axis(&INPUT, Axis(1)), array![4, 4, 4, 1, 4, 1, 4]);
-  }
-
-  #[rstest]
-  fn computes_argmax_axis_0() {
-    assert_eq!(argmax_axis(&INPUT, Axis(0)), array![4, 6, 5, 2, 3]);
-  }
-
-  #[rstest]
-  fn computes_argmax_axis_1() {
-    assert_eq!(argmax_axis(&INPUT, Axis(1)), array![1, 3, 3, 4, 0, 2, 1]);
-  }
 
   #[rstest]
   fn computes_cumsum_axis_0() {
@@ -144,20 +124,6 @@ mod tests {
   }
 
   #[rstest]
-  fn chooses_1d_by_index() {
-    let indices = array![2, 0, 1, 0, 0, 2];
-    let choices = array!['a', 'b', 'c'];
-    assert_eq!(choose1(&indices, &choices), array!['c', 'a', 'b', 'a', 'a', 'c']);
-  }
-
-  #[rstest]
-  fn chooses_2d_by_index() {
-    let indices = array![2, 0, 1];
-    let choices = array![[0, 1, 2], [10, 11, 12], [20, 21, 22], [30, 31, 32]];
-    assert_eq!(choose2(&indices, &choices), array![20, 1, 12]);
-  }
-
-  #[rstest]
   fn generates_predictable_random_uniform() {
     let mut rng = get_random_number_generator(42);
 
@@ -178,78 +144,6 @@ mod tests {
       [0.07155806372486850, 0.21012760390829310, 0.60105776255346570, 0.94540503820318000],
     ];
     pretty_assert_ulps_eq!(r, expected);
-  }
-
-  #[test]
-  fn test_product_axis_empty_array1() {
-    let input: Array1<f64> = array![];
-    let expected: Array0<f64> = arr0(1.0);
-    let result = product_axis(&input, Axis(0));
-    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_product_axis_empty_array2_axis0() {
-    let input: Array2<f64> = array![[]];
-    let expected: Array1<f64> = array![];
-    let result = product_axis(&input, Axis(0));
-    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_product_axis_empty_array2_axis1() {
-    let input: Array2<f64> = array![[]];
-    let expected: Array1<f64> = array![1.0];
-    let result = product_axis(&input, Axis(1));
-    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_product_axis_empty_axis_0_prod_axis_0() {
-    let input: Array2<f64> = array![[2.0, 3.0, 4.0]];
-    let expected: Array1<f64> = array![2.0, 3.0, 4.0];
-    let result = product_axis(&input, Axis(0));
-    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_product_axis_empty_axis_0_prod_axis_1() {
-    let input: Array2<f64> = array![[2.0, 3.0, 4.0]];
-    let expected: Array1<f64> = array![24.0];
-    let result = product_axis(&input, Axis(1));
-    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_product_axis_empty_axis_1_prod_axis_0() {
-    let input: Array2<f64> = array![[2.0], [3.0], [4.0]];
-    let expected: Array1<f64> = array![24.0];
-    let result = product_axis(&input, Axis(0));
-    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_product_axis_empty_axis_1_prod_axis_1() {
-    let input: Array2<f64> = array![[2.0], [3.0], [4.0]];
-    let expected: Array1<f64> = array![2.0, 3.0, 4.0];
-    let result = product_axis(&input, Axis(1));
-    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_product_axis_general_case_axis_0() {
-    let input = array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
-    let expected = array![15.0, 48.0];
-    let result = product_axis(&input, Axis(0));
-    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_product_axis_general_case_axis_1() {
-    let input = array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
-    let expected = array![2.0, 12.0, 30.0];
-    let result = product_axis(&input, Axis(1));
-    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[rstest]

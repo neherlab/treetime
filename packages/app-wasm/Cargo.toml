@@ -13,7 +13,6 @@ version.workspace = true
 
 [dependencies]
 app-backend = { workspace = true }
-app-commands = { workspace = true, features = ["clap"] }
 app-server = { workspace = true }
 treetime-utils = { workspace = true }
 

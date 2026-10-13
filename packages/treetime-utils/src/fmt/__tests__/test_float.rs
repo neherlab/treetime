@@ -28,16 +28,6 @@ mod tests {
   }
 
   #[rstest]
-  #[case::truncate_decimals((1.23456, 2), "1.23")]
-  #[case::round_up((123.456, 2), "123.46")]
-  #[case::trim_trailing_zeros((1.0,     2), "1")]
-  #[case::zero_decimals((1.0,     0), "1")]
-  #[trace]
-  fn test_float_to_decimal_digits(#[case] (input, digits): (f64, i8), #[case] expected: &str) {
-    assert_eq!(float_to_decimal_digits(input, digits), expected);
-  }
-
-  #[rstest]
   #[case::sig_only(            (12.3456, Some(4), None   ), "12.35")]
   #[case::dec_only(            (12.3456, None,    Some(3)), "12.346")]
   #[case::both_decimal_stricter((12.3456, Some(5), Some(1)), "12.3")]

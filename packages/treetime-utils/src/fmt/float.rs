@@ -31,10 +31,6 @@ pub fn float_to_significant_digits<F: Into<f64>>(x: F, max_significant_digits: u
   float_to_digits(x, Some(max_significant_digits), None)
 }
 
-pub fn float_to_decimal_digits<F: Into<f64>>(x: F, max_decimal_digits: i8) -> String {
-  float_to_digits(x, None, Some(max_decimal_digits))
-}
-
 pub fn float_to_digits<F: Into<f64>>(
   x: F,
   max_significant_digits: Option<u8>,

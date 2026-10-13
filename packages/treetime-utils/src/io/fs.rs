@@ -1,7 +1,7 @@
 use crate::io::file::read_file_with;
 use crate::make_report;
 use eyre::{Report, WrapErr};
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 use std::io::{ErrorKind, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs};
@@ -34,42 +34,9 @@ pub fn absolute_path(path: impl AsRef<Path>) -> Result<PathBuf, Report> {
   Ok(absolute_path)
 }
 
-pub fn filename_maybe(filepath: impl AsRef<Path>) -> Option<String> {
-  filepath.as_ref().file_name()?.to_str()?.to_owned().into()
-}
-
-pub fn basename_maybe(filepath: impl AsRef<Path>) -> Option<String> {
-  filepath.as_ref().file_stem()?.to_str()?.to_owned().into()
-}
-
-pub fn has_extension(filepath: impl AsRef<Path>, ext: impl AsRef<str>) -> bool {
-  extension(filepath.as_ref()).is_some_and(|fext| fext.eq_ignore_ascii_case(ext.as_ref()))
-}
-
 pub fn extension(filepath: impl AsRef<Path>) -> Option<String> {
   let filepath = filepath.as_ref();
   filepath.extension().and_then(OsStr::to_str).map(str::to_owned)
-}
-
-pub fn add_extension(filepath: impl AsRef<Path>, extension: impl AsRef<OsStr>) -> PathBuf {
-  let filepath = filepath.as_ref();
-  let extension = extension.as_ref();
-
-  if filepath.file_name().is_none() {
-    return filepath.to_owned();
-  }
-
-  let mut stem = match filepath.file_name() {
-    Some(stem) => stem.to_os_string(),
-    None => OsString::new(),
-  };
-
-  if !extension.is_empty() {
-    stem.push(".");
-    stem.push(extension);
-  }
-
-  filepath.to_owned().with_file_name(&stem)
 }
 
 pub fn read_file_to_string(filepath: impl AsRef<Path>) -> Result<String, Report> {

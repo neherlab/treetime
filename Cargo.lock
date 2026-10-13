@@ -171,7 +171,6 @@ dependencies = [
  "strum_macros",
  "tempfile",
  "treetime",
- "treetime-graph",
  "treetime-grid",
  "treetime-io",
  "treetime-primitives",
@@ -360,8 +359,8 @@ dependencies = [
 name = "app-server"
 version = "1.0.0"
 dependencies = [
- "app-backend",
  "aide",
+ "app-backend",
  "app-commands",
  "axum",
  "clap",
@@ -406,7 +405,6 @@ name = "app-wasm"
 version = "1.0.0"
 dependencies = [
  "app-backend",
- "app-commands",
  "app-server",
  "axum",
  "console_error_panic_hook",
@@ -5269,7 +5267,6 @@ dependencies = [
  "pretty_assertions",
  "pretty_dtoa",
  "proptest",
- "rand 0.8.8",
  "rand_isaac",
  "rayon",
  "regex",

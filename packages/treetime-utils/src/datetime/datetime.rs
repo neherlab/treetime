@@ -1,5 +1,5 @@
 use crate::make_error;
-use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, Utc};
 use eyre::{Report, WrapErr};
 
 pub(crate) const LAST_NANOSECOND_OF_DAY: (u32, u32, u32, u32) = (23, 59, 59, 999_999_999);
@@ -21,22 +21,12 @@ pub fn date_from_rfc2822(date_str: impl AsRef<str>) -> Result<DateTime<Utc>, Rep
   Ok(utc)
 }
 
-pub fn timestamp_from_iso(iso: &str) -> Result<i64, Report> {
-  let datetime = date_from_iso(iso)?;
-  let timestamp = date_to_timestamp(&datetime);
-  Ok(timestamp)
-}
-
 pub fn date_from_iso(date_str: impl AsRef<str>) -> Result<DateTime<Utc>, Report> {
   let date_str = date_str.as_ref();
   let parsed = DateTime::<FixedOffset>::parse_from_rfc3339(date_str)
     .wrap_err_with(|| format!("When parsing datetime '{date_str}' using RFC 3339 (ISO 8601) format"))?;
   let utc: DateTime<Utc> = DateTime::from(parsed);
   Ok(utc)
-}
-
-pub fn timestamp_now() -> i64 {
-  date_to_timestamp(&date_now())
 }
 
 pub fn date_now() -> DateTime<Utc> {
@@ -47,24 +37,12 @@ pub fn date_to_timestamp(datetime: &DateTime<Utc>) -> i64 {
   datetime.timestamp() * MILLISECONDS_PER_SECOND
 }
 
-pub fn timestamp_format(timestamp: i64) -> String {
-  date_format(&timestamp_to_date(timestamp))
-}
-
 pub fn date_format(datetime: &DateTime<Utc>) -> String {
   datetime.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
-pub fn timestamp_format_precise(timestamp: i64) -> String {
-  date_format_precise(&timestamp_to_date(timestamp))
-}
-
 pub fn date_format_precise(datetime: &DateTime<Utc>) -> String {
   datetime.format("%Y-%m-%d %H:%M:%S%.3f").to_string()
-}
-
-pub fn timestamp_format_safe(timestamp: i64) -> String {
-  date_format_safe(&timestamp_to_date(timestamp))
 }
 
 #[expect(
@@ -77,10 +55,6 @@ pub fn timestamp_to_date(timestamp: i64) -> DateTime<Utc> {
 
 pub fn date_format_safe(datetime: &DateTime<Utc>) -> String {
   datetime.format("%Y-%m-%d_%H-%M-%S").to_string()
-}
-
-pub fn ymd(year: i32, month: u32, day: u32) -> DateTime<Utc> {
-  Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap()
 }
 
 #[expect(

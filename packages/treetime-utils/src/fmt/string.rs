@@ -7,16 +7,6 @@ macro_rules! o {
   };
 }
 
-#[expect(
-  clippy::as_conversions,
-  clippy::unwrap_used,
-  reason = "ASCII char sequence narrowed to bytes; the resulting buffer is valid UTF-8 by construction"
-)]
-pub fn vec_to_string(v: Vec<char>) -> String {
-  let bytes: Vec<u8> = v.into_iter().map(|c| c as u8).collect();
-  String::from_utf8(bytes).unwrap()
-}
-
 pub fn quote(x: impl Display) -> String {
   format!("\"{x}\"")
 }
@@ -25,28 +15,8 @@ pub fn quote_single(x: impl Display) -> String {
   format!("'{x}'")
 }
 
-pub fn truncate_right(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, None, TruncateDirection::Right)
-}
-
-pub fn truncate_left(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, None, TruncateDirection::Left)
-}
-
-pub fn truncate_middle(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, None, TruncateDirection::Middle)
-}
-
 pub fn truncate_right_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
   truncate(s, max_len, Some("..."), TruncateDirection::Right)
-}
-
-pub fn truncate_left_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, Some("..."), TruncateDirection::Left)
-}
-
-pub fn truncate_middle_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {
-  truncate(s, max_len, Some("..."), TruncateDirection::Middle)
 }
 
 #[expect(
