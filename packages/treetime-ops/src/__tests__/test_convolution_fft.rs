@@ -39,8 +39,8 @@ mod tests {
     let (f, g) = helpers::operands(1500, 700, 0);
     let expected = helpers::fresh(0.25, &f, &g);
     let first = convolve_fft(0.25, &f, &g).unwrap();
-    for f_len in 100..200 {
-      let (a, b) = helpers::operands(f_len * 7, f_len, f_len);
+    for size in 100..200 {
+      let (a, b) = helpers::operands(size * 7, size, size);
       convolve_fft(0.25, &a, &b).unwrap();
     }
     let after_eviction = convolve_fft(0.25, &f, &g).unwrap();
