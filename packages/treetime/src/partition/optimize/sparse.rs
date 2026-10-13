@@ -57,7 +57,6 @@ pub(crate) fn get_coefficients(
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  // child^T expQt(t) parent per site: expQt[i, j] is the probability of child state i given parent state j
   let mut site_contributions = Vec::with_capacity(variable_positions.len() + msg_to_child.fixed.len());
   for (&pos, (parent_state, child_state)) in zip(&variable_positions, variable_states) {
     let parent = if let Some(parent) = msg_to_child.variable.get(pos) {

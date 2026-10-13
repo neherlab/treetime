@@ -60,8 +60,6 @@ pub(crate) fn evaluate_site_contributions<'a>(
   ))
 }
 
-/// Sum of the eigen expansion of one site. For an impossible state pair (zero likelihood) cancellation can leave
-/// a tiny negative sum, so clamp to the smallest positive value as `GTR::expQt` clamps its entries.
 fn site_likelihood(terms: &Array1<f64>) -> f64 {
   terms.sum().max(f64::MIN_POSITIVE)
 }

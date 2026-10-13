@@ -7,7 +7,6 @@ pub(crate) fn get_coefficients(
   msg_to_child: &DenseSeqDistribution,
   gtr: &GTR,
 ) -> PartitionContribution {
-  // child^T expQt(t) parent: expQt[i, j] is the probability of child state i given parent state j
   let coefficients = msg_to_parent.dis.dot(&gtr.v) * msg_to_child.dis.dot(&gtr.v_inv.t());
   PartitionContribution::new(coefficients, gtr.clone())
 }
