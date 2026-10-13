@@ -232,10 +232,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,
   /// where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;
   /// zero disables damping. Must be in $[0,1)$.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, default_value_t = 0.0, help_heading = "Branch lengths")
-  )]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = 0.0, help_heading = "Branch lengths"))]
   #[default = 0.0]
   pub damping: f64,
 
