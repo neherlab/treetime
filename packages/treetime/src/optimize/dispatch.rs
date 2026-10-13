@@ -122,10 +122,6 @@ struct SeriesChain {
 }
 
 impl SeriesChain {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   fn capture_all(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<Self> {
     let mut chain_of: BTreeMap<GraphEdgeKey, usize> = BTreeMap::new();
     let mut groups: Vec<Vec<GraphEdgeKey>> = vec![];
