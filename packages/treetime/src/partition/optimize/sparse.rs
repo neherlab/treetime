@@ -5,12 +5,9 @@ use eyre::{OptionExt, Report};
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::iter::zip;
+use treetime_utils::cast::ToF64Exact;
+use treetime_utils::make_internal_report;
 
-#[expect(
-  clippy::as_conversions,
-  clippy::unwrap_used,
-  reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
-)]
 pub(crate) fn get_coefficients(
   gtr: &GTR,
   backward: &SparseEdgeBackward,
@@ -79,7 +76,11 @@ pub(crate) fn get_coefficients(
     let parent = &msg_to_child.fixed[state];
     let child = &msg_to_parent.fixed[state];
     site_contributions.push(SiteContribution {
-      multiplicity: msg_to_child.fixed_counts.get(*state).unwrap() as f64,
+      multiplicity: msg_to_child
+        .fixed_counts
+        .get(*state)
+        .ok_or_else(|| make_internal_report!("Fixed state {state} has no count"))?
+        .to_f64_exact(),
       coefficients: child.dot(&gtr.v) * parent.dot(&gtr.v_inv.t()),
     });
   }

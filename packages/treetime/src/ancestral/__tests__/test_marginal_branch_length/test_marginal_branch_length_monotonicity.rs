@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::gtr::get_gtr::JC69Params;
@@ -14,7 +9,7 @@ mod tests {
   #[test]
   fn test_likelihood_monotonic_increase_mismatched_sequences() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
-    let branch_lengths = (1..=20).map(|i| i as f64 * 0.1).collect_vec();
+    let branch_lengths = (1..=20_u8).map(|i| f64::from(i) * 0.1).collect_vec();
     let aln = ">A\nA\n>B\nT\n";
 
     let log_lhs: Vec<f64> = branch_lengths
@@ -50,7 +45,7 @@ mod tests {
   #[test]
   fn test_likelihood_maximized_near_zero_for_matched_sequences() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
-    let branch_lengths = (1..=20).map(|i| i as f64 * 0.1).collect_vec();
+    let branch_lengths = (1..=20_u8).map(|i| f64::from(i) * 0.1).collect_vec();
 
     let log_lhs: Vec<f64> = branch_lengths
       .iter()
@@ -105,7 +100,7 @@ mod tests {
   #[test]
   fn test_likelihood_monotonicity_three_taxon_tree() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
-    let branch_lengths = (1..=15).map(|i| i as f64 * 0.1).collect_vec();
+    let branch_lengths = (1..=15_u8).map(|i| f64::from(i) * 0.1).collect_vec();
 
     let log_lhs: Vec<f64> = branch_lengths
       .iter()
@@ -134,7 +129,7 @@ mod tests {
   #[test]
   fn test_likelihood_monotonicity_sparse_partition() -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
-    let branch_lengths = (1..=15).map(|i| i as f64 * 0.1).collect_vec();
+    let branch_lengths = (1..=15_u8).map(|i| f64::from(i) * 0.1).collect_vec();
 
     let log_lhs: Vec<f64> = branch_lengths
       .iter()

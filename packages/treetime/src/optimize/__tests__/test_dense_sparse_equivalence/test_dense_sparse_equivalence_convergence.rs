@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use super::super::test_dense_sparse_equivalence_support::tests::{
@@ -15,6 +10,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::cast::ToF64Exact;
 
   #[rustfmt::skip]
   #[rstest]
@@ -60,8 +56,8 @@ mod tests {
     );
 
     let last_5: Vec<f64> = lh_history.iter().rev().take(5).copied().collect();
-    let mean: f64 = last_5.iter().sum::<f64>() / last_5.len() as f64;
-    let variance: f64 = last_5.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / last_5.len() as f64;
+    let mean: f64 = last_5.iter().sum::<f64>() / last_5.len().to_f64_exact();
+    let variance: f64 = last_5.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / last_5.len().to_f64_exact();
     assert!(
       variance < 1.0,
       "Optimization should stabilize: variance of last 5 iterations = {variance}"

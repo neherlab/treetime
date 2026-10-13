@@ -5,6 +5,7 @@ use eyre::Report;
 use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
 use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::{is_max_above, outer};
+use treetime_utils::cast::ToF64Exact;
 
 const TINY_NUMBER: f64 = 1e-12;
 
@@ -113,12 +114,8 @@ pub(crate) fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn is_profile_informative(profile: ArrayView1<'_, f64>, n_states: usize) -> bool {
-  let uniform_threshold = 1.0 / n_states as f64 + 1e-10;
+  let uniform_threshold = 1.0 / n_states.to_f64_exact() + 1e-10;
   is_max_above(&profile, uniform_threshold)
 }
 

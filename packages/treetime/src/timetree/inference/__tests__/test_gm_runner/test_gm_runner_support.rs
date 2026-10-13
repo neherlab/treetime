@@ -17,6 +17,7 @@ pub(super) mod support {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
   use treetime_io::fasta::{FastaRecord, fasta_read_file};
+  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::io::json::json_read_str;
 
   const FIXTURES_DIR: &str = concat!(
@@ -121,10 +122,6 @@ pub(super) mod support {
       .collect()
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   pub(crate) fn create_poisson_branch_distributions(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -132,7 +129,7 @@ pub(super) mod support {
     seq_len: usize,
     n_points: usize,
   ) -> Result<BTreeMap<GraphEdgeKey, Arc<Distribution<NegLog>>>, Report> {
-    let seq_len_f64 = seq_len as f64;
+    let seq_len_f64 = seq_len.to_f64_exact();
 
     let mut distributions = BTreeMap::new();
     for edge_ref in graph.get_edges() {

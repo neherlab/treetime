@@ -277,13 +277,8 @@ fn observe_seq(seq: &Seq, alphabet: &Alphabet) -> SeqObservation {
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "table indices below 128 convert exactly to ASCII bytes"
-)]
 fn char_flags(alphabet: &Alphabet) -> [u8; 128] {
-  std::array::from_fn(|index| {
-    let c = AsciiChar::from_byte_unchecked(index as u8);
+  AsciiChar::table(|c| {
     let mut flags = 0;
     if alphabet.is_ambiguous(c) {
       flags |= AMBIGUOUS;

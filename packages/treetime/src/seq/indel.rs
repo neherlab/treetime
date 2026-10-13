@@ -127,10 +127,6 @@ pub(crate) fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) ->
   merge_adjacent_deletions(result)
 }
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 fn merge_adjacent_deletions(indels: Vec<InDel>) -> Vec<InDel> {
   if indels.len() <= 1 {
     return indels;
@@ -142,11 +138,10 @@ fn merge_adjacent_deletions(indels: Vec<InDel>) -> Vec<InDel> {
       clippy::suspicious_operation_groupings,
       reason = "adjacent deletions merge when the end of one equals the start of the next"
     )]
-    let should_merge = merged
-      .last()
-      .is_some_and(|prev: &InDel| prev.is_deletion() && indel.is_deletion() && prev.range.1 == indel.range.0);
-    if should_merge {
-      let prev = merged.last_mut().unwrap();
+    let previous_deletion = merged
+      .last_mut()
+      .filter(|prev| prev.is_deletion() && indel.is_deletion() && prev.range.1 == indel.range.0);
+    if let Some(prev) = previous_deletion {
       prev.range.1 = indel.range.1;
       prev.seq.extend(indel.seq.as_slice().iter().copied());
     } else {

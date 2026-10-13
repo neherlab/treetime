@@ -11,11 +11,8 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::array::ndarray::argmax_first;
+use treetime_utils::cast::ToF64Exact;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn count_transitions_sparse(
   gtr: &GTR,
   length: usize,
@@ -26,7 +23,7 @@ pub(crate) fn count_transitions_sparse(
   forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
 ) -> Result<MutationCounts, Report> {
   let n_states = gtr.pi.len();
-  let min_bl = MIN_BRANCH_LENGTH_FRACTION / length as f64;
+  let min_bl = MIN_BRANCH_LENGTH_FRACTION / length.to_f64_exact();
   let mut nij = Array2::zeros((n_states, n_states));
   let mut Ti = Array1::zeros(n_states);
 
@@ -107,10 +104,6 @@ fn fixed_profile_for_var<'a>(dist: &'a SparseSeqDistribution, var: &'a VarPos) -
 }
 
 #[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
-#[expect(
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
 )]
@@ -124,7 +117,7 @@ fn accumulate_site_transition_weighted(
   Ti: &mut Array1<f64>,
   weight: usize,
 ) {
-  let weight = weight as f64;
+  let weight = weight.to_f64_exact();
   let mut site_sum = 0.0;
   let mut joint = Array2::zeros((n_states, n_states));
 
@@ -157,10 +150,6 @@ fn accumulate_site_transition_weighted(
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn aggregate_sparse_profile(profile: &SparseSeqDistribution, n_states: usize) -> Array1<f64> {
   let mut result = Array1::zeros(n_states);
   for var in profile.variable.values() {
@@ -171,7 +160,7 @@ fn aggregate_sparse_profile(profile: &SparseSeqDistribution, n_states: usize) ->
     }
   }
   for (ch, fixed_profile) in &profile.fixed {
-    let count = profile.fixed_counts.get(*ch).unwrap_or(0) as f64;
+    let count = profile.fixed_counts.get(*ch).unwrap_or(0).to_f64_exact();
     if count > 0.0 && is_profile_informative(fixed_profile.view(), n_states) {
       if let Some(idx) = argmax_first(&fixed_profile.view()) {
         result[idx] += count;

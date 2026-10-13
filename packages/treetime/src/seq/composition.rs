@@ -1,5 +1,6 @@
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
+use itertools::izip;
 use std::collections::BTreeMap;
 use treetime_primitives::AsciiChar;
 
@@ -40,13 +41,8 @@ impl Composition {
     self.add_histogram(&char_histogram(sequence.as_ref()));
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   fn add_histogram(&mut self, additions: &[usize; 128]) {
-    for (index, &count) in additions.iter().enumerate().filter(|(_, count)| **count > 0) {
-      let c = AsciiChar::from_byte_unchecked(index as u8);
+    for (c, &count) in izip!(AsciiChar::table(|c| c), additions).filter(|(_, count)| **count > 0) {
       *self.counts.entry(c).or_default() += count;
     }
   }

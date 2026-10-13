@@ -2,14 +2,11 @@ use itertools::izip;
 use ndarray::{Array, Array2, Axis, Dimension, Zip};
 use treetime_primitives::LogLh;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
+use treetime_utils::cast::ToF64Exact;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   let norm = dis.sum_axis(Axis(1));
-  let n_cols = dis.ncols() as f64;
+  let n_cols = dis.ncols().to_f64_exact();
   let mut log_lh = 0.0;
   for (ri, mut row) in dis.outer_iter_mut().enumerate() {
     let n = norm[ri];

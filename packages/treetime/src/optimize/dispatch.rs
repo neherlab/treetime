@@ -14,6 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::mem::take;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn run_optimize_mixed(
   graph: &Graph,
@@ -162,7 +163,7 @@ impl SeriesChain {
         let ratios = if total > 0.0 {
           lengths.iter().map(|bl| bl / total).collect()
         } else {
-          vec![1.0 / edges.len() as f64; edges.len()]
+          vec![1.0 / edges.len().to_f64_exact(); edges.len()]
         };
         let longest = (0..edges.len()).fold(0, |best, i| if lengths[i] > lengths[best] { i } else { best });
         Self {
@@ -209,10 +210,6 @@ impl SeriesChain {
 }
 
 #[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
-#[expect(
   clippy::too_many_arguments,
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
 )]
@@ -255,10 +252,10 @@ pub(crate) fn initial_guess_mixed(
     let effective_length: usize = effective_lengths[&edge_key];
 
     let branch_length = if effective_length > 0 {
-      let sub_estimate = sub_count as f64 / effective_length as f64;
+      let sub_estimate = sub_count.to_f64_exact() / effective_length.to_f64_exact();
       if sub_estimate == 0.0 && indel_count > 0 {
         if indel_rate > 0.0 {
-          indel_count as f64 / indel_rate
+          indel_count.to_f64_exact() / indel_rate
         } else {
           one_mutation
         }
@@ -284,10 +281,6 @@ struct EdgeOptimization {
   method: BranchOptMethod,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimization) -> Result<f64, Report> {
   let EdgeOptimization {
     mut branch_length,
@@ -298,7 +291,7 @@ fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimiza
 
   if branch_length == 0.0 && indels.requires_positive_length() {
     branch_length = if indels.rate > 0.0 {
-      (indels.count as f64 / indels.rate).max(one_mutation)
+      (indels.count.to_f64_exact() / indels.rate).max(one_mutation)
     } else {
       one_mutation
     };

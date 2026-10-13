@@ -112,10 +112,6 @@ struct ParentEdge<'a> {
   msg_to_parent: Option<&'a Distribution<NegLog>>,
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "the graph pass gives every non-root node its parent edge"
-)]
 fn refine_distribution_from_parent(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
@@ -125,14 +121,12 @@ fn refine_distribution_from_parent(
   subtree: Option<&Distribution<NegLog>>,
   max_points: MaxGridPoints,
 ) -> Result<ForwardRefinement, Report> {
-  let Some(parent) = parent else {
+  let (Some(parent), Some(edge)) = (parent, edge) else {
     return Ok(ForwardRefinement::Unrefined);
   };
   if has_exact_date(date_constraint) {
     return Ok(ForwardRefinement::Unrefined);
   }
-
-  let edge = edge.expect("Non-root indexed node must own its parent edge");
 
   let (Some(parent_time_dist), Some(branch_dist)) = (&parent.distribution, &edge.branch.distribution) else {
     return Ok(ForwardRefinement::Unrefined);

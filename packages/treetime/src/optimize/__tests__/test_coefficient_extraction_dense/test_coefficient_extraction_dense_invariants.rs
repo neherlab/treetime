@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
@@ -15,6 +10,7 @@ mod tests {
   use approx::assert_abs_diff_eq;
   use ndarray::{Array1, Axis, array, concatenate};
   use rstest::rstest;
+  use treetime_utils::cast::ToF64Exact;
 
   fn test_gtr() -> GTR {
     jc69(JC69Params::default()).expect("JC69 creation failed")
@@ -112,7 +108,7 @@ mod tests {
     let dense_metrics = evaluate_dense_contribution(&dense_contrib, branch_length, true).expect("valid branch length");
 
     let sparse_contrib = optimize::sparse::PartitionContribution {
-      site_contributions: vec![sparse_site(&parent, &child, &gtr, n_rows as f64)],
+      site_contributions: vec![sparse_site(&parent, &child, &gtr, n_rows.to_f64_exact())],
       gtr: gtr.clone(),
     };
     let sparse_metrics = evaluate_sparse_contribution(&sparse_contrib, branch_length, true).expect("valid branch length");

@@ -34,7 +34,7 @@ mod tests {
       log_lh: LogLh::ZERO,
     };
 
-    let result = propagate_raw_per_site(&gtr, t, false, &seq_dis, None);
+    let result = propagate_raw_per_site(&gtr, gtr.site_rates.as_ref().unwrap(), t, false, &seq_dis, None);
 
     let expected_0 = array![
       0.7821749895006883,
@@ -85,7 +85,7 @@ mod tests {
       log_lh: LogLh::ZERO,
     };
 
-    let result = propagate_raw_per_site(&gtr, t, true, &seq_dis, None);
+    let result = propagate_raw_per_site(&gtr, gtr.site_rates.as_ref().unwrap(), t, true, &seq_dis, None);
 
     let expected_0 = array![
       0.7821749895006883,

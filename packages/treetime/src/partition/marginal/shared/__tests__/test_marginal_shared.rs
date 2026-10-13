@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::partition::marginal::shared::normalize::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
@@ -11,6 +6,7 @@ mod tests {
   use proptest::prelude::*;
   use rstest::rstest;
   use treetime_primitives::LogLh;
+  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{pretty_assert_abs_diff_eq, prop_assert_ulps_eq};
 
   #[test]
@@ -110,7 +106,7 @@ mod tests {
     let mut dis = dis;
     let n = dis.len();
     let ll = normalize_1d_inplace(&mut dis, weight);
-    let expected_uniform = Array1::from_elem(n, 1.0 / n as f64);
+    let expected_uniform = Array1::from_elem(n, 1.0 / n.to_f64_exact());
     pretty_assert_abs_diff_eq!(expected_uniform, dis, epsilon = 1e-12);
     assert!(ll.is_infinite() && ll.is_sign_negative(), "expected NEG_INFINITY, got {ll}");
   }

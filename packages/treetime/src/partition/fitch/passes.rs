@@ -101,10 +101,6 @@ pub(crate) fn fitch_backward(graph: &Graph, partition: &mut PartitionFitch) -> R
   Ok(())
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn run_fitch_backward_indexed(
   alphabet: &Alphabet,
   length: usize,
@@ -119,13 +115,8 @@ fn run_fitch_backward_indexed(
   let children = context
     .children
     .iter()
-    .map(|child| {
-      let edge_data = child
-        .edge
-        .expect("Backward child edge message must be published before its parent");
-      (&child.node.seq, edge_data)
-    })
-    .collect_vec();
+    .map(|child| Ok((&child.node.seq, child.edge_message()?)))
+    .collect::<Result<Vec<_>, Report>>()?;
 
   let child_non_chars: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.non_char).collect_vec();
   let child_gaps: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.gaps).collect_vec();
@@ -185,20 +176,15 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: &mut PartitionFitch) -> Re
   Ok(())
 }
 
-#[expect(
-  clippy::as_conversions,
-  clippy::expect_used,
-  reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present"
-)]
 fn run_fitch_forward_indexed(
   alphabet: &Alphabet,
   context: GraphPassForwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData>,
 ) -> Result<GraphPassNodeOutput<FitchNodeData, SparseEdgeObs>, Report> {
   let mut node = context.input;
 
-  let parent_message = if let Some((_, edge)) = context.parent_edge {
+  let parent_message = if let (Some((_, edge)), Some(parent)) = (context.parent_edge, context.parent) {
     let mut edge = edge.clone();
-    let parent = &context.parent.expect("Non-root node must have a parent").seq;
+    let parent = &parent.seq;
     let seq = &mut node.seq;
     seq.composition = parent.composition.clone();
 
@@ -235,7 +221,7 @@ fn run_fitch_forward_indexed(
       }
       seq
         .composition
-        .adjust_count(alphabet.unknown(), r.1 as isize - r.0 as isize);
+        .adjust_count(alphabet.unknown(), isize::try_from(r.1 - r.0)?);
     }
 
     edge.extend_fitch_subs(subs);

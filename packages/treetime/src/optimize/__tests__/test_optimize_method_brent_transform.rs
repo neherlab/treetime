@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
 
@@ -19,6 +14,7 @@ mod tests {
   use crate::optimize::zero_boundary::min_branch_length_for_indels;
   use eyre::Report;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::cast::ToF64Exact;
 
   #[test]
   fn test_optimize_method_brent_sqrt_transform_round_trip() -> Result<(), Report> {
@@ -35,7 +31,7 @@ mod tests {
       .expect("first edge present in gathered contributions");
 
     let total_length = reconstruction.sequence_length();
-    let one_mutation = 1.0 / total_length as f64;
+    let one_mutation = 1.0 / total_length.to_f64_exact();
     let branch_length = 0.01;
 
     let result = brent_sqrt_inner(branch_length, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
@@ -83,7 +79,7 @@ mod tests {
     let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     let input_bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
-    let one_mutation = 1.0 / total_length as f64;
+    let one_mutation = 1.0 / total_length.to_f64_exact();
     let min_bl = min_branch_length_for_indels(IndelTerm::new(4, indel_rate), one_mutation);
     let BranchLengthBracket { lower, upper } = brent_bracket(input_bl, min_bl, one_mutation);
 

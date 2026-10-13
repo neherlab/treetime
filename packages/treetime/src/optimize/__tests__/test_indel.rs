@@ -4,6 +4,7 @@ mod tests {
   use crate::pretty_assert_neg_inf;
   use approx::assert_abs_diff_eq;
   use statrs::function::factorial::ln_factorial;
+  use treetime_utils::cast::ToF64Exact;
 
   #[test]
   fn test_optimize_indel_poisson_zero_rate() {
@@ -40,15 +41,11 @@ mod tests {
     assert_abs_diff_eq!(metrics.second_derivative, -75.0, epsilon = 1e-12);
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   #[test]
   fn test_optimize_indel_poisson_mle_at_optimum() {
-    let k = 5;
+    let k: usize = 5;
     let mu = 10.0;
-    let t_mle = k as f64 / mu;
+    let t_mle = k.to_f64_exact() / mu;
     let metrics = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
     assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-14);
   }

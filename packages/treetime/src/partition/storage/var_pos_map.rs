@@ -84,7 +84,7 @@ impl Index<usize> for VarPosMap {
 
   #[expect(
     clippy::expect_used,
-    reason = "indexing by a missing position is a caller bug, as with BTreeMap"
+    reason = "a position that is not variable is a programming error, as an absent key is for a map index"
   )]
   fn index(&self, pos: usize) -> &VarPos {
     self.get(pos).expect("position is not a variable position")

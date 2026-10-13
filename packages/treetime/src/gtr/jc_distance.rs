@@ -1,14 +1,11 @@
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
+use treetime_utils::cast::ToF64Exact;
 pub(crate) fn jukes_cantor_distance(p: f64, n_states: usize) -> f64 {
   debug_assert!(
     n_states >= 2,
     "jukes_cantor_distance: n_states must be >= 2, got {n_states}"
   );
 
-  let k = n_states as f64;
+  let k = n_states.to_f64_exact();
   let p_sat = (k - 1.0) / k;
 
   let p_max = p_sat * (1.0 - SATURATION_MARGIN);

@@ -11,6 +11,8 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::f64_to_usize_saturating;
 use treetime_utils::make_error;
 
 pub(crate) fn resolve_polytomies(
@@ -146,10 +148,6 @@ fn resolve_single_polytomy(
   Ok(created)
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "the node is a polytomy found on this graph and its outbound edges exist on it"
-)]
 fn collect_children(
   graph: &Graph,
   branch_model: &BranchModel,
@@ -159,14 +157,14 @@ fn collect_children(
   node_times: &NodeTimes,
 ) -> Result<Vec<ChildInfo>, Report> {
   let edge_keys = {
-    let node = graph.get_node(node_key).expect("Node must exist");
+    let node = &graph[node_key];
     node.outbound().to_vec()
   };
 
   edge_keys
     .into_iter()
     .map(|edge_key| {
-      let edge = graph.get_edge(edge_key).expect("Edge must exist");
+      let edge = &graph[edge_key];
       let child_key = edge.target();
 
       let time = inferred_time(node_times, child_key)?;
@@ -187,10 +185,6 @@ struct ChildInfo {
   mutations: u32,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "a sequence length is far below 2^53, and the rounded mutation estimate is finite and positive before the cast"
-)]
 fn edge_mutation_count(
   graph: &Graph,
   branch_model: &BranchModel,
@@ -206,9 +200,9 @@ fn edge_mutation_count(
   };
 
   let count = exact.unwrap_or_else(|| {
-    let estimate = mutation_length.unwrap_or(0.0) * total_length as f64;
+    let estimate = mutation_length.unwrap_or(0.0) * total_length.to_f64_exact();
     if estimate.is_finite() && estimate > 0.0 {
-      estimate.round() as usize
+      f64_to_usize_saturating(estimate.round())
     } else {
       0
     }

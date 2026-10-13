@@ -5,10 +5,6 @@ use ordered_float::OrderedFloat;
 use treetime_graph::graph::Graph;
 use treetime_utils::make_error;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(super) fn collect_tree_events(
   graph: &Graph,
   node_times: &CoalescentNodeTimes,
@@ -50,7 +46,7 @@ pub(super) fn collect_tree_events(
       1
     } else {
       n_internal += 1;
-      -((num_children as i32) - 1)
+      1 - i32::try_from(num_children)?
     };
     if node.is_root {
       n_roots += 1;

@@ -88,12 +88,12 @@ fn fitch_gtr(
     return named_gtr(model, log);
   }
   let gtr = infer_gtr_fitch(fitch, graph, branch_lengths, log)?;
-  log_gtr(&gtr, model, log);
+  log_gtr(&gtr, model, log)?;
   Ok(gtr)
 }
 
 fn named_gtr(model: GtrModelName, log: &dyn LogSink) -> Result<GTR, Report> {
   let gtr = get_gtr_by_name(model)?;
-  log_gtr(&gtr, model, log);
+  log_gtr(&gtr, model, log)?;
   Ok(gtr)
 }

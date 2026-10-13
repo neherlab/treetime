@@ -20,6 +20,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_utils::cast::ToF64Exact;
 
 pub fn run(
   params: &MugrationParams,
@@ -197,10 +198,6 @@ fn gather_reconstruction_maps(
   (reconstructed_traits, confidences)
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn validate_weight_coverage(
   unique_values: &IndexSet<String>,
   weights_keys: &IndexSet<String>,
@@ -213,7 +210,7 @@ pub(crate) fn validate_weight_coverage(
     .cloned()
     .collect();
 
-  let missing_ratio = missing_values.len() as f64 / unique_values.len().max(1) as f64;
+  let missing_ratio = missing_values.len().to_f64_exact() / unique_values.len().max(1).to_f64_exact();
 
   if missing_ratio > threshold {
     return make_error!(
@@ -246,12 +243,8 @@ pub(crate) fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMa
   weights_arr / sum
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn compute_pi_uniform(n_states: usize) -> Array1<f64> {
-  Array1::from_elem(n_states, 1.0 / n_states as f64)
+  Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact())
 }
 
 pub(crate) fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {

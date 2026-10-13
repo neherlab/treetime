@@ -387,19 +387,15 @@ impl Sub {
 impl FromStr for Sub {
   type Err = Report;
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     if let Some(captures) = regex!(r"^(?P<ref>[A-Z*])(?P<pos>\d{1,10})(?P<qry>[A-Z*])$").captures(s) {
       return match (captures.name("ref"), captures.name("pos"), captures.name("qry")) {
         (Some(reff), Some(pos), Some(qry)) => {
-          let reff = AsciiChar::try_new(reff.as_str().bytes().next().unwrap())
-            .wrap_err_with(|| format!("When parsing ref character in '{s}'"))?;
+          let reff =
+            parse_mutation_char(reff.as_str()).wrap_err_with(|| format!("When parsing ref character in '{s}'"))?;
           let pos = parse_pos(pos.as_str()).wrap_err_with(|| format!("When parsing mutation position in '{s}'"))?;
-          let qry = AsciiChar::try_new(qry.as_str().bytes().next().unwrap())
-            .wrap_err_with(|| format!("When parsing qry character in '{s}'"))?;
+          let qry =
+            parse_mutation_char(qry.as_str()).wrap_err_with(|| format!("When parsing qry character in '{s}'"))?;
           Sub::new(reff, pos, qry)
         },
         _ => make_error!("Unable to parse nucleotide mutation: '{s}'"),
@@ -415,4 +411,11 @@ fn parse_pos(s: &str) -> Result<usize, Report> {
     return make_error!("Mutation position is expected to be >= 1");
   }
   Ok(pos - 1)
+}
+
+fn parse_mutation_char(text: &str) -> Result<AsciiChar, Report> {
+  let &[byte] = text.as_bytes() else {
+    return make_error!("Expected one character, found '{text}'");
+  };
+  AsciiChar::try_new(byte)
 }

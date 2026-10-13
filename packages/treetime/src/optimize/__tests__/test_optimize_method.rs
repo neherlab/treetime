@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 pub(super) mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{

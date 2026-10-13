@@ -1,5 +1,4 @@
 #![allow(
-  clippy::as_conversions,
   clippy::collection_is_never_read,
   reason = "test and benchmark code: index and expected-value casts, and scratch collections"
 )]
@@ -834,12 +833,13 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn expected_jc_bl(count: usize, length: usize) -> f64 {
       if length == 0 || count == 0 {
         return 0.0;
       }
-      jukes_cantor_distance(count as f64 / length as f64, 4)
+      jukes_cantor_distance(count.to_f64_exact() / length.to_f64_exact(), 4)
     }
 
     pub(super) fn extract_branch_lengths(

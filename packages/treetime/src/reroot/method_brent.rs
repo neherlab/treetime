@@ -7,11 +7,8 @@ use argmin::core::Executor;
 use argmin::solver::brent::BrentOpt;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_utils::cast::usize_to_u64;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn optimize_brent<S: RootStats>(
   edge: GraphEdgeKey,
   cost_fn: &EdgeCostFn<S>,
@@ -20,7 +17,7 @@ pub(crate) fn optimize_brent<S: RootStats>(
   let solver = BrentOpt::new(0.0, 1.0).set_tolerance(f64::EPSILON.sqrt(), params.brent_tolerance);
 
   let result = Executor::new(cost_fn, solver)
-    .configure(|cfg| cfg.max_iters(params.brent_max_iters as u64))
+    .configure(|cfg| cfg.max_iters(usize_to_u64(params.brent_max_iters)))
     .run()
     .map_err(|e| make_report!("Brent optimization failed: {e}"))?;
 

@@ -11,14 +11,11 @@ use std::collections::BTreeMap;
 use treetime_primitives::{AsciiChar, LogLh};
 use treetime_utils::array::ndarray::is_max_above;
 use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm_owned;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
 
 const EPS: f64 = 1e-4;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn combine_messages(
   composition: &Composition,
   messages: &[&SparseSeqDistribution],
@@ -37,7 +34,7 @@ pub(crate) fn combine_messages(
   let mut fixed_counts = composition
     .counts()
     .iter()
-    .map(|(k, v)| (*k, *v as f64))
+    .map(|(k, v)| (*k, v.to_f64_exact()))
     .collect::<BTreeMap<_, _>>();
 
   let n_states = alphabet.n_canonical();
@@ -137,21 +134,14 @@ pub(crate) fn propagate_raw(
   message
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub(crate) fn propagate_raw_per_site(
   gtr: &GTR,
+  site_rates: &Array1<f64>,
   branch_length: f64,
   transpose: bool,
   seq_dis: &SparseSeqDistribution,
   transmission: Option<&[(usize, usize)]>,
 ) -> SparseSeqDistribution {
-  let site_rates = gtr
-    .site_rates
-    .as_ref()
-    .expect("propagate_raw_per_site requires site_rates");
   let default_exp_qt = if transpose {
     gtr.expQt(branch_length).t().to_owned()
   } else {
@@ -199,17 +189,13 @@ fn is_site_resolved(dis: &Array1<f64>, epsilon: f64) -> bool {
   is_max_above(dis, 1.0 - epsilon)
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn normalize_1d_inplace(dis: &mut Array1<f64>, weight: f64) -> f64 {
   let norm = dis.sum();
   if norm > 0.0 && norm.is_finite() {
     *dis /= norm;
     weight * norm.ln()
   } else {
-    dis.fill(1.0 / dis.len() as f64);
+    dis.fill(1.0 / dis.len().to_f64_exact());
     f64::NEG_INFINITY
   }
 }

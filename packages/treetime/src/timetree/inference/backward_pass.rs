@@ -3,6 +3,7 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::timetree::inference::result::{BranchLikelihood, TimeBackward, TimeDistribution};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
@@ -48,7 +49,7 @@ fn propagate_distributions_backward_node(
   max_points: MaxGridPoints,
 ) -> Result<GraphPassNodeOutput<TimeDistribution, TimeDistribution>, Report> {
   let date_constraint = constraints.date_constraint(context.key);
-  let messages = gather_child_messages(context.children);
+  let messages = gather_child_messages(context.children)?;
   let distribution = combine_child_messages(&messages, max_points)?;
   let distribution = apply_coalescent_prior(coalescent_model, context.is_root, context.children.len(), distribution)?;
   let distribution = apply_date_constraint(date_constraint.as_ref(), distribution, max_points)?;
@@ -83,22 +84,14 @@ fn propagate_distributions_backward_node(
   })
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "the graph pass gives every non-root node its parent edge and publishes the child output before the parent"
-)]
 fn gather_child_messages(
   children: &[GraphPassChildBackward<'_, TimeDistribution, TimeDistribution>],
-) -> Vec<Arc<Distribution<NegLog>>> {
+) -> Result<Vec<Arc<Distribution<NegLog>>>, Report> {
   children
     .iter()
-    .filter_map(|child| {
-      child
-        .edge
-        .expect("Non-root indexed node must own its parent edge")
-        .clone()
-    })
-    .collect()
+    .map(GraphPassChildBackward::edge_message)
+    .filter_map_ok(Clone::clone)
+    .try_collect()
 }
 
 fn combine_child_messages(

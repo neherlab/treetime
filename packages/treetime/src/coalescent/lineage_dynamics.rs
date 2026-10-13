@@ -6,12 +6,9 @@ use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use std::iter::once;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(super) fn compute_lineage_count_distribution(
   events: &[(CalendarTime, i32)],
   terminal_lineage_count: i32,
@@ -33,7 +30,7 @@ pub(super) fn compute_lineage_count_distribution(
     .into_iter()
     .map(|(time, delta)| {
       current_count -= delta;
-      (time.into_inner(), current_count as f64)
+      (time.into_inner(), current_count.to_f64_exact())
     })
     .unzip();
 

@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
@@ -160,6 +155,7 @@ mod tests {
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read;
+    use treetime_utils::cast::ToF64Exact;
     use treetime_utils::pretty_assert_abs_diff_eq;
 
     pub(super) fn make_partition(
@@ -173,7 +169,7 @@ mod tests {
       let gtr = GTR::builder()
         .n_states(n_states)
         .mu(1.0)
-        .pi(Array1::from_elem(n_states, 1.0 / n_states as f64))
+        .pi(Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact()))
         .build()?;
       let partition = PartitionMarginalDiscrete::new(
         discrete_states,

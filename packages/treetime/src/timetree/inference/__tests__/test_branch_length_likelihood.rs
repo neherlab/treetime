@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::partition::optimize::contribution::OptimizationContribution;
@@ -14,6 +9,7 @@ mod tests {
   use treetime_distribution::{BoundaryBehavior, Distribution, NegLog};
   use treetime_grid::MaxGridPoints;
   use treetime_utils::array::ndarray::has_uniform_spacing;
+  use treetime_utils::cast::ToF64Exact;
 
   #[rustfmt::skip]
   #[rstest]
@@ -135,7 +131,7 @@ mod tests {
       MaxGridPoints::default(),
     )?;
 
-    let t_mle_bl = indel_count as f64 / indel_rate;
+    let t_mle_bl = indel_count.to_f64_exact() / indel_rate;
     let expected_peak_time = t_mle_bl / (clock_rate * gamma);
 
     let peak_time = distribution.likely_time()?.expect("distribution has a peak");
@@ -164,7 +160,7 @@ mod tests {
       MaxGridPoints::default(),
     )?;
 
-    let t_mle_bl = indel_count as f64 / indel_rate;
+    let t_mle_bl = indel_count.to_f64_exact() / indel_rate;
     let expected_peak_time = t_mle_bl / (clock_rate * gamma);
 
     let peak_time = distribution.likely_time()?.expect("distribution has a peak");
@@ -310,7 +306,7 @@ mod tests {
     );
 
     let (lo, hi) = distribution.time_bounds().unwrap();
-    let fraction = helpers::gamma_mass_fraction_inside(indel_count as f64, indel_rate, lo, hi);
+    let fraction = helpers::gamma_mass_fraction_inside(indel_count.to_f64_exact(), indel_rate, lo, hi);
     assert!(
       fraction >= 1.0 - 2.0 * EPS,
       "stored grid holds only {fraction} of the mass, below 1 - 2*EPS = {}",
@@ -322,6 +318,7 @@ mod tests {
   mod helpers {
     use super::*;
     use std::sync::Arc;
+    use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn eval(distribution: &Distribution<NegLog>, t: f64) -> f64 {
       distribution.eval(t).unwrap_or(0.0)
@@ -330,12 +327,12 @@ mod tests {
     pub(super) fn gamma_mass_fraction_inside(k: f64, mu: f64, lo: f64, hi: f64) -> f64 {
       const N: usize = 2_000_001;
       let t_far = 60.0;
-      let dt = t_far / (N as f64 - 1.0);
+      let dt = t_far / (N.to_f64_exact() - 1.0);
       let density = |t: f64| t.powf(k) * (-mu * t).exp();
       let mut total = 0.0;
       let mut inside = 0.0;
       for i in 0..N {
-        let t = i as f64 * dt;
+        let t = i.to_f64_exact() * dt;
         let weight = if i == 0 || i == N - 1 { 0.5 } else { 1.0 };
         let area = weight * density(t) * dt;
         total += area;

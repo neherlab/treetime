@@ -32,7 +32,7 @@ pub struct Alphabet {
 impl Default for Alphabet {
   #[expect(
     clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
+    reason = "the nucleotide alphabet is built from fixed tables, and the alphabet tests build it"
   )]
   fn default() -> Self {
     Self::new(AlphabetName::Nuc).expect("Failed to create default alphabet")
@@ -199,14 +199,13 @@ impl Alphabet {
     self.index_to_char[index]
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   pub(crate) fn index(&self, c: impl Into<usize>) -> Result<usize, Report> {
     let idx = c.into();
     self.char_to_index.get(idx).copied().flatten().ok_or_else(|| {
-      let c = AsciiChar::try_new(idx as u8).map_or_else(|_| '?'.to_string(), |c| c.to_string());
+      let c = u8::try_from(idx)
+        .map_err(Report::from)
+        .and_then(AsciiChar::try_new)
+        .map_or_else(|_| '?'.to_string(), |c| c.to_string());
       make_report!("When accessing alphabet index: Unknown character: '{c}' (code {idx})")
     })
   }

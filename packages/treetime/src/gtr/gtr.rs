@@ -90,10 +90,6 @@ impl GTR {
     })
   }
 
-  pub(crate) fn has_site_rates(&self) -> bool {
-    self.site_rates.is_some()
-  }
-
   pub(crate) fn rate_eigvals(&self) -> Array1<f64> {
     &self.eigvals * self.mu
   }

@@ -11,6 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::iterator::difference::iterator_difference;
 
 pub(crate) fn merge_shared_mutation_branches(
@@ -75,12 +76,8 @@ pub(crate) fn merge_single_polytomy(
   Ok(nodes_created)
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn collect_child_edge_keys(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEdgeKey> {
-  let node = graph.get_node(node_key).expect("Node must exist");
+  let node = &graph[node_key];
   node.outbound().to_vec()
 }
 
@@ -181,10 +178,6 @@ fn greedy_disjoint_group_matching(mut groups: Vec<MergeGroup>) -> Vec<MergeGroup
   groups
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn merge_sibling_group(
   graph: &mut Graph,
   partitions: &mut [PartitionMarginalSparse],
@@ -230,7 +223,7 @@ fn merge_sibling_group(
   let n_states = partitions[0].alphabet.n_canonical();
   let jc_bl = |count: usize| -> f64 {
     if total_alignment_length > 0 {
-      jukes_cantor_distance(count as f64 / total_alignment_length as f64, n_states)
+      jukes_cantor_distance(count.to_f64_exact() / total_alignment_length.to_f64_exact(), n_states)
     } else {
       0.0
     }

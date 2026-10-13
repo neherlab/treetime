@@ -3,6 +3,8 @@ use crate::make_internal_report;
 use crate::make_report;
 use statrs::distribution::{Discrete, Poisson};
 use std::collections::BTreeMap;
+use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::usize_to_u64;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SiteHits {
@@ -18,10 +20,6 @@ pub struct SiteHistogram {
   pub log_likelihood_difference: f64,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "site and mutation counts are far below 2^53, so the conversions to f64 are exact"
-)]
 pub(crate) fn site_histogram(
   genome_length: usize,
   hits_per_site: &BTreeMap<usize, usize>,
@@ -44,7 +42,7 @@ pub(crate) fn site_histogram(
     counts[hits] += 1;
   }
   let mutations: usize = hits_per_site.values().sum();
-  let length = genome_length as f64;
+  let length = genome_length.to_f64_exact();
 
   if mutations == 0 {
     return Ok(SiteHistogram {
@@ -58,9 +56,9 @@ pub(crate) fn site_histogram(
     });
   }
 
-  let poisson = Poisson::new(mutations as f64 / length)
+  let poisson = Poisson::new(mutations.to_f64_exact() / length)
     .map_err(|err| OperationError::InferenceFailed(make_internal_report!("Poisson rate is invalid: {err}")))?;
-  let ln_p = |k: usize| poisson.ln_pmf(k as u64);
+  let ln_p = |k: usize| poisson.ln_pmf(usize_to_u64(k));
 
   let rows = counts
     .iter()
@@ -75,7 +73,7 @@ pub(crate) fn site_histogram(
   let observed: f64 = counts
     .iter()
     .enumerate()
-    .map(|(hits, &sites)| sites as f64 * ln_p(hits))
+    .map(|(hits, &sites)| sites.to_f64_exact() * ln_p(hits))
     .sum();
   let expected: f64 = (0..3 * counts.len())
     .map(|k| {

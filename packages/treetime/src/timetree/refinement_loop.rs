@@ -7,6 +7,7 @@ use crate::timetree::convergence::metrics::IterationClock;
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer, TraceSink};
 use crate::timetree::round::{RoundInputs, RoundState, refinement_round};
 use eyre::{Report, WrapErr};
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::sync::random::get_random_number_generator;
 
 pub(crate) fn run_refinement_loop(
@@ -33,11 +34,7 @@ pub(crate) fn run_refinement_loop(
 
   while let Some(IterationContext { i }) = optimizer.next_iter(log) {
     cancel.check()?;
-    #[expect(
-      clippy::as_conversions,
-      reason = "iteration counts are far below 2^53, so the conversion to f64 is exact"
-    )]
-    let iter_fraction = 0.3 + 0.5 * (i as f64 / max_iter as f64);
+    let iter_fraction = 0.3 + 0.5 * (i.to_f64_exact() / max_iter.to_f64_exact());
     stages.report(
       "Refinement loop",
       iter_fraction,

@@ -25,7 +25,9 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPass, GraphPassForwardContext, GraphPassNodeOutput};
 use treetime_primitives::LogLh;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
+use treetime_utils::make_internal_report;
 
 pub(crate) fn process_forward_indexed(
   partition: &PartitionMarginalSparse,
@@ -62,10 +64,6 @@ pub(crate) fn process_forward_indexed(
   })
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn process_node_forward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
@@ -77,10 +75,10 @@ fn process_node_forward_indexed(
   let obs = &partition.obs_nodes[&context.key];
   let mut node = context.input;
 
-  let parent_message = if let Some((edge_key, backward)) = context.parent_edge {
+  let parent_message = if let (Some((edge_key, backward)), Some(parent), Some(parent_key)) =
+    (context.parent_edge, context.parent, context.parent_key)
+  {
     let edge_obs = &partition.obs_edges[&edge_key];
-    let parent = context.parent.expect("Non-root node must have a parent");
-    let parent_key = context.parent_key.expect("Non-root node must have a parent key");
     let parent_obs = &partition.obs_nodes[&parent_key];
 
     let msg_to_child = compute_msg_to_child(obs, parent, parent_obs, edge_obs, backward)?;
@@ -106,9 +104,10 @@ fn process_node_forward_indexed(
     }
 
     let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
-    let msg_from_parent = if gtr.has_site_rates() {
+    let msg_from_parent = if let Some(site_rates) = &gtr.site_rates {
       propagate_raw_per_site(
         gtr,
+        site_rates,
         branch_length,
         false,
         &msg_to_child,
@@ -165,11 +164,6 @@ struct SparseEdgeForwardOut {
   subs_ml: Vec<Sub>,
 }
 
-#[expect(
-  clippy::as_conversions,
-  clippy::unwrap_used,
-  reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
-)]
 fn compute_msg_to_child(
   child_obs: &SparseNodeObs,
   parent: &SparseNodeState,
@@ -228,7 +222,11 @@ fn compute_msg_to_child(
   }
   for (state, profile) in &parent.profile.fixed {
     let mut dis = divide_out(profile, &child_dis.fixed[state]);
-    let weight = seq_dis.fixed_counts.get(*state).unwrap() as f64;
+    let weight = seq_dis
+      .fixed_counts
+      .get(*state)
+      .ok_or_else(|| make_internal_report!("Fixed state {state} has no count"))?
+      .to_f64_exact();
     let normalization = normalize_1d_inplace(&mut dis, weight);
     delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
     seq_dis.fixed.insert(*state, dis);

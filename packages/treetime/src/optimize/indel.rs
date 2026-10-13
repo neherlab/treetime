@@ -7,12 +7,10 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_primitives::LogLh;
+use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::usize_to_u64;
 use treetime_utils::{make_error, make_report};
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn estimate_indel_rate(
   graph: &Graph,
   indel_counts: &BTreeMap<GraphEdgeKey, usize>,
@@ -33,7 +31,7 @@ pub(crate) fn estimate_indel_rate(
   let total_branch_length = per_edge.iter().map(|(_, branch_length)| branch_length).sum::<f64>();
 
   if total_branch_length > 0.0 && total_indels > 0 {
-    total_indels as f64 / total_branch_length
+    total_indels.to_f64_exact() / total_branch_length
   } else {
     0.0
   }
@@ -67,10 +65,6 @@ pub(crate) fn total_indel_log_lh(
     .sum()
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMetrics, Report> {
   validate_branch_length_value(t)?;
 
@@ -90,9 +84,9 @@ pub(crate) fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<Optimiza
     return make_error!("Poisson indel likelihood requires a positive branch length when k > 0, got t={t}");
   }
 
-  let k_f = k as f64;
+  let k_f = k.to_f64_exact();
   let lambda = mu * t;
-  let log_lh = k_f * lambda.ln() - lambda - ln_factorial(k as u64);
+  let log_lh = k_f * lambda.ln() - lambda - ln_factorial(usize_to_u64(k));
   let derivative = k_f / t - mu;
   let second_derivative = -k_f / (t * t);
 

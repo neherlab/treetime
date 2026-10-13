@@ -9,12 +9,9 @@ use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn collect_coalescent_edges(
   graph: &Graph,
   node_times: &CoalescentNodeTimes,
@@ -63,7 +60,7 @@ pub(crate) fn collect_coalescent_edges(
 
     let n_siblings = graph
       .get_node(parent_node_key)
-      .map_or(2.0, |parent| parent.outbound().len() as f64);
+      .map_or(2.0, |parent| parent.outbound().len().to_f64_exact());
     edges.push(CoalescentEdgeData::new(
       CalendarTime::new(child_time),
       CalendarTime::new(parent_time),

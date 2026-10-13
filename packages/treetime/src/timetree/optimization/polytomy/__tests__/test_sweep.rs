@@ -9,6 +9,7 @@ mod tests {
   use std::collections::BTreeSet;
   use std::iter::repeat_with;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::sync::random::get_random_number_generator;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
@@ -250,11 +251,10 @@ mod tests {
       assert_every_child_placed_once(&plan, children.len());
     }
 
-    #[expect(clippy::as_conversions, reason = "count/index numeric cast is exact for the domain range")]
     #[test]
     fn test_prop_sweep_resolves_fully_with_generous_window(seed in any::<u64>()) {
       let n_children = 8;
-      let children: Vec<Lineage> = (0..n_children).map(|i| lineage(10.0 - i as f64, 0)).collect();
+      let children: Vec<Lineage> = (0..n_children).map(|i| lineage(10.0 - i.to_f64_exact(), 0)).collect();
       let mut rng = get_random_number_generator(seed);
       let plan = simulate_subtree(&children, -1.0e6, 0.0, &const_merger_rate(1.0), &mut rng).unwrap();
 
@@ -311,15 +311,11 @@ mod tests {
     Ok(())
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   #[test]
   fn test_sweep_first_merger_waiting_time_matches_the_coalescent_rate() -> Result<(), Report> {
     let k = 5;
     let kappa = 0.25;
-    let expected_mean = 1.0 / ((k - 1) as f64 * kappa);
+    let expected_mean = 1.0 / ((k - 1).to_f64_exact() * kappa);
 
     let children: Vec<Lineage> = repeat_with(|| lineage(0.0, 0)).take(k).collect();
     let replicates = 20_000;
@@ -331,7 +327,7 @@ mod tests {
       let first = plan.mergers.first().expect("the window is effectively unbounded");
       total += -first.time;
     }
-    let mean = total / replicates as f64;
+    let mean = total / replicates.to_f64_exact();
 
     let relative_error = (mean - expected_mean).abs() / expected_mean;
     assert!(

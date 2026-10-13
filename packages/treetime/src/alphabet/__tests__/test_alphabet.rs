@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName, FILL_CHAR, NON_CHAR, VARIABLE_CHAR};
@@ -174,7 +169,7 @@ mod tests {
   #[trace]
   fn test_alphabet_nuc_index(#[case] c: u8, #[case] expected: usize) {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    assert_eq!(expected, alphabet.index(c as usize).unwrap());
+    assert_eq!(expected, alphabet.index(c).unwrap());
   }
 
   #[rstest]

@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::MaxGridPoints;
+use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn compute_effective_time_marginal(
   time_marginal: TimeMarginalMode,
@@ -56,10 +57,6 @@ impl TimeMarginalMode {
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn build_covariation_clock_params(
   covariation: bool,
   sequence_length: Option<usize>,
@@ -72,10 +69,10 @@ pub(crate) fn build_covariation_clock_params(
   }
 
   let seq_len = if let Some(aln_data) = aln {
-    get_common_length_of_node_inputs(aln_data)? as f64
+    (get_common_length_of_node_inputs(aln_data)?).to_f64_exact()
   } else {
-    sequence_length.ok_or_else(|| make_report!("--sequence-length required for --covariation without alignment"))?
-      as f64
+    (sequence_length.ok_or_else(|| make_report!("--sequence-length required for --covariation without alignment"))?)
+      .to_f64_exact()
   };
 
   let tip_slack = tip_slack.unwrap_or(10.0);

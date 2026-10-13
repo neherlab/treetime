@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
@@ -292,6 +287,7 @@ mod tests {
     use treetime_graph::graph::Graph;
     use treetime_io::fasta::fasta_read;
     use treetime_primitives::AlignmentRecord;
+    use treetime_utils::cast::ToF64Exact;
 
     static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -342,7 +338,7 @@ mod tests {
       }
 
       let lambda = mu * t;
-      (k as f64) * lambda.ln() - lambda - ln_factorial(k as u64)
+      k.to_f64_exact() * lambda.ln() - lambda - ln_factorial(u64::try_from(k).unwrap())
     }
 
     pub(super) fn manual_total_indel_log_lh(
@@ -359,7 +355,7 @@ mod tests {
         .map(|edge_ref| branch_lengths.get(&edge_ref.key()).copied().flatten().unwrap_or(0.0))
         .sum();
       let indel_rate = if total_indels > 0 && total_branch_length > 0.0 {
-        total_indels as f64 / total_branch_length
+        total_indels.to_f64_exact() / total_branch_length
       } else {
         0.0
       };

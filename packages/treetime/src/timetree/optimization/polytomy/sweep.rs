@@ -3,6 +3,7 @@ use rand::Rng;
 use rand_distr::{Distribution as _, Exp1};
 use std::collections::VecDeque;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error};
 
 pub(crate) fn simulate_subtree(
@@ -115,10 +116,6 @@ impl SubtreePlan {
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn event_rates(alive: &[Tracked], mutation_rate: f64, kappa: f64, time: f64) -> Result<(f64, f64, u64), Report> {
   if !kappa.is_finite() || kappa < 0.0 {
     return make_error!(
@@ -127,9 +124,9 @@ fn event_rates(alive: &[Tracked], mutation_rate: f64, kappa: f64, time: f64) -> 
   }
 
   let n_ready = alive.iter().filter(|lineage| lineage.mutations == 0).count();
-  let total_mutations = alive.iter().map(|lineage| u64::from(lineage.mutations)).sum();
-  let rate_mut = mutation_rate * total_mutations as f64;
-  let rate_coal = n_ready.saturating_sub(1) as f64 * kappa;
+  let total_mutations: u64 = alive.iter().map(|lineage| u64::from(lineage.mutations)).sum();
+  let rate_mut = mutation_rate * total_mutations.to_f64_exact();
+  let rate_coal = n_ready.saturating_sub(1).to_f64_exact() * kappa;
   if !rate_mut.is_finite() || !rate_coal.is_finite() {
     return make_error!(
       "Polytomy event rates must be finite at calendar time {time:.6e}, got mutation rate {rate_mut:.6e} and merger rate {rate_coal:.6e}"
@@ -168,13 +165,8 @@ pub struct Lineage {
   pub(crate) mutations: u32,
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn admit_arrivals(alive: &mut Vec<Tracked>, to_come: &mut VecDeque<Pending>, elapsed: f64) {
-  while to_come.front().is_some_and(|next| next.elapsed <= elapsed) {
-    let arrived = to_come.pop_front().expect("front was just inspected");
+  while let Some(arrived) = to_come.pop_front_if(|next| next.elapsed <= elapsed) {
     alive.push(arrived.lineage);
   }
 }

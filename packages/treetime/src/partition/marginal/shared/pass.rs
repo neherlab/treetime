@@ -19,7 +19,9 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
+use treetime_graph::pass::{
+  GraphPass, GraphPassBackwardContext, GraphPassChildBackward, GraphPassForwardContext, GraphPassNodeOutput,
+};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
 use treetime_utils::make_internal_error;
@@ -77,10 +79,6 @@ pub(crate) fn indexed_backward(
   })
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "the graph pass publishes every child edge message before its parent and gives every non-root node its parent edge"
-)]
 fn indexed_node_backward(
   gtr: &GTR,
   min_branch_length: f64,
@@ -97,15 +95,13 @@ fn indexed_node_backward(
     let child_edges = context
       .children
       .iter()
-      .map(|child| {
-        child
-          .edge
-          .expect("Backward child edge message must be published before its parent")
-      })
-      .collect_vec();
-    let first_edge = child_edges.first().expect("Internal node must have children");
+      .map(GraphPassChildBackward::edge_message)
+      .collect::<Result<Vec<_>, Report>>()?;
+    let Some((first_edge, other_edges)) = child_edges.split_first() else {
+      return make_internal_error!("Internal node {} has no children", context.key);
+    };
     let mut log_dis = first_edge.msg_from_child.dis.mapv(f64::ln);
-    for edge in child_edges.iter().skip(1) {
+    for edge in other_edges {
       log_dis += &edge.msg_from_child.dis.mapv(f64::ln);
     }
     let (dis, delta_ll) = normalize_from_log(&log_dis);
@@ -120,16 +116,7 @@ fn indexed_node_backward(
     )
   };
 
-  let parent_message = if context.is_root {
-    let mut dis = &msg_to_parent.dis * &gtr.pi;
-    let delta_ll = normalize_inplace(&mut dis);
-    node.profile = DenseSeqDistribution {
-      dis,
-      log_lh: msg_to_parent.log_lh + LogLh::new(delta_ll),
-    };
-    None
-  } else {
-    let (_edge_key, branch_length) = context.parent_edge.expect("Non-root node must own its parent edge");
+  let parent_message = if let Some((_edge_key, branch_length)) = context.parent_edge {
     let branch_length = branch_length.max(min_branch_length);
     Some(DenseEdgeBackward {
       msg_from_child: DenseSeqDistribution {
@@ -138,6 +125,14 @@ fn indexed_node_backward(
       },
       msg_to_parent,
     })
+  } else {
+    let mut dis = &msg_to_parent.dis * &gtr.pi;
+    let delta_ll = normalize_inplace(&mut dis);
+    node.profile = DenseSeqDistribution {
+      dis,
+      log_lh: msg_to_parent.log_lh + LogLh::new(delta_ll),
+    };
+    None
   };
 
   Ok(GraphPassNodeOutput { node, parent_message })
@@ -219,10 +214,6 @@ pub(crate) fn indexed_forward(
   })
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn indexed_node_forward(
   gtr: &GTR,
   min_branch_length: f64,
@@ -243,8 +234,7 @@ fn indexed_node_forward(
     )
   });
 
-  if let Some((edge_key, backward, out)) = edge_out.as_mut() {
-    let parent = context.parent.expect("Non-root node must have a parent");
+  if let (Some((edge_key, backward, out)), Some(parent)) = (edge_out.as_mut(), context.parent) {
     let mut dis = divide_out(&parent.profile.dis, &backward.msg_from_child.dis);
     let delta_ll = normalize_inplace(&mut dis);
     let log_lh = forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh);
@@ -261,7 +251,7 @@ fn indexed_node_forward(
   }
 
   if let IndexedKind::Dense { alphabet, .. } = kind {
-    let indels = forward_post_dense(context.is_root, context.is_leaf, context.parent, &mut node, alphabet)?;
+    let indels = forward_post_dense(context.is_leaf, context.parent, &mut node, alphabet)?;
     if let Some((_, _, out)) = edge_out.as_mut() {
       out.indels = indels;
     }
@@ -288,28 +278,22 @@ struct DenseEdgeForwardOut {
   indels: Vec<InDel>,
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn forward_post_dense(
-  is_root: bool,
   is_leaf: bool,
   parent: Option<&DenseNodeState>,
   node: &mut DenseNodeState,
   alphabet: &Alphabet,
 ) -> Result<Vec<InDel>, Report> {
-  if is_root {
+  let Some(parent) = parent else {
     node.seq.variable_indel.clear();
     node.seq.sequence = assign_sequence(node, alphabet);
     node.seq.non_char = range_union(&[node.seq.gaps.clone(), node.seq.unknown.clone()]);
     return Ok(vec![]);
-  }
+  };
 
   if !is_leaf {
     node.seq.sequence = assign_sequence(node, alphabet);
   }
-  let parent = parent.expect("Non-root dense node must have a parent");
   let variable_indel = std::mem::take(&mut node.seq.variable_indel);
   let (indels, new_gaps) = resolve_indels_forward(
     &variable_indel,

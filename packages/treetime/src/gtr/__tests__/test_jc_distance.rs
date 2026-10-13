@@ -3,6 +3,7 @@ mod tests {
   use crate::gtr::jc_distance::*;
   use approx::assert_abs_diff_eq;
   use rstest::rstest;
+  use treetime_utils::cast::ToF64Exact;
 
   #[test]
   fn test_jukes_cantor_distance_zero_p_returns_zero() {
@@ -55,14 +56,10 @@ mod tests {
     assert!((12.0..14.0).contains(&d_max_aa), "d_max aa = {d_max_aa}");
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   #[test]
   fn test_jukes_cantor_distance_always_at_least_p() {
     for n in [2_usize, 4, 20] {
-      let k = n as f64;
+      let k = n.to_f64_exact();
       let p_sat = (k - 1.0) / k;
       for i in 0..100 {
         let p = p_sat * 0.999 * f64::from(i) / 100.0;
@@ -72,14 +69,10 @@ mod tests {
     }
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   #[test]
   fn test_jukes_cantor_distance_monotonic_in_p() {
     for n in [2_usize, 4, 20] {
-      let k = n as f64;
+      let k = n.to_f64_exact();
       let p_sat = (k - 1.0) / k;
       let mut prev = 0.0;
       for i in 0..1000 {

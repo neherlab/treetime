@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use super::super::test_coefficient_extraction_dense_support::tests::make_dense_seq_dis;
@@ -67,6 +62,7 @@ mod tests {
     use super::*;
     use crate::partition::optimize::dense::PartitionContribution;
     use proptest::prelude::*;
+    use treetime_utils::cast::ToF64Exact;
     use treetime_utils::{prop_assert_abs_diff_eq, prop_assert_relative_eq};
 
     fn dense_contribution_from(parent: &Array1<f64>, child: &Array1<f64>, gtr: &GTR) -> PartitionContribution {
@@ -150,7 +146,7 @@ mod tests {
         let dense_metrics = evaluate_dense_contribution(&dense_contrib, branch_length, true).expect("valid branch length");
 
         let sparse_contrib = optimize::sparse::PartitionContribution {
-          site_contributions: vec![sparse_site_from(&parent, &child, &gtr, n_rows as f64)],
+          site_contributions: vec![sparse_site_from(&parent, &child, &gtr, n_rows.to_f64_exact())],
           gtr: gtr.clone(),
         };
         let sparse_metrics = evaluate_sparse_contribution(&sparse_contrib, branch_length, true).expect("valid branch length");

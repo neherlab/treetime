@@ -23,6 +23,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::array::ndarray::argmax_first;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_union::range_union;
 
@@ -35,10 +36,6 @@ pub struct PartitionMarginalDense {
 }
 
 impl PartitionMarginalDense {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   pub(crate) fn new(
     alphabet: Alphabet,
     graph: &Graph,
@@ -57,7 +54,7 @@ impl PartitionMarginalDense {
         Ok((leaf_key, DenseLeafObs::new(seq, &alphabet)))
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;
-    let min_branch_length = MIN_BRANCH_LENGTH_FRACTION / length as f64;
+    let min_branch_length = MIN_BRANCH_LENGTH_FRACTION / length.to_f64_exact();
     Ok(Self {
       inputs: DenseInputs {
         min_branch_length,

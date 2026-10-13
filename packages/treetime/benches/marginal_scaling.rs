@@ -1,7 +1,6 @@
-#![allow(
-  clippy::expect_used,
+#![expect(
   clippy::unwrap_used,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
+  reason = "benchmark setup: a failed step aborts the benchmark, as it fails a test"
 )]
 
 use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};

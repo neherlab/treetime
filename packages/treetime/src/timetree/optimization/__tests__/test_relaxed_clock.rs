@@ -14,6 +14,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::pretty_assert_map_ulps_eq;
 
@@ -114,10 +115,6 @@ mod tests {
   }
 
   #[test]
-  #[expect(
-    clippy::as_conversions,
-    reason = "an edge count is far below 2^53, so the conversion to f64 is exact"
-  )]
   fn test_relaxed_clock_uniform_branches_produce_similar_gamma() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root:0.0;".as_slice())?;
     let names = nwk_parsed.names();
@@ -134,7 +131,7 @@ mod tests {
 
     let gammas: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
 
-    let mean_gamma: f64 = gammas.iter().sum::<f64>() / gammas.len() as f64;
+    let mean_gamma: f64 = gammas.iter().sum::<f64>() / gammas.len().to_f64_exact();
     for gamma in &gammas {
       pretty_assert_ulps_eq!(*gamma, mean_gamma, max_ulps = 1000);
     }
@@ -353,6 +350,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_utils::cast::ToF64Exact;
 
     #[derive(Deserialize)]
     pub(super) struct GmInput {
@@ -408,12 +406,8 @@ mod tests {
       }
     }
 
-    #[expect(
-      clippy::as_conversions,
-      reason = "a value count is far below 2^53, so the conversion to f64 is exact"
-    )]
     pub(super) fn compute_variance(values: &[f64]) -> f64 {
-      let n = values.len() as f64;
+      let n = values.len().to_f64_exact();
       let mean = values.iter().sum::<f64>() / n;
       values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n
     }

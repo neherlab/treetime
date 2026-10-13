@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::timetree::confidence::extract_confidence_intervals;
@@ -15,6 +10,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
+  use treetime_utils::cast::ToF64Exact;
 
   #[test]
   fn test_extract_confidence_intervals_includes_unnamed_nodes() {
@@ -182,8 +178,8 @@ mod tests {
   fn test_extract_confidence_intervals_skewed_distribution_hpd() {
     let n_points = 10001;
     let x_min = 0.0;
-    let dx = 10.0 / (n_points as f64 - 1.0);
-    let y = Array1::from_shape_fn(n_points, |i| x_min + i as f64 * dx);
+    let dx = 10.0 / (n_points.to_f64_exact() - 1.0);
+    let y = Array1::from_shape_fn(n_points, |i| x_min + i.to_f64_exact() * dx);
 
     let dist_fn = treetime_distribution::DistributionFunction::from_start_dx_values(x_min, dx, y).unwrap();
     let dist = Distribution::Function(dist_fn);

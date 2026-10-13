@@ -26,6 +26,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
@@ -491,10 +492,6 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
   })
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn normalize_partition_rates(
   partitions: &mut [(usize, &mut GTR)],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -505,9 +502,12 @@ pub(crate) fn normalize_partition_rates(
     return;
   }
 
-  let weighted_rate: f64 = partitions.iter().map(|(length, gtr)| *length as f64 * gtr.mu).sum();
+  let weighted_rate: f64 = partitions
+    .iter()
+    .map(|(length, gtr)| length.to_f64_exact() * gtr.mu)
+    .sum();
 
-  let total_average = weighted_rate / total_length as f64;
+  let total_average = weighted_rate / total_length.to_f64_exact();
 
   if total_average == 0.0 {
     return;

@@ -37,11 +37,6 @@ pub(crate) fn process_backward_indexed(
   })
 }
 
-#[expect(
-  clippy::expect_used,
-  clippy::unwrap_used,
-  reason = "expect on a value an upstream invariant guarantees is present; unwrap on a value an upstream invariant guarantees is present"
-)]
 fn process_node_backward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
@@ -62,7 +57,7 @@ fn process_node_backward_indexed(
       .variable
       .iter()
       .map(|(pos, profile)| {
-        let dis = alphabet.construct_profile(profile.chars()).unwrap();
+        let dis = alphabet.construct_profile(profile.chars())?;
         let state = obs
           .fitch
           .chosen_state
@@ -70,9 +65,9 @@ fn process_node_backward_indexed(
           .copied()
           .filter(|state| alphabet.is_canonical(*state))
           .unwrap_or_else(|| profile.get_one());
-        (*pos, VarPos { dis, state })
+        Ok((*pos, VarPos { dis, state }))
       })
-      .collect();
+      .collect::<Result<_, Report>>()?;
     SparseSeqDistribution {
       fixed_counts: obs.composition.clone(),
       variable,
@@ -88,9 +83,7 @@ fn process_node_backward_indexed(
 
     for (ci, child) in context.children.iter().enumerate() {
       let child_edge_obs = &partition.obs_edges[&child.edge_key];
-      let child_backward = child
-        .edge
-        .expect("Backward child edge message must be published before its parent");
+      let child_backward = child.edge_message()?;
       for mutation in child_edge_obs.fitch_subs() {
         variable_pos.insert(mutation.pos(), mutation.reff());
         child_states[ci].insert(mutation.pos(), mutation.qry());
@@ -131,14 +124,12 @@ fn process_node_backward_indexed(
   };
 
   let sequence = Arc::clone(&context.input.sequence);
-  let (profile, parent_message) = if context.is_root {
-    (msg_to_parent, None)
-  } else {
-    let (edge_key, edge_obs) = context.parent_edge.expect("Non-root node must own its parent edge");
+  let (profile, parent_message) = if let Some((edge_key, edge_obs)) = context.parent_edge {
     let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
-    let msg_from_child = if gtr.has_site_rates() {
+    let msg_from_child = if let Some(site_rates) = &gtr.site_rates {
       propagate_raw_per_site(
         gtr,
+        site_rates,
         branch_length,
         true,
         &msg_to_parent,
@@ -158,6 +149,8 @@ fn process_node_backward_indexed(
         msg_from_child,
       }),
     )
+  } else {
+    (msg_to_parent, None)
   };
 
   Ok(GraphPassNodeOutput {

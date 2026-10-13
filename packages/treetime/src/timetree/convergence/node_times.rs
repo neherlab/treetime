@@ -2,6 +2,7 @@ use crate::timetree::inference::result::TimeInference;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn capture_node_times(graph: &Graph, inference: &TimeInference) -> NodeTimeSnapshot {
   graph
@@ -14,10 +15,6 @@ pub(crate) fn capture_node_times(graph: &Graph, inference: &TimeInference) -> No
     .collect()
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn measure_node_time_change(previous: &NodeTimeSnapshot, current: &NodeTimeSnapshot) -> NodeTimeChange {
   let changes: Vec<f64> = previous
     .iter()
@@ -29,7 +26,7 @@ pub(crate) fn measure_node_time_change(previous: &NodeTimeSnapshot, current: &No
   }
 
   let max = changes.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-  let rms = (changes.iter().map(|change| change * change).sum::<f64>() / changes.len() as f64).sqrt();
+  let rms = (changes.iter().map(|change| change * change).sum::<f64>() / changes.len().to_f64_exact()).sqrt();
   NodeTimeChange {
     max: Some(max),
     rms: Some(rms),

@@ -10,11 +10,8 @@ use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AlphabetLike, Seq, seq};
+use treetime_utils::cast::ToF64Exact;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub fn complete_alignment_for_leaves(
   graph: &Graph,
   nodes: &mut BTreeMap<GraphNodeKey, NodeSeqInput>,
@@ -45,7 +42,7 @@ pub fn complete_alignment_for_leaves(
     );
   }
 
-  if !ignore_missing_alns && (n_missing as f64) > (n_leaves as f64) / 3.0 {
+  if !ignore_missing_alns && n_missing.to_f64_exact() > n_leaves.to_f64_exact() / 3.0 {
     return make_error!(
       "At least one third of terminal nodes ({n_missing} of {n_leaves}) cannot be assigned a sequence. \
        Are you sure the alignment belongs to the tree? \

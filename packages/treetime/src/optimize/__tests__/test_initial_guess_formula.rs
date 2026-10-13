@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -28,6 +23,7 @@ mod tests {
   use treetime_io::fasta::{FastaRecord, fasta_read};
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
+  use treetime_utils::cast::ToF64Exact;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
@@ -65,7 +61,7 @@ mod tests {
       let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
 
       let expected_bl = if effective_length > 0 {
-        sub_count as f64 / effective_length as f64
+        sub_count.to_f64_exact() / effective_length.to_f64_exact()
       } else {
         0.0
       };
@@ -109,7 +105,7 @@ mod tests {
       let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
 
       let expected_bl = if effective_length > 0 {
-        sub_count as f64 / effective_length as f64
+        sub_count.to_f64_exact() / effective_length.to_f64_exact()
       } else {
         0.0
       };

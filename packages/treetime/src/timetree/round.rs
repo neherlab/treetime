@@ -37,6 +37,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+use treetime_utils::cast::ToF64Exact;
 
 pub(crate) struct InitialRound {
   pub state: RoundState,
@@ -283,11 +284,7 @@ fn refine_topology(
     return Ok((state, TopologyOutcome::Unchanged));
   }
 
-  #[expect(
-    clippy::as_conversions,
-    reason = "a sequence length is far below 2^53, so the conversion to f64 is exact"
-  )]
-  let total_mutation_rate = state.clock_model.clock_rate() * total_length as f64;
+  let total_mutation_rate = state.clock_model.clock_rate() * total_length.to_f64_exact();
   let mut node_times = state.time_inference.node_times();
   let PolytomyResolution {
     graph,

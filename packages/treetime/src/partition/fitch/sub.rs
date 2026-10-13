@@ -202,10 +202,6 @@ pub(crate) fn finalize_sequence_forward(
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "table indices below 128 convert exactly to ASCII bytes"
-)]
 fn canonical_table(alphabet: &Alphabet) -> [bool; 128] {
-  std::array::from_fn(|index| alphabet.is_canonical(AsciiChar::from_byte_unchecked(index as u8)))
+  AsciiChar::table(|c| alphabet.is_canonical(c))
 }

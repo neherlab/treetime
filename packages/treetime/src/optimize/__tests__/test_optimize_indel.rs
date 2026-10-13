@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 pub(super) mod tests {
   use crate::alphabet::alphabet::Alphabet;
@@ -38,6 +33,7 @@ pub(super) mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_primitives::Seq;
+  use treetime_utils::cast::ToF64Exact;
 
   pub(crate) fn inject_indels_on_first_edge(
     graph: &Graph,
@@ -468,7 +464,7 @@ pub(super) mod tests {
   #[trace]
   fn test_optimize_indel_poisson_mle_derivative_zero(#[case] k: usize) {
     let mu = 3.0;
-    let t_mle = k as f64 / mu;
+    let t_mle = k.to_f64_exact() / mu;
     let metrics = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
     assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-13);
   }
@@ -485,7 +481,7 @@ pub(super) mod tests {
   fn test_optimize_indel_poisson_mle_is_maximum(#[case] delta: f64) {
     let k = 4;
     let mu = 2.0;
-    let t_mle = k as f64 / mu;
+    let t_mle = k.to_f64_exact() / mu;
     let t = t_mle + delta;
     if t > 0.0 {
       let lh_mle = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters").log_lh.value();
@@ -610,7 +606,7 @@ pub(super) mod tests {
     #[case] k: usize,
     #[case] mu: f64,
   ) {
-    let t_mle = k as f64 / mu;
+    let t_mle = k.to_f64_exact() / mu;
 
     let metrics_at_mle = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
     assert_abs_diff_eq!(metrics_at_mle.derivative, 0.0, epsilon = 1e-13);
@@ -703,6 +699,7 @@ pub(super) mod tests {
     use super::generators;
     use crate::optimize::indel::poisson_indel_log_lh;
     use proptest::prelude::*;
+    use treetime_utils::cast::ToF64Exact;
     use treetime_utils::{prop_assert_abs_diff_eq, prop_assert_relative_eq};
 
     proptest! {
@@ -718,7 +715,7 @@ pub(super) mod tests {
 
       #[test]
       fn test_prop_optimize_indel_mle_derivative((k, mu, _t) in generators::poisson_params()) {
-        let t_mle = k as f64 / mu;
+        let t_mle = k.to_f64_exact() / mu;
         let metrics = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
         prop_assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-10);
       }

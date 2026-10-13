@@ -16,6 +16,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::exp;
+use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn optimize_skyline(
   graph: &Graph,
@@ -143,24 +144,16 @@ pub struct SkylineResult {
   pub(crate) log_likelihood: LogLh,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn equal_width_boundaries(t_min: f64, t_max: f64, n_seg: usize) -> Vec<f64> {
   let n_seg = n_seg.max(1);
   let mut boundaries: Vec<f64> = (0..=n_seg)
-    .map(|k| t_min + (t_max - t_min) * (k as f64 / n_seg as f64))
+    .map(|k| t_min + (t_max - t_min) * (k.to_f64_exact() / n_seg.to_f64_exact()))
     .collect();
   boundaries[0] = t_min;
   boundaries[n_seg] = t_max;
   boundaries
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn accumulate_segment_terms(
   lineage_counts: &PiecewiseConstantFn,
   edges: &[CoalescentEdgeData],
@@ -195,7 +188,7 @@ fn accumulate_segment_terms(
   let mut i_seg = vec![0.0; n_seg];
   for j in 0..n_int {
     running += coverage[j];
-    i_seg[segment_index(boundaries, mids[j])] += running as f64 * rate[j];
+    i_seg[segment_index(boundaries, mids[j])] += running.to_f64_exact() * rate[j];
   }
 
   let mut m_seg = vec![0.0; n_seg];

@@ -5,22 +5,20 @@ use crate::progress::LogSink;
 use crate::progress_info;
 use bon::bon;
 use deser::{Deserialize, Serialize};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use ndarray::{Array1, Array2, array};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use strum_macros::Display;
 use treetime_utils::adapters::{Array2Rows, ArrayVec};
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
-pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName, log: &dyn LogSink) {
+pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName, log: &dyn LogSink) -> Result<(), Report> {
   let output = GtrOutput::builder().gtr(gtr).model_name(model_name).build();
-  let json = json_write_str(&output, JsonPretty(true)).expect("GTR JSON serialization failed");
+  let json = json_write_str(&output, JsonPretty(true)).wrap_err("When writing the GTR model as JSON")?;
   progress_info!(log, "GTR model initialized:\n{json}");
+  Ok(())
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -144,15 +142,11 @@ pub struct JC69Params {
   pub(crate) alphabet: AlphabetName,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
-  let pi = Array1::<f64>::ones(n_states) / (n_states as f64);
+  let pi = Array1::<f64>::ones(n_states) / n_states.to_f64_exact();
   GTR::builder()
     .n_states(n_states)
     .mu(mu)
@@ -174,15 +168,11 @@ pub struct K80Params {
   pub(crate) alphabet: AlphabetName,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
-  let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
+  let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / n_states.to_f64_exact());
   let mut gtr = GTR::builder()
     .n_states(n_states)
     .mu(mu)
@@ -206,10 +196,6 @@ pub struct F81Params {
   pub(crate) alphabet: AlphabetName,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn hky85(
   HKY85Params {
     mu,
@@ -221,7 +207,7 @@ pub(crate) fn hky85(
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
-  let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / (n_states as f64));
+  let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / n_states.to_f64_exact());
   GTR::builder()
     .n_states(n_states)
     .mu(mu)
@@ -361,10 +347,6 @@ fn create_transversion_transition_W(alphabet: &Alphabet, kappa: f64) -> Result<A
   Ok(W)
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn tn93(
   TN93Params {
     mu,
@@ -385,7 +367,7 @@ pub(crate) fn tn93(
     [kappa1, kappa2, kappa1, 1.0   ]
   ]);
 
-  let pi = pi.unwrap_or_else(|| Array1::ones(n_states) / (n_states as f64));
+  let pi = pi.unwrap_or_else(|| Array1::ones(n_states) / n_states.to_f64_exact());
   let pi = &pi / pi.sum();
 
   GTR::builder()

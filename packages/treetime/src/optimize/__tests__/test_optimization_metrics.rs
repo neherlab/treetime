@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
   use crate::optimize::likelihood::OptimizationMetrics;
@@ -76,13 +71,13 @@ mod tests {
   fn test_optimization_metrics_add_preserves_precision() {
     let mut total = OptimizationMetrics::default();
 
-    for i in 0..1000 {
-      let small = OptimizationMetrics::new(LogLh::new(0.001), 0.0001 * (i as f64), -0.00001);
+    for i in 0..1000_u32 {
+      let small = OptimizationMetrics::new(LogLh::new(0.001), 0.0001 * f64::from(i), -0.00001);
       total.add(&small);
     }
 
     let expected_log_lh = 1.0;
-    let expected_derivative: f64 = (0..1000).map(|i| 0.0001 * (i as f64)).sum();
+    let expected_derivative: f64 = (0..1000_u32).map(|i| 0.0001 * f64::from(i)).sum();
     let expected_second_derivative = -0.01;
 
     pretty_assert_ulps_eq!(total.log_lh.value(), expected_log_lh, max_ulps = 1000);

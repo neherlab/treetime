@@ -11,6 +11,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::AsciiChar;
+use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn count_child_reversions(
   sparse: &[PartitionMarginalSparse],
@@ -125,10 +126,6 @@ pub(crate) fn slide_bifurcating_root_for_child(
   Ok(())
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn hoist_reverting_child(
   graph: &mut Graph,
   sparse: &mut [PartitionMarginalSparse],
@@ -169,7 +166,7 @@ pub(crate) fn hoist_reverting_child(
   let bl_uv = branch_lengths[&parent_edge_key].unwrap_or(0.0);
   let bl_vc = branch_lengths[&child_edge_key].unwrap_or(0.0);
   let bl_un = if total_parent_subs > 0 {
-    bl_uv * (total_hoisted_subs as f64) / (total_parent_subs as f64)
+    bl_uv * total_hoisted_subs.to_f64_exact() / total_parent_subs.to_f64_exact()
   } else {
     0.0
   };
