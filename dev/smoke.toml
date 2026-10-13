@@ -437,12 +437,11 @@ variant = "date-column"
 datasets = ["dengue/20"]
 args = "--date-column=date"
 
-# A tree without branch lengths
+# A tree whose internal edges have no branch lengths, which clock reads as 0, as v0 does
 [[clock]]
-variant = "tree-without-branch-lengths"
+variant = "tree-without-internal-branch-lengths"
 datasets = ["zika/20"]
-args = "--tree={data}/smoke/zika-20-tree-without-branch-lengths.nwk"
-fail = "kb/issues/M-clock-regression-missing-branch-length-diverges-from-v0.md"
+args = "--tree={data}/smoke/zika-20-tree-without-internal-branch-lengths.nwk"
 
 
 [[homoplasy]]

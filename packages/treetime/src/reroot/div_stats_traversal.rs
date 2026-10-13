@@ -1,3 +1,4 @@
+use crate::branch_lengths::branch_length_or_zero;
 use crate::make_report;
 use crate::reroot::div_stats::DivStats;
 use crate::reroot::traits::RootStats;
@@ -37,7 +38,7 @@ pub(crate) fn compute_div_stats(
     }
 
     let parent_edge = parent_edge.ok_or_else(|| make_report!("Non-root node {node_key} has no parent edge"))?;
-    let branch_length = branch_length_of(parent_edge, branch_lengths)?;
+    let branch_length = branch_length_or_zero(branch_lengths, parent_edge);
 
     if is_leaf {
       from_child.insert(
@@ -69,7 +70,7 @@ pub(crate) fn compute_div_stats(
       root_stats
     } else {
       let parent_edge = parent_edge.ok_or_else(|| make_report!("Non-root node {node_key} has no parent edge"))?;
-      let branch_length = branch_length_of(parent_edge, branch_lengths)?;
+      let branch_length = branch_length_or_zero(branch_lengths, parent_edge);
       let tp = *to_parent
         .get(&parent_edge)
         .ok_or_else(|| make_report!("Missing to_parent for edge {parent_edge}"))?;
@@ -136,11 +137,4 @@ struct NodeTopology {
   is_root: bool,
   child_edges: Vec<GraphEdgeKey>,
   parent_edge: Option<GraphEdgeKey>,
-}
-
-fn branch_length_of(
-  edge_key: GraphEdgeKey,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<f64, Report> {
-  branch_lengths[&edge_key].ok_or_else(|| make_report!("Edge {edge_key} has no branch length"))
 }

@@ -1,3 +1,4 @@
+use crate::branch_lengths::branch_length_or_zero;
 use crate::clock::clock_regression::ClockVarianceParams;
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockInputs, ClockState};
@@ -56,7 +57,7 @@ impl<'a> BranchPointCostFunction<'a> {
       .ok_or_else(|| make_report!("Target node not found for edge: {edge}"))?;
     let is_leaf = target_node.is_leaf();
     let node_time = inputs.likely_time(target_key);
-    let branch_length = branch_lengths[&edge].ok_or_else(|| make_report!("Edge {edge} has no weight"))?;
+    let branch_length = branch_length_or_zero(branch_lengths, edge);
     let branch_variance = options.variance_factor * branch_length + options.variance_offset;
 
     let edge_state = state.edge(edge);

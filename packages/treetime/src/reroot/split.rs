@@ -1,3 +1,4 @@
+use crate::branch_lengths::branch_length_or_zero;
 use crate::make_report;
 use crate::reroot::cost_function::EdgeCostFn;
 use crate::reroot::method_brent::optimize_brent;
@@ -24,7 +25,7 @@ where
     .get_edge(edge)
     .ok_or_else(|| make_report!("Edge not found: {edge}"))?;
   let target_key = edge_obj.target();
-  let branch_length = branch_lengths[&edge].ok_or_else(|| make_report!("Edge {edge} has no branch length"))?;
+  let branch_length = branch_length_or_zero(branch_lengths, edge);
 
   let is_leaf = graph
     .get_node(target_key)

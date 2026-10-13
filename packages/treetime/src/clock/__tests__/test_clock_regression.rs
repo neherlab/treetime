@@ -20,7 +20,6 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read;
-  use treetime_utils::assert_error;
 
   fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
     let t: f64 = dates.values().sum();
@@ -84,13 +83,42 @@ mod tests {
   }
 
   #[test]
-  fn test_clock_regression_reports_an_edge_without_branch_length() {
-    let result = helpers::root_regression(
+  fn test_clock_regression_reads_a_missing_branch_length_as_zero() -> Result<(), Report> {
+    let options = ClockVarianceParams::default();
+    let expected = helpers::root_regression(
+      "((A:0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
+      &dates_4(),
+      &options,
+    )?;
+    let actual = helpers::root_regression(
       "((A,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
       &dates_4(),
-      &ClockVarianceParams::default(),
-    );
-    assert_error!(result, "Edge 0 has no branch length");
+      &options,
+    )?;
+
+    assert_eq!(helpers::regression_bits(&expected), helpers::regression_bits(&actual));
+    Ok(())
+  }
+
+  #[test]
+  fn test_clock_regression_reroot_reads_a_missing_branch_length_as_zero() -> Result<(), Report> {
+    let (_, expected) = helpers::fit(
+      "((A:0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
+      &dates_4(),
+      &[],
+      false,
+      None,
+    )?;
+    let (_, actual) = helpers::fit(
+      "((A,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
+      &dates_4(),
+      &[],
+      false,
+      None,
+    )?;
+
+    assert_eq!(expected, actual);
+    Ok(())
   }
 
   #[test]

@@ -1,3 +1,4 @@
+use crate::branch_lengths::branch_length_or_zero;
 use crate::clock::clock_regression::{ClockTree, ClockVarianceParams};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockEdgeInput, ClockEdgeState, ClockInputs, ClockNodeInput, ClockState};
@@ -19,7 +20,6 @@ use treetime_graph::reroot::{
   EdgeMergeInfo, EdgeSplitInfo, RerootResult, StemRemovalInfo, apply_reroot_topology, record_merge, record_split,
   remove_node_if_trivial, remove_stem_root, split_edge, trivial_node_branch_lengths,
 };
-use treetime_utils::make_report;
 
 pub(crate) fn reroot_clock_tree(
   mut tree: ClockTree,
@@ -338,7 +338,7 @@ fn apply_reroot(
   let inverted_edge_keys = apply_reroot_topology(graph, old_root_key, new_root_key)?;
 
   for edge_key in &inverted_edge_keys {
-    let edge_len = branch_lengths[edge_key].ok_or_else(|| make_report!("Edge {edge_key} has no branch length"))?;
+    let edge_len = branch_length_or_zero(branch_lengths, *edge_key);
     let branch_variance = options.variance_factor * edge_len + options.variance_offset;
     let edge_state = state
       .edges
