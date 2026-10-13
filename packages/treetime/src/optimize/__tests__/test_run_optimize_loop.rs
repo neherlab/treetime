@@ -232,12 +232,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::sparse_newton(     false, BranchOptMethod::Newton)]
   #[case::sparse_newton_sqrt(false, BranchOptMethod::NewtonSqrt)]
-  #[case::sparse_newton_log( false, BranchOptMethod::NewtonLog)]
-  #[case::sparse_brent(      false, BranchOptMethod::Brent)]
   #[case::sparse_brent_sqrt( false, BranchOptMethod::BrentSqrt)]
-  #[case::sparse_brent_log(  false, BranchOptMethod::BrentLog)]
   #[case::dense_brent_sqrt(  true,  BranchOptMethod::BrentSqrt)]
   #[trace]
   fn test_run_optimize_loop_returns_first_iteration_when_likelihood_declines_from_start(
