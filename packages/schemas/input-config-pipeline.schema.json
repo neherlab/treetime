@@ -4256,7 +4256,7 @@
           "default": "auto"
         },
         "opt_method": {
-          "description": "Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt`\n(default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and\n`newton-log`; suffixes select $\\sqrt{t}$ or $\\ln(t)$.",
+          "description": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are\n`brent-sqrt` (default and v0-compatible) and `newton-sqrt`.",
           "$ref": "#/$defs/BranchOptMethod",
           "default": "brent-sqrt"
         },
@@ -4435,21 +4435,8 @@
       ]
     },
     "BranchOptMethod": {
-      "description": "Per-edge branch length optimization method.\n\nControls how `run_optimize_mixed()` finds the maximum-likelihood branch\nlength for each edge. Two orthogonal axes: algorithm (Newton-Raphson\nvs Brent's method) and parameterization ($t$, $\\sqrt{t}$, $\\ln(t)$).",
+      "description": "Per-edge branch length optimization method.\n\nControls how `run_optimize_mixed()` finds the maximum-likelihood branch\nlength for each edge: Brent's method or Newton-Raphson, both in $\\sqrt{t}$\nspace.",
       "oneOf": [
-        {
-          "anyOf": [
-            {
-              "description": "Brent's method in $t$ space (derivative-free, bracket-based).\n\nFinds the maximum within a bracket derived from the grid search bounds.\nConvergence is independent of Hessian conditioning. Uses `argmin::BrentOpt`.\nIncluded for completeness; `brent-sqrt` dominates for convergence speed.",
-              "type": "string",
-              "const": "brent"
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
         {
           "anyOf": [
             {
@@ -4466,48 +4453,9 @@
         {
           "anyOf": [
             {
-              "description": "Brent's method in $\\ln(t)$ space.\n\nSmoothest objective of all parameterizations, giving the best parabolic\ninterpolation. Requires a finite lower bound in log-space.",
-              "type": "string",
-              "const": "brent-log"
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        {
-          "anyOf": [
-            {
-              "description": "Newton-Raphson in $t$ space.\n\nBaseline Newton method matching RAxML-NG/IQ-TREE. The Poisson indel\nHessian ($-k/t^2$) can dominate the substitution Hessian on short\nbranches, causing the step-size convergence criterion to fire before\nthe combined gradient reaches zero.",
-              "type": "string",
-              "const": "newton"
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        {
-          "anyOf": [
-            {
               "description": "Newton-Raphson in $\\sqrt{t}$ space.\n\nReparameterizes the optimization variable as $s = \\sqrt{t}$ and applies\nthe chain rule to transform derivatives. Reduces the indel Hessian\nsingularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme\ncases ($t < 0.001$, $k > 10$).",
               "type": "string",
               "const": "newton-sqrt"
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        {
-          "anyOf": [
-            {
-              "description": "Newton-Raphson in $\\ln(t)$ space.\n\nEliminates the indel singularity entirely ($\\ell''_{\\text{indel}} = -\\mu t$,\nbounded). Natural relative tolerance. Best conditioning of all Newton\nvariants.",
-              "type": "string",
-              "const": "newton-log"
             },
             {
               "type": "string",

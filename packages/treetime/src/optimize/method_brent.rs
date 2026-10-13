@@ -8,34 +8,6 @@ use eyre::Report;
 
 const BRENT_MAX_ITER: u64 = 50;
 
-pub(super) fn brent_inner(
-  branch_length: f64,
-  contributions: &[OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
-  min_branch_length: f64,
-  one_mutation: f64,
-) -> Result<f64, Report> {
-  let (lower, upper) = brent_bracket(branch_length, min_branch_length, one_mutation);
-
-  let cost_fn = BranchLengthCostFn {
-    contributions,
-    indel_count,
-    indel_rate,
-    to_t: |t: f64| t,
-  };
-
-  let solver = BrentOpt::new(lower, upper);
-  let res = Executor::new(&cost_fn, solver)
-    .configure(|cfg| cfg.max_iters(BRENT_MAX_ITER))
-    .run()
-    .map_err(|e| make_report!("brent_inner: argmin BrentOpt failed at branch_length={branch_length}: {e}"))?;
-
-  res.state().best_param.ok_or_else(|| {
-    make_internal_report!("brent_inner: solver succeeded but reported no best_param at branch_length={branch_length}")
-  })
-}
-
 pub(super) fn brent_sqrt_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
@@ -65,37 +37,6 @@ pub(super) fn brent_sqrt_inner(
     )
   })?;
   Ok(s * s)
-}
-
-pub(super) fn brent_log_inner(
-  branch_length: f64,
-  contributions: &[OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
-  min_branch_length: f64,
-  one_mutation: f64,
-) -> Result<f64, Report> {
-  let (lower, upper) = brent_bracket(branch_length, min_branch_length, one_mutation);
-
-  let cost_fn = BranchLengthCostFn {
-    contributions,
-    indel_count,
-    indel_rate,
-    to_t: f64::exp,
-  };
-
-  let solver = BrentOpt::new(lower.ln(), upper.ln());
-  let res = Executor::new(&cost_fn, solver)
-    .configure(|cfg| cfg.max_iters(BRENT_MAX_ITER))
-    .run()
-    .map_err(|e| make_report!("brent_log_inner: argmin BrentOpt failed at branch_length={branch_length}: {e}"))?;
-
-  let u = res.state().best_param.ok_or_else(|| {
-    make_internal_report!(
-      "brent_log_inner: solver succeeded but reported no best_param at branch_length={branch_length}"
-    )
-  })?;
-  Ok(u.exp())
 }
 
 pub(super) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> (f64, f64) {

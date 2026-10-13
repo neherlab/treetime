@@ -18,12 +18,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_dense_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
@@ -76,12 +72,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_sparse_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = gap_free_alignment()?;

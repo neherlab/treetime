@@ -225,7 +225,7 @@ pub(super) mod tests {
       total_length_low,
       &contributions_low,
       &indel_counts_low,
-      BranchOptMethod::Newton,
+      BranchOptMethod::NewtonSqrt,
       1.0,
       &mut branch_lengths_low,
     )?;
@@ -237,7 +237,7 @@ pub(super) mod tests {
       total_length_high,
       &contributions_high,
       &indel_counts_high,
-      BranchOptMethod::Newton,
+      BranchOptMethod::NewtonSqrt,
       8.0,
       &mut branch_lengths_high,
     )?;
@@ -326,12 +326,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_indel_run_optimize_nonzero_with_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
@@ -392,12 +388,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_indel_zero_bl_pipeline_escapes_zero(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
@@ -635,12 +627,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_indel_min_branch_length_clamping(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;

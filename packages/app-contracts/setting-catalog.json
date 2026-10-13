@@ -8715,28 +8715,12 @@
           "nullable": false,
           "options": [
             {
-              "value": "brent",
-              "help": "Brent's method in $t$ space (derivative-free, bracket-based)."
-            },
-            {
               "value": "brent-sqrt",
               "help": "Brent's method in $\\sqrt{t}$ space."
             },
             {
-              "value": "brent-log",
-              "help": "Brent's method in $\\ln(t)$ space."
-            },
-            {
-              "value": "newton",
-              "help": "Newton-Raphson in $t$ space."
-            },
-            {
               "value": "newton-sqrt",
               "help": "Newton-Raphson in $\\sqrt{t}$ space."
-            },
-            {
-              "value": "newton-log",
-              "help": "Newton-Raphson in $\\ln(t)$ space."
             }
           ],
           "item_kind": "string",
@@ -8746,7 +8730,7 @@
             "OPT_METHOD"
           ],
           "conflicts": [],
-          "help": "Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt` (default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and `newton-log`; suffixes select $\\sqrt{t}$ or $\\ln(t)$.",
+          "help": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are `brent-sqrt` (default and v0-compatible) and `newton-sqrt`.",
           "more": ""
         },
         {

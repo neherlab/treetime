@@ -21,7 +21,7 @@ mod tests {
       total_length,
       &BTreeMap::new(),
       &BTreeMap::new(),
-      BranchOptMethod::Newton,
+      BranchOptMethod::NewtonSqrt,
       &mut branch_lengths,
     );
     assert_error!(
@@ -65,7 +65,7 @@ mod tests {
       total_length,
       &BTreeMap::new(),
       &BTreeMap::new(),
-      BranchOptMethod::Newton,
+      BranchOptMethod::NewtonSqrt,
       1.0,
       &mut branch_lengths,
     );

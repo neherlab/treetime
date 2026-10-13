@@ -13,12 +13,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimization_converges_within_iterations(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -66,12 +62,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimization_improves_or_maintains_likelihood(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -107,12 +99,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimization_produces_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;

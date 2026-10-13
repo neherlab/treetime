@@ -102,12 +102,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_loop_with_topology_cleanup_sparse(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
@@ -187,12 +183,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_loop_no_collapse_when_branches_nonzero(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
@@ -370,12 +362,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_optimize_loop_with_topology_cleanup_dense(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;
@@ -454,8 +442,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::brent_sqrt(BranchOptMethod::BrentSqrt)]
-  #[case::newton(    BranchOptMethod::Newton)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
   #[trace]
   fn test_run_optimize_loop_collapse_disabled_keeps_zero_edge(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nuc = Alphabet::new(AlphabetName::Nuc)?;

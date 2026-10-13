@@ -19,13 +19,9 @@ pub enum BranchLengthMode {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault)]
 pub enum BranchOptMethod {
-  Brent,
   #[default]
   BrentSqrt,
-  BrentLog,
-  Newton,
   NewtonSqrt,
-  NewtonLog,
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]

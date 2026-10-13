@@ -8,7 +8,7 @@ mod tests {
     gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
   };
   use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
-  use crate::optimize::method_newton::{newton_inner, newton_sqrt_inner};
+  use crate::optimize::method_newton::newton_sqrt_inner;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
@@ -87,12 +87,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton(     BranchOptMethod::Newton)]
   #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::newton_log( BranchOptMethod::NewtonLog)]
-  #[case::brent(      BranchOptMethod::Brent)]
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
-  #[case::brent_log(  BranchOptMethod::BrentLog)]
   #[trace]
   fn test_dispatch_zero_boundary_k80_identical_sequences(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
@@ -343,10 +339,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::brent(     BranchOptMethod::Brent)]
   #[case::brent_sqrt(BranchOptMethod::BrentSqrt)]
-  #[case::brent_log( BranchOptMethod::BrentLog)]
-  #[case::newton_log(BranchOptMethod::NewtonLog)]
   #[trace]
   fn test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
@@ -375,35 +368,6 @@ mod tests {
       zero_edges.len()
     );
     Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::t_0_05(0.05)]
-  #[case::t_0_10(0.10)]
-  #[case::t_0_15(0.15)]
-  #[case::t_0_20(0.20)]
-  #[case::t_0_25(0.25)]
-  #[case::t_0_30(0.30)]
-  #[case::t_0_40(0.40)]
-  #[case::t_0_50(0.50)]
-  #[case::t_0_60(0.60)]
-  #[case::t_0_70(0.70)]
-  #[case::t_0_80(0.80)]
-  #[case::t_0_90(0.90)]
-  #[trace]
-  fn test_dispatch_zero_boundary_newton_inner_does_not_clamp_to_zero_on_dinh_matsen_k80(#[case] t0: f64) {
-    let contributions = [make_dinh_matsen_k80_contribution()];
-    let one_mutation = 0.01;
-    let metrics = evaluate_mixed(&contributions, t0).expect("valid branch length");
-
-    let result = newton_inner(t0, &metrics, &contributions, 0, 0.0, 0.0, one_mutation).unwrap();
-    assert!(
-      result > 0.0,
-      "newton_inner from t0={t0} on the Dinh-Matsen K80 surface must return a positive value, got {result}. \
-       If this assertion ever fails, `reconcile_zero_boundary` may need an exact-zero entry condition; \
-       see the function rustdoc for the full justification."
-    );
   }
 
   #[test]

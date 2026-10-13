@@ -4421,10 +4421,10 @@ export type InitialGuessMode = 'auto' | 'always' | 'never';
  * Per-edge branch length optimization method.
  *
  * Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
- * length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
- * vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
+ * length for each edge: Brent's method or Newton-Raphson, both in $\sqrt{t}$
+ * space.
  */
-export type BranchOptMethod = 'brent' | 'brent-sqrt' | 'brent-log' | 'newton' | 'newton-sqrt' | 'newton-log';
+export type BranchOptMethod = 'brent-sqrt' | 'newton-sqrt';
 
 /**
  * Reroot methods available in the optimize command.
@@ -4672,9 +4672,8 @@ export type OptimizeConfig = {
    */
   branch_length_initial_guess?: InitialGuessMode;
   /**
-   * Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt`
-   * (default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and
-   * `newton-log`; suffixes select $\sqrt{t}$ or $\ln(t)$.
+   * Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are
+   * `brent-sqrt` (default and v0-compatible) and `newton-sqrt`.
    */
   opt_method?: BranchOptMethod;
   /**

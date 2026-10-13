@@ -3,8 +3,8 @@ use crate::optimize::branch_length::{is_valid_branch_length_value, validate_bran
 use crate::optimize::gather::EdgeContributions;
 use crate::optimize::indel::estimate_indel_rate;
 use crate::optimize::likelihood::evaluate_with_indels;
-use crate::optimize::method_brent::{brent_inner, brent_log_inner, brent_sqrt_inner};
-use crate::optimize::method_newton::{newton_inner, newton_log_inner, newton_sqrt_inner};
+use crate::optimize::method_brent::brent_sqrt_inner;
+use crate::optimize::method_newton::newton_sqrt_inner;
 use crate::optimize::params::{BranchOptMethod, ExistingBranchLengths};
 use crate::optimize::zero_boundary::{is_zero_branch_optimal, min_branch_length_for_indels, reconcile_zero_boundary};
 use crate::partition::optimize::contribution::OptimizationContribution;
@@ -265,14 +265,6 @@ fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimiza
   let min_branch_length = min_branch_length_for_indels(indel_count, one_mutation);
 
   let new_branch_length = match method {
-    BranchOptMethod::Brent => brent_inner(
-      branch_length,
-      contributions,
-      indel_count,
-      indel_rate,
-      min_branch_length,
-      one_mutation,
-    ),
     BranchOptMethod::BrentSqrt => brent_sqrt_inner(
       branch_length,
       contributions,
@@ -281,47 +273,10 @@ fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimiza
       min_branch_length,
       one_mutation,
     ),
-    BranchOptMethod::BrentLog => brent_log_inner(
-      branch_length,
-      contributions,
-      indel_count,
-      indel_rate,
-      min_branch_length,
-      one_mutation,
-    ),
-    BranchOptMethod::Newton => {
-      let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
-      newton_inner(
-        branch_length,
-        &metrics,
-        contributions,
-        indel_count,
-        indel_rate,
-        min_branch_length,
-        one_mutation,
-      )
-    },
     BranchOptMethod::NewtonSqrt => {
       let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
       newton_sqrt_inner(
         branch_length,
-        &metrics,
-        contributions,
-        indel_count,
-        indel_rate,
-        min_branch_length,
-        one_mutation,
-      )
-    },
-    BranchOptMethod::NewtonLog => {
-      let bl = if branch_length == 0.0 {
-        one_mutation
-      } else {
-        branch_length
-      };
-      let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, bl)?;
-      newton_log_inner(
-        bl,
         &metrics,
         contributions,
         indel_count,

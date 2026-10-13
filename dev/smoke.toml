@@ -522,29 +522,9 @@ variant = "dense"
 args = "--dense=true"
 
 [[optimize]]
-variant = "brent"
-datasets = ["flu/h3n2/20"]
-args = "--dense=false --opt-method=brent"
-
-[[optimize]]
-variant = "brent-log"
-datasets = ["flu/h3n2/20"]
-args = "--dense=false --opt-method=brent-log"
-
-[[optimize]]
-variant = "newton"
-datasets = ["flu/h3n2/20"]
-args = "--dense=false --opt-method=newton"
-
-[[optimize]]
 variant = "newton-sqrt"
 datasets = ["flu/h3n2/20"]
 args = "--dense=false --opt-method=newton-sqrt"
-
-[[optimize]]
-variant = "newton-log"
-datasets = ["flu/h3n2/20"]
-args = "--dense=false --opt-method=newton-log"
 
 [[optimize]]
 variant = "reroot-min-dev"

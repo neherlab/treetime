@@ -248,9 +248,8 @@ pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessModeCli::Auto, help_heading = "Branch lengths"))]
   pub branch_length_initial_guess: InitialGuessModeCli,
 
-  /// Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt`
-  /// (default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and
-  /// `newton-log`; suffixes select $\sqrt{t}$ or $\ln(t)$.
+  /// Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are
+  /// `brent-sqrt` (default and v0-compatible) and `newton-sqrt`.
   #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethodCli::default(), help_heading = "Branch lengths"))]
   pub opt_method: BranchOptMethodCli,
 
@@ -348,21 +347,14 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 /// Per-edge branch length optimization method.
 ///
 /// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
-/// length for each edge. Two orthogonal axes: algorithm (Newton-Raphson
-/// vs Brent's method) and parameterization ($t$, $\sqrt{t}$, $\ln(t)$).
+/// length for each edge: Brent's method or Newton-Raphson, both in $\sqrt{t}$
+/// space.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "BranchOptMethod")]
 pub enum BranchOptMethodCli {
-  /// Brent's method in $t$ space (derivative-free, bracket-based).
-  ///
-  /// Finds the maximum within a bracket derived from the grid search bounds.
-  /// Convergence is independent of Hessian conditioning. Uses `argmin::BrentOpt`.
-  /// Included for completeness; `brent-sqrt` dominates for convergence speed.
-  Brent,
-
   /// Brent's method in $\sqrt{t}$ space.
   ///
   /// Matches v0 exactly (same algorithm, same parameterization). The $\sqrt{t}$
@@ -371,20 +363,6 @@ pub enum BranchOptMethodCli {
   #[default]
   BrentSqrt,
 
-  /// Brent's method in $\ln(t)$ space.
-  ///
-  /// Smoothest objective of all parameterizations, giving the best parabolic
-  /// interpolation. Requires a finite lower bound in log-space.
-  BrentLog,
-
-  /// Newton-Raphson in $t$ space.
-  ///
-  /// Baseline Newton method matching RAxML-NG/IQ-TREE. The Poisson indel
-  /// Hessian ($-k/t^2$) can dominate the substitution Hessian on short
-  /// branches, causing the step-size convergence criterion to fire before
-  /// the combined gradient reaches zero.
-  Newton,
-
   /// Newton-Raphson in $\sqrt{t}$ space.
   ///
   /// Reparameterizes the optimization variable as $s = \sqrt{t}$ and applies
@@ -392,24 +370,13 @@ pub enum BranchOptMethodCli {
   /// singularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme
   /// cases ($t < 0.001$, $k > 10$).
   NewtonSqrt,
-
-  /// Newton-Raphson in $\ln(t)$ space.
-  ///
-  /// Eliminates the indel singularity entirely ($\ell''_{\text{indel}} = -\mu t$,
-  /// bounded). Natural relative tolerance. Best conditioning of all Newton
-  /// variants.
-  NewtonLog,
 }
 
 impl From<BranchOptMethodCli> for BranchOptMethod {
   fn from(method: BranchOptMethodCli) -> Self {
     match method {
-      BranchOptMethodCli::Brent => BranchOptMethod::Brent,
       BranchOptMethodCli::BrentSqrt => BranchOptMethod::BrentSqrt,
-      BranchOptMethodCli::BrentLog => BranchOptMethod::BrentLog,
-      BranchOptMethodCli::Newton => BranchOptMethod::Newton,
       BranchOptMethodCli::NewtonSqrt => BranchOptMethod::NewtonSqrt,
-      BranchOptMethodCli::NewtonLog => BranchOptMethod::NewtonLog,
     }
   }
 }

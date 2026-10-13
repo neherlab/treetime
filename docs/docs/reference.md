@@ -584,23 +584,15 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
   - `never`:
     Use input branch lengths as-is. Fails if any edge has a missing or invalid branch length
 
-* `--opt-method <OPT_METHOD>` — Per-edge optimizer and parameterization. Values are `brent`, `brent-sqrt` (default and v0-compatible), `brent-log`, `newton`, `newton-sqrt`, and `newton-log`; suffixes select $\sqrt{t}$ or $\ln(t)$
+* `--opt-method <OPT_METHOD>` — Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are `brent-sqrt` (default and v0-compatible) and `newton-sqrt`
 
   Default value: `brent-sqrt`
 
   Possible values:
-  - `brent`:
-    Brent's method in $t$ space (derivative-free, bracket-based)
   - `brent-sqrt`:
     Brent's method in $\sqrt{t}$ space
-  - `brent-log`:
-    Brent's method in $\ln(t)$ space
-  - `newton`:
-    Newton-Raphson in $t$ space
   - `newton-sqrt`:
     Newton-Raphson in $\sqrt{t}$ space
-  - `newton-log`:
-    Newton-Raphson in $\ln(t)$ space
 
 * `--no-indels` — Disable indel (insertion/deletion) contributions to branch-length optimization.
 
