@@ -2,6 +2,7 @@
 mod __tests__;
 pub mod adapters;
 pub mod array;
+pub mod cast;
 pub mod collections;
 pub mod datetime;
 pub mod env;
