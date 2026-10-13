@@ -2,8 +2,9 @@
 
 Simulated trees and sequences with known node dates, used to validate TreeTime timetree inference.
 
-`./generate_all.sh [n_reps=10] [n_jobs=available CPUs]` writes `data/`. One replicate: `python simulate.py --coal exp --rep 0`
-(with `PYTHONPATH=../packages/legacy/treetime`).
+`./generate_all.sh [n_reps=10] [n_jobs=available CPUs] [tips="10 30 100"]` writes `data/` (10 tips per sample time),
+`data_n30/` and `data_n100/`. One replicate: `python simulate.py --coal exp --rep 0 [--tips-per-sample 30 --out data_n30]`
+(with `PYTHONPATH=../packages/legacy/treetime`). A 100-tip replicate takes about 3 minutes on one core.
 
 ## Trees (`coalescent.py`)
 
@@ -16,7 +17,8 @@ merges at rate `1/Tc(tau)`.
 | `exp`       | 10 exp(-tau/5)                                |
 | `piecewise` | 10 for tau < 5, 1 for 5 <= tau < 6, 3 beyond  |
 
-Sampling: 10 tips at each of tau = 0, 0.1, ..., 3.9 (400 tips). The most recent sample is dated 2025.0.
+Sampling: 10, 30 or 100 tips at each of tau = 0, 0.1, ..., 3.9 (400, 1200 or 4000 tips). The most recent sample is
+dated 2025.0. The seeds of the larger sets include the tip count, so their trees are independent of the 10-tip trees.
 
 ## Sequences (`simulate.py`)
 
@@ -30,7 +32,7 @@ multiplies `mu` by the raw average rate.
 ## Layout
 
 ```
-data/<coal>/rep<NN>/
+data/<coal>/rep<NN>/        10 tips per sample time; data_n30/ and data_n100/ have the same layout
   tree.nwk            true time tree, named nodes, branch lengths in years
   tip_dates.tsv       name, date, tau   (TreeTime --dates format)
   node_dates.tsv      name, date, tau   for internal nodes incl. node_root
@@ -50,7 +52,14 @@ python run.py --suite optimize --set core       # branch length optimization
 python evaluate.py --suite timetree             # writes results/timetree.tsv, prints a summary
 python analyze.py                               # results/report/: summary.md and figures
 python analyze.py --baseline ../old/results     # also compare.md: per-run changes against an earlier run
+python run.py --suite optimize --set core --data data_n100 --results results_n100   # larger trees: own data and results
+python evaluate.py --suite optimize --data data_n100 --results results_n100
+python analyze.py --results results_n100
 ```
+
+At 4000 tips (`data_n100`, L=10000, mu=0.01), one run takes about 10 s for `optimize` and 1.5 min for `timetree`, with
+1.7 GB peak memory; set `-j` so that jobs times 2 GB fits in memory. `fixed-topo-dense` needs more than 8 GB there;
+skip it with `--filter '^(?!.*fixed-topo-dense)'`.
 
 `analyze.py` needs `matplotlib`, `tabulate` and `biopython` in addition to `pandas`. Failed runs carry their TreeTime error message
 in the `error` column of the TSV.
@@ -74,7 +83,9 @@ Inputs (`inputs.py`, written to `data/.../inputs/`) are divergence trees on the 
   `fixed-topo-dense` and `default`. Metrics, in substitutions (branch length times L): per-branch RMSE against the
   realized branch lengths (also for the perturbed input, and by realized substitutions), total length against realized
   and expected, zero and non-zero branches kept as such, squared deviation from mu t relative to Poisson noise, and the
-  sum of the two root branches, which is the only identifiable quantity at the root. Dense takes minutes per run;
+  sum of the two root branches, which is the only identifiable quantity at the root. Per-branch lengths go to
+  `branches.tsv` in each run directory; `optimize_dispersion.png` bins branches by mu L t and plots the variance of
+  the optimized counts against the mean (Poisson: equal). Dense takes minutes per run;
   `--filter '^(?!.*fixed-topo-dense/.*(rep0[3-9]|L10000))'` limits it to rep00-02 at L=1000.
 
 Nodes and branches are matched to the truth by their set of descendant tips.

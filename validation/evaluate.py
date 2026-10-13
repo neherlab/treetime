@@ -1,7 +1,8 @@
 """Compute metrics for every finished run and write results/<suite>.tsv; print a summary table.
 
 Usage: python evaluate.py --suite timetree [-j 16]
-Per-run metrics are cached in metrics.json next to run.json.
+Per-run metrics are cached in metrics.json next to run.json; optimize runs also keep their per-branch lengths in
+branches.tsv.
 """
 
 import argparse
@@ -120,7 +121,7 @@ def eval_optimize(out, set_dir):
     """Optimized branch lengths against the realized (differences / L) and expected (mu t) ones, in substitutions.
 
     Branches are matched by the tips below them. Only the sum of the two branches at the root is identifiable, so
-    those are scored as a sum and excluded from the per-branch metrics.
+    those are scored as a sum and excluded from the per-branch metrics and from branches.tsv.
     """
     L = json.loads((set_dir / 'gtr.json').read_text())['L']
 
@@ -136,6 +137,9 @@ def eval_optimize(out, set_dir):
     )  # fmt: skip
     keys = [k for k in realized if k in optimized and k not in root_sides]
     R, E, S, O = (L * np.array([d[k] for k in keys]) for d in (realized, expected, start, optimized))
+    pd.DataFrame({'expected': E, 'realized': R, 'optimized': O}).to_csv(
+        out / 'branches.tsv', sep='\t', index=False, float_format='%.6g'
+    )
 
     m = {'frac_branches_matched': len(keys) / (len(realized) - len(root_sides))}
     m['input_rmse_subs'] = float(np.sqrt(np.mean((S - R) ** 2)))
@@ -172,9 +176,10 @@ def error_message(log):
 
 def evaluate(out, suite, data):
     cache = out / 'metrics.json'
-    if cache.exists() and cache.stat().st_mtime >= (out / 'run.json').stat().st_mtime:
-        return json.loads(cache.read_text())
     run = json.loads((out / 'run.json').read_text())
+    products = [cache] + ([out / 'branches.tsv'] if suite == 'optimize' and run['returncode'] == 0 else [])
+    if all(f.exists() and f.stat().st_mtime >= (out / 'run.json').stat().st_mtime for f in products):
+        return json.loads(cache.read_text())
     variant, coal, rep, setname = out.parts[-4:]
     L, mu = setname.removeprefix('L').split('_mu')
     row = {'variant': variant, 'coal': coal, 'rep': rep, 'L': int(L), 'mu': float(mu)}

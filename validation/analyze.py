@@ -356,6 +356,54 @@ def fig_optimize(o, path):
     plt.close(fig)
 
 
+def fig_optimize_dispersion(results, path, n_bins=20):
+    """Variance of optimized and realized substitutions around mu L t against their mean, within bins of mu L t.
+
+    Branches of similar expected length stand in for repeated simulations of one branch: for Poisson counts the
+    variance equals the mean in every bin.
+    """
+    runs = sorted((results / 'optimize' / 'fixed-topo').glob('*/rep*/L*/branches.tsv'))
+    if not runs:
+        return
+    b = pd.concat(pd.read_csv(r, sep='\t').assign(setname=r.parent.name) for r in runs)
+    b[['L', 'mu']] = b.setname.str.removeprefix('L').str.split('_mu', expand=True).astype({0: int, 1: float})
+    series = {'optimized': 'optimized', 'realized': 'realized (simulation)'}
+    fig, axes = plt.subplots(2, 2, figsize=(12, 7.5), sharex='col', gridspec_kw={'height_ratios': [3, 2]})
+    for j, L in enumerate(sorted(b.L.unique())):
+        top, bottom = axes[:, j]
+        means = []
+        for mu, g in b[b.L == L].groupby('mu'):
+            g = g.assign(bin=pd.qcut(g.expected, n_bins, duplicates='drop'))
+            for col in series:
+                s = (g[col] - g.expected).groupby(g.bin, observed=True).var()
+                m = g.expected.groupby(g.bin, observed=True).mean()
+                means.append(m)
+                style = {'color': MU_COLOR[mu], 'ls': '', 'marker': 'o', 'zorder': 3}
+                style |= {'ms': 4} if col == 'optimized' else {'ms': 8, 'mfc': 'none', 'mew': 1}
+                top.plot(m, s, **style)
+                keep = m >= 0.1  # below, most bins are nearly all zeros and the ratio is pure noise
+                bottom.plot(m[keep], (s / m)[keep], **style)
+        means = pd.concat(means)
+        lim = np.array([means.min() / 2, means.max() * 2])
+        top.plot(lim, lim, color=INK2, lw=1, zorder=1)
+        bottom.axhline(1, color=INK2, lw=1, zorder=1)
+        n = len(b[b.L == L]) // b[b.L == L].mu.nunique() // n_bins
+        top.set(xscale='log', yscale='log', xlim=lim, ylim=lim, ylabel='variance of (count - mu L t)',
+                title=f'L={L}: {n_bins} quantile bins of mu L t per mu (~{n} branches each)')  # fmt: skip
+        bottom.set(xscale='log', ylim=(0.5, 1.5), xlabel='mean mu L t in bin (expected substitutions)',
+                   ylabel='variance / mean (bins with mean >= 0.1)')  # fmt: skip
+    handles = ([plt.Line2D([], [], color=c, marker='o', ls='', label=f'mu={mu:g}') for mu, c in MU_COLOR.items()]
+               + [plt.Line2D([], [], color=INK2, marker='o', ms=4, ls='', label='optimized'),
+                  plt.Line2D([], [], color=INK2, marker='o', ms=8, mfc='none', ls='', label='realized (simulation)'),
+                  plt.Line2D([], [], color=INK2, lw=1, label='variance = mean')])  # fmt: skip
+    fig.legend(handles=handles, loc='upper center', ncol=7, bbox_to_anchor=(0.5, 1.03))
+    fig.suptitle('Per-branch dispersion of optimized branch lengths around mu L t (true topology kept, all replicates)',
+                 y=1.07, x=0.04, ha='left')  # fmt: skip
+    fig.tight_layout()
+    fig.savefig(path, dpi=130, bbox_inches='tight')
+    plt.close(fig)
+
+
 def fig_runtime(d, path):
     s = d[d.returncode == 0]
     fig, ax = plt.subplots(figsize=(5.5, 3.6))
@@ -393,6 +441,7 @@ def main():
         fig_ancestral(t['ancestral'], out / 'ancestral.png')
     if 'optimize' in t:
         fig_optimize(t['optimize'], out / 'optimize.png')
+        fig_optimize_dispersion(args.results, out / 'optimize_dispersion.png')
     if args.baseline:
         (out / 'compare.md').write_text(compare(t, load(args.baseline)))
     print(f'wrote {out}')
