@@ -32,45 +32,37 @@ pub enum MarginalReconstruction {
   Sparse(SparseReconstruction),
 }
 
+macro_rules! each_kind {
+  ($self:expr, |$reconstruction:ident| $body:expr) => {
+    match $self {
+      Self::Dense($reconstruction) => $body,
+      Self::Sparse($reconstruction) => $body,
+    }
+  };
+}
+
 impl MarginalReconstruction {
   pub(crate) fn gtr(&self) -> &GTR {
-    match self {
-      Self::Dense(reconstruction) => &reconstruction.gtr,
-      Self::Sparse(reconstruction) => &reconstruction.gtr,
-    }
+    each_kind!(self, |reconstruction| &reconstruction.gtr)
   }
 
   pub(crate) fn gtr_mut(&mut self) -> &mut GTR {
-    match self {
-      Self::Dense(reconstruction) => &mut reconstruction.gtr,
-      Self::Sparse(reconstruction) => &mut reconstruction.gtr,
-    }
+    each_kind!(self, |reconstruction| &mut reconstruction.gtr)
   }
 
   pub(crate) fn sequence_length(&self) -> usize {
-    match self {
-      Self::Dense(reconstruction) => reconstruction.partition.length,
-      Self::Sparse(reconstruction) => reconstruction.partition.length,
-    }
+    each_kind!(self, |reconstruction| reconstruction.partition.length)
   }
 
   pub fn alphabet(&self) -> &Alphabet {
-    match self {
-      Self::Dense(reconstruction) => &reconstruction.partition.alphabet,
-      Self::Sparse(reconstruction) => &reconstruction.partition.alphabet,
-    }
+    each_kind!(self, |reconstruction| &reconstruction.partition.alphabet)
   }
 
   pub(crate) fn graph_log_lh(&self, graph: &Graph) -> Result<LogLh, Report> {
     let root_key = graph.root_key()?;
-    Ok(match self {
-      Self::Dense(reconstruction) => reconstruction
-        .partition
-        .get_log_lh(&reconstruction.node_states, root_key),
-      Self::Sparse(reconstruction) => reconstruction
-        .partition
-        .get_log_lh(&reconstruction.node_states, root_key),
-    })
+    Ok(each_kind!(self, |reconstruction| reconstruction
+      .partition
+      .get_log_lh(&reconstruction.node_states, root_key)))
   }
 
   pub(crate) fn marginal_update(
@@ -96,18 +88,12 @@ impl MarginalReconstruction {
     sample_mode: SampleMode,
     rng: &mut dyn RngCore,
   ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
-    match self {
-      Self::Dense(reconstruction) => {
-        reconstruction
-          .partition
-          .sample_sequences(graph, &reconstruction.node_states, sample_mode, rng)
-      },
-      Self::Sparse(reconstruction) => {
-        reconstruction
-          .partition
-          .sample_sequences(graph, &reconstruction.node_states, sample_mode, rng)
-      },
-    }
+    each_kind!(self, |reconstruction| reconstruction.partition.sample_sequences(
+      graph,
+      &reconstruction.node_states,
+      sample_mode,
+      rng
+    ))
   }
 
   pub(crate) fn node_sequence(&self, graph: &Graph, impute: bool, node_key: GraphNodeKey) -> Result<Seq, Report> {
@@ -171,25 +157,15 @@ impl MarginalReconstruction {
   }
 
   pub(crate) fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> SeqOverlay {
-    match self {
-      Self::Dense(reconstruction) => reconstruction
-        .partition
-        .extract_ancestral_sequence(&reconstruction.node_states, node_key),
-      Self::Sparse(reconstruction) => reconstruction
-        .partition
-        .extract_ancestral_sequence(&reconstruction.node_states, node_key),
-    }
+    each_kind!(self, |reconstruction| reconstruction
+      .partition
+      .extract_ancestral_sequence(&reconstruction.node_states, node_key))
   }
 
   pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
-    match self {
-      Self::Dense(reconstruction) => reconstruction
-        .partition
-        .root_sequence(&reconstruction.node_states, graph),
-      Self::Sparse(reconstruction) => reconstruction
-        .partition
-        .root_sequence(&reconstruction.node_states, graph),
-    }
+    each_kind!(self, |reconstruction| reconstruction
+      .partition
+      .root_sequence(&reconstruction.node_states, graph))
   }
 
   pub(crate) fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
