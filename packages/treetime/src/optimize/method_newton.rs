@@ -4,7 +4,7 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use eyre::Report;
 use num::clamp;
 
-pub(super) const NEWTON_REL_TOL: f64 = 0.001;
+const NEWTON_REL_TOL: f64 = 0.001;
 
 const NEWTON_ABS_TOL: f64 = 1e-8;
 
