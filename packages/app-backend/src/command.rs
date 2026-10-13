@@ -215,68 +215,6 @@ pub trait AppCommandExt {
   fn remove_output_paths(self, settings: &mut Map<String, Value>) -> Result<(), Report>;
 }
 
-pub struct PreparedCommand {
-  pub config: Map<String, Value>,
-  pub changed_settings: Vec<String>,
-  pub args: CommandArgs,
-}
-
-/// Result of a command that ran to completion.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
-pub struct CommandOutcome {
-  /// Command that ran.
-  pub command: AppCommand,
-  /// Files of the command's output plan that exist after the run, sorted by path.
-  pub output_files: Vec<OutputFile>,
-}
-
-/// One file a command wrote.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]
-pub struct OutputFile {
-  /// Path of the file.
-  pub path: PathBuf,
-  /// Output selection that produced the file.
-  pub kind: OutputSelection,
-}
-
-trait RunConfig: RawConfig {
-  fn set_run_outputs(&mut self, out_dir: &Path);
-}
-
-macro_rules! impl_run_config {
-  ($raw:ty, $kind:ident, [$($required:expr),* $(,)?]) => {
-    impl RunConfig for $raw {
-      fn set_run_outputs(&mut self, out_dir: &Path) {
-        self.output.output_all = Some(out_dir.to_path_buf());
-        self.output_selection = run_output_selection(CommandKind::$kind, &self.output_selection, &[$($required),*]);
-      }
-    }
-  };
-}
-
-impl_run_config!(
-  TreetimeTimetreeArgsRaw,
-  Timetree,
-  [
-    TimetreeOutputSelection::Auspice,
-    TimetreeOutputSelection::Tracelog,
-    TimetreeOutputSelection::ClockCsv,
-  ]
-);
-impl_run_config!(TreetimeOptimizeArgsRaw, Optimize, [OptimizeOutputSelection::Auspice]);
-impl_run_config!(TreetimePruneArgsRaw, Prune, [PruneOutputSelection::Auspice]);
-impl_run_config!(TreetimeAncestralArgsRaw, Ancestral, [AncestralOutputSelection::Auspice]);
-impl_run_config!(
-  TreetimeHomoplasyArgsRaw,
-  Homoplasy,
-  [
-    HomoplasyOutputSelection::Auspice,
-    HomoplasyOutputSelection::HomoplasyStats,
-  ]
-);
-impl_run_config!(TreetimeClockArgsRaw, Clock, [ClockOutputSelection::Auspice]);
-impl_run_config!(TreetimeMugrationArgsRaw, Mugration, [MugrationOutputSelection::Auspice]);
-
 fn prepare_source(
   command: AppCommand,
   source_name: &str,
@@ -319,6 +257,44 @@ fn prepare<R: RunConfig>(
     changed_settings,
     args: R::wrap(args),
   })
+}
+
+macro_rules! impl_run_config {
+  ($raw:ty, $kind:ident, [$($required:expr),* $(,)?]) => {
+    impl RunConfig for $raw {
+      fn set_run_outputs(&mut self, out_dir: &Path) {
+        self.output.output_all = Some(out_dir.to_path_buf());
+        self.output_selection = run_output_selection(CommandKind::$kind, &self.output_selection, &[$($required),*]);
+      }
+    }
+  };
+}
+
+impl_run_config!(
+  TreetimeTimetreeArgsRaw,
+  Timetree,
+  [
+    TimetreeOutputSelection::Auspice,
+    TimetreeOutputSelection::Tracelog,
+    TimetreeOutputSelection::ClockCsv,
+  ]
+);
+impl_run_config!(TreetimeOptimizeArgsRaw, Optimize, [OptimizeOutputSelection::Auspice]);
+impl_run_config!(TreetimePruneArgsRaw, Prune, [PruneOutputSelection::Auspice]);
+impl_run_config!(TreetimeAncestralArgsRaw, Ancestral, [AncestralOutputSelection::Auspice]);
+impl_run_config!(
+  TreetimeHomoplasyArgsRaw,
+  Homoplasy,
+  [
+    HomoplasyOutputSelection::Auspice,
+    HomoplasyOutputSelection::HomoplasyStats,
+  ]
+);
+impl_run_config!(TreetimeClockArgsRaw, Clock, [ClockOutputSelection::Auspice]);
+impl_run_config!(TreetimeMugrationArgsRaw, Mugration, [MugrationOutputSelection::Auspice]);
+
+trait RunConfig: RawConfig {
+  fn set_run_outputs(&mut self, out_dir: &Path);
 }
 
 fn changed_settings(
@@ -406,4 +382,28 @@ fn existing_files(planned: &Path) -> Result<Vec<PathBuf>, Report> {
     }
   }
   Ok(files)
+}
+
+pub struct PreparedCommand {
+  pub config: Map<String, Value>,
+  pub changed_settings: Vec<String>,
+  pub args: CommandArgs,
+}
+
+/// Result of a command that ran to completion.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+pub struct CommandOutcome {
+  /// Command that ran.
+  pub command: AppCommand,
+  /// Files of the command's output plan that exist after the run, sorted by path.
+  pub output_files: Vec<OutputFile>,
+}
+
+/// One file a command wrote.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]
+pub struct OutputFile {
+  /// Path of the file.
+  pub path: PathBuf,
+  /// Output selection that produced the file.
+  pub kind: OutputSelection,
 }

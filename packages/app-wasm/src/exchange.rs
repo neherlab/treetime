@@ -145,14 +145,14 @@ pub struct ResponseHead {
   pub header_values: Vec<String>,
 }
 
-type ResponseFuture = Pin<Box<dyn Future<Output = Response> + Send>>;
-
 enum State {
   Waiting(ResponseFuture),
   Streaming(BodyDataStream),
   Reading,
   Ended,
 }
+
+type ResponseFuture = Pin<Box<dyn Future<Output = Response> + Send>>;
 
 fn aborted() -> Report {
   make_report!("the exchange was aborted")
