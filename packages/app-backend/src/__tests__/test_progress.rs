@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::command::run_command;
   use crate::__tests__::test_support::tests::prepare_value;
+  use crate::command::run_command;
   use app_commands::command::AppCommand;
   use helpers::{RecordingProgress, config_for};
   use itertools::Itertools;

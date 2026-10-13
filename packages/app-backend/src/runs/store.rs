@@ -96,8 +96,10 @@ impl RunStore {
   pub fn write(&self, record: &RunRecord) -> Result<(), Report> {
     let path = self.run_dir(&record.id).join(RUN_FILE);
     let text = format!("{}\n", json_write_str(record, JsonPretty(true))?);
-    write_atomically(&path, |file| file.write_all(text.as_bytes()).wrap_err("When writing the text"))
-      .wrap_err_with(|| format!("When writing the run record '{}'", path.display()))
+    write_atomically(&path, |file| {
+      file.write_all(text.as_bytes()).wrap_err("When writing the text")
+    })
+    .wrap_err_with(|| format!("When writing the run record '{}'", path.display()))
   }
 
   pub fn list(&self) -> Result<Vec<RunRecord>, Report> {
