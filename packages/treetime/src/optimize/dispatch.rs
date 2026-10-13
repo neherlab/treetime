@@ -11,6 +11,7 @@ use crate::{make_error, make_internal_report, make_report};
 use eyre::{Report, WrapErr};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::{BTreeMap, BTreeSet};
+use std::mem::take;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 
@@ -67,9 +68,6 @@ pub(crate) fn run_optimize_mixed_inner(
   }
 
   let chains = SeriesChain::capture_all(graph, branch_lengths);
-  // The likelihood depends only on the sum of edges joined by a node without data of its own and with two edges (a
-  // bifurcating root or a single-child node). Optimizing one edge of such a chain with the others held at their current
-  // lengths therefore optimizes the sum; the held edges are skipped and the sum is redistributed by `restore`.
   let held: BTreeSet<GraphEdgeKey> = chains.iter().flat_map(SeriesChain::held).collect();
   let chain_indel_counts: BTreeMap<GraphEdgeKey, usize> = chains
     .iter()
@@ -113,16 +111,14 @@ pub(crate) fn run_optimize_mixed_inner(
   Ok(())
 }
 
-/// Edges in series: joined by nodes without data that have exactly two edges (bifurcating root, single-child nodes).
 struct SeriesChain {
   edges: Vec<GraphEdgeKey>,
   ratios: Vec<f64>,
-  /// Edge whose optimization yields the optimal sum (the longest one, so the zero clamp rarely binds).
   optimized: GraphEdgeKey,
 }
 
 impl SeriesChain {
-  #[allow(
+  #[expect(
     clippy::as_conversions,
     reason = "count/index numeric cast is exact for the domain range"
   )]
@@ -147,7 +143,7 @@ impl SeriesChain {
           }
         },
         (Some(g0), Some(g1)) => {
-          let moved = std::mem::take(&mut groups[g1]);
+          let moved = take(&mut groups[g1]);
           moved.iter().for_each(|&e| _ = chain_of.insert(e, g0));
           groups[g0].extend(moved);
         },
@@ -180,8 +176,6 @@ impl SeriesChain {
   }
 
   fn restore(self, branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>) {
-    // A zero optimum of the optimized edge only bounds the sum by the held lengths; collapse it and let the next
-    // iteration, with all chain edges at zero, find the sum exactly.
     let total = if branch_lengths[&self.optimized] == Some(0.0) {
       0.0
     } else {
