@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
   use eyre::Report;
-  use helpers::{V0Report, load_case, run_v1};
+  use helpers::{V0Report, homoplasy_result, load_case};
   use pretty_assertions::assert_eq;
 
   #[test]
-  fn test_gm_homoplasy_zika_86_matches_v0() -> Result<(), Report> {
+  fn test_gm_homoplasy_matches_v0_on_zika_86() -> Result<(), Report> {
     let (inputs, expected) = load_case("zika_86_jc")?;
-    let actual = V0Report::from_v1(&run_v1(&inputs)?);
+    let actual = V0Report::from_v1(&homoplasy_result(&inputs)?);
     assert_eq!(expected, actual);
     Ok(())
   }
@@ -126,7 +126,7 @@ mod tests {
       ))
     }
 
-    pub(super) fn run_v1(inputs: &GmInputs) -> Result<HomoplasyResult, Report> {
+    pub(super) fn homoplasy_result(inputs: &GmInputs) -> Result<HomoplasyResult, Report> {
       let out = tempdir()?;
       let root = workspace_root();
       let raw = TreetimeHomoplasyArgsRaw::try_parse_from([

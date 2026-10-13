@@ -8,7 +8,7 @@ v1 code: `fn run_homoplasy()` in [`packages/app-commands/src/commands/homoplasy/
 
 v0 places mutations with joint maximum likelihood reconstruction (`infer_ancestral_sequences('ml', marginal=False)`). v1 has no joint reconstruction ([ancestral-joint-reconstruction-removed.md](ancestral-joint-reconstruction-removed.md)). `homoplasy` takes the `--method-anc` flag of `ancestral` (`marginal` by default, or `parsimony`) and runs the same reconstruction pipeline, so the branch mutations equal those of `ancestral` with the same flags.
 
-The statistics need only the list of substitutions per branch, not the full joint configuration. On `data/zika/86`, v0 marginal reconstruction places the same 674 mutations on the same branches as v0 joint reconstruction, and v0 Fitch moves 8 of them. The golden-master test `test_gm_homoplasy_zika_86_matches_v0` compares v1 marginal with v0 joint on this dataset: every count, histogram, expected count, the log-likelihood difference, and every ranked list agree.
+The statistics need only the list of substitutions per branch, not the full joint configuration. On `data/zika/86`, v0 marginal reconstruction places the same 674 mutations on the same branches as v0 joint reconstruction, and v0 Fitch moves 8 of them. The golden-master test `test_gm_homoplasy_matches_v0_on_zika_86` compares v1 marginal with v0 joint on this dataset: every count, histogram, expected count, the log-likelihood difference, and every ranked list agree.
 
 ## Three mutation classes
 
