@@ -1,6 +1,7 @@
 # Python environment of TreeTime v0 (packages/legacy/treetime), the golden-master
-# capture scripts, and the research scripts in test_scripts/. The same lock file
-# drives the host (`pixi run ...`) and the Python image (dev/docker/jupyter.dockerfile).
+# capture scripts, the research scripts in test_scripts/, and the validation suite
+# in validation/. The same lock file drives the host (`pixi run ...`) and the
+# Python image (dev/docker/jupyter.dockerfile).
 # Every package release must be at least seven days old (`exclude-newer`).
 # After editing, run `pixi lock` and commit both pixi.toml and pixi.lock.
 
@@ -37,3 +38,4 @@ pandas = "==3.0.5"
 plotly = "==7.0.0"
 scipy = "==1.18.1"
 seaborn = "==0.13.2"
+tabulate = "==0.10.0"
