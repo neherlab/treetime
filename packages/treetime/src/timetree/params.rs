@@ -111,12 +111,18 @@ pub struct TimetreeParams {
 }
 
 pub(crate) struct TimetreeContext {
-  pub final_sequences: bool,
-  pub final_marginal_update: bool,
+  pub final_sequences: FinalSequences,
   pub time_marginal: TimeMarginalMode,
   pub date_constraints: DateConstraints,
   pub covariation_clock_params: ClockVarianceParams,
   pub branch_params: BranchPointOptimizationParams,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum FinalSequences {
+  Skip,
+  FromLastRound,
+  AfterMarginalUpdate,
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault)]

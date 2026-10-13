@@ -12,7 +12,7 @@ mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{marginal_timetree_params, point_date_constraints};
   use crate::timetree::branch_model::BranchModel;
-  use crate::timetree::params::{TimeMarginalMode, TimetreeContext};
+  use crate::timetree::params::{FinalSequences, TimeMarginalMode, TimetreeContext};
   use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
   use eyre::Report;
   use indoc::indoc;
@@ -64,8 +64,7 @@ mod tests {
     )?;
     let date_constraints = point_date_constraints(&graph, &names, &[("A", 2010.0), ("B", 2011.0), ("C", 2012.0)]);
     let context = TimetreeContext {
-      final_sequences: false,
-      final_marginal_update: false,
+      final_sequences: FinalSequences::Skip,
       time_marginal: TimeMarginalMode::Never,
       date_constraints,
       covariation_clock_params: ClockVarianceParams::default(),

@@ -33,7 +33,8 @@ use crate::timetree::convergence::optimizer::TraceSink;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
 use crate::timetree::params::{
-  TimeMarginalMode, TimetreeContext, TimetreeParams, build_covariation_clock_params, compute_effective_time_marginal,
+  FinalSequences, TimeMarginalMode, TimetreeContext, TimetreeParams, build_covariation_clock_params,
+  compute_effective_time_marginal,
 };
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
 use crate::timetree::refinement_loop::run_refinement_loop;
@@ -256,10 +257,15 @@ fn prepare_inputs(
     DateConstraints::default()
   };
 
-  let final_sequences = params.sequence_outputs_requested && params.branch_length_mode == BranchLengthMode::Marginal;
+  let final_sequences = if !params.sequence_outputs_requested || params.branch_length_mode != BranchLengthMode::Marginal {
+    FinalSequences::Skip
+  } else if time_marginal.runs_final_round() {
+    FinalSequences::FromLastRound
+  } else {
+    FinalSequences::AfterMarginalUpdate
+  };
   Ok(TimetreeContext {
     final_sequences,
-    final_marginal_update: final_sequences && !time_marginal.runs_final_round(),
     time_marginal,
     date_constraints,
     covariation_clock_params: covariation_clock_params.unwrap_or_default(),
@@ -495,16 +501,15 @@ fn reconstruct_final_sequences(
     }
     return Ok(None);
   };
-  if !context.final_sequences {
-    return Ok(None);
-  }
-  let reconstruction = if context.final_marginal_update {
-    reconstruction
-      .marginal_update(graph, final_branch_lengths)
-      .map_err(OperationError::classify)?
-      .0
-  } else {
-    reconstruction
+  let reconstruction = match context.final_sequences {
+    FinalSequences::Skip => return Ok(None),
+    FinalSequences::FromLastRound => reconstruction,
+    FinalSequences::AfterMarginalUpdate => {
+      reconstruction
+        .marginal_update(graph, final_branch_lengths)
+        .map_err(OperationError::classify)?
+        .0
+    },
   };
   if let Some(sink) = seq_sink.as_deref_mut() {
     sink.on_topology(graph).map_err(OperationError::SinkFailed)?;
