@@ -64,10 +64,10 @@ impl OptimizationContribution {
       self.all_sites_valid_at_zero(),
       "zero_branch_length_derivative called without verifying all_sites_valid_at_zero"
     );
-    let eigvals = &self.gtr().eigvals;
+    let eigvals = self.gtr().rate_eigvals();
     self
       .sites()
-      .map(|(multiplicity, coefficients)| multiplicity * coefficients.dot(eigvals) / coefficients.sum())
+      .map(|(multiplicity, coefficients)| multiplicity * coefficients.dot(&eigvals) / coefficients.sum())
       .sum()
   }
 }

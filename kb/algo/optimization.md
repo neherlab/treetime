@@ -46,9 +46,9 @@ $$Q=V\operatorname{diag}(\lambda)V^{-1},$$
 
 the transition matrix is
 
-$$P(t)=V\operatorname{diag}(e^{\lambda_c t})V^{-1}.$$
+$$P(t)=V\operatorname{diag}(e^{\mu\lambda_c t})V^{-1}.$$
 
-If the substitution rate has not already been absorbed into $Q$ or the branch coordinate, the exponent is $\mu\lambda_c t$. Profile-eigenvector products such as `msg.dot(V)` and `msg.dot(V_inv.T)` are independent of branch length and can be cached once per edge.
+$Q$ here is the normalized rate matrix of the GTR, and $\mu$ is its overall rate. The objective evaluates the exponent $\mu\lambda_c t$ with the eigenvalues of $\mu Q$ (`GTR::rate_eigvals()`), the same transition matrix that the marginal passes use, so a change of one branch length changes the objective and the tree log likelihood by the same amount. Profile-eigenvector products such as `msg.dot(V)` and `msg.dot(V_inv.T)` are independent of branch length and can be cached once per edge.
 
 v1 dense: [`packages/treetime/src/optimize/dense_eval.rs`](../../packages/treetime/src/optimize/dense_eval.rs).
 v1 sparse: [`packages/treetime/src/optimize/sparse_eval.rs`](../../packages/treetime/src/optimize/sparse_eval.rs).

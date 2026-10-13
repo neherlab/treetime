@@ -94,6 +94,10 @@ impl GTR {
     self.site_rates.is_some()
   }
 
+  pub(crate) fn rate_eigvals(&self) -> Array1<f64> {
+    &self.eigvals * self.mu
+  }
+
   pub(crate) fn expQt_with_rate(&self, t: f64, rate: f64) -> Array2<f64> {
     let exp_lt = self.exp_lt_scaled(t, rate);
     let scaled_v_inv = &self.v_inv * &exp_lt.view().insert_axis(Axis(1));

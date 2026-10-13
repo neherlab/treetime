@@ -7,7 +7,7 @@ use treetime_primitives::LogLh;
 
 pub(crate) fn evaluate_site_contributions<'a>(
   sites: impl Iterator<Item = (f64, ArrayView1<'a, f64>)>,
-  eigvals: &Array1<f64>,
+  rate_eigvals: &Array1<f64>,
   branch_length: f64,
   compute_derivatives: bool,
 ) -> Result<OptimizationMetrics, Report> {
@@ -17,12 +17,12 @@ pub(crate) fn evaluate_site_contributions<'a>(
   let mut derivative = 0.0;
   let mut second_derivative = 0.0;
 
-  let exp_ev = (eigvals * branch_length).mapv(f64::exp);
+  let exp_ev = (rate_eigvals * branch_length).mapv(f64::exp);
 
   let mut k_exp = Array1::zeros(exp_ev.raw_dim());
 
   if compute_derivatives {
-    let ev_exp_ev = eigvals * &exp_ev;
+    let ev_exp_ev = rate_eigvals * &exp_ev;
     let mut k_ev_exp = Array1::zeros(exp_ev.raw_dim());
 
     for (multiplicity, coefficients) in sites {
@@ -35,7 +35,7 @@ pub(crate) fn evaluate_site_contributions<'a>(
       let mean_ev = k_ev_exp.sum() / site_lh;
       derivative += multiplicity * mean_ev;
 
-      let variance = izip!(k_exp.iter(), eigvals.iter())
+      let variance = izip!(k_exp.iter(), rate_eigvals.iter())
         .map(|(&ke, &l)| {
           let d = l - mean_ev;
           ke * d * d
