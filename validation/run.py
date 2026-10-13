@@ -101,7 +101,7 @@ def main():
     p.add_argument('--suite', choices=['ancestral', 'timetree', 'optimize'], required=True)
     p.add_argument('--set', choices=['smoke', 'core', 'extra'], default='smoke')
     p.add_argument('--filter', default='', help='regex on the job output path')
-    p.add_argument('--binary', default=str(HERE.parent / 'target' / 'release' / 'treetime'))
+    p.add_argument('--binary', default=str(HERE.parent / '.out' / 'treetime'))
     p.add_argument('--data', type=Path, default=HERE / 'data')
     p.add_argument('--results', type=Path, default=HERE / 'results')
     p.add_argument('-j', '--jobs', type=int, default=available_cpus())

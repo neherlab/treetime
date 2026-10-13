@@ -2,8 +2,9 @@
 
 Simulated trees and sequences with known node dates, used to validate TreeTime timetree inference.
 
-`./generate_all.sh [n_reps=10] [n_jobs=available CPUs]` writes `data/`. One replicate: `python simulate.py --coal exp --rep 0`
-(with `PYTHONPATH=../packages/legacy/treetime`).
+All scripts run on the host in the pixi environment of the repository (`pixi.toml`), from this directory.
+`pixi run ./generate_all.sh [n_reps=10] [n_jobs=available CPUs]` writes `data/`. One replicate:
+`pixi run python simulate.py --coal exp --rep 0`.
 
 ## Trees (`coalescent.py`)
 
@@ -42,21 +43,23 @@ data/<coal>/rep<NN>/
 
 ## Validation runs (`run.py`, `evaluate.py`)
 
+Build the binary first with `./dev/docker/run just build-release treetime`, which writes `../.out/treetime`. The runs
+call it from the host, because the Python image has an older C library than the binary needs.
+
 ```
-python run.py --suite ancestral --set core      # also: --set smoke (rep00, L=1000)
-python run.py --suite timetree --set core
-python run.py --suite timetree --set extra      # rep00-02, L=1000, mu in {0.003, 0.001}
-python run.py --suite optimize --set core       # branch length optimization
-python evaluate.py --suite timetree             # writes results/timetree.tsv, prints a summary
-python analyze.py                               # results/report/: summary.md and figures
-python analyze.py --baseline ../old/results     # also compare.md: per-run changes against an earlier run
+pixi run python run.py --suite ancestral --set core      # also: --set smoke (rep00, L=1000)
+pixi run python run.py --suite timetree --set core
+pixi run python run.py --suite timetree --set extra      # rep00-02, L=1000, mu in {0.003, 0.001}
+pixi run python run.py --suite optimize --set core       # branch length optimization
+pixi run python evaluate.py --suite timetree             # writes results/timetree.tsv, prints a summary
+pixi run python analyze.py                               # results/report/: summary.md and figures
+pixi run python analyze.py --baseline ../old/results     # also compare.md: per-run changes against an earlier run
 ```
 
-`analyze.py` needs `matplotlib`, `tabulate` and `biopython` in addition to `pandas`. Failed runs carry their TreeTime error message
-in the `error` column of the TSV.
+Failed runs carry their TreeTime error message in the `error` column of the TSV.
 
 Jobs run in parallel (`-j`, default: available CPUs), skip finished runs, and record command, return code, run time
-and peak memory in `run.json`. `--binary` selects the treetime executable (default `../target/release/treetime`),
+and peak memory in `run.json`. `--binary` selects the treetime executable (default `../.out/treetime`),
 `--filter` restricts jobs by a regex on the output path.
 
 Inputs (`inputs.py`, written to `data/.../inputs/`) are divergence trees on the true topology: `exact` (mu t),
