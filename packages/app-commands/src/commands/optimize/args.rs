@@ -234,9 +234,9 @@ pub struct TreetimeOptimizeArgsRaw {
   /// zero disables damping. Must be in $[0,1)$.
   #[cfg_attr(
     feature = "clap",
-    clap(long, default_value_t = 0.75, help_heading = "Branch lengths")
+    clap(long, default_value_t = 0.0, help_heading = "Branch lengths")
   )]
-  #[default = 0.75]
+  #[default = 0.0]
   pub damping: f64,
 
   /// Initial branch length estimate before Newton optimization.
