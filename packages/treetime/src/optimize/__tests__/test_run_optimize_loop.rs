@@ -7,14 +7,18 @@
 mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
-    TREE_NEWICK, setup_reconstruction, simple_alignment,
+    TREE_NEWICK, setup_dense_reconstruction, setup_reconstruction, simple_alignment,
   };
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use helpers::manual_total_indel_log_lh;
+  use helpers::{chain_alignment, chain_alignment_jc69_distance, manual_total_indel_log_lh};
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use std::collections::BTreeMap;
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
 
@@ -43,7 +47,7 @@ mod tests {
     )?;
 
     assert!(result.lh_history.len() >= 1);
-    assert!(result.lh_history.len() <= max_iter);
+    assert!(result.lh_history.len() <= max_iter + 1);
     Ok(())
   }
 
@@ -85,7 +89,7 @@ mod tests {
       &names_tt_5,
     )?;
 
-    assert_eq!(1, result.lh_history.len());
+    assert_eq!(2, result.lh_history.len());
     assert_abs_diff_eq!(result.lh_history[0].value(), expected_total_lh, epsilon = 1e-10);
     Ok(())
   }
@@ -226,13 +230,103 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::sparse_newton(     false, BranchOptMethod::Newton)]
+  #[case::sparse_newton_sqrt(false, BranchOptMethod::NewtonSqrt)]
+  #[case::sparse_newton_log( false, BranchOptMethod::NewtonLog)]
+  #[case::sparse_brent(      false, BranchOptMethod::Brent)]
+  #[case::sparse_brent_sqrt( false, BranchOptMethod::BrentSqrt)]
+  #[case::sparse_brent_log(  false, BranchOptMethod::BrentLog)]
+  #[case::dense_brent_sqrt(  true,  BranchOptMethod::BrentSqrt)]
+  #[trace]
+  fn test_run_optimize_loop_returns_first_iteration_when_likelihood_declines_from_start(
+    #[case] dense: bool,
+    #[case] method: BranchOptMethod,
+  ) -> Result<(), Report> {
+    let aln = chain_alignment()?;
+    let nwk_parsed = nwk_read(b"((A:0.1)u:0.1,B:0.1)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let mut graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
+    let mut reconstruction = if dense {
+      setup_dense_reconstruction(&graph, &names, &aln, &mut branch_lengths)?
+    } else {
+      setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?
+    };
+    reconstruction.gtr_mut().mu = 1.0;
+    let distance_above_optimum = 0.003;
+    let start_branch_length = (chain_alignment_jc69_distance() + distance_above_optimum) / 3.0;
+    let start_branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = branch_lengths
+      .keys()
+      .map(|&edge_key| (edge_key, Some(start_branch_length)))
+      .collect();
+
+    let max_iter = 4;
+    let dp = 0.0;
+    let damping = 0.0;
+    let no_indels = true;
+
+    let result = run_optimize_loop(
+      &mut graph,
+      reconstruction,
+      max_iter,
+      dp,
+      damping,
+      method,
+      no_indels,
+      TopologyOps::default(),
+      start_branch_lengths.clone(),
+      &names,
+    )?;
+
+    assert!(
+      result.lh_history.is_sorted_by(|earlier, later| earlier > later),
+      "Likelihood must decline at every iteration for this test to apply: {:?}",
+      result.lh_history
+    );
+    assert_eq!(start_branch_lengths, result.branch_lengths);
+    Ok(())
+  }
+
   mod helpers {
+    use crate::alphabet::alphabet::Alphabet;
     use crate::partition::marginal::reconstruction::MarginalReconstruction;
     use crate::test_utils::sparse_reconstruction;
+    use eyre::Report;
+    use indoc::indoc;
     use statrs::function::factorial::ln_factorial;
     use std::collections::BTreeMap;
+    use std::sync::LazyLock;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
+    use treetime_io::fasta::fasta_read;
+    use treetime_primitives::AlignmentRecord;
+
+    static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
+
+    pub(super) fn chain_alignment() -> Result<Vec<AlignmentRecord>, Report> {
+      Ok(
+        fasta_read(
+          indoc! {r#"
+            >A
+            ACGTACGTACGTACGTACGT
+            >B
+            ACGTACGTACGTACGTACAA
+          "#}
+          .as_bytes(),
+          &*NUC_ALPHABET,
+        )?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect(),
+      )
+    }
+
+    pub(super) fn chain_alignment_jc69_distance() -> f64 {
+      let mismatch_fraction: f64 = 2.0 / 20.0;
+      -0.75 * (1.0 - 4.0 / 3.0 * mismatch_fraction).ln()
+    }
 
     fn manual_indel_count_on_edge(reconstruction: &MarginalReconstruction, edge_key: GraphEdgeKey) -> usize {
       sparse_reconstruction(reconstruction)

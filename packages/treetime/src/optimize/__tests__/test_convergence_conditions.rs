@@ -217,11 +217,12 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
+    let max_iter = 2;
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      2,
+      max_iter,
       0.0,
       0.75,
       BranchOptMethod::BrentSqrt,
@@ -231,7 +232,7 @@ mod tests {
       &names_tt_2,
     )?;
 
-    assert_eq!(2, result.lh_history.len());
+    assert_eq!(max_iter + 1, result.lh_history.len());
     assert!(
       result.stopped_at.is_none(),
       "Should exhaust max_iter=2 without stopping"

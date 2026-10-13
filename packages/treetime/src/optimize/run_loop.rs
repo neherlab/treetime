@@ -52,107 +52,75 @@ pub(crate) fn run_optimize_loop(
     estimate_indel_rate(graph, &indel_counts, &branch_lengths)
   };
 
-  let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter);
+  let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter + 1);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
   let mut lh_prev = LogLh::IMPOSSIBLE;
   let mut lh_prev_prev = LogLh::IMPOSSIBLE;
-
-  let mut best_lh = LogLh::IMPOSSIBLE;
-  let mut best_branch_lengths: Option<BTreeMap<GraphEdgeKey, Option<f64>>> = None;
+  let mut best: Option<BestIteration> = None;
 
   for i in 0..max_iter {
     let iteration = compute_iteration(graph, &branch_lengths, reconstruction, indel_rate, no_indels)?;
     reconstruction = iteration.reconstruction;
-    let iteration_lh = iteration.likelihood;
-    lh_history.push(iteration_lh.total_lh);
+    let lh = iteration.likelihood.total_lh;
+    lh_history.push(lh);
+    log_iteration_likelihood(i + 1, &iteration.likelihood);
 
-    debug!(
-      "Iteration {}: likelihood {} (sparse: {}, dense: {}, indel: {}, rate: {})",
-      i + 1,
-      float_to_significant_digits(iteration_lh.total_lh.value(), 7),
-      float_to_significant_digits(iteration_lh.sparse_lh.value(), 7),
-      float_to_significant_digits(iteration_lh.dense_lh.value(), 7),
-      float_to_significant_digits(iteration_lh.indel_lh.value(), 7),
-      float_to_significant_digits(iteration_lh.indel_rate, 7)
-    );
-
-    if !iteration_lh.total_lh.value().is_finite() {
-      if let Some(best) = &best_branch_lengths {
-        branch_lengths = best.clone();
-        reconstruction = reconstruction
-          .marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?
-          .0;
-      }
+    if !lh.value().is_finite() {
       stopped_at = Some((i, ConvergenceReason::NumericalFailure));
       break;
     }
 
-    if iteration_lh.total_lh > best_lh {
-      best_lh = iteration_lh.total_lh;
-      best_branch_lengths = Some(branch_lengths.clone());
-    }
-
-    if (iteration_lh.total_lh - lh_prev).abs() < dp.abs() {
-      stopped_at = Some((i, ConvergenceReason::Converged));
+    record_if_best(&mut best, i, lh, &branch_lengths);
+    let best_lh = best.as_ref().map_or(lh, |best| best.log_lh);
+    if let Some(reason) = stop_reason(i, dp, lh, lh_prev, lh_prev_prev, best_lh) {
+      stopped_at = Some((i, reason));
       break;
     }
 
-    if i >= 2 && (iteration_lh.total_lh - lh_prev_prev).abs() < dp.abs() {
-      stopped_at = Some((i, ConvergenceReason::Oscillating));
-      break;
-    }
-
-    if i >= 2 && iteration_lh.total_lh < lh_prev && lh_prev >= best_lh {
-      if let Some(best) = &best_branch_lengths {
-        branch_lengths = best.clone();
-        reconstruction = reconstruction
-          .marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?
-          .0;
-      }
-      stopped_at = Some((i, ConvergenceReason::Worsened));
-      break;
-    }
-
-    let old_branch_lengths = branch_lengths.clone();
-    {
-      let total_length = reconstruction.sequence_length();
-      let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
-      run_optimize_mixed_inner(
-        graph,
-        total_length,
-        &reconstruction,
-        &indel_counts,
-        opt_method,
-        indel_rate,
-        no_indels,
-        &mut branch_lengths,
-      )?;
-    }
-
-    let zero_optimal_edges = if topology_ops.collapse_short_branches {
-      find_zero_optimal_internal_edges(graph, &reconstruction, &branch_lengths)
-    } else {
-      vec![]
-    };
-
-    apply_damping(&mut branch_lengths, &old_branch_lengths, damping, i);
-
-    let cleanup = prune_and_merge_in_loop(
+    let cleanup = update_branch_lengths(
       graph,
       reconstruction,
-      &zero_optimal_edges,
+      i,
+      damping,
+      opt_method,
+      indel_rate,
+      no_indels,
       topology_ops,
       &mut branch_lengths,
       &mut names,
     )?;
     reconstruction = cleanup.reconstruction;
     if cleanup.topology_changed {
-      best_lh = LogLh::IMPOSSIBLE;
-      best_branch_lengths = None;
+      best = None;
     }
 
     lh_prev_prev = lh_prev;
-    lh_prev = iteration_lh.total_lh;
+    lh_prev = lh;
+  }
+
+  if stopped_at.is_none() && max_iter > 0 {
+    let iteration = compute_iteration(graph, &branch_lengths, reconstruction, indel_rate, no_indels)?;
+    reconstruction = iteration.reconstruction;
+    let lh = iteration.likelihood.total_lh;
+    lh_history.push(lh);
+    log_iteration_likelihood(max_iter + 1, &iteration.likelihood);
+    if lh.value().is_finite() {
+      record_if_best(&mut best, max_iter, lh, &branch_lengths);
+    }
+  }
+
+  if let Some(best) = best
+    && best.iteration + 1 != lh_history.len()
+  {
+    debug!(
+      "Returning the branch lengths of iteration {} with the highest likelihood {}",
+      best.iteration + 1,
+      float_to_significant_digits(best.log_lh.value(), 7)
+    );
+    branch_lengths = best.branch_lengths;
+    reconstruction = reconstruction
+      .marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?
+      .0;
   }
 
   Ok(OptimizeLoopResult {
@@ -185,6 +153,100 @@ pub(crate) enum ConvergenceReason {
   Oscillating,
   Worsened,
   NumericalFailure,
+}
+
+struct BestIteration {
+  iteration: usize,
+  log_lh: LogLh,
+  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+}
+
+fn record_if_best(
+  best: &mut Option<BestIteration>,
+  iteration: usize,
+  log_lh: LogLh,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) {
+  if best.as_ref().is_none_or(|best| log_lh > best.log_lh) {
+    *best = Some(BestIteration {
+      iteration,
+      log_lh,
+      branch_lengths: branch_lengths.clone(),
+    });
+  }
+}
+
+fn stop_reason(
+  iteration: usize,
+  dp: f64,
+  lh: LogLh,
+  lh_prev: LogLh,
+  lh_prev_prev: LogLh,
+  best_lh: LogLh,
+) -> Option<ConvergenceReason> {
+  if (lh - lh_prev).abs() < dp.abs() {
+    Some(ConvergenceReason::Converged)
+  } else if iteration >= 2 && (lh - lh_prev_prev).abs() < dp.abs() {
+    Some(ConvergenceReason::Oscillating)
+  } else if iteration >= 2 && lh < lh_prev && lh_prev >= best_lh {
+    Some(ConvergenceReason::Worsened)
+  } else {
+    None
+  }
+}
+
+fn update_branch_lengths(
+  graph: &mut Graph,
+  reconstruction: MarginalReconstruction,
+  iteration: usize,
+  damping: f64,
+  opt_method: BranchOptMethod,
+  indel_rate: f64,
+  no_indels: bool,
+  topology_ops: TopologyOps,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  names: &mut BTreeMap<GraphNodeKey, Option<String>>,
+) -> Result<TopologyCleanup, Report> {
+  let old_branch_lengths = branch_lengths.clone();
+  let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
+  run_optimize_mixed_inner(
+    graph,
+    reconstruction.sequence_length(),
+    &reconstruction,
+    &indel_counts,
+    opt_method,
+    indel_rate,
+    no_indels,
+    branch_lengths,
+  )?;
+
+  let zero_optimal_edges = if topology_ops.collapse_short_branches {
+    find_zero_optimal_internal_edges(graph, &reconstruction, branch_lengths)
+  } else {
+    vec![]
+  };
+
+  apply_damping(branch_lengths, &old_branch_lengths, damping, iteration);
+
+  prune_and_merge_in_loop(
+    graph,
+    reconstruction,
+    &zero_optimal_edges,
+    topology_ops,
+    branch_lengths,
+    names,
+  )
+}
+
+fn log_iteration_likelihood(iteration_number: usize, likelihood: &OptimizeIterationLikelihood) {
+  debug!(
+    "Iteration {iteration_number}: likelihood {} (sparse: {}, dense: {}, indel: {}, rate: {})",
+    float_to_significant_digits(likelihood.total_lh.value(), 7),
+    float_to_significant_digits(likelihood.sparse_lh.value(), 7),
+    float_to_significant_digits(likelihood.dense_lh.value(), 7),
+    float_to_significant_digits(likelihood.indel_lh.value(), 7),
+    float_to_significant_digits(likelihood.indel_rate, 7)
+  );
 }
 
 fn compute_iteration(
