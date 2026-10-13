@@ -31,12 +31,6 @@ pub fn examples_url() -> String {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct DownloadProgress {
-  pub received: u64,
-  pub total: Option<u64>,
-}
-
 pub fn download_examples(url: &str, target: &Path, mut progress: impl FnMut(DownloadProgress)) -> Result<(), Report> {
   ensure_empty_target(target)?;
   let parent = target
@@ -75,6 +69,12 @@ pub fn download_examples(url: &str, target: &Path, mut progress: impl FnMut(Down
   })?;
   let _moved = unpacked.keep();
   Ok(())
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DownloadProgress {
+  pub received: u64,
+  pub total: Option<u64>,
 }
 
 pub fn ensure_empty_target(target: &Path) -> Result<(), Report> {

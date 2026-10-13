@@ -40,26 +40,6 @@ use treetime_utils::make_error;
 
 const REQUEST_SOURCE: &str = "config.json";
 
-pub trait AppCommandExt {
-  fn inputs(self) -> &'static [CommandInput];
-
-  fn uses_dates(self) -> bool;
-
-  fn title(self) -> &'static str;
-
-  fn description(self) -> &'static str;
-
-  fn main_settings(self) -> &'static [&'static str];
-
-  fn config_over_defaults(self, settings: &Value) -> Result<Map<String, Value>, Report>;
-
-  fn prepare_text(self, source_name: &str, text: &str) -> Result<PreparedCommand, Report>;
-
-  fn prepare_run(self, config: &Value, out_dir: &Path) -> Result<PreparedCommand, Report>;
-
-  fn remove_output_paths(self, settings: &mut Map<String, Value>) -> Result<(), Report>;
-}
-
 impl AppCommandExt for AppCommand {
   fn inputs(self) -> &'static [CommandInput] {
     const TREE: CommandInput = CommandInput::new(InputKind::Tree, InputNeed::Required);
@@ -213,6 +193,26 @@ pub fn run_command(
     command: args.command(),
     output_files: written_files(&args.resolve_outputs()?)?,
   })
+}
+
+pub trait AppCommandExt {
+  fn inputs(self) -> &'static [CommandInput];
+
+  fn uses_dates(self) -> bool;
+
+  fn title(self) -> &'static str;
+
+  fn description(self) -> &'static str;
+
+  fn main_settings(self) -> &'static [&'static str];
+
+  fn config_over_defaults(self, settings: &Value) -> Result<Map<String, Value>, Report>;
+
+  fn prepare_text(self, source_name: &str, text: &str) -> Result<PreparedCommand, Report>;
+
+  fn prepare_run(self, config: &Value, out_dir: &Path) -> Result<PreparedCommand, Report>;
+
+  fn remove_output_paths(self, settings: &mut Map<String, Value>) -> Result<(), Report>;
 }
 
 pub struct PreparedCommand {

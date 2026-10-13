@@ -30,6 +30,10 @@ use treetime_utils::io::json::from_json_value;
 use treetime_utils::io::json::to_json_value;
 use treetime_utils::make_error;
 
+pub fn command_of<R: RawConfig>(_config: &R) -> AppCommand {
+  R::COMMAND
+}
+
 /// Analysis command that every client can run.
 #[derive(
   Clone,
@@ -278,10 +282,6 @@ impl_raw_config!(TreetimeAncestralArgsRaw, TreetimeAncestralArgs, Ancestral);
 impl_raw_config!(TreetimeHomoplasyArgsRaw, TreetimeHomoplasyArgs, Homoplasy);
 impl_raw_config!(TreetimeClockArgsRaw, TreetimeClockArgs, Clock);
 impl_raw_config!(TreetimeMugrationArgsRaw, TreetimeMugrationArgs, Mugration);
-
-pub fn command_of<R: RawConfig>(_config: &R) -> AppCommand {
-  R::COMMAND
-}
 
 pub fn settings_map<R: Serialize>(raw: &R) -> Result<Map<String, Value>, Report> {
   match to_json_value(&raw)? {

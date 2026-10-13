@@ -30,18 +30,6 @@ use eyre::WrapErr;
 #[cfg(not(target_family = "wasm"))]
 use std::thread;
 
-pub trait InputPolicy: Send + Sync {
-  fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report>;
-}
-
-pub struct Unconfined;
-
-impl InputPolicy for Unconfined {
-  fn confine(&self, _command: AppCommand, _config: &mut Value) -> Result<(), Report> {
-    Ok(())
-  }
-}
-
 pub struct AppService {
   runs: Arc<RunManager>,
   examples_dir: PathBuf,
@@ -176,6 +164,18 @@ impl AppService {
     let record = started.record().clone();
     execute(id, started)?;
     Ok(record)
+  }
+}
+
+pub trait InputPolicy: Send + Sync {
+  fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report>;
+}
+
+pub struct Unconfined;
+
+impl InputPolicy for Unconfined {
+  fn confine(&self, _command: AppCommand, _config: &mut Value) -> Result<(), Report> {
+    Ok(())
   }
 }
 
