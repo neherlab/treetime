@@ -8,6 +8,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
+  use rstest::rstest;
   use statrs::distribution::{Continuous, ContinuousCDF, Gamma, Normal};
   use treetime_distribution::{Distribution, NegLog};
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, prop_assert_abs_diff_eq};
@@ -39,6 +40,41 @@ mod tests {
     assert_eq!(PeakLocation::Interior, region.peak);
     pretty_assert_abs_diff_eq!(0.9, gamma.cdf(region.upper) - gamma.cdf(region.lower), epsilon = 1e-8);
     pretty_assert_abs_diff_eq!(gamma.pdf(region.lower), gamma.pdf(region.upper), epsilon = 1e-8);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::level_below_the_second_mode_keeps_main_mode(0.6,  false)]
+  #[case::level_between_second_mode_and_dip(           0.8,  false)]
+  #[case::level_above_the_dip_adds_second_mode(       0.99, true)]
+  #[trace]
+  fn test_max_posterior_region_bimodal_region_is_level_set_connected_to_peak(
+    #[case] fraction: f64,
+    #[case] contains_second_mode: bool,
+  ) -> Result<(), Report> {
+    let main = Normal::new(5.0, 0.5)?;
+    let side_mode = 3.2;
+    let side = Normal::new(side_mode, 0.3)?;
+    let (main_weight, side_weight) = (0.85, 0.15);
+    let t = grid(-2.0, 10.0, 120_001);
+    let neglog = t.mapv(|x| -(main_weight * main.pdf(x) + side_weight * side.pdf(x)).ln());
+
+    let region = grid_max_posterior_region(&t, &neglog, fraction)?;
+
+    let mixture_cdf = |x: f64| main_weight * main.cdf(x) + side_weight * side.cdf(x);
+    let level = interpolate(&t, &neglog, region.upper);
+    let highest_inside = t
+      .iter()
+      .zip(&neglog)
+      .filter(|(x, _)| **x > region.lower && **x < region.upper)
+      .map(|(_, y)| *y)
+      .fold(f64::NEG_INFINITY, f64::max);
+    assert_eq!(PeakLocation::Interior, region.peak);
+    assert_eq!(contains_second_mode, region.lower < side_mode);
+    pretty_assert_abs_diff_eq!(fraction, mixture_cdf(region.upper) - mixture_cdf(region.lower), epsilon = 1e-8);
+    pretty_assert_abs_diff_eq!(level, interpolate(&t, &neglog, region.lower), epsilon = 1e-9);
+    assert!(highest_inside <= level, "every point inside {region:?} lies above the density level");
     Ok(())
   }
 
