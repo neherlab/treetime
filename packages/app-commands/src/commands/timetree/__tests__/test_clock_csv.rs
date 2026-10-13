@@ -167,24 +167,32 @@ mod tests {
     }
 
     pub(super) fn ordinary_least_squares(points: &[(f64, f64)]) -> (f64, f64) {
-      let (mean_t, mean_d) = means(points);
-      let sxy: f64 = points.iter().map(|(t, d)| (t - mean_t) * (d - mean_d)).sum();
-      let sxx: f64 = points.iter().map(|(t, _)| (t - mean_t).powi(2)).sum();
+      let mean = means(points);
+      let sxy: f64 = points
+        .iter()
+        .map(|(t, d)| (t - mean.time) * (d - mean.divergence))
+        .sum();
+      let sxx: f64 = points.iter().map(|(t, _)| (t - mean.time).powi(2)).sum();
       let rate = sxy / sxx;
-      (rate, mean_d - rate * mean_t)
+      (rate, mean.divergence - rate * mean.time)
     }
 
     pub(super) fn fixed_rate_intercept(points: &[(f64, f64)], rate: f64) -> f64 {
-      let (mean_t, mean_d) = means(points);
-      mean_d - rate * mean_t
+      let mean = means(points);
+      mean.divergence - rate * mean.time
     }
 
-    pub(super) fn means(points: &[(f64, f64)]) -> (f64, f64) {
+    fn means(points: &[(f64, f64)]) -> Means {
       let n = points.len().to_f64_exact();
-      (
-        points.iter().map(|(t, _)| t).sum::<f64>() / n,
-        points.iter().map(|(_, d)| d).sum::<f64>() / n,
-      )
+      Means {
+        time: points.iter().map(|(t, _)| t).sum::<f64>() / n,
+        divergence: points.iter().map(|(_, d)| d).sum::<f64>() / n,
+      }
+    }
+
+    struct Means {
+      time: f64,
+      divergence: f64,
     }
 
     pub(super) fn zika_dir() -> PathBuf {

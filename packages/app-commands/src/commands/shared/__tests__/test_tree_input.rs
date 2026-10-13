@@ -16,6 +16,7 @@ mod tests {
   use std::collections::BTreeMap;
   use tempfile::tempdir;
   use treetime_io::nwk::{NewickDialect, TREE_DIALECT_DEFAULT, nwk_read};
+  use treetime_utils::assert_error;
   use treetime_utils::io::json::{from_json_value, to_json_value};
 
   const COALRE: &str = "((A[&segments={0,1}]:1,(B[&segments={0,1}]:1)#H0[&segments={0}]:0.5)[&segments={0,1}]:1,(#H0[&segments={1}]:0.7,C[&segments={0,1}]:1)[&segments={0,1}]:1);";
@@ -33,24 +34,29 @@ mod tests {
 
   #[test]
   fn test_tree_input_dialect_flag_rejects_a_half_pair() {
-    let actual = clock_dialect(&["--tree-dialect=classic"]).unwrap_err();
-
-    assert_eq!(
-      "error: invalid value 'classic' for '--tree-dialect <TREE_DIALECT>'\n  [possible values: classic,plain, classic,beast, classic,nhx, classic,mrbayes, enewick,plain, enewick,beast, enewick,nhx, enewick,mrbayes, rich,plain, rich,beast, rich,nhx, rich,mrbayes]\n\n  tip: a similar value exists: 'classic,nhx'\n\nFor more information, try '--help'.\n",
-      actual
+    assert_error!(
+      clock_dialect(&["--tree-dialect=classic"]),
+      "error: invalid value 'classic' for '--tree-dialect <TREE_DIALECT>'\n  [possible values: classic,plain, classic,beast, classic,nhx, classic,mrbayes, enewick,plain, enewick,beast, enewick,nhx, enewick,mrbayes, rich,plain, rich,beast, rich,nhx, rich,mrbayes]\n\n  tip: a similar value exists: 'classic,nhx'\n\nFor more information, try '--help'.\n"
     );
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::given(    json!({ "tree_dialect": "enewick,beast" }), Ok(NewickDialect::ENEWICK_BEAST))]
-  #[case::absent(   json!({}),                                  Ok(TREE_DIALECT_DEFAULT))]
-  #[case::invalid(  json!({ "tree_dialect": "beast" }),         Err("When converting a JSON value: Unexpected: invalid value: \"beast\" is not a Newick dialect: expected <structure>,<annotations> with structure one of classic, enewick, rich and annotations one of plain, beast, nhx, mrbayes".to_owned()))]
+  #[case::given(    json!({ "tree_dialect": "enewick,beast" }), NewickDialect::ENEWICK_BEAST)]
+  #[case::absent(   json!({}),                                  TREE_DIALECT_DEFAULT)]
   #[trace]
-  fn test_tree_input_dialect_config(#[case] config: serde_json::Value, #[case] expected: Result<NewickDialect, String>) {
-    let actual = from_json_value::<TreeDialectArgs>(&config).map(|args| args.dialect()).map_err(|error| format!("{error:#}"));
+  fn test_tree_input_dialect_config(#[case] config: serde_json::Value, #[case] expected: NewickDialect) {
+    let actual = from_json_value::<TreeDialectArgs>(&config).unwrap().dialect();
 
     assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_tree_input_dialect_config_rejects_a_half_pair() {
+    assert_error!(
+      from_json_value::<TreeDialectArgs>(&json!({ "tree_dialect": "beast" })),
+      "When converting a JSON value: Unexpected: invalid value: \"beast\" is not a Newick dialect: expected <structure>,<annotations> with structure one of classic, enewick, rich and annotations one of plain, beast, nhx, mrbayes"
+    );
   }
 
   #[test]
@@ -120,16 +126,17 @@ mod tests {
 
   mod helpers {
     use super::{Parser, TreetimeClockArgs, TreetimeClockArgsRaw};
+    use eyre::Report;
     use std::fs;
     use std::path::{Path, PathBuf};
     use treetime_io::nwk::NewickDialect;
 
-    pub(super) fn clock_dialect(flags: &[&str]) -> Result<NewickDialect, String> {
+    pub(super) fn clock_dialect(flags: &[&str]) -> Result<NewickDialect, Report> {
       let args = ["clock", "--tree=tree.nwk", "--metadata=metadata.tsv"]
         .iter()
         .chain(flags);
-      let raw = TreetimeClockArgsRaw::try_parse_from(args).map_err(|error| error.to_string())?;
-      let args = TreetimeClockArgs::try_from(raw).map_err(|error| error.to_string())?;
+      let raw = TreetimeClockArgsRaw::try_parse_from(args)?;
+      let args = TreetimeClockArgs::try_from(raw)?;
       Ok(args.tree_dialect.dialect())
     }
 
