@@ -15,6 +15,11 @@ version.workspace = true
 crate-type = ["cdylib", "lib"]
 doctest = false
 
+# The `EnumString` derive of strum_macros expands to `::strum::ParseError`,
+# which cargo-shear does not see without macro expansion.
+[package.metadata.cargo-shear]
+ignored = ["strum"]
+
 [dependencies]
 app-backend = { workspace = true }
 app-commands = { workspace = true, features = ["clap"] }
