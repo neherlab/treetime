@@ -206,6 +206,13 @@ mod tests {
       }
     }
 
+    #[cfg_attr(
+      dylint_lib = "custom",
+      expect(
+        spawn_handle_dropped,
+        reason = "the test server serves until the test process ends, so there is no end to join"
+      )
+    )]
     pub(super) fn serve(bytes: Vec<u8>) -> Server {
       let (send, receive) = mpsc::sync_channel(1);
       thread::spawn(move || {
