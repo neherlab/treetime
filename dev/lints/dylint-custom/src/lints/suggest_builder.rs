@@ -98,15 +98,28 @@ impl<'tcx> LateLintPass<'tcx> for SuggestBuilder {
         {
             return;
         }
-        // Skip structs with no inherent constructors (associated fns whose
-        // return type contains Self). Without a constructor the struct is
-        // built via literals -- a builder suggestion is noise.
+        // Skip structs with no inherent constructor that takes at least
+        // `threshold` arguments (an associated fn without a `self` receiver
+        // whose return type is Self). A builder replaces a long positional
+        // argument list; without one the struct is built via literals or from
+        // a few arguments, and a builder suggestion is noise. Methods that take
+        // `self` and return `Self` transform a value and do not construct it.
         let struct_def_id = item.owner_id.to_def_id();
         let has_ctor = cx.tcx.inherent_impls(struct_def_id).iter().any(|impl_id| {
             cx.tcx
                 .associated_items(*impl_id)
                 .in_definition_order()
-                .filter(|assoc| matches!(assoc.kind, ty::AssocKind::Fn { .. }))
+                .filter(|assoc| matches!(assoc.kind, ty::AssocKind::Fn { has_self: false, .. }))
+                .filter(|assoc| {
+                    cx.tcx
+                        .fn_sig(assoc.def_id)
+                        .instantiate_identity()
+                        .skip_norm_wip()
+                        .inputs()
+                        .skip_binder()
+                        .len()
+                        >= self.threshold
+                })
                 // A `#[bon] impl` keeps the body of a `#[builder]` method as a hidden
                 // `__orig_<name>` function returning `Self`; the builder replaces it
                 // as the public constructor.
