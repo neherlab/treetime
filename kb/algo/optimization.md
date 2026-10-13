@@ -103,9 +103,9 @@ Aggregate likelihood results and histories use `LogLh`; per-site coefficients, d
 - Two-cycle: $|L_i - L_{i-2}| < \mathit{dp}$ for $i\ge2$.
 - Decline after a best iteration: $i\ge2$, $L_i<L_{i-1}$, and $L_{i-1}\ge L_{\mathrm{best}}$.
 
-When the loop exhausts `max_iter`, it evaluates the branch lengths of the last update once more. Whatever the stop reason, it returns the evaluated branch lengths with the highest $L_i$ since the last topology change. Simultaneous per-edge updates need not increase the likelihood: when edges in series overshoot together, $L_i$ can decline from the first iteration and never trigger the decline condition.
+When the loop exhausts `max_iter`, it evaluates the branch lengths of the last update once more. Whatever the stop reason, it returns the evaluated branch lengths with the highest $L_i$ since the last topology change. Simultaneous per-edge updates need not increase the likelihood: edges whose likelihood depends almost only on their sum, such as a path through nodes whose other subtrees carry no data, overshoot together, and $L_i$ can decline from the first iteration and never trigger the decline condition. Edges joined by a node with exactly two edges are optimized as one sum and do not overshoot ([kb/decisions/optimize-series-edges-joint-sum.md](../decisions/optimize-series-edges-joint-sum.md)).
 
-The damping schedule applies a floor: $d_i = \max(d^{i+1},\, \texttt{DAMPING\_FLOOR})$ where $\texttt{DAMPING\_FLOOR} = 0.01$, preventing fully undamped late iterations that amplify the sparse discrete jump. A NaN/Inf guard breaks immediately on numerical instability.
+With `--damping` above 0, the damping schedule applies a floor: $d_i = \max(d^{i+1},\, \texttt{DAMPING\_FLOOR})$ where $\texttt{DAMPING\_FLOOR} = 0.01$, preventing fully undamped late iterations that amplify the sparse discrete jump. The default `--damping` of 0 applies no damping ([kb/decisions/optimize-damping-disabled-by-default.md](../decisions/optimize-damping-disabled-by-default.md)). A NaN/Inf guard breaks immediately on numerical instability.
 
 v1 defaults: `max_iter=10`, `dp=0.1`, matching v0's `optimize_tree_marginal()`.
 

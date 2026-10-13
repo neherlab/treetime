@@ -57,7 +57,7 @@ Both methods share:
 
 For end-users, the per-edge optimization method is invisible. Branch lengths converge to the same ML estimates (within numerical tolerance) regardless of method, given the same GTR model and marginal profiles. Both methods produce log-likelihood values agreeing within 1e-3 on indel-bearing edges.
 
-Convergence behavior tracks v0: the outer loop applies exponential damping (`--damping`, default 0.75) so alternating reconstruction and per-branch optimization stay bounded against the 2-cycle that an undamped loop would produce.
+The outer loop applies no damping by default (`--damping`, default 0; v0 damps with 0.75). Optimizing edges in series as one sum removes the 2-cycle that an undamped loop with independent edge updates would produce ([optimize-damping-disabled-by-default.md](optimize-damping-disabled-by-default.md), [optimize-series-edges-joint-sum.md](optimize-series-edges-joint-sum.md)).
 
 ## References
 

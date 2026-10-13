@@ -4,7 +4,7 @@ For a reversible model the likelihood depends only on the sum of edges joined by
 
 **Type**: Behavioral change (same estimand at the root; extended to single-child nodes).
 
-**v0 location**: `optimize_tree_marginal()` at [`treeanc.py#L1317-L1337`](https://github.com/neherlab/treetime/blob/1a5c93d4f7929c3cc9302859015a32562dae02fd/packages/legacy/treetime/treetime/treeanc.py#L1317-L1337). Optimizes the root arc from the profiles of both subtrees, damps the total, distributes it by the previous ratio. The block runs once per root child, so the root arc is optimized and damped twice per iteration.
+**v0 location**: `optimize_tree_marginal()` at [`packages/legacy/treetime/treetime/treeanc.py#L1317-L1337`](../../packages/legacy/treetime/treetime/treeanc.py#L1317-L1337). Optimizes the root arc from the profiles of both subtrees, damps the total, distributes it by the previous ratio. The block runs once per root child, so the root arc is optimized and damped twice per iteration.
 
 **v1 location**: `run_optimize_mixed_inner()` and `struct SeriesChain` in [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs).
 

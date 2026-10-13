@@ -104,7 +104,7 @@ Standard practice in phylogenetic ML software (RAxML, IQ-TREE, PhyML) is coordin
 | ------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Exposure            | Internal method within `optimize_tree()` | Standalone CLI subcommand                                                                             |
 | Convergence control | Hardcoded parameters                     | User-specified `--max-iter` and `--dp`                                                                |
-| Outer loop damping  | Exponential decay (factor 0.75)          | Exponential decay (`--damping`, default 0.75)                                                         |
+| Outer loop damping  | Exponential decay (factor 0.75)          | Exponential decay (`--damping`, default 0: no damping)                                                |
 | Per-branch method   | Brent's method in sqrt(t) space          | `--opt-method`: Brent or Newton-Raphson in sqrt(t) space; default Brent |
 | Partition support   | Dense only                               | Dense or sparse (`--dense`)                                                                           |
 | Model selection     | GTR inferred internally                  | User-specified via `--model`                                                                          |
@@ -115,7 +115,7 @@ The per-branch optimization method difference (Newton-Raphson vs Brent) is docum
 
 Users can run `treetime optimize --tree=tree.nwk --aln=aln.fasta --output-all=out/` to refine branch lengths without performing ancestral reconstruction or timetree inference. The output tree retains the input topology with updated branch lengths.
 
-v1 applies the same outer-loop exponential damping as v0 (`--damping`, default 0.75) to prevent oscillation between iterations for datasets where the likelihood surface is poorly conditioned.
+v1 offers the outer-loop exponential damping of v0 (`--damping`), but applies none by default, because optimizing edges in series as one sum removes the oscillation that damping suppressed in v0 ([optimize-damping-disabled-by-default.md](optimize-damping-disabled-by-default.md)).
 
 ## References
 

@@ -48,10 +48,10 @@ v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with 
 - [x] Early stop when absolute likelihood change is below `--dp`
 - [x] Oscillation detection: stop when 2-step likelihood difference is below `--dp`
 - [x] Worsened detection: stop and revert to best branch lengths when likelihood decreases from peak
-- [x] Damping in marginal loop (`--damping`, default 0.75, matching v0: `new*(1-d^i) + old*d^i`)
-- [x] Damping floor (`DAMPING_FLOOR = 0.01`) prevents fully undamped late iterations
+- [x] Damping in marginal loop (`--damping`, `new*(1-d^i) + old*d^i` as in v0; default 0, v0 default 0.75: [kb/decisions/optimize-damping-disabled-by-default.md](../decisions/optimize-damping-disabled-by-default.md))
+- [x] Damping floor (`DAMPING_FLOOR = 0.01`) prevents fully undamped late iterations when `--damping` is above 0
 - [ ] Progressive per-iteration tolerance tightening (v0: `tol = 1e-8 + 0.01^(i+1)`, coarse early, tight late)
-- [ ] Bifurcating root special handling (v0 optimizes combined root-children length, preserves ratio)
+- [x] Bifurcating root special handling: v0 optimizes the combined length of the root children and keeps their ratio; v1 does the same for every chain of edges in series, single-child nodes included ([kb/decisions/optimize-series-edges-joint-sum.md](../decisions/optimize-series-edges-joint-sum.md))
 - [ ] Convergence by sequence change count (v0 joint mode: stops when zero nucleotides change)
 
 ## Topology Cleanup (v1-only)
