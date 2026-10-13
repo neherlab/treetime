@@ -5,7 +5,7 @@ use axum::Router;
 use axum::body::{Body, BodyDataStream, Bytes};
 use axum::http::Request;
 use axum::response::Response;
-use eyre::{Report, eyre};
+use eyre::Report;
 use parking_lot::Mutex;
 use std::future::Future;
 use std::mem;
@@ -14,7 +14,7 @@ use tokio_stream::StreamExt as _;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceExt as _;
 use treetime_utils::error::report_to_string;
-use treetime_utils::make_error;
+use treetime_utils::{make_error, make_report};
 use wasm_bindgen::prelude::{JsError, wasm_bindgen};
 
 #[wasm_bindgen]
@@ -46,16 +46,6 @@ impl Exchange {
   }
 }
 
-#[wasm_bindgen(getter_with_clone)]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ResponseHead {
-  pub status: u16,
-  #[wasm_bindgen(js_name = headerNames)]
-  pub header_names: Vec<String>,
-  #[wasm_bindgen(js_name = headerValues)]
-  pub header_values: Vec<String>,
-}
-
 pub(crate) struct PortExchange {
   state: Mutex<State>,
   cancel: CancellationToken,
@@ -81,7 +71,7 @@ impl PortExchange {
   pub(crate) async fn head(&self) -> Result<ResponseHead, Report> {
     let response = match self.take()? {
       State::Waiting(response) => response,
-      other => {
+      other @ (State::Streaming(_) | State::Reading | State::Ended) => {
         self.replace(other);
         return make_error!("the response head of this exchange was already read");
       },
@@ -100,7 +90,7 @@ impl PortExchange {
   pub(crate) async fn chunk(&self) -> Result<Option<Bytes>, Report> {
     let mut body = match self.take()? {
       State::Streaming(body) => body,
-      other => {
+      other @ (State::Waiting(_) | State::Reading | State::Ended) => {
         self.replace(other);
         return make_error!("the response head of this exchange must be read before its body");
       },
@@ -112,7 +102,7 @@ impl PortExchange {
       },
       Some(Err(err)) => {
         self.replace(State::Ended);
-        Err(eyre!("When reading the response body: {err}"))
+        make_error!("When reading the response body: {err}")
       },
       None => {
         self.replace(State::Ended);
@@ -140,9 +130,19 @@ impl PortExchange {
         self.replace(State::Ended);
         make_error!("this exchange has ended")
       },
-      state => Ok(state),
+      state @ (State::Waiting(_) | State::Streaming(_)) => Ok(state),
     }
   }
+}
+
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResponseHead {
+  pub status: u16,
+  #[wasm_bindgen(js_name = headerNames)]
+  pub header_names: Vec<String>,
+  #[wasm_bindgen(js_name = headerValues)]
+  pub header_values: Vec<String>,
 }
 
 type ResponseFuture = Pin<Box<dyn Future<Output = Response> + Send>>;
@@ -155,7 +155,7 @@ enum State {
 }
 
 fn aborted() -> Report {
-  eyre!("the exchange was aborted")
+  make_report!("the exchange was aborted")
 }
 
 fn js_error(report: &Report) -> JsError {
