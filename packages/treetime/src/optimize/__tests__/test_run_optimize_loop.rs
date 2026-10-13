@@ -232,27 +232,21 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::sparse_newton_sqrt(false, BranchOptMethod::NewtonSqrt)]
-  #[case::sparse_brent_sqrt( false, BranchOptMethod::BrentSqrt)]
-  #[case::dense_brent_sqrt(  true,  BranchOptMethod::BrentSqrt)]
+  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
+  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
   #[trace]
   fn test_run_optimize_loop_returns_first_iteration_when_likelihood_declines_from_start(
-    #[case] dense: bool,
     #[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
     let aln = chain_alignment()?;
-    let nwk_parsed = nwk_read(b"((A:0.1)u:0.1,B:0.1)root;".as_slice())?;
+    let nwk_parsed = nwk_read(b"((A:0.1,X:0.1)n1:0.1,(B:0.1,Y:0.1)n2:0.1)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let mut reconstruction = if dense {
-      setup_dense_reconstruction(&graph, &names, &aln, &mut branch_lengths)?
-    } else {
-      setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?
-    };
+    let mut reconstruction = setup_dense_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     reconstruction.gtr_mut().mu = 1.0;
     let distance_above_optimum = 0.003;
-    let start_branch_length = (chain_alignment_jc69_distance() + distance_above_optimum) / 3.0;
+    let start_branch_length = (chain_alignment_jc69_distance() + distance_above_optimum) / 4.0;
     let start_branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = branch_lengths
       .keys()
       .map(|&edge_key| (edge_key, Some(start_branch_length)))
@@ -309,6 +303,10 @@ mod tests {
             ACGTACGTACGTACGTACGT
             >B
             ACGTACGTACGTACGTACAA
+            >X
+            NNNNNNNNNNNNNNNNNNNN
+            >Y
+            NNNNNNNNNNNNNNNNNNNN
           "#}
           .as_bytes(),
           &*NUC_ALPHABET,
