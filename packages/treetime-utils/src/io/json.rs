@@ -38,7 +38,7 @@ pub fn json_read<T: DeserializeOwned>(reader: impl Read) -> Result<T, Report> {
 pub fn json_write_file<T: Serialize>(filepath: impl AsRef<Path>, obj: &T, pretty: JsonPretty) -> Result<(), Report> {
   write_file_with(filepath, |writer| {
     json_write(&mut *writer, obj, pretty)?;
-    writeln!(writer)?;
+    writeln!(writer).wrap_err("When writing the final newline")?;
     Ok(())
   })
 }

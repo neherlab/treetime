@@ -2,7 +2,7 @@
 mod tests {
   use crate::assert_error;
   use crate::io::compression::{CompressionType, Compressor, Decompressor};
-  use eyre::Report;
+  use eyre::{Report, WrapErr};
   use helpers::{FailingFlush, compress, decompress};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -38,7 +38,7 @@ mod tests {
   #[test]
   fn test_compression_finish_returns_the_flush_error() -> Result<(), Report> {
     let mut compressor = Compressor::new(FailingFlush, &CompressionType::None)?;
-    compressor.write_all(CONTENT.as_bytes())?;
+    compressor.write_all(CONTENT.as_bytes()).wrap_err("When writing the content")?;
     assert_error!(compressor.finish(), "While finishing compressed file: disk full");
     Ok(())
   }
@@ -63,7 +63,7 @@ mod tests {
       let mut bytes = vec![];
       let mut compressor = Compressor::new(&mut bytes, compression_type)?;
       for _ in 0..100 {
-        compressor.write_all(CONTENT.as_bytes())?;
+        compressor.write_all(CONTENT.as_bytes()).wrap_err("When writing the content")?;
       }
       if finish {
         compressor.finish()?;
@@ -75,7 +75,9 @@ mod tests {
 
     pub(super) fn decompress(bytes: &[u8], compression_type: &CompressionType) -> Result<String, Report> {
       let mut content = String::new();
-      Decompressor::new(bytes, compression_type)?.read_to_string(&mut content)?;
+      Decompressor::new(bytes, compression_type)?
+        .read_to_string(&mut content)
+        .wrap_err("When decompressing the content")?;
       Ok(content)
     }
   }

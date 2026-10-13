@@ -42,7 +42,7 @@ pub fn extension(filepath: impl AsRef<Path>) -> Option<String> {
 pub fn read_file_to_string(filepath: impl AsRef<Path>) -> Result<String, Report> {
   read_file_with(filepath, |mut reader| {
     let mut data = String::new();
-    reader.read_to_string(&mut data)?;
+    reader.read_to_string(&mut data).wrap_err("When reading UTF-8 text")?;
     Ok(data)
   })
 }
