@@ -1,52 +1,16 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::run_optimize_mixed_inner;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
   use crate::optimize::params::BranchOptMethod;
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
-  use crate::test_utils::leaf_seq_inputs;
+  use crate::pretty_assert_abs_diff_eq;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
+  use helpers::{DenseSetup, optimize_once, root_edge_branch_lengths};
   use indoc::indoc;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
-  use treetime_io::fasta::fasta_read;
-  use treetime_io::nwk::nwk_read;
-  use treetime_primitives::AlignmentRecord;
-
-  fn setup_dense(
-    newick: &str,
-    fasta: &str,
-  ) -> Result<(Graph, MarginalReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let aln: Vec<AlignmentRecord> = fasta_read(fasta.as_bytes(), &alphabet)?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-    let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let gtr = jc69(JC69Params::default())?;
-    let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
-    let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr));
-    let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    Ok((graph, reconstruction, branch_lengths))
-  }
-
-  fn root_edge_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> (f64, f64) {
-    let root = graph.get_exactly_one_root().unwrap();
-    let children = graph.children_of(root).collect::<Vec<_>>();
-    assert_eq!(2, children.len());
-    let bl0 = branch_lengths[&children[0].1.key()].unwrap_or(0.0);
-    let bl1 = branch_lengths[&children[1].1.key()].unwrap_or(0.0);
-    (bl0, bl1)
-  }
+  use itertools::Itertools;
+  use ndarray::Array1;
+  use rstest::rstest;
 
   #[rustfmt::skip]
   const BIFURCATING_TREE: &str = "((A:0.05,B:0.05)AB:0.15,(C:0.05,D:0.05)CD:0.05)root:0.0;";
@@ -64,7 +28,12 @@ mod tests {
 
   #[test]
   fn test_root_preservation_ratio_preserved_after_optimization() -> Result<(), Report> {
-    let (graph, reconstruction, mut branch_lengths) = setup_dense(BIFURCATING_TREE, ALIGNMENT)?;
+    let DenseSetup {
+      graph,
+      reconstruction,
+      mut branch_lengths,
+      ..
+    } = DenseSetup::new(BIFURCATING_TREE, ALIGNMENT)?;
 
     let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_before = bl0_before + bl1_before;
@@ -96,7 +65,12 @@ mod tests {
   #[test]
   fn test_root_preservation_both_edges_zero_uses_equal_split() -> Result<(), Report> {
     let tree = "((A:0.1,B:0.2)AB:0.0,(C:0.15,D:0.12)CD:0.0)root:0.0;";
-    let (graph, reconstruction, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
+    let DenseSetup {
+      graph,
+      reconstruction,
+      mut branch_lengths,
+      ..
+    } = DenseSetup::new(tree, ALIGNMENT)?;
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
@@ -140,7 +114,12 @@ mod tests {
       >F
       GGGGACGTACGTACGA
     "#};
-    let (graph, reconstruction, mut branch_lengths) = setup_dense(tree, fasta)?;
+    let DenseSetup {
+      graph,
+      reconstruction,
+      mut branch_lengths,
+      ..
+    } = DenseSetup::new(tree, fasta)?;
 
     {
       let root = graph.get_exactly_one_root()?;
@@ -167,7 +146,12 @@ mod tests {
   #[test]
   fn test_root_preservation_asymmetric_ratio() -> Result<(), Report> {
     let tree = "((A:0.05,B:0.05)AB:0.9,(C:0.05,D:0.05)CD:0.01)root:0.0;";
-    let (graph, reconstruction, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
+    let DenseSetup {
+      graph,
+      reconstruction,
+      mut branch_lengths,
+      ..
+    } = DenseSetup::new(tree, ALIGNMENT)?;
 
     let (bl0_before, bl1_before) = root_edge_branch_lengths(&graph, &branch_lengths);
     let total_before = bl0_before + bl1_before;
@@ -197,82 +181,155 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_root_preservation_sum_converges_in_one_undamped_iteration() -> Result<(), Report> {
-    let tree = "((A:0.05,B:0.05)AB:0.9,(C:0.05,D:0.05)CD:0.3)root:0.0;";
-    let (graph, mut reconstruction, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
-    let total_length = reconstruction.sequence_length();
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::bifurcating_root(
+    "((A:0.05,B:0.05)AB:0.9,(C:0.05,D:0.05)CD:0.3)root:0.0;",
+    &[("AB", 0), ("CD", 0)],
+    "(A:0.05,B:0.05,(C:0.05,D:0.05)CD:1.2)AB:0.0;",
+    0.0,
+  )]
+  #[case::single_child_node(
+    "((A:0.05,B:0.05)AB:0.6,((C:0.05,D:0.05)CD:0.2)U:0.1)root:0.0;",
+    &[("AB", 0), ("U", 0), ("CD", 0)],
+    "(A:0.05,B:0.05,(C:0.05,D:0.05)CD:0.9)AB:0.0;",
+    0.0,
+  )]
+  #[trace]
+  fn test_root_preservation_chain_sum_matches_single_edge_of_rerooted_tree(
+    #[case] tree: &str,
+    #[case] chain: &[(&str, usize)],
+    #[case] rerooted_tree: &str,
+    #[case] indel_rate: f64,
+  ) -> Result<(), Report> {
+    let chain_indel_count: usize = chain.iter().map(|(_, count)| count).sum();
+    let mut rerooted = DenseSetup::new(rerooted_tree, ALIGNMENT)?;
+    let rerooted_indel_counts = rerooted.indel_counts(&[("CD", chain_indel_count)]);
+    optimize_once(&mut rerooted, &rerooted_indel_counts, indel_rate)?;
+    let expected_sum = rerooted.branch_length("CD");
 
-    let mut sums = vec![];
-    for _ in 0..10 {
-      let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-      run_optimize_mixed_inner(
-        &graph,
-        total_length,
-        &contributions,
-        &indel_counts,
-        BranchOptMethod::BrentSqrt,
-        0.0,
-        true,
-        &mut branch_lengths,
-      )?;
-      let (bl0, bl1) = root_edge_branch_lengths(&graph, &branch_lengths);
-      sums.push(bl0 + bl1);
-      reconstruction = reconstruction
-        .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?
-        .0;
-    }
+    let mut setup = DenseSetup::new(tree, ALIGNMENT)?;
+    let indel_counts = setup.indel_counts(chain);
+    optimize_once(&mut setup, &indel_counts, indel_rate)?;
+    let actual_sum: f64 = chain.iter().map(|(name, _)| setup.branch_length(name)).sum();
 
-    assert_abs_diff_eq!(sums[8], sums[9], epsilon = 1e-6);
+    assert_abs_diff_eq!(expected_sum, actual_sum, epsilon = 1e-5);
     Ok(())
   }
 
   #[test]
-  fn test_root_preservation_unary_node_joins_series_chain() -> Result<(), Report> {
+  fn test_root_preservation_single_child_chain_keeps_ratios() -> Result<(), Report> {
     let tree = "((A:0.05,B:0.05)AB:0.15,((C:0.05,D:0.05)CD:0.03)U:0.02)root:0.0;";
-    let (graph, mut reconstruction, mut branch_lengths) = setup_dense(tree, ALIGNMENT)?;
-    let total_length = reconstruction.sequence_length();
-    let chain: Vec<GraphEdgeKey> = graph
-      .get_edges()
-      .filter(|edge| {
-        let bl = branch_lengths[&edge.key()].unwrap();
-        [0.15, 0.03, 0.02].iter().any(|x| (bl - x).abs() < 1e-12)
-      })
-      .map(|edge| edge.key())
-      .collect();
-    assert_eq!(3, chain.len());
-    let lengths_before: Vec<f64> = chain.iter().map(|e| branch_lengths[e].unwrap()).collect();
+    let chain = ["AB", "U", "CD"];
+    let mut setup = DenseSetup::new(tree, ALIGNMENT)?;
+    let indel_counts = setup.indel_counts(&[]);
+    let ratios = |setup: &DenseSetup| {
+      let lengths = chain.iter().map(|name| setup.branch_length(name)).collect_vec();
+      let total: f64 = lengths.iter().sum();
+      Array1::from_iter(lengths.iter().map(|bl| bl / total))
+    };
+    let expected = ratios(&setup);
 
-    let mut sums = vec![];
-    for _ in 0..10 {
-      let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-      run_optimize_mixed_inner(
-        &graph,
-        total_length,
-        &contributions,
-        &indel_counts,
-        BranchOptMethod::BrentSqrt,
-        0.0,
-        true,
-        &mut branch_lengths,
-      )?;
-      sums.push(chain.iter().map(|e| branch_lengths[e].unwrap()).sum::<f64>());
-      reconstruction = reconstruction
-        .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?
-        .0;
-    }
+    optimize_once(&mut setup, &indel_counts, 0.0)?;
 
-    let lengths_after: Vec<f64> = chain.iter().map(|e| branch_lengths[e].unwrap()).collect();
-    for i in 1..3 {
-      assert_abs_diff_eq!(
-        lengths_before[i] / lengths_before[0],
-        lengths_after[i] / lengths_after[0],
-        epsilon = 1e-12
-      );
-    }
-    assert_abs_diff_eq!(sums[8], sums[9], epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(expected, ratios(&setup), epsilon = 1e-12);
     Ok(())
+  }
+
+  mod helpers {
+    use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+    use crate::branch_lengths::branch_lengths_or_zero;
+    use crate::gtr::get_gtr::{JC69Params, jc69};
+    use crate::optimize::dispatch::run_optimize_mixed_inner;
+    use crate::optimize::gather::gather_edge_contributions;
+    use crate::optimize::params::BranchOptMethod;
+    use crate::partition::marginal::dense::partition::PartitionMarginalDense;
+    use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
+    use crate::test_utils::leaf_seq_inputs;
+    use eyre::Report;
+    use std::collections::BTreeMap;
+    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
+    use treetime_io::fasta::fasta_read;
+    use treetime_io::nwk::nwk_read;
+    use treetime_primitives::AlignmentRecord;
+
+    pub(super) struct DenseSetup {
+      pub(super) graph: Graph,
+      pub(super) reconstruction: MarginalReconstruction,
+      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      pub(super) edges_by_child_name: BTreeMap<String, GraphEdgeKey>,
+    }
+
+    impl DenseSetup {
+      pub(super) fn new(newick: &str, fasta: &str) -> Result<Self, Report> {
+        let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+        let aln: Vec<AlignmentRecord> = fasta_read(fasta.as_bytes(), &alphabet)?
+          .into_iter()
+          .map(AlignmentRecord::from)
+          .collect();
+        let nwk_parsed = nwk_read(newick.as_bytes())?;
+        let names = nwk_parsed.names();
+        let graph = nwk_parsed.graph;
+        let branch_lengths = nwk_parsed.branch_lengths;
+        let gtr = jc69(JC69Params::default())?;
+        let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
+        let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr));
+        let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+        let edges_by_child_name = graph
+          .get_edges()
+          .map(|edge| (names[&edge.target()].clone().unwrap(), edge.key()))
+          .collect();
+        Ok(Self {
+          graph,
+          reconstruction,
+          branch_lengths,
+          edges_by_child_name,
+        })
+      }
+
+      pub(super) fn branch_length(&self, child_name: &str) -> f64 {
+        self.branch_lengths[&self.edges_by_child_name[child_name]].unwrap()
+      }
+
+      pub(super) fn indel_counts(&self, counts_by_child_name: &[(&str, usize)]) -> BTreeMap<GraphEdgeKey, usize> {
+        let mut indel_counts: BTreeMap<GraphEdgeKey, usize> =
+          self.graph.get_edges().map(|edge| (edge.key(), 0)).collect();
+        for (name, count) in counts_by_child_name {
+          indel_counts.insert(self.edges_by_child_name[*name], *count);
+        }
+        indel_counts
+      }
+    }
+
+    pub(super) fn optimize_once(
+      setup: &mut DenseSetup,
+      indel_counts: &BTreeMap<GraphEdgeKey, usize>,
+      indel_rate: f64,
+    ) -> Result<(), Report> {
+      let contributions = gather_edge_contributions(&setup.graph, &setup.reconstruction)?;
+      run_optimize_mixed_inner(
+        &setup.graph,
+        setup.reconstruction.sequence_length(),
+        &contributions,
+        indel_counts,
+        BranchOptMethod::BrentSqrt,
+        indel_rate,
+        false,
+        &mut setup.branch_lengths,
+      )
+    }
+
+    pub(super) fn root_edge_branch_lengths(
+      graph: &Graph,
+      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    ) -> (f64, f64) {
+      let root = graph.get_exactly_one_root().unwrap();
+      let children = graph.children_of(root).collect::<Vec<_>>();
+      assert_eq!(2, children.len());
+      let bl0 = branch_lengths[&children[0].1.key()].unwrap_or(0.0);
+      let bl1 = branch_lengths[&children[1].1.key()].unwrap_or(0.0);
+      (bl0, bl1)
+    }
   }
 }
