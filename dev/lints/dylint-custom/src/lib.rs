@@ -63,7 +63,6 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
         lints::file_length::FILE_TOO_LONG,
         lints::suppression::UNJUSTIFIED_SUPPRESSION,
         lints::no_comments::NO_COMMENTS,
-        lints::no_comments::DOC_COMMENT_LIMIT,
         lints::pub_unused_in_workspace::PUB_UNUSED_IN_WORKSPACE,
         lints::json_value_in_schema::JSON_VALUE_IN_SCHEMA,
     ]);

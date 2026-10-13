@@ -2,7 +2,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_ast::{self as ast, AttrKind, Attribute, Crate, Item, ItemKind, MetaItemInner, VariantData, VisibilityKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lock;
@@ -18,12 +18,6 @@ rustc_session::declare_lint! {
     pub NO_COMMENTS,
     Deny,
     "comment in Rust source -- the project keeps explanations in names, types, tests, and the knowledge base"
-}
-
-rustc_session::declare_lint! {
-    pub DOC_COMMENT_LIMIT,
-    Deny,
-    "rendered doc comment over the size limit -- keep the summary, move the rest to the knowledge base"
 }
 
 pub type HelpDocs = Arc<Lock<FxHashSet<(BytePos, BytePos)>>>;
@@ -49,19 +43,18 @@ impl HelpDocCollector {
         }
     }
 
-    fn record_help_docs(&self, cx: &EarlyContext<'_>, item: &Item) {
+    fn record_help_docs(&self, item: &Item) {
         let sources = self.matched_sources(item);
         if sources.is_empty() {
             return;
         }
-        let item_sources = sources_rendering(&sources, Granularity::Item);
-        if !item_sources.is_empty() {
-            self.record_doc_block(cx, &item.attrs, is_size_limited(&item_sources));
+        if sources.iter().any(|source| source.renders.contains(&Granularity::Item)) {
+            self.record_doc_block(&item.attrs);
         }
         match &item.kind {
             ItemKind::Struct(_, _, data) => {
                 let rendering = sources_rendering(&sources, Granularity::Fields);
-                self.record_field_docs(cx, &rendering, data);
+                self.record_field_docs(&rendering, data);
             },
             ItemKind::Enum(_, _, def) => {
                 for variant in &def.variants {
@@ -72,16 +65,17 @@ impl HelpDocCollector {
                     if rendering.is_empty() {
                         continue;
                     }
-                    self.record_doc_block(cx, &variant.attrs, is_size_limited(&rendering));
-                    self.record_field_docs(cx, &rendering, &variant.data);
+                    self.record_doc_block(&variant.attrs);
+                    self.record_field_docs(&rendering, &variant.data);
                 }
             },
             ItemKind::Impl(imp) => {
                 let rendering = sources_rendering(&sources, Granularity::Methods);
                 for assoc in &imp.items {
-                    let showing = shown_by(&rendering, &assoc.attrs);
-                    if matches!(assoc.vis.kind, VisibilityKind::Public) && !showing.is_empty() {
-                        self.record_doc_block(cx, &assoc.attrs, is_size_limited(&showing));
+                    let shown = matches!(assoc.vis.kind, VisibilityKind::Public)
+                        && rendering.iter().any(|source| !is_skipped(source, &assoc.attrs));
+                    if shown {
+                        self.record_doc_block(&assoc.attrs);
                     }
                 }
             },
@@ -102,7 +96,7 @@ impl HelpDocCollector {
             .collect()
     }
 
-    fn record_field_docs(&self, cx: &EarlyContext<'_>, rendering: &[&RenderSource], data: &VariantData) {
+    fn record_field_docs(&self, rendering: &[&RenderSource], data: &VariantData) {
         if rendering.is_empty() {
             return;
         }
@@ -111,83 +105,29 @@ impl HelpDocCollector {
             VariantData::Unit(_) => &[],
         };
         for field in fields {
-            let showing = shown_by(rendering, &field.attrs);
-            if !showing.is_empty() {
-                self.record_doc_block(cx, &field.attrs, is_size_limited(&showing));
+            if rendering.iter().any(|source| !is_skipped(source, &field.attrs)) {
+                self.record_doc_block(&field.attrs);
             }
         }
     }
 
-    fn record_doc_block(&self, cx: &EarlyContext<'_>, attrs: &[Attribute], size_limited: bool) {
-        let docs = attrs.iter().filter(|attr| attr.doc_str().is_some()).collect::<Vec<_>>();
-        let (Some(first), Some(last)) = (docs.first(), docs.last()) else {
-            return;
-        };
-        {
-            let mut help = self.help_docs.lock();
-            for attr in &docs {
-                help.insert((attr.span.lo(), attr.span.hi()));
-            }
+    fn record_doc_block(&self, attrs: &[Attribute]) {
+        let mut help = self.help_docs.lock();
+        for attr in attrs.iter().filter(|attr| attr.doc_str().is_some()) {
+            help.insert((attr.span.lo(), attr.span.hi()));
         }
-        if !size_limited {
-            return;
-        }
-        let lines = docs
-            .iter()
-            .filter_map(|attr| attr.doc_str())
-            .flat_map(|text| {
-                text.to_string()
-                    .lines()
-                    .map(str::trim)
-                    .map(str::to_owned)
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-        let text = lines.join("\n");
-        let paragraphs = text
-            .split("\n\n")
-            .filter(|paragraph| !paragraph.trim().is_empty())
-            .count();
-        let over = [
-            (
-                text.chars().count() > self.config.max_chars,
-                format!("{} characters", self.config.max_chars),
-            ),
-            (
-                lines.len() > self.config.max_lines,
-                format!("{} lines", self.config.max_lines),
-            ),
-            (
-                paragraphs > self.config.max_paragraphs,
-                format!("{} paragraphs", self.config.max_paragraphs),
-            ),
-        ]
-        .into_iter()
-        .filter_map(|(over, limit)| over.then_some(limit))
-        .collect::<Vec<_>>();
-        if over.is_empty() {
-            return;
-        }
-        span_lint_and_help(
-            cx,
-            DOC_COMMENT_LIMIT,
-            first.span.to(last.span),
-            format!("rendered doc comment is over {}", over.join(", ")),
-            None,
-            "keep the summary here and move the rest to the knowledge base",
-        );
     }
 }
 
-rustc_session::impl_lint_pass!(HelpDocCollector => [DOC_COMMENT_LIMIT]);
+rustc_session::impl_lint_pass!(HelpDocCollector => []);
 
 impl EarlyLintPass for HelpDocCollector {
     fn check_crate(&mut self, _cx: &EarlyContext<'_>, _krate: &Crate) {
         self.help_docs.lock().clear();
     }
 
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        self.record_help_docs(cx, item);
+    fn check_item(&mut self, _cx: &EarlyContext<'_>, item: &Item) {
+        self.record_help_docs(item);
     }
 }
 
@@ -440,18 +380,6 @@ fn sources_rendering<'a>(sources: &[&'a RenderSource], granularity: Granularity)
         .copied()
         .filter(|source| source.renders.contains(&granularity))
         .collect()
-}
-
-fn shown_by<'a>(sources: &[&'a RenderSource], attrs: &[Attribute]) -> Vec<&'a RenderSource> {
-    sources
-        .iter()
-        .copied()
-        .filter(|source| !is_skipped(source, attrs))
-        .collect()
-}
-
-fn is_size_limited(sources: &[&RenderSource]) -> bool {
-    sources.iter().all(|source| !source.exempt_from_size_limit)
 }
 
 fn is_skipped(source: &RenderSource, attrs: &[Attribute]) -> bool {

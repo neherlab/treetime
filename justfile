@@ -69,8 +69,8 @@ dylint_cmd := uncached_env + " CARGO_TARGET_DIR=" + quote(dylint_target_dir) + "
 dylint_cargo_args := "--quiet --locked --workspace --all-targets"
 
 # Lint levels of the driver: lints that only one library declares are unknown
-# to the others. Every lint of the custom library is on, the comment lints
-# (no_comments, doc_comment_limit) included.
+# to the others. Every lint of the custom library is on, the comment lint
+# no_comments included.
 dylint_rustflags := "-A unknown_lints"
 dylint_over_baseline := dylint_target_dir / "mordant/over-baseline.txt"
 
