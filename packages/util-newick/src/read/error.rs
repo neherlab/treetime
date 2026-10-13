@@ -1,7 +1,7 @@
-use std::error::Error;
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("line {line}, column {column}: {message}")]
 pub struct NewickError {
   pub kind: NewickErrorKind,
   pub offset: usize,
@@ -29,14 +29,6 @@ impl NewickError {
     }
   }
 }
-
-impl fmt::Display for NewickError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "line {}, column {}: {}", self.line, self.column, self.message)
-  }
-}
-
-impl Error for NewickError {}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NewickErrorKind {
@@ -69,6 +61,13 @@ impl NewickWarning {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    handwritten_fmt_impl,
+    reason = "callers print a warning like an error, in the `line, column: message` form that `NewickError` derives"
+  )
+)]
 impl fmt::Display for NewickWarning {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "line {}, column {}: {}", self.line, self.column, self.message)

@@ -96,6 +96,13 @@ impl NewickDialect {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    handwritten_fmt_impl,
+    reason = "the text form is the one that `FromStr` reads back, and command-line flags and config files write it through `Display`"
+  )
+)]
 impl fmt::Display for NewickDialect {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{},{}", self.structure.name(), self.annotations.name())
