@@ -22,10 +22,6 @@ use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::{RerootResult, StemRemovalInfo};
 use treetime_utils::make_report;
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 pub(crate) fn estimate_clock_model_with_reroot_policy(
   tree: ClockTree,
   outliers: &BTreeSet<GraphNodeKey>,
@@ -89,24 +85,21 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   let root_key = tree.graph.get_exactly_one_root()?.key();
   let root_clock_set = state.node(root_key).clone();
 
-  let (regression, clock_model) = if let Some(rate) = clock_rate {
+  let estimate = if let Some(rate) = clock_rate {
     progress_info!(log, "### Using fixed clock rate: {rate:.6e}");
-    (None, Some(ClockModel::with_fixed_rate(&root_clock_set, rate)?))
+    ClockEstimate::Fixed(ClockModel::with_fixed_rate(&root_clock_set, rate)?)
   } else {
     progress_info!(log, "### Using estimated clock rate");
-    let regression = ClockRegression::try_from(&root_clock_set)?;
-    (Some(regression), None)
+    ClockEstimate::Estimated(ClockRegression::try_from(&root_clock_set)?)
   };
 
-  let rate = clock_model
-    .as_ref()
-    .map_or_else(|| regression.as_ref().unwrap().clock_rate(), |m| m.clock_rate());
-  let intercept = clock_model
-    .as_ref()
-    .map_or_else(|| regression.as_ref().unwrap().intercept(), |m| m.intercept());
+  let (rate, intercept) = match &estimate {
+    ClockEstimate::Estimated(regression) => (regression.clock_rate(), regression.intercept()),
+    ClockEstimate::Fixed(model) => (model.clock_rate(), model.intercept()),
+  };
   progress_info!(log, "**Clock rate:** {rate:.6e}");
   progress_info!(log, "**Intercept:** {intercept:.4}");
-  if let Some(reg) = &regression {
+  if let ClockEstimate::Estimated(reg) = &estimate {
     progress_info!(log, "**R²:** {:.4}", reg.r_squared());
     progress_info!(log, "**χ²:** {:.4}", reg.chisq());
     progress_info!(log, "**Hessian:**\n{}", reg.hessian());
@@ -115,8 +108,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   Ok((
     tree,
     ClockRerootResult {
-      regression,
-      clock_model,
+      estimate,
       reroot_result,
       points,
     },
@@ -228,10 +220,15 @@ fn search_root(
 
 #[derive(Clone, Debug)]
 pub struct ClockRerootResult {
-  regression: Option<ClockRegression>,
-  clock_model: Option<ClockModel>,
+  estimate: ClockEstimate,
   reroot_result: Option<RerootResult>,
   points: Vec<ClockRegressionPoint>,
+}
+
+#[derive(Clone, Debug)]
+enum ClockEstimate {
+  Estimated(ClockRegression),
+  Fixed(ClockModel),
 }
 
 pub(crate) struct ClockTree {
@@ -263,43 +260,25 @@ impl ClockRerootResult {
     })
   }
 
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   fn into_clock_model(self) -> Result<ClockModel, Report> {
-    if let Some(model) = self.clock_model {
-      return Ok(model);
+    match self.estimate {
+      ClockEstimate::Estimated(regression) => ClockModel::from_regression(&regression),
+      ClockEstimate::Fixed(model) => Ok(model),
     }
-    let regression = self
-      .regression
-      .expect("ClockRerootResult has neither regression nor clock_model");
-    ClockModel::from_regression(&regression)
   }
 
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
   pub(crate) fn into_clock_model_allow_negative(self, log: &dyn LogSink) -> ClockModel {
-    if let Some(model) = self.clock_model {
-      return model;
+    match self.estimate {
+      ClockEstimate::Estimated(regression) => ClockModel::from_regression_allow_negative(&regression, log),
+      ClockEstimate::Fixed(model) => model,
     }
-    let regression = self
-      .regression
-      .expect("ClockRerootResult has neither regression nor clock_model");
-    ClockModel::from_regression_allow_negative(&regression, log)
   }
 
-  #[expect(
-    clippy::expect_used,
-    reason = "expect on a value an upstream invariant guarantees is present"
-  )]
-  pub(crate) fn regression(&self) -> &ClockRegression {
-    self
-      .regression
-      .as_ref()
-      .expect("regression() called on fixed-rate result")
+  pub(crate) fn regression(&self) -> Option<&ClockRegression> {
+    match &self.estimate {
+      ClockEstimate::Estimated(regression) => Some(regression),
+      ClockEstimate::Fixed(_) => None,
+    }
   }
 
   pub(crate) fn reroot_result(&self) -> Option<&RerootResult> {
@@ -322,10 +301,6 @@ fn clock_regression_backward(
   Ok(state)
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn clock_regression_backward_node(
   options: &ClockVarianceParams,
   prev_clock_rate: Option<f64>,
@@ -344,11 +319,13 @@ fn clock_regression_backward_node(
       ClockSet::leaf_contribution(date)
     }
   } else {
-    context.children.iter().fold(ClockSet::default(), |mut total, child| {
-      let edge = child.edge.expect("Non-root indexed node must own its parent edge");
-      total += &edge.clock_from_child;
-      total
-    })
+    context
+      .children
+      .iter()
+      .try_fold(ClockSet::default(), |mut total, child| {
+        total += &child.edge_message()?.clock_from_child;
+        Ok::<_, Report>(total)
+      })?
   };
 
   let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
@@ -378,10 +355,6 @@ fn clock_regression_backward_node(
   Ok(GraphPassNodeOutput { node, parent_message })
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn clock_regression_forward(
   graph: &Graph,
   inputs: &ClockInputs,
@@ -392,9 +365,8 @@ fn clock_regression_forward(
 ) -> Result<ClockState, Report> {
   state.map_forward(graph, |context| {
     let mut node = context.input.clone();
-    let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
+    let parent_message = if let (Some((edge_key, edge)), Some(parent)) = (context.parent_edge, context.parent) {
       let mut edge = edge.clone();
-      let parent = context.parent.expect("Non-root node must have a parent");
       let mut q_to_child = parent.clone();
       q_to_child -= &edge.clock_from_child;
       edge.clock_to_child = q_to_child;

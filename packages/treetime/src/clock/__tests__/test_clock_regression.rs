@@ -287,7 +287,7 @@ mod tests {
         &names,
         &NoopProgress,
       )?;
-      Ok(result.regression().clone())
+      Ok(result.regression().unwrap().clone())
     }
 
     pub(super) fn rows_and_divs(

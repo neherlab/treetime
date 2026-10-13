@@ -19,6 +19,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::date::DateConstraint;
+use treetime_utils::make_internal_error;
 
 pub fn run(
   params: &ClockParams,
@@ -137,7 +138,11 @@ fn estimate_clock_model_with_prefilter(
       names,
       log,
     )?;
-    let regression = result.regression();
+    let Some(regression) = result.regression() else {
+      return make_internal_error!(
+        "The clock fit before outlier filtering estimates the rate, so it must hold a regression"
+      );
+    };
     if regression.clock_rate() < 0.0 {
       progress_warn!(
         log,

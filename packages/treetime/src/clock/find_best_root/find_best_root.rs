@@ -5,7 +5,7 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootOb
 use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::progress_info;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
@@ -14,10 +14,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::collections::container::get_exactly_one;
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub(crate) fn find_best_root(
   graph: &Graph,
   inputs: &ClockInputs,
@@ -92,7 +88,8 @@ pub(crate) fn find_best_root(
   if !best_root_node.is_root() {
     debug!("Optimizing position on parent branch");
     let inbound = best_root_node.inbound();
-    let edge = get_exactly_one(inbound).expect("Not implemented: multiple parent nodes");
+    let edge =
+      get_exactly_one(inbound).wrap_err("Root optimization on a node with multiple parents is not implemented")?;
     let res = find_best_split(
       graph,
       inputs,

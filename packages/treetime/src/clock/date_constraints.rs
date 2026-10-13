@@ -8,11 +8,8 @@ use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::date::{DateConstraint, DateValue};
+use treetime_utils::cast::ToF64Exact;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub fn load_date_constraints(
   dates: &BTreeMap<GraphNodeKey, DateConstraint>,
   graph: &Graph,
@@ -48,7 +45,7 @@ pub fn load_date_constraints(
 
   let total_leaf_count = good_leaf_count + bad_leaf_count;
   let coverage_percent = if total_leaf_count > 0 {
-    (good_leaf_count as f64 / total_leaf_count as f64) * 100.0
+    (good_leaf_count.to_f64_exact() / total_leaf_count.to_f64_exact()) * 100.0
   } else {
     0.0
   };
@@ -105,10 +102,6 @@ fn validate_minimum_date_constraints(
   Ok(())
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn log_date_constraint_summary(
   good_leaf_count: usize,
   bad_leaf_count: usize,
@@ -118,7 +111,7 @@ fn log_date_constraint_summary(
   log: &dyn LogSink,
 ) {
   let bad_percent = if total_leaf_count > 0 {
-    (bad_leaf_count as f64 / total_leaf_count as f64) * 100.0
+    (bad_leaf_count.to_f64_exact() / total_leaf_count.to_f64_exact()) * 100.0
   } else {
     0.0
   };

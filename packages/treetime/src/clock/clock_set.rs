@@ -1,7 +1,7 @@
 use auto_ops::impl_op_ex;
 use deser::Serialize;
 use getset::CopyGetters;
-use ndarray::Array2;
+use ndarray::{Array2, array};
 
 #[must_use]
 #[derive(Debug, Default, Clone, PartialEq, CopyGetters, Serialize)]
@@ -93,30 +93,16 @@ impl ClockSet {
     (self.d_sum() - self.t_sum() * rate) / self.norm()
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   pub(crate) fn hessian(&self) -> Array2<f64> {
-    Array2::from_shape_vec((2, 2), vec![self.tsq_sum(), self.t_sum(), self.t_sum(), self.norm()]).unwrap()
+    array![[self.tsq_sum(), self.t_sum()], [self.t_sum(), self.norm()]]
   }
 
-  #[expect(
-    clippy::unwrap_used,
-    reason = "unwrap on a value an upstream invariant guarantees is present"
-  )]
   pub(crate) fn cov(&self) -> Array2<f64> {
     let det_inv = 1.0 / self.determinant();
-    Array2::from_shape_vec(
-      (2, 2),
-      vec![
-        self.norm() * det_inv,
-        -self.t_sum() * det_inv,
-        -self.t_sum() * det_inv,
-        self.tsq_sum() * det_inv,
-      ],
-    )
-    .unwrap()
+    array![
+      [self.norm() * det_inv, -self.t_sum() * det_inv],
+      [-self.t_sum() * det_inv, self.tsq_sum() * det_inv],
+    ]
   }
 
   pub(crate) fn chisq(&self) -> f64 {

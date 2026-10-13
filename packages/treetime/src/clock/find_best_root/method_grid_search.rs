@@ -3,15 +3,11 @@ use crate::clock::find_best_root::find_best_split::FindRootResult;
 use crate::clock::find_best_root::params::GridSearchParams;
 use crate::progress::LogSink;
 use crate::progress_info;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use log::debug;
 use ndarray::Array1;
 use treetime_graph::edge::GraphEdgeKey;
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub(crate) fn optimize_grid_search(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
@@ -29,12 +25,14 @@ pub(crate) fn optimize_grid_search(
   let mut best_split = f64::NAN;
   let mut best_clock_set = cost_fn
     .evaluate_clock_set(0.0)
-    .expect("Failed to evaluate initial position");
+    .wrap_err("When evaluating the initial root position")?;
 
   let grid_points = Array1::linspace(0.0, 1.0, params.n_points);
 
   for (point_count, x) in grid_points.into_iter().enumerate() {
-    let clock_set = cost_fn.evaluate_clock_set(x).expect("Failed to evaluate clock set");
+    let clock_set = cost_fn
+      .evaluate_clock_set(x)
+      .wrap_err_with(|| format!("When evaluating the root position {x}"))?;
     let chisq = cost_fn.score_clock_set(&clock_set);
 
     if chisq < best_chisq {

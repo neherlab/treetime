@@ -181,7 +181,7 @@ mod tests {
       let filtered = clock_filter(
         &tree.graph,
         &tree.inputs,
-        result.regression(),
+        result.regression().unwrap(),
         &tree.branch_lengths,
         3.0,
         &NoopProgress,

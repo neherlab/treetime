@@ -10,12 +10,8 @@ use argmin::core::observers::ObserverMode;
 use argmin::solver::goldensectionsearch::GoldenSectionSearch;
 use eyre::Report;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_utils::cast::usize_to_u64;
 
-#[expect(
-  clippy::as_conversions,
-  clippy::unwrap_used,
-  reason = "count/index numeric cast is exact for the domain range; unwrap on a value an upstream invariant guarantees is present"
-)]
 pub(crate) fn optimize_golden_section(
   edge: GraphEdgeKey,
   cost_fn: &BranchPointCostFunction,
@@ -37,7 +33,7 @@ pub(crate) fn optimize_golden_section(
   let result = Executor::new(cost_fn, solver)
     .configure(|cfg| {
       cfg
-        .max_iters(params.golden_max_iters as u64)
+        .max_iters(usize_to_u64(params.golden_max_iters))
         .target_cost(params.golden_tolerance)
         .param(0.5)
     })
@@ -51,7 +47,10 @@ pub(crate) fn optimize_golden_section(
     .run()
     .map_err(|e| make_report!("Golden section search optimization failed: {e}"))?;
 
-  let best_split = result.state.best_param.unwrap();
+  let best_split = result
+    .state
+    .best_param
+    .ok_or_else(|| make_report!("Golden section search returned no parameter"))?;
   let best_chisq = result.state.best_cost;
 
   progress_info!(

@@ -33,7 +33,7 @@ mod tests {
 
     assert_eq!(Some((o!("root"), o!("CD"))), search.split_edge);
     pretty_assert_abs_diff_eq!(expected_split, search.split.expect("the root search splits a branch"), epsilon = 1e-7);
-    pretty_assert_abs_diff_eq!(expected_chisq, search.result.regression().chisq(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(expected_chisq, search.result.regression().unwrap().chisq(), epsilon = 1e-12);
     Ok(())
   }
 
@@ -51,7 +51,7 @@ mod tests {
 
     assert_eq!(Some((o!("root"), o!("CD"))), search.split_edge);
     pretty_assert_abs_diff_eq!(OPTIMAL_ROOT_CD_SPLIT, search.split.expect("the root search splits a branch"), epsilon = 1e-6);
-    pretty_assert_abs_diff_eq!(expected_chisq, search.result.regression().chisq(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(expected_chisq, search.result.regression().unwrap().chisq(), epsilon = 1e-12);
     Ok(())
   }
 
@@ -77,7 +77,7 @@ mod tests {
       None,
     )?;
 
-    let chisq = |search: &RootSearch| search.result.regression().chisq();
+    let chisq = |search: &RootSearch| search.result.regression().unwrap().chisq();
     assert!(chisq(&brent) <= chisq(&grid), "Brent should achieve <= chisq than grid");
     assert!(
       chisq(&golden) <= chisq(&grid),
@@ -143,7 +143,7 @@ mod tests {
       None,
     )?;
 
-    let regression = search.result.regression();
+    let regression = search.result.regression().unwrap();
     assert!(
       regression.clock_rate() < 0.0,
       "rate should be negative for this test graph, got {:.6e}",
