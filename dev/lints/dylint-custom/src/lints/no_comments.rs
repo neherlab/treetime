@@ -54,8 +54,9 @@ impl HelpDocCollector {
         if sources.is_empty() {
             return;
         }
-        if sources.iter().any(|source| source.renders.contains(&Granularity::Item)) {
-            self.record_doc_block(cx, &item.attrs);
+        let item_sources = sources_rendering(&sources, Granularity::Item);
+        if !item_sources.is_empty() {
+            self.record_doc_block(cx, &item.attrs, is_size_limited(&item_sources));
         }
         match &item.kind {
             ItemKind::Struct(_, _, data) => {
@@ -71,17 +72,16 @@ impl HelpDocCollector {
                     if rendering.is_empty() {
                         continue;
                     }
-                    self.record_doc_block(cx, &variant.attrs);
+                    self.record_doc_block(cx, &variant.attrs, is_size_limited(&rendering));
                     self.record_field_docs(cx, &rendering, &variant.data);
                 }
             },
             ItemKind::Impl(imp) => {
                 let rendering = sources_rendering(&sources, Granularity::Methods);
                 for assoc in &imp.items {
-                    let shown = matches!(assoc.vis.kind, VisibilityKind::Public)
-                        && rendering.iter().any(|source| !is_skipped(source, &assoc.attrs));
-                    if shown {
-                        self.record_doc_block(cx, &assoc.attrs);
+                    let showing = shown_by(&rendering, &assoc.attrs);
+                    if matches!(assoc.vis.kind, VisibilityKind::Public) && !showing.is_empty() {
+                        self.record_doc_block(cx, &assoc.attrs, is_size_limited(&showing));
                     }
                 }
             },
@@ -111,13 +111,14 @@ impl HelpDocCollector {
             VariantData::Unit(_) => &[],
         };
         for field in fields {
-            if rendering.iter().any(|source| !is_skipped(source, &field.attrs)) {
-                self.record_doc_block(cx, &field.attrs);
+            let showing = shown_by(rendering, &field.attrs);
+            if !showing.is_empty() {
+                self.record_doc_block(cx, &field.attrs, is_size_limited(&showing));
             }
         }
     }
 
-    fn record_doc_block(&self, cx: &EarlyContext<'_>, attrs: &[Attribute]) {
+    fn record_doc_block(&self, cx: &EarlyContext<'_>, attrs: &[Attribute], size_limited: bool) {
         let docs = attrs.iter().filter(|attr| attr.doc_str().is_some()).collect::<Vec<_>>();
         let (Some(first), Some(last)) = (docs.first(), docs.last()) else {
             return;
@@ -127,6 +128,9 @@ impl HelpDocCollector {
             for attr in &docs {
                 help.insert((attr.span.lo(), attr.span.hi()));
             }
+        }
+        if !size_limited {
+            return;
         }
         let lines = docs
             .iter()
@@ -436,6 +440,18 @@ fn sources_rendering<'a>(sources: &[&'a RenderSource], granularity: Granularity)
         .copied()
         .filter(|source| source.renders.contains(&granularity))
         .collect()
+}
+
+fn shown_by<'a>(sources: &[&'a RenderSource], attrs: &[Attribute]) -> Vec<&'a RenderSource> {
+    sources
+        .iter()
+        .copied()
+        .filter(|source| !is_skipped(source, attrs))
+        .collect()
+}
+
+fn is_size_limited(sources: &[&RenderSource]) -> bool {
+    sources.iter().all(|source| !source.exempt_from_size_limit)
 }
 
 fn is_skipped(source: &RenderSource, attrs: &[Attribute]) -> bool {

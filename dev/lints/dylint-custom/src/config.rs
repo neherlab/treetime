@@ -159,6 +159,10 @@ pub struct RenderSource {
     /// surface does not keep its doc comment. Form `outer(word)`, e.g.
     /// `"arg(skip)"`; `word` matches a bare word inside the attribute list.
     pub skip_attrs: Vec<String>,
+    /// Exempts the doc comments of this surface from the size limits. A doc
+    /// comment that an exempt surface renders is product documentation, such
+    /// as command-line help, whose length follows what it documents.
+    pub exempt_from_size_limit: bool,
 }
 
 /// Doc-comment location that a render source can carry into output.
