@@ -3,9 +3,10 @@
 Simulated trees and sequences with known node dates, used to validate TreeTime timetree inference.
 
 All scripts run on the host in the pixi environment of the repository (`pixi.toml`), from this directory.
-`pixi run ./generate_all.sh [n_reps=10] [n_jobs=available CPUs]` writes `data/` (10 tips per sample time). One
-replicate: `pixi run python simulate.py --coal exp --rep 0 [--tips-per-sample 30 --out data_n30]`; larger tip counts go
-to `data_n30/` and `data_n100/`. A 100-tip replicate takes about 3 minutes on one core.
+`pixi run ./generate_all.sh [n_reps=10] [n_jobs=available CPUs] [tips="10 30 100"]` writes `data/` (10 tips per
+sample time), `data_n30/` and `data_n100/`. One replicate:
+`pixi run python simulate.py --coal exp --rep 0 [--tips-per-sample 30 --out data_n30]`. A 100-tip replicate takes about
+3 minutes on one core.
 
 ## Trees (`coalescent.py`)
 
@@ -60,6 +61,12 @@ pixi run python run.py --suite optimize --set core --data data_n100 --results re
 pixi run python evaluate.py --suite optimize --data data_n100 --results results_n100
 pixi run python analyze.py --results results_n100
 ```
+
+On a Slurm cluster, `./slurm.sh` submits the whole pipeline (generate, run, evaluate, analyze for every tip density) as
+dependent jobs, with run tasks of one sequence set each (`run.py --shard`). Build `../target/release/treetime` and
+submit from the head node: the jobs run the Python of the conda environment `CONDA_ENV` (default `nextstrain`),
+resolved at submission, and need no network. Resources and the partition are set by environment variables (see the
+script header), e.g. `SBATCH_PARTITION=cpu RUN_CPUS=8 ./slurm.sh`. Logs go to `slurm_logs/`.
 
 At 4000 tips (`data_n100`, L=10000, mu=0.01), one run takes about 10 s for `optimize` and 1.5 min for `timetree`, with
 1.7 GB peak memory; set `-j` so that jobs times 2 GB fits in memory. `fixed-topo-dense` needs more than 8 GB there;

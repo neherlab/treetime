@@ -3,3 +3,4 @@ data_n*/
 results/
 results_n*/
 __pycache__/
+slurm_logs/
