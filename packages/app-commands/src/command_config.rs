@@ -7,21 +7,14 @@ use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use crate::commands::prune::args::TreetimePruneArgsRaw;
 use crate::commands::shared::resolve_outputs::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
-use crate::config::load::check_command_config;
-use crate::config::source::ConfigSource;
-use crate::json_value::SparseConfig;
-use crate::runs::errors::invalid;
 use app_output::output_plan::ResolvedOutputs;
 use deser::{Deserialize, Serialize};
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
 use std::path::Path;
-use treetime_utils::error::report_to_string;
 use treetime_utils::io::json::to_json_value;
 use treetime_utils::make_error;
-
-const REQUEST_SOURCE: &str = "config.json";
 
 /// A command with its complete configuration: every setting, defaults included.
 #[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
@@ -38,21 +31,6 @@ pub enum CommandConfig {
 }
 
 impl CommandConfig {
-  pub fn from_request(command: AppCommand, config: &SparseConfig) -> Result<Self, Report> {
-    let value = Value::Object(config.0.clone());
-    let source = ConfigSource::new(REQUEST_SOURCE, serde_json::to_string_pretty(&value)?);
-    check_command_config(&source, &value, &command.config_schema())
-      .map_err(|report| invalid(report_to_string(&report)))?;
-    Self::from_settings(command, &value).map_err(|report| invalid(report_to_string(&report)))
-  }
-
-  pub fn from_settings(command: AppCommand, settings: &Value) -> Result<Self, Report> {
-    let settings = Value::Object(command.config_over_defaults(settings)?);
-    command
-      .command_config(&settings)
-      .wrap_err_with(|| format!("When reading the configuration of a `{command}` run"))
-  }
-
   pub fn command(&self) -> AppCommand {
     match self {
       Self::Timetree { .. } => AppCommand::Timetree,

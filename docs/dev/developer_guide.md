@@ -113,6 +113,7 @@ Rust comments are banned in TreeTime: every lint of the custom library is on, so
 
 ```
 packages/
+  app-backend/       Run records, results, settings, and pre-run checks of the server, the addon, and the web2 worker
   app-cli/           CLI binary (treetime)
   app-commands/      Command configs and runners shared by the CLI, the server, and the addon
   app-contracts/     TypeScript types and schemas of the bridge between the apps and the Rust code
@@ -228,7 +229,7 @@ The Node addon (`packages/app-napi`, a Rust `cdylib`) is built by cargo, like th
 
 #### Folders and settings
 
-The desktop app keeps all its data in one app folder: `~/.config/treetime` on Linux (`$XDG_CONFIG_HOME/treetime` when set), `~/Library/Application Support/treetime` on macOS, and `%LOCALAPPDATA%\treetime` on Windows. `TREETIME_APP_DIR` names another app folder. The Rust core resolves the folders (`AppPaths` in `packages/app-commands/src/app_paths.rs`), so a later local web mode can use the same ones.
+The desktop app keeps all its data in one app folder: `~/.config/treetime` on Linux (`$XDG_CONFIG_HOME/treetime` when set), `~/Library/Application Support/treetime` on macOS, and `%LOCALAPPDATA%\treetime` on Windows. `TREETIME_APP_DIR` names another app folder. The Rust core resolves the folders (`AppPaths` in `packages/app-backend/src/app_paths.rs`), so a later local web mode can use the same ones.
 
 | Content                                              | Default                      | Environment variable      | `settings.yaml` key |
 | ---------------------------------------------------- | ---------------------------- | ------------------------- | ------------------- |

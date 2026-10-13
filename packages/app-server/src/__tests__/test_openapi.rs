@@ -2,8 +2,8 @@
 mod tests {
   use crate::openapi::add_discriminators;
   use crate::routes::api_doc;
+  use app_backend::config::catalog::setting_catalog;
   use app_commands::command::AppCommand;
-  use app_commands::config::catalog::setting_catalog;
   use helpers::{
     discriminated, keyword_locations, response_components, schemas_after, tagged_unions_without_discriminator,
   };

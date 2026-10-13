@@ -7,7 +7,7 @@ The workspace has two independent reporting paths. Diagnostics go through the `l
 | Path                 | Emit                                   | Call sites            | Renderers                                                                                                                                                                                    |
 | -------------------- | -------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Diagnostics          | `log::info!` and siblings              | 220 calls in 63 files | `env_logger`, configured from the verbosity flags in `packages/app-cli/src/cli/verbosity.rs`                                                                                                 |
-| User-facing progress | `report` on a `StageSink`, `log` on a `LogSink` | 30 files | `BarProgress` and `TextProgress` in `packages/app-cli/src/cli/progress.rs`, `JobProgress` in `packages/app-commands/src/job.rs` for the server stream and the native module |
+| User-facing progress | `report` on a `StageSink`, `log` on a `LogSink` | 30 files | `BarProgress` and `TextProgress` in `packages/app-cli/src/cli/progress.rs`, `JobProgress` in `packages/app-backend/src/job.rs` for the server stream and the native module |
 
 `StageSink` declares `report(stage, fraction, message)` and `iteration(record)`; `LogSink` declares `log(level, message)` and `log_enabled(level)`. `NoopProgress` implements both for callers that report nothing.
 

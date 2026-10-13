@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_routes::tests::helpers::{app, request};
-  use app_commands::app_paths::AppFolderEnv;
+  use app_backend::app_paths::AppFolderEnv;
   use helpers::{local_app, local_app_with};
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -192,16 +192,16 @@ mod tests {
   }
 
   mod helpers {
-    use app_commands::examples_download::ExampleDownloads;
+    use app_backend::examples_download::ExampleDownloads;
 
     const EXAMPLES_URL: &str = "http://127.0.0.1:9/examples.zip";
 
     use crate::__tests__::test_routes::tests::helpers::TestApp;
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
     use crate::web::{WebOptions, create_router};
-    use app_commands::app_paths::{AppFolderEnv, AppPaths};
-    use app_commands::app_settings::settings::AppPathSettings;
-    use app_commands::app_settings::store::AppSettingsStore;
+    use app_backend::app_paths::{AppFolderEnv, AppPaths};
+    use app_backend::app_settings::settings::AppPathSettings;
+    use app_backend::app_settings::store::AppSettingsStore;
     use std::sync::Arc;
     use tempfile::{TempDir, tempdir};
     use tokio_util::sync::CancellationToken;

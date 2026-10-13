@@ -38,18 +38,17 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_support::tests::RecordingLog;
     use crate::commands::ancestral::args::{SampleModeCli, TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
     use crate::commands::shared::seed::SeedArgs;
-    use crate::job::{JobEvent, JobProgress};
     use eyre::{Report, WrapErr};
-    use parking_lot::Mutex;
     use std::fs;
     use std::path::Path;
     use treetime::cancel::NoopCancel;
-    use treetime::progress::{LogEvent, NoopProgress};
+    use treetime::progress::NoopProgress;
 
     pub(super) fn run(dir: &Path, name: &str, seed: Option<u64>) -> Result<(String, Vec<String>), Report> {
       let fasta_path = dir.join(format!("{name}.fasta"));
@@ -68,18 +67,10 @@ mod tests {
         seed_args: SeedArgs { seed },
         ..TreetimeAncestralArgsRaw::default()
       })?;
-      let messages = Mutex::new(vec![]);
-      let log = JobProgress::new(|event: JobEvent| {
-        if let JobEvent::Log {
-          data: LogEvent { message, .. },
-        } = event
-        {
-          messages.lock().push(message);
-        }
-      });
+      let log = RecordingLog::default();
       run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &log)?;
       let fasta = fs::read_to_string(&fasta_path).wrap_err("When reading the reconstructed sequences")?;
-      Ok((fasta, messages.into_inner()))
+      Ok((fasta, log.events().into_iter().map(|(_, message)| message).collect()))
     }
   }
 }

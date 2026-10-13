@@ -3,7 +3,7 @@ use crate::error::AppError;
 use aide::OperationOutput;
 use aide::generate::GenContext;
 use aide::openapi::{MediaType, Operation, Response as ApiResponse, SchemaObject, StatusCode as ApiStatusCode};
-use app_commands::bridge::error::ErrorResponse;
+use app_backend::bridge::error::ErrorResponse;
 use axum::body::Body;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::sse::{Event, Sse};

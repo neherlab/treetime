@@ -1,14 +1,13 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::RecordingLog;
   use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
   use crate::commands::shared::output_args::OutputCoreArgs;
-  use crate::job::{JobEvent, JobProgress};
   use eyre::{Report, WrapErr};
   use maplit::btreemap;
-  use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
@@ -61,14 +60,7 @@ mod tests {
       output_augur_node_data: Some(node_data_path.clone()),
       ..TreetimeAncestralArgsRaw::default()
     })?;
-    let warnings = Mutex::new(vec![]);
-    let log = JobProgress::new(|event: JobEvent| {
-      if let JobEvent::Log { data: event } = event
-        && event.level == LogLevel::Warn
-      {
-        warnings.lock().push(event.message);
-      }
-    });
+    let log = RecordingLog::default();
 
     run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &log)?;
 
@@ -92,7 +84,7 @@ mod tests {
       .collect();
     let expected = btreemap! { o!("A") => vec![(2, 1, 1, vec![3])] };
     assert_eq!(expected, actual);
-    assert_eq!(Vec::<String>::new(), warnings.into_inner());
+    assert_eq!(Vec::<String>::new(), log.messages(LogLevel::Warn));
     assert!(mat_pb_path.is_file());
     Ok(())
   }

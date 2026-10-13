@@ -21,6 +21,7 @@ package.authors = [
 
 
 members = [
+  "packages/app-backend",
   "packages/app-cli",
   "packages/app-commands",
   "packages/app-datasets",
@@ -233,6 +234,7 @@ wasm-bindgen = "=0.2.129"
 wasm-bindgen-futures = "=0.4.79"
 zip = { version = "=8.6.0", default-features = false, features = ["deflate-flate2"] }
 
+app-backend = { path = "packages/app-backend" }
 app-commands = { path = "packages/app-commands", default-features = false }
 app-datasets = { path = "packages/app-datasets" }
 app-napi = { path = "packages/app-napi" }

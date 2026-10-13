@@ -1,11 +1,11 @@
 use crate::confine::PathPolicy;
-use app_commands::app_paths::AppPaths;
-use app_commands::app_settings::store::AppSettingsStore;
-use app_commands::bridge::service::{AppService, InputPolicy};
+use app_backend::app_paths::AppPaths;
+use app_backend::app_settings::store::AppSettingsStore;
+use app_backend::bridge::service::{AppService, InputPolicy};
+use app_backend::examples_download::ExampleDownloads;
+use app_backend::run_limits::RunLimits;
+use app_backend::runs::manager::RunManager;
 use app_commands::command::AppCommand;
-use app_commands::examples_download::ExampleDownloads;
-use app_commands::run_limits::RunLimits;
-use app_commands::runs::manager::RunManager;
 use eyre::Report;
 use serde_json::Value;
 use std::path::PathBuf;

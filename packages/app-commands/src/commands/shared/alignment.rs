@@ -90,7 +90,7 @@ pub(crate) struct PairedAlignment {
   pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
 }
 
-pub(crate) fn read_alignment<A: AlphabetLike>(paths: &[PathBuf], alphabet: &A) -> Result<Vec<FastaRecord>, Report> {
+pub fn read_alignment<A: AlphabetLike>(paths: &[PathBuf], alphabet: &A) -> Result<Vec<FastaRecord>, Report> {
   paths
     .iter()
     .map(|path| fasta_read_file(path, alphabet))

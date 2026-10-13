@@ -1,6 +1,6 @@
 use aide::openapi::{Components, OpenApi, SchemaObject};
+use app_backend::config::catalog::SettingCatalog;
 use app_commands::command::AppCommand;
-use app_commands::config::catalog::SettingCatalog;
 use app_commands::config::cli_flags::annotated_config_schema;
 use app_commands::config::schema::SCHEMA_KEY;
 use eyre::Report;

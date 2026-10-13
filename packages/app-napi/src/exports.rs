@@ -1,9 +1,9 @@
 use crate::backend::{DesktopService, PortScope};
 use crate::guard::{guarded, to_napi};
 use crate::port::{PortReply, PortRequest};
-use app_commands::app_paths::{AppFolderEnv, AppPaths, app_root};
-use app_commands::app_settings::settings::UiTheme;
-use app_commands::app_settings::store::AppSettingsStore;
+use app_backend::app_paths::{AppFolderEnv, AppPaths, app_root};
+use app_backend::app_settings::settings::UiTheme;
+use app_backend::app_settings::store::AppSettingsStore;
 use eyre::Report;
 use napi::Status;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};

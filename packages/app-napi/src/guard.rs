@@ -1,4 +1,4 @@
-use app_commands::bridge::error::ErrorResponse;
+use app_backend::bridge::error::ErrorResponse;
 use eyre::Report;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use treetime_utils::io::json::{JsonPretty, json_write_str};

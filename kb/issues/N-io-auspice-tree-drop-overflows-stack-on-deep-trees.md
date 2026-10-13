@@ -17,4 +17,4 @@ Caterpillar trees (each internal node has one leaf and one internal child), read
 The depths up to 30,000 were measured with the earlier serde_json reader, whose drop behavior is the same, because `Drop` of the tree types did not change. The process aborts with `thread has overflowed its stack`. The trees of the example datasets are much shallower: 157 for `sc2/4500`, 73 for `rsv/a/2000`, 33 for `mpox/clade-ii/500`.
 
 > [!IMPORTANT]
-> **Investigation required.** Other recursive operations on `AuspiceTreeNode`, such as `Clone` and `ResultTree::from_auspice()` in `packages/app-commands/src/results/tree.rs`, are not measured, and the depth of the deepest trees that users load (for example ladder-like trees of large outbreaks) is not known.
+> **Investigation required.** Other recursive operations on `AuspiceTreeNode`, such as `Clone` and `ResultTree::from_auspice()` in `packages/app-backend/src/results/tree.rs`, are not measured, and the depth of the deepest trees that users load (for example ladder-like trees of large outbreaks) is not known.

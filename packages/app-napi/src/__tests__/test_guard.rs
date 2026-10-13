@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::guard::{guarded, to_napi};
-  use app_commands::bridge::error::{ErrorCode, ErrorResponse};
-  use app_commands::runs::errors::not_found;
+  use app_backend::bridge::error::{ErrorCode, ErrorResponse};
+  use app_backend::runs::errors::not_found;
   use eyre::WrapErr;
   use pretty_assertions::assert_eq;
   use serde_json::json;

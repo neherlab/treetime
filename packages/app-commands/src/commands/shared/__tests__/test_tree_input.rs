@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::RecordingLog;
   use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
   use crate::commands::shared::topology_order_args::{
     TopologyOrderArg, TopologyOrderArgs, TopologyOrderTargetSourceArg,
   };
   use crate::commands::shared::tree_input::{TreeDialectArg, TreeDialectArgs, read_input_tree};
-  use crate::runs::warnings::WarningCollector;
   use clap::Parser;
   use helpers::{clock_dialect, write_tree};
   use maplit::btreemap;
@@ -15,7 +15,6 @@ mod tests {
   use serde_json::json;
   use std::collections::BTreeMap;
   use tempfile::tempdir;
-  use treetime::progress::NoopProgress;
   use treetime_io::nwk::{NewickDialect, TREE_DIALECT_DEFAULT, nwk_read};
   use treetime_utils::io::json::{from_json_value, to_json_value};
 
@@ -73,7 +72,7 @@ mod tests {
   fn test_tree_input_network_is_error() {
     let dir = tempdir().unwrap();
     let path = write_tree(dir.path(), COALRE);
-    let log = WarningCollector::new(&NoopProgress);
+    let log = RecordingLog::default();
 
     let actual = format!(
       "{:#}",

@@ -22,7 +22,7 @@ candidates_lower.contains(&header_lower)
 
 - `clock` - [`run.rs`](../../packages/app-commands/src/commands/clock/run.rs#L46) passes the ID column candidates and `date_column` to `metadata_read_file()` and calls `MetadataTable::dates()`
 - `timetree` - [`initialization.rs`](../../packages/app-commands/src/commands/timetree/initialization.rs#L63) passes the ID column candidates and `date_column` to `metadata_read_file()` and calls `MetadataTable::dates()`
-- `check-inputs` - [`check_inputs.rs`](../../packages/app-commands/src/check_inputs.rs) reads the same table through `metadata_read_file()`, so it reports no date column where the commands fail
+- `check-inputs` - [`check_inputs.rs`](../../packages/app-backend/src/check_inputs.rs) reads the same table through `metadata_read_file()`, so it reports no date column where the commands fail
 
 The help text of `struct DateColumnArgs` in [`packages/app-commands/src/commands/shared/metadata.rs`](../../packages/app-commands/src/commands/shared/metadata.rs) describes the v0 rule ("the leftmost column whose name contains `date`"), so it disagrees with the current behavior.
 

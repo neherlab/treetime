@@ -24,7 +24,7 @@ The substitution class reads the branch mutations after unknown-state bridging (
 
 Gap filling turns the leading and trailing gaps of each sequence into `N` before reconstruction (`--gap-fill=only-terminal`, the v0 overhang filling), so these filled columns count as ambiguous changes on terminal branches. [kb/issues/N-homoplasy-filled-overhangs-dominate-ambiguous-changes.md](../issues/N-homoplasy-filled-overhangs-dominate-ambiguous-changes.md) tracks the effect on the ambiguous lists.
 
-The "Sites mutated on several branches" tile of the `ancestral` results in the web and desktop apps (`fn ancestral_results()` in [`packages/app-commands/src/results/mutations.rs`](../../packages/app-commands/src/results/mutations.rs)) uses the same rule: it counts only substitutions between canonical states, so `G451R` and indel strings do not make a site recurrent there either.
+The "Sites mutated on several branches" tile of the `ancestral` results in the web and desktop apps (`fn ancestral_results()` in [`packages/app-backend/src/results/mutations.rs`](../../packages/app-backend/src/results/mutations.rs)) uses the same rule: it counts only substitutions between canonical states, so `G451R` and indel strings do not make a site recurrent there either.
 
 ## Smaller divergences
 

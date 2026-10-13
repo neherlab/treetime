@@ -39,7 +39,7 @@ mod tests {
   mod helpers {
     use crate::cli::treetime_cli::treetime_parse_cli_args;
     use crate::run::run_command;
-    use app_commands::app_paths::AppFolderEnv;
+    use app_backend::app_paths::AppFolderEnv;
     use app_commands::command::AppCommand;
     use app_napi::backend::{DesktopService, PortScope};
     use app_napi::port::{PortHeader, PortReply, PortRequest};

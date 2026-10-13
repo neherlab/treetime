@@ -4,8 +4,8 @@ The server starts every run at once, and all runs share one pool of processing t
 
 ## Evidence
 
-- `AppService::start_run()` in `packages/app-commands/src/bridge/service.rs` spawns one thread per run with `thread::Builder`; the threads share the global rayon pool set by `--jobs`
-- `RunList.active_runs` in `packages/app-commands/src/runs/record.rs` reports the number of runs computing now, but no code compares it with a limit
+- `AppService::start_run()` in `packages/app-backend/src/bridge/service.rs` spawns one thread per run with `thread::Builder`; the threads share the global rayon pool set by `--jobs`
+- `RunList.active_runs` in `packages/app-backend/src/runs/record.rs` reports the number of runs computing now, but no code compares it with a limit
 - Request rate limits do not bound this cost: one request starts a run of any size, and a limit strict enough to protect the server blocks normal use
 
 ## Possible changes

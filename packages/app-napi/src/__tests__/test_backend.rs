@@ -2,7 +2,7 @@
 mod tests {
   use crate::backend::{DesktopService, PortScope, stream_response};
   use crate::port::PortReply;
-  use app_commands::app_paths::AppFolderEnv;
+  use app_backend::app_paths::AppFolderEnv;
   use app_output::output_plan::OutputSelection;
   use axum::body::{Body, Bytes};
   use axum::response::Response;

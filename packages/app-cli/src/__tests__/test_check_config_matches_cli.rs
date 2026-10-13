@@ -22,7 +22,7 @@ mod tests {
   mod helpers {
     use crate::cli::treetime_cli::treetime_parse_cli_args;
     use crate::run::run_command;
-    use app_commands::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
+    use app_backend::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
     use app_commands::command::AppCommand;
     use app_commands::json_value::SparseConfig;
     use std::fs;

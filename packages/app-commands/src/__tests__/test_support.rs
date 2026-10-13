@@ -1,24 +1,17 @@
 #[cfg(test)]
 pub(crate) mod tests {
-  use crate::json_value::SparseConfig;
-  use serde_json::Value;
+  use parking_lot::Mutex;
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use std::sync::LazyLock;
   use treetime::alphabet::alphabet::Alphabet;
+  use treetime::progress::{LogLevel, LogSink, RunWarning};
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_primitives::AsciiChar;
 
   pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
-
-  pub(crate) fn sparse(value: Value) -> SparseConfig {
-    let Value::Object(settings) = value else {
-      panic!("a test config is a mapping of settings");
-    };
-    SparseConfig(settings)
-  }
 
   pub(crate) fn project_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -57,5 +50,45 @@ pub(crate) mod tests {
         (edge.key(), subs.chain(deletions).collect())
       })
       .collect()
+  }
+
+  #[derive(Default)]
+  pub(crate) struct RecordingLog {
+    events: Mutex<Vec<(LogLevel, String)>>,
+    warnings: Mutex<Vec<RunWarning>>,
+  }
+
+  impl RecordingLog {
+    pub(crate) fn events(&self) -> Vec<(LogLevel, String)> {
+      self.events.lock().clone()
+    }
+
+    pub(crate) fn messages(&self, level: LogLevel) -> Vec<String> {
+      self
+        .events()
+        .into_iter()
+        .filter(|(event_level, _)| *event_level == level)
+        .map(|(_, message)| message)
+        .collect()
+    }
+
+    pub(crate) fn into_warnings(self) -> Vec<RunWarning> {
+      self.warnings.into_inner()
+    }
+  }
+
+  impl LogSink for RecordingLog {
+    fn log(&self, level: LogLevel, message: &str) {
+      self.events.lock().push((level, message.to_owned()));
+    }
+
+    fn log_enabled(&self, _level: LogLevel) -> bool {
+      true
+    }
+
+    fn warning(&self, warning: &RunWarning) {
+      self.warnings.lock().push(warning.clone());
+      self.log(LogLevel::Warn, &warning.message);
+    }
   }
 }

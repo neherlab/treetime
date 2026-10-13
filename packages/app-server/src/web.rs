@@ -1,7 +1,7 @@
 use crate::error::plain_error;
 use crate::routes::{NO_STORE, api_router, not_found};
 use crate::state::{ServerConfig, server_service};
-use app_commands::bridge::error::ErrorCode;
+use app_backend::bridge::error::ErrorCode;
 use axum::Router;
 use axum::body::Body;
 use axum::extract::{Request, State};

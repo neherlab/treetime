@@ -34,25 +34,17 @@ mod tests {
   }
 
   mod helpers {
+    use crate::__tests__::test_support::tests::RecordingLog;
     use crate::commands::shared::seed::SeedArgs;
-    use crate::job::{JobEvent, JobProgress};
-    use parking_lot::Mutex;
     use pretty_assertions::assert_eq;
-    use treetime::progress::{LogEvent, LogLevel};
+    use treetime::progress::LogLevel;
 
     pub(super) fn resolve(seed: Option<u64>, random_step: Option<&str>) -> (u64, Vec<String>) {
-      let events = Mutex::new(vec![]);
-      let log = JobProgress::new(|event: JobEvent| {
-        if let JobEvent::Log {
-          data: LogEvent { level, message },
-        } = event
-        {
-          assert_eq!(LogLevel::Info, level);
-          events.lock().push(message);
-        }
-      });
+      let log = RecordingLog::default();
       let seed = SeedArgs { seed }.resolve(random_step, &log);
-      (seed, events.into_inner())
+      let messages = log.messages(LogLevel::Info);
+      assert_eq!(messages.len(), log.events().len());
+      (seed, messages)
     }
   }
 }

@@ -4,7 +4,7 @@ The UI caches the answer of `GET /api/runs/{id}/compare/{other}` and relies on t
 
 ## Evidence
 
-- `fn run_stale_paths()` in `packages/app-commands/src/runs/app_events.rs` lists `/api/runs` (exact), `/api/runs/{other}` (subtree) and `/api/clade-in-runs` (exact) for a change to run `other`
+- `fn run_stale_paths()` in `packages/app-backend/src/runs/app_events.rs` lists `/api/runs` (exact), `/api/runs/{other}` (subtree) and `/api/clade-in-runs` (exact) for a change to run `other`
 - `fn staleCoversKey()` in `packages/app-ui/src/api/keys.ts` matches a stale path against the leading path segments of a query key, so `/api/runs/{other}` covers `["api", "runs", other, ...]` and not `["api", "runs", id, "compare", other]`
 - `Comparison` in `packages/app-ui/src/runs/ComparePage.tsx` reads the comparison with `staleTime: Infinity`, so the entry is read again only when it is invalidated
 

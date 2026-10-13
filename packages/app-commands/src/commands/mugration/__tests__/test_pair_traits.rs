@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::RecordingLog;
   use crate::commands::mugration::run::{MugrationTraits, pair_traits};
-  use crate::runs::warnings::WarningCollector;
   use itertools::Itertools;
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use std::path::Path;
-  use treetime::progress::{NoopProgress, RunWarning, RunWarningKind};
+  use treetime::progress::{RunWarning, RunWarningKind};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::o;
 
@@ -20,7 +20,7 @@ mod tests {
       (o!("A"), o!("france")),
       (o!("Z"), o!("germany")),
     ];
-    let log = WarningCollector::new(&NoopProgress);
+    let log = RecordingLog::default();
 
     let MugrationTraits {
       traits,

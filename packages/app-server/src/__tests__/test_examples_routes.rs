@@ -120,10 +120,10 @@ mod tests {
     use crate::__tests__::test_routes::tests::helpers::TestApp;
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig};
     use crate::web::{WebOptions, create_router};
-    use app_commands::app_paths::{AppFolderEnv, AppPaths};
-    use app_commands::app_settings::settings::AppPathSettings;
-    use app_commands::app_settings::store::AppSettingsStore;
-    use app_commands::examples_download::ExampleDownloads;
+    use app_backend::app_paths::{AppFolderEnv, AppPaths};
+    use app_backend::app_settings::settings::AppPathSettings;
+    use app_backend::app_settings::store::AppSettingsStore;
+    use app_backend::examples_download::ExampleDownloads;
     use axum::Router;
     use axum::routing::get;
     use std::fs;

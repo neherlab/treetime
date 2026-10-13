@@ -1,5 +1,5 @@
 use crate::api::extract::ApiJson;
-use app_commands::bridge::error::{ErrorCode, ErrorResponse};
+use app_backend::bridge::error::{ErrorCode, ErrorResponse};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use eyre::Report;

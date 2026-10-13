@@ -153,16 +153,16 @@ mod tests {
   }
 
   mod helpers {
-    use app_commands::examples_download::ExampleDownloads;
+    use app_backend::examples_download::ExampleDownloads;
 
     const EXAMPLES_URL: &str = "http://127.0.0.1:9/examples.zip";
 
     use crate::__tests__::test_routes::tests::helpers::{TestApp, events_of, request};
     use crate::routes::{LocalRouters, local_api_routers};
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig, server_service};
-    use app_commands::app_paths::{AppFolderEnv, AppPaths};
-    use app_commands::app_settings::settings::AppPathSettings;
-    use app_commands::app_settings::store::AppSettingsStore;
+    use app_backend::app_paths::{AppFolderEnv, AppPaths};
+    use app_backend::app_settings::settings::AppPathSettings;
+    use app_backend::app_settings::store::AppSettingsStore;
     use serde_json::json;
     use std::sync::Arc;
     use tempfile::{TempDir, tempdir};

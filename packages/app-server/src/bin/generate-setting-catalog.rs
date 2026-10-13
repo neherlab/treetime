@@ -1,4 +1,4 @@
-use app_commands::config::catalog::setting_catalog;
+use app_backend::config::catalog::setting_catalog;
 use ctor::ctor;
 use std::path::PathBuf;
 use treetime_utils::init::global::global_init;

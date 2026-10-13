@@ -139,9 +139,53 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
+name = "app-backend"
+version = "1.0.0"
+dependencies = [
+ "app-commands",
+ "app-datasets",
+ "app-output",
+ "approx",
+ "chrono",
+ "clap",
+ "ctor",
+ "derive_more",
+ "deser",
+ "deser-serde",
+ "dirs 6.0.0",
+ "eyre",
+ "indoc",
+ "itertools",
+ "log",
+ "maplit",
+ "parking_lot",
+ "pretty_assertions",
+ "rand 0.8.8",
+ "rayon",
+ "rstest",
+ "schemars",
+ "serde_json",
+ "sha2",
+ "shlex",
+ "strum",
+ "strum_macros",
+ "tempfile",
+ "treetime",
+ "treetime-graph",
+ "treetime-grid",
+ "treetime-io",
+ "treetime-primitives",
+ "treetime-schema",
+ "treetime-utils",
+ "util-augur-node-data-json",
+ "zip",
+]
+
+[[package]]
 name = "app-cli"
 version = "1.0.0"
 dependencies = [
+ "app-backend",
  "app-commands",
  "app-napi",
  "app-output",
@@ -190,12 +234,10 @@ dependencies = [
 name = "app-commands"
 version = "1.0.0"
 dependencies = [
- "app-datasets",
  "app-output",
  "approx",
  "axum",
  "bon",
- "chrono",
  "clap",
  "color-eyre",
  "ctor",
@@ -205,13 +247,11 @@ dependencies = [
  "deser-serde",
  "deser-value",
  "deser-yaml",
- "dirs 6.0.0",
  "eyre",
  "image",
  "indoc",
  "itertools",
  "jsonschema",
- "log",
  "maplit",
  "miette",
  "parking_lot",
@@ -226,8 +266,6 @@ dependencies = [
  "saphyr",
  "schemars",
  "serde_json",
- "sha2",
- "shlex",
  "smart-default",
  "strsim",
  "strum",
@@ -261,6 +299,7 @@ dependencies = [
 name = "app-napi"
 version = "1.0.0"
 dependencies = [
+ "app-backend",
  "app-commands",
  "app-output",
  "app-server",
@@ -321,6 +360,7 @@ dependencies = [
 name = "app-server"
 version = "1.0.0"
 dependencies = [
+ "app-backend",
  "aide",
  "app-commands",
  "axum",
@@ -365,6 +405,7 @@ dependencies = [
 name = "app-wasm"
 version = "1.0.0"
 dependencies = [
+ "app-backend",
  "app-commands",
  "app-server",
  "axum",

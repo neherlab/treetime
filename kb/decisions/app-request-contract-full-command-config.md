@@ -14,7 +14,7 @@ The HTTP server and the desktop back end accept, for each of the seven app comma
 
 ## HTTP API
 
-- **One router**: `api_router(service, config)` in `packages/app-server/src/routes.rs` builds the axum `Router` of the REST API and its OpenAPI document. Each operation is one typed handler that calls one method of `AppService` (`packages/app-commands/src/bridge/service.rs`), the single implementation of every operation; blocking calls run on the blocking thread pool. The server and the desktop back end build the same router and differ only in the input policy of their `AppService`: the server confines input paths, the desktop back end does not
+- **One router**: `api_router(service, config)` in `packages/app-server/src/routes.rs` builds the axum `Router` of the REST API and its OpenAPI document. Each operation is one typed handler that calls one method of `AppService` (`packages/app-backend/src/bridge/service.rs`), the single implementation of every operation; blocking calls run on the blocking thread pool. The server and the desktop back end build the same router and differ only in the input policy of their `AppService`: the server confines input paths, the desktop back end does not
 - **Server**: `create_router` adds the static files of the web app and CORS, and serves the router on TCP. The API is public: outside clients call the same REST paths and can generate their own SDKs from the document
 - **Typed contract**: the handlers are registered through aide, which reads the request schema from each extractor type and the response schema from each return type, so the document cannot disagree with the handler signatures. Every request and response type derives `schemars::JsonSchema`, and aide generates the schemas with the project's draft 2020-12 settings. Each registration sets the `operationId` and the description, and every operation documents `ErrorResponse` as its `default` response. The adapters in `packages/app-server/src/api/` supply what axum and aide lack: extractors whose rejections are `ErrorResponse`, a typed SSE response that documents its event schema as `text/event-stream`, and file and archive responses
 - **OpenAPI document**: `packages/app-contracts/openapi.json`, also served at `GET /api/openapi.json`. After aide builds it, `packages/app-server/src/openapi.rs` adds the per-command config schemas with their CLI annotations and registers the `SettingCatalog` component, and turns every internally tagged enum (a `oneOf` of objects that share a constant tag property) into one `<Enum><Variant>` component per variant with a `discriminator` that maps each tag value to its component. Generation fails when a tagged union has no single tag property. The setting catalog itself is a separate generated file, `packages/app-contracts/setting-catalog.json`, which the UI imports from `@neherlab/app-contracts/catalog`
@@ -23,7 +23,7 @@ The HTTP server and the desktop back end accept, for each of the seven app comma
 
 ## App-wide events
 
-- **Event**: `AppEvent` in `packages/app-commands/src/runs/app_events.rs` reports that a run was created or updated (started, ended, renamed, pinned or unpinned), with the new `RunSummary`. `RunManager` appends one event per change to a bounded in-memory log
+- **Event**: `AppEvent` in `packages/app-backend/src/runs/app_events.rs` reports that a run was created or updated (started, ended, renamed, pinned or unpinned), with the new `RunSummary`. `RunManager` appends one event per change to a bounded in-memory log
 - **Stale paths**: every event lists the REST paths whose answers the change made stale, computed in Rust next to the change. Each entry is `{ path, scope }`: `exact` covers the answers of the path itself for every query string and body, `subtree` also covers every path below it. A change to run `abc` lists `/api/runs` (exact), `/api/runs/abc` (subtree) and `/api/clade-in-runs` (exact). Clients invalidate what the server lists, so mutations carry no invalidation lists, and other tabs, other windows and outside clients stay consistent
 - **Resync**: sequence numbers start at the process start time in microseconds, so a restarted server or utility process numbers its events above those of the previous one. When a client asks for an event the log no longer keeps, or for one above the head of the log, the stream starts with a `resync` event whose stale paths cover every run, then continues with new events
 
@@ -64,11 +64,11 @@ The HTTP server and the desktop back end accept, for each of the seven app comma
 ## Implementation
 
 - `packages/app-commands/src/command.rs`: command names, config preparation and the runner that returns the written output files
-- `packages/app-commands/src/check_config.rs`, `packages/app-commands/src/run_config.rs`: `check-config` and `run-config`
-- `packages/app-commands/src/job.rs`: job events, the terminal event and cancellation tokens
-- `packages/app-commands/src/runs/`: run records, the run folder layout, event log, lifecycle and output files; `app_events.rs`: `AppEvent`, stale paths and the app event log
+- `packages/app-backend/src/check_config.rs`, `packages/app-backend/src/run_config.rs`: `check-config` and `run-config`
+- `packages/app-backend/src/job.rs`: job events, the terminal event and cancellation tokens
+- `packages/app-backend/src/runs/`: run records, the run folder layout, event log, lifecycle and output files; `app_events.rs`: `AppEvent`, stale paths and the app event log
 - `packages/app-commands/src/config/properties.rs`: path roles (`x-path`) and CLI flags (`x-cli-flag`) of the config settings, read from the schema
-- `packages/app-commands/src/bridge/service.rs`, `packages/app-commands/src/bridge/error.rs`: `AppService`, the shared implementation of every operation, and `ErrorResponse`
+- `packages/app-backend/src/bridge/service.rs`, `packages/app-backend/src/bridge/error.rs`: `AppService`, the shared implementation of every operation, and `ErrorResponse`
 - `packages/app-server/src/routes.rs`: `api_router`, the handlers and their registration
 - `packages/app-server/src/api/`: extractors, responses and schema generation settings for aide
 - `packages/app-server/src/openapi.rs`: config components, the `SettingCatalog` component and the discriminators of tagged unions

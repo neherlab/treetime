@@ -1,10 +1,10 @@
 # A run of web2 blocks the back-end worker until it ends
 
-The WebAssembly back end has no threads, so `AppService::start()` computes a run in the calling thread (`execute()` in `packages/app-commands/src/bridge/service.rs`). The start request of a run returns when the run ends, and the back-end worker answers no other request in the meantime.
+The WebAssembly back end has no threads, so `AppService::start()` computes a run in the calling thread (`execute()` in `packages/app-backend/src/bridge/service.rs`). The start request of a run returns when the run ends, and the back-end worker answers no other request in the meantime.
 
 ## Evidence
 
-- `packages/app-commands/src/bridge/service.rs`: the `cfg(target_family = "wasm")` variant of `execute()` calls `finish()` directly; the native variant starts a thread per run
+- `packages/app-backend/src/bridge/service.rs`: the `cfg(target_family = "wasm")` variant of `execute()` calls `finish()` directly; the native variant starts a thread per run
 - Emscripten without pthreads returns `ENOTSUP` from `pthread_create`, so `std::thread::spawn` fails with `ErrorKind::Unsupported`; rayon then runs its work on the calling thread
 - The page follows a run through its event stream (`GET /api/runs/{id}/events`). During the run the worker sends no events; afterwards the stream replays the events of the run from its event log
 - The page itself stays responsive, because the run computes in the dedicated worker

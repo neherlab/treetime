@@ -1,18 +1,18 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::RecordingLog;
   use crate::commands::shared::alignment::{PairedAlignment, pair_alignment};
   use crate::commands::shared::dates_input::read_input_dates;
   use crate::commands::shared::metadata::MetadataIdArgs;
   use crate::commands::shared::topology_order_args::target_positions;
   use crate::commands::shared::tree_input::read_input_tree;
-  use crate::runs::warnings::WarningCollector;
   use helpers::{leaf_keys, warning};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::fs;
   use std::path::PathBuf;
   use tempfile::tempdir;
-  use treetime::progress::{NoopProgress, RunWarningKind};
+  use treetime::progress::RunWarningKind;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::{TREE_DIALECT_DEFAULT, nwk_read};
   use treetime_primitives::Seq;
@@ -25,7 +25,7 @@ mod tests {
     let dir = tempdir().unwrap();
     let path = dir.path().join("tree.nwk");
     fs::write(&path, format!("{TREE}\n")).unwrap();
-    let log = WarningCollector::new(&NoopProgress);
+    let log = RecordingLog::default();
 
     read_input_tree(&path, TREE_DIALECT_DEFAULT, &log).unwrap();
 
@@ -51,7 +51,7 @@ mod tests {
       helpers::record("A", Some("second"), "TTTT"),
       helpers::record("Z", None, "CCCC"),
     ];
-    let log = WarningCollector::new(&NoopProgress);
+    let log = RecordingLog::default();
 
     let PairedAlignment { sequences, descs } =
       pair_alignment(records, &[PathBuf::from("aln.fasta")], &tree.graph, &names, &log);
@@ -82,7 +82,7 @@ mod tests {
     fs::write(&path, "strain\tdate\nA\t2001\nB\t2002\nA\t2005\n").unwrap();
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let names = tree.names();
-    let log = WarningCollector::new(&NoopProgress);
+    let log = RecordingLog::default();
 
     let actual = read_input_dates(&path, &MetadataIdArgs::default(), None, &tree.graph, &names, &log).unwrap();
 

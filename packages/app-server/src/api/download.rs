@@ -10,9 +10,9 @@ use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use std::path::{Path, PathBuf};
 
 #[cfg(not(target_family = "wasm"))]
-use app_commands::runs::files::stream_run_zip;
+use app_backend::runs::files::stream_run_zip;
 #[cfg(target_family = "wasm")]
-use app_commands::runs::files::{FileChunks, RunZipChunks};
+use app_backend::runs::files::{FileChunks, RunZipChunks};
 #[cfg(target_family = "wasm")]
 use std::convert::Infallible;
 #[cfg(target_family = "wasm")]

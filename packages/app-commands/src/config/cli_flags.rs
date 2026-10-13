@@ -1,7 +1,6 @@
 use crate::command::AppCommand;
-use crate::config::catalog::setting_arg;
-use crate::config::properties::{CLI_FLAG_KEY, leaf_properties};
-use clap::Command;
+use crate::config::properties::{CLI_FLAG_KEY, LeafProperty, leaf_properties};
+use clap::{Arg, Command};
 use eyre::Report;
 use schemars::Schema;
 use serde_json::Value;
@@ -28,4 +27,11 @@ pub fn annotate_cli_flags(schema: &mut Schema, command: &Command) -> Result<(), 
     property.insert(CLI_FLAG_KEY.to_owned(), Value::String(format!("--{long}")));
   }
   Ok(())
+}
+
+pub fn setting_arg<'a>(cli: &'a Command, leaf: &LeafProperty) -> Result<&'a Arg, Report> {
+  cli
+    .get_arguments()
+    .find(|arg| arg.get_id() == leaf.key() && arg.get_long().is_some())
+    .ok_or_else(|| make_report!("config key `{}` has no command-line flag", leaf.key_path.join(".")))
 }

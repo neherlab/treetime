@@ -4,7 +4,7 @@ The server never deletes runs and has no limit on the number of runs or on the s
 
 ## Evidence
 
-- `RunStore` in `packages/app-commands/src/runs/store.rs` creates one folder per run under `--runs-dir` and has no removal by age or size
+- `RunStore` in `packages/app-backend/src/runs/store.rs` creates one folder per run under `--runs-dir` and has no removal by age or size
 - The upload limit (`--max-upload-size`, 50 MB per run on the nightly server) bounds the inputs of one run, not the outputs or the number of runs
 - `docs/dev/developer_guide.md`, section "Nightly web deploy", states that the server never deletes runs
 

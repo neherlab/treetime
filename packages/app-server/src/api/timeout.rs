@@ -1,7 +1,7 @@
 use crate::error::{AppError, plain_error};
 use crate::state::AppState;
 use aide::axum::ApiRouter;
-use app_commands::bridge::error::ErrorCode;
+use app_backend::bridge::error::ErrorCode;
 use axum::BoxError;
 use axum::error_handling::HandleErrorLayer;
 use axum::response::{IntoResponse, Response};

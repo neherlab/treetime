@@ -62,6 +62,7 @@ tikv-jemallocator = { workspace = true }
 "heap-profiling" = ["tikv-jemallocator/profiling", "tikv-jemallocator/stats"]
 
 [dev-dependencies]
+app-backend = { workspace = true }
 app-napi = { workspace = true }
 app-server = { workspace = true }
 approx = { workspace = true }

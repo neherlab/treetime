@@ -45,7 +45,7 @@ v0 (`packages/legacy/treetime`) has no grid point limit. On `data/mpox/clade-ii/
 - A web server: `treetime-server --max-grid-points`. It fills runs whose config does not set the value and rejects a higher value, in the code preview and at run start. The default is the built-in default
 - Otherwise: 1 000 000
 
-`RunLimits::apply()` in `packages/app-commands/src/run_limits.rs` applies the app setting or the server option to every command whose config schema has a `max_grid_points` setting. `AppService` applies it to the config of the code preview before it builds the command line, and to the config of a run at its start, after input path confinement. The run record keeps the filled value, so a run reproduces from its command line and YAML, and "Edit and run again" shows the value as a changed setting.
+`RunLimits::apply()` in `packages/app-backend/src/run_limits.rs` applies the app setting or the server option to every command whose config schema has a `max_grid_points` setting. `AppService` applies it to the config of the code preview before it builds the command line, and to the config of a run at its start, after input path confinement. The run record keeps the filled value, so a run reproduces from its command line and YAML, and "Edit and run again" shows the value as a changed setting.
 
 ## Public server value
 
