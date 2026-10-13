@@ -3,6 +3,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use log::{Level, log};
 use parking_lot::Mutex;
 use treetime::progress::{LogLevel, LogSink, StageSink};
+use treetime_utils::cast::{f64_to_usize_saturating, usize_to_u64};
 
 pub(crate) struct BarProgress {
   bar: ProgressBar,
@@ -28,12 +29,10 @@ impl Drop for BarProgress {
 }
 
 impl StageSink for BarProgress {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   fn report(&self, stage: &str, fraction: f64, message: &str) {
-    self.bar.set_position((fraction * 1000.0) as u64);
+    self
+      .bar
+      .set_position(usize_to_u64(f64_to_usize_saturating(fraction * 1000.0)));
     if message.is_empty() {
       self.bar.set_message(stage.to_owned());
     } else {

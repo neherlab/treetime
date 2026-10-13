@@ -34,6 +34,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 use treetime::cancel::Cancel;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::float::float_to_significant_digits;
 
 const UPLOAD_BUFFER_SIZE: usize = 1 << 16;
@@ -477,17 +478,12 @@ fn validate_upload_name(name: &str) -> Result<(), Report> {
   Ok(())
 }
 
-#[expect(
-  clippy::as_conversions,
-  clippy::cast_precision_loss,
-  reason = "sizes are formatted for a message; precision beyond two decimals is irrelevant"
-)]
 fn format_size(bytes: usize) -> String {
   const UNITS: [&str; 5] = ["bytes", "KiB", "MiB", "GiB", "TiB"];
   let (value, unit) = UNITS
     .iter()
     .skip(1)
-    .fold((bytes as f64, UNITS[0]), |(value, unit), next| {
+    .fold((bytes.to_f64_exact(), UNITS[0]), |(value, unit), next| {
       if value >= 1024.0 {
         (value / 1024.0, *next)
       } else {

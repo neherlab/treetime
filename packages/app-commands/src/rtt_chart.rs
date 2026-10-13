@@ -77,7 +77,7 @@ fn write_clock_regression_chart_bitmap(
 
 #[expect(
   clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
+  reason = "the chart library draws f32 coordinates, so dates and divergences narrow from f64 to f32"
 )]
 pub fn gather_points(results: &[ClockRegressionResult], clock_model: &ClockModel) -> Result<PointsResult, Report> {
   let (outliers, norms): (Vec<_>, Vec<_>) = results.iter().partition(|result| result.is_outlier);
@@ -98,8 +98,8 @@ pub fn gather_points(results: &[ClockRegressionResult], clock_model: &ClockModel
     return make_error!("the root-to-tip chart needs at least one sample with a date");
   };
 
-  let line_y1 = clock_model.div(x_min as f64) as f32;
-  let line_y2 = clock_model.div(x_max as f64) as f32;
+  let line_y1 = clock_model.div(f64::from(x_min)) as f32;
+  let line_y2 = clock_model.div(f64::from(x_max)) as f32;
   let line = [(x_min, line_y1), (x_max, line_y2)];
 
   let (y_min, y_max) = points

@@ -2,11 +2,8 @@ use crate::testing::metrics::config::PointwiseConfig;
 use deser::Serialize;
 use ndarray::Array1;
 use treetime_utils::adapters::ArrayVec;
+use treetime_utils::cast::ToF64Exact;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(super) fn compute_tolerance_metrics(
   actual: &Array1<f64>,
   expected: &Array1<f64>,
@@ -49,9 +46,9 @@ pub(super) fn compute_tolerance_metrics(
   }
 
   let pass_fractions = [
-    pass_counts[0] as f64 / n as f64,
-    pass_counts[1] as f64 / n as f64,
-    pass_counts[2] as f64 / n as f64,
+    pass_counts[0].to_f64_exact() / n.to_f64_exact(),
+    pass_counts[1].to_f64_exact() / n.to_f64_exact(),
+    pass_counts[2].to_f64_exact() / n.to_f64_exact(),
   ];
 
   let summary = ToleranceSummary {

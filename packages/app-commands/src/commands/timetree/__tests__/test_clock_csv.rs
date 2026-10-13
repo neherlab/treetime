@@ -137,6 +137,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn run_zika(
       output: &Path,
@@ -178,9 +179,8 @@ mod tests {
       mean_d - rate * mean_t
     }
 
-    #[expect(clippy::as_conversions, reason = "point count is far below 2^52")]
     pub(super) fn means(points: &[(f64, f64)]) -> (f64, f64) {
-      let n = points.len() as f64;
+      let n = points.len().to_f64_exact();
       (
         points.iter().map(|(t, _)| t).sum::<f64>() / n,
         points.iter().map(|(_, d)| d).sum::<f64>() / n,

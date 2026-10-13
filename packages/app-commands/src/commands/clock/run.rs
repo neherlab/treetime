@@ -22,12 +22,9 @@ use treetime::progress::{LogSink, StageSink};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub fn run_clock(
   clock_args: &TreetimeClockArgs,
   cancel: &dyn Cancel,
@@ -55,10 +52,10 @@ pub fn run_clock(
   let resolved = clock_args.resolve_outputs()?;
 
   let clock_params = if clock_args.covariation {
-    let seq_len = clock_args
+    let seq_len = (clock_args
       .sequence_length
-      .ok_or_else(|| make_report!("--sequence-length is required when --covariation is enabled"))?
-      as f64;
+      .ok_or_else(|| make_report!("--sequence-length is required when --covariation is enabled"))?)
+    .to_f64_exact();
     let tip_slack = clock_args.tip_slack.unwrap_or(3.0);
     let overdispersion = 2.0;
     ClockVarianceParams {

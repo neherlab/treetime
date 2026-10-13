@@ -2,6 +2,8 @@ use crate::testing::metrics::pointwise::errors::PointwiseErrors;
 use deser::Serialize;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
+use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::f64_to_usize_saturating;
 
 pub(super) fn compute_statistical_metrics(pointwise_errors: &PointwiseErrors) -> eyre::Result<StatisticalMetrics> {
   let abs_error_stats = compute_error_statistics(&pointwise_errors.absolute)?;
@@ -22,10 +24,6 @@ pub struct StatisticalMetrics {
   pub(crate) signed_error_stats: ErrorStatistics,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn compute_error_statistics(errors: &Array1<f64>) -> eyre::Result<ErrorStatistics> {
   let mut sorted_errors: Vec<f64> = errors.iter().copied().filter(|x| x.is_finite()).collect();
   sorted_errors.sort_by_key(|&x| OrderedFloat(x));
@@ -44,7 +42,7 @@ fn compute_error_statistics(errors: &Array1<f64>) -> eyre::Result<ErrorStatistic
     });
   }
 
-  let mean = sorted_errors.iter().sum::<f64>() / sorted_errors.len() as f64;
+  let mean = sorted_errors.iter().sum::<f64>() / sorted_errors.len().to_f64_exact();
   let std = compute_std_from_sorted(&sorted_errors, mean);
 
   let median = compute_quantile(&sorted_errors, 0.5);
@@ -87,53 +85,37 @@ pub(super) fn compute_std(data: &Array1<f64>) -> f64 {
   compute_std_from_sorted(&data.iter().copied().collect::<Vec<_>>(), mean)
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn compute_std_from_sorted(sorted_data: &[f64], mean: f64) -> f64 {
   if sorted_data.len() <= 1 {
     return 0.0;
   }
-  let variance = sorted_data.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / (sorted_data.len() - 1) as f64;
+  let variance = sorted_data.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / (sorted_data.len() - 1).to_f64_exact();
   variance.sqrt()
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(super) fn compute_quantile(sorted: &[f64], q: f64) -> f64 {
   if sorted.is_empty() {
     return 0.0;
   }
   let n = sorted.len();
-  let index = (q * (n - 1) as f64).round() as usize;
+  let index = f64_to_usize_saturating((q * (n - 1).to_f64_exact()).round());
   sorted[index.min(n - 1)]
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn compute_skewness(sorted_data: &[f64], mean: f64, std: f64) -> f64 {
   if std <= 0.0 || sorted_data.len() < 3 {
     return 0.0;
   }
-  let n = sorted_data.len() as f64;
+  let n = sorted_data.len().to_f64_exact();
   let skew_sum = sorted_data.iter().map(|&x| ((x - mean) / std).powi(3)).sum::<f64>();
   (n / ((n - 1.0) * (n - 2.0))) * skew_sum
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn compute_kurtosis(sorted_data: &[f64], mean: f64, std: f64) -> f64 {
   if std <= 0.0 || sorted_data.len() < 4 {
     return 0.0;
   }
-  let n = sorted_data.len() as f64;
+  let n = sorted_data.len().to_f64_exact();
   let kurt_sum = sorted_data.iter().map(|&x| ((x - mean) / std).powi(4)).sum::<f64>();
   let kurtosis_raw = (n * (n + 1.0) / ((n - 1.0) * (n - 2.0) * (n - 3.0))) * kurt_sum;
   let correction = 3.0 * (n - 1.0).powi(2) / ((n - 2.0) * (n - 3.0));

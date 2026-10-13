@@ -4,6 +4,7 @@ use bon::bon;
 use deser::Serialize;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
+use treetime_utils::cast::ToF64Exact;
 
 const R2_PASS_THRESHOLD: f64 = 0.95;
 
@@ -37,10 +38,6 @@ pub struct AlgorithmSummary {
 
 #[bon]
 impl AlgorithmSummary {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   #[builder]
   pub(crate) fn new<T: TestCase>(
     algorithm_name: &str,
@@ -55,7 +52,7 @@ impl AlgorithmSummary {
       .collect_vec();
     let execution_time_total = successes.iter().map(|result| result.execution_time_ms).sum::<f64>()
       + failures.iter().map(|failure| failure.execution_time_ms).sum::<f64>();
-    let execution_time_avg = execution_time_total / total_runs as f64;
+    let execution_time_avg = execution_time_total / total_runs.to_f64_exact();
 
     let r2_min = r2_values
       .iter()
@@ -70,7 +67,7 @@ impl AlgorithmSummary {
     let r2_mean = if r2_values.is_empty() {
       f64::NAN
     } else {
-      r2_values.iter().sum::<f64>() / r2_values.len() as f64
+      r2_values.iter().sum::<f64>() / r2_values.len().to_f64_exact()
     };
 
     let max_abs_error_overall = successes
@@ -91,7 +88,7 @@ impl AlgorithmSummary {
       .count();
     let passed_tests = successes.len() - metric_failures;
     let failed_tests = metric_failures + failures.len();
-    let success_rate = passed_tests as f64 / total_runs as f64;
+    let success_rate = passed_tests.to_f64_exact() / total_runs.to_f64_exact();
 
     Self {
       algorithm_name: algorithm_name.to_owned(),

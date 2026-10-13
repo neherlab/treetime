@@ -3,6 +3,7 @@ use deser::Serialize;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
 use treetime_utils::adapters::ArrayVec;
+use treetime_utils::cast::ToF64Exact;
 
 pub(super) fn compute_regional_metrics(
   x: &Array1<f64>,
@@ -73,10 +74,6 @@ pub struct RegionalSummary {
   pub(crate) tail_region: RegionStats,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn compute_region_stats(errors: &[f64]) -> RegionStats {
   if errors.is_empty() {
     return RegionStats {
@@ -88,9 +85,9 @@ fn compute_region_stats(errors: &[f64]) -> RegionStats {
   }
 
   let count = errors.len();
-  let mean = errors.iter().sum::<f64>() / count as f64;
+  let mean = errors.iter().sum::<f64>() / count.to_f64_exact();
   let max = errors.iter().copied().fold(0.0_f64, f64::max);
-  let variance = errors.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / count as f64;
+  let variance = errors.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / count.to_f64_exact();
   let std = variance.sqrt();
 
   RegionStats {

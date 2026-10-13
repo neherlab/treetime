@@ -13,6 +13,7 @@ use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use treetime_utils::make_internal_report;
 use treetime_utils::{make_error, make_report};
 
 pub(crate) const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "steps"];
@@ -163,10 +164,6 @@ fn substitute_step_refs(
   })
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 fn substitute_step_refs_in_leaf(
   leaf: &str,
   resolved: &[ResolvedStep],
@@ -177,7 +174,9 @@ fn substitute_step_refs_in_leaf(
   let mut result = String::new();
   let mut last = 0;
   for captures in step_ref().captures_iter(leaf) {
-    let whole = captures.get(0).expect("regex match has group 0");
+    let whole = captures
+      .get(0)
+      .ok_or_else(|| make_internal_report!("A step reference match in '{leaf}' has no text"))?;
     result.push_str(leaf.get(last..whole.start()).unwrap_or_default());
 
     let producer = resolve_producer(&captures[1], resolved, index, step, all_names)?;
@@ -187,7 +186,7 @@ fn substitute_step_refs_in_leaf(
       let selection = captures
         .get(2)
         .or_else(|| captures.get(3))
-        .expect("regex has a selection group")
+        .ok_or_else(|| make_internal_report!("A step reference in '{leaf}' has no output selection"))?
         .as_str();
       resolve_selection_path(step, producer, selection)?
     };

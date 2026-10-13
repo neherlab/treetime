@@ -3,20 +3,17 @@ use deser::Serialize;
 use itertools::izip;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
+use treetime_utils::cast::ToF64Exact;
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn compute_absolute_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> AbsoluteErrorStats {
   let abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();
   let signed_errors: Vec<f64> = (actual - expected).to_vec();
 
-  let mean = abs_errors.iter().sum::<f64>() / abs_errors.len() as f64;
+  let mean = abs_errors.iter().sum::<f64>() / abs_errors.len().to_f64_exact();
   let max = abs_errors.iter().map(|&x| OrderedFloat(x)).max().map_or(0.0, |x| x.0);
-  let bias = signed_errors.iter().sum::<f64>() / signed_errors.len() as f64;
+  let bias = signed_errors.iter().sum::<f64>() / signed_errors.len().to_f64_exact();
 
-  let variance = abs_errors.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / abs_errors.len() as f64;
+  let variance = abs_errors.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / abs_errors.len().to_f64_exact();
   let std = variance.sqrt();
 
   AbsoluteErrorStats { mean, max, std, bias }
@@ -30,11 +27,7 @@ pub struct AbsoluteErrorStats {
   pub(crate) bias: f64,
 }
 
-#[expect(
-  clippy::as_conversions,
-  clippy::integer_division,
-  reason = "count/index numeric cast is exact for the domain range; integer division is the intended floor division"
-)]
+#[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
 pub(crate) fn compute_relative_error_statistics(actual: &Array1<f64>, expected: &Array1<f64>) -> RelativeErrorStats {
   let mut rel_errors = Vec::new();
   let mut abs_rel_errors = Vec::new();
@@ -56,13 +49,13 @@ pub(crate) fn compute_relative_error_statistics(actual: &Array1<f64>, expected: 
     };
   }
 
-  let mean = rel_errors.iter().sum::<f64>() / rel_errors.len() as f64;
+  let mean = rel_errors.iter().sum::<f64>() / rel_errors.len().to_f64_exact();
   let max = abs_rel_errors
     .iter()
     .map(|&x| OrderedFloat(x))
     .max()
     .map_or(0.0, |x| x.0);
-  let mape = (abs_rel_errors.iter().sum::<f64>() / abs_rel_errors.len() as f64) * 100.0;
+  let mape = (abs_rel_errors.iter().sum::<f64>() / abs_rel_errors.len().to_f64_exact()) * 100.0;
 
   let mut sorted_abs_errors = abs_rel_errors.clone();
   sorted_abs_errors.sort_by_key(|&x| OrderedFloat(x));

@@ -17,6 +17,8 @@ use itertools::Itertools;
 use ndarray::Array1;
 use std::fmt;
 use strum_macros::Display;
+use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::f64_to_usize_saturating;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::make_error;
 
@@ -35,10 +37,6 @@ pub struct DomainAgreementMetrics {
 
 #[bon]
 impl DomainAgreementMetrics {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   #[builder]
   pub(crate) fn new(
     x: &Array1<f64>,
@@ -96,15 +94,15 @@ impl DomainAgreementMetrics {
     let overall_assessment = compute_overall_assessment(quality_metrics.r_squared, &thresholds.r2_thresholds);
 
     let abs_tolerance_fractions = [
-      tolerance_counts.within_abs_tolerances[0] as f64 / total_points as f64,
-      tolerance_counts.within_abs_tolerances[1] as f64 / total_points as f64,
-      tolerance_counts.within_abs_tolerances[2] as f64 / total_points as f64,
+      tolerance_counts.within_abs_tolerances[0].to_f64_exact() / total_points.to_f64_exact(),
+      tolerance_counts.within_abs_tolerances[1].to_f64_exact() / total_points.to_f64_exact(),
+      tolerance_counts.within_abs_tolerances[2].to_f64_exact() / total_points.to_f64_exact(),
     ];
 
     let rel_tolerance_fractions = [
-      tolerance_counts.within_rel_tolerances[0] as f64 / total_points as f64,
-      tolerance_counts.within_rel_tolerances[1] as f64 / total_points as f64,
-      tolerance_counts.within_rel_tolerances[2] as f64 / total_points as f64,
+      tolerance_counts.within_rel_tolerances[0].to_f64_exact() / total_points.to_f64_exact(),
+      tolerance_counts.within_rel_tolerances[1].to_f64_exact() / total_points.to_f64_exact(),
+      tolerance_counts.within_rel_tolerances[2].to_f64_exact() / total_points.to_f64_exact(),
     ];
 
     Ok(Self {
@@ -147,10 +145,6 @@ impl DomainAgreementMetrics {
   )
 )]
 impl fmt::Display for DomainAgreementMetrics {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let Self {
       total_points,
@@ -206,7 +200,7 @@ impl fmt::Display for DomainAgreementMetrics {
 
     let abs_tolerance_lines = (0..3)
       .map(|i| {
-        let count = (abs_tolerance_fractions[i] * *total_points as f64).round() as usize;
+        let count = f64_to_usize_saturating((abs_tolerance_fractions[i] * total_points.to_f64_exact()).round());
         let formatted_threshold = float_to_digits(abs_tolerances[i], Some(1), None);
         let fraction_percentage = abs_tolerance_fractions[i] * 100.0;
         format!("  < {formatted_threshold:>9}: {count:3}/{total_points} ({fraction_percentage:5.1}%)")
@@ -215,7 +209,7 @@ impl fmt::Display for DomainAgreementMetrics {
 
     let rel_tolerance_lines = (0..3)
       .map(|i| {
-        let count = (rel_tolerance_fractions[i] * *total_points as f64).round() as usize;
+        let count = f64_to_usize_saturating((rel_tolerance_fractions[i] * total_points.to_f64_exact()).round());
         let percentage_threshold = rel_tolerances[i] * 100.0;
         let formatted_percentage = float_to_digits(percentage_threshold, Some(3), None);
         let fraction_percentage = rel_tolerance_fractions[i] * 100.0;

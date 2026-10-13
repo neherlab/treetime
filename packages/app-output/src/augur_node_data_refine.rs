@@ -7,6 +7,7 @@ use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DateConstraint;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::datetime::year_fraction::year_fraction_to_datestring;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use util_augur_node_data_json::{
@@ -99,14 +100,10 @@ fn refine_lengths(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey) -> RefineLeng
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "a mutation count is far below 2^53, so the conversion to f64 is exact"
-)]
 fn mutation_length(tree: &AnnotatedTreeView<'_>, edge_key: GraphEdgeKey) -> Option<f64> {
   let graph = tree.graph();
   match graph.sequences.as_ref().and_then(|sequences| sequences.mutation_counts) {
-    Some(counts) => Some(counts.get(&edge_key).copied().unwrap_or_default() as f64),
+    Some(counts) => Some(counts.get(&edge_key).copied().unwrap_or_default().to_f64_exact()),
     None => graph.divergence_branch_lengths[&edge_key],
   }
 }

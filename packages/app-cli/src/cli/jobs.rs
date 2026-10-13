@@ -1,6 +1,7 @@
 use clap::Args;
 use deser::ser::Chunk;
 use deser::{Atom, Error, Serialize, State};
+use treetime_utils::cast::usize_to_u64;
 use treetime_utils::init::thread_pool::available_jobs;
 
 #[derive(Args, Debug, Clone)]
@@ -18,11 +19,7 @@ pub(crate) struct Jobs {
 }
 
 impl Serialize for Jobs {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   fn serialize(&self, _state: &mut State) -> Result<Chunk<'_>, Error> {
-    Ok(Chunk::Atom(Atom::U64(self.jobs as u64)))
+    Ok(Chunk::Atom(Atom::U64(usize_to_u64(self.jobs))))
   }
 }

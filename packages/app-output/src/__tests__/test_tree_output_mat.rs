@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 mod tests {
 
@@ -318,7 +313,7 @@ mod tests {
     }
 
     fn nuc(state: u8) -> i32 {
-      b"ACGT".iter().position(|&nuc| nuc == state).unwrap() as i32
+      i32::try_from(b"ACGT".iter().position(|&nuc| nuc == state).unwrap()).unwrap()
     }
   }
 }

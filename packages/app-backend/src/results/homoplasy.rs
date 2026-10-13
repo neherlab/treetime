@@ -7,6 +7,7 @@ use itertools::Itertools;
 use schemars::JsonSchema;
 use std::collections::BTreeMap;
 use treetime_schema::skip_serializing_optionals;
+use treetime_utils::cast::ToF64Exact;
 
 pub const AMBIGUOUS_SITES_SHOWN: usize = 100;
 
@@ -262,15 +263,11 @@ fn recurrent_sites(all: &[RankedMutation], tree_offset: usize) -> Vec<HomoplasyS
     .collect()
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "site counts are far below 2^53, so the conversion to f64 is exact"
-)]
 fn expected_sites_hit_more_than_once(genome_length: usize, site_hits: &[SiteHitsRow]) -> f64 {
   let expected_below_two: f64 = site_hits
     .iter()
     .filter(|row| row.hits < 2)
     .map(|row| row.expected)
     .sum();
-  (genome_length as f64 - expected_below_two).max(0.0)
+  (genome_length.to_f64_exact() - expected_below_two).max(0.0)
 }

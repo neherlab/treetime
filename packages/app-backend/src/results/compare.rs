@@ -12,6 +12,7 @@ use deser::Serialize;
 use eyre::Report;
 use schemars::JsonSchema;
 use treetime_schema::skip_serializing_optionals;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::datetime::year_fraction::year_fraction_days_between;
 
 /// Comparison of two runs: their settings and their results.
@@ -181,13 +182,8 @@ pub fn compare_ancestors(first: &ResultTree, second: &ResultTree) -> AncestorCom
       })
     })
     .collect::<Vec<_>>();
-  #[expect(
-    clippy::as_conversions,
-    clippy::cast_precision_loss,
-    reason = "an ancestor count is far below 2^52"
-  )]
-  let mean_absolute_shift_days =
-    (!shifts.is_empty()).then(|| shifts.iter().map(|shift| shift.shift_days.abs()).sum::<f64>() / shifts.len() as f64);
+  let mean_absolute_shift_days = (!shifts.is_empty())
+    .then(|| shifts.iter().map(|shift| shift.shift_days.abs()).sum::<f64>() / shifts.len().to_f64_exact());
   AncestorComparison {
     ancestors: first.nodes.iter().filter(|node| !node.is_tip()).count(),
     mean_absolute_shift_days,

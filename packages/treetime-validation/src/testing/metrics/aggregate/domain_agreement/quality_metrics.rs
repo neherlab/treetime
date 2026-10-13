@@ -2,6 +2,8 @@ use deser::Serialize;
 use itertools::izip;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
+use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::f64_to_usize_saturating;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct QualityMetrics {
@@ -17,13 +19,9 @@ pub struct QualityMetrics {
   pub(crate) quantile_95_error: f64,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn compute_rmse(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
   let squared_errors: f64 = (actual - expected).mapv(|x| x * x).sum();
-  (squared_errors / actual.len() as f64).sqrt()
+  (squared_errors / actual.len().to_f64_exact()).sqrt()
 }
 
 pub(crate) fn compute_r_squared(actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
@@ -144,14 +142,10 @@ pub(crate) fn compute_symmetry_error(x: &Array1<f64>, actual: &Array1<f64>) -> f
   }
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn compute_quantile_error(actual: &Array1<f64>, expected: &Array1<f64>, quantile: f64) -> f64 {
   let mut abs_errors: Vec<f64> = (actual - expected).mapv(|x| x.abs()).to_vec();
   abs_errors.sort_by_key(|&x| OrderedFloat(x));
 
-  let index = ((quantile * abs_errors.len() as f64).ceil() as usize).saturating_sub(1);
+  let index = f64_to_usize_saturating((quantile * abs_errors.len().to_f64_exact()).ceil()).saturating_sub(1);
   abs_errors.get(index).copied().unwrap_or(0.0)
 }

@@ -242,6 +242,7 @@ mod tests {
       SubstitutionResult, TaxonResult,
     };
     use treetime::o;
+    use treetime_utils::cast::ToF64Exact;
     use treetime_utils::vec_of_owned;
 
     const GENOME_LENGTH: f64 = 100.0;
@@ -330,10 +331,9 @@ mod tests {
         .collect()
     }
 
-    #[expect(clippy::as_conversions, reason = "hit counts below 5 convert to f64 exactly")]
     pub(super) fn poisson_expected(hits: usize) -> f64 {
-      let factorial: f64 = (1..=hits).map(|k| k as f64).product();
-      GENOME_LENGTH * (-RATE).exp() * RATE.powi(hits as i32) / factorial
+      let factorial: f64 = (1..=hits).map(|k| k.to_f64_exact()).product();
+      GENOME_LENGTH * (-RATE).exp() * RATE.powi(i32::try_from(hits).unwrap()) / factorial
     }
 
     pub(super) fn drm() -> DrmAnnotation {

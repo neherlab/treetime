@@ -15,10 +15,6 @@ use treetime_io::nwk::NwkStyle;
 use treetime_utils::io::file::is_path_stdout;
 use treetime_utils::make_error;
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   let command = request.command;
   let stem = command.stem();
@@ -34,8 +30,7 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
       for (style, p) in expand_override_styles(path, &styles) {
         tree_outputs.insert(styled_tree_write_kind(variant, style), p);
       }
-    } else {
-      let kind = variant.to_tree_write_kind().expect("non-styled tree variant");
+    } else if let Some(kind) = variant.to_tree_write_kind() {
       tree_outputs.insert(kind, path.clone());
     }
   }
@@ -71,8 +66,7 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
           for (style, p) in expand_outputall_styles(dir, stem, variant, &styles) {
             tree_outputs.entry(styled_tree_write_kind(variant, style)).or_insert(p);
           }
-        } else {
-          let kind = variant.to_tree_write_kind().expect("non-styled tree variant");
+        } else if let Some(kind) = variant.to_tree_write_kind() {
           tree_outputs
             .entry(kind)
             .or_insert_with(|| dir.join(format!("{stem}{}", variant.extension())));

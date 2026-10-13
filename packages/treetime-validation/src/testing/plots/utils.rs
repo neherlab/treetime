@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use ndarray::Array1;
+use treetime_utils::cast::f64_to_usize_saturating;
 
 pub(crate) fn combined_range(arrays: &[&Array1<f64>]) -> (f64, f64) {
   arrays
@@ -23,16 +24,12 @@ pub(crate) fn expand_range(min_value: f64, max_value: f64) -> (f64, f64) {
   (min_value - padding, max_value + padding)
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
+const TOLERANCE_LABELS: [&str; 3] = ["Strict", "Moderate", "Loose"];
+
 pub(crate) fn tolerance_label(value: f64) -> String {
-  let idx = (value + 0.5).floor() as i32;
-  match idx {
-    0 => "Strict".to_owned(),
-    1 => "Moderate".to_owned(),
-    2 => "Loose".to_owned(),
+  let rounded = (value + 0.5).floor();
+  match TOLERANCE_LABELS.get(f64_to_usize_saturating(rounded)) {
+    Some(label) if rounded >= 0.0 => (*label).to_owned(),
     _ => format!("{value:.1}"),
   }
 }

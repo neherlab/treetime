@@ -34,6 +34,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DateConstraint;
 use treetime_io::fasta::FastaWriter;
 use treetime_primitives::Seq;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_timetree_estimation(
@@ -386,16 +387,16 @@ fn write_timetree_trees(
   Ok(())
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "a mutation count is far below 2^53, so the conversion to f64 is exact"
-)]
 fn mutation_divergences(
   graph: &Graph,
   mutation_counts: &BTreeMap<GraphEdgeKey, usize>,
 ) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
   root_to_node_divergences(graph, |edge_key| {
-    mutation_counts.get(&edge_key).copied().unwrap_or_default() as f64
+    mutation_counts
+      .get(&edge_key)
+      .copied()
+      .unwrap_or_default()
+      .to_f64_exact()
   })
 }
 

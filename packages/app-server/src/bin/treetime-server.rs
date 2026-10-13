@@ -139,16 +139,16 @@ struct ServerArgs {
   allowed_host: Vec<String>,
 }
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 #[cfg_attr(
   dylint_lib = "custom",
   expect(
     debug_remnants,
     reason = "status line on stderr; the shutdown future has no error channel"
   )
+)]
+#[expect(
+  clippy::expect_used,
+  reason = "the shutdown future has no error channel, and the server cannot stop cleanly without the SIGTERM handler"
 )]
 async fn shutdown_signal() {
   let ctrl_c = tokio::signal::ctrl_c();

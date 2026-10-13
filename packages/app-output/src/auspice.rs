@@ -17,6 +17,7 @@ use treetime_io::auspice_types::{
   AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeBranchAttrsLabels,
   AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs, StartEnd,
 };
+use treetime_utils::cast::f64_to_usize_saturating;
 use treetime_utils::{make_error, make_internal_report, make_report};
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
@@ -88,21 +89,20 @@ pub(crate) fn group_mutations(mutations: &[Mutation]) -> Result<BTreeMap<String,
 }
 
 #[expect(
-  clippy::as_conversions,
   clippy::expect_used,
-  reason = "count/index numeric cast is exact for the domain range; expect on a value an upstream invariant guarantees is present"
+  reason = "Rust writes a finite float in scientific notation that parses back as a float"
 )]
-pub(crate) fn format_number(number: f64, precision: i32) -> f64 {
+pub(crate) fn format_number(number: f64, precision: usize) -> f64 {
   if number == 0.0 || !number.is_finite() {
     return number;
   }
   let integral = number.abs().trunc();
-  let significand = if integral >= 1.0 {
-    integral.log10().floor() as i32 + 1
+  let integer_digits = if integral >= 1.0 {
+    f64_to_usize_saturating(integral.log10().floor()) + 1
   } else {
     0
   };
-  let significant_figures = (significand + precision).max(1) as usize;
+  let significant_figures = (integer_digits + precision).max(1);
   format!("{number:.*e}", significant_figures - 1)
     .parse()
     .expect("a float formatted in scientific notation must parse back")
@@ -351,7 +351,7 @@ fn node_transition(tree: &AnnotatedTreeView<'_>, traits: &TreeTraits<'_>, key: G
   }
 }
 
-fn finite_number(value: Option<f64>, precision: i32, node_name: &str, field: &str) -> Result<Option<f64>, Report> {
+fn finite_number(value: Option<f64>, precision: usize, node_name: &str, field: &str) -> Result<Option<f64>, Report> {
   value
     .map(|value| {
       ensure_finite(value, node_name, field)?;

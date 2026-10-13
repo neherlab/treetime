@@ -4,6 +4,7 @@ use crate::testing::plots::utils::{combined_range, expand_range, tolerance_label
 use eyre::Report;
 use itertools::izip;
 use plotters::prelude::*;
+use treetime_utils::cast::ToF64Exact;
 
 const ABSOLUTE_ERROR_PLOT_SIZE: (u32, u32) = (960, 480);
 const TOLERANCE_PLOT_SIZE: (u32, u32) = (800, 600);
@@ -61,10 +62,6 @@ where
   Ok(())
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn plot_tolerance_metrics<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
@@ -98,7 +95,7 @@ where
     .draw()?;
   chart
     .draw_series((0..3).map(|i| {
-      let x0 = i as f64 + 0.05;
+      let x0 = i.to_f64_exact() + 0.05;
       let x1 = x0 + 0.35;
       Rectangle::new([(x0, 0.0), (x1, abs[i])], BLUE.mix(0.6).filled())
     }))?
@@ -106,7 +103,7 @@ where
     .legend(|(x, y)| Rectangle::new([(x - 6, y - 6), (x + 6, y + 6)], BLUE.mix(0.6).filled()));
   chart
     .draw_series((0..3).map(|i| {
-      let x0 = i as f64 + 0.5;
+      let x0 = i.to_f64_exact() + 0.5;
       let x1 = x0 + 0.35;
       Rectangle::new([(x0, 0.0), (x1, rel[i])], RED.mix(0.6).filled())
     }))?
@@ -121,10 +118,6 @@ where
   Ok(())
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 pub(crate) fn plot_error_histogram<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
 where
   T: TestCase,
@@ -142,7 +135,7 @@ where
 
   let x_min = hist.bin_centers.iter().fold(f64::INFINITY, |a, &b| a.min(b));
   let x_max = hist.bin_centers.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-  let y_max = *hist.bin_counts.iter().max().unwrap_or(&0) as f64;
+  let y_max = (*hist.bin_counts.iter().max().unwrap_or(&0)).to_f64_exact();
 
   let mut chart = ChartBuilder::on(&root)
     .caption(
@@ -179,7 +172,7 @@ where
         Rectangle::new(
           [
             (center - bar_width / 2.0, 0.0),
-            (center + bar_width / 2.0, count as f64),
+            (center + bar_width / 2.0, count.to_f64_exact()),
           ],
           BLUE.mix(0.6).filled(),
         )

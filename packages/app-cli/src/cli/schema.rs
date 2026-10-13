@@ -15,16 +15,15 @@ use std::path::{Path, PathBuf};
 use treetime_schema::TreetimeSchemaFormat;
 use treetime_utils::io::file::is_path_stdout;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
+use treetime_utils::make_internal_report;
 
-#[expect(
-  clippy::expect_used,
-  reason = "expect on a value an upstream invariant guarantees is present"
-)]
 pub(crate) fn generate_schema(target: SchemaTarget, output: Option<&PathBuf>) -> Result<(), Report> {
   if matches!(target, SchemaTarget::All) {
     let dir = output.map_or_else(|| PathBuf::from("."), Clone::clone);
     for one in all_targets() {
-      let filename = one.default_filename().expect("non-aggregate target has a filename");
+      let filename = one
+        .default_filename()
+        .ok_or_else(|| make_internal_report!("Schema target {one:?} has no default filename"))?;
       generate_one(one, &dir.join(filename))?;
     }
     return Ok(());

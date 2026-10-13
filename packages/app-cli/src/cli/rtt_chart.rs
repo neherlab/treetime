@@ -36,7 +36,7 @@ pub(crate) fn print_clock_regression_chart(
 
 #[expect(
   clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
+  reason = "the chart library draws f32 coordinates, so dates and divergences narrow from f64 to f32"
 )]
 pub(crate) fn write_clock_regression_chart_text(
   writer: &mut impl Write,
@@ -85,7 +85,7 @@ pub(crate) fn write_clock_regression_chart_text(
   let outlier_points = Shape::Points(&outlier_points);
   let chart = chart.linecolorplot(&outlier_points, RGB8 { r: 255, g: 105, b: 97 });
 
-  let line = Box::new(|date: f32| clock_model.div(date as f64) as f32);
+  let line = Box::new(|date: f32| clock_model.div(f64::from(date)) as f32);
   let line = Shape::Continuous(line);
   let chart = chart.linecolorplot(&line, RGB8 { r: 8, g: 140, b: 232 });
 

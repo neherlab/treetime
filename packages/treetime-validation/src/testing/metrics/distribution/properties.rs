@@ -3,6 +3,7 @@ use crate::testing::metrics::pointwise::errors::PointwiseErrors;
 use deser::Serialize;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
+use treetime_utils::cast::ToF64Exact;
 
 pub(super) fn compute_distribution_properties(
   pointwise_errors: &PointwiseErrors,
@@ -81,10 +82,6 @@ pub enum TailBehavior {
   ExtremelyHeavy,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn compute_outlier_statistics(errors: &Array1<f64>) -> OutlierStatistics {
   let mean = errors.mean().unwrap_or(0.0);
   let std = compute_std(errors);
@@ -103,7 +100,7 @@ fn compute_outlier_statistics(errors: &Array1<f64>) -> OutlierStatistics {
   let count_3sigma = errors.iter().filter(|&&x| x.abs() > threshold_3sigma).count();
   let count_5sigma = errors.iter().filter(|&&x| x.abs() > threshold_5sigma).count();
 
-  let fraction_outliers = count_3sigma as f64 / errors.len() as f64;
+  let fraction_outliers = count_3sigma.to_f64_exact() / errors.len().to_f64_exact();
 
   OutlierStatistics {
     count_3sigma,

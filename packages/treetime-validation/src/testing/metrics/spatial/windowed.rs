@@ -2,6 +2,7 @@ use crate::testing::metrics::config::SpatialConfig;
 use deser::Serialize;
 use ndarray::Array1;
 use treetime_utils::adapters::ArrayVec;
+use treetime_utils::cast::ToF64Exact;
 
 pub(super) fn compute_windowed_metrics(
   actual: &Array1<f64>,
@@ -44,10 +45,6 @@ pub struct WindowedSummary {
   pub(crate) sliding_max_max: f64,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn compute_sliding_window_rms(errors: &Array1<f64>, half_width: usize) -> Array1<f64> {
   let n = errors.len();
   let mut rms = Array1::zeros(n);
@@ -57,7 +54,7 @@ fn compute_sliding_window_rms(errors: &Array1<f64>, half_width: usize) -> Array1
     let end = (i + half_width + 1).min(n);
     let window = &errors.slice(ndarray::s![start..end]);
     let sum_sq: f64 = window.iter().map(|&x| x * x).sum();
-    let count = window.len() as f64;
+    let count = window.len().to_f64_exact();
     rms[i] = (sum_sq / count).sqrt();
   }
 

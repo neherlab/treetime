@@ -5,16 +5,13 @@ use crate::testing::framework::test_case::TestCase;
 use eyre::Report;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::iterator::mean_by_key::MeanByKey;
 use treetime_utils::make_internal_report;
 
 #[expect(clippy::multiple_inherent_impl, reason = "methods are split across files by concern")]
 impl ValidationConsole {
-  #[expect(
-    clippy::as_conversions,
-    reason = "count/index numeric cast is exact for the domain range"
-  )]
   pub(crate) fn compute_all_metrics<T: TestCase>(
     summary: &TestSummary,
     grouped_by_algorithm: &BTreeMap<String, Vec<&TestResult<T>>>,
@@ -68,7 +65,7 @@ impl ValidationConsole {
         .iter()
         .map(|r| r.metrics.pointwise.errors.summary.abs_mean)
         .sum::<f64>()
-        / algorithm_results.len() as f64;
+        / algorithm_results.len().to_f64_exact();
 
       let pw_abs_std = algorithm_results
         .iter()
@@ -84,13 +81,13 @@ impl ValidationConsole {
         .iter()
         .map(|r| r.metrics.pointwise.errors.summary.rel_mean)
         .sum::<f64>()
-        / algorithm_results.len() as f64;
+        / algorithm_results.len().to_f64_exact();
 
       let pw_rel_median = algorithm_results
         .iter()
         .map(|r| r.metrics.pointwise.errors.summary.rel_median)
         .sum::<f64>()
-        / algorithm_results.len() as f64;
+        / algorithm_results.len().to_f64_exact();
 
       let pw_signed_bias_max = algorithm_results
         .iter()
@@ -111,7 +108,7 @@ impl ValidationConsole {
         .iter()
         .map(|r| r.metrics.pointwise.structural.summary.d1_mean)
         .sum::<f64>()
-        / algorithm_results.len() as f64;
+        / algorithm_results.len().to_f64_exact();
 
       let d2_max = algorithm_results
         .iter()
@@ -122,7 +119,7 @@ impl ValidationConsole {
         .iter()
         .map(|r| r.metrics.pointwise.structural.summary.d2_mean)
         .sum::<f64>()
-        / algorithm_results.len() as f64;
+        / algorithm_results.len().to_f64_exact();
 
       let symmetry_max = algorithm_results
         .iter()
@@ -139,7 +136,7 @@ impl ValidationConsole {
         .iter()
         .map(|r| r.metrics.spatial.regional.summary.peak_region.mean_error)
         .sum::<f64>()
-        / algorithm_results.len() as f64;
+        / algorithm_results.len().to_f64_exact();
 
       let peak_max = algorithm_results
         .iter()
@@ -150,7 +147,7 @@ impl ValidationConsole {
         .iter()
         .map(|r| r.metrics.spatial.regional.summary.tail_region.mean_error)
         .sum::<f64>()
-        / algorithm_results.len() as f64;
+        / algorithm_results.len().to_f64_exact();
 
       let tail_max = algorithm_results
         .iter()

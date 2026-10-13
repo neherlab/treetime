@@ -1,8 +1,3 @@
-#![allow(
-  clippy::as_conversions,
-  reason = "test and benchmark code: index and expected-value casts, and scratch collections"
-)]
-
 #[cfg(test)]
 pub(super) mod tests {
   use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences, TreeTraits};
@@ -584,6 +579,7 @@ pub(super) mod tests {
     use treetime_io::nwk::nwk_read;
     use treetime_io::usher_mat::UsherTree;
     use treetime_primitives::{AsciiChar, Seq};
+    use treetime_utils::cast::ToF64Exact;
     use treetime_utils::io::json::{json_value_read_str, to_json_value};
     use treetime_utils::{make_report, o};
     use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
@@ -818,13 +814,13 @@ pub(super) mod tests {
         .graph
         .get_nodes()
         .enumerate()
-        .map(|(index, node)| (node.key(), index as f64 / 2.0))
+        .map(|(index, node)| (node.key(), index.to_f64_exact() / 2.0))
         .collect();
       let num_date = topology
         .graph
         .get_nodes()
         .enumerate()
-        .map(|(index, node)| (node.key(), Some(2020.0 + index as f64)))
+        .map(|(index, node)| (node.key(), Some(2020.0 + index.to_f64_exact())))
         .collect();
       let edge_mutations = no_mutations(&topology);
       Ok(DatedSetup {

@@ -2,12 +2,10 @@ use crate::testing::metrics::config::DistributionConfig;
 use crate::testing::metrics::pointwise::errors::PointwiseErrors;
 use deser::Serialize;
 use ndarray::Array1;
+use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::f64_to_usize_saturating;
 use treetime_utils::make_error;
 
-#[expect(
-  clippy::unwrap_used,
-  reason = "unwrap on a value an upstream invariant guarantees is present"
-)]
 pub(super) fn compute_histogram_metrics(
   pointwise_errors: &PointwiseErrors,
   config: &DistributionConfig,
@@ -43,8 +41,8 @@ pub(super) fn compute_histogram_metrics(
     (0.0, 0.0)
   };
 
-  let spread_measure = if abs_error_histogram.bin_edges.len() >= 2 {
-    abs_error_histogram.bin_edges.last().unwrap() - abs_error_histogram.bin_edges.first().unwrap()
+  let spread_measure = if let [first, .., last] = abs_error_histogram.bin_edges.as_slice() {
+    last - first
   } else {
     0.0
   };
@@ -78,10 +76,6 @@ pub struct HistogramSummary {
   spread_measure: f64,
 }
 
-#[expect(
-  clippy::as_conversions,
-  reason = "count/index numeric cast is exact for the domain range"
-)]
 fn compute_error_histogram(errors: &Array1<f64>, num_bins: usize, mode: HistogramMode) -> eyre::Result<ErrorHistogram> {
   if num_bins == 0 {
     return make_error!("Number of histogram bins must be positive");
@@ -121,17 +115,21 @@ fn compute_error_histogram(errors: &Array1<f64>, num_bins: usize, mode: Histogra
   };
 
   let range = max_val - min_val;
-  let bin_width = if range > 0.0 { range / num_bins as f64 } else { 1.0 };
+  let bin_width = if range > 0.0 {
+    range / num_bins.to_f64_exact()
+  } else {
+    1.0
+  };
 
   let mut bin_edges = Vec::with_capacity(num_bins + 1);
   for i in 0..=num_bins {
-    bin_edges.push(min_val + i as f64 * bin_width);
+    bin_edges.push(min_val + i.to_f64_exact() * bin_width);
   }
 
   let mut bin_counts = vec![0_usize; num_bins];
   for &err in &valid_errors {
     let val = if use_log_scale { err.log10() } else { err };
-    let bin_idx = ((val - min_val) / bin_width).floor() as usize;
+    let bin_idx = f64_to_usize_saturating(((val - min_val) / bin_width).floor());
     let bin_idx = bin_idx.min(num_bins - 1);
     bin_counts[bin_idx] += 1;
   }
