@@ -116,9 +116,9 @@
 
 ## Confidence Intervals
 
-- [ ] 90% HPD from marginal posteriors (`mutation_contribution` is `None`; [kb/issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md](../issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md))
+- [x] 90% maximum posterior region from marginal posteriors (`max_posterior_region()`)
 - [x] `combine_confidence()` quadrature sum
-- [x] `Distribution::quantile()` inverse CDF
+- [x] Inverse CDF of the posterior grid for regions with the peak on a boundary
 - [x] Rate susceptibility analysis (`compute_rate_susceptibility()`)
 - [x] `date_uncertainty_due_to_rate()` via probit function (erfinv)
 - [x] Rate susceptibility activated via `--confidence` with `--covariation` or `--clock-std-dev`

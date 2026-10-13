@@ -231,7 +231,7 @@ Node date uncertainty has two independent sources ([[3](#ref-3)], Section 2.2):
 1. Mutation stochasticity. The Poisson process of substitution accumulation creates branch length uncertainty, which propagates through the backward/forward belief propagation passes. The marginal posterior distribution at each node captures this. Nodes constrained by many descendant dates have narrow posteriors; weakly constrained nodes have wide posteriors.
 2. Clock rate uncertainty. The regression slope has a standard error from the 2x2 Hessian inverse (`ClockModel::cov()`). All node times scale inversely with the rate, so rate uncertainty propagates to all dates. Nodes near the root have the highest sensitivity: a 10% rate error shifts the root date by 10% of the tree depth.
 
-v1: [`packages/treetime/src/timetree/confidence.rs`](../../packages/treetime/src/timetree/confidence.rs).
+v1: [`packages/treetime/src/timetree/confidence.rs`](../../packages/treetime/src/timetree/confidence.rs), [`packages/treetime/src/timetree/max_posterior_region.rs`](../../packages/treetime/src/timetree/max_posterior_region.rs).
 v0: `get_max_posterior_region()` (`#get_max_posterior_region`), `calc_rate_susceptibility()` (`#calc_rate_susceptibility`), `date_uncertainty_due_to_rate()` (`#date_uncertainty_due_to_rate`), `combine_confidence()` (`#combine_confidence`) in [`packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230`](../../packages/legacy/treetime/treetime/clock_tree.py#L1010-L1230).
 
 Both v0 and v1 use 90% confidence regions throughout: `CI_FRACTION=0.9` in v1, `fraction=0.9` in v0's `get_max_posterior_region`. The derived quantile bounds are `(0.05, 0.95)` (5% in each tail). The two sources use different statistical operations to produce "90% CI":
@@ -244,16 +244,22 @@ Both v0 and v1 use 90% confidence regions throughout: `CI_FRACTION=0.9` in v1, `
 
 `extract_confidence_intervals()` (`#extract_confidence_intervals`) computes per-node CI:
 
-1. Mutation contribution: none. v1 has no HPD region for `Distribution<NegLog>`, so the marginal posterior contributes nothing ([kb/issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md](../issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md))
-2. Rate contribution from `date_uncertainty_due_to_rate(dates, (0.05, 0.95))` on rate susceptibility triples
-3. Combination via `combine_confidence()` quadrature sum, clipped to distribution domain
-4. Delta distributions and nodes without data yield identity interval `[date, date]`
+1. Mutation contribution from `max_posterior_region()` (`#max_posterior_region`) on the marginal time posterior
+2. Rate contribution from `date_uncertainty_due_to_rate()` on rate susceptibility triples, with the quantile pair that matches the peak location: `(0.05, 0.95)` for an interior peak, `(0, 0.9)` for a peak at the latest date, `(0.1, 1)` for a peak at the earliest date, as v0 passes them through `get_confidence_interval`
+3. Combination via `combined_confidence()` and `combine_confidence()`: quadrature sum, clipped to distribution domain
+4. Delta distributions yield `[date, date]`; nodes without a distribution and without rate dates yield the identity interval `[date, date]`
 
 ### Mutation contribution: HPD region
 
 v0: `get_max_posterior_region(node, fraction=0.9)` (`clock_tree.py:1146-1230`) finds the narrowest interval containing `fraction` of the probability mass, using `scipy.optimize.minimize_scalar` (Brent) for the threshold search.
 
-v1 has no HPD region implementation. Time distributions store negative-log ordinates, and an HPD region needs integration of the probability density ([kb/issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md](../issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md)).
+v1: `max_posterior_region()` (`#max_posterior_region`) converts the negative-log ordinates to peak-relative densities $e^{-(y - y_{\min})}$ and integrates them on the posterior grid with the trapezoid rule, as v0 does on its grid. The CDF is linear between grid points. The peak is the grid minimum of $y$; a tie resolves to the latest date, which is v0's first minimum on its time-before-present axis.
+
+- Peak inside the grid: the region is bounded by the crossings of a level $h$ above the peak on each side, and $h$ is chosen so that the region holds 90% of the mass. The mass is piecewise linear in $h$, so v1 solves for $h$ exactly where v0 runs a Brent minimizer on $(0.9 - \text{mass}(h))^2$. On a shallow posterior that minimizer stops on a plateau and v0 reports the whole support ([kb/v0-errata/timetree-max-posterior-region-brent-plateau.md](../v0-errata/timetree-max-posterior-region-brent-plateau.md)). On a side that is not monotone, v1 uses the first crossing outward from the peak ([kb/v0-errata/timetree-max-posterior-region-multimodal-side.md](../v0-errata/timetree-max-posterior-region-multimodal-side.md))
+- Peak at the latest date: `[Q(0.1), t_max]`; peak at the earliest date: `[t_min, Q(0.9)]`, where `Q` is the inverse CDF. v0 reaches these through `get_confidence_interval(node, (0, 0.9))` and `(0.1, 1)` on its reversed axis
+- Point distribution: `[t, t]`
+
+Tail mass beyond the grid is not integrated, as in v0. On `ebola/362` and `rsv/a/500` the posterior tails beyond the grid hold at most `2.3e-5` of the mass, and almost all posteriors have hard boundaries on both sides.
 
 ### Rate contribution: susceptibility analysis
 

@@ -516,9 +516,9 @@ The **same functions** serve regridding and should serve HPD.
 <details>
 <summary>K17. Confidence integrals ignore tail mass 💻</summary>
 
-`quantile` and `hpd_region` integrate a **grid-only trapezoidal CDF** and ignore the boundary-law tail masses [packages/treetime-distribution/src/distribution_core/distribution.rs#L266-L323](packages/treetime-distribution/src/distribution_core/distribution.rs#L266-L323), [packages/treetime-distribution/src/distribution_core/distribution.rs#L550-L635](packages/treetime-distribution/src/distribution_core/distribution.rs#L550-L635).
+`max_posterior_region` integrates a **grid-only trapezoidal CDF** and ignores the boundary-law tail masses, as v0 does on its grid [packages/treetime/src/timetree/max_posterior_region.rs](packages/treetime/src/timetree/max_posterior_region.rs). Measured on `ebola/362` and `rsv/a/500`, the tails of the marginal time posteriors hold at most `2.3e-5` of the mass, because almost all posteriors have hard boundaries on both sides.
 
-Re-window deliberately leaves $2\epsilon$ mass in the tails, so a grid-only integral normalizes against $1 - 2\epsilon$ of the true mass and **biases every reported interval inward**.
+Re-window deliberately leaves up to $2\epsilon$ mass in the soft tails of the distributions it produces, so a grid-only integral of such a distribution normalizes against $1 - 2\epsilon$ of the true mass and **biases its intervals inward**. The marginal posteriors are products of such distributions and keep far less tail mass, as measured above.
 
 **Fix**: integrate the same peak-relative mass profile that `rewindow_to_mass` uses (the grid trapezoid plus both closed-form tail masses).
 
@@ -527,7 +527,6 @@ Re-window deliberately leaves $2\epsilon$ mass in the tails, so a grid-only inte
 <details>
 <summary>K18. Related open issues 💻</summary>
 
-- [kb/issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md](../issues/M-timetree-confidence-marginal-hpd-disabled-under-neglog.md)
 - [kb/issues/M-timetree-confidence-interval-deficiencies.md](../issues/M-timetree-confidence-interval-deficiencies.md)
 
 </details>
