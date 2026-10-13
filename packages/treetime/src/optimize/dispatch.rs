@@ -2,7 +2,6 @@ use crate::branch_lengths::one_mutation;
 use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
 use crate::optimize::gather::EdgeContributions;
 use crate::optimize::indel::estimate_indel_rate;
-use crate::optimize::likelihood::evaluate_with_indels;
 use crate::optimize::method_brent::brent_sqrt_inner;
 use crate::optimize::method_newton::newton_sqrt_inner;
 use crate::optimize::params::{BranchOptMethod, ExistingBranchLengths};
@@ -37,31 +36,7 @@ pub(crate) fn run_optimize_mixed(
     indel_rate,
     false,
     branch_lengths,
-  )?;
-  Ok(())
-}
-
-#[cfg(test)]
-pub(crate) fn run_optimize_mixed_with_indel_rate(
-  graph: &Graph,
-  total_length: usize,
-  contributions: &impl EdgeContributions,
-  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
-  method: BranchOptMethod,
-  indel_rate: f64,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report> {
-  run_optimize_mixed_inner(
-    graph,
-    total_length,
-    contributions,
-    indel_counts,
-    method,
-    indel_rate,
-    false,
-    branch_lengths,
-  )?;
-  Ok(())
+  )
 }
 
 #[expect(
@@ -273,18 +248,14 @@ fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimiza
       min_branch_length,
       one_mutation,
     ),
-    BranchOptMethod::NewtonSqrt => {
-      let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
-      newton_sqrt_inner(
-        branch_length,
-        &metrics,
-        contributions,
-        indel_count,
-        indel_rate,
-        min_branch_length,
-        one_mutation,
-      )
-    },
+    BranchOptMethod::NewtonSqrt => newton_sqrt_inner(
+      branch_length,
+      contributions,
+      indel_count,
+      indel_rate,
+      min_branch_length,
+      one_mutation,
+    ),
   }?;
 
   let new_branch_length = reconcile_zero_boundary(

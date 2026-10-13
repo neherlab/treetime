@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_with_indel_rate};
+  use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_inner};
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::test_utils::dense_partition_with_constant_leaves;
@@ -60,13 +60,14 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let total_length = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 0)?.length;
-    let result = run_optimize_mixed_with_indel_rate(
+    let result = run_optimize_mixed_inner(
       &graph,
       total_length,
       &BTreeMap::new(),
       &BTreeMap::new(),
       BranchOptMethod::NewtonSqrt,
       1.0,
+      false,
       &mut branch_lengths,
     );
     assert_error!(

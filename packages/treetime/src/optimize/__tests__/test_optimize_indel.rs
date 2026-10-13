@@ -11,7 +11,7 @@ pub(super) mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_reconstruction, simple_alignment,
   };
-  use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_with_indel_rate};
+  use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed, run_optimize_mixed_inner};
   use crate::optimize::gather::{
     gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
   };
@@ -220,25 +220,27 @@ pub(super) mod tests {
     let total_length_low = reconstruction_low.sequence_length();
     let contributions_low = gather_edge_contributions(&graph_low, &reconstruction_low)?;
     let indel_counts_low = gather_edge_indel_counts(&graph_low, &reconstruction_low);
-    run_optimize_mixed_with_indel_rate(
+    run_optimize_mixed_inner(
       &graph_low,
       total_length_low,
       &contributions_low,
       &indel_counts_low,
       BranchOptMethod::NewtonSqrt,
       1.0,
+      false,
       &mut branch_lengths_low,
     )?;
     let total_length_high = reconstruction_high.sequence_length();
     let contributions_high = gather_edge_contributions(&graph_high, &reconstruction_high)?;
     let indel_counts_high = gather_edge_indel_counts(&graph_high, &reconstruction_high);
-    run_optimize_mixed_with_indel_rate(
+    run_optimize_mixed_inner(
       &graph_high,
       total_length_high,
       &contributions_high,
       &indel_counts_high,
       BranchOptMethod::NewtonSqrt,
       8.0,
+      false,
       &mut branch_lengths_high,
     )?;
 

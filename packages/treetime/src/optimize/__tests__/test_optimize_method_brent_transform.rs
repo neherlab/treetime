@@ -13,7 +13,7 @@ mod tests {
   use crate::optimize::dispatch::run_optimize_mixed;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
   use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
-  use crate::optimize::method_brent::{brent_bracket, brent_sqrt_inner};
+  use crate::optimize::method_brent::{BranchLengthBracket, brent_bracket, brent_sqrt_inner};
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::zero_boundary::min_branch_length_for_indels;
   use eyre::Report;
@@ -84,7 +84,7 @@ mod tests {
     let input_bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
     let one_mutation = 1.0 / total_length as f64;
     let min_bl = min_branch_length_for_indels(4, one_mutation);
-    let (lower, upper) = brent_bracket(input_bl, min_bl, one_mutation);
+    let BranchLengthBracket { lower, upper } = brent_bracket(input_bl, min_bl, one_mutation);
 
     run_optimize_mixed(
       &graph,

@@ -7,7 +7,7 @@ mod tests {
   use crate::optimize::gather::{
     gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
   };
-  use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
+  use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
   use crate::optimize::method_newton::newton_sqrt_inner;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
@@ -375,9 +375,8 @@ mod tests {
     let contributions = [make_dinh_matsen_k80_contribution()];
     let one_mutation = 0.01;
     let t0 = 0.6;
-    let metrics = evaluate_mixed(&contributions, t0).expect("valid branch length");
 
-    let result = newton_sqrt_inner(t0, &metrics, &contributions, 0, 0.0, 0.0, one_mutation).unwrap();
+    let result = newton_sqrt_inner(t0, &contributions, 0, 0.0, 0.0, one_mutation).unwrap();
     assert!(
       result == 0.0,
       "reproduction: newton_sqrt_inner from t0={t0} on the Dinh-Matsen K80 surface must clamp to exactly 0 (else the reconcile zero-candidate gate is no longer necessary), got {result}"

@@ -1,4 +1,4 @@
-use crate::optimize::likelihood::{OptimizationMetrics, evaluate_with_indels};
+use crate::optimize::likelihood::evaluate_with_indels;
 use crate::optimize::zero_boundary::grid_search_inner;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use eyre::Report;
@@ -12,13 +12,13 @@ const NEWTON_MAX_ITER: usize = 10;
 
 pub(super) fn newton_sqrt_inner(
   branch_length: f64,
-  metrics: &OptimizationMetrics,
   contributions: &[OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,
   min_branch_length: f64,
   one_mutation: f64,
 ) -> Result<f64, Report> {
+  let metrics = evaluate_with_indels(contributions, indel_count, indel_rate, branch_length)?;
   let mut s = branch_length.sqrt();
   let min_s = min_branch_length.sqrt();
 

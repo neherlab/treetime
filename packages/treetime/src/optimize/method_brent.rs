@@ -16,13 +16,12 @@ pub(super) fn brent_sqrt_inner(
   min_branch_length: f64,
   one_mutation: f64,
 ) -> Result<f64, Report> {
-  let (lower, upper) = brent_bracket(branch_length, min_branch_length, one_mutation);
+  let BranchLengthBracket { lower, upper } = brent_bracket(branch_length, min_branch_length, one_mutation);
 
-  let cost_fn = BranchLengthCostFn {
+  let cost_fn = SqrtBranchLengthCostFn {
     contributions,
     indel_count,
     indel_rate,
-    to_t: |s: f64| s * s,
   };
 
   let solver = BrentOpt::new(lower.sqrt(), upper.sqrt());
@@ -39,27 +38,32 @@ pub(super) fn brent_sqrt_inner(
   Ok(s * s)
 }
 
-pub(super) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> (f64, f64) {
-  let lower = min_branch_length.max(1e-12);
-  let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
-  (lower, upper)
+pub(super) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> BranchLengthBracket {
+  BranchLengthBracket {
+    lower: min_branch_length.max(1e-12),
+    upper: f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER),
+  }
 }
 
-impl<F: Fn(f64) -> f64> CostFunction for &BranchLengthCostFn<'_, F> {
+pub(super) struct BranchLengthBracket {
+  pub lower: f64,
+  pub upper: f64,
+}
+
+impl CostFunction for &SqrtBranchLengthCostFn<'_> {
   type Param = f64;
   type Output = f64;
 
-  fn cost(&self, p: &Self::Param) -> Result<Self::Output, Error> {
-    let t = (self.to_t)(*p);
+  fn cost(&self, s: &Self::Param) -> Result<Self::Output, Error> {
+    let t = s * s;
     let log_lh = evaluate_with_indels_log_lh_only(self.contributions, self.indel_count, self.indel_rate, t)
       .map_err(|error| Error::msg(error.to_string()))?;
     Ok(-log_lh)
   }
 }
 
-struct BranchLengthCostFn<'a, F: Fn(f64) -> f64> {
+struct SqrtBranchLengthCostFn<'a> {
   contributions: &'a [OptimizationContribution],
   indel_count: usize,
   indel_rate: f64,
-  to_t: F,
 }
