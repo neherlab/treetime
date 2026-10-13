@@ -61,18 +61,7 @@ pub(super) mod tests {
   #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
   #[trace]
   fn test_optimize_method_local_optimality(#[case] method: BranchOptMethod) -> Result<(), Report> {
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
-    let total_length = reconstruction.sequence_length();
-    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-
-    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
-
-    let bl = first_edge_bl(&graph, &branch_lengths);
+    let OptimizedFirstEdge { graph, reconstruction, indel_rate, branch_length: bl } = optimize_first_edge_with_indels(method, 4)?;
     assert!(bl > 0.0 && bl.is_finite(), "Optimized BL must be positive and finite, got {bl}");
 
     let lh_opt = eval_combined_first_edge(&graph, &reconstruction, indel_rate, bl)?;
@@ -98,25 +87,12 @@ pub(super) mod tests {
 
   #[test]
   fn test_optimize_method_newton_sqrt_stationarity() -> Result<(), Report> {
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 2)?;
-    let total_length = reconstruction.sequence_length();
-    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-
-    run_optimize_mixed(
-      &graph,
-      total_length,
-      &contributions,
-      &indel_counts,
-      BranchOptMethod::NewtonSqrt,
-      &mut branch_lengths,
-    )?;
-
-    let bl = first_edge_bl(&graph, &branch_lengths);
+    let OptimizedFirstEdge {
+      graph,
+      reconstruction,
+      indel_rate,
+      branch_length: bl,
+    } = optimize_first_edge_with_indels(BranchOptMethod::NewtonSqrt, 2)?;
     let metrics = eval_metrics_first_edge(&graph, &reconstruction, indel_rate, bl)?;
     let s = bl.sqrt();
     let (dl_ds, d2l_ds2) = chain_rule_sqrt(s, metrics.derivative, metrics.second_derivative);
@@ -143,35 +119,13 @@ pub(super) mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_cross_method_lh_agreement(#[case] n_indels: usize) -> Result<(), Report> {
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_brent_names = nwk_parsed.names();
-    let graph_brent = nwk_parsed.graph;
-    let mut bl_brent = nwk_parsed.branch_lengths;
-    let (reconstruction_brent, rate_brent) = setup_with_indels(&graph_brent, &graph_brent_names, &mut bl_brent, n_indels)?;
-    let total_length_brent = reconstruction_brent.sequence_length();
-    let contributions_brent = gather_edge_contributions(&graph_brent, &reconstruction_brent)?;
-    let indel_counts_brent = gather_edge_indel_counts(&graph_brent, &reconstruction_brent);
-    run_optimize_mixed(&graph_brent, total_length_brent, &contributions_brent, &indel_counts_brent, BranchOptMethod::BrentSqrt, &mut bl_brent)?;
-    let bl_brent = first_edge_bl(&graph_brent, &bl_brent);
-    let lh_brent = eval_combined_first_edge(&graph_brent, &reconstruction_brent, rate_brent, bl_brent)?;
+    let lh_brent = optimize_first_edge_with_indels(BranchOptMethod::BrentSqrt, n_indels)?.log_lh()?;
+    let lh_newton = optimize_first_edge_with_indels(BranchOptMethod::NewtonSqrt, n_indels)?.log_lh()?;
 
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_sqrt_names = nwk_parsed.names();
-    let graph_sqrt = nwk_parsed.graph;
-    let mut bl_sqrt = nwk_parsed.branch_lengths;
-    let (reconstruction_sqrt, rate_sqrt) = setup_with_indels(&graph_sqrt, &graph_sqrt_names, &mut bl_sqrt, n_indels)?;
-    let total_length_sqrt = reconstruction_sqrt.sequence_length();
-    let contributions_sqrt = gather_edge_contributions(&graph_sqrt, &reconstruction_sqrt)?;
-    let indel_counts_sqrt = gather_edge_indel_counts(&graph_sqrt, &reconstruction_sqrt);
-    run_optimize_mixed(&graph_sqrt, total_length_sqrt, &contributions_sqrt, &indel_counts_sqrt, BranchOptMethod::NewtonSqrt, &mut bl_sqrt)?;
-    let bl_sqrt = first_edge_bl(&graph_sqrt, &bl_sqrt);
-    let lh_sqrt = eval_combined_first_edge(&graph_sqrt, &reconstruction_sqrt, rate_sqrt, bl_sqrt)?;
-
-    let lh_diff = (lh_brent - lh_sqrt).abs();
+    let lh_diff = (lh_brent - lh_newton).abs();
     assert!(
       lh_diff < 1e-3,
-      "BrentSqrt lh ({lh_brent}) and NewtonSqrt lh ({lh_sqrt}) differ by {lh_diff}, \
-       bl_brent={bl_brent}, bl_sqrt={bl_sqrt}"
+      "BrentSqrt lh ({lh_brent}) and NewtonSqrt lh ({lh_newton}) differ by {lh_diff}"
     );
 
     Ok(())
@@ -179,49 +133,17 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::k1(1)]
-  #[case::k2(2)]
-  #[case::k4(4)]
+  #[case::brent_sqrt_k1( BranchOptMethod::BrentSqrt,  1)]
+  #[case::brent_sqrt_k2( BranchOptMethod::BrentSqrt,  2)]
+  #[case::brent_sqrt_k4( BranchOptMethod::BrentSqrt,  4)]
+  #[case::newton_sqrt_k1(BranchOptMethod::NewtonSqrt, 1)]
+  #[case::newton_sqrt_k2(BranchOptMethod::NewtonSqrt, 2)]
+  #[case::newton_sqrt_k4(BranchOptMethod::NewtonSqrt, 4)]
   #[trace]
-  fn test_optimize_method_brent_sqrt_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let (reconstruction, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
-    let total_length = reconstruction.sequence_length();
-    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-
-    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, BranchOptMethod::BrentSqrt, &mut branch_lengths)?;
-
-    let bl = first_edge_bl(&graph, &branch_lengths);
-    assert!(bl > 0.0, "BrentSqrt BL with {n_indels} indels must be positive, got {bl}");
-    assert!(bl.is_finite(), "BrentSqrt BL must be finite, got {bl}");
-    Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::k1(1)]
-  #[case::k2(2)]
-  #[case::k4(4)]
-  #[trace]
-  fn test_optimize_method_newton_sqrt_positive_with_indels(#[case] n_indels: usize) -> Result<(), Report> {
-    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let (reconstruction, _) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
-    let total_length = reconstruction.sequence_length();
-    let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-
-    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, BranchOptMethod::NewtonSqrt, &mut branch_lengths)?;
-
-    let bl = first_edge_bl(&graph, &branch_lengths);
-    assert!(bl > 0.0, "NewtonSqrt BL with {n_indels} indels must be positive, got {bl}");
-    assert!(bl.is_finite(), "NewtonSqrt BL must be finite, got {bl}");
+  fn test_optimize_method_positive_with_indels(#[case] method: BranchOptMethod, #[case] n_indels: usize) -> Result<(), Report> {
+    let bl = optimize_first_edge_with_indels(method, n_indels)?.branch_length;
+    assert!(bl > 0.0, "{method:?} BL with {n_indels} indels must be positive, got {bl}");
+    assert!(bl.is_finite(), "{method:?} BL must be finite, got {bl}");
     Ok(())
   }
 
@@ -271,6 +193,48 @@ pub(super) mod tests {
       };
 
       Ok((reconstruction, indel_rate))
+    }
+
+    pub(crate) fn optimize_first_edge_with_indels(
+      method: BranchOptMethod,
+      n_indels: usize,
+    ) -> Result<OptimizedFirstEdge, Report> {
+      let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let mut branch_lengths = nwk_parsed.branch_lengths;
+      let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
+      let total_length = reconstruction.sequence_length();
+      let contributions = gather_edge_contributions(&graph, &reconstruction)?;
+      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+      run_optimize_mixed(
+        &graph,
+        total_length,
+        &contributions,
+        &indel_counts,
+        method,
+        &mut branch_lengths,
+      )?;
+      let branch_length = first_edge_bl(&graph, &branch_lengths);
+      Ok(OptimizedFirstEdge {
+        graph,
+        reconstruction,
+        indel_rate,
+        branch_length,
+      })
+    }
+
+    pub(crate) struct OptimizedFirstEdge {
+      pub graph: Graph,
+      pub reconstruction: MarginalReconstruction,
+      pub indel_rate: f64,
+      pub branch_length: f64,
+    }
+
+    impl OptimizedFirstEdge {
+      pub(crate) fn log_lh(&self) -> Result<f64, Report> {
+        eval_combined_first_edge(&self.graph, &self.reconstruction, self.indel_rate, self.branch_length)
+      }
     }
 
     pub(crate) fn eval_combined_first_edge(
