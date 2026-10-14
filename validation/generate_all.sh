@@ -5,6 +5,7 @@
 # Usage: pixi run ./generate_all.sh [n_reps] [n_jobs (default: available CPUs)] [tips per sample time (default: "10 30 100")]
 set -euo pipefail
 cd "$(dirname "$0")"
+export PYTHONPATH="$PWD/../packages/legacy/treetime" OPENBLAS_NUM_THREADS=1
 cpus=$(awk '$1 != "max" {print int($1 / $2); exit} {exit 1}' /sys/fs/cgroup/cpu.max 2>/dev/null || nproc) # cgroup quota, which nproc does not see
 reps=${1:-10}
 jobs=${2:-$cpus}

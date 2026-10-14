@@ -4,15 +4,15 @@
 #   -> evaluate (one job per density and suite) -> analyze (one job per density).
 # Every step skips finished work, so resubmitting continues an interrupted pipeline.
 #
-# Usage: ./slurm.sh            (build the treetime binary first, see TREETIME)
+# Usage: ./slurm.sh            (build ../target/release/treetime first)
 # Settings (environment, defaults in brackets):
 #   REPS [10]  TIPS ["10 30 100"]  SUITES ["ancestral timetree optimize"]  TIMETREE_SET [core]
 #   RUN_CPUS [4] cores per run task, RUN_MEM_PER_CPU [2G], RUN_TIME [2:00:00]
 #   GEN_TIME [1:00:00]  EVAL_CPUS [32]  EVAL_TIME [4:00:00]
 #   OPT_FILTER ['^(?!.*fixed-topo-dense)']: dense optimize needs > 8 GB per run at 4000 tips
-#   TREETIME [../.out/treetime]: binary that the run tasks call; it must run on the compute nodes
-#   PY [python of the pixi environment of the repository]: resolved on the submitting (head) node; compute nodes run it
-#     directly, without network, with the PYTHONPATH and OPENBLAS_NUM_THREADS of the pixi activation
+#   CONDA_ENV [nextstrain]: environment with biopython, numpy, scipy, pandas, matplotlib, tabulate
+#   PY [python of CONDA_ENV]: resolved on the submitting (head) node; compute nodes run it directly, without network
+#   TREETIME [../target/release/treetime]: binary that the run tasks call
 # Partition, account, QOS: Slurm's own SBATCH_PARTITION, SBATCH_ACCOUNT, SBATCH_QOS.
 # Simulations use the legacy TreeTime of this repository (PYTHONPATH), as for the existing data.
 set -euo pipefail
@@ -29,14 +29,15 @@ GEN_TIME=${GEN_TIME:-1:00:00}
 EVAL_CPUS=${EVAL_CPUS:-32}
 EVAL_TIME=${EVAL_TIME:-4:00:00}
 OPT_FILTER=${OPT_FILTER:-'^(?!.*fixed-topo-dense)'}
-TREETIME=${TREETIME:-../.out/treetime}
-PY=${PY:-$(pixi run python -c 'import sys; print(sys.executable)')}
+CONDA_ENV=${CONDA_ENV:-nextstrain}
+PY=${PY:-$(conda run -n "$CONDA_ENV" python -c 'import sys; print(sys.executable)')}
+TREETIME=${TREETIME:-../target/release/treetime}
 N_SETS=$((3 * REPS * 8)) # coal x rep x (L, mu); run.py shards over the sets that exist
 read -r -a tips <<<"$TIPS"
 read -r -a suites <<<"$SUITES"
 
 test -x "$TREETIME" || {
-  echo "no treetime binary at $TREETIME: build it with ./dev/docker/run just build-release treetime, or set TREETIME" >&2
+  echo "build first: cargo build --release --bin treetime" >&2
   exit 1
 }
 mkdir -p slurm_logs
