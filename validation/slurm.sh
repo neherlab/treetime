@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Submit the whole validation pipeline as Slurm jobs, chained by dependencies:
-#   generate (array: tips x coal x rep) -> run (array per density and suite: one task per sequence set)
+#   generate (array: tips x coal x rep; simulate.py, then degrade.py for the messy copy) -> run (array per density and suite: one task per sequence set)
 #   -> evaluate (one job per density and suite) -> analyze (one job per density).
 # Every step skips finished work, so resubmitting continues an interrupted pipeline.
 #
+# Every density runs as clean (data/, data_nN/) and messy (data_messy/, data_nN_messy/) data; results go to the
+# matching results*/ directory.
 # Usage: ./slurm.sh            (build ../target/release/treetime first)
 # Settings (environment, defaults in brackets):
-#   REPS [10]  TIPS ["10 30 100"]  SUITES ["ancestral timetree optimize"]  TIMETREE_SET [core]
+#   REPS [10]  TIPS ["10 30 100"]  FLAVORS ["clean messy"]  SUITES ["ancestral timetree optimize"]  TIMETREE_SET [core]
 #   RUN_CPUS [4] cores per run task, RUN_MEM_PER_CPU [2G], RUN_TIME [2:00:00]
 #   GEN_TIME [1:00:00]  EVAL_CPUS [32]  EVAL_TIME [4:00:00]
 #   OPT_FILTER ['^(?!.*fixed-topo-dense)']: dense optimize needs > 8 GB per run at 4000 tips
@@ -20,6 +22,7 @@ cd "$(dirname "$0")"
 
 REPS=${REPS:-10}
 TIPS=${TIPS:-"10 30 100"}
+FLAVORS=${FLAVORS:-"clean messy"}
 SUITES=${SUITES:-"ancestral timetree optimize"}
 TIMETREE_SET=${TIMETREE_SET:-core}
 RUN_CPUS=${RUN_CPUS:-4}
@@ -35,6 +38,7 @@ TREETIME=${TREETIME:-../target/release/treetime}
 N_SETS=$((3 * REPS * 8)) # coal x rep x (L, mu); run.py shards over the sets that exist
 read -r -a tips <<<"$TIPS"
 read -r -a suites <<<"$SUITES"
+read -r -a flavors <<<"$FLAVORS"
 
 test -x "$TREETIME" || {
   echo "build first: cargo build --release --bin treetime" >&2
@@ -72,16 +76,21 @@ done >"$jobs_file"
 # $1-$4 and SLURM_ARRAY_TASK_ID expand in the job, not at submission
 # shellcheck disable=SC2016
 gen=$(submit generate '' --array=1-"$(wc -l <"$jobs_file")" --cpus-per-task=1 --mem=4G --time="$GEN_TIME" -- \
-  'set -- $(sed -n "${SLURM_ARRAY_TASK_ID}p" '"$jobs_file"'); '"$PY"' simulate.py --coal $1 --rep $2 --tips-per-sample $3 --out $4')
+  'set -- $(sed -n "${SLURM_ARRAY_TASK_ID}p" '"$jobs_file"'); '"$PY"' simulate.py --coal $1 --rep $2 --tips-per-sample $3 --out $4 && '"$PY"' degrade.py --coal $1 --rep $2 --data $4')
 echo "generate: job $gen"
 
-for n in "${tips[@]}"; do
+for n in "${tips[@]}"; do for flavor in "${flavors[@]}"; do
   data=data
   results=results
   [[ $n == 10 ]] || {
     data=data_n$n
     results=results_n$n
   }
+  [[ $flavor == clean ]] || {
+    data=${data}_$flavor
+    results=${results}_$flavor
+  }
+  tag=n$n-$flavor
   evals=()
   for suite in "${suites[@]}"; do
     extra=()
@@ -89,19 +98,19 @@ for n in "${tips[@]}"; do
     [[ $suite == optimize && -n $OPT_FILTER ]] && extra+=(--filter "'$OPT_FILTER'")
     # SLURM_ARRAY_TASK_ID expands in the job, not at submission
     # shellcheck disable=SC2016
-    run=$(submit "run-$suite-n$n" "$gen" --array=0-$((N_SETS - 1)) --cpus-per-task="$RUN_CPUS" \
+    run=$(submit "run-$suite-$tag" "$gen" --array=0-$((N_SETS - 1)) --cpus-per-task="$RUN_CPUS" \
       --mem-per-cpu="$RUN_MEM_PER_CPU" --time="$RUN_TIME" -- \
       "$PY run.py --suite $suite ${extra[*]} --binary $TREETIME --data $data --results $results -j $RUN_CPUS" \
       '--shard ${SLURM_ARRAY_TASK_ID}/'"$N_SETS")
-    ev=$(submit "evaluate-$suite-n$n" "$run" --cpus-per-task="$EVAL_CPUS" --mem-per-cpu=1G --time="$EVAL_TIME" -- \
+    ev=$(submit "evaluate-$suite-$tag" "$run" --cpus-per-task="$EVAL_CPUS" --mem-per-cpu=1G --time="$EVAL_TIME" -- \
       "$PY evaluate.py --suite $suite --data $data --results $results -j $EVAL_CPUS")
     evals+=("$ev")
-    echo "n=$n $suite: run $run, evaluate $ev"
+    echo "$tag $suite: run $run, evaluate $ev"
   done
-  an=$(submit "analyze-n$n" "$(
+  an=$(submit "analyze-$tag" "$(
     IFS=:
     echo "${evals[*]}"
   )" --cpus-per-task=1 --mem=8G --time=1:00:00 -- \
     "$PY analyze.py --results $results")
-  echo "n=$n analyze: job $an -> $results/report/"
-done
+  echo "$tag analyze: job $an -> $results/report/"
+done; done

@@ -52,8 +52,13 @@ def eval_ancestral(out, set_dir):
     truth, inferred = read_fasta_xz(set_dir / 'internal.fasta.xz'), read_fasta_xz(out / 'anc.fasta.xz')
     tau = true_dates(rep_dir)['tau']
     names = sorted(truth)
-    err = pd.Series({n: np.mean(truth[n] != inferred[n]) for n in names})
+    gap = {n: truth[n] == b'-' for n in names}  # gaps exist only in messy data (degrade.py)
+    err = pd.Series({n: np.mean((truth[n] != inferred[n])[~gap[n]]) for n in names})
     m = {'n_nodes': len(names), 'n_missing': len(set(names) - set(inferred)), 'site_error': float(err.mean())}
+    if any(g.any() for g in gap.values()):
+        called = {n: inferred[n] == b'-' for n in names}
+        m['gap_recall'] = float(np.mean(np.concatenate([called[n][gap[n]] for n in names])))
+        m['false_gap_rate'] = float(np.mean(np.concatenate([called[n][~gap[n]] for n in names])))
     for label, (a, b) in zip(age_bin_labels(), zip(AGE_BINS[:-1], AGE_BINS[1:])):
         e = err[(tau[names] >= a) & (tau[names] < b)]
         m[f'site_error_{label}'] = float(e.mean()) if len(e) else np.nan
@@ -96,6 +101,13 @@ def eval_timetree(out, set_dir, coal):
     m |= {'date_bias': float(err.mean()), 'date_rmse': float(np.sqrt(np.mean(err**2))), 'date_mae': float(np.abs(err).mean())}
     m |= binned(err, tau, 'date_rmse')
 
+    observed = rep_dir / 'tip_dates_observed.tsv'  # messy data (degrade.py): score the tips without exact dates
+    if observed.exists():
+        obs = pd.read_csv(observed, sep='\t', index_col=0, dtype=str, keep_default_na=False)['date']
+        for kind, sel in [('missing', obs == ''), ('month', obs.str.endswith('-XX'))]:
+            e = np.array([nodes[n]['numdate'] - dates.loc[n, 'date'] for n in obs.index[sel]])
+            m[f'tip_date_rmse_{kind}'] = float(np.sqrt(np.mean(e**2))) if len(e) else np.nan
+
     ci = [(nodes[c.name].get('num_date_confidence'), dates.loc[n, 'date']) for c, n in matched]
     if all(x is not None for x, _ in ci):
         m['ci90_coverage'] = float(np.mean([lo <= t <= hi for (lo, hi), t in ci]))
@@ -129,7 +141,11 @@ def eval_optimize(out, set_dir):
         return {s: c.branch_length or 0.0 for c, s in tip_sets(tree).items() if c is not tree.root}
 
     truth = Phylo.read(set_dir.parent / 'tree.nwk', 'newick')
-    root_sides = [tip_sets(truth)[c] for c in truth.root.clades]
+    true_sets = tip_sets(truth)
+    root_sides = [true_sets[c] for c in truth.root.clades]
+    node_of = {s: c.name for c, s in true_sets.items()}
+    gaps_tsv = set_dir / 'gaps.tsv'  # gap events of messy data (degrade.py), by the node below the branch
+    gaps = pd.read_csv(gaps_tsv, sep='\t')['node'].value_counts() if gaps_tsv.exists() else pd.Series(dtype=int)
     realized, expected, start, optimized = (
         by_tips(Phylo.read(p, 'newick'))
         for p in [set_dir / 'inputs' / 'realized.nwk', set_dir / 'inputs' / 'exact.nwk',
@@ -137,11 +153,17 @@ def eval_optimize(out, set_dir):
     )  # fmt: skip
     keys = [k for k in realized if k in optimized and k not in root_sides]
     R, E, S, O = (L * np.array([d[k] for k in keys]) for d in (realized, expected, start, optimized))
-    pd.DataFrame({'expected': E, 'realized': R, 'optimized': O}).to_csv(
+    nodes = [node_of[k] for k in keys]
+    indels = np.array([gaps.get(n, 0) for n in nodes])
+    pd.DataFrame({'node': nodes, 'n_indels': indels, 'expected': E, 'realized': R, 'optimized': O}).to_csv(
         out / 'branches.tsv', sep='\t', index=False, float_format='%.6g'
     )
 
     m = {'frac_branches_matched': len(keys) / (len(realized) - len(root_sides))}
+    if len(gaps):
+        # TreeTime's indel rate per substitution: all gap events over the total input length, in substitutions
+        m['indels_per_sub'] = float(gaps.sum() / (L * sum(start.values())))
+        m['gap_branch_zero_frac'] = float(np.mean(O[indels > 0] < 0.5)) if (indels > 0).any() else np.nan
     m['input_rmse_subs'] = float(np.sqrt(np.mean((S - R) ** 2)))
     m['rmse_subs'] = float(np.sqrt(np.mean((O - R) ** 2)))
     m['bias_subs'] = float(np.mean(O - R))
@@ -195,12 +217,13 @@ def evaluate(out, suite, data):
 
 
 SUMMARY = {
-    'ancestral': ['site_error', 'pi_max_abs_error', 'W_log_rms_error', 'mu_inferred'],
+    'ancestral': ['site_error', 'gap_recall', 'false_gap_rate', 'pi_max_abs_error', 'W_log_rms_error', 'mu_inferred'],
     'optimize': ['input_rmse_subs', 'rmse_subs', 'length_ratio', 'length_ratio_expected', 'zero_recall',
                  'nonzero_recall', 'dispersion_vs_expected', 'root_sum_rel_error', 'root_sum_rel_error_expected',
                  'frac_branches_matched'],
     'timetree': ['clock_rate_rel_error', 'root_date_error', 'date_bias', 'date_rmse', 'n_negative_branches',
-                 'root_recovered', 'frac_nodes_matched', 'tc_log_bias', 'tc_log_mae', 'ci90_coverage'],
+                 'root_recovered', 'frac_nodes_matched', 'tc_log_bias', 'tc_log_mae', 'ci90_coverage',
+                 'tip_date_rmse_missing', 'tip_date_rmse_month'],
 }  # fmt: skip
 
 

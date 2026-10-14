@@ -4,3 +4,5 @@ results/
 results_n*/
 __pycache__/
 slurm_logs/
+data_messy/
+results_messy/
