@@ -31,7 +31,9 @@ EVAL_TIME=${EVAL_TIME:-4:00:00}
 OPT_FILTER=${OPT_FILTER:-'^(?!.*fixed-topo-dense)'}
 TREETIME=${TREETIME:-../.out/treetime}
 PY=${PY:-$(pixi run python -c 'import sys; print(sys.executable)')}
-N_SETS=$((3 * REPS * 8))  # coal x rep x (L, mu); run.py shards over the sets that exist
+N_SETS=$((3 * REPS * 8)) # coal x rep x (L, mu); run.py shards over the sets that exist
+read -r -a tips <<<"$TIPS"
+read -r -a suites <<<"$SUITES"
 
 test -x "$TREETIME" || {
   echo "no treetime binary at $TREETIME: build it with ./dev/docker/run just build-release treetime, or set TREETIME" >&2
@@ -40,36 +42,52 @@ test -x "$TREETIME" || {
 mkdir -p slurm_logs
 export PYTHONPATH="$PWD/../packages/legacy/treetime" OPENBLAS_NUM_THREADS=1
 "$PY" -c 'import Bio, numpy, scipy, pandas, matplotlib, tabulate; from treetime.seqgen import SeqGen' ||
-  { echo "missing Python dependencies in $PY" >&2; exit 1; }
+  {
+    echo "missing Python dependencies in $PY" >&2
+    exit 1
+  }
 echo "python: $PY"
 
-submit() {  # submit <name> <dependency or ''> <sbatch options...> -- <command>
-  local name=$1 dep=$2; shift 2
+submit() { # submit <name> <dependency or ''> <sbatch options...> -- <command>
+  local name=$1 dep=$2
+  shift 2
   local opts=()
-  while [[ $1 != -- ]]; do opts+=("$1"); shift; done
+  while [[ $1 != -- ]]; do
+    opts+=("$1")
+    shift
+  done
   shift
   sbatch --parsable --job-name="tt-$name" --output="slurm_logs/%x_%A_%a.out" ${dep:+--dependency=afterany:$dep} \
-    "${opts[@]}" --wrap="export PYTHONPATH=$PYTHONPATH OPENBLAS_NUM_THREADS=1; $*"  # also with SBATCH_EXPORT=NONE
+    "${opts[@]}" --wrap="export PYTHONPATH=$PYTHONPATH OPENBLAS_NUM_THREADS=1; $*" # also with SBATCH_EXPORT=NONE
 }
 
 # generate: one task per (tips, coal, rep), largest trees first
 jobs_file=slurm_logs/generate_jobs.txt
-for n in $(printf '%s\n' $TIPS | sort -rn); do
-  out=data; [[ $n == 10 ]] || out=data_n$n
+for n in $(printf '%s\n' "${tips[@]}" | sort -rn); do
+  out=data
+  [[ $n == 10 ]] || out=data_n$n
   for coal in const exp piecewise; do for rep in $(seq 0 $((REPS - 1))); do echo "$coal $rep $n $out"; done; done
 done >"$jobs_file"
+# $1-$4 and SLURM_ARRAY_TASK_ID expand in the job, not at submission
+# shellcheck disable=SC2016
 gen=$(submit generate '' --array=1-"$(wc -l <"$jobs_file")" --cpus-per-task=1 --mem=4G --time="$GEN_TIME" -- \
   'set -- $(sed -n "${SLURM_ARRAY_TASK_ID}p" '"$jobs_file"'); '"$PY"' simulate.py --coal $1 --rep $2 --tips-per-sample $3 --out $4')
 echo "generate: job $gen"
 
-for n in $TIPS; do
-  data=data; results=results
-  [[ $n == 10 ]] || { data=data_n$n; results=results_n$n; }
+for n in "${tips[@]}"; do
+  data=data
+  results=results
+  [[ $n == 10 ]] || {
+    data=data_n$n
+    results=results_n$n
+  }
   evals=()
-  for suite in $SUITES; do
+  for suite in "${suites[@]}"; do
     extra=()
     [[ $suite == timetree ]] && extra=(--set "$TIMETREE_SET") || extra=(--set core)
     [[ $suite == optimize && -n $OPT_FILTER ]] && extra+=(--filter "'$OPT_FILTER'")
+    # SLURM_ARRAY_TASK_ID expands in the job, not at submission
+    # shellcheck disable=SC2016
     run=$(submit "run-$suite-n$n" "$gen" --array=0-$((N_SETS - 1)) --cpus-per-task="$RUN_CPUS" \
       --mem-per-cpu="$RUN_MEM_PER_CPU" --time="$RUN_TIME" -- \
       "$PY run.py --suite $suite ${extra[*]} --binary $TREETIME --data $data --results $results -j $RUN_CPUS" \
@@ -79,7 +97,10 @@ for n in $TIPS; do
     evals+=("$ev")
     echo "n=$n $suite: run $run, evaluate $ev"
   done
-  an=$(submit "analyze-n$n" "$(IFS=:; echo "${evals[*]}")" --cpus-per-task=1 --mem=8G --time=1:00:00 -- \
+  an=$(submit "analyze-n$n" "$(
+    IFS=:
+    echo "${evals[*]}"
+  )" --cpus-per-task=1 --mem=8G --time=1:00:00 -- \
     "$PY analyze.py --results $results")
   echo "n=$n analyze: job $an -> $results/report/"
 done
