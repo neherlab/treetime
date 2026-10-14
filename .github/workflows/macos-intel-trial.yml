@@ -164,15 +164,18 @@ jobs:
 
       - name: "Backtrace with lldb"
         run: |
-          arch_flag=()
+          # macOS bash 3.2 treats an empty array as unbound under set -u.
+          arch_args=""
           if [[ "${ROSETTA}" == "true" ]]; then
-            arch_flag=(--arch x86_64)
+            arch_args="--arch x86_64"
           fi
           set +e
-          lldb "${arch_flag[@]}" --batch \
+          # shellcheck disable=SC2086
+          lldb ${arch_args} --batch \
             -o run \
-            -k "thread backtrace all" -k "register read" -k "disassemble --pc --count 12" -k quit \
-            -- ".out/treetime-${TARGET}" -vv pipeline --config data/zika/20/pipeline.yaml --steps timetree --output-all probe/lldb
+            -k "thread backtrace" -k "register read" -k "image lookup -va \$pc" \
+            -k "frame select 1" -k "image lookup -va \$pc" -k "disassemble --pc --count 40" -k quit \
+            -- ".out/treetime-${TARGET}" -vv ancestral --config data/zika/20/ancestral.yaml --output-all probe/lldb
           echo "lldb exit $?"
 
       - name: "Collect crash reports"
@@ -227,6 +230,55 @@ jobs:
           name: "out-${{ matrix.id }}"
           path: "out/"
           if-no-files-found: error
+
+  linux:
+    name: "linux, ${{ matrix.target }}"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - "x86_64-unknown-linux-gnu"
+          - "x86_64-unknown-linux-musl"
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - name: "Check out the example data"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            data/zika
+            data/flu/h3n2/500
+
+      - name: "Download the nightly binary"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(gh release view --repo "${NIGHTLY_REPO}" --json tagName --jq .tagName)"
+          echo "Nightly: ${tag}"
+          gh release download "${tag}" --repo "${NIGHTLY_REPO}" --pattern "treetime-${TARGET}" --dir .out
+          chmod +x ".out/treetime-${TARGET}"
+          grep -m1 'model name' /proc/cpuinfo
+
+      - name: "Probe single commands"
+        run: |
+          bin=".out/treetime-${TARGET}"
+          for args in \
+            "mugration --config data/zika/20/mugration.yaml --output-all probe/mugration" \
+            "ancestral --config data/zika/20/ancestral.yaml --output-all probe/ancestral" \
+            "pipeline --config data/zika/20/pipeline.yaml --output-all probe/zika" \
+            "pipeline --config data/flu/h3n2/500/pipeline.yaml --output-all probe/flu"; do
+            echo "::group::${args}"
+            set +e
+            # shellcheck disable=SC2086
+            "${bin}" -vv ${args}
+            code=$?
+            set -e
+            echo "::endgroup::"
+            echo "exit ${code}: ${args}" | tee -a probes.txt
+          done
+          ! grep -v '^exit 0:' probes.txt
 
   compare:
     name: "Compare the outputs"
