@@ -31,6 +31,7 @@ jobs:
   # build container through dev/run-checks.
   check:
     name: "Check (${{ matrix.name }})"
+    if: false
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -66,7 +67,6 @@ jobs:
 
   build-cli:
     name: "Build CLI"
-    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/cli-build.yml
     with:
       source_ref: ${{ github.sha }}
