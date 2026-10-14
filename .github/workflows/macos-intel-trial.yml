@@ -164,7 +164,9 @@ jobs:
           echo "### Probes (${{ matrix.name }})" >> "${GITHUB_STEP_SUMMARY}"
           sed 's/^/- /' out-probes.txt >> "${GITHUB_STEP_SUMMARY}"
 
+      # lldb --batch hangs on a process that Rosetta 2 translates.
       - name: "Backtrace with lldb"
+        if: ${{ !matrix.rosetta }}
         run: |
           # macOS bash 3.2 treats an empty array as unbound under set -u.
           arch_args=""
