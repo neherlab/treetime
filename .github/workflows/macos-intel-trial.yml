@@ -143,6 +143,8 @@ jobs:
         run: .out/launch ".out/treetime-${TARGET}" --version
 
       - name: "Probe single commands"
+        env:
+          OPENBLAS_VERBOSE: "2"
         run: |
           bin=".out/treetime-${TARGET}"
           probe() {
