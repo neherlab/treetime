@@ -3,7 +3,9 @@
 # Usage: $0 <binary> [target]
 #
 # Print the linkage of a cross-compiled binary. Fails when a musl binary is not
-# static or depends on glibc or libgcc; glibc binaries link glibc by design.
+# static or depends on glibc, and when any Linux binary depends on libgcc:
+# glibc binaries link glibc by design, but link the GCC unwinder statically
+# (dev/cross/build).
 #
 set -euo pipefail
 
@@ -39,14 +41,14 @@ function run_for_linux() {
   libgcc_version=$(awk '/GCC_/ {v = $NF; sub(/GCC_/, "", v); print v}' <<<"${dump}" | sort -V | tail -n 1)
   if [ -n "${libgcc_version}" ]; then
     echo "Depends on libgcc ${libgcc_version}" >&2
-    has_error="${must_be_static}"
+    has_error=1
   fi
 
   needs=$("${OBJDUMP}" -p "${1}" | awk '$1 == "NEEDED" {print $2}' | tr -s ' ' | sort)
   if [ -n "$needs" ]; then
     echo "Needs:"
     echo "$needs" | while read -r lib_name; do
-      if [[ ! "$lib_name" =~ ^(libc.so|libgcc) ]]; then
+      if [[ ! "$lib_name" =~ ^libc.so ]]; then
         echo "  * $lib_name"
       fi
     done
@@ -56,7 +58,7 @@ function run_for_linux() {
     version="$("${STRINGS}" "${CROSS_SYSROOT}$lib_path" | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) {print substr($0, RSTART, RLENGTH)}' | sort -u | head -n 1)"
     if [ -n "$version" ]; then
       lib_name="$(basename "$lib_path")"
-      if [[ ! "$lib_name" =~ ^(libc.so|libgcc) ]]; then
+      if [[ ! "$lib_name" =~ ^libc.so ]]; then
         echo "$lib_name $version"
       fi
     fi

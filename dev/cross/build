@@ -44,6 +44,13 @@ case "${target}" in
   ;;
 *-linux-gnu)
   rustflags="${RUSTFLAGS}"
+  # The CLI links the GCC unwinder statically, so it needs no libgcc_s.so.1 and
+  # runs on images that carry glibc alone (see the linker script in
+  # dev/cross/static-unwinder/). The Node addon keeps the shared unwinder of
+  # the Electron process that loads it.
+  if [[ -z "${lib}" ]]; then
+    rustflags="${rustflags} -L native=${root}/dev/cross/static-unwinder"
+  fi
   ;;
 *-linux-musl)
   if [[ -n "${lib}" ]]; then
