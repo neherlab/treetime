@@ -73,7 +73,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
-            data/zika/20
+            data/zika
             data/flu/h3n2/500
 
       - name: "Download the nightly binary"
@@ -141,6 +141,69 @@ jobs:
 
       - name: "Show the version"
         run: .out/launch ".out/treetime-${TARGET}" --version
+
+      - name: "Probe single commands"
+        run: |
+          bin=".out/treetime-${TARGET}"
+          probe() {
+            echo "::group::$*"
+            set +e
+            .out/launch "${bin}" -vv "$@"
+            local code=$?
+            set -e
+            echo "::endgroup::"
+            echo "exit ${code}: $*" | tee -a out-probes.txt
+          }
+          probe --help
+          probe pipeline --config data/zika/20/pipeline.yaml --check --output-all probe/check
+          probe mugration --config data/zika/20/mugration.yaml --output-all probe/mugration
+          probe ancestral --config data/zika/20/ancestral.yaml --output-all probe/ancestral
+          probe pipeline --config data/zika/20/pipeline.yaml --steps timetree --output-all probe/timetree
+          echo "### Probes (${{ matrix.name }})" >> "${GITHUB_STEP_SUMMARY}"
+          sed 's/^/- /' out-probes.txt >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: "Backtrace with lldb"
+        run: |
+          arch_flag=()
+          if [[ "${ROSETTA}" == "true" ]]; then
+            arch_flag=(--arch x86_64)
+          fi
+          set +e
+          lldb "${arch_flag[@]}" --batch \
+            -o run \
+            -k "thread backtrace all" -k "register read" -k "disassemble --pc --count 12" -k quit \
+            -- ".out/treetime-${TARGET}" -vv pipeline --config data/zika/20/pipeline.yaml --steps timetree --output-all probe/lldb
+          echo "lldb exit $?"
+
+      - name: "Collect crash reports"
+        if: always()
+        run: |
+          mkdir -p crash
+          reports=~/Library/Logs/DiagnosticReports
+          # ReportCrash writes the report a few seconds after the crash.
+          for _ in $(seq 1 30); do
+            if compgen -G "${reports}/treetime*" > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          ls -la "${reports}" || true
+          cp "${reports}"/treetime* crash/ 2>/dev/null || echo "No crash report"
+          for f in crash/*; do
+            [[ -f "${f}" ]] || continue
+            echo "::group::${f}"
+            head -c 20000 "${f}"
+            echo
+            echo "::endgroup::"
+          done
+
+      - name: "Upload the crash reports"
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: "crash-${{ matrix.id }}"
+          path: "crash/"
+          if-no-files-found: ignore
 
       - name: "Run the zika pipeline (timetree, mugration)"
         run: |
