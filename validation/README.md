@@ -63,10 +63,10 @@ pixi run python analyze.py --results results_n100
 ```
 
 On a Slurm cluster, `./slurm.sh` submits the whole pipeline (generate, run, evaluate, analyze for every tip density) as
-dependent jobs, with run tasks of one sequence set each (`run.py --shard`). Build `../target/release/treetime` and
-submit from the head node: the jobs run the Python of the conda environment `CONDA_ENV` (default `nextstrain`),
-resolved at submission, and need no network. Resources and the partition are set by environment variables (see the
-script header), e.g. `SBATCH_PARTITION=cpu RUN_CPUS=8 ./slurm.sh`. Logs go to `slurm_logs/`.
+dependent jobs, with run tasks of one sequence set each (`run.py --shard`). Submit from the head node: the jobs run the
+Python of the pixi environment, resolved at submission, and need no network. The run tasks call `TREETIME` (default
+`../.out/treetime`), which must run on the compute nodes. Resources and the partition are set by environment variables
+(see the script header), e.g. `SBATCH_PARTITION=cpu RUN_CPUS=8 ./slurm.sh`. Logs go to `slurm_logs/`.
 
 At 4000 tips (`data_n100`, L=10000, mu=0.01), one run takes about 10 s for `optimize` and 1.5 min for `timetree`, with
 1.7 GB peak memory; set `-j` so that jobs times 2 GB fits in memory. `fixed-topo-dense` needs more than 8 GB there;
