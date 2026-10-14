@@ -1,7 +1,7 @@
 """Divergence trees (substitutions per site) derived from the true time tree of a simulated sequence set.
 
 exact      branch length mu * t
-realized   true parent-child differences / L
+realized   true parent-child substitutions / L (gaps do not count)
 rate       realized * lognormal(0, 0.25) per branch
 perturbed  exact * lognormal(0, 0.3) per branch: starting point for branch length optimization
 """
@@ -40,7 +40,8 @@ def divergence_tree(set_dir, kind):
         seqs = read_fasta_xz(set_dir / 'tips.fasta.xz') | read_fasta_xz(set_dir / 'internal.fasta.xz')
         for p in tree.get_nonterminals():
             for c in p:
-                c.branch_length = np.count_nonzero(seqs[c.name] != seqs[p.name]) / gtr['L']
+                a, b = seqs[c.name], seqs[p.name]
+                c.branch_length = np.count_nonzero((a != b) & (a != b'-') & (b != b'-')) / gtr['L']
                 if kind == 'rate':
                     c.branch_length *= rng.lognormal(0.0, RATE_SIGMA)
         tree.root.branch_length = 0.0

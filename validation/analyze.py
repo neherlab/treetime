@@ -85,6 +85,10 @@ def summary(t):
                 '\nInferred GTR (median; mu is in units of the input branch lengths, truth 1)\n',
                 md(a[a.variant != 'parsimony'].groupby(['variant', 'L', 'mu'])[
                     ['pi_max_abs_error', 'W_log_rms_error', 'mu_inferred']].median())]  # fmt: skip
+        if 'gap_recall' in a:
+            out += ['\nGaps in internal sequences: fraction of true gaps reconstructed as gaps, and of non-gap sites '
+                    'reconstructed as gaps (mean)\n',
+                    md(a.groupby(['variant', 'L', 'mu'])[['gap_recall', 'false_gap_rate']].mean())]
 
     if 'timetree' in t:
         d = t['timetree'][t['timetree'].returncode == 0]
@@ -110,6 +114,10 @@ def summary(t):
             out += ['\nExtra variants: date RMSE (median), 90% CI coverage and width (mean)\n',
                     md(x.groupby(['variant', 'mu'])[['date_rmse', 'ci90_coverage', 'ci90_mean_width']].agg(
                         {'date_rmse': 'median', 'ci90_coverage': 'mean', 'ci90_mean_width': 'mean'}))]  # fmt: skip
+        if 'tip_date_rmse_missing' in d:
+            out += ['\nInferred dates of tips with a missing or month-only date: RMSE in years (keep root, median)\n',
+                    md(keep.groupby(['clock', 'prior', 'L', 'mu'])[['tip_date_rmse_missing', 'tip_date_rmse_month']]
+                       .median())]  # fmt: skip
         out += ['\nRun time in seconds and peak memory in MB (median, max)\n',
                 md(t['timetree'].groupby(['L', 'mu'])[['seconds', 'max_rss_mb']].agg(['median', 'max']))]
         bad = c[(c.L * c.mu >= 3) & (c.date_rmse > 1)]
@@ -404,6 +412,69 @@ def fig_optimize_dispersion(results, path, n_bins=20):
     plt.close(fig)
 
 
+def indel_pairs(results, o):
+    """Branches optimized with and without the indel model (fixed-topo vs fixed-topo-noindel) on the same set.
+
+    With ρ indel events per substitution, the indel model turns s substitutions and k gap events on a branch into
+    about (s + k) / (1 + ρ) substitutions: gap branches grow by about one substitution, all others shrink by 1 + ρ.
+    `predicted` applies this to the length without indels.
+    """
+    rho = o[o.variant == 'fixed-topo'].set_index(['coal', 'rep', 'L', 'mu'])['indels_per_sub'].dropna()
+    pairs = []
+    for (coal, rep, L, mu), r in rho.items():
+        run = Path(coal, rep, f'L{L}_mu{mu:g}', 'branches.tsv')
+        files = [results / 'optimize' / v / run for v in ('fixed-topo', 'fixed-topo-noindel')]
+        if all(f.exists() for f in files):
+            w, wo = (pd.read_csv(f, sep='\t', index_col='node') for f in files)
+            pairs.append(pd.DataFrame({'coal': coal, 'rep': rep, 'L': L, 'mu': mu, 'rho': r, 'n_indels': w.n_indels,
+                                       'with': w.optimized, 'without': wo.optimized.reindex(w.index)}))  # fmt: skip
+    if not pairs:
+        return None
+    b = pd.concat(pairs).dropna()
+    return b.assign(predicted=(b.without + b.n_indels) / (1 + b.rho), gap=b.n_indels > 0)
+
+
+def indel_table(b):
+    g = b[b.gap].assign(diff=lambda d: d['with'] - d.without, pred_diff=lambda d: d.predicted - d.without)
+    n = b[~b.gap & (b.without >= 1)]
+    return pd.DataFrame({
+        'rho': b.groupby(['L', 'mu']).rho.mean(),
+        'gap_branches': g.groupby(['L', 'mu']).size(),
+        'gap_diff_mean': g.groupby(['L', 'mu'])['diff'].mean(),
+        'gap_diff_predicted': g.groupby(['L', 'mu']).pred_diff.mean(),
+        'gap_zero_without': g.assign(z=g.without < 0.5).groupby(['L', 'mu']).z.mean(),
+        'gap_zero_with': g.assign(z=g['with'] < 0.5).groupby(['L', 'mu']).z.mean(),
+        'other_ratio_median': (n['with'] / n.without).groupby([n.L, n.mu]).median(),
+        'other_ratio_predicted': (1 / (1 + n.rho)).groupby([n.L, n.mu]).median(),
+        'total_ratio': b.groupby(['L', 'mu'])['with'].sum() / b.groupby(['L', 'mu']).without.sum(),
+    })  # fmt: skip
+
+
+def fig_indel_effect(b, path):
+    """Paired per-branch effect of the indel model against the prediction (s + k) / (1 + ρ)."""
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
+    for gap, (color, marker, label) in {False: (BLUE, 'o', 'no gap'), True: (ORANGE, 's', 'gap event(s)')}.items():
+        s = b[b.gap == gap]
+        axes[0].scatter(s.predicted, s['with'], s=8 if gap else 5, color=color, marker=marker, alpha=0.8 if gap else 0.5,
+                        linewidth=0, label=label, zorder=3 if gap else 2)  # fmt: skip
+        axes[1].scatter(s.without, s['with'] - s.without, s=8 if gap else 5, color=color, marker=marker,
+                        alpha=0.8 if gap else 0.5, linewidth=0, zorder=3 if gap else 2)  # fmt: skip
+    lim = [0, b[['predicted', 'with']].max().max() * 1.05]
+    axes[0].plot(lim, lim, color=INK2, lw=1, zorder=1)
+    axes[0].set(xlim=lim, ylim=lim, xlabel='predicted (without + gap events) / (1 + ρ), substitutions',
+                ylabel='optimized with indel model', title='Indel model against prediction')  # fmt: skip
+    axes[0].legend(loc='upper left', markerscale=2)
+    axes[1].axhline(0, color=INK2, lw=1, zorder=1)
+    axes[1].axhline(1, color=ORANGE, lw=1, ls='--', zorder=1)
+    axes[1].set(xscale='symlog', xlim=(-0.2, None), xlabel='optimized with --no-indels (substitutions)',
+                ylabel='with - without (substitutions)', title='Paired difference (dashed: one gap event)')  # fmt: skip
+    fig.suptitle('Effect of the indel model on branch lengths (true topology kept, all sets with gaps)',
+                 x=0.04, ha='left')  # fmt: skip
+    fig.tight_layout()
+    fig.savefig(path, dpi=130, bbox_inches='tight')
+    plt.close(fig)
+
+
 def fig_runtime(d, path):
     s = d[d.returncode == 0]
     fig, ax = plt.subplots(figsize=(5.5, 3.6))
@@ -429,7 +500,16 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     t = load(args.results)
-    (out / 'summary.md').write_text(summary(t))
+    text = summary(t)
+    pairs = indel_pairs(args.results, t['optimize'][t['optimize'].returncode == 0]) if 'optimize' in t else None
+    if pairs is not None:
+        text += ('\n## Indel model in branch length optimization\n'
+                 'fixed-topo against fixed-topo-noindel on the same sets, in substitutions. ρ: gap events per '
+                 'substitution. Gap branches: mean paired difference (predicted: about +1 per event), fraction '
+                 'optimized to zero without and with the indel model. Other branches (>= 1 substitution without): '
+                 'median ratio, predicted 1 / (1 + ρ)\n' + md(indel_table(pairs)))  # fmt: skip
+        fig_indel_effect(pairs, out / 'optimize_indel.png')
+    (out / 'summary.md').write_text(text)
     if 'timetree' in t:
         fig_date_rmse(t['timetree'], out / 'timetree_date_rmse.png')
         fig_clock_rate(t['timetree'], out / 'timetree_clock_rate.png')

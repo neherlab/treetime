@@ -39,6 +39,7 @@ KEEP_TOPOLOGY = ['--no-collapse-zero-branches', '--no-merge-shared-mutations', '
 OPTIMIZE = {
     'fixed-topo': ('perturbed', KEEP_TOPOLOGY),
     'fixed-topo-dense': ('perturbed', ['--no-collapse-zero-branches', '--representation', 'dense']),
+    'fixed-topo-noindel': ('perturbed', [*KEEP_TOPOLOGY, '--no-indels']),
     'default': ('perturbed', []),
 }
 ROOTING = {'keep': ('realized', ['--keep-root']), 'reroot': ('realized', ['--reroot', 'least-squares'])}
@@ -61,10 +62,17 @@ EXTRA_SETS = r'/rep0[0-2]/L1000_mu0\.00[31]$'
 SMOKE_SETS = r'/rep00/L1000_'
 
 
+def observed(directory, name):
+    """Input file as TreeTime should see it: the *_observed variant of messy data (degrade.py), else the truth."""
+    stem, _, ext = name.partition('.')
+    path = directory / f'{stem}_observed.{ext}'
+    return path if path.exists() else directory / name
+
+
 def command(suite, binary, tree, set_dir, flags, out):
     mu = json.loads((set_dir / 'gtr.json').read_text())['mu']
     flags = [f.format(mu=f'{mu:.10g}') for f in flags]
-    aln = ['-t', str(tree), '-a', str(set_dir / 'tips.fasta.xz')]
+    aln = ['-t', str(tree), '-a', str(observed(set_dir, 'tips.fasta.xz'))]
     if suite == 'ancestral':
         outputs = ['--output-sequences', out / 'anc.fasta.xz']
         if 'parsimony' not in flags:  # parsimony fits no GTR model
@@ -74,7 +82,7 @@ def command(suite, binary, tree, set_dir, flags, out):
         outputs = ['--output-tree-nwk', out / 'tree.nwk', '--output-model', out / 'gtr.json']
         return [binary, 'optimize', *aln, *flags, *COMMON, *map(str, outputs)]
     dates = ['-m', str(set_dir.parent / 'tip_dates.tsv'), '--date-column', 'date', '--clock-filter', '0']
-    outputs = ['--output-node-data', out / 'node_data.json', '--output-tree-nwk', out / 'timetree.nwk',
+    outputs = ['--output-augur-node-data', out / 'node_data.json', '--output-tree-nwk', out / 'timetree.nwk',
                '--output-clock-model', out / 'clock.json']  # fmt: skip
     if any(f.startswith('--coalescent') for f in flags):  # requesting it without a model is an error
         outputs += ['--output-coalescent', out / 'coalescent.tsv']

@@ -31,6 +31,29 @@ is substitutions per site and year; root sequence drawn from pi; evolved along t
 `GTR.random` is not used: it defaults to the gap-containing alphabet, does not keep W symmetric, and `assign_rates`
 multiplies `mu` by the raw average rate.
 
+## Messy data (`degrade.py`)
+
+`generate_all.sh` and `slurm.sh` also write a messy copy of every replicate: `data_messy/`, `data_n30_messy/`,
+`data_n100_messy/`. One replicate: `python degrade.py --coal exp --rep 0 [--data data_n30]`. Each sequence set gets
+
+- gaps: 3 per 1000 sites, 3 bases long, each on a branch drawn in proportion to its length in time and inherited by all
+  nodes below it (in `tips.fasta.xz` and `internal.fasta.xz`; events in `gaps.tsv`). Legacy SeqGen has no indels.
+- ambiguous bases: each tip site (not under a gap) with probability 0.002 becomes a two- or three-base IUPAC code
+  that contains the true base.
+- runs of N: 5% of tips get one run of 5 to 100 Ns.
+
+and 3% of tips lose their date, 5% keep only the month (`2021-10-XX`). Truth files keep their names; TreeTime gets
+`tips_observed.fasta.xz` and `tip_dates_observed.tsv` (`run.py` uses `*_observed` files when present). Run, evaluate
+and analyze it like a tip density: `--data data_messy --results results_messy`. Extra metrics: `gap_recall` and
+`false_gap_rate` (ancestral; `site_error` counts only non-gap sites), and the date RMSE of tips with a missing or
+month-only date (`tip_date_rmse_missing`, `tip_date_rmse_month`). Realized branch lengths do not count gaps.
+
+The indel model of `optimize` is tested by pairing `fixed-topo` with `fixed-topo-noindel` on the same set
+(`branches.tsv` has the gap events per branch, `n_indels`). With ρ gap events per substitution, s substitutions and k
+gap events on a branch should become about (s + k) / (1 + ρ): branches with a gap grow by about one substitution, the
+others shrink by 1 + ρ (ρ is 0.04-0.06 at mu = 0.0003). `analyze.py` reports this in `summary.md` and
+`optimize_indel.png`. On clean data the two variants must give identical trees.
+
 ## Layout
 
 ```
@@ -42,6 +65,7 @@ data/<coal>/rep<NN>/        10 tips per sample time; data_n30/ and data_n100/ ha
     tips.fasta.xz
     internal.fasta.xz
     gtr.json          mu, pi, W (normalised), L
+data_messy/...        as data/, plus tip_dates_observed.tsv, L*/tips_observed.fasta.xz and L*/gaps.tsv
 ```
 
 ## Validation runs (`run.py`, `evaluate.py`)
@@ -90,7 +114,7 @@ Inputs (`inputs.py`, written to `data/.../inputs/`) are divergence trees on the 
   (`extra` set), and the number of nodes dated before their parent.
 
 - `optimize`: `perturbed` tree, alignment; variants `fixed-topo` (no collapsing, merging or flipping of branches),
-  `fixed-topo-dense` and `default`. Metrics, in substitutions (branch length times L): per-branch RMSE against the
+  `fixed-topo-dense`, `fixed-topo-noindel` (`--no-indels`) and `default`. Metrics, in substitutions (branch length times L): per-branch RMSE against the
   realized branch lengths (also for the perturbed input, and by realized substitutions), total length against realized
   and expected, zero and non-zero branches kept as such, squared deviation from mu t relative to Poisson noise, and the
   sum of the two root branches, which is the only identifiable quantity at the root. Per-branch lengths go to
