@@ -1,0 +1,208 @@
+name: "macOS Intel trial"
+
+# Runs the published nightly macOS binaries on real example pipelines on every
+# macOS runner kind: Intel runners, Apple Silicon runners natively, and Apple
+# Silicon runners translating the x86_64 binary with Rosetta 2.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+env:
+  NIGHTLY_REPO: "neherlab/treetime-nightly"
+  FORCE_COLOR: "1"
+
+jobs:
+  run:
+    name: "${{ matrix.name }}"
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "intel, macos-15-intel"
+            id: "intel-macos-15"
+            runner: "macos-15-intel"
+            target: "x86_64-apple-darwin"
+            rosetta: false
+            arch: "x86_64"
+          - name: "intel, macos-26-intel"
+            id: "intel-macos-26"
+            runner: "macos-26-intel"
+            target: "x86_64-apple-darwin"
+            rosetta: false
+            arch: "x86_64"
+          - name: "rosetta, macos-15"
+            id: "rosetta-macos-15"
+            runner: "macos-15"
+            target: "x86_64-apple-darwin"
+            rosetta: true
+            arch: "x86_64"
+          - name: "rosetta, macos-26"
+            id: "rosetta-macos-26"
+            runner: "macos-26"
+            target: "x86_64-apple-darwin"
+            rosetta: true
+            arch: "x86_64"
+          - name: "arm64, macos-15"
+            id: "arm64-macos-15"
+            runner: "macos-15"
+            target: "aarch64-apple-darwin"
+            rosetta: false
+            arch: "arm64"
+          - name: "arm64, macos-26"
+            id: "arm64-macos-26"
+            runner: "macos-26"
+            target: "aarch64-apple-darwin"
+            rosetta: false
+            arch: "arm64"
+    env:
+      TARGET: ${{ matrix.target }}
+      ROSETTA: ${{ matrix.rosetta }}
+      EXPECTED_ARCH: ${{ matrix.arch }}
+    steps:
+      - name: "Check out the example data"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            data/zika/20
+            data/flu/h3n2/500
+
+      - name: "Download the nightly binary"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(gh release view --repo "${NIGHTLY_REPO}" --json tagName --jq .tagName)"
+          echo "Nightly: ${tag}"
+          gh release download "${tag}" --repo "${NIGHTLY_REPO}" --pattern "treetime-${TARGET}" --dir .out
+          chmod +x ".out/treetime-${TARGET}"
+          file ".out/treetime-${TARGET}"
+          lipo -archs ".out/treetime-${TARGET}"
+          shasum -a 256 ".out/treetime-${TARGET}"
+
+      - name: "Install Rosetta 2"
+        if: matrix.rosetta
+        run: |
+          if arch -x86_64 /usr/bin/true; then
+            echo "Rosetta 2 is preinstalled"
+          else
+            echo "Rosetta 2 is missing, installing"
+            sudo softwareupdate --install-rosetta --agree-to-license
+            arch -x86_64 /usr/bin/true
+          fi
+
+      - name: "Write the launcher"
+        run: |
+          if [[ "${ROSETTA}" == "true" ]]; then
+            prefix="arch -x86_64"
+          else
+            prefix="exec"
+          fi
+          cat > .out/launch <<EOF
+          #!/bin/bash
+          ${prefix} "\$@"
+          EOF
+          chmod +x .out/launch
+          cat .out/launch
+
+      - name: "Report the machine"
+        run: |
+          sw_vers
+          echo "Host arch: $(uname -m)"
+          echo "CPU: $(sysctl -n machdep.cpu.brand_string)"
+          echo "Cores: $(sysctl -n hw.ncpu), memory: $(( $(sysctl -n hw.memsize) / 1073741824 )) GiB"
+          echo "Model: $(sysctl -n hw.model)"
+
+          arch_seen="$(.out/launch /usr/bin/uname -m)"
+          # Intel Macs have no sysctl.proc_translated key.
+          translated="$(.out/launch /usr/sbin/sysctl -n sysctl.proc_translated 2>/dev/null)" || translated="0"
+          echo "Process arch: ${arch_seen}, translated by Rosetta: ${translated}"
+
+          # The x86_64 binaries are built for Haswell (AVX2, BMI1, BMI2, FMA).
+          for feature in avx1_0 avx2_0 bmi1 bmi2 fma f16c avx512f; do
+            value="$(.out/launch /usr/sbin/sysctl -n "hw.optional.${feature}" 2>&1)" || value="absent"
+            echo "hw.optional.${feature}: ${value}"
+          done
+
+          test "${arch_seen}" = "${EXPECTED_ARCH}"
+          if [[ "${ROSETTA}" == "true" ]]; then
+            test "${translated}" = "1"
+          else
+            test "${translated}" = "0"
+          fi
+
+      - name: "Show the version"
+        run: .out/launch ".out/treetime-${TARGET}" --version
+
+      - name: "Run the zika pipeline (timetree, mugration)"
+        run: |
+          /usr/bin/time -l .out/launch ".out/treetime-${TARGET}" pipeline \
+            --config data/zika/20/pipeline.yaml --output-all out/zika-20
+
+      - name: "Run the flu pipeline (optimize, ancestral, timetree)"
+        run: |
+          /usr/bin/time -l .out/launch ".out/treetime-${TARGET}" pipeline \
+            --config data/flu/h3n2/500/pipeline.yaml --output-all out/flu-h3n2-500
+
+      - name: "Hash the outputs"
+        run: |
+          (cd out && find . -type f | LC_ALL=C sort | xargs shasum -a 256) > "hashes-${{ matrix.id }}.txt"
+          cat "hashes-${{ matrix.id }}.txt"
+          mv "hashes-${{ matrix.id }}.txt" out/
+
+      - name: "Upload the outputs"
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: "out-${{ matrix.id }}"
+          path: "out/"
+          if-no-files-found: error
+
+  compare:
+    name: "Compare the outputs"
+    needs: [run]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: "Download the outputs"
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: "out-*"
+          path: "outs"
+
+      - name: "Compare the output hashes"
+        run: |
+          shopt -s nullglob
+          files=(outs/*/hashes-*.txt)
+          if (( ${#files[@]} == 0 )); then
+            echo "No outputs to compare"
+            exit 1
+          fi
+          {
+            echo "### Output hashes"
+            echo
+            header="| File |"
+            rule="|---|"
+            for f in "${files[@]}"; do
+              name="$(basename "${f}" .txt)"
+              header="${header} ${name#hashes-} |"
+              rule="${rule}---|"
+            done
+            echo "${header}"
+            echo "${rule}"
+            cut -c67- "${files[@]}" | LC_ALL=C sort -u | while read -r path; do
+              row="| \`${path}\` |"
+              for f in "${files[@]}"; do
+                hash="$(awk -v p="${path}" 'substr($0, 67) == p { print substr($1, 1, 8) }' "${f}")"
+                row="${row} ${hash:-missing} |"
+              done
+              echo "${row}"
+            done
+          } | tee -a "${GITHUB_STEP_SUMMARY}"
