@@ -1,8 +1,8 @@
-# `softmax_with_log_norm` returns a uniform distribution when every state is impossible
+# `softmax_with_log_norm_inplace` returns a uniform distribution when every state is impossible
 
 ## Summary
 
-`softmax_with_log_norm` in `packages/treetime-utils/src/array/softmax_with_log_norm.rs` returns a uniform distribution with `log_norm = -inf` when every input entry is $-\infty$. The unit test `test_softmax_with_log_norm_degenerate` in `packages/treetime-utils/src/array/__tests__/test_softmax_with_log_norm.rs` fixes this behavior in place without stating a reason.
+`softmax_with_log_norm_inplace` in `packages/treetime-utils/src/array/softmax_with_log_norm.rs` returns a uniform distribution with `log_norm = -inf` when every input entry is $-\infty$. The unit test `test_softmax_with_log_norm_degenerate` in `packages/treetime-utils/src/array/__tests__/test_softmax_with_log_norm.rs` fixes this behavior in place without stating a reason.
 
 ## Consequence
 

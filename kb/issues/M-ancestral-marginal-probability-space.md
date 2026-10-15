@@ -2,7 +2,7 @@
 
 v1 dense forward pass operates in plain probability space (multiply/divide probabilities, normalize by sum). v0 preorder operates in neg-log space (add/subtract neg-log probabilities). Both compute mathematically equivalent operations, but the floating-point paths differ.
 
-The backward pass uses log-space arithmetic in both dense (`normalize_from_log()`) and sparse (`softmax_with_log_norm()` in `combine_messages()`) modes.
+The backward pass uses log-space arithmetic in both dense (`normalize_from_log()`) and sparse (`softmax_with_log_norm_owned()` in `combine_messages()`) modes.
 
 - v1 dense forward pass: `fn indexed_node_forward()` divides the parent profile by the child message in probability space
   at [`packages/treetime/src/partition/marginal/shared/pass.rs#L247-L248`](../../packages/treetime/src/partition/marginal/shared/pass.rs#L247-L248), through `fn divide_out()`, which floors the divisor at `f64::MIN_POSITIVE`

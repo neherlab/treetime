@@ -105,7 +105,7 @@ Both passes also handle per-site rates (`fn propagate_raw_per_site()`), the `tra
 
 ### v0 differences
 
-v1 backward pass uses log-space arithmetic with logsumexp normalization (dense `normalize_from_log()`, sparse `softmax_with_log_norm()` in `combine_messages()`). v1 forward pass uses plain probability space (division). v0 uses neg-log space throughout. v1 dense uses deterministic `argmax_first()` (`#argmax_first`) for sequence extraction (leftmost state wins ties); v0 uses `np.argmax()` which has undefined tie-breaking.
+v1 backward pass uses log-space arithmetic with logsumexp normalization (dense `normalize_from_log()`, sparse `softmax_with_log_norm_owned()` in `combine_messages()`). v1 forward pass uses plain probability space (division). v0 uses neg-log space throughout. v1 dense uses deterministic `argmax_first()` (`#argmax_first`) for sequence extraction (leftmost state wins ties); v0 uses `np.argmax()` which has undefined tie-breaking.
 
 ### Key functions
 
