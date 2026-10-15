@@ -99,6 +99,10 @@ fn infer_times(
     max_grid_points,
   )?;
 
+  if let Some(log_lh) = backward.log_marginal_likelihood(graph.root_key()?)? {
+    progress_info!(log, "**Log marginal likelihood of node times:** {log_lh:.4}");
+  }
+
   progress_info!(log, "## Propagating distributions forward");
   let posterior = propagate_distributions_forward(
     graph,

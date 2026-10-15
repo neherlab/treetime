@@ -73,9 +73,37 @@ mod tests {
     assert_error!(
       result,
       format!(
-        "When normalizing the time distribution of node {leaf_key}: Cannot normalize a distribution point: its peak negative log-likelihood is NaN"
+        "When re-peaking the time distribution of node {leaf_key}: Cannot re-peak a distribution point: its amplitude is NaN"
       )
     );
+    Ok(())
+  }
+
+  #[test]
+  fn test_backward_pass_root_carries_the_marginal_likelihood() -> Result<(), Report> {
+    // Z = integral of B_A(t_A - t) B_B(t_B - t) dt for peak-1 Gaussian branch likelihoods of precision p is
+    // sqrt(pi / p) exp(-p d^2 / 4), d = (t_A - m_A) - (t_B - m_B); the leaves' amplitudes are factors of Z
+    let nwk_parsed = nwk_read(b"(A:3.0,B:2.5)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
+    let leaf_b_key = find_node_key_by_name(&graph, &names, "B").expect("leaf B not found");
+
+    let mut inputs = BackwardInputs::new(&graph);
+    set_date_constraint(&mut inputs.constraints, leaf_a_key, Distribution::point(2015.0, 0.3));
+    set_date_constraint(&mut inputs.constraints, leaf_b_key, Distribution::point(2014.0, 0.7));
+    set_edge_branch_function(&graph, &mut inputs, leaf_a_key, 3.0)?;
+    set_edge_branch_function(&graph, &mut inputs, leaf_b_key, 2.5)?;
+
+    let backward = run_backward_pass(&graph, &inputs, None)?;
+
+    let d: f64 = (2015.0 - 3.0) - (2014.0 - 2.5);
+    let expected = 0.5 * (std::f64::consts::PI / BRANCH_PRECISION).ln() - BRANCH_PRECISION * d * d / 4.0 - 0.3 - 0.7;
+    let actual = backward
+      .log_marginal_likelihood(graph.root_key()?)?
+      .expect("root has a distribution");
+    // each message's mass window drops up to EPS = 5e-4 of its mass
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 2e-3);
     Ok(())
   }
 

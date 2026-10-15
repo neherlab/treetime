@@ -128,7 +128,7 @@ fn convolution_range_function<Y: SupportsConvolution>(
   let y = smoothed.mapv(|v| Y::from_neg_log(if v > 0.0 { -v.ln() + peak } else { f64::INFINITY }));
 
   DistributionFunction::from_start_dx_values(shifted_function.x_min(), shifted_function.dx(), y)
-    .map(Distribution::Function)
+    .map(|smoothed| Distribution::Function(smoothed.with_amplitude(shifted_function.amplitude())))
 }
 
 fn convolution_point_function<Y: SupportsConvolution>(
@@ -137,8 +137,8 @@ fn convolution_point_function<Y: SupportsConvolution>(
 ) -> Result<DistributionFunction<f64, Y>, Report> {
   let x_min = f.x_min() + p.t();
   let dx = f.dx();
-  let y = f.y().mapv(|y| Y::multiply(y, p.amplitude()));
-  DistributionFunction::from_start_dx_values(x_min, dx, y)
+  let shifted = DistributionFunction::from_start_dx_values(x_min, dx, f.y().clone())?;
+  Ok(shifted.with_amplitude(Y::multiply(f.amplitude(), p.amplitude())))
 }
 
 fn convolution_function_function<Y: SupportsConvolution>(
@@ -182,9 +182,10 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
   if a.len() == 1 && b.len() == 1 {
     return Ok(Distribution::point(
       a.x_min() + b.x_min(),
-      Y::multiply(a.y()[0], b.y()[0]),
+      Y::multiply(a.values()[0], b.values()[0]),
     ));
   }
+  let amplitude = Y::multiply(a.amplitude(), b.amplitude());
 
   let (pa, peak_a) = to_peak_normalized_plain::<Y>(a.y());
   let (pb, peak_b) = to_peak_normalized_plain::<Y>(b.y());
@@ -210,10 +211,10 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
   let y = reconstructed.neg_log.mapv(|v| Y::from_neg_log(v + offset));
 
   if y.len() == 1 {
-    return Ok(Distribution::point(x_min, y[0]));
+    return Ok(Distribution::point(x_min, Y::multiply(amplitude, y[0])));
   }
 
-  let conv_distr = DistributionFunction::<f64, Y>::from_start_dx_values(x_min, dx, y)?;
+  let conv_distr = DistributionFunction::<f64, Y>::from_start_dx_values(x_min, dx, y)?.with_amplitude(amplitude);
   Ok(Distribution::Function(conv_distr))
 }
 

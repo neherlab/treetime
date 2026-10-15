@@ -21,10 +21,10 @@ pub fn convolve_across_edge(
     Side::Right => conv.with_left_extrap(BoundaryBehavior::Hard)?,
   };
   let Distribution::Function(conv) = conv else {
-    return conv.normalize();
+    return conv.repeak();
   };
   let Some(sized) = peak_normalized_if_mass_sizable(&conv) else {
-    return Distribution::Function(conv).normalize();
+    return Distribution::Function(conv).repeak();
   };
   let normalized = &sized.normalized;
 

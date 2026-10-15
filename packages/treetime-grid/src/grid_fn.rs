@@ -260,6 +260,14 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
+  #[must_use]
+  pub fn map_y(&self, f: impl Fn(T) -> T) -> Self {
+    Self {
+      grid: self.grid,
+      y: self.y.mapv(f),
+    }
+  }
+
   #[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
   pub fn negate_arg_inplace(&mut self) -> Result<(), Report>
   where
