@@ -22,10 +22,7 @@ mod tests {
       coefficients: expected_coefficients.clone(),
     };
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![site],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![site], gtr);
 
     pretty_assert_ulps_eq!(
       contribution.site_contributions[0].coefficients.clone(),
@@ -50,10 +47,7 @@ mod tests {
       coefficients,
     };
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![site],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![site], gtr);
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 
@@ -79,10 +73,7 @@ mod tests {
       coefficients,
     };
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![site],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![site], gtr);
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 

@@ -9,10 +9,7 @@ mod tests {
   fn test_partition_contribution_empty_sites() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![], gtr);
 
     assert!(contribution.site_contributions.is_empty());
     assert_eq!(4, contribution.gtr.eigvals.len());
@@ -27,10 +24,7 @@ mod tests {
       coefficients: array![0.5, 0.2, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![site],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![site], gtr);
 
     assert_eq!(1, contribution.site_contributions.len());
     pretty_assert_ulps_eq!(contribution.site_contributions[0].multiplicity, 1.0, max_ulps = 10);
@@ -55,10 +49,7 @@ mod tests {
       },
     ];
 
-    let contribution = PartitionContribution {
-      site_contributions: sites,
-      gtr,
-    };
+    let contribution = PartitionContribution::new(sites, gtr);
 
     assert_eq!(3, contribution.site_contributions.len());
     for site in &contribution.site_contributions {
@@ -81,10 +72,7 @@ mod tests {
       },
     ];
 
-    let contribution = PartitionContribution {
-      site_contributions: sites,
-      gtr,
-    };
+    let contribution = PartitionContribution::new(sites, gtr);
 
     assert_eq!(2, contribution.site_contributions.len());
     pretty_assert_ulps_eq!(contribution.site_contributions[0].multiplicity, 100.0, max_ulps = 10);

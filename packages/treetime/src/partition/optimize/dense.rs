@@ -1,6 +1,6 @@
 use crate::gtr::gtr::GTR;
 use crate::partition::storage::dense::DenseSeqDistribution;
-use ndarray::Array2;
+use ndarray::{Array1, Array2};
 
 pub(crate) fn get_coefficients(
   msg_to_parent: &DenseSeqDistribution,
@@ -13,11 +13,16 @@ pub(crate) fn get_coefficients(
 
 pub struct PartitionContribution {
   pub(crate) coefficients: Array2<f64>,
+  pub(crate) rate_eigvals: Array1<f64>,
   pub(crate) gtr: GTR,
 }
 
 impl PartitionContribution {
   pub(crate) fn new(coefficients: Array2<f64>, gtr: GTR) -> Self {
-    Self { coefficients, gtr }
+    Self {
+      coefficients,
+      rate_eigvals: gtr.rate_eigvals(),
+      gtr,
+    }
   }
 }

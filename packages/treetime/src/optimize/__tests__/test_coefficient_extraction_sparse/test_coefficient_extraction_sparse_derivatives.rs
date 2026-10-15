@@ -25,10 +25,7 @@ mod tests {
       coefficients: array![0.4, 0.3, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![site],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![site], gtr);
 
     let h = 1e-6;
     let metrics = evaluate_sparse_contribution(&contribution, branch_length, true).expect("valid branch length");
@@ -55,10 +52,7 @@ mod tests {
       coefficients: array![0.4, 0.3, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![site],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![site], gtr);
 
     let h = 1e-5;
     let metrics = evaluate_sparse_contribution(&contribution, branch_length, true).expect("valid branch length");
@@ -84,10 +78,7 @@ mod tests {
       coefficients: array![0.4, 0.3, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![site],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![site], gtr);
 
     let h = 1e-5;
     let metrics = evaluate_sparse_contribution(&contribution, branch_length, true).expect("valid branch length");
@@ -108,19 +99,13 @@ mod tests {
       multiplicity: 1.0,
       coefficients: coefficients.clone(),
     };
-    let contribution1 = PartitionContribution {
-      site_contributions: vec![site1],
-      gtr: gtr.clone(),
-    };
+    let contribution1 = PartitionContribution::new(vec![site1], gtr.clone());
 
     let site3 = SiteContribution {
       multiplicity: 3.0,
       coefficients,
     };
-    let contribution3 = PartitionContribution {
-      site_contributions: vec![site3],
-      gtr,
-    };
+    let contribution3 = PartitionContribution::new(vec![site3], gtr);
 
     let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1, true).expect("valid branch length");
     let metrics3 = evaluate_sparse_contribution(&contribution3, 0.1, true).expect("valid branch length");
@@ -147,8 +132,7 @@ mod tests {
     let coefficients_a = array![0.4, 0.3, 0.2, 0.1];
     let coefficients_b = array![0.3, 0.3, 0.2, 0.2];
 
-    let sparse_contribution = PartitionContribution {
-      site_contributions: vec![
+    let sparse_contribution = PartitionContribution::new(vec![
         SiteContribution {
           multiplicity: 1.0,
           coefficients: coefficients_a.clone(),
@@ -157,9 +141,7 @@ mod tests {
           multiplicity: 1.0,
           coefficients: coefficients_b.clone(),
         },
-      ],
-      gtr: gtr.clone(),
-    };
+      ], gtr.clone());
 
     let coefficients_2d = Array2::from_shape_vec((2, 4), {
       let mut v = coefficients_a.to_vec();

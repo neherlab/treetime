@@ -9,10 +9,5 @@ pub(crate) fn evaluate_dense_contribution(
   compute_derivatives: bool,
 ) -> Result<OptimizationMetrics, Report> {
   let sites = contribution.coefficients.outer_iter().map(|row| (1.0, row));
-  evaluate_site_contributions(
-    sites,
-    &contribution.gtr.rate_eigvals(),
-    branch_length,
-    compute_derivatives,
-  )
+  evaluate_site_contributions(sites, &contribution.rate_eigvals, branch_length, compute_derivatives)
 }

@@ -3,6 +3,7 @@ use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, S
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
 use itertools::Itertools;
+use ndarray::Array1;
 use std::collections::BTreeMap;
 use std::iter::zip;
 use treetime_utils::cast::ToF64Exact;
@@ -84,18 +85,26 @@ pub(crate) fn get_coefficients(
       coefficients: child.dot(&gtr.v) * parent.dot(&gtr.v_inv.t()),
     });
   }
-  Ok(PartitionContribution {
-    site_contributions,
-    gtr: gtr.clone(),
-  })
+  Ok(PartitionContribution::new(site_contributions, gtr.clone()))
 }
 
 pub struct PartitionContribution {
   pub(crate) site_contributions: Vec<SiteContribution>,
+  pub(crate) rate_eigvals: Array1<f64>,
   pub(crate) gtr: GTR,
+}
+
+impl PartitionContribution {
+  pub(crate) fn new(site_contributions: Vec<SiteContribution>, gtr: GTR) -> Self {
+    Self {
+      site_contributions,
+      rate_eigvals: gtr.rate_eigvals(),
+      gtr,
+    }
+  }
 }
 
 pub struct SiteContribution {
   pub(crate) multiplicity: f64,
-  pub(crate) coefficients: ndarray::Array1<f64>,
+  pub(crate) coefficients: Array1<f64>,
 }

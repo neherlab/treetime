@@ -29,10 +29,7 @@ mod tests {
       })
       .collect();
 
-    OptimizationContribution::Sparse(optimize::sparse::PartitionContribution {
-      site_contributions,
-      gtr,
-    })
+    OptimizationContribution::Sparse(optimize::sparse::PartitionContribution::new(site_contributions, gtr))
   }
 
   #[test]
@@ -316,10 +313,8 @@ mod tests {
       multiplicity: 1.0,
       coefficients: array![0.0, 1.0, 0.0, 0.0],
     }];
-    let contribution = OptimizationContribution::Sparse(optimize::sparse::PartitionContribution {
-      site_contributions,
-      gtr,
-    });
+    let contribution =
+      OptimizationContribution::Sparse(optimize::sparse::PartitionContribution::new(site_contributions, gtr));
     assert!(contribution.zero_branch_length_derivative() < 0.0);
     assert!(!is_zero_branch_optimal(&[contribution]));
   }

@@ -108,16 +108,10 @@ mod tests {
       ) {
         let gtr = test_gtr();
 
-        let single = optimize::sparse::PartitionContribution {
-          site_contributions: vec![sparse_site_from(&parent, &child, &gtr, 1.0)],
-          gtr: gtr.clone(),
-        };
+        let single = optimize::sparse::PartitionContribution::new(vec![sparse_site_from(&parent, &child, &gtr, 1.0)], gtr.clone());
         let single_metrics = evaluate_sparse_contribution(&single, branch_length, true).expect("valid branch length");
 
-        let multi = optimize::sparse::PartitionContribution {
-          site_contributions: vec![sparse_site_from(&parent, &child, &gtr, multiplicity)],
-          gtr: gtr.clone(),
-        };
+        let multi = optimize::sparse::PartitionContribution::new(vec![sparse_site_from(&parent, &child, &gtr, multiplicity)], gtr.clone());
         let multi_metrics = evaluate_sparse_contribution(&multi, branch_length, true).expect("valid branch length");
 
         prop_assert_abs_diff_eq!(multi_metrics.log_lh.value(), multiplicity * single_metrics.log_lh.value(), epsilon = 1e-9);
@@ -145,10 +139,7 @@ mod tests {
         );
         let dense_metrics = evaluate_dense_contribution(&dense_contrib, branch_length, true).expect("valid branch length");
 
-        let sparse_contrib = optimize::sparse::PartitionContribution {
-          site_contributions: vec![sparse_site_from(&parent, &child, &gtr, n_rows.to_f64_exact())],
-          gtr: gtr.clone(),
-        };
+        let sparse_contrib = optimize::sparse::PartitionContribution::new(vec![sparse_site_from(&parent, &child, &gtr, n_rows.to_f64_exact())], gtr.clone());
         let sparse_metrics = evaluate_sparse_contribution(&sparse_contrib, branch_length, true).expect("valid branch length");
 
         prop_assert_abs_diff_eq!(dense_metrics.log_lh.value(), sparse_metrics.log_lh.value(), epsilon = 1e-8);
@@ -252,10 +243,7 @@ mod tests {
         multiplicity: 1.0,
         coefficients: array![1.0, 0.0, 0.0, epsilon],
       };
-      let contribution = PartitionContribution {
-        site_contributions: vec![site],
-        gtr,
-      };
+      let contribution = PartitionContribution::new(vec![site], gtr);
 
       let metrics = evaluate_sparse_contribution(&contribution, branch_length, true).expect("valid branch length");
 

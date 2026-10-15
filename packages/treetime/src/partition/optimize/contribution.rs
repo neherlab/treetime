@@ -4,7 +4,7 @@ use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward};
 use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs};
 use eyre::Report;
 use itertools::Either;
-use ndarray::ArrayView1;
+use ndarray::{Array1, ArrayView1};
 
 pub enum OptimizationContribution {
   Dense(optimize::dense::PartitionContribution),
@@ -55,6 +55,13 @@ impl OptimizationContribution {
     })
   }
 
+  fn rate_eigvals(&self) -> &Array1<f64> {
+    match self {
+      OptimizationContribution::Dense(contribution) => &contribution.rate_eigvals,
+      OptimizationContribution::Sparse(contribution) => &contribution.rate_eigvals,
+    }
+  }
+
   pub(crate) fn has_unimodal_branch_likelihood(&self) -> bool {
     self.gtr().unimodal_branch_likelihood
   }
@@ -64,10 +71,10 @@ impl OptimizationContribution {
       self.all_sites_valid_at_zero(),
       "zero_branch_length_derivative called without verifying all_sites_valid_at_zero"
     );
-    let eigvals = self.gtr().rate_eigvals();
+    let rate_eigvals = self.rate_eigvals();
     self
       .sites()
-      .map(|(multiplicity, coefficients)| multiplicity * coefficients.dot(&eigvals) / coefficients.sum())
+      .map(|(multiplicity, coefficients)| multiplicity * coefficients.dot(rate_eigvals) / coefficients.sum())
       .sum()
   }
 }

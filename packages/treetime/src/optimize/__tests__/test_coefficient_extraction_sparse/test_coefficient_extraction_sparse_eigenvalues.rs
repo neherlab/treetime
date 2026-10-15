@@ -14,10 +14,7 @@ mod tests {
       coefficients: array![0.5, 0.2, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![site],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![site], gtr);
 
     let metrics_short = evaluate_sparse_contribution(&contribution, 0.01, true).expect("valid branch length");
     let metrics_long = evaluate_sparse_contribution(&contribution, 1.0, true).expect("valid branch length");

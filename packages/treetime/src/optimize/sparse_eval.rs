@@ -12,10 +12,5 @@ pub(crate) fn evaluate_sparse_contribution(
     .site_contributions
     .iter()
     .map(|sc| (sc.multiplicity, sc.coefficients.view()));
-  evaluate_site_contributions(
-    sites,
-    &contribution.gtr.rate_eigvals(),
-    branch_length,
-    compute_derivatives,
-  )
+  evaluate_site_contributions(sites, &contribution.rate_eigvals, branch_length, compute_derivatives)
 }

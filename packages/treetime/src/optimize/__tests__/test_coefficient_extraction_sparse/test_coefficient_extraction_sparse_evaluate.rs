@@ -15,10 +15,7 @@ mod tests {
       coefficients: array![0.5, 0.2, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![site],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![site], gtr);
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 
@@ -35,10 +32,7 @@ mod tests {
       coefficients: array![0.5, 0.2, 0.2, 0.1],
     };
 
-    let contribution = PartitionContribution {
-      site_contributions: vec![site],
-      gtr,
-    };
+    let contribution = PartitionContribution::new(vec![site], gtr);
 
     let metrics = evaluate_sparse_contribution(&contribution, 0.0, true).expect("valid branch length");
 
@@ -57,19 +51,13 @@ mod tests {
       multiplicity: 1.0,
       coefficients: coefficients.clone(),
     };
-    let contribution1 = PartitionContribution {
-      site_contributions: vec![site1],
-      gtr: gtr.clone(),
-    };
+    let contribution1 = PartitionContribution::new(vec![site1], gtr.clone());
 
     let site5 = SiteContribution {
       multiplicity: 5.0,
       coefficients,
     };
-    let contribution5 = PartitionContribution {
-      site_contributions: vec![site5],
-      gtr,
-    };
+    let contribution5 = PartitionContribution::new(vec![site5], gtr);
 
     let metrics1 = evaluate_sparse_contribution(&contribution1, 0.1, true).expect("valid branch length");
     let metrics5 = evaluate_sparse_contribution(&contribution5, 0.1, true).expect("valid branch length");
@@ -84,26 +72,26 @@ mod tests {
     let coefficients_a = array![0.6, 0.2, 0.1, 0.1];
     let coefficients_b = array![0.3, 0.3, 0.2, 0.2];
 
-    let contribution_a = PartitionContribution {
-      site_contributions: vec![SiteContribution {
+    let contribution_a = PartitionContribution::new(
+      vec![SiteContribution {
         multiplicity: 1.0,
         coefficients: coefficients_a.clone(),
       }],
-      gtr: gtr.clone(),
-    };
-    let contribution_b = PartitionContribution {
-      site_contributions: vec![SiteContribution {
+      gtr.clone(),
+    );
+    let contribution_b = PartitionContribution::new(
+      vec![SiteContribution {
         multiplicity: 1.0,
         coefficients: coefficients_b.clone(),
       }],
-      gtr: gtr.clone(),
-    };
+      gtr.clone(),
+    );
 
     let metrics_a = evaluate_sparse_contribution(&contribution_a, 0.1, true).expect("valid branch length");
     let metrics_b = evaluate_sparse_contribution(&contribution_b, 0.1, true).expect("valid branch length");
 
-    let contribution_both = PartitionContribution {
-      site_contributions: vec![
+    let contribution_both = PartitionContribution::new(
+      vec![
         SiteContribution {
           multiplicity: 1.0,
           coefficients: coefficients_a,
@@ -114,7 +102,7 @@ mod tests {
         },
       ],
       gtr,
-    };
+    );
     let metrics_both = evaluate_sparse_contribution(&contribution_both, 0.1, true).expect("valid branch length");
 
     pretty_assert_ulps_eq!(
