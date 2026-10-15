@@ -165,9 +165,9 @@ fn indexed_node_backward(
     };
     let mut log_dis = first_edge.msg_from_child.dis.mapv(f64::ln);
     for edge in other_edges {
-      log_dis += &edge.msg_from_child.dis.mapv(f64::ln);
+      log_dis.zip_mut_with(&edge.msg_from_child.dis, |l, &p| *l += p.ln());
     }
-    let (dis, delta_ll) = normalize_from_log(&log_dis);
+    let (dis, delta_ll) = normalize_from_log(log_dis);
     let log_lh = child_edges.iter().map(|edge| edge.msg_from_child.log_lh).sum::<LogLh>() + LogLh::new(delta_ll);
     let profile = DenseSeqDistribution { dis, log_lh };
     (

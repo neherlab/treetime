@@ -1,7 +1,6 @@
-use itertools::izip;
 use ndarray::{Array, Array2, Axis, Dimension, Zip};
 use treetime_primitives::LogLh;
-use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm;
+use treetime_utils::array::softmax_with_log_norm::softmax_with_log_norm_inplace;
 use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
@@ -21,17 +20,10 @@ pub(crate) fn normalize_inplace(dis: &mut Array2<f64>) -> f64 {
   log_lh
 }
 
-pub(crate) fn normalize_from_log(log_dis: &Array2<f64>) -> (Array2<f64>, f64) {
-  let mut dis = Array2::zeros(log_dis.raw_dim());
-  let mut total_log_lh = 0.0;
-
-  for (mut out_row, log_row) in izip!(dis.rows_mut(), log_dis.rows()) {
-    let (normalized, log_norm) = softmax_with_log_norm(log_row);
-    out_row.assign(&normalized);
-    total_log_lh += log_norm;
-  }
-
-  (dis, total_log_lh)
+pub(crate) fn normalize_from_log(log_dis: Array2<f64>) -> (Array2<f64>, f64) {
+  let mut dis = log_dis;
+  let log_lh = dis.rows_mut().into_iter().map(softmax_with_log_norm_inplace).sum();
+  (dis, log_lh)
 }
 
 pub(crate) fn forward_log_lh_remove_child(node_log_lh: LogLh, child_log_lh: LogLh) -> LogLh {
