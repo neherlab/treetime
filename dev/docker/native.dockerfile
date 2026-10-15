@@ -129,7 +129,10 @@ done \
 
 # Emscripten builds the WebAssembly back end of the web2 app for
 # wasm32-unknown-emscripten: rustc links through emcc, and emcc compiles the C
-# of OpenBLAS and of the compression codecs. Only the emcc front end goes on
+# of the compression codecs. OpenBLAS comes prebuilt from
+# binarylandia/build_openblas for this Emscripten version, because Emscripten
+# gives no ABI guarantee between versions; an Emscripten upgrade needs a new
+# build_openblas release first. Only the emcc front end goes on
 # PATH, so native builds and bindgen keep the LLVM above. bindgen reads the C
 # headers of the target from the Emscripten sysroot, searched before the host
 # include path of C_INCLUDE_PATH, with default visibility: clang hides the
@@ -138,12 +141,12 @@ done \
 # and sanity files.
 ENV PATH="/opt/emscripten/emscripten:${PATH}"
 ENV BINDGEN_EXTRA_CLANG_ARGS_wasm32_unknown_emscripten="--sysroot=/opt/emscripten/emscripten/cache/sysroot -isystem /opt/emscripten/emscripten/cache/sysroot/include -fvisibility=default"
-COPY dev/docker/files/install-emscripten dev/docker/files/install-openblas-emscripten dev/docker/files/openblas-xerbla-void.patch /
+COPY dev/docker/files/install-emscripten dev/docker/files/install-openblas-emscripten /
 RUN set -euxo pipefail >/dev/null \
 && /install-emscripten "/opt/emscripten" \
 && /install-openblas-emscripten "/usr/local/wasm32-unknown-emscripten" \
 && chmod -R a+rwX "/opt/emscripten/emscripten/cache" \
-&& rm /install-emscripten /install-openblas-emscripten /openblas-xerbla-void.patch
+&& rm /install-emscripten /install-openblas-emscripten
 
 # dev/docker/run runs as the host user with HOME=/tmp/home.
 RUN set -euxo pipefail >/dev/null \

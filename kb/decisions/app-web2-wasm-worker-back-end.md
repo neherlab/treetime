@@ -19,7 +19,7 @@ The web2 app (`packages/app-web2`) renders the interface of `packages/app-ui` un
 
 Emscripten provides the platform that the back end uses on the other targets:
 
-- **C library**: OpenBLAS, LAPACK, and the compression libraries compile with `emcc` against the C library of Emscripten. The dev image builds a single-threaded OpenBLAS for the `WASM128_GENERIC` target, with LAPACK from the C translation that ships with OpenBLAS (`dev/docker/files/install-openblas-emscripten`), so the linear algebra of web2 goes through the same BLAS and LAPACK interface as the CLI. The functions of the C translation take no hidden string lengths and return `void`, as the `lapack-sys` declarations do; a call whose signature differs from its callee traps in WebAssembly. `xz` goes through `liblzma`, `zstd` through `zstd-sys`
+- **C library**: OpenBLAS, LAPACK, and the compression libraries compile with `emcc` against the C library of Emscripten. The dev image installs a single-threaded OpenBLAS for the `WASM128_GENERIC` target, with LAPACK from the C translation that ships with OpenBLAS, which [binarylandia/build_openblas](https://github.com/binarylandia/build_openblas) builds with `emcc` for the Emscripten version of the image (`dev/docker/files/install-openblas-emscripten`), so the linear algebra of web2 goes through the same BLAS and LAPACK interface as the CLI. The functions of the C translation take no hidden string lengths and return `void`, as the `lapack-sys` declarations do; a call whose signature differs from its callee traps in WebAssembly. `xz` goes through `liblzma`, `zstd` through `zstd-sys`
 - **Files**: `std::fs` works on the in-memory file system of Emscripten, so the run store, the uploads, and the inputs and outputs of the commands run unchanged under `/treetime/runs`. The examples folder `/treetime/examples` is empty
 - **Clocks, process id, entropy**: `SystemTime`, `Instant`, `process::id()`, and `getrandom` (through `getentropy`) work, so a run without `--seed` draws and logs its seed as on the other targets
 - **Memory**: the module grows its memory up to the 4 GiB of `wasm32` and has a stack of 8 MiB
@@ -53,7 +53,7 @@ The module has no threads, no tokio runtime, and no unwinding. The back end adap
 - `packages/app-ui/src/port.ts`, `packages/app-ui/src/port-fetch.ts`: the message port messages and the fetch over a port
 - `packages/app-web2/src/backend/`: the worker connection, the worker, and the exchange server
 - `packages/app-ui/build/content-security-policy-vite.ts`: `'wasm-unsafe-eval'` for the page of web2, which compiles the module
-- `dev/docker/files/install-emscripten`, `install-openblas-emscripten`: Emscripten and OpenBLAS in the dev image
+- `dev/docker/files/install-emscripten`, `install-openblas-emscripten`: Emscripten and the prebuilt OpenBLAS in the dev image
 
 ## Issues
 
