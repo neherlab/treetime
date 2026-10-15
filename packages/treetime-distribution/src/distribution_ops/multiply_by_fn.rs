@@ -1,4 +1,3 @@
-use crate::distribution_ops::mass_domain::refit_soft_tails;
 use crate::policy::NegLog;
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
@@ -39,7 +38,9 @@ where
     let combined_fn = DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), combined)?
       .with_left_extrap(f.left_extrap())?
       .with_right_extrap(f.right_extrap())?;
-    Distribution::Function(refit_soft_tails(combined_fn)?.with_amplitude(amplitude))
+    // keeps the incoming tail laws: a weight with steps near the edge (the coalescent cost jumps where the number of
+    // lineages changes) would otherwise fit a tail that rises outward
+    Distribution::Function(combined_fn.with_amplitude(amplitude))
   } else {
     Distribution::function(times, combined)?
   };

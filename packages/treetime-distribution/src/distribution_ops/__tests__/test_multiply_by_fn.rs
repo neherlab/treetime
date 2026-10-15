@@ -31,7 +31,7 @@ mod tests {
   }
 
   #[test]
-  fn test_multiply_by_fn_preserves_soft_left_hard_right() {
+  fn test_multiply_by_fn_keeps_the_incoming_tail_laws() {
     let t = Array1::linspace(0.0, 4.0, 21);
     let y = t.mapv(|ti| -2.0 * ti);
     let f = DistributionFunction::from_arrays(&t, y).unwrap();
@@ -53,8 +53,37 @@ mod tests {
         rf.left_extrap()
       );
     };
-    assert_abs_diff_eq!(-1.5, law.slope, epsilon = 1e-12);
+    assert_abs_diff_eq!(-2.0, law.slope, epsilon = 1e-12);
     assert_eq!(BoundaryBehavior::Hard, rf.right_extrap());
+  }
+
+  #[test]
+  fn test_multiply_by_fn_step_near_the_edge_keeps_a_decaying_tail() {
+    // a weight that drops by 3 going into the past within the outermost fit points, like the coalescent cost where an
+    // older sample adds a lineage
+    let t = Array1::linspace(0.0, 4.0, 21);
+    let y = t.mapv(|ti| -2.0 * ti);
+    let f = DistributionFunction::from_arrays(&t, y).unwrap();
+    let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS).unwrap();
+    let input = f
+      .with_left_extrap(BoundaryBehavior::Linear(left))
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Hard)
+      .unwrap();
+
+    let actual = distribution_multiply_by_fn(&DistributionNegLog::Function(input), |ti: f64| {
+      Ok(if ti < 0.5 { 0.0 } else { 3.0 })
+    })
+    .unwrap();
+
+    assert!(actual.log_mass().unwrap().is_finite());
+    let DistributionNegLog::Function(rf) = actual else {
+      panic!("expected a Function result");
+    };
+    let BoundaryBehavior::Linear(law) = rf.left_extrap() else {
+      panic!("left tail must stay soft Linear, got {:?}", rf.left_extrap());
+    };
+    assert_abs_diff_eq!(-2.0, law.slope, epsilon = 1e-12);
   }
 
   #[test]
