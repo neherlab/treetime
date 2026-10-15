@@ -56,7 +56,10 @@ rustc-link-lib = ["static:-bundle=openblas"]
 
 # The WebAssembly back end of the web2 app. rustc links through emcc, and emcc
 # runs wasm-bindgen on the linked module (`-sWASM_BINDGEN`), so the wasm-bindgen
-# CLI on PATH must equal the wasm-bindgen pin:
+# CLI on PATH must equal the wasm-bindgen pin. mise installs the binarylandia
+# build of that CLI (task tasks/wasm-bindgen of binarylandia/appville), which
+# patches upstream to keep the linker start function of threaded modules; a new
+# pin needs a new appville release first:
 # - panic=abort and no C++ exceptions, because wasm-bindgen does not support
 #   unwinding on this target; a static relocation model, because the module is
 #   one main module

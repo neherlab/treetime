@@ -8,6 +8,7 @@ minimum_release_age = "7d"
 [tool_alias]
 cargo-dylint = "github:trailofbits/dylint"
 dylint-link = "github:trailofbits/dylint"
+wasm-bindgen = "github:binarylandia/appville"
 
 [tools]
 actionlint = "1.7.12"
@@ -35,7 +36,6 @@ yq = "4.53.6"
 "github:kunobi-ninja/kache" = "0.28.1"
 "github:shenwei356/seqkit" = "2.13.0"
 "github:sourcefrog/cargo-mutants" = "27.1.0"
-"github:wasm-bindgen/wasm-bindgen" = "0.2.129"
 cargo-dylint = { version = "6.0.4", os = ["linux"], matching = "cargo-dylint-" }
 dylint-link = { version = "6.0.4", os = ["linux"], matching = "dylint-link-" }
 
@@ -47,3 +47,18 @@ linux-arm64 = { asset_pattern = "iqtree-{{ version }}-Linux-arm.tar.gz" }
 linux-x64 = { asset_pattern = "iqtree-{{ version }}-Linux-intel.tar.gz" }
 macos-arm64 = { asset_pattern = "iqtree-{{ version }}-macOS-arm.zip" }
 macos-x64 = { asset_pattern = "iqtree-{{ version }}-macOS-intel.zip" }
+
+# The wasm-bindgen CLI that emcc runs on the WebAssembly back end, built by
+# binarylandia/appville (tasks/wasm-bindgen) from upstream with a patch for
+# threaded Emscripten modules. The version is the release tag without its
+# prefix; its first part must equal the wasm-bindgen crate in Cargo.toml.
+[tools.wasm-bindgen]
+version = "0.2.129-2026-10-15_15-08-39"
+version_prefix = "wasm-bindgen-"
+bin_path = "bin"
+
+[tools.wasm-bindgen.platforms]
+linux-arm64 = { asset_pattern = "wasm-bindgen-*-static-aarch64-unknown-linux-musl-*.tar.gz" }
+linux-x64 = { asset_pattern = "wasm-bindgen-*-static-x86_64-unknown-linux-musl-*.tar.gz" }
+macos-arm64 = { asset_pattern = "wasm-bindgen-*-static-aarch64-apple-darwin-*.tar.gz" }
+macos-x64 = { asset_pattern = "wasm-bindgen-*-static-x86_64-apple-darwin-*.tar.gz" }
