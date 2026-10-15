@@ -5060,6 +5060,7 @@ dependencies = [
  "rstest",
  "schemars",
  "serde_json",
+ "smallvec",
  "smart-default",
  "statrs",
  "strum_macros",

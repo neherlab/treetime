@@ -51,6 +51,7 @@ rand_distr = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }
 schemars = { workspace = true }
+smallvec = { workspace = true }
 smart-default = { workspace = true }
 statrs = { workspace = true }
 strum_macros = { workspace = true }
