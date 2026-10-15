@@ -78,10 +78,17 @@ fn propagate_distributions_forward_node(
     subtree.as_deref(),
     max_points,
   )?;
+  // the subtree distribution carries the subtree likelihood as its level; a posterior is normalized
+  let normalized_subtree = || -> Result<_, Report> {
+    subtree
+      .as_deref()
+      .map(|subtree| subtree.normalize().map(Arc::new))
+      .transpose()
+  };
   let (distribution, contradicted) = match refinement {
     ForwardRefinement::Refined(distribution) => (Some(Arc::new(distribution)), false),
-    ForwardRefinement::Unrefined => (subtree.clone(), false),
-    ForwardRefinement::ContradictedGivenDate => (subtree.clone(), true),
+    ForwardRefinement::Unrefined => (normalized_subtree()?, false),
+    ForwardRefinement::ContradictedGivenDate => (normalized_subtree()?, true),
   };
 
   let likely_time = likely_time_of_node(context.key, distribution.as_deref())?;

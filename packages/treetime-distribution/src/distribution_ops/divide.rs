@@ -124,12 +124,14 @@ fn divide_function_by_function<Y: YAxisPolicy>(
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, dividend.dx().min(divisor.dx()), max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
-      let dividend_values = dividend.interp_many(&grid)?;
-      let divisor_values = divisor.interp_many(&grid)?;
+      // stored values divide, amplitudes divide: the grid stays near the operands' peaks
+      let dividend_values = dividend.interp_many_stored(&grid)?;
+      let divisor_values = divisor.interp_many_stored(&grid)?;
       let values = Zip::from(&dividend_values)
         .and(&divisor_values)
         .map_collect(|&dividend, &divisor| Y::divide(dividend, Y::safe_divisor(divisor)));
-      let function = DistributionFunction::from_range_values(bounds, values)?;
+      let function = DistributionFunction::from_range_values(bounds, values)?
+        .with_amplitude(Y::divide(dividend.amplitude(), divisor.amplitude()));
       let function = apply_division_tail(function, Side::Left, dividend_domain, divisor_domain)?;
       let function = apply_division_tail(function, Side::Right, dividend_domain, divisor_domain)?;
       Ok(Distribution::Function(function))

@@ -105,7 +105,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     match self {
       Self::Point(p) => Ok(ndarray::array![p.amplitude()]),
       Self::Range(r) => Ok(ndarray::array![r.amplitude(), r.amplitude()]),
-      Self::Function(f) => Ok(f.y().clone()),
+      Self::Function(f) => Ok(f.values()),
       Self::Formula(f) => {
         let t = ndarray::array![f.t_min(), f.t_max()];
         f.eval_many(&t).wrap_err_with(|| {
@@ -176,11 +176,37 @@ impl<Y: YAxisPolicy> Distribution<Y> {
       other => Ok(other),
     }
   }
+
+  /// Keeps the values and moves the level into the amplitude, so that the grid holds values near the peak. A function
+  /// with no finite peak becomes `Empty`.
+  pub fn repeak(&self) -> Result<Self, Report> {
+    match self {
+      Self::Function(f) => Ok(f.repeak()?.map_or(Self::Empty, Self::Function)),
+      Self::Formula(f) => {
+        let discretized = discretize_formula(f).wrap_err_with(|| {
+          format!(
+            "When discretizing a formula distribution on [{}, {}] for re-peaking",
+            f.t_min(),
+            f.t_max()
+          )
+        })?;
+        Ok(discretized.repeak()?.map_or(Self::Empty, Self::Function))
+      },
+      Self::Point(p) => Ok(defined_amplitude::<Y>(p.amplitude(), "point")?.map_or(Self::Empty, |_| self.clone())),
+      Self::Range(r) => Ok(defined_amplitude::<Y>(r.amplitude(), "range")?.map_or(Self::Empty, |_| self.clone())),
+      Self::Empty => Ok(Self::Empty),
+    }
+  }
 }
 
 impl Distribution<Plain> {}
 
 impl Distribution<NegLog> {
+  /// Natural log of the total mass, amplitude and tails included; see `fn log_mass()` in `mass_domain`
+  pub fn log_mass(&self) -> Result<f64, Report> {
+    crate::distribution_ops::mass_domain::log_mass(self)
+  }
+
   pub fn normalize(&self) -> Result<Self, Report> {
     match self {
       Distribution::Empty => Ok(Distribution::Empty),
@@ -220,8 +246,15 @@ fn neglog_function_normalize(function: &DistributionFunction<f64, NegLog>) -> Re
   };
   let context = format!("function on [{}, {}]", function.x_min(), function.x_max());
   Ok(neglog_peak(minimum, &context)?.map_or(Distribution::Empty, |minimum| {
-    Distribution::Function(function.shift_y(-minimum))
+    Distribution::Function(function.shift_y(-minimum).with_amplitude(0.0))
   }))
+}
+
+fn defined_amplitude<Y: YAxisPolicy>(amplitude: f64, context: &str) -> Result<Option<f64>, Report> {
+  if amplitude.is_nan() {
+    return make_error!("Cannot re-peak a distribution {context}: its amplitude is NaN");
+  }
+  Ok(Y::is_defined(amplitude).then_some(amplitude))
 }
 
 fn neglog_peak(minimum: f64, context: &str) -> Result<Option<f64>, Report> {

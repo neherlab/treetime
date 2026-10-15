@@ -184,19 +184,23 @@ pub(crate) fn multiply_functions<Y: YAxisPolicy>(
       let n_points = distribution_support_n_points(bounds, dx, max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
 
-      let mut values = first.interp_many(&grid)?;
+      // stored values multiply, amplitudes multiply: the grid stays near the operands' peaks
+      let mut values = first.interp_many_stored(&grid)?;
+      let mut amplitude = first.amplitude();
       for f in rest {
-        let other = f.interp_many(&grid)?;
+        let other = f.interp_many_stored(&grid)?;
         Zip::from(&mut values)
           .and(&other)
           .for_each(|value, &o| *value = Y::multiply(*value, o));
+        amplitude = Y::multiply(amplitude, f.amplitude());
       }
 
       let left_tail = compose_product_tail(ordered.iter().map(|f| f.left_extrap()))?;
       let right_tail = compose_product_tail(ordered.iter().map(|f| f.right_extrap()))?;
       let function = DistributionFunction::from_range_values(bounds, values)?
         .with_left_extrap(left_tail)?
-        .with_right_extrap(right_tail)?;
+        .with_right_extrap(right_tail)?
+        .with_amplitude(amplitude);
       Ok(Distribution::Function(function))
     },
   }

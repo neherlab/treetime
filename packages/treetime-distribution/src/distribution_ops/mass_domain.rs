@@ -6,6 +6,20 @@ use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, MaxGrid
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
+/// Natural log of the total mass, amplitude and tails included. Infinite for an improper tail, `-inf` for `Empty`.
+pub(crate) fn log_mass(dist: &Distribution<NegLog>) -> Result<f64, Report> {
+  match dist {
+    Distribution::Empty => Ok(f64::NEG_INFINITY),
+    Distribution::Point(p) => Ok(-p.amplitude()),
+    Distribution::Range(r) => Ok(-r.amplitude() + (r.end() - r.start()).ln()),
+    Distribution::Function(f) => {
+      let profile = mass_profile(f)?;
+      Ok(-f.amplitude() - f.grid_fn().y_min() + profile.z.ln())
+    },
+    Distribution::Formula(_) => log_mass(&dist.repeak()?),
+  }
+}
+
 pub fn rewindow_to_mass(
   dist: &Distribution<NegLog>,
   eps: f64,
@@ -13,10 +27,10 @@ pub fn rewindow_to_mass(
   max_points: MaxGridPoints,
 ) -> Result<Distribution<NegLog>, Report> {
   let Distribution::Function(f) = dist else {
-    return dist.normalize();
+    return dist.repeak();
   };
   let Some(sized) = peak_normalized_if_mass_sizable(f) else {
-    return dist.normalize();
+    return dist.repeak();
   };
   let (lo, hi) = sized.bounded_domain(eps)?;
   resample_to_mass_window(&sized.normalized, lo, hi, grid_points, max_points)
@@ -30,11 +44,9 @@ pub fn rewindow_to_mass(
   )
 )]
 pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64, NegLog>) -> Option<MassSized> {
-  let y_peak = f.grid_fn().y_min();
-  if !y_peak.is_finite() {
+  let Ok(Some(normalized)) = f.repeak() else {
     return None;
-  }
-  let normalized = f.shift_y(-y_peak);
+  };
   let Ok(profile) = mass_profile(&normalized) else {
     return None;
   };

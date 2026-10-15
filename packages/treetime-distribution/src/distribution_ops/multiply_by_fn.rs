@@ -21,7 +21,11 @@ where
   }
 
   let times = distribution.t();
-  let ordinates = distribution.y()?;
+  // a function's weights apply to its stored values and its amplitude carries over
+  let (ordinates, amplitude) = match distribution {
+    Distribution::Function(f) => (f.y().clone(), f.amplitude()),
+    _ => (distribution.y()?, 0.0),
+  };
 
   let weights: Array1<f64> = times.iter().map(|&t| weight(t)).collect::<Result<_, Report>>()?;
   let combined = ordinates + weights;
@@ -35,10 +39,10 @@ where
     let combined_fn = DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), combined)?
       .with_left_extrap(f.left_extrap())?
       .with_right_extrap(f.right_extrap())?;
-    Distribution::Function(refit_soft_tails(combined_fn)?)
+    Distribution::Function(refit_soft_tails(combined_fn)?.with_amplitude(amplitude))
   } else {
     Distribution::function(times, combined)?
   };
 
-  result.normalize()
+  result.repeak()
 }

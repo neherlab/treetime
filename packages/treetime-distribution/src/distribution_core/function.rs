@@ -9,12 +9,28 @@ use treetime_grid::grid::Grid;
 use treetime_grid::{BoundaryBehavior, GridFn, InterpElem, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
-#[derive(Clone, Debug, PartialEq)]
+/// Values are `Y::multiply(ampl, stored)`: the grid holds the shape and `ampl` the level, so that the grid can be kept
+/// near the peak (`fn repeak()`) without losing the level.
+#[derive(Clone, Debug)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
   grid_fn: GridFn<T>,
+  ampl: T,
   left_extrap: BoundaryBehavior,
   right_extrap: BoundaryBehavior,
   _policy: PolicyMarker<Y>,
+}
+
+/// Equal when grid, tails and values are equal, however the level is split between grid and amplitude
+impl<T: InterpElem, Y: YAxisPolicy> PartialEq for DistributionFunction<T, Y> {
+  fn eq(&self, other: &Self) -> bool {
+    let with_level = |f: &Self| {
+      let ampl: f64 = f.ampl.into();
+      f.grid_fn.map_y(|v| Y::multiply(ampl, v.into()).into())
+    };
+    self.left_extrap == other.left_extrap
+      && self.right_extrap == other.right_extrap
+      && with_level(self) == with_level(other)
+  }
 }
 
 impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
@@ -53,6 +69,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   pub fn from_grid_fn(grid_fn: GridFn<T>) -> Self {
     Self {
       grid_fn,
+      ampl: unit_amplitude::<T, Y>(),
       left_extrap: BoundaryBehavior::default(),
       right_extrap: BoundaryBehavior::default(),
       _policy: PolicyMarker::new(),
@@ -61,11 +78,13 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   fn from_grid_fn_with_extrap(
     grid_fn: GridFn<T>,
+    ampl: T,
     left_extrap: BoundaryBehavior,
     right_extrap: BoundaryBehavior,
   ) -> Self {
     Self {
       grid_fn,
+      ampl,
       left_extrap,
       right_extrap,
       _policy: PolicyMarker::new(),
@@ -98,11 +117,47 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.dx()
   }
 
+  /// Stored values, relative to the amplitude
   pub fn y(&self) -> &Array1<T> {
     self.grid_fn.y()
   }
 
+  pub fn amplitude(&self) -> T {
+    self.ampl
+  }
+
+  #[must_use]
+  pub fn with_amplitude(mut self, ampl: T) -> Self {
+    self.ampl = ampl;
+    self
+  }
+
+  /// Values including the amplitude
+  pub fn values(&self) -> Array1<T>
+  where
+    T: Float,
+  {
+    let ampl: f64 = self.ampl.into();
+    self.y().mapv(|v| Y::multiply(ampl, v.into()).into())
+  }
+
   pub(crate) fn interp(&self, x: T) -> Result<T, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    Ok(Y::multiply(self.ampl.into(), self.interp_stored(x)?.into()).into())
+  }
+
+  pub(crate) fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
+  where
+    T: Float + UlpsEq,
+  {
+    let values = xs.iter().map(|&q| self.interp(q)).collect::<Result<Vec<T>, Report>>()?;
+    Ok(Array1::from_vec(values))
+  }
+
+  /// Value relative to the amplitude, extrapolated by the tail laws
+  pub(crate) fn interp_stored(&self, x: T) -> Result<T, Report>
   where
     T: Float + UlpsEq,
   {
@@ -116,11 +171,14 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(val)
   }
 
-  pub(crate) fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
+  pub(crate) fn interp_many_stored(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
   where
     T: Float + UlpsEq,
   {
-    let values = xs.iter().map(|&q| self.interp(q)).collect::<Result<Vec<T>, Report>>()?;
+    let values = xs
+      .iter()
+      .map(|&q| self.interp_stored(q))
+      .collect::<Result<Vec<T>, Report>>()?;
     Ok(Array1::from_vec(values))
   }
 
@@ -175,6 +233,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
       .resample_with_extrap(grid, self.left_extrap, self.right_extrap)?;
     Ok(Self::from_grid_fn_with_extrap(
       grid_fn,
+      self.ampl,
       self.left_extrap,
       self.right_extrap,
     ))
@@ -210,6 +269,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     let grid_fn = self.grid_fn.resample_range_dx_clamped(x_range, dx, max_points)?;
     Ok(Self::from_grid_fn_with_extrap(
       grid_fn,
+      self.ampl,
       self.left_extrap,
       self.right_extrap,
     ))
@@ -265,11 +325,48 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   where
     T: Float,
   {
-    Self::from_grid_fn_with_extrap(self.grid_fn.shift_y(delta), self.left_extrap, self.right_extrap)
+    Self::from_grid_fn_with_extrap(
+      self.grid_fn.shift_y(delta),
+      self.ampl,
+      self.left_extrap,
+      self.right_extrap,
+    )
   }
 }
 
 impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
+  /// Moves the peak of the stored values into the amplitude; the values are unchanged. `None` when no stored value is
+  /// a finite peak (no probability anywhere).
+  pub fn repeak(&self) -> Result<Option<Self>, Report> {
+    let stored = self.y();
+    let extremum = if Y::likely_is_maximum() {
+      stored.max()
+    } else {
+      stored.min()
+    };
+    let peak = match extremum {
+      Ok(&peak) => peak,
+      Err(MinMaxError::EmptyInput) => return Ok(None),
+      Err(MinMaxError::UndefinedOrder) => {
+        return make_error!(
+          "Cannot re-peak a distribution on [{}, {}]: its values contain NaN",
+          self.x_min(),
+          self.x_max()
+        );
+      },
+    };
+    if !Y::is_defined(peak) || !peak.is_finite() {
+      return Ok(None);
+    }
+    let grid_fn = self.grid_fn.map_y(|v| Y::divide(v, peak));
+    Ok(Some(Self::from_grid_fn_with_extrap(
+      grid_fn,
+      Y::multiply(self.ampl, peak),
+      self.left_extrap,
+      self.right_extrap,
+    )))
+  }
+
   pub(crate) fn fit_soft_tail(self, side: Side, n_fit: usize) -> Result<Self, Report> {
     let law = SoftTailLaw::fit(&self.grid_fn, side, n_fit)?;
     match side {
@@ -277,6 +374,10 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
       Side::Right => self.with_right_extrap(BoundaryBehavior::Linear(law)),
     }
   }
+}
+
+fn unit_amplitude<T: InterpElem, Y: YAxisPolicy>() -> T {
+  Y::from_plain(1.0).into()
 }
 
 fn negate_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {

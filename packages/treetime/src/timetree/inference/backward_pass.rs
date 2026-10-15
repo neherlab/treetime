@@ -57,9 +57,10 @@ fn propagate_distributions_backward_node(
   let subtree = if matches!(distribution, Distribution::Empty) {
     None
   } else {
+    // keeps the level (likelihood of the subtree) in the amplitude
     let distribution = distribution
-      .normalize()
-      .wrap_err_with(|| format!("When normalizing the time distribution of node {}", context.key))?;
+      .repeak()
+      .wrap_err_with(|| format!("When re-peaking the time distribution of node {}", context.key))?;
     Some(Arc::new(distribution))
   };
 
