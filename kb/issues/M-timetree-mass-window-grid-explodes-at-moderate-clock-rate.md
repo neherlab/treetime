@@ -41,4 +41,5 @@ The point counts match the windows of 2.2e15 to 2.1e16 points that the logging f
 
 ## Related
 
+- [kb/proposals/timetree-forward-pass-grid-support.md](../proposals/timetree-forward-pass-grid-support.md): in the forward pass, hard sides are never trimmed by mass and every posterior keeps the root's lower edge
 - [M-timetree-marginal-dense-mpox-slow.md](M-timetree-marginal-dense-mpox-slow.md): grid growth from spacing ratios in the convolution on the same organism
