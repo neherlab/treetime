@@ -1,14 +1,14 @@
-# Sparse marginal fixed_counts zero-multiplicity produces NaN
+# Sparse marginal zero-multiplicity fixed weight produces NaN
 
 ## Summary
 
-In `fn combine_messages()`, multiplying zero `fixed_counts` by `NEG_INFINITY` log-normalization produces NaN, corrupting the `msg_to_child.log_lh` and downstream branch-length distributions.
+In `fn combine_messages()`, multiplying a zero fixed-state weight by a `NEG_INFINITY` log-normalization produces NaN, corrupting the `msg_to_child.log_lh` and downstream branch-length distributions.
 
 ## Details
 
 `fn combine_messages()` [`packages/treetime/src/partition/marginal/sparse/message.rs#L22-L104`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L22-L104):
 
-The line `seq_dis.log_lh += LogLh::new(fixed_counts[&state] * log_norm)` [`packages/treetime/src/partition/marginal/sparse/message.rs#L99`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L99) is unguarded. When `fixed_counts` is 0 for a character state and `log_norm` is `f64::NEG_INFINITY` (from a zero-sum profile), the result is `0.0 * NEG_INFINITY = NaN`, although a state with zero multiplicity contributes exactly zero to the summed log likelihood. This NaN propagates through `msg_to_child.log_lh` into branch-length optimization.
+The line `seq_dis.log_lh += LogLh::new(weights[index] * log_norm)` [`packages/treetime/src/partition/marginal/sparse/message.rs#L100`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L100) is unguarded. `weights[index]` is the composition count of a canonical state minus the candidate sites of that state. When it is 0 and `log_norm` is `f64::NEG_INFINITY` (from a zero-sum profile), the result is `0.0 * NEG_INFINITY = NaN`, although a state with zero multiplicity contributes exactly zero to the summed log likelihood. This NaN propagates through `msg_to_child.log_lh` into branch-length optimization.
 
 Zero multiplicities are ordinary because canonical composition states are initialized even when their counts are zero. The defective combination requires a zero multiplicity paired with an all-negative-infinity normalization.
 

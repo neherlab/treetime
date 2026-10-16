@@ -32,11 +32,10 @@ v1 stores sequences as `Seq` (`packages/treetime-primitives/src/seq.rs:7-11`), a
 
 ### Sparse representation
 
-`SparseNodePartition` contains `SparseSeqInfo` (sequence, gap/unknown ranges, Fitch parsimony results) and `SparseSeqDistribution` (`packages/treetime/src/partition/sparse.rs:108-134`). The sparse distribution has:
+`SparseNodePartition` contains `SparseSeqInfo` (sequence, gap/unknown ranges, Fitch parsimony results) and `SparseSeqDistribution` (`packages/treetime/src/partition/storage/sparse.rs`). The sparse distribution has:
 
-- `variable: BTreeMap<usize, VarPos>` - position index to probability vector and current state, for positions where parsimony is ambiguous
-- `fixed: BTreeMap<AsciiChar, Array1<f64>>` - one shared K-element vector per character type, covering all invariant positions of that character
-- `fixed_counts: Composition` - count of invariant positions per character type
+- `variable: VarPosMap` - entries sorted by position, each with its current state and an inline probability vector, for positions where parsimony is ambiguous
+- `fixed: FixedProfiles` - per fixed character type, one shared K-element vector and the count of invariant positions it covers
 
 `SparseSeqInfo::sequence` holds the *parsimony* sequence, not the reconstructed one: the MAP sequence is derived from it plus `variable` on demand, so a node's inferred states are never chained into its descendants. A node also carries `emitted: Option<Seq>` for the two cases that are not derivable (a `--sample-from-profile` draw, and tips). See [The sparse stored sequence is the parsimony chain](ancestral-marginal-sparse-parsimony-chain.md).
 

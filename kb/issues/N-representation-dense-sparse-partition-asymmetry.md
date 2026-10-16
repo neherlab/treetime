@@ -19,7 +19,7 @@ graph LR
         direction TB
         S_P["PartitionMarginalSparse"] --> S_N["SparseNodePartition"]
         S_P --> S_E["SparseEdgePartition"]
-        S_N --> S_dis["SparseSeqDistribution<br/>variable, fixed, fixed_counts, log_lh"]
+        S_N --> S_dis["SparseSeqDistribution<br/>variable, fixed, log_lh"]
         S_N --> S_seq["SparseSeqInfo<br/>gaps, unknown, non_char,<br/>composition, sequence, fitch"]
         S_E --> S_dis
     end

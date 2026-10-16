@@ -15,7 +15,7 @@ The design document's fixed rate-vector contract is distinct from discrete-gamma
 
 ## v1 current state
 
-`struct GTR` stores scalar `mu` together with optional `site_rates` [`packages/treetime/src/gtr/gtr.rs#L28`](../../packages/treetime/src/gtr/gtr.rs#L28). `GTR::evolve` and `GTR::propagate_profile` apply the site-rate vector [`packages/treetime/src/gtr/gtr.rs#L103-L135`](../../packages/treetime/src/gtr/gtr.rs#L103-L135), and sparse explicit positions use it in `propagate_raw_per_site` [`packages/treetime/src/partition/marginal/sparse/message.rs#L135`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L135).
+`struct GTR` stores scalar `mu` together with optional `site_rates` [`packages/treetime/src/gtr/gtr.rs#L28`](../../packages/treetime/src/gtr/gtr.rs#L28). `GTR::evolve` and `GTR::propagate_profile` apply the site-rate vector [`packages/treetime/src/gtr/gtr.rs#L103-L135`](../../packages/treetime/src/gtr/gtr.rs#L103-L135), and sparse explicit positions use it in `propagate_raw_per_site` [`packages/treetime/src/partition/marginal/sparse/message.rs#L137`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L137).
 
 No production path sets `site_rates`: `GTR::new` initializes it to `None`, `GTR` has no deserializer, and no other code assigns the field. The per-site branches therefore run only in tests, which assign the public field directly.
 

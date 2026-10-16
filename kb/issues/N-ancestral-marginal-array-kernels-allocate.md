@@ -5,7 +5,7 @@ Dense and sparse marginal inference still create temporaries inside loops that s
 ## Evidence
 
 - Dense backward combination, `fn indexed_node_backward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L106-L108](../../packages/treetime/src/partition/marginal/shared/pass.rs#L106-L108), allocates a `mapv(f64::ln)` array of the full profile for every child before adding it to the running sum.
-- Sparse transition statistics, `fn accumulate_site_transition_weighted()` [packages/treetime/src/partition/marginal/sparse/count.rs#L117](../../packages/treetime/src/partition/marginal/sparse/count.rs#L117), allocate a joint `n_states x n_states` array for every variable site of every edge and fill it with nested indexing instead of ndarray broadcasting, `Zip`, and `sum_axis()`.
+- Sparse transition statistics, `fn accumulate_site_transition_weighted()` [packages/treetime/src/partition/marginal/sparse/count.rs#L125](../../packages/treetime/src/partition/marginal/sparse/count.rs#L125), allocate a joint `n_states x n_states` array for every variable site of every edge and fill it with nested indexing instead of ndarray broadcasting, `Zip`, and `sum_axis()`.
 
 ## Options
 

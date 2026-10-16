@@ -8,7 +8,7 @@
 
 The marginal passes raise every branch below `MIN_BRANCH_LENGTH_FRACTION / sequence_length` to that threshold before message propagation. The same floor is implemented in three places:
 
-- `fn fix_branch_length()` [packages/treetime/src/hacks/fix_branch_length.rs#L5-L8](../../packages/treetime/src/hacks/fix_branch_length.rs#L5-L8), called only by the sparse passes [packages/treetime/src/partition/marginal/sparse/forward.rs#L108](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L108) [packages/treetime/src/partition/marginal/sparse/backward.rs#L139](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L139)
+- `fn fix_branch_length()` [packages/treetime/src/hacks/fix_branch_length.rs#L5-L8](../../packages/treetime/src/hacks/fix_branch_length.rs#L5-L8), called only by the sparse passes [packages/treetime/src/partition/marginal/sparse/forward.rs#L107](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L107) [packages/treetime/src/partition/marginal/sparse/backward.rs#L62](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L62)
 - the dense and discrete passes, through `DenseInputs::min_branch_length` [packages/treetime/src/partition/marginal/dense/partition.rs#L64](../../packages/treetime/src/partition/marginal/dense/partition.rs#L64), applied inline in [packages/treetime/src/partition/marginal/shared/pass.rs#L132](../../packages/treetime/src/partition/marginal/shared/pass.rs#L132) and [packages/treetime/src/partition/marginal/shared/pass.rs#L252](../../packages/treetime/src/partition/marginal/shared/pass.rs#L252)
 - sparse transition counting [packages/treetime/src/partition/marginal/sparse/count.rs#L29-L36](../../packages/treetime/src/partition/marginal/sparse/count.rs#L29-L36)
 

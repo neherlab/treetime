@@ -18,5 +18,5 @@ v0's `relaxed_clock()` has no such guard and divides directly [packages/legacy/t
 
 ## Related issues
 
-- [N-marginal-forward-zero-divisor-floor.md](N-marginal-forward-zero-divisor-floor.md): the `f64::MIN_POSITIVE` divisor floor of the marginal forward pass [packages/treetime/src/partition/marginal/shared/normalize.rs#L59](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L59)
+- [N-marginal-forward-zero-divisor-floor.md](N-marginal-forward-zero-divisor-floor.md): the `f64::MIN_POSITIVE` divisor floor of the marginal forward pass [packages/treetime/src/partition/marginal/shared/normalize.rs#L52](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L52)
 - [N-timetree-branch-likelihood-positivity-checked-only-in-debug.md](N-timetree-branch-likelihood-positivity-checked-only-in-debug.md)

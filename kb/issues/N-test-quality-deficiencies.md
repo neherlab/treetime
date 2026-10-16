@@ -1,7 +1,7 @@
 # Test quality deficiencies
 
 > [!WARNING]
-> **Needs review.** The `propagate_raw_per_site` tests no longer compute expected values through the GTR exponential: `packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L40-L56` and `#L92-L108` compare against hardcoded literals. The literals have no stated source, so whether they were captured from the SUT is unknown. The section below describes the current state.
+> **Needs review.** The `propagate_raw_per_site` tests no longer compute expected values through the GTR exponential: `packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L42-L67` and `#L101-L126` compare against hardcoded literals. The literals have no stated source, so whether they were captured from the SUT is unknown. The section below describes the current state.
 
 ## Summary
 

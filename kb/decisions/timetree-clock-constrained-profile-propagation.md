@@ -83,9 +83,9 @@ through the dense or sparse reconstruction. Four propagation sites read the map:
 - Dense and discrete forward: `fn indexed_node_forward`
   ([`packages/treetime/src/partition/marginal/shared/pass.rs#L253`](../../packages/treetime/src/partition/marginal/shared/pass.rs#L253))
 - Sparse backward: `fn process_node_backward_indexed`
-  ([`packages/treetime/src/partition/marginal/sparse/backward.rs#L140`](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L140))
+  ([`packages/treetime/src/partition/marginal/sparse/backward.rs#L62`](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L62))
 - Sparse forward: `fn process_node_forward_indexed`
-  ([`packages/treetime/src/partition/marginal/sparse/forward.rs#L104`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L104))
+  ([`packages/treetime/src/partition/marginal/sparse/forward.rs#L107`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L107))
 
 Transition counting for GTR refinement (`MarginalPasses::count_transitions`) never sees the
 clock-constrained lengths: timetree infers its GTR model once, before the loop, from the input

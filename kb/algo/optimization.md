@@ -131,7 +131,7 @@ v0: inline in `prune_short_branches()` at [`packages/legacy/treetime/treetime/tr
 
 The sparse and dense forward-pass marginal divisions floor zero divisors at `f64::MIN_POSITIVE`. This prevents NaN propagation, but also turns a structural zero into a finite contribution and therefore changes impossible-state semantics. `normalize_inplace` returns a uniform distribution for zero-sum or non-finite rows. The scientific policy for these degenerate cases remains unresolved.
 
-v1: `fn divide_out()` in [`packages/treetime/src/partition/marginal/shared/normalize.rs#L56-L60`](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L56-L60), called by the sparse forward pass ([`packages/treetime/src/partition/marginal/sparse/forward.rs`](../../packages/treetime/src/partition/marginal/sparse/forward.rs)) and the dense forward pass ([`packages/treetime/src/partition/marginal/shared/pass.rs`](../../packages/treetime/src/partition/marginal/shared/pass.rs)).
+v1: `fn divide_out_value()` in [`packages/treetime/src/partition/marginal/shared/normalize.rs#L51-L53`](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L51-L53), applied by the dense forward pass through `fn divide_out()` ([`packages/treetime/src/partition/marginal/shared/pass.rs`](../../packages/treetime/src/partition/marginal/shared/pass.rs)) and by the sparse forward pass through `fn divide_out_site()` ([`packages/treetime/src/partition/marginal/sparse/forward.rs`](../../packages/treetime/src/partition/marginal/sparse/forward.rs)).
 
 v0: no explicit guard; relies on NumPy's inf/nan propagation behavior.
 

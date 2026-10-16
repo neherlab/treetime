@@ -1,6 +1,6 @@
 # Each edge contribution stores its own copy of the GTR model
 
-`get_coefficients()` of both the dense and the sparse path stores `gtr.clone()` in every `PartitionContribution` it builds [packages/treetime/src/partition/optimize/dense.rs#L11](../../packages/treetime/src/partition/optimize/dense.rs#L11), [packages/treetime/src/partition/optimize/sparse.rs#L88](../../packages/treetime/src/partition/optimize/sparse.rs#L88). A contribution is built for every edge in every branch-length optimization round and every timetree iteration, so the model's matrices (`W`, `v`, `v_inv`) and vectors (`pi`, `eigvals`, optional `site_rates`) are copied once per edge each time.
+`get_coefficients()` of both the dense and the sparse path stores `gtr.clone()` in every `PartitionContribution` it builds [packages/treetime/src/partition/optimize/dense.rs#L11](../../packages/treetime/src/partition/optimize/dense.rs#L11), [packages/treetime/src/partition/optimize/sparse.rs#L83](../../packages/treetime/src/partition/optimize/sparse.rs#L83). A contribution is built for every edge in every branch-length optimization round and every timetree iteration, so the model's matrices (`W`, `v`, `v_inv`) and vectors (`pi`, `eigvals`, optional `site_rates`) are copied once per edge each time.
 
 ## Impact
 
