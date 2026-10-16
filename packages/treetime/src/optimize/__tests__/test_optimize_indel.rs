@@ -14,7 +14,7 @@ pub(super) mod tests {
   use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
-  use crate::optimize::zero_boundary::{is_zero_better_than_grid_best, is_zero_branch_optimal};
+  use crate::optimize::zero_boundary::{ZeroLength, is_zero_better_than, is_zero_branch_optimal};
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
@@ -537,7 +537,10 @@ pub(super) mod tests {
     let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
     let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
 
-    assert!(is_zero_branch_optimal(&[contribution]));
+    let contributions = [contribution];
+    let zero_length = ZeroLength::of_edge(&contributions, IndelTerm::new(0, 0.0));
+
+    assert!(is_zero_branch_optimal(&contributions, zero_length));
   }
 
   #[test]
@@ -550,6 +553,7 @@ pub(super) mod tests {
     let best_positive = 0.01;
     let indel_count = 1_usize;
     let indel_rate = 5.0;
+    let indels = IndelTerm::new(indel_count, indel_rate);
 
     let sub_lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0)
       .expect("valid branch length")
@@ -580,8 +584,13 @@ pub(super) mod tests {
     );
 
     assert!(
-      !is_zero_better_than_grid_best(&contributions, IndelTerm::new(indel_count, indel_rate), best_positive)
-        .expect("valid branch length"),
+      !is_zero_better_than(
+        &contributions,
+        indels,
+        ZeroLength::of_edge(&contributions, indels),
+        best_positive
+      )
+      .expect("valid branch length"),
       "Production helper must return false when indel_count > 0"
     );
   }
@@ -592,9 +601,16 @@ pub(super) mod tests {
     let coefficients = array![[1.0, 0.0, 0.0, 0.0]];
     let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = vec![contribution];
+    let indels = IndelTerm::new(0, 0.0);
 
     assert!(
-      is_zero_better_than_grid_best(&contributions, IndelTerm::new(0, 0.0), 0.01).expect("valid branch length"),
+      is_zero_better_than(
+        &contributions,
+        indels,
+        ZeroLength::of_edge(&contributions, indels),
+        0.01
+      )
+      .expect("valid branch length"),
       "Production helper should return true when indel_count == 0 and zero is better for subs"
     );
   }

@@ -10,6 +10,47 @@ const GRID_SEARCH_POINTS: usize = 100;
 
 pub(super) const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ZeroLength {
+  Admissible,
+  ExcludedBySites,
+  ExcludedByIndels,
+}
+
+impl ZeroLength {
+  pub(crate) fn of_edge(contributions: &[OptimizationContribution], indels: IndelTerm) -> Self {
+    if !contributions
+      .iter()
+      .all(OptimizationContribution::all_sites_valid_at_zero)
+    {
+      Self::ExcludedBySites
+    } else if indels.requires_positive_length() {
+      Self::ExcludedByIndels
+    } else {
+      Self::Admissible
+    }
+  }
+}
+
+pub(super) fn start_branch_length(
+  branch_length: f64,
+  indels: IndelTerm,
+  zero_length: ZeroLength,
+  one_mutation: f64,
+) -> f64 {
+  if branch_length > 0.0 {
+    branch_length
+  } else if indels.requires_positive_length() {
+    indels
+      .length_estimate()
+      .map_or(one_mutation, |length| length.max(one_mutation))
+  } else if zero_length == ZeroLength::ExcludedBySites {
+    one_mutation
+  } else {
+    branch_length
+  }
+}
+
 pub(super) fn min_branch_length_for_indels(indels: IndelTerm, one_mutation: f64) -> f64 {
   if indels.requires_positive_length() {
     one_mutation * 0.01
@@ -18,12 +59,8 @@ pub(super) fn min_branch_length_for_indels(indels: IndelTerm, one_mutation: f64)
   }
 }
 
-pub(crate) fn is_zero_branch_optimal(contributions: &[OptimizationContribution]) -> bool {
-  if shared_certified_decay_rate(contributions).is_none() {
-    return false;
-  }
-
-  if !contributions.iter().all(|contrib| contrib.all_sites_valid_at_zero()) {
+pub(crate) fn is_zero_branch_optimal(contributions: &[OptimizationContribution], zero_length: ZeroLength) -> bool {
+  if zero_length != ZeroLength::Admissible || shared_certified_decay_rate(contributions).is_none() {
     return false;
   }
 
@@ -41,24 +78,21 @@ pub(crate) fn is_zero_branch_optimal(contributions: &[OptimizationContribution])
 
 pub(super) fn reconcile_zero_boundary(
   candidate: f64,
-  branch_length_for_extent: f64,
+  start_branch_length: f64,
   contributions: &[OptimizationContribution],
   indels: IndelTerm,
+  zero_length: ZeroLength,
   one_mutation: f64,
 ) -> Result<f64, Report> {
-  let all_valid_at_zero = contributions.iter().all(|c| c.all_sites_valid_at_zero());
+  let zero_beats_candidate = candidate > 0.0 && is_zero_better_than(contributions, indels, zero_length, candidate)?;
 
-  let positive_might_lose_to_zero = candidate > 0.0 && is_zero_better_than_grid_best(contributions, indels, candidate)?;
+  let zero_candidate_uncertified =
+    candidate == 0.0 && zero_length == ZeroLength::Admissible && shared_certified_decay_rate(contributions).is_none();
 
-  let zero_might_lose_to_positive = candidate == 0.0
-    && !indels.requires_positive_length()
-    && all_valid_at_zero
-    && shared_certified_decay_rate(contributions).is_none();
+  let zero_candidate_excluded = candidate == 0.0 && zero_length == ZeroLength::ExcludedBySites;
 
-  let zero_invalid_passthrough = candidate == 0.0 && !all_valid_at_zero;
-
-  if positive_might_lose_to_zero || zero_might_lose_to_positive || zero_invalid_passthrough {
-    grid_search_inner(branch_length_for_extent, contributions, indels, one_mutation)
+  if zero_beats_candidate || zero_candidate_uncertified || zero_candidate_excluded {
+    grid_search_inner(start_branch_length, contributions, indels, zero_length, one_mutation)
   } else {
     Ok(candidate)
   }
@@ -68,6 +102,7 @@ pub(super) fn grid_search_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
   indels: IndelTerm,
+  zero_length: ZeroLength,
   one_mutation: f64,
 ) -> Result<f64, Report> {
   let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation)?;
@@ -90,7 +125,7 @@ pub(super) fn grid_search_inner(
       make_internal_report!("grid_search_inner: empty grid (GRID_SEARCH_POINTS = {GRID_SEARCH_POINTS})")
     })?;
 
-  let zero_is_better = is_zero_better_than_grid_best(contributions, indels, best_positive)?;
+  let zero_is_better = is_zero_better_than(contributions, indels, zero_length, best_positive)?;
   Ok(if zero_is_better { 0.0 } else { best_positive })
 }
 
@@ -104,17 +139,18 @@ pub(super) fn grid_search_branch_lengths(branch_length: f64, one_mutation: f64) 
   })
 }
 
-pub(super) fn is_zero_better_than_grid_best(
+pub(super) fn is_zero_better_than(
   contributions: &[OptimizationContribution],
   indels: IndelTerm,
-  best_positive: f64,
+  zero_length: ZeroLength,
+  branch_length: f64,
 ) -> Result<bool, Report> {
-  if indels.requires_positive_length() || !contributions.iter().all(|c| c.all_sites_valid_at_zero()) {
+  if zero_length != ZeroLength::Admissible {
     return Ok(false);
   }
   let log_lh_zero = evaluate_with_indels_log_lh_only(contributions, indels, 0.0)?;
-  let log_lh_best = evaluate_with_indels_log_lh_only(contributions, indels, best_positive)?;
-  Ok(log_lh_zero > log_lh_best)
+  let log_lh_other = evaluate_with_indels_log_lh_only(contributions, indels, branch_length)?;
+  Ok(log_lh_zero > log_lh_other)
 }
 
 fn shared_certified_decay_rate(contributions: &[OptimizationContribution]) -> Option<f64> {

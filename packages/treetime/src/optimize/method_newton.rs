@@ -1,6 +1,6 @@
 use crate::optimize::indel::IndelTerm;
 use crate::optimize::likelihood::evaluate_with_indels;
-use crate::optimize::zero_boundary::grid_search_inner;
+use crate::optimize::zero_boundary::{ZeroLength, grid_search_inner};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use eyre::Report;
 use num::clamp;
@@ -15,6 +15,7 @@ pub(super) fn newton_sqrt_inner(
   branch_length: f64,
   contributions: &[OptimizationContribution],
   indels: IndelTerm,
+  zero_length: ZeroLength,
   min_branch_length: f64,
   one_mutation: f64,
 ) -> Result<f64, Report> {
@@ -25,7 +26,7 @@ pub(super) fn newton_sqrt_inner(
   let (ds, d2s) = chain_rule_sqrt(s, metrics.derivative, metrics.second_derivative);
 
   if d2s >= 0.0 {
-    return grid_search_inner(branch_length, contributions, indels, one_mutation);
+    return grid_search_inner(branch_length, contributions, indels, zero_length, one_mutation);
   }
 
   let mut new_s = (s - clamp(ds / d2s, sqrt_step_lower_bound(s), s)).max(min_s);

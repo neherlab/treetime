@@ -12,11 +12,12 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
-  use crate::optimize::zero_boundary::{is_zero_branch_optimal, reconcile_zero_boundary};
+  use crate::optimize::zero_boundary::{ZeroLength, is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::pretty_assert_ulps_eq;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
@@ -187,8 +188,10 @@ mod tests {
     );
 
     let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
+    let first_edge_contributions = &contributions[&first_edge_key];
+    let zero_length = ZeroLength::of_edge(first_edge_contributions, IndelTerm::new(0, 0.0));
     assert!(
-      is_zero_branch_optimal(&contributions[&first_edge_key]),
+      is_zero_branch_optimal(first_edge_contributions, zero_length),
       "precondition: {model:?} identical-sequence contributions must trigger the pre-dispatch shortcut"
     );
 
@@ -225,68 +228,30 @@ mod tests {
   }
 
   #[test]
-  fn test_dispatch_zero_boundary_reconcile_positive_candidate_finds_positive_mode() {
+  fn test_dispatch_zero_boundary_reconcile_positive_candidate_worse_than_zero_returns_grid_point_beating_zero() {
     let contributions = [make_dinh_matsen_k80_contribution()];
-    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0)
-      .expect("valid branch length")
-      .value();
-    let lh_near_peak = evaluate_mixed_log_lh_only(&contributions, 0.2)
-      .expect("valid branch length")
-      .value();
-    let lh_at_dip = evaluate_mixed_log_lh_only(&contributions, 1.0)
-      .expect("valid branch length")
-      .value();
-    let lh_recovery = evaluate_mixed_log_lh_only(&contributions, 5.0)
-      .expect("valid branch length")
-      .value();
-
-    assert!(
-      lh_near_peak > lh_zero,
-      "precondition: log_lh(0.2)={lh_near_peak} > log_lh(0)={lh_zero}"
-    );
-    assert!(
-      lh_near_peak > lh_at_dip,
-      "precondition: local max log_lh(0.2)={lh_near_peak} > local dip log_lh(1.0)={lh_at_dip}"
-    );
-    assert!(
-      lh_recovery > lh_at_dip,
-      "precondition: recovery log_lh(5.0)={lh_recovery} > local dip log_lh(1.0)={lh_at_dip}"
-    );
-
     let one_mutation = 0.01;
+    let start = 0.2;
     let candidate = 1.0;
-    let lh_candidate = evaluate_mixed_log_lh_only(&contributions, candidate)
-      .expect("valid branch length")
-      .value();
+    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).unwrap().value();
+    let lh_candidate = evaluate_mixed_log_lh_only(&contributions, candidate).unwrap().value();
     assert!(
       lh_candidate < lh_zero,
       "precondition: candidate log_lh({candidate})={lh_candidate} must be worse than log_lh(0)={lh_zero}"
     );
 
-    let branch_length_extent = 0.2;
-    let result = reconcile_zero_boundary(
-      candidate,
-      branch_length_extent,
-      &contributions,
-      IndelTerm::new(0, 0.0),
-      one_mutation,
-    )
-    .unwrap();
+    let result = reconcile(candidate, start, &contributions, IndelTerm::new(0, 0.0), one_mutation);
 
-    assert!(
-      result > 0.0,
-      "reconcile_zero_boundary must return a positive mode, not zero, got {result}"
-    );
-    let lh_result = evaluate_mixed_log_lh_only(&contributions, result)
-      .expect("valid branch length")
-      .value();
+    let lh_result = evaluate_mixed_log_lh_only(&contributions, result).unwrap().value();
     assert!(
       lh_result > lh_zero,
-      "reconciled result must beat zero: log_lh(result)={lh_result} vs log_lh(0)={lh_zero}"
+      "the grid point must beat zero: log_lh({result})={lh_result} vs log_lh(0)={lh_zero}"
     );
-    assert!(
-      (0.1..0.4).contains(&result),
-      "reconciled result should land near the local max at t ≈ 0.2, got {result}"
+    pretty_assert_ulps_eq!(
+      0.16152813746142794,
+      result,
+      max_ulps = 4,
+      "expected the best of 100 log-spaced points on [0.001, 0.5] (index 81), next to the local maximum t = 0.16657 of the exact fixture coefficients (numpy evaluation); the global maximum t = 6.37 lies outside the grid"
     );
   }
 
@@ -303,7 +268,7 @@ mod tests {
     );
 
     let candidate = 0.01;
-    let result = reconcile_zero_boundary(candidate, 0.1, &contributions, IndelTerm::new(0, 0.0), 0.001).unwrap();
+    let result = reconcile(candidate, 0.1, &contributions, IndelTerm::new(0, 0.0), 0.001);
     assert!(
       result.to_bits() == candidate.to_bits(),
       "reconcile_zero_boundary must return positive candidate unchanged when a site is degenerate, got {result}"
@@ -324,7 +289,7 @@ mod tests {
 
     let candidate = 0.0;
     let one_mutation = 0.001;
-    let result = reconcile_zero_boundary(candidate, 0.1, &contributions, IndelTerm::new(0, 0.0), one_mutation).unwrap();
+    let result = reconcile(candidate, 0.1, &contributions, IndelTerm::new(0, 0.0), one_mutation);
     assert!(
       result > 0.0,
       "reconcile_zero_boundary must NOT preserve 0.0 when a site is degenerate at zero, got {result}"
@@ -340,14 +305,13 @@ mod tests {
     let indel_rate = 44.4;
     let one_mutation = 0.01;
 
-    let result = reconcile_zero_boundary(
+    let result = reconcile(
       candidate,
       0.2,
       &contributions,
       IndelTerm::new(indel_count, indel_rate),
       one_mutation,
-    )
-    .unwrap();
+    );
     assert!(
       result.to_bits() == candidate.to_bits(),
       "reconcile_zero_boundary must return candidate unchanged when indel_count > 0, got {result}"
@@ -393,7 +357,15 @@ mod tests {
     let one_mutation = 0.01;
     let t0 = 0.6;
 
-    let result = newton_sqrt_inner(t0, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
+    let result = newton_sqrt_inner(
+      t0,
+      &contributions,
+      IndelTerm::new(0, 0.0),
+      ZeroLength::Admissible,
+      0.0,
+      one_mutation,
+    )
+    .unwrap();
     assert!(
       result == 0.0,
       "reproduction: newton_sqrt_inner from t0={t0} on the Dinh-Matsen K80 surface must clamp to exactly 0 (else the reconcile zero-candidate gate is no longer necessary), got {result}"
@@ -401,45 +373,24 @@ mod tests {
   }
 
   #[test]
-  fn test_dispatch_zero_boundary_reconcile_exact_zero_finds_positive_mode() {
+  fn test_dispatch_zero_boundary_reconcile_exact_zero_uncertified_returns_grid_point_beating_zero() {
     let contributions = [make_dinh_matsen_k80_contribution()];
-    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0)
-      .expect("valid branch length")
-      .value();
-    let lh_near_peak = evaluate_mixed_log_lh_only(&contributions, 0.2)
-      .expect("valid branch length")
-      .value();
-    assert!(
-      lh_near_peak > lh_zero,
-      "precondition: log_lh(0.2)={lh_near_peak} > log_lh(0)={lh_zero}"
-    );
-
     let one_mutation = 0.01;
-    let candidate = 0.0;
-    let branch_length_extent = 0.6;
-    let result = reconcile_zero_boundary(
-      candidate,
-      branch_length_extent,
-      &contributions,
-      IndelTerm::new(0, 0.0),
-      one_mutation,
-    )
-    .unwrap();
+    let start = 0.6;
+    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).unwrap().value();
 
-    assert!(
-      result > 0.0,
-      "reconcile_zero_boundary must reject exact-zero and return a positive mode on a multi-modal surface, got {result}"
-    );
-    let lh_result = evaluate_mixed_log_lh_only(&contributions, result)
-      .expect("valid branch length")
-      .value();
+    let result = reconcile(0.0, start, &contributions, IndelTerm::new(0, 0.0), one_mutation);
+
+    let lh_result = evaluate_mixed_log_lh_only(&contributions, result).unwrap().value();
     assert!(
       lh_result > lh_zero,
-      "reconciled result must beat zero: log_lh(result)={lh_result} vs log_lh(0)={lh_zero}"
+      "the grid point must beat zero: log_lh({result})={lh_result} vs log_lh(0)={lh_zero}"
     );
-    assert!(
-      (0.1..0.4).contains(&result),
-      "reconciled result should land near the local max at t ≈ 0.2, got {result}"
+    pretty_assert_ulps_eq!(
+      0.16285785765815017,
+      result,
+      max_ulps = 4,
+      "expected the best of 100 log-spaced points on [0.001, 0.91] (index 74), next to the local maximum t = 0.16657 of the exact fixture coefficients (numpy evaluation); the global maximum t = 6.37 lies outside the grid"
     );
   }
 
@@ -455,7 +406,7 @@ mod tests {
       "precondition: JC69 must have a certified single decay rate"
     );
 
-    let result = reconcile_zero_boundary(0.0, 0.1, &contributions, IndelTerm::new(0, 0.0), 0.01).unwrap();
+    let result = reconcile(0.0, 0.1, &contributions, IndelTerm::new(0, 0.0), 0.01);
     assert!(
       result == 0.0,
       "reconcile_zero_boundary must pass exact-zero through for a certified decay rate, got {result}"
@@ -465,7 +416,7 @@ mod tests {
   #[test]
   fn test_dispatch_zero_boundary_reconcile_exact_zero_mixed_decay_rates_finds_positive_mode() {
     let contributions = mixed_decay_rate_contributions();
-    let result = reconcile_zero_boundary(0.0, 0.5, &contributions, IndelTerm::new(0, 0.0), 0.01).unwrap();
+    let result = reconcile(0.0, 0.5, &contributions, IndelTerm::new(0, 0.0), 0.01);
     let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).unwrap().value();
     let lh_result = evaluate_mixed_log_lh_only(&contributions, result).unwrap().value();
     assert!(
@@ -477,7 +428,7 @@ mod tests {
   #[test]
   fn test_dispatch_zero_boundary_reconcile_exact_zero_indels_passes_through() {
     let contributions = [make_dinh_matsen_k80_contribution()];
-    let result = reconcile_zero_boundary(0.0, 0.2, &contributions, IndelTerm::new(1, 44.4), 0.01).unwrap();
+    let result = reconcile(0.0, 0.2, &contributions, IndelTerm::new(1, 44.4), 0.01);
     assert!(
       result == 0.0,
       "reconcile_zero_boundary must pass exact-zero through when indels are present, got {result}"
@@ -499,5 +450,16 @@ mod tests {
       .build()
       .unwrap();
     OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
+  }
+
+  fn reconcile(
+    candidate: f64,
+    start: f64,
+    contributions: &[OptimizationContribution],
+    indels: IndelTerm,
+    one_mutation: f64,
+  ) -> f64 {
+    let zero_length = ZeroLength::of_edge(contributions, indels);
+    reconcile_zero_boundary(candidate, start, contributions, indels, zero_length, one_mutation).unwrap()
   }
 }

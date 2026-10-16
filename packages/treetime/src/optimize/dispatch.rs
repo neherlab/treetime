@@ -5,7 +5,9 @@ use crate::optimize::indel::{EdgeIndels, IndelTerm};
 use crate::optimize::method_brent::brent_sqrt_inner;
 use crate::optimize::method_newton::newton_sqrt_inner;
 use crate::optimize::params::{BranchOptMethod, ExistingBranchLengths};
-use crate::optimize::zero_boundary::{is_zero_branch_optimal, min_branch_length_for_indels, reconcile_zero_boundary};
+use crate::optimize::zero_boundary::{
+  ZeroLength, is_zero_branch_optimal, min_branch_length_for_indels, reconcile_zero_boundary, start_branch_length,
+};
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::{make_error, make_report};
 use eyre::{Report, WrapErr};
@@ -218,37 +220,34 @@ pub(crate) fn initial_guess_mixed(
 
 fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimization) -> Result<f64, Report> {
   let EdgeOptimization {
-    mut branch_length,
+    branch_length,
     indels,
     one_mutation,
     method,
   } = *edge;
 
-  if branch_length == 0.0 && indels.requires_positive_length() {
-    branch_length = indels
-      .length_estimate()
-      .map_or(one_mutation, |length| length.max(one_mutation));
-  }
+  let zero_length = ZeroLength::of_edge(contributions, indels);
 
-  if branch_length == 0.0 && !contributions.iter().all(|c| c.all_sites_valid_at_zero()) {
-    branch_length = one_mutation;
-  }
-
-  if indels.count == 0 && is_zero_branch_optimal(contributions) {
+  if indels.count == 0 && is_zero_branch_optimal(contributions, zero_length) {
     return Ok(0.0);
   }
 
+  let start = start_branch_length(branch_length, indels, zero_length, one_mutation);
   let min_branch_length = min_branch_length_for_indels(indels, one_mutation);
 
-  let new_branch_length = match method {
-    BranchOptMethod::Brent => brent_sqrt_inner(branch_length, contributions, indels, min_branch_length, one_mutation),
-    BranchOptMethod::Newton => newton_sqrt_inner(branch_length, contributions, indels, min_branch_length, one_mutation),
+  let candidate = match method {
+    BranchOptMethod::Brent => brent_sqrt_inner(start, contributions, indels, min_branch_length, one_mutation),
+    BranchOptMethod::Newton => newton_sqrt_inner(
+      start,
+      contributions,
+      indels,
+      zero_length,
+      min_branch_length,
+      one_mutation,
+    ),
   }?;
 
-  let new_branch_length =
-    reconcile_zero_boundary(new_branch_length, branch_length, contributions, indels, one_mutation)?;
-
-  Ok(new_branch_length)
+  reconcile_zero_boundary(candidate, start, contributions, indels, zero_length, one_mutation)
 }
 
 #[derive(Clone, Copy)]
