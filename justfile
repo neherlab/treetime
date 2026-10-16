@@ -266,7 +266,7 @@ test-list-rs *args:
 
 # Smoke test of the WebAssembly back end in Bun: the API of a new back end, and an ancestral run with its outputs
 [group("test")]
-test-wasm: (build-wasm "dev")
+test-wasm: _js (build-wasm "dev")
     bun packages/app-wasm/smoke.ts
 
 # TypeScript tests (bun test, one isolated worker per file)
