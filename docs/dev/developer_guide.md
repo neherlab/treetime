@@ -23,6 +23,7 @@ cd treetime
 
 - The checkout is mounted at its host path, and the git metadata is mounted read-only. Commit on the host
 - Build output goes to `.build/container/`, the cargo home and caches to `.cache/`
+- The images link the C libraries of `liblzma-sys` and `zstd-sys` as prebuilt archives of [binarylandia/staticbourg](https://github.com/binarylandia/staticbourg) instead of compiling them in every new target directory. `/.cargo/config.toml` of the image points the crates' links at the archives (`dev/docker/files/install-compression-libs`), so host builds still compile the bundled C sources. The archives have the C versions that the crates bundle; `just prebuilt-libs-check` fails when `Cargo.lock` moves to a crate that bundles another version, which then needs a new staticbourg release
 - Commands run as your user, with all Linux capabilities dropped
 - On Apple Silicon and other arm64 hosts the image runs under x86_64 emulation, which is slower
 - The container uses host networking, so the dev servers are reachable from the host browser. On Docker Desktop, turn on host networking in the settings
