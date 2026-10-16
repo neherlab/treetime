@@ -166,6 +166,32 @@ mod tests {
   }
 
   #[test]
+  fn test_max_posterior_region_spans_support_when_no_level_holds_fraction() -> Result<(), Report> {
+    let t = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
+    let neglog = array![1.0, 0.0, 5.0, 0.5, 0.5, f64::INFINITY];
+
+    let region = grid_max_posterior_region(&t, &neglog, 0.9)?;
+
+    let trapezoid_cells = [
+      f64::midpoint((-1.0_f64).exp(), 1.0),
+      f64::midpoint(1.0, (-5.0_f64).exp()),
+      f64::midpoint((-5.0_f64).exp(), (-0.5_f64).exp()),
+      (-0.5_f64).exp(),
+      f64::midpoint((-0.5_f64).exp(), 0.0),
+    ];
+    let mass_up_to_highest_finite_level =
+      (trapezoid_cells[0] + trapezoid_cells[1]) / trapezoid_cells.iter().sum::<f64>();
+    assert!(mass_up_to_highest_finite_level < 0.9);
+    let nonzero_density_support = PosteriorRegion {
+      lower: 0.0,
+      upper: 4.0,
+      peak: PeakLocation::Interior,
+    };
+    assert_eq!(nonzero_density_support, region);
+    Ok(())
+  }
+
+  #[test]
   fn test_max_posterior_region_rejects_nan_ordinates() {
     let result = grid_max_posterior_region(&array![0.0, 1.0, 2.0], &array![0.0, f64::NAN, 1.0], 0.9);
     assert_error!(result, "Posterior on [0, 2] has NaN negative log-likelihood values");

@@ -139,26 +139,20 @@ fn highest_density_interval(
 
   let reached = levels
     .iter()
-    .position(|&level| mass_at(level, cells_at(level)) >= fraction);
+    .copied()
+    .tuple_windows()
+    .find(|&(_, above)| mass_at(above, cells_at(above)) >= fraction);
 
-  let (level, cells) = match reached {
-    Some(j) if j > 0 => {
-      let (below, above) = (levels[j - 1], levels[j]);
-      let cells = cells_at(above);
-      let mass_below = mass_at(below, cells);
-      let mass_above = mass_at(above, cells);
-      let level = if mass_below >= fraction {
-        below
-      } else {
-        below + (fraction - mass_below) / (mass_above - mass_below) * (above - below)
-      };
-      (level, cells)
-    },
-    Some(_) => (0.0, cells_at(0.0)),
-    None => {
-      let level = levels.last().map_or(0.0, |level| level + 1.0);
-      (level, cells_at(level))
-    },
+  let Some((below, above)) = reached else {
+    return (earlier.support_end(), later.support_end());
+  };
+  let cells = cells_at(above);
+  let mass_below = mass_at(below, cells);
+  let mass_above = mass_at(above, cells);
+  let level = if mass_below >= fraction {
+    below
+  } else {
+    below + (fraction - mass_below) / (mass_above - mass_below) * (above - below)
   };
 
   (earlier.position(cells.0, level), later.position(cells.1, level))
@@ -230,6 +224,11 @@ impl LevelSide {
       })
       .collect_vec();
     Self { t, envelope }
+  }
+
+  fn support_end(&self) -> f64 {
+    let finite = self.envelope.partition_point(|h| h.is_finite());
+    self.t[finite - 1]
   }
 
   fn cell(&self, level: f64) -> usize {
