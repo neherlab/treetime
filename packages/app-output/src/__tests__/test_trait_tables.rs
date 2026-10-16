@@ -9,7 +9,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime::gtr::gtr::GTR;
+  use treetime::gtr::gtr::{GTR, RateScale};
   use treetime::partition::storage::discrete::DiscreteStates;
   use treetime_io::csv::{CsvWriter, TableFormat};
   use treetime_utils::{assert_error, o};
@@ -101,7 +101,12 @@ mod tests {
     let a = node_key(&setup.topology, "A");
     setup.profiles.insert(a, Some(array![f64::NAN, 1.0]));
     let graph = mugration_graph(&setup, "country");
-    let model = GTR::builder().n_states(2).mu(1.0).pi(array![0.5, 0.5]).build()?;
+    let model = GTR::builder()
+      .n_states(2)
+      .mu(1.0)
+      .pi(array![0.5, 0.5])
+      .rate_scale(RateScale::FromMatrix)
+      .build()?;
 
     assert_error!(
       build_augur_node_data_traits(&AnnotatedTreeView::new(&graph)?, &model),

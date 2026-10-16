@@ -29,7 +29,7 @@ impl GTR {
     mu: f64,
     W: Option<Array2<f64>>,
     pi: Array1<f64>,
-    #[builder(default)] rate_scale: RateScale,
+    rate_scale: RateScale,
   ) -> Result<Self, Report> {
     let n = n_states;
 
@@ -152,9 +152,8 @@ impl GTR {
   }
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RateScale {
-  #[default]
   FromMatrix,
   Normalized,
 }

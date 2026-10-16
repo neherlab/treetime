@@ -140,7 +140,7 @@ mod tests {
 
   mod helpers {
     use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
-    use crate::gtr::gtr::GTR;
+    use crate::gtr::gtr::{GTR, RateScale};
     use crate::o;
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
@@ -170,6 +170,7 @@ mod tests {
         .n_states(n_states)
         .mu(1.0)
         .pi(Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact()))
+        .rate_scale(RateScale::FromMatrix)
         .build()?;
       let partition = PartitionMarginalDiscrete::new(
         discrete_states,

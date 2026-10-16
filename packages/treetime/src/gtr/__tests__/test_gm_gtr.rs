@@ -4,7 +4,7 @@ mod tests {
   use crate::gtr::get_gtr::{
     F81Params, HKY85Params, JC69Params, K80Params, T92Params, TN93Params, f81, hky85, jc69, k80, t92, tn93,
   };
-  use crate::gtr::gtr::GTR;
+  use crate::gtr::gtr::{GTR, RateScale};
   use eyre::Report;
   use helpers::{compare_gtr, load_gm_gtr_inputs, load_gm_gtr_outputs};
   use rstest::rstest;
@@ -155,6 +155,7 @@ mod tests {
       .mu(input.mu)
       .W(input.w.clone())
       .pi(input.pi.clone())
+      .rate_scale(RateScale::FromMatrix)
       .build()?;
     compare_gtr(&gtr, expected);
     Ok(())

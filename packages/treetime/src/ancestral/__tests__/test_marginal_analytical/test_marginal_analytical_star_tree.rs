@@ -5,7 +5,7 @@ mod tests {
   };
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::GTR;
+  use crate::gtr::gtr::{GTR, RateScale};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;
@@ -52,6 +52,7 @@ mod tests {
       .n_states(n_states)
       .mu(1.0)
       .pi(array![0.1, 0.2, 0.3, 0.4])
+      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let t = 0.15;

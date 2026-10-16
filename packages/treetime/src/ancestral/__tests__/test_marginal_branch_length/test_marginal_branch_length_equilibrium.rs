@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::GTR;
+  use crate::gtr::gtr::{GTR, RateScale};
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::{run_dense_marginal_with_newick, run_sparse_marginal_with_newick};
   use eyre::Report;
@@ -44,6 +44,7 @@ mod tests {
       .n_states(n_states)
       .mu(1.0)
       .pi(array![0.4, 0.1, 0.2, 0.3])
+      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let t = 100.0;

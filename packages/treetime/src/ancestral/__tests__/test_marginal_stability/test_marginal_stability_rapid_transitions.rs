@@ -5,7 +5,7 @@ mod tests {
     run_sparse_marginal_with_partitions,
   };
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::gtr::gtr::GTR;
+  use crate::gtr::gtr::{GTR, RateScale};
   use eyre::Report;
   use ndarray::array;
 
@@ -17,6 +17,7 @@ mod tests {
       .n_states(n_states)
       .mu(10.0)
       .pi(array![0.25, 0.25, 0.25, 0.25])
+      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:0.1,B:0.1)root;";
@@ -41,6 +42,7 @@ mod tests {
       .n_states(n_states)
       .mu(10.0)
       .pi(array![0.25, 0.25, 0.25, 0.25])
+      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:0.1,B:0.1)root;";
@@ -65,6 +67,7 @@ mod tests {
       .n_states(n_states)
       .mu(100.0)
       .pi(array![0.25, 0.25, 0.25, 0.25])
+      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:0.01,B:0.01)root;";
@@ -89,6 +92,7 @@ mod tests {
       .n_states(n_states)
       .mu(10.0)
       .pi(array![0.4, 0.1, 0.2, 0.3])
+      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "((A:0.05,B:0.05)AB:0.1,C:0.15)root;";
@@ -113,6 +117,7 @@ mod tests {
       .n_states(n_states)
       .mu(50.0)
       .pi(array![0.9, 0.03, 0.04, 0.03])
+      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:1e-8,B:1e-8)root;";
@@ -137,6 +142,7 @@ mod tests {
       .n_states(n_states)
       .mu(50.0)
       .pi(array![0.9, 0.03, 0.04, 0.03])
+      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:1e-8,B:1e-8)root;";

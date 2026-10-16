@@ -1,5 +1,5 @@
 use crate::gtr::brent_bracketed::BrentBracketed;
-use crate::gtr::gtr::GTR;
+use crate::gtr::gtr::{GTR, RateScale};
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
 use crate::make_internal_report;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalPasses, MarginalUpdate};
@@ -113,6 +113,7 @@ fn build_gtr_from_inference(n_states: usize, result: &InferGtrResult) -> Result<
     .mu(result.mu)
     .W(result.W.clone())
     .pi(result.pi.clone())
+    .rate_scale(RateScale::FromMatrix)
     .build()
 }
 

@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub(super) mod tests {
   pub(crate) mod generators {
-    use crate::gtr::gtr::GTR;
+    use crate::gtr::gtr::{GTR, RateScale};
     use ndarray::{Array1, Array2, Axis, stack};
     use proptest::prelude::*;
 
@@ -76,6 +76,7 @@ pub(super) mod tests {
           .mu(mu)
           .W(w)
           .pi(pi)
+          .rate_scale(RateScale::FromMatrix)
           .build()
           .expect("GTR construction should succeed with valid parameters")
       })

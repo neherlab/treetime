@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::GTR;
+  use crate::gtr::gtr::{GTR, RateScale};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
@@ -396,6 +396,7 @@ mod tests {
       .mu(1.0)
       .W(W)
       .pi(pi)
+      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let tree_newick = "((A:0.601,B:0.301):0.1,C:0.2):0.001;";
