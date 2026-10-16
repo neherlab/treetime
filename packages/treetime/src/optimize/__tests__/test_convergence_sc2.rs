@@ -11,6 +11,7 @@ mod tests {
   use crate::optimize::run_loop::{OptimizeLoopSettings, run_optimize_loop};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
+  use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use std::path::Path;
@@ -75,6 +76,7 @@ mod tests {
       },
       branch_lengths,
       &names_tt_2,
+      &NoopProgress,
     )?;
 
     assert!(
@@ -142,6 +144,7 @@ mod tests {
       },
       branch_lengths,
       &names_tt_1,
+      &NoopProgress,
     )?;
 
     assert!(

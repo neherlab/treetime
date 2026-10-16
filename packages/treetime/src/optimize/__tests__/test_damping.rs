@@ -7,6 +7,7 @@ mod tests {
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, OptimizeLoopSettings, run_optimize_loop};
+  use crate::progress::NoopProgress;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -155,6 +156,7 @@ mod tests {
       },
       branch_lengths,
       &names_tt_2,
+      &NoopProgress,
     )?;
     let reconstruction = result.reconstruction;
 
@@ -206,6 +208,7 @@ mod tests {
       },
       branch_lengths,
       &names_tt_1,
+      &NoopProgress,
     )?;
     let reconstruction = result.reconstruction;
 

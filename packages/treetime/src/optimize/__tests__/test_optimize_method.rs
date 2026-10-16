@@ -119,7 +119,7 @@ pub(super) mod tests {
 
     let lh_diff = (lh_brent - lh_newton).abs();
     assert!(
-      lh_diff < 1e-3,
+      lh_diff < 1e-9,
       "Brent lh ({lh_brent}) and Newton lh ({lh_newton}) differ by {lh_diff}"
     );
 

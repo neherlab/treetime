@@ -33,7 +33,7 @@ pub(crate) fn run_pre_loop(
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
   let state = if inputs.has_alignment {
-    ml_optimize(state, params.indel_policy, "pre-reroot", log)?
+    ml_optimize(state, params.indel_policy, inputs.names, "pre-reroot", log)?
   } else {
     state
   };
@@ -61,7 +61,7 @@ pub(crate) fn run_pre_loop(
     progress_info!(log, "Using input branch lengths for timetree inference");
     state
   } else {
-    ml_optimize(state, params.indel_policy, "post-reroot", log)?
+    ml_optimize(state, params.indel_policy, inputs.names, "post-reroot", log)?
   };
   cancel.check()?;
   stages.report("Initial timetree inference", 0.2, "");
@@ -83,6 +83,7 @@ pub(crate) fn run_pre_loop(
 fn ml_optimize(
   state: PreLoopState,
   indel_policy: IndelPolicy,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
   label: &str,
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
@@ -92,7 +93,7 @@ fn ml_optimize(
   progress_info!(log, "### ML branch-length optimization ({label})");
   let (partition, _) = partition.marginal_update(&state.graph, &branch_lengths_or_zero(&state.branch_lengths))?;
   let (partition, branch_lengths) =
-    optimize_branch_lengths(&state.graph, partition, state.branch_lengths, indel_policy)
+    optimize_branch_lengths(&state.graph, partition, state.branch_lengths, indel_policy, names, log)
       .wrap_err_with(|| format!("ML branch-length optimization ({label}) failed"))?;
   Ok(PreLoopState {
     branch_model: BranchModel::Marginal(partition),
@@ -217,6 +218,8 @@ fn optimize_branch_lengths(
   partition: MarginalReconstruction,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   indel_policy: IndelPolicy,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
 ) -> Result<(MarginalReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
   let old_branch_lengths = branch_lengths;
   let mut branch_lengths = old_branch_lengths.clone();
@@ -229,7 +232,8 @@ fn optimize_branch_lengths(
     &indels,
     BranchOptMethod::Brent,
     &mut branch_lengths,
-  )?;
+  )?
+  .report(BranchOptMethod::Brent, graph, names, log);
 
   apply_damping(&mut branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
   let (partition, _) = partition.marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?;

@@ -125,6 +125,8 @@ pub fn run(
       params.opt_method,
       params.indel_policy,
       &mut branch_lengths,
+      names,
+      log,
     )
     .map_err(OperationError::classify)?;
     reconstruction = reroot_optimize(&mut input.graph, spec, reconstruction, &mut branch_lengths, names)
@@ -141,6 +143,7 @@ pub fn run(
     &params.loop_settings(),
     branch_lengths,
     &loop_names,
+    log,
   )
   .map_err(OperationError::classify)?;
   let branch_lengths = loop_result.branch_lengths;
@@ -210,6 +213,8 @@ fn pre_reroot_optimize(
   opt_method: BranchOptMethod,
   indel_policy: IndelPolicy,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
 ) -> Result<MarginalReconstruction, Report> {
   let old_branch_lengths = branch_lengths.clone();
 
@@ -221,7 +226,8 @@ fn pre_reroot_optimize(
     &indels,
     opt_method,
     branch_lengths,
-  )?;
+  )?
+  .report(opt_method, graph, names, log);
 
   apply_damping(branch_lengths, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
   Ok(

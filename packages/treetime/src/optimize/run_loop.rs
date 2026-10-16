@@ -34,6 +34,7 @@ pub(crate) fn run_optimize_loop(
   settings: &OptimizeLoopSettings,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
 ) -> Result<OptimizeLoopResult, Report> {
   let OptimizeLoopSettings {
     max_iter,
@@ -78,6 +79,7 @@ pub(crate) fn run_optimize_loop(
       &indels,
       &mut branch_lengths,
       &mut names,
+      log,
     )?;
     reconstruction = cleanup.reconstruction;
     if cleanup.topology_changed {
@@ -202,6 +204,7 @@ fn update_branch_lengths(
   indels: &EdgeIndels,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &mut BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
 ) -> Result<TopologyCleanup, Report> {
   let old_branch_lengths = branch_lengths.clone();
   run_optimize_mixed(
@@ -211,7 +214,8 @@ fn update_branch_lengths(
     &indels.recount(graph, &reconstruction),
     settings.opt_method,
     branch_lengths,
-  )?;
+  )?
+  .report(settings.opt_method, graph, names, log);
 
   let zero_optimal_edges = if settings.topology_ops.collapse_short_branches {
     find_zero_optimal_internal_edges(graph, &reconstruction, branch_lengths)

@@ -1,4 +1,5 @@
 use smart_default::SmartDefault;
+use strum_macros::Display;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault)]
 pub struct TopologyOps {
@@ -17,7 +18,8 @@ pub enum BranchLengthMode {
   Marginal,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault)]
+#[derive(Copy, Clone, Debug, Display, PartialEq, Eq, SmartDefault)]
+#[strum(serialize_all = "kebab-case")]
 pub enum BranchOptMethod {
   #[default]
   Brent,

@@ -37,14 +37,14 @@ pub struct LogEvent {
   pub message: String,
 }
 
-/// A problem of the inputs that the run found and continued past, which makes its results less reliable.
+/// A problem that the run found and continued past, which makes its results less reliable.
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 pub struct RunWarning {
   /// Kind of the problem.
   pub kind: RunWarningKind,
   /// The problem, as a sentence; the run log shows the same text.
   pub message: String,
-  /// Every name the problem concerns, sorted; the message may show only some of them.
+  /// Every name the problem concerns, sorted; an edge is named by its child node. The message may show only some of them.
   pub names: Vec<String>,
 }
 
@@ -59,6 +59,8 @@ pub enum RunWarningKind {
   DuplicateSequenceNames,
   /// More than one row of the metadata table has the same name.
   DuplicateMetadataNames,
+  /// The branch-length optimizer reached its iteration limit on some edges; their lengths may not maximize the likelihood.
+  BranchLengthsNotConverged,
 }
 
 #[derive(Debug, Clone, Copy, Display, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]

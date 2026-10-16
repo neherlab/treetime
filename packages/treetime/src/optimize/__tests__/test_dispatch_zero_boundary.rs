@@ -12,13 +12,14 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
+  use crate::optimize::solver_outcome::Convergence;
   use crate::optimize::zero_boundary::{ZeroLength, is_zero_branch_optimal, reconcile_zero_boundary};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
-  use crate::pretty_assert_ulps_eq;
   use crate::test_utils::leaf_seq_inputs;
+  use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use indoc::indoc;
   use ndarray::{Array2, array};
@@ -351,24 +352,35 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_dispatch_zero_boundary_newton_sqrt_inner_clamps_to_zero_on_dinh_matsen_k80() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::rises_to_local_maximum(   0.05, 0.16657011017500076)]
+  #[case::descends_to_local_maximum(0.6,  0.16657011017500076)]
+  #[case::rises_to_interval_end(    2.0,  3.01               )]
+  #[case::reaches_global_maximum(   5.0,  6.369747058293658  )]
+  #[trace]
+  fn test_dispatch_zero_boundary_newton_sqrt_inner_never_worse_than_start_and_converges_on_dinh_matsen_k80(
+    #[case] t0: f64,
+    #[case] expected: f64,
+  ) {
     let contributions = [make_dinh_matsen_k80_contribution()];
     let one_mutation = 0.01;
-    let t0 = 0.6;
 
-    let result = newton_sqrt_inner(
-      t0,
-      &contributions,
-      IndelTerm::new(0, 0.0),
-      ZeroLength::Admissible,
-      0.0,
-      one_mutation,
-    )
-    .unwrap();
+    let solution = newton_sqrt_inner(t0, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
+
+    assert_eq!(Convergence::Converged, solution.convergence);
+    let lh_start = evaluate_mixed_log_lh_only(&contributions, t0).unwrap().value();
+    let lh_result = evaluate_mixed_log_lh_only(&contributions, solution.branch_length).unwrap().value();
     assert!(
-      result == 0.0,
-      "reproduction: newton_sqrt_inner from t0={t0} on the Dinh-Matsen K80 surface must clamp to exactly 0 (else the reconcile zero-candidate gate is no longer necessary), got {result}"
+      lh_result >= lh_start,
+      "result t={} has log_lh {lh_result} below the start t0={t0} with {lh_start}",
+      solution.branch_length
+    );
+    pretty_assert_abs_diff_eq!(
+      expected,
+      solution.branch_length,
+      epsilon = 1e-9,
+      "expected: stationary points t = -2 ln(x) of P(x) = p1(x) p2(x), x = exp(-t/2), from the roots of the cubic P'(x) of the exact fixture coefficients (numpy): local maximum 0.16657, local minimum 1.2518, global maximum 6.3697; from t0 = 2 the surface rises up to the end 1.5 t0 + one_mutation = 3.01 of the search interval"
     );
   }
 

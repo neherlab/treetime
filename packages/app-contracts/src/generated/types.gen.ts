@@ -719,7 +719,7 @@ export type OutputFile = {
 export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json' | 'clock-chart-svg' | 'clock-chart-png' | 'homoplasy-stats' | 'homoplasy-report';
 
 /**
- * A problem of the inputs that the run found and continued past, which makes its results less reliable.
+ * A problem that the run found and continued past, which makes its results less reliable.
  */
 export type RunWarning = {
   /**
@@ -731,7 +731,7 @@ export type RunWarning = {
    */
   message: string;
   /**
-   * Every name the problem concerns, sorted; the message may show only some of them.
+   * Every name the problem concerns, sorted; an edge is named by its child node. The message may show only some of them.
    */
   names: Array<string>;
 };
@@ -739,7 +739,7 @@ export type RunWarning = {
 /**
  * Kind of a run warning.
  */
-export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names';
+export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names' | 'branch-lengths-not-converged';
 
 /**
  * Error of a failed run.

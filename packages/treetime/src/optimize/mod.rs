@@ -15,6 +15,7 @@ pub mod observer;
 pub mod params;
 pub mod pipeline;
 pub(super) mod run_loop;
+pub(crate) mod solver_outcome;
 pub(super) mod sparse_eval;
 pub(crate) mod topology;
 pub(super) mod zero_boundary;

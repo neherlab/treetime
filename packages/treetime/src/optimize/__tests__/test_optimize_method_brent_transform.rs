@@ -9,10 +9,14 @@ mod tests {
   use crate::optimize::gather::gather_edge_contributions;
   use crate::optimize::indel::{IndelPolicy, IndelTerm};
   use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
-  use crate::optimize::method_brent::{BranchLengthBracket, brent_bracket, brent_sqrt_inner};
+  use crate::optimize::method_brent::{BranchLengthBracket, brent_bracket, brent_sqrt_inner, brent_sqrt_minimize};
   use crate::optimize::params::BranchOptMethod;
+  use crate::optimize::solver_outcome::Convergence;
   use crate::optimize::zero_boundary::min_branch_length_for_indels;
   use eyre::Report;
+  use helpers::QuadraticInSqrt;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::ToF64Exact;
 
@@ -34,7 +38,9 @@ mod tests {
     let one_mutation = 1.0 / total_length.to_f64_exact();
     let branch_length = 0.01;
 
-    let result = brent_sqrt_inner(branch_length, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
+    let solution = brent_sqrt_inner(branch_length, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
+    assert_eq!(Convergence::Converged, solution.convergence);
+    let result = solution.branch_length;
     assert!(
       result >= 0.0,
       "brent_sqrt_inner result must be non-negative, got {result}"
@@ -108,5 +114,37 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::one_iteration(  1, Convergence::IterationLimit)]
+  #[case::default_budget(50, Convergence::Converged)]
+  #[trace]
+  fn test_optimize_method_brent_sqrt_minimize_reports_termination_reason(
+    #[case] max_iters: u64,
+    #[case] expected: Convergence,
+  ) -> Result<(), Report> {
+    let bracket = BranchLengthBracket { lower: 1e-4, upper: 1.0 };
+    let solution = brent_sqrt_minimize(&QuadraticInSqrt { minimum: 0.3 }, &bracket, max_iters)?;
+    assert_eq!(expected, solution.convergence);
+    Ok(())
+  }
+
+  mod helpers {
+    use argmin::core::{CostFunction, Error};
+
+    pub(super) struct QuadraticInSqrt {
+      pub(super) minimum: f64,
+    }
+
+    impl CostFunction for &QuadraticInSqrt {
+      type Param = f64;
+      type Output = f64;
+
+      fn cost(&self, s: &Self::Param) -> Result<Self::Output, Error> {
+        Ok((s - self.minimum).powi(2))
+      }
+    }
   }
 }

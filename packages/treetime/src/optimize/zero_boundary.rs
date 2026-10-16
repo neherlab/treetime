@@ -8,7 +8,7 @@ use ordered_float::OrderedFloat;
 
 const GRID_SEARCH_POINTS: usize = 100;
 
-pub(super) const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
+const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ZeroLength {
@@ -131,12 +131,16 @@ pub(super) fn grid_search_inner(
 
 pub(super) fn grid_search_branch_lengths(branch_length: f64, one_mutation: f64) -> Result<Array1<f64>, Report> {
   let lower = 0.1 * one_mutation;
-  let upper = f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER);
+  let upper = search_upper_bound(branch_length, one_mutation);
   Array1::geomspace(lower, upper, GRID_SEARCH_POINTS).ok_or_else(|| {
     make_internal_report!(
       "grid_search_branch_lengths: geomspace requires strictly positive same-sign bounds, got lower={lower}, upper={upper} (branch_length={branch_length}, one_mutation={one_mutation})"
     )
   })
+}
+
+pub(super) fn search_upper_bound(branch_length: f64, one_mutation: f64) -> f64 {
+  f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER)
 }
 
 pub(super) fn is_zero_better_than(

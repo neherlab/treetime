@@ -1,11 +1,12 @@
 use crate::optimize::indel::IndelTerm;
 use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
-use crate::optimize::zero_boundary::GRID_SEARCH_MIN_UPPER;
+use crate::optimize::solver_outcome::{Convergence, EdgeSolution};
+use crate::optimize::zero_boundary::search_upper_bound;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::{make_internal_report, make_report};
-use argmin::core::{CostFunction, Error, Executor};
+use argmin::core::{CostFunction, Error, Executor, State, TerminationReason};
 use argmin::solver::brent::BrentOpt;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 
 const BRENT_MAX_ITER: u64 = 50;
 
@@ -15,29 +16,50 @@ pub(super) fn brent_sqrt_inner(
   indels: IndelTerm,
   min_branch_length: f64,
   one_mutation: f64,
-) -> Result<f64, Report> {
-  let BranchLengthBracket { lower, upper } = brent_bracket(branch_length, min_branch_length, one_mutation);
-
+) -> Result<EdgeSolution, Report> {
+  let bracket = brent_bracket(branch_length, min_branch_length, one_mutation);
   let cost_fn = SqrtBranchLengthCostFn { contributions, indels };
+  brent_sqrt_minimize(&cost_fn, &bracket, BRENT_MAX_ITER)
+    .wrap_err_with(|| format!("Brent branch-length optimization failed at branch_length={branch_length}"))
+}
 
-  let solver = BrentOpt::new(lower.sqrt(), upper.sqrt());
-  let res = Executor::new(&cost_fn, solver)
-    .configure(|cfg| cfg.max_iters(BRENT_MAX_ITER))
+pub(super) fn brent_sqrt_minimize<F>(
+  cost_fn: F,
+  bracket: &BranchLengthBracket,
+  max_iters: u64,
+) -> Result<EdgeSolution, Report>
+where
+  F: CostFunction<Param = f64, Output = f64>,
+{
+  let solver = BrentOpt::new(bracket.lower.sqrt(), bracket.upper.sqrt());
+  let res = Executor::new(cost_fn, solver)
+    .configure(|cfg| cfg.max_iters(max_iters))
     .run()
-    .map_err(|e| make_report!("brent_sqrt_inner: argmin BrentOpt failed at branch_length={branch_length}: {e}"))?;
+    .map_err(|e| make_report!("argmin BrentOpt failed: {e}"))?;
 
-  let s = res.state().best_param.ok_or_else(|| {
-    make_internal_report!(
-      "brent_sqrt_inner: solver succeeded but reported no best_param at branch_length={branch_length}"
-    )
-  })?;
-  Ok(s * s)
+  let state = res.state();
+  let convergence = match state.get_termination_reason() {
+    Some(TerminationReason::SolverConverged) => Convergence::Converged,
+    Some(TerminationReason::MaxItersReached) => Convergence::IterationLimit,
+    reason => {
+      return Err(make_internal_report!(
+        "argmin BrentOpt stopped for an unexpected reason: {reason:?}"
+      ));
+    },
+  };
+  let s = state
+    .best_param
+    .ok_or_else(|| make_internal_report!("argmin BrentOpt finished without a best parameter"))?;
+  Ok(EdgeSolution {
+    branch_length: s * s,
+    convergence,
+  })
 }
 
 pub(super) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> BranchLengthBracket {
   BranchLengthBracket {
     lower: min_branch_length.max(1e-12),
-    upper: f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER),
+    upper: search_upper_bound(branch_length, one_mutation),
   }
 }
 

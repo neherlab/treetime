@@ -5,6 +5,7 @@ use crate::optimize::indel::{EdgeIndels, IndelTerm};
 use crate::optimize::method_brent::brent_sqrt_inner;
 use crate::optimize::method_newton::newton_sqrt_inner;
 use crate::optimize::params::{BranchOptMethod, ExistingBranchLengths};
+use crate::optimize::solver_outcome::{Convergence, EdgeSolution, UnconvergedEdges};
 use crate::optimize::zero_boundary::{
   ZeroLength, is_zero_branch_optimal, min_branch_length_for_indels, reconcile_zero_boundary, start_branch_length,
 };
@@ -25,7 +26,7 @@ pub(crate) fn run_optimize_mixed(
   indels: &EdgeIndels,
   method: BranchOptMethod,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report> {
+) -> Result<UnconvergedEdges, Report> {
   if total_length == 0 {
     return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
   }
@@ -41,12 +42,12 @@ pub(crate) fn run_optimize_mixed(
     .collect();
 
   let lengths_in = &lengths;
-  let optimized: Vec<(GraphEdgeKey, f64)> = graph
+  let optimized: Vec<(GraphEdgeKey, EdgeSolution)> = graph
     .get_edges()
     .filter(|edge_ref| !held.contains(&edge_ref.key()))
     .collect::<Vec<_>>()
     .into_par_iter()
-    .map(|edge_ref| -> Result<(GraphEdgeKey, f64), Report> {
+    .map(|edge_ref| -> Result<(GraphEdgeKey, EdgeSolution), Report> {
       let edge_key = edge_ref.key();
       let edge_indels = chain_indels
         .get(&edge_key)
@@ -58,12 +59,24 @@ pub(crate) fn run_optimize_mixed(
         one_mutation,
         method,
       };
-      let new_branch_length = contributions.with_edge(edge_key, |contributions| optimize_edge(contributions, &edge))?;
-      Ok((edge_key, new_branch_length))
+      let solution = contributions.with_edge(edge_key, |contributions| optimize_edge(contributions, &edge))?;
+      Ok((edge_key, solution))
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  lengths.extend(optimized);
+  let unconverged = UnconvergedEdges {
+    edges: optimized
+      .iter()
+      .filter(|(_, solution)| solution.convergence == Convergence::IterationLimit)
+      .map(|&(edge_key, _)| edge_key)
+      .collect(),
+    optimized: optimized.len(),
+  };
+  lengths.extend(
+    optimized
+      .into_iter()
+      .map(|(edge_key, solution)| (edge_key, solution.branch_length)),
+  );
 
   for chain in chains {
     let indels = chain_indels[&chain.optimized];
@@ -72,7 +85,7 @@ pub(crate) fn run_optimize_mixed(
 
   branch_lengths.extend(lengths.into_iter().map(|(edge_key, length)| (edge_key, Some(length))));
 
-  Ok(())
+  Ok(unconverged)
 }
 
 fn parse_optimizable_lengths(
@@ -218,7 +231,7 @@ pub(crate) fn initial_guess_mixed(
   Ok(())
 }
 
-fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimization) -> Result<f64, Report> {
+fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimization) -> Result<EdgeSolution, Report> {
   let EdgeOptimization {
     branch_length,
     indels,
@@ -229,25 +242,31 @@ fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimiza
   let zero_length = ZeroLength::of_edge(contributions, indels);
 
   if indels.count == 0 && is_zero_branch_optimal(contributions, zero_length) {
-    return Ok(0.0);
+    return Ok(EdgeSolution {
+      branch_length: 0.0,
+      convergence: Convergence::Converged,
+    });
   }
 
   let start = start_branch_length(branch_length, indels, zero_length, one_mutation);
   let min_branch_length = min_branch_length_for_indels(indels, one_mutation);
 
-  let candidate = match method {
+  let solution = match method {
     BranchOptMethod::Brent => brent_sqrt_inner(start, contributions, indels, min_branch_length, one_mutation),
-    BranchOptMethod::Newton => newton_sqrt_inner(
+    BranchOptMethod::Newton => newton_sqrt_inner(start, contributions, indels, min_branch_length, one_mutation),
+  }?;
+
+  Ok(EdgeSolution {
+    branch_length: reconcile_zero_boundary(
+      solution.branch_length,
       start,
       contributions,
       indels,
       zero_length,
-      min_branch_length,
       one_mutation,
-    ),
-  }?;
-
-  reconcile_zero_boundary(candidate, start, contributions, indels, zero_length, one_mutation)
+    )?,
+    ..solution
+  })
 }
 
 #[derive(Clone, Copy)]

@@ -2504,7 +2504,7 @@
         ]
       },
       "RunWarning": {
-        "description": "A problem of the inputs that the run found and continued past, which makes its results less reliable.",
+        "description": "A problem that the run found and continued past, which makes its results less reliable.",
         "type": "object",
         "properties": {
           "kind": {
@@ -2516,7 +2516,7 @@
             "type": "string"
           },
           "names": {
-            "description": "Every name the problem concerns, sorted; the message may show only some of them.",
+            "description": "Every name the problem concerns, sorted; an edge is named by its child node. The message may show only some of them.",
             "type": "array",
             "items": {
               "type": "string"
@@ -2546,6 +2546,11 @@
             "description": "More than one row of the metadata table has the same name.",
             "type": "string",
             "const": "duplicate-metadata-names"
+          },
+          {
+            "description": "The branch-length optimizer reached its iteration limit on some edges; their lengths may not maximize the likelihood.",
+            "type": "string",
+            "const": "branch-lengths-not-converged"
           }
         ]
       },

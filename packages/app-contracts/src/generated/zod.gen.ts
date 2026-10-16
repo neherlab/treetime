@@ -454,11 +454,12 @@ export const zOutputFile = z.object({
 export const zRunWarningKind = z.union([
   z.literal('duplicate-node-names'),
   z.literal('duplicate-sequence-names'),
-  z.literal('duplicate-metadata-names')
+  z.literal('duplicate-metadata-names'),
+  z.literal('branch-lengths-not-converged')
 ]);
 
 /**
- * A problem of the inputs that the run found and continued past, which makes its results less reliable.
+ * A problem that the run found and continued past, which makes its results less reliable.
  */
 export const zRunWarning = z.object({
   kind: zRunWarningKind,

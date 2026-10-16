@@ -20,6 +20,7 @@ pub(super) mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
+  use crate::progress::NoopProgress;
   use crate::seq::mutation::Sub;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -501,6 +502,7 @@ pub(super) mod tests {
       },
       branch_lengths,
       &names_tt_2,
+      &NoopProgress,
     )?;
 
     assert_eq!(
@@ -576,6 +578,7 @@ pub(super) mod tests {
       },
       branch_lengths,
       &names_tt_1,
+      &NoopProgress,
     )?;
 
     assert!(

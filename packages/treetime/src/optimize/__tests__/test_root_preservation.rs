@@ -350,7 +350,8 @@ mod tests {
         },
         BranchOptMethod::Brent,
         &mut setup.branch_lengths,
-      )
+      )?;
+      Ok(())
     }
 
     pub(super) fn root_edge_branch_lengths(
