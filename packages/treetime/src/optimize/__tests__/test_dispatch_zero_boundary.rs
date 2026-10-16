@@ -385,6 +385,38 @@ mod tests {
   }
 
   #[test]
+  fn test_dispatch_zero_boundary_newton_sqrt_inner_keeps_feasible_start_below_minimum_branch_length() {
+    let contributions = [make_dinh_matsen_k80_contribution()];
+    let (t0, min_branch_length, one_mutation) = (0.1, 0.5, 0.01);
+
+    let solution = newton_sqrt_inner(
+      t0,
+      &contributions,
+      IndelTerm::new(0, 0.0),
+      min_branch_length,
+      one_mutation,
+    )
+    .unwrap();
+
+    assert_eq!(Convergence::Converged, solution.convergence);
+    let lh_start = evaluate_mixed_log_lh_only(&contributions, t0).unwrap().value();
+    let lh_result = evaluate_mixed_log_lh_only(&contributions, solution.branch_length)
+      .unwrap()
+      .value();
+    assert!(
+      lh_result >= lh_start,
+      "result t={} has log_lh {lh_result} below the start t0={t0} with {lh_start}",
+      solution.branch_length
+    );
+    pretty_assert_abs_diff_eq!(
+      0.16657011017500076,
+      solution.branch_length,
+      epsilon = 1e-9,
+      "expected: local maximum t = 0.16657 of the Dinh and Matsen K80 surface (numpy roots of the cubic P'(x), see the test above), below the minimum branch length 0.5 and above the start 0.1"
+    );
+  }
+
+  #[test]
   fn test_dispatch_zero_boundary_reconcile_exact_zero_uncertified_returns_grid_point_beating_zero() {
     let contributions = [make_dinh_matsen_k80_contribution()];
     let one_mutation = 0.01;

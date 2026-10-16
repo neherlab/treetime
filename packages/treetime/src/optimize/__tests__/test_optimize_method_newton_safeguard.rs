@@ -3,11 +3,11 @@ mod tests {
   use crate::optimize::method_newton::{SqrtInterval, SqrtSolution, newton_sqrt_maximize};
   use crate::optimize::solver_outcome::Convergence;
   use crate::pretty_assert_abs_diff_eq;
-  use helpers::{flat, poisson, shifted_poisson};
+  use helpers::{flat, poisson, shifted_poisson, squared_distance_from_midpoint};
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
   use rstest::rstest;
-  use treetime_utils::prop_assert_relative_eq;
+  use treetime_utils::prop_assert_abs_diff_eq;
 
   #[rustfmt::skip]
   #[rstest]
@@ -62,6 +62,50 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::at_stationary_minimum(  0.5,        0.0)]
+  #[case::near_stationary_minimum(0.5 + 1e-6, 1.0)]
+  #[trace]
+  fn test_optimize_method_newton_safeguard_leaves_stationary_minimum_for_interval_end(
+    #[case] start: f64,
+    #[case] expected: f64,
+  ) {
+    let interval = SqrtInterval { lower: 0.0, upper: 1.0 };
+
+    let solution = newton_sqrt_maximize(start, interval, 50, squared_distance_from_midpoint).unwrap();
+
+    let expected = SqrtSolution { s: expected, convergence: Convergence::Converged };
+    assert_eq!(
+      expected,
+      solution,
+      "(s - 0.5)^2 on [0, 1] has its minimum at 0.5 and its maximum 0.25 at both ends; from 0.5 the first bisection takes the lower half, from above 0.5 the slope points to 1"
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::feasible_start_below_interval((0.04, 0.1,  1.0 ), 0.05)]
+  #[case::feasible_start_above_interval((0.2,  1e-4, 0.03), 0.05)]
+  #[case::infeasible_start_at_zero(     (0.0,  0.1,  1.0 ), 0.1 )]
+  #[trace]
+  fn test_optimize_method_newton_safeguard_searches_from_feasible_start_outside_interval(
+    #[case] (start, lower, upper): (f64, f64, f64),
+    #[case] expected: f64,
+  ) {
+    let interval = SqrtInterval { lower, upper };
+
+    let solution = newton_sqrt_maximize(start, interval, 50, poisson(2.5, 1000.0)).unwrap();
+
+    assert_eq!(Convergence::Converged, solution.convergence);
+    pretty_assert_abs_diff_eq!(
+      expected,
+      solution.s,
+      epsilon = 1e-8,
+      "maximum of 2k ln(s) - L s^2 at s = sqrt(2.5/1000) = 0.05; a start with finite log-likelihood joins the search interval, the start s = 0 has log-likelihood -inf and is clamped to [{lower}, {upper}]"
+    );
+  }
+
   #[test]
   fn test_optimize_method_newton_safeguard_returns_start_on_flat_surface() {
     let interval = SqrtInterval { lower: 0.0, upper: 1.0 };
@@ -102,6 +146,10 @@ mod tests {
       1e-4_f64..2.0_f64
     }
 
+    pub(super) fn gen_start_within_search() -> impl Strategy<Value = f64> {
+      1e-4_f64..1.5_f64
+    }
+
     pub(super) fn gen_max_iter() -> impl Strategy<Value = usize> {
       0_usize..6_usize
     }
@@ -115,7 +163,7 @@ mod tests {
       s0 in generators::gen_start(),
       max_iter in generators::gen_max_iter(),
     ) {
-      let interval = SqrtInterval { lower: 1e-4, upper: 3.0 };
+      let interval = SqrtInterval { lower: 1e-2, upper: 1.0 };
       let evaluate = poisson(k, sites);
 
       let solution = newton_sqrt_maximize(s0, interval, max_iter, &evaluate).unwrap();
@@ -132,15 +180,25 @@ mod tests {
     fn test_prop_optimize_method_newton_safeguard_matches_poisson_maximum(
       k in generators::gen_events(),
       sites in generators::gen_sites(),
-      s0 in generators::gen_start(),
+      s0 in generators::gen_start_within_search(),
     ) {
-      let interval = SqrtInterval { lower: 1e-4, upper: 3.0 };
+      let interval = SqrtInterval { lower: 1e-4, upper: 1.5 };
+      let evaluate = poisson(k, sites);
 
-      let solution = newton_sqrt_maximize(s0, interval, 50, poisson(k, sites)).unwrap();
+      let solution = newton_sqrt_maximize(s0, interval, 50, &evaluate).unwrap();
 
       prop_assert_eq!(Convergence::Converged, solution.convergence);
-      let expected = (k / sites).sqrt().clamp(interval.lower, interval.upper);
-      prop_assert_relative_eq!(expected, solution.s, max_relative = 1e-6);
+      let poisson_maximum_in_interval = (k / sites).sqrt().clamp(interval.lower, interval.upper);
+      prop_assert_abs_diff_eq!(
+        poisson_maximum_in_interval * poisson_maximum_in_interval,
+        solution.s * solution.s,
+        epsilon = 1e-6
+      );
+      prop_assert_abs_diff_eq!(
+        evaluate(poisson_maximum_in_interval).unwrap().log_lh,
+        evaluate(solution.s).unwrap().log_lh,
+        epsilon = 1e-10
+      );
     }
   }
 
@@ -167,6 +225,14 @@ mod tests {
           curvature: 2.0 * k * (shift - s * s) / (u * u) - 2.0 * sites,
         })
       }
+    }
+
+    pub(super) fn squared_distance_from_midpoint(s: f64) -> Result<SqrtPoint, Report> {
+      Ok(SqrtPoint {
+        log_lh: (s - 0.5) * (s - 0.5),
+        slope: 2.0 * (s - 0.5),
+        curvature: 2.0,
+      })
     }
 
     pub(super) fn flat(_s: f64) -> Result<SqrtPoint, Report> {

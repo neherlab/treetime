@@ -44,32 +44,29 @@ pub(super) fn newton_sqrt_maximize(
   max_iter: usize,
   evaluate: impl Fn(f64) -> Result<SqrtPoint, Report>,
 ) -> Result<SqrtSolution, Report> {
-  let mut s = clamp(start, interval.lower, interval.upper);
-  let mut point = evaluate(s)?;
-  let mut best = BestPoint {
-    s,
-    log_lh: point.log_lh,
-  };
+  let (interval, mut current) = initial_point(start, interval, &evaluate)?;
+  let mut best = current;
+  let mut best_is_current = true;
   let mut bracket = interval;
 
   for _ in 0..max_iter {
-    bracket = bracket.narrowed(s, point.slope);
-    let next = newton_step(s, &point, &interval, &bracket).unwrap_or_else(|| bracket.midpoint());
-    let converged = (next - s).abs() <= newton_tolerance_sqrt(s);
-    point = evaluate(next)?;
-    if point.log_lh > best.log_lh {
-      best = BestPoint {
-        s: next,
-        log_lh: point.log_lh,
-      };
+    bracket = bracket.narrowed(current.s, current.point.slope);
+    let tolerance = newton_tolerance_sqrt(current.s);
+    let proposal = propose(&current, &interval, &bracket, tolerance);
+    if best_is_current && is_concave_maximum(&current.point, tolerance) {
+      if let Proposal::Newton(next) = proposal {
+        best = best.better(Evaluated::at(next, &evaluate)?);
+      }
+      return Ok(best.converged());
     }
-    if converged {
-      return Ok(SqrtSolution {
-        s: best.s,
-        convergence: Convergence::Converged,
-      });
+    if best_is_current && bracket.width() <= tolerance {
+      return Ok(best.converged());
     }
-    s = next;
+    current = Evaluated::at(proposal.s(), &evaluate)?;
+    best_is_current = current.point.log_lh >= best.point.log_lh;
+    if best_is_current {
+      best = current;
+    }
   }
 
   Ok(SqrtSolution {
@@ -95,16 +92,65 @@ impl SqrtInterval {
     }
   }
 
+  fn including(self, s: f64) -> Self {
+    Self {
+      lower: self.lower.min(s),
+      upper: self.upper.max(s),
+    }
+  }
+
   fn contains(&self, s: f64) -> bool {
     (self.lower..=self.upper).contains(&s)
   }
 
-  fn midpoint(&self) -> f64 {
-    f64::midpoint(self.lower, self.upper)
+  fn width(&self) -> f64 {
+    self.upper - self.lower
+  }
+
+  fn bisection_away_from(&self, s: f64) -> f64 {
+    if s - self.lower >= self.upper - s {
+      f64::midpoint(self.lower, s)
+    } else {
+      f64::midpoint(s, self.upper)
+    }
   }
 }
 
-fn newton_step(s: f64, point: &SqrtPoint, interval: &SqrtInterval, bracket: &SqrtInterval) -> Option<f64> {
+fn initial_point(
+  start: f64,
+  interval: SqrtInterval,
+  evaluate: impl Fn(f64) -> Result<SqrtPoint, Report>,
+) -> Result<(SqrtInterval, Evaluated), Report> {
+  if interval.contains(start) {
+    return Ok((interval, Evaluated::at(start, evaluate)?));
+  }
+  let at_start = Evaluated::at(start, &evaluate)?;
+  if start >= 0.0 && at_start.point.log_lh.is_finite() {
+    Ok((interval.including(start), at_start))
+  } else {
+    let clamped = clamp(start, interval.lower, interval.upper);
+    Ok((interval, Evaluated::at(clamped, evaluate)?))
+  }
+}
+
+fn is_concave_maximum(point: &SqrtPoint, tolerance: f64) -> bool {
+  point.curvature <= 0.0 && point.slope.abs() <= tolerance * point.curvature.abs()
+}
+
+fn propose(current: &Evaluated, interval: &SqrtInterval, bracket: &SqrtInterval, tolerance: f64) -> Proposal {
+  newton_step(current.s, &current.point, interval, bracket, tolerance).map_or_else(
+    || Proposal::Bisection(bracket.bisection_away_from(current.s)),
+    Proposal::Newton,
+  )
+}
+
+fn newton_step(
+  s: f64,
+  point: &SqrtPoint,
+  interval: &SqrtInterval,
+  bracket: &SqrtInterval,
+  tolerance: f64,
+) -> Option<f64> {
   let curvature = -point.curvature.abs();
   let stationary_minimum = point.slope == 0.0 && point.curvature > 0.0;
   (curvature < 0.0 && !stationary_minimum)
@@ -113,6 +159,48 @@ fn newton_step(s: f64, point: &SqrtPoint, interval: &SqrtInterval, bracket: &Sqr
       clamp(s - step, interval.lower, interval.upper)
     })
     .filter(|&next| bracket.contains(next))
+    .filter(|&next| point.curvature < 0.0 || (next - s).abs() > tolerance)
+}
+
+#[derive(Clone, Copy, Debug)]
+enum Proposal {
+  Newton(f64),
+  Bisection(f64),
+}
+
+impl Proposal {
+  fn s(self) -> f64 {
+    match self {
+      Self::Newton(s) | Self::Bisection(s) => s,
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Evaluated {
+  s: f64,
+  point: SqrtPoint,
+}
+
+impl Evaluated {
+  fn at(s: f64, evaluate: impl Fn(f64) -> Result<SqrtPoint, Report>) -> Result<Self, Report> {
+    Ok(Self { s, point: evaluate(s)? })
+  }
+
+  fn better(self, other: Self) -> Self {
+    if other.point.log_lh >= self.point.log_lh {
+      other
+    } else {
+      self
+    }
+  }
+
+  fn converged(self) -> SqrtSolution {
+    SqrtSolution {
+      s: self.s,
+      convergence: Convergence::Converged,
+    }
+  }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -126,11 +214,6 @@ pub(super) struct SqrtPoint {
 pub(super) struct SqrtSolution {
   pub s: f64,
   pub convergence: Convergence,
-}
-
-struct BestPoint {
-  s: f64,
-  log_lh: f64,
 }
 
 pub(super) fn newton_tolerance_sqrt(s: f64) -> f64 {
