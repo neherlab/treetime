@@ -12,6 +12,7 @@ mod test_eval_zero_branch_mismatch;
 mod test_gm_optimize;
 mod test_grid_search;
 mod test_indel;
+mod test_indel_policy;
 mod test_initial_guess_formula;
 mod test_initial_guess_gaps;
 mod test_initial_guess_gtr_messages;
