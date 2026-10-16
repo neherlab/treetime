@@ -27,7 +27,8 @@ mod tests {
   #[case::nuc_realistic_profile( array![-0.1, -2.3, -4.5, -6.7])]
   #[trace]
   fn test_softmax_with_log_norm_finite(#[case] input: Array1<f64>) {
-    let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+    let mut normalized = input;
+    let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
 
     helpers::assert_valid_distribution(&normalized);
     assert!(log_norm.is_finite());
@@ -47,7 +48,8 @@ mod tests {
   #[trace]
   fn test_softmax_with_log_norm_with_neg_inf(#[case] input: Array1<f64>) {
     let expected_zeros = input.mapv(|v| v == NEG_INF);
-    let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+    let mut normalized = input;
+    let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
 
     helpers::assert_valid_distribution(&normalized);
     assert!(log_norm.is_finite());
@@ -66,7 +68,8 @@ mod tests {
   #[trace]
   fn test_softmax_with_log_norm_degenerate(#[case] n_states: usize) {
     let log_vec = Array1::from_elem(n_states, NEG_INF);
-    let (normalized, log_norm) = softmax_with_log_norm_owned(log_vec);
+    let mut normalized = log_vec;
+    let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
 
     let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact());
     assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
@@ -81,7 +84,8 @@ mod tests {
   #[trace]
   fn test_softmax_with_log_norm_uniform_input(#[case] n_states: usize) {
     let log_vec = Array1::from_elem(n_states, 0.0);
-    let (normalized, log_norm) = softmax_with_log_norm_owned(log_vec);
+    let mut normalized = log_vec;
+    let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
 
     let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact());
     assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
@@ -99,8 +103,11 @@ mod tests {
     let base = array![0.0, -1.0, -2.0, -3.0];
     let shifted = base.mapv(|v| v + offset);
 
-    let (base_norm, base_log_norm) = softmax_with_log_norm_owned(base);
-    let (shifted_norm, shifted_log_norm) = softmax_with_log_norm_owned(shifted);
+    let mut base_norm = base;
+
+    let base_log_norm = softmax_with_log_norm_inplace(base_norm.view_mut());
+    let mut shifted_norm = shifted;
+    let shifted_log_norm = softmax_with_log_norm_inplace(shifted_norm.view_mut());
 
     helpers::assert_valid_distribution(&shifted_norm);
     assert_ulps_eq!(shifted_norm, base_norm, max_ulps = 2);
@@ -114,12 +121,13 @@ mod tests {
   #[case::all_neg_inf(  Array1::from_elem(4, NEG_INF))]
   #[case::pos_inf(      array![0.0, f64::INFINITY, -1.0, -2.0])]
   #[trace]
-  fn test_softmax_with_log_norm_inplace_on_strided_view_matches_owned(#[case] input: Array1<f64>) {
+  fn test_softmax_with_log_norm_inplace_on_strided_view_matches_contiguous(#[case] input: Array1<f64>) {
     let mut matrix = Array2::zeros((input.len(), 2));
     matrix.column_mut(1).assign(&input);
 
     let log_norm = softmax_with_log_norm_inplace(matrix.column_mut(1));
-    let (expected, expected_log_norm) = softmax_with_log_norm_owned(input);
+    let mut expected = input;
+    let expected_log_norm = softmax_with_log_norm_inplace(expected.view_mut());
 
     assert_eq!(expected, matrix.column(1));
     assert_eq!(Array1::<f64>::zeros(expected.len()), matrix.column(0), "other columns must stay untouched");
@@ -132,7 +140,8 @@ mod tests {
     #[test]
     fn test_softmax_with_log_norm_near_exp_overflow_boundary() {
       let input = array![709.0, 708.0, 707.0, 706.0];
-      let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
       assert!(log_norm.is_finite(), "log_norm should be finite, got {log_norm}");
     }
@@ -140,7 +149,8 @@ mod tests {
     #[test]
     fn test_softmax_with_log_norm_near_exp_underflow_boundary() {
       let input = array![-744.0, -745.0, -746.0, -747.0];
-      let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
       assert!(log_norm.is_finite(), "log_norm should be finite, got {log_norm}");
     }
@@ -148,7 +158,8 @@ mod tests {
     #[test]
     fn test_softmax_with_log_norm_at_f64_max_log() {
       let input = array![709.7, 709.6, 709.5, 709.4];
-      let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
       assert!(log_norm.is_finite(), "log_norm overflowed: {log_norm}");
     }
@@ -156,7 +167,8 @@ mod tests {
     #[test]
     fn test_softmax_with_log_norm_log_norm_overflow() {
       let input = array![f64::MAX.ln() + 1.0, f64::MAX.ln(), f64::MAX.ln() - 1.0];
-      let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
       assert!(log_norm.is_finite(), "log_norm={log_norm}");
     }
@@ -164,7 +176,8 @@ mod tests {
     #[test]
     fn test_softmax_with_log_norm_extreme_spread() {
       let input = array![0.0, -1000.0, -1000.0, -1000.0];
-      let (normalized, _log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let _log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
       assert_eq!(normalized, array![1.0, 0.0, 0.0, 0.0]);
     }
@@ -172,7 +185,8 @@ mod tests {
     #[test]
     fn test_softmax_with_log_norm_alternating_extremes() {
       let input = array![500.0, -500.0, 500.0, -500.0];
-      let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
       assert!(log_norm.is_finite());
       assert_eq!(normalized, array![0.5, 0.0, 0.5, 0.0]);
@@ -181,7 +195,8 @@ mod tests {
     #[test]
     fn test_softmax_with_log_norm_near_identical_at_high_magnitude() {
       let input = array![1e15, 1e15 + 1.0, 1e15 + 2.0, 1e15 + 3.0];
-      let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
 
       helpers::assert_valid_distribution(&normalized);
       assert!(log_norm.is_finite());
@@ -196,7 +211,8 @@ mod tests {
       let base = 1e15;
       let eps = base * f64::EPSILON;
       let input = array![base, base + eps, base + 2.0 * eps, base + 3.0 * eps];
-      let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
       assert!(log_norm.is_finite());
     }
@@ -204,7 +220,8 @@ mod tests {
     #[test]
     fn test_softmax_with_log_norm_nan_must_propagate() {
       let input = array![0.0, f64::NAN, -1.0, -2.0];
-      let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       assert!(
         normalized.iter().all(|v| v.is_nan()),
         "NaN input must propagate to every probability: {normalized}"
@@ -215,7 +232,8 @@ mod tests {
     #[test]
     fn test_softmax_with_log_norm_all_nan_must_propagate() {
       let input = Array1::from_elem(4, f64::NAN);
-      let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       assert!(
         normalized.iter().all(|v| v.is_nan()),
         "all-NaN input must propagate to every probability: {normalized}"
@@ -229,7 +247,8 @@ mod tests {
     #[test]
     fn test_softmax_with_log_norm_positive_infinity_must_handle() {
       let input = array![0.0, f64::INFINITY, -1.0, -2.0];
-      let (normalized, log_norm) = softmax_with_log_norm_owned(input);
+      let mut normalized = input;
+      let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
       helpers::assert_valid_distribution(&normalized);
       assert_eq!(normalized, array![0.0, 1.0, 0.0, 0.0]);
       assert!(log_norm.is_infinite() && log_norm.is_sign_positive());

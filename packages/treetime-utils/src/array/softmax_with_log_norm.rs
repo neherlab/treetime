@@ -1,12 +1,7 @@
 use crate::cast::ToF64Exact;
-use ndarray::{Array1, ArrayViewMut1};
+use ndarray::ArrayViewMut1;
 use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
-
-pub fn softmax_with_log_norm_owned(mut log_vec: Array1<f64>) -> (Array1<f64>, f64) {
-  let log_norm = softmax_with_log_norm_inplace(log_vec.view_mut());
-  (log_vec, log_norm)
-}
 
 pub fn softmax_with_log_norm_inplace(mut log_vec: ArrayViewMut1<'_, f64>) -> f64 {
   let n = log_vec.len();
