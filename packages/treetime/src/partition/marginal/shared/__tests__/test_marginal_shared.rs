@@ -1,13 +1,32 @@
 #[cfg(test)]
 mod tests {
-  use crate::partition::marginal::shared::normalize::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
-  use crate::partition::marginal::sparse::message::normalize_1d_inplace;
-  use ndarray::{Array1, array};
+  use crate::partition::marginal::shared::normalize::{
+    divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child,
+  };
+  use crate::partition::marginal::sparse::message::{divide_out_site, normalize_1d_inplace};
+  use ndarray::{Array1, Axis, array, aview1};
+  use pretty_assertions::assert_eq;
   use proptest::prelude::*;
   use rstest::rstest;
   use treetime_primitives::LogLh;
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{pretty_assert_abs_diff_eq, prop_assert_ulps_eq};
+
+  #[test]
+  fn test_marginal_shared_divide_out_floors_zero_divisors_alike_in_both_modes() {
+    let profile = array![0.25, 0.0, 0.6, 3.0];
+    let message = array![0.5, 0.0, 0.0, 0.75];
+    let expected = array![0.5, 0.0, 0.6 / f64::MIN_POSITIVE, 4.0];
+
+    let dense = divide_out(
+      &profile.view().insert_axis(Axis(0)).to_owned(),
+      &message.view().insert_axis(Axis(0)).to_owned(),
+    );
+    let sparse = divide_out_site(profile.as_slice().unwrap(), message.as_slice().unwrap());
+
+    assert_eq!(expected, dense.row(0));
+    assert_eq!(expected, aview1(&sparse));
+  }
 
   #[test]
   fn test_marginal_shared_forward_log_lh_remove_child_cancels_matching_neg_infinity() {

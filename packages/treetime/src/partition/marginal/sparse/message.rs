@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::make_internal_report;
+use crate::partition::marginal::shared::normalize::divide_out_value;
 use crate::partition::marginal::sparse::candidate_sites::CandidateSites;
 use crate::partition::storage::sparse::{FixedProfiles, INLINE_STATES, SiteProfile, SparseSeqDistribution};
 use crate::partition::storage::var_pos_map::VarPosMap;
@@ -182,7 +183,7 @@ pub(crate) fn propagate_raw_per_site(
 
 pub(crate) fn divide_out_site(profile: &[f64], message: &[f64]) -> SiteProfile {
   izip!(profile, message)
-    .map(|(&value, &divisor)| value / divisor.max(f64::MIN_POSITIVE))
+    .map(|(&value, &divisor)| divide_out_value(value, divisor))
     .collect()
 }
 

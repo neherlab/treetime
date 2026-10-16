@@ -45,5 +45,9 @@ pub(crate) fn forward_log_lh_add_normalization(log_lh: LogLh, normalization: f64
 pub(crate) fn divide_out<D: Dimension>(profile: &Array<f64, D>, message: &Array<f64, D>) -> Array<f64, D> {
   Zip::from(profile)
     .and(message)
-    .map_collect(|&value, &divisor| value / divisor.max(f64::MIN_POSITIVE))
+    .map_collect(|&value, &divisor| divide_out_value(value, divisor))
+}
+
+pub(crate) fn divide_out_value(value: f64, divisor: f64) -> f64 {
+  value / divisor.max(f64::MIN_POSITIVE)
 }
