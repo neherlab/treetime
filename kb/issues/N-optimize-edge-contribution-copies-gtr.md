@@ -8,4 +8,4 @@ Negligible per edge compared with the per-site work, but it adds several heap al
 
 ## Proposed solution
 
-Borrow the model instead of copying it: give `PartitionContribution` a lifetime and store `&GTR`, or share it through `Arc<GTR>` when a contribution must outlive the partition. The contribution reads the model only for `rate_eigvals` (computed at construction) and `unimodal_branch_likelihood`.
+Borrow the model instead of copying it: give `PartitionContribution` a lifetime and store `&GTR`, or share it through `Arc<GTR>` when a contribution must outlive the partition. The contribution reads the model only for `rate_eigvals` (computed at construction) and `certified_decay_rate()`.

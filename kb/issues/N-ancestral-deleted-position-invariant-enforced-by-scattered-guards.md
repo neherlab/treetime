@@ -49,5 +49,4 @@ Introduced by neherlab/treetime PR #890 "fix: the fitch/parsimony sequence recon
 
 ## Related issues
 
-- [H-gtr-model-state-can-break-invariants.md](H-gtr-model-state-can-break-invariants.md)
 - [N-amino-acid-mutation-indel-representation-undecided.md](N-amino-acid-mutation-indel-representation-undecided.md)

@@ -16,16 +16,18 @@ Time-reversible models satisfy detailed balance $Q_{ij}\pi_j = Q_{ji}\pi_i$: in 
 
 $$Q_{ij} = \pi_i W_{ij} \quad (i \neq j)$$
 
-The average rate is $-\sum_i \pi_i Q_{ii} = \sum_{ij} \pi_i W_{ij} \pi_j$. The constructor `GTR::new()` [`packages/treetime/src/gtr/gtr.rs#L26-L91`](../../packages/treetime/src/gtr/gtr.rs#L26-L91) symmetrizes $W$, zeroes its diagonal, normalizes $\pi$, divides $W$ by the average rate (`avg_transition()` [`packages/treetime/src/gtr/gtr.rs#L166-L168`](../../packages/treetime/src/gtr/gtr.rs#L166-L168)), and sets the scalar rate `mu` according to the rate scale below. The stored $W$ therefore has average rate 1, and `mu` carries the overall scale: $P(t) = e^{\mu \mathbf{Q} t}$.
+The average rate is $-\sum_i \pi_i Q_{ii} = \sum_{ij} \pi_i W_{ij} \pi_j$. The constructor `GTR::new()` [`packages/treetime/src/gtr/gtr.rs#L32-L115`](../../packages/treetime/src/gtr/gtr.rs#L32-L115) symmetrizes $W$, zeroes its diagonal, normalizes $\pi$, divides $W$ by the average rate (`avg_transition()` [`packages/treetime/src/gtr/gtr.rs#L196-L198`](../../packages/treetime/src/gtr/gtr.rs#L196-L198)), and sets the scalar rate `mu` according to the rate scale below. The stored $W$ therefore has average rate 1, and `mu` carries the overall scale: $P(t) = e^{\mu \mathbf{Q} t}$.
 
-The builder argument `rate_scale` (`RateScale` [`packages/treetime/src/gtr/gtr.rs#L159-L164`](../../packages/treetime/src/gtr/gtr.rs#L159-L164)) decides what `mu` means. With the default `RateScale::FromMatrix`, `mu` multiplies the given $W$, so the model keeps the absolute rates of $W$; custom, inferred, and mugration models use it, as v0 `GTR.custom()` and `GTR.infer()` do through `assign_rates()`. The named models (JC69, K80, F81, HKY85, T92, TN93, JTT92) use `RateScale::Normalized`: `mu` is the average substitution rate of the finished model, 1 by default, so branch lengths are expected substitutions per site. v0 does the same in two steps: the model constructor folds the scale of $W$ into `mu`, and `GTR.standard()` then sets `mu` to the requested rate [`packages/legacy/treetime/treetime/gtr.py#L460`](../../packages/legacy/treetime/treetime/gtr.py#L460).
+The builder argument `rate_scale` (`RateScale` [`packages/treetime/src/gtr/gtr.rs#L190-L194`](../../packages/treetime/src/gtr/gtr.rs#L190-L194)) decides what `mu` means. With `RateScale::FromMatrix`, `mu` multiplies the given $W$, so the model keeps the absolute rates of $W$; custom, inferred, and mugration models use it, as v0 `GTR.custom()` and `GTR.infer()` do through `assign_rates()`. The named models (JC69, K80, F81, HKY85, T92, TN93, JTT92) use `RateScale::Normalized`: `mu` is the average substitution rate of the finished model, 1 by default, so branch lengths are expected substitutions per site. v0 does the same in two steps: the model constructor folds the scale of $W$ into `mu`, and `GTR.standard()` then sets `mu` to the requested rate [`packages/legacy/treetime/treetime/gtr.py#L460`](../../packages/legacy/treetime/treetime/gtr.py#L460).
 
 Consumers of $P(t)$:
 
 - `GTR::propagate_profile()` computes `profile * P(t)`, the distribution of descendant states given a distribution of ancestral states (rows of `profile` are sites)
 - `GTR::evolve()` computes `profile * P(t)^T`, the likelihood of each ancestral state given a likelihood vector of descendant states
 
-Both are at [`packages/treetime/src/gtr/gtr.rs#L103-L135`](../../packages/treetime/src/gtr/gtr.rs#L103-L135).
+Both are at [`packages/treetime/src/gtr/gtr.rs#L142-L170`](../../packages/treetime/src/gtr/gtr.rs#L142-L170). One helper, `rate_eigvals_at()` [`packages/treetime/src/gtr/gtr.rs#L176-L178`](../../packages/treetime/src/gtr/gtr.rs#L176-L178), forms the exponents $\mu r t \lambda_k$ (with a rate factor $r$, 1 without one) for `expQt()`, `expQt_with_rate()`, `evolve()`, `propagate_profile()`, and `rate_eigvals()`.
+
+The model state is private and read through accessors. `GTR::new()` rejects a non-finite or negative `mu`, a `pi` with a negative or non-finite entry or a zero sum, a `W` with a negative or non-finite entry, a zero average rate, and site rates that are negative or non-finite. `set_mu()` is the only update; it validates `mu` like the constructor and keeps the eigendecomposition, because the stored eigenvalues belong to the normalized $W$ and `mu` scales them only in the exponent.
 
 v0 uses the same convention. Phylogenetics textbooks usually use the transpose (row convention, $Q_{ij}$ is the rate from $i$ to $j$, rows sum to zero). Formulas taken from such sources must be transposed before they are compared with v1 code.
 
@@ -51,43 +53,43 @@ $$P_{ij}(t) = \frac{1 - e^{-nt/(n-1)}}{n} + e^{-nt/(n-1)}\,\delta_{ij}$$
 
 For nucleotides ($n = 4$): `P_ii(t) = 1/4 + 3/4 * exp(-4t/3)`, `P_ij(t) = 1/4 - 1/4 * exp(-4t/3)`, eigenvalues {0, -4/3, -4/3, -4/3}.
 
-The closed form would allow propagating a profile with $n$ numbers per site instead of a matrix-vector product. v1 does not use it: `jc69()` (`#jc69`) at [`packages/treetime/src/gtr/get_gtr.rs#L118-L126`](../../packages/treetime/src/gtr/get_gtr.rs#L118-L126) builds a generic `GTR` over the canonical states of the alphabet, and propagation goes through the numerical eigendecomposition like every other model. The only JC69-specific behavior is the flag `unimodal_branch_likelihood`, which enables the zero-length branch shortcut of the optimizer.
+The closed form would allow propagating a profile with $n$ numbers per site instead of a matrix-vector product. v1 does not use it: `jc69()` (`#jc69`) at [`packages/treetime/src/gtr/get_gtr.rs#L120-L132`](../../packages/treetime/src/gtr/get_gtr.rs#L120-L132) builds a generic `GTR` over the canonical states of the alphabet, and propagation goes through the numerical eigendecomposition like every other model. JC69 has no model-specific code: the single decay rate certificate below applies to it as to every model with equal exchangeabilities.
 
 ### K80 (<a id="cite-2"></a>[Kimura 1980](https://doi.org/10.1007/BF01731581) [[2](#ref-2)])
 
 Distinguishes transitions (purine-purine A<->G, pyrimidine-pyrimidine C<->T) from transversions (purine-pyrimidine changes). One free parameter: the transition/transversion ratio kappa. Equal base frequencies. Closed-form P(t) with two exponential terms.
 
-`k80()` (`#k80`) at [`packages/treetime/src/gtr/get_gtr.rs#L141-L147`](../../packages/treetime/src/gtr/get_gtr.rs#L141-L147).
+`k80()` (`#k80`) at [`packages/treetime/src/gtr/get_gtr.rs#L143-L155`](../../packages/treetime/src/gtr/get_gtr.rs#L143-L155).
 
 ### F81 (<a id="cite-3"></a>[Felsenstein 1981](https://doi.org/10.1007/BF01734359) [[3](#ref-3)])
 
 Unequal equilibrium frequencies, equal exchangeabilities. Generalizes JC69 by allowing non-uniform base composition. Three free parameters (three independent frequencies; fourth constrained to sum to 1). In the column convention, `P_ij(t) = pi_i * (1 - exp(-beta*t))` for i != j, with `beta = 1 / (1 - sum_i pi_i^2)`.
 
-`f81()` (`#f81`) at [`packages/treetime/src/gtr/get_gtr.rs#L165-L173`](../../packages/treetime/src/gtr/get_gtr.rs#L165-L173). Accepts optional `pi` parameter for non-uniform frequencies.
+`f81()` (`#f81`) at [`packages/treetime/src/gtr/get_gtr.rs#L169-L181`](../../packages/treetime/src/gtr/get_gtr.rs#L169-L181). Accepts optional `pi` parameter for non-uniform frequencies.
 
 ### HKY85 (<a id="cite-4"></a>[Hasegawa, Kishino, and Yano 1985](https://doi.org/10.1007/BF02101694) [[4](#ref-4)])
 
 Combines K80's transition/transversion distinction with F81's unequal base frequencies. Four free parameters (kappa + three independent frequencies). Before normalization, `Q_ij = kappa * pi_i` for transitions and `pi_i` for transversions (column convention). Closed-form P(t) with three distinct exponential terms; eigenvalues involve kappa and purine/pyrimidine frequency sums (pi_R = pi_A + pi_G, pi_Y = pi_C + pi_T).
 
-`hky85()` (`#hky85`) at [`packages/treetime/src/gtr/get_gtr.rs#L191-L204`](../../packages/treetime/src/gtr/get_gtr.rs#L191-L204). Accepts optional `pi` parameter.
+`hky85()` (`#hky85`) at [`packages/treetime/src/gtr/get_gtr.rs#L195-L214`](../../packages/treetime/src/gtr/get_gtr.rs#L195-L214). Accepts optional `pi` parameter.
 
 ### T92 (<a id="cite-9"></a>[Tamura 1992](https://doi.org/10.1093/oxfordjournals.molbev.a040059) [[9](#ref-9)])
 
 GC-content parameterization: a simplification of HKY85 enforcing Chargaff's second parity rule (pi_A = pi_T, pi_C = pi_G). Parameterized by a single GC-content value theta = pi_G + pi_C, reducing three frequency parameters to one.
 
-`t92()` (`#t92`) at [`packages/treetime/src/gtr/get_gtr.rs#L221-L238`](../../packages/treetime/src/gtr/get_gtr.rs#L221-L238).
+`t92()` (`#t92`) at [`packages/treetime/src/gtr/get_gtr.rs#L231-L254`](../../packages/treetime/src/gtr/get_gtr.rs#L231-L254).
 
 ### TN93 (<a id="cite-5"></a>[Tamura and Nei 1993](https://doi.org/10.1093/oxfordjournals.molbev.a040023) [[5](#ref-5)])
 
 Distinguishes the two transition types: purine transitions (A<->G, rate kappa_1) and pyrimidine transitions (C<->T, rate kappa_2). Five free parameters. An analytical eigendecomposition exists.
 
-`tn93()` (`#tn93`) at [`packages/treetime/src/gtr/get_gtr.rs#L328-L352`](../../packages/treetime/src/gtr/get_gtr.rs#L328-L352).
+`tn93()` (`#tn93`) at [`packages/treetime/src/gtr/get_gtr.rs#L346-L376`](../../packages/treetime/src/gtr/get_gtr.rs#L346-L376).
 
 ### JTT92 (<a id="cite-6"></a>[Jones, Taylor, and Thornton 1992](https://doi.org/10.1093/bioinformatics/8.3.275) [[6](#ref-6)])
 
 Empirical 20x20 amino acid substitution matrix derived from a large database of protein sequence alignments. The exchangeability parameters and equilibrium frequencies are fixed to empirically observed values rather than estimated from data.
 
-`jtt92()` (`#jtt92`) at [`packages/treetime/src/gtr/get_gtr.rs#L255-L303`](../../packages/treetime/src/gtr/get_gtr.rs#L255-L303).
+`jtt92()` (`#jtt92`) at [`packages/treetime/src/gtr/get_gtr.rs#L271-L325`](../../packages/treetime/src/gtr/get_gtr.rs#L271-L325).
 
 ---
 
@@ -111,9 +113,19 @@ where the columns of $\mathbf{V}$ are the $w^k$. In the row convention used by m
 
 The eigendecomposition is computed once per model. Per-branch computation reduces to multiplying diagonal exponentials by pre-computed eigenvector matrices - O(k^2) per branch rather than a full matrix exponential.
 
-v1: `eig_single_site()` (`#eig_single_site`) at [`packages/treetime/src/gtr/gtr.rs#L158-L179`](../../packages/treetime/src/gtr/gtr.rs#L158-L179), `expQt()` (`#expQt`) at [`packages/treetime/src/gtr/gtr.rs#L137-L143`](../../packages/treetime/src/gtr/gtr.rs#L137-L143).
+v1: `eig_single_site()` (`#eig_single_site`) at [`packages/treetime/src/gtr/gtr.rs#L229-L250`](../../packages/treetime/src/gtr/gtr.rs#L229-L250), `expQt()` (`#expQt`) at [`packages/treetime/src/gtr/gtr.rs#L172-L174`](../../packages/treetime/src/gtr/gtr.rs#L172-L174).
 
 One eigenvalue is always 0. Its right eigenvector is the stationary distribution $\pi$, and its left eigenvector is the all-ones vector, because every column of $\mathbf{Q}$ sums to zero. Biorthogonality then implies that every other right eigenvector sums to zero. For an irreducible model the remaining k-1 eigenvalues are negative, guaranteeing convergence to equilibrium frequencies as t -> infinity.
+
+### Single decay rate certificate
+
+When all off-diagonal exchangeabilities are positive and equal, $W_{ij} = w$ for $i \neq j$ (the F81 family: binary models, JC69, F81, and custom, inferred, or mugration models with equal exchangeabilities), the rate matrix is $\mathbf{Q} = w(\pi \mathbf{1}^T - \mathbf{I})$ with eigenvalues $0$ and $-w$ ($k-1$ times), for any $\pi$ and any number of states. With the normalized $W$, $w = 1/(1 - \sum_i \pi_i^2)$. The branch log likelihood of an edge is then
+
+$$\ell(t) = F(x) = \sum_s m_s \log(A_s + B_s x), \qquad x = e^{-a t}, \quad a = \mu w$$
+
+$F$ is concave in $x$, and $x$ falls from 1 as $t$ grows, so $\ell'(0) < 0$ implies $\ell(t) \le \ell(0)$ for all $t \ge 0$: the optimal branch length is 0.
+
+`GTR::new()` decides the certificate from the structure of $W$ after symmetrization and before the eigendecomposition, with exact equality and no tolerance [`packages/treetime/src/gtr/gtr.rs#L222-L227`](../../packages/treetime/src/gtr/gtr.rs#L222-L227). `certified_decay_rate()` returns $a$ for certified models and `None` otherwise [`packages/treetime/src/gtr/gtr.rs#L121-L123`](../../packages/treetime/src/gtr/gtr.rs#L121-L123). The optimizer takes the zero branch length shortcut only when all contributions of an edge share one certified decay rate [`packages/treetime/src/optimize/zero_boundary.rs#L120-L127`](../../packages/treetime/src/optimize/zero_boundary.rs#L120-L127). Contributions with different decay rates are not covered by the argument: $L(t) = (1 + 0.96 e^{-10t})(1 - 0.8 e^{-t})$, a product of two binary models, has $\ell'(0) \approx -0.898$ but $L(0) = 0.392 < L(0.5) \approx 0.518$.
 
 ---
 
@@ -150,7 +162,7 @@ Key functions:
 
 ## GTR Output
 
-`struct GtrOutput` at [`packages/treetime/src/gtr/get_gtr.rs#L27`](../../packages/treetime/src/gtr/get_gtr.rs#L27) holds the GTR model parameters (model type, model name, mu, pi, W). Each command writes it with `json_write_file()` to the path of the `gtr` output (`.gtr.json` by default). Parameters are logged at info level via `log_gtr()` (`#log_gtr`).
+`struct GtrOutput` at [`packages/treetime/src/gtr/get_gtr.rs#L25`](../../packages/treetime/src/gtr/get_gtr.rs#L25) holds the GTR model parameters (model type, model name, mu, pi, W). Each command writes it with `json_write_file()` to the path of the `gtr` output (`.gtr.json` by default). Parameters are logged at info level via `log_gtr()` (`#log_gtr`).
 
 ---
 

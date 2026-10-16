@@ -1,6 +1,6 @@
 # GTR API casing is inconsistent
 
-The same domain uses the all-caps type name `GTR` alongside Rust-style `GtrModelName` and `GtrOutput`. Model methods likewise mix `expQt` and `expQt_with_rate` with snake-case methods such as `propagate_profile` [`packages/treetime/src/gtr/gtr.rs#L96`](../../packages/treetime/src/gtr/gtr.rs#L96) [`packages/treetime/src/gtr/gtr.rs#L120`](../../packages/treetime/src/gtr/gtr.rs#L120) [`packages/treetime/src/gtr/get_gtr.rs#L31`](../../packages/treetime/src/gtr/get_gtr.rs#L31).
+The same domain uses the all-caps type name `GTR` alongside Rust-style `GtrModelName` and `GtrOutput`. Model methods likewise mix `expQt` and `expQt_with_rate` with snake-case methods such as `propagate_profile` [`packages/treetime/src/gtr/gtr.rs#L135`](../../packages/treetime/src/gtr/gtr.rs#L135) [`packages/treetime/src/gtr/gtr.rs#L157`](../../packages/treetime/src/gtr/gtr.rs#L157) [`packages/treetime/src/gtr/get_gtr.rs#L25`](../../packages/treetime/src/gtr/get_gtr.rs#L25).
 
 ## Impact
 
