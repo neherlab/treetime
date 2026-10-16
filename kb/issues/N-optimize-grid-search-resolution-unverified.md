@@ -8,11 +8,14 @@ The log spacing spans 3-4 decades for typical branch lengths (from $\sim 10^{-4}
 
 ## Evidence
 
-The grid result is used without refinement. Throwaway instrumentation on `rust` at `77dd3a84` (method in [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md#evidence)) measured the Newton path that returns the grid result directly when the start is not concave:
+The grid result is used without refinement. Throwaway instrumentation on `rust` at `77dd3a84` (method in [M-optimize-brent-setup-differs-from-v0.md](M-optimize-brent-setup-differs-from-v0.md#evidence)) measured the Newton path that returns the grid result directly when the start is not concave:
 
 - 17 of 9,544 Newton optimizations took this path (`flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`; dense and sparse; `--model infer|jc69`)
 - 15 of them ended more than $10^{-6}$ log-likelihood units below the reference maximum, 3 more than $10^{-3}$. Example: `flu/h3n2/200`, grid point $7.28\cdot10^{-4}$, reference $7.11\cdot10^{-4}$, shortfall $2.7\cdot10^{-4}$
 - Consecutive grid points differ by a factor of 1.10 to 1.12 on these datasets (the grid spans $[0.1 \cdot \text{one\_mutation}, 0.5]$ in 100 points), so the best grid point can be up to about 5% away from a maximum even for a broad mode A short local refinement (Brent between the neighbors of the best grid point) removes this error without more grid points
+
+> [!WARNING]
+> **Needs review.** The Newton path measured here no longer exists: `fn newton_sqrt_maximize()` [packages/treetime/src/optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs) replaced the grid fallback with a bracketed search. The grid now runs only inside `fn reconcile_zero_boundary()`, for both methods
 
 ## Impact
 
@@ -27,4 +30,3 @@ Negligible for surfaces with modes wider than one grid step. Unknown for surface
 ## Cross-references
 
 - [packages/treetime/src/optimize/zero_boundary.rs](../../packages/treetime/src/optimize/zero_boundary.rs) (`grid_search_inner`, `grid_search_branch_lengths`, `GRID_SEARCH_POINTS`)
-- [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md)

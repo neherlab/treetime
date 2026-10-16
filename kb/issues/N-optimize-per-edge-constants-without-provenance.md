@@ -22,6 +22,9 @@ The constants of the per-edge branch-length optimizer carry no rationale in the 
 | `GRID_SEARCH_POINTS = 100`                                                          | [zero_boundary.rs#L9](../../packages/treetime/src/optimize/zero_boundary.rs#L9)                                                                                    | `dbe6577c`: log spacing for uniform resolution per decade; the prototype used 10 linear points                  | None                                                                                                                                                                                                                                                                            |
 | Indel floor $0.01 \cdot \text{one\_mutation}$                                       | [zero_boundary.rs#L15](../../packages/treetime/src/optimize/zero_boundary.rs#L15)                                                                                  | `2cb066f5` (2026-03-31): positive minimum for edges with indels                                                 | Closest: `MIN_BRANCH_LENGTH = 1e-3` (fraction of `one_mutation`) [config.py#L7](../../packages/legacy/treetime/treetime/config.py#L7), used as a lower cutoff in branch-length interpolators, not in optimization                                                               |
 
+> [!WARNING]
+> **Needs review.** The Newton rows and the line numbers predate the safeguarded Newton method: `fn newton_sqrt_maximize()` [packages/treetime/src/optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs) raised `NEWTON_MAX_ITER` to 50 (the budget of Brent, enough for bisection to reach the absolute tolerance), and `fn search_upper_bound()` in `zero_boundary.rs` now holds the shared upper end of the Brent, Newton, and grid searches
+
 The first v1 prototype commits (`cda52b8a`, `9da0ddea`) are early work-in-progress commits without a stated reason for these values.
 
 ### Missing rationale
@@ -51,7 +54,7 @@ Accuracy and coverage of the recorded choices. Measurements (below) cannot prove
 
 ## Evidence on current effects
 
-From the measurements in [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md#evidence) and [M-optimize-brent-setup-differs-from-v0.md](M-optimize-brent-setup-differs-from-v0.md#evidence) (`flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`):
+From the measurements in [M-optimize-brent-setup-differs-from-v0.md](M-optimize-brent-setup-differs-from-v0.md#evidence) (`flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`):
 
 - `BRENT_MAX_ITER = 50` was never reached (largest count 29)
 - `NEWTON_MAX_ITER = 10` was reached on 2 of 9,544 Newton optimizations

@@ -15,11 +15,14 @@ This choice is correct in the common case: the input branch length is the optimi
 
 ## Evidence
 
-Throwaway instrumentation of the per-edge optimizer on `rust` at `77dd3a84`, described in [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md#evidence):
+Throwaway instrumentation of the per-edge optimizer on `rust` at `77dd3a84`, described in [M-optimize-brent-setup-differs-from-v0.md](M-optimize-brent-setup-differs-from-v0.md#evidence):
 
 - **The extent misses the global maximum on the Dinh and Matsen K80 test surface.** The surface used in `test_dispatch_zero_boundary.rs` has a local maximum at $t \approx 0.167$ and its global maximum at $t \approx 6.37$. For every start $t_0 \leq 2$, the grid upper end $\max(1.5 t_0 + \text{one\_mutation}, 0.5)$ is below $6.37$, so both the grid search and the Brent bracket return the local maximum or the grid's own upper end ($t = 3.01$ from $t_0 = 2$). The existing tests assert the local maximum near $0.2$ as the expected result
 - **The grid lower end misses maxima below $0.1 \cdot \text{one\_mutation}$.** On 4 Newton optimizations of `ebola/100` (start $t = 0$), the maximum lies at $t \approx 2.4\cdot10^{-6}$, below the grid lower end $5.3\cdot10^{-6}$, and the grid search returns zero with a log-likelihood shortfall of $1.5\cdot10^{-3}$
 - **On the measured example datasets no edge had more than one local maximum** (`flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`; dense and sparse; `--model infer|jc69`; both methods). The extent question therefore matters for non-unimodal surfaces and very short branches, not for the common case on these datasets
+
+> [!WARNING]
+> **Needs review.** The 4 `ebola/100` cases came from the grid fallback of the Newton method, which `fn newton_sqrt_maximize()` [packages/treetime/src/optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs) removed. The grid lower end still applies to the grid of `fn reconcile_zero_boundary()`
 
 ## Impact
 

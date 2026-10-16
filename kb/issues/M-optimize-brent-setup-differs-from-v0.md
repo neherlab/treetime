@@ -9,8 +9,8 @@ Notation: $t$ is the branch length, $s = \sqrt{t}$, $\ell$ the log-likelihood of
 
 ## Locations
 
-- v1 solver: `fn brent_sqrt_inner()` [packages/treetime/src/optimize/method_brent.rs#L12-L35](../../packages/treetime/src/optimize/method_brent.rs#L12-L35), bounds `fn brent_bracket()` [method_brent.rs#L37-L42](../../packages/treetime/src/optimize/method_brent.rs#L37-L42), `BRENT_MAX_ITER` [method_brent.rs#L10](../../packages/treetime/src/optimize/method_brent.rs#L10)
-- v1 caller: `fn optimize_edge()` [packages/treetime/src/optimize/dispatch.rs#L272-L306](../../packages/treetime/src/optimize/dispatch.rs#L272-L306), lower bound `fn min_branch_length_for_indels()` [packages/treetime/src/optimize/zero_boundary.rs#L13-L19](../../packages/treetime/src/optimize/zero_boundary.rs#L13-L19), `GRID_SEARCH_MIN_UPPER = 0.5` [zero_boundary.rs#L11](../../packages/treetime/src/optimize/zero_boundary.rs#L11)
+- v1 solver: `fn brent_sqrt_inner()` [packages/treetime/src/optimize/method_brent.rs#L13-L24](../../packages/treetime/src/optimize/method_brent.rs#L13-L24), termination status `fn brent_sqrt_minimize()` [method_brent.rs#L26-L57](../../packages/treetime/src/optimize/method_brent.rs#L26-L57), bounds `fn brent_bracket()` [method_brent.rs#L59-L64](../../packages/treetime/src/optimize/method_brent.rs#L59-L64), `BRENT_MAX_ITER` [method_brent.rs#L11](../../packages/treetime/src/optimize/method_brent.rs#L11)
+- v1 caller: `fn optimize_edge()` [packages/treetime/src/optimize/dispatch.rs#L234-L270](../../packages/treetime/src/optimize/dispatch.rs#L234-L270), lower bound `fn min_branch_length_for_indels()` [packages/treetime/src/optimize/zero_boundary.rs#L54-L60](../../packages/treetime/src/optimize/zero_boundary.rs#L54-L60), upper bound `fn search_upper_bound()` with `GRID_SEARCH_MIN_UPPER = 0.5` [zero_boundary.rs#L142-L144](../../packages/treetime/src/optimize/zero_boundary.rs#L142-L144), non-convergence warning `UnconvergedEdges::report()` [packages/treetime/src/optimize/solver_outcome.rs#L28-L56](../../packages/treetime/src/optimize/solver_outcome.rs#L28-L56)
 - argmin `BrentOpt` at revision `f5c3fd3` (the workspace pin): constructor defaults [brentopt.rs#L66-L71](https://github.com/argmin-rs/argmin/blob/f5c3fd3953771ee41d1e6425b3421de2b8ed7b24/crates/argmin/src/solver/brent/brentopt.rs#L66-L71), first sample [brentopt.rs#L109-L123](https://github.com/argmin-rs/argmin/blob/f5c3fd3953771ee41d1e6425b3421de2b8ed7b24/crates/argmin/src/solver/brent/brentopt.rs#L109-L123), stopping test [brentopt.rs#L133-L143](https://github.com/argmin-rs/argmin/blob/f5c3fd3953771ee41d1e6425b3421de2b8ed7b24/crates/argmin/src/solver/brent/brentopt.rs#L133-L143)
 - v0 solver: `GTR.optimal_t_compressed()` [packages/legacy/treetime/treetime/gtr.py#L816-L920](../../packages/legacy/treetime/treetime/gtr.py#L816-L920), penalty [gtr.py#L867](../../packages/legacy/treetime/treetime/gtr.py#L867), fallback [gtr.py#L916-L918](../../packages/legacy/treetime/treetime/gtr.py#L916-L918), `MAX_BRANCH_LENGTH = 4.0` [packages/legacy/treetime/treetime/config.py#L34-L36](../../packages/legacy/treetime/treetime/config.py#L34-L36)
 - v0 caller: `TreeAnc.optimize_tree_marginal()` tolerance schedule [packages/legacy/treetime/treetime/treeanc.py#L1313](../../packages/legacy/treetime/treetime/treeanc.py#L1313), profile calls [treeanc.py#L1327-L1341](../../packages/legacy/treetime/treetime/treeanc.py#L1327-L1341)
@@ -22,8 +22,8 @@ Notation: $t$ is the branch length, $s = \sqrt{t}$, $\ell$ the log-likelihood of
 | ----------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | Search interval and start     | $s \in [-2, 2]$ ($t \le 4$), start $\sqrt{h}$, result never worse than start                | $t \in [\max(t_\text{min}, 10^{-12}),\ \max(1.5\,t_0 + \text{one mutation}, 0.5)]$, golden-section start | Start: v0. Upper bound: neither. Zero: equal outcome, v0 simpler |
 | Objective                     | $-\ell(s^2) + e^{s^4/10^4}$ on the profile path                                             | $-\ell(s^2)$                                                                                             | v1                                                               |
-| Tolerance and iteration limit | $\text{tol}_i \cdot \lvert s \rvert + 10^{-11}$, $\text{tol}_i = 10^{-8} + 0.01^{i+1}$; 500 | $\sqrt{\epsilon}\,\lvert s \rvert + 10^{-5}$; 50, status unread                                          | Tolerance shape: v1. Status: v0                                  |
-| Failure handling              | Non-convergence: Hamming distance. Invalid bracket: uncaught `ValueError`                   | Cost-function error: `Err` to the caller. Iteration limit: result used silently                          | Errors: v1. Non-convergence: neither                             |
+| Tolerance and iteration limit | $\text{tol}_i \cdot \lvert s \rvert + 10^{-11}$, $\text{tol}_i = 10^{-8} + 0.01^{i+1}$; 500 | $\sqrt{\epsilon}\,\lvert s \rvert + 10^{-5}$; 50, status read                                            | Tolerance shape: v1. Status: equal                               |
+| Failure handling              | Non-convergence: Hamming distance. Invalid bracket: uncaught `ValueError`                   | Cost-function error: `Err` to the caller. Iteration limit: best point kept, run warning                  | Errors: v1. Non-convergence: v1                                  |
 
 ## Axis 1: search interval and start
 
@@ -77,7 +77,7 @@ Notation: $t$ is the branch length, $s = \sqrt{t}$, $\ell$ the log-likelihood of
 ### What each version does
 
 - **v0**: SciPy's Brent stops when the bracket is within $\text{tol}_1 = \text{tol} \cdot |s| + 10^{-11}$ of the current point, with $\text{tol}_i = 10^{-8} + 0.01^{i+1}$ in outer iteration $i$: $0.01000001$, then $0.00010001$, then $0.00000101$, and so on (see [N-optimize-pre-step-coarse-tolerance.md](N-optimize-pre-step-coarse-tolerance.md)). The limit is 500 iterations; `success` is false when the limit is reached or the result is NaN, and v0 reads it (Axis 4)
-- **v1**: argmin's defaults `eps` $= \sqrt{\epsilon} \approx 1.49\cdot10^{-8}$ and `t` $= 10^{-5}$ give $\text{tol} = \sqrt{\epsilon}\,|s| + 10^{-5}$, the same in every outer iteration. Since $|s| \le \sqrt{\text{upper}}$, the relative part is at most $1.5\cdot10^{-7}$ for every branch up to $t = 100$, two orders of magnitude below $10^{-5}$, so the tolerance is in practice absolute: $10^{-5}$ in $s$. The limit is `BRENT_MAX_ITER = 50`; `fn brent_sqrt_inner()` does not read the termination reason, so a stop at `MaxItersReached` is used as if it had converged. The returned point is within about $3\,\text{tol}$ of the local minimum (argmin documentation of `set_tolerance()`)
+- **v1**: argmin's defaults `eps` $= \sqrt{\epsilon} \approx 1.49\cdot10^{-8}$ and `t` $= 10^{-5}$ give $\text{tol} = \sqrt{\epsilon}\,|s| + 10^{-5}$, the same in every outer iteration. Since $|s| \le \sqrt{\text{upper}}$, the relative part is at most $1.5\cdot10^{-7}$ for every branch up to $t = 100$, two orders of magnitude below $10^{-5}$, so the tolerance is in practice absolute: $10^{-5}$ in $s$. The limit is `BRENT_MAX_ITER = 50`; `fn brent_sqrt_minimize()` reads the termination reason, keeps the best point on `MaxItersReached`, and the optimization round raises one `branch-lengths-not-converged` run warning that names the affected edges. The returned point is within about $3\,\text{tol}$ of the local minimum (argmin documentation of `set_tolerance()`)
 
 ### Accuracy relative to the statistical error
 
@@ -103,28 +103,27 @@ The Poisson approximation ignores multiple hits and ambiguous sites, which lower
 
 - **Tolerance shape: v1.** An absolute tolerance in $s$ is a constant fraction of the standard error at every branch length, which is the right scale for a statistical estimate. v0's relative tolerance is coarse in the first outer iteration and over-resolves near zero. Neither scales the tolerance with $L$: an absolute tolerance proportional to $1/\sqrt{L}$ in $s$ would hold the error at a fixed fraction of the standard error for every alignment length
 - **Iteration limit: equal in practice.** Neither limit was reached on the measured data (v1 largest count 29 of 50)
-- **Termination status: v0.** v0 reads it; v1 cannot tell a converged result from one stopped at the limit
+- **Termination status: equal.** Both read it; they differ in what they do at the limit (Axis 4)
 
 ## Axis 4: failure handling
 
 ### What each version does
 
 - **v0**: when `opt['success']` is false (500 iterations or NaN), it returns the Hamming distance $h$ ([gtr.py#L916-L918](../../packages/legacy/treetime/treetime/gtr.py#L916-L918)). When the bracket condition fails, SciPy raises `ValueError`; `optimal_t_compressed()` catches only `ImportError`, so the exception ends the run
-- **v1**: an error of the cost function or of argmin becomes an `Err` with the branch length in the message and ends the run; a stop at `MaxItersReached` returns the best point silently
+- **v1**: an error of the cost function or of argmin becomes an `Err` with the branch length in the message and ends the run; a stop at `MaxItersReached` returns the best point and raises a run warning (Axis 3)
 
 ### Consequences
 
 - $h$ is a model-free proportion of differing sites. It ignores multiple substitutions and underestimates $t$ (under JC69, $t = -\tfrac{3}{4}\ln(1 - \tfrac{4}{3}h) > h$), and it discards the best point Brent found. The substitution is silent apart from a log line at verbosity 4
-- v1's silent use of an unconverged point is the opposite failure: the point is the best found, but no one learns that it did not converge
 
 ### Which is better
 
 - **Errors: v1.** A visible error is better than v0's silent Hamming substitution, and v0's uncaught `ValueError` is an error too, without context
-- **Non-convergence: neither.** The best point Brent found is the better estimate (IQ-TREE keeps it); the run should report that it did not converge, for example through a `RunWarning`
+- **Non-convergence: v1.** The best point Brent found is the better estimate (IQ-TREE keeps it), and the run warning tells the user which edges did not converge
 
 ## Evidence
 
-Throwaway instrumentation of `fn optimize_edge()` on `rust` at `77dd3a84`, with the reference maximum described in [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md#evidence).
+Measurements were taken with throwaway instrumentation of `fn optimize_edge()` on `rust` at `77dd3a84`. For every edge and optimize iteration, the probe recorded the exit, the start, the solver output, the final output after `fn reconcile_zero_boundary()`, and a reference maximum: $\ell$ on 800 log-spaced points over $[10^{-4} \cdot \text{one\_mutation}, 10]$ plus $t = 0$, with golden-section refinement around each grid local maximum. A finite reference grid does not prove a global maximum.
 
 Measured: `treetime optimize` with default settings on `flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`, for `--dense true|false` and `--model infer|jc69` (24 Brent runs, 9,542 per-edge optimizations):
 
@@ -143,16 +142,15 @@ Measured: `treetime optimize` with default settings on `flu/h3n2/{20,200}`, `ebo
 
 ## Options
 
-Each option is independent of the others.
+Each option is independent of the others. v1 reads the termination status (Axis 3) and keeps the best point at the iteration limit instead of v0's fallback to $h$, which is scientifically worse (Axis 4).
 
-1. **Read the termination status**: on `MaxItersReached`, raise a `RunWarning` and keep the best point. v0's fallback to $h$ for the substitution-only path is the parity choice, but it is scientifically worse (Axis 4). Does not change outputs on the measured datasets
-2. **Accept-if-not-worse**: evaluate $\ell(t_0)$ and return $t_0$ when $\ell(\text{result}) < \ell(t_0)$, as IQ-TREE does. Removes the 875 small regressions; costs one evaluation per edge. v0 reaches the same property through its start point, but v0 starts from $h$, not from $t_0$
-3. **Tolerance**: keep the absolute tolerance in $s$ and scale it with the alignment, for example $c / (2\sqrt{L})$ through `BrentOpt::set_tolerance(eps, t)`; or copy v0's relative tolerance ($10^{-11}$ absolute part, as SciPy) and its per-iteration schedule (see [N-optimize-pre-step-coarse-tolerance.md](N-optimize-pre-step-coarse-tolerance.md)). Either changes outputs at about the $10^{-6}$ level on the measured datasets. A tolerance change alone does not restore v0 parity, because the objective and the interval also differ
-4. **Upper bound**: a fixed cap (v0: 4, IQ-TREE: 10, RAxML-NG: 100) instead of, or in addition to, the adaptive $1.5\,t_0 + \text{one mutation}$; depends on the investigation in Axis 1
-5. **Penalty**: keep v1 without the v0 penalty (recommended by Axis 2), or add it for parity
+1. **Accept-if-not-worse**: evaluate $\ell(t_0)$ and return $t_0$ when $\ell(\text{result}) < \ell(t_0)$, as IQ-TREE does. Removes the 875 small regressions; costs one evaluation per edge. v0 reaches the same property through its start point, but v0 starts from $h$, not from $t_0$
+2. **Tolerance**: keep the absolute tolerance in $s$ and scale it with the alignment, for example $c / (2\sqrt{L})$ through `BrentOpt::set_tolerance(eps, t)`; or copy v0's relative tolerance ($10^{-11}$ absolute part, as SciPy) and its per-iteration schedule (see [N-optimize-pre-step-coarse-tolerance.md](N-optimize-pre-step-coarse-tolerance.md)). Either changes outputs at about the $10^{-6}$ level on the measured datasets. A tolerance change alone does not restore v0 parity, because the objective and the interval also differ
+3. **Upper bound**: a fixed cap (v0: 4, IQ-TREE: 10, RAxML-NG: 100) instead of, or in addition to, the adaptive $1.5\,t_0 + \text{one mutation}$; depends on the investigation in Axis 1
+4. **Penalty**: keep v1 without the v0 penalty (recommended by Axis 2), or add it for parity
 
 > [!IMPORTANT]
-> **Decision required.** Which of options 1 to 5 to adopt. Options 1 and 2 do not move v1 away from v0 on the measured data and close the guarantees that v0 or IQ-TREE give. Options 3 to 5 change outputs and each is a choice between v0 parity and the better-justified setup of its axis.
+> **Decision required.** Which of options 1 to 4 to adopt. Option 1 does not move v1 away from v0 on the measured data and closes the guarantee that v0 and IQ-TREE give. Options 2 to 4 change outputs and each is a choice between v0 parity and the better-justified setup of its axis.
 
 ## Cross-references
 

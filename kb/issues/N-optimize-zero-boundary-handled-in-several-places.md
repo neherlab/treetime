@@ -1,7 +1,7 @@
 # Zero branch length boundary is handled in several places
 
 > [!IMPORTANT]
-> **Decision required.** The per-edge optimizer can be restructured as "maximize on the closed interval, then compare the interior candidate with the endpoint $t = 0$". This reproduces current Brent outputs only together with a decision on the global search for non-unimodal models, and it reproduces current Newton outputs only after [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md) is fixed. Options are below.
+> **Decision required.** The per-edge optimizer can be restructured as "maximize on the closed interval, then compare the interior candidate with the endpoint $t = 0$". This reproduces current Brent outputs only together with a decision on the global search for non-unimodal models. Whether it reproduces the outputs of the safeguarded Newton method is not checked. Options are below.
 
 ## Problem
 
@@ -13,9 +13,12 @@
 4. **Grid inside Newton** [packages/treetime/src/optimize/method_newton.rs#L28-L30](../../packages/treetime/src/optimize/method_newton.rs#L28-L30): the grid search compares its best positive point with zero
 5. **Reconcile** `fn reconcile_zero_boundary()` [zero_boundary.rs#L79-L99](../../packages/treetime/src/optimize/zero_boundary.rs#L79-L99) after the solver: runs the grid search when zero beats a positive candidate, when a zero candidate comes from a model without a certified decay rate, or when a zero candidate is excluded because a site is invalid at zero
 
+> [!WARNING]
+> **Needs review.** Item 4 and the Newton figures below predate the safeguarded Newton method: `fn newton_sqrt_maximize()` [packages/treetime/src/optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs) has no grid fallback and returns the best evaluated point, so the grid now runs only in item 5
+
 ## Evidence
 
-Throwaway instrumentation of `fn optimize_edge()` on `rust` at `77dd3a84` (method in [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md#evidence)). Measured: `treetime optimize` on `flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`, `--dense true|false`, `--model infer|jc69`, both methods (48 runs, 19,086 per-edge optimizations).
+Throwaway instrumentation of `fn optimize_edge()` on `rust` at `77dd3a84` (method in [M-optimize-brent-setup-differs-from-v0.md](M-optimize-brent-setup-differs-from-v0.md#evidence)). Measured: `treetime optimize` on `flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`, `--dense true|false`, `--model infer|jc69`, both methods (48 runs, 19,086 per-edge optimizations).
 
 Which path decided the result:
 
@@ -26,7 +29,7 @@ Which path decided the result:
 | Solver output used unchanged        |             8,045 |            8,797 |
 
 - **Brent and the reconcile step are coupled.** Every reconcile change in the Brent runs is a solver result within $10^{-4}$ in $s$ of the bracket lower end $s = 10^{-6}$ (at full precision $t$ between $1.5\cdot10^{-10}$ and $4.4\cdot10^{-10}$, so inside the solver tolerance of the endpoint, not on it); with `--model jc69` the same edges take the unimodal shortcut instead (`flu/h3n2/200` dense: 225 such results with `infer`, 225 shortcuts with `jc69`). The positive floor produces the case that the reconcile step then repairs with a 100-point grid search. Whether a zero lower end would remove the case is unmeasured (see the investigation block below)
-- **The final result is zero on 1,497 Brent and 1,496 Newton edges.** No edge returned zero while the reference found a better positive point, except 4 Newton edges where the grid inside Newton cannot represent a maximum below $0.1 \cdot \text{one\_mutation}$ ([M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md))
+- **The final result is zero on 1,497 Brent and 1,496 Newton edges.** No edge returned zero while the reference found a better positive point, except 4 Newton edges where the grid inside Newton cannot represent a maximum below $0.1 \cdot \text{one\_mutation}$
 - **On the Dinh and Matsen K80 test surface** (local maximum $t \approx 0.167$, global maximum $t \approx 6.37$), the reconcile step rescues a Newton curvature-break result $t = 1.05$ that is worse than the start: $\ell(0) > \ell(1.05)$, so it runs the grid search, which returns $t \approx 0.162$. An endpoint-only comparison returns zero there. With Brent, the closed-interval design and the current code return the same point for every start in $\{0.001, \dots, 5\}$
 
 > [!IMPORTANT]
