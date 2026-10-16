@@ -5,6 +5,7 @@ mod tests {
   use helpers::add_named;
   use maplit::btreemap;
   use ndarray::Array1;
+  use rstest::rstest;
   use statrs::distribution::{ContinuousCDF, Normal};
   use std::collections::BTreeMap;
   use std::sync::Arc;
@@ -198,6 +199,28 @@ mod tests {
     let truncated_exponential_quantile = -(1.0 - 0.9 * (1.0 - (-10.0_f64).exp())).ln();
     assert_relative_eq!(intervals[0].lower, hpd_lower, epsilon = 1e-12);
     assert_relative_eq!(intervals[0].upper, truncated_exponential_quantile, epsilon = 1e-7);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::without_rate_uncertainty(None)]
+  #[case::with_rate_uncertainty(   Some([2019.0, 2020.5, 2022.0]))]
+  #[case::with_shifted_rate_dates( Some([2020.0, 2020.2, 2020.4]))]
+  #[trace]
+  fn test_extract_confidence_intervals_point_posterior_is_its_date(#[case] rate_dates: Option<[f64; 3]>) {
+    let mut graph = Graph::new();
+    let mut names = BTreeMap::new();
+    let key = add_named(&mut graph, &mut names, Some("dated_tip"));
+    graph.build().unwrap();
+    let rate_map: BTreeMap<_, _> = rate_dates.into_iter().map(|dates| (key, dates)).collect();
+    let dist = Arc::new(Distribution::point(2020.5, 0.0));
+
+    let state = helpers::state(&graph, &[(key, Some(2020.5), Some(dist))]);
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names).unwrap();
+
+    let v0_delta_region = (2020.5, 2020.5);
+    assert_eq!(1, intervals.len());
+    assert_eq!(v0_delta_region, (intervals[0].lower, intervals[0].upper));
   }
 
   mod helpers {

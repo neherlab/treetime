@@ -9,20 +9,14 @@ use treetime_utils::{make_error, make_internal_error};
 pub fn max_posterior_region(
   distribution: &Distribution<NegLog>,
   fraction: f64,
-) -> Result<Option<PosteriorRegion>, Report> {
+) -> Result<Option<MaxPosteriorRegion>, Report> {
   let normalized = distribution.normalize()?;
   match &normalized {
     Distribution::Empty => Ok(None),
-    Distribution::Point(_) => {
-      let t = normalized.t()[0];
-      Ok(Some(PosteriorRegion {
-        lower: t,
-        upper: t,
-        peak: PeakLocation::Latest,
-      }))
-    },
+    Distribution::Point(_) => Ok(Some(MaxPosteriorRegion::Point { t: normalized.t()[0] })),
     Distribution::Range(_) | Distribution::Function(_) => {
-      grid_max_posterior_region(&normalized.t(), &normalized.y()?, fraction).map(Some)
+      let region = grid_max_posterior_region(&normalized.t(), &normalized.y()?, fraction)?;
+      Ok(Some(MaxPosteriorRegion::Grid(region)))
     },
     Distribution::Formula(_) => make_internal_error!("Normalization left a formula distribution undiscretized"),
   }
@@ -87,6 +81,12 @@ pub(crate) fn grid_max_posterior_region(
     }
   };
   Ok(region)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum MaxPosteriorRegion {
+  Point { t: f64 },
+  Grid(PosteriorRegion),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

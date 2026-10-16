@@ -4,7 +4,7 @@ use crate::make_error;
 use crate::progress::LogSink;
 use crate::timetree::inference::result::{NodePosterior, TimeInference};
 use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
-use crate::timetree::max_posterior_region::{PeakLocation, PosteriorRegion, max_posterior_region};
+use crate::timetree::max_posterior_region::{MaxPosteriorRegion, PeakLocation, max_posterior_region};
 use crate::{progress_info, progress_warn};
 use deser::Serialize;
 use eyre::{Report, WrapErr};
@@ -131,9 +131,14 @@ fn node_confidence_interval(
 pub(crate) fn combined_confidence(
   date: f64,
   limits: (f64, f64),
-  region: Option<PosteriorRegion>,
+  region: Option<MaxPosteriorRegion>,
   rate_dates: Option<&[f64; 3]>,
 ) -> (f64, f64) {
+  let region = match region {
+    Some(MaxPosteriorRegion::Point { t }) => return (t, t),
+    Some(MaxPosteriorRegion::Grid(region)) => Some(region),
+    None => None,
+  };
   let mutation_contribution = region.map(|region| (region.lower, region.upper));
   let rate_quantiles = region.map_or((CI_LOWER_QUANTILE, CI_UPPER_QUANTILE), |region| {
     rate_quantiles_for_peak(region.peak)

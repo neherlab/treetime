@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::timetree::max_posterior_region::{
-    PeakLocation, PosteriorRegion, grid_max_posterior_region, max_posterior_region,
+    MaxPosteriorRegion, PeakLocation, PosteriorRegion, grid_max_posterior_region, max_posterior_region,
   };
   use eyre::Report;
   use helpers::{grid, interpolate};
@@ -112,26 +112,22 @@ mod tests {
 
     let region = max_posterior_region(&distribution, 0.9)?;
 
-    let expected = PosteriorRegion {
+    let expected = MaxPosteriorRegion::Grid(PosteriorRegion {
       lower: 2019.2,
       upper: 2021.0,
       peak: PeakLocation::Latest,
-    };
+    });
     assert_eq!(Some(expected), region);
     Ok(())
   }
 
   #[test]
-  fn test_max_posterior_region_point_is_zero_width() -> Result<(), Report> {
+  fn test_max_posterior_region_point_is_its_date() -> Result<(), Report> {
     let distribution = Distribution::<NegLog>::point(2020.5, 1.0);
 
     let region = max_posterior_region(&distribution, 0.9)?;
 
-    let expected = PosteriorRegion {
-      lower: 2020.5,
-      upper: 2020.5,
-      peak: PeakLocation::Latest,
-    };
+    let expected = MaxPosteriorRegion::Point { t: 2020.5 };
     assert_eq!(Some(expected), region);
     Ok(())
   }

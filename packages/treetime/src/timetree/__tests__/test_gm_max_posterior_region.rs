@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::timetree::confidence::{CI_FRACTION, combined_confidence};
-  use crate::timetree::max_posterior_region::{PeakLocation, PosteriorRegion, grid_max_posterior_region};
+  use crate::timetree::max_posterior_region::{
+    MaxPosteriorRegion, PeakLocation, PosteriorRegion, grid_max_posterior_region,
+  };
   use deser::Deserialize;
   use eyre::Report;
   use ndarray::Array1;
@@ -45,8 +47,13 @@ mod tests {
       upper: to_numdate(region.upper),
       ..region
     };
-    let without_rate = combined_confidence(expected.numdate, limits, Some(region), None);
-    let with_rate = combined_confidence(expected.numdate, limits, Some(region), Some(&expected.rate_dates));
+    let without_rate = combined_confidence(expected.numdate, limits, Some(MaxPosteriorRegion::Grid(region)), None);
+    let with_rate = combined_confidence(
+      expected.numdate,
+      limits,
+      Some(MaxPosteriorRegion::Grid(region)),
+      Some(&expected.rate_dates),
+    );
 
     assert_eq!(expected.peak.location(), region.peak);
     pretty_assert_abs_diff_eq!(expected.region_without_rate.0, without_rate.0, epsilon = 1e-10);
