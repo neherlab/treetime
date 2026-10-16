@@ -16,11 +16,10 @@ pub struct GTR {
   W: Array2<f64>,
   #[getset(get = "pub")]
   pi: Array1<f64>,
-  #[getset(get = "pub")]
   eigvals: Array1<f64>,
-  #[getset(get = "pub")]
+  #[getset(get = "pub(crate)")]
   v: Array2<f64>,
-  #[getset(get = "pub")]
+  #[getset(get = "pub(crate)")]
   v_inv: Array2<f64>,
   site_rates: Option<Array1<f64>>,
   unit_decay_rate: Option<f64>,
@@ -115,7 +114,7 @@ impl GTR {
     })
   }
 
-  pub fn site_rates(&self) -> Option<&Array1<f64>> {
+  pub(crate) fn site_rates(&self) -> Option<&Array1<f64>> {
     self.site_rates.as_ref()
   }
 
@@ -129,7 +128,7 @@ impl GTR {
     }
   }
 
-  pub fn certified_decay_rate(&self) -> Option<f64> {
+  pub(crate) fn certified_decay_rate(&self) -> Option<f64> {
     self.unit_decay_rate.map(|unit_decay_rate| unit_decay_rate * self.mu)
   }
 
@@ -195,6 +194,13 @@ impl GTR {
   fn exp_site_rate_eigvals(&self, rates: &Array1<f64>, t: f64) -> Array2<f64> {
     let rate_eigvals = self.rate_eigvals_at(1.0, t);
     (&rates.view().insert_axis(Axis(1)) * &rate_eigvals.view().insert_axis(Axis(0))).mapv_into(f64::exp)
+  }
+}
+
+#[cfg(test)]
+impl GTR {
+  pub(crate) fn eigvals(&self) -> &Array1<f64> {
+    &self.eigvals
   }
 }
 

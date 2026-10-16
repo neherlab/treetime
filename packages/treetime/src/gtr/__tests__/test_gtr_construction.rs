@@ -7,6 +7,7 @@ mod tests {
   use crate::gtr::gtr::{GTR, RateScale};
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
+  use helpers::normalized;
   use ndarray::{Array1, Array2, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -208,13 +209,19 @@ mod tests {
     Ok(())
   }
 
-  fn normalized(pi: Array1<f64>, W: Option<Array2<f64>>) -> Result<GTR, Report> {
-    GTR::builder()
-      .n_states(pi.len())
-      .mu(1.0)
-      .maybe_W(W)
-      .pi(pi)
-      .rate_scale(RateScale::Normalized)
-      .build()
+  mod helpers {
+    use crate::gtr::gtr::{GTR, RateScale};
+    use eyre::Report;
+    use ndarray::{Array1, Array2};
+
+    pub(super) fn normalized(pi: Array1<f64>, W: Option<Array2<f64>>) -> Result<GTR, Report> {
+      GTR::builder()
+        .n_states(pi.len())
+        .mu(1.0)
+        .maybe_W(W)
+        .pi(pi)
+        .rate_scale(RateScale::Normalized)
+        .build()
+    }
   }
 }
