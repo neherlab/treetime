@@ -133,13 +133,35 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_gtr_construction_rejects_overflowing_resolved_mu() {
+    assert_error!(
+      GTR::builder()
+        .n_states(2)
+        .mu(f64::MAX)
+        .W(Array2::from_elem((2, 2), 4.0))
+        .pi(array![0.5, 0.5])
+        .rate_scale(RateScale::FromMatrix)
+        .build(),
+      "Substitution rate (mu) must be finite and non-negative, got inf"
+    );
+  }
+
   #[rustfmt::skip]
   #[rstest]
-  #[case::negative( array![-0.5, 1.5], "Equilibrium frequencies (pi) must be finite and non-negative with a positive sum, got [-0.5, 1.5]")]
-  #[case::nan(      array![f64::NAN, 1.0], "Equilibrium frequencies (pi) must be finite and non-negative with a positive sum, got [NaN, 1]")]
-  #[case::zero_sum( array![0.0, 0.0], "Equilibrium frequencies (pi) must be finite and non-negative with a positive sum, got [0, 0]")]
+  #[case::negative(array![-0.5, 1.5],     "Equilibrium frequencies (pi) must be finite and positive with a finite sum, got [-0.5, 1.5]")]
+  #[case::nan(     array![f64::NAN, 1.0], "Equilibrium frequencies (pi) must be finite and positive with a finite sum, got [NaN, 1]")]
+  #[case::one_zero(array![0.0, 1.0],      "Equilibrium frequencies (pi) must be finite and positive with a finite sum, got [0, 1]")]
+  #[case::all_zero(array![0.0, 0.0],      "Equilibrium frequencies (pi) must be finite and positive with a finite sum, got [0, 0]")]
   #[trace]
   fn test_gtr_construction_rejects_invalid_pi(#[case] pi: Array1<f64>, #[case] expected: &str) {
+    assert_error!(normalized(pi, None), expected);
+  }
+
+  #[test]
+  fn test_gtr_construction_rejects_pi_with_infinite_sum() {
+    let pi = array![f64::MAX, f64::MAX];
+    let expected = format!("Equilibrium frequencies (pi) must be finite and positive with a finite sum, got {pi}");
     assert_error!(normalized(pi, None), expected);
   }
 

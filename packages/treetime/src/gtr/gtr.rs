@@ -46,8 +46,8 @@ impl GTR {
       );
     }
 
-    if !pi.iter().all(|&p| p.is_finite() && p >= 0.0) || pi.sum() <= 0.0 {
-      return make_error!("Equilibrium frequencies (pi) must be finite and non-negative with a positive sum, got {pi}");
+    if !(pi.iter().all(|&p| p.is_finite() && p > 0.0) && pi.sum().is_finite()) {
+      return make_error!("Equilibrium frequencies (pi) must be finite and positive with a finite sum, got {pi}");
     }
 
     if let Some(W) = &W {
@@ -96,6 +96,7 @@ impl GTR {
       RateScale::FromMatrix => mu * average_rate,
       RateScale::Normalized => mu,
     };
+    validate_mu(mu)?;
     let W = W / average_rate;
 
     let unit_decay_rate = has_single_decay_rate.then(|| W[[0, 1]]);
