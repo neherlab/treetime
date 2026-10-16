@@ -24,7 +24,7 @@ const connection = new WorkerConnection(browserWorkerHost);
 
 const client = createApiClient({ baseUrl: globalThis.location.origin, fetch: createPortFetch(connection) });
 
-const preferences = browserPreferencesStorage(globalThis.localStorage);
+const preferences = browserPreferencesStorage(globalThis.localStorage, globalThis.sessionStorage);
 
 const root = document.getElementById("root");
 

@@ -173,7 +173,7 @@ Each checkout resolves its own ports, so worktrees run side by side; `TREETIME_A
 
 #### Storage
 
-The web app has no database. The server keeps each run in its own folder `<runs-dir>/<run-id>/`: the run record `run.json`, the event log `events.jsonl`, the uploaded files in `inputs/`, and the results in `out/`. The browser keeps the preferences of the user interface (theme, sidebar width, and the unfinished form) in `localStorage`, under the key `treetime-preferences`. The server reads example datasets and example configurations from its examples folder, `--examples-dir`.
+The web app has no database. The server keeps each run in its own folder `<runs-dir>/<run-id>/`: the run record `run.json`, the event log `events.jsonl`, the uploaded files in `inputs/`, and the results in `out/`. The browser keeps the sidebar width in `localStorage` under the key `treetime-preferences`, so every tab shares it, and the unfinished form in `sessionStorage` under the key `treetime-draft`, so each tab keeps its own form through a reload. The theme stays with `next-themes`, which stores it in `localStorage` under the key `theme` and applies a change in one tab to the other tabs at once. The server reads example datasets and example configurations from its examples folder, `--examples-dir`.
 
 Each app mode keeps its runs in its own directory:
 

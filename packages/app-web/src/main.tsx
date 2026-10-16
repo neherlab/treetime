@@ -19,7 +19,7 @@ reloadOnChunkError(globalThis.window);
 
 const client = createWebApiClient();
 
-const preferences = browserPreferencesStorage(globalThis.localStorage);
+const preferences = browserPreferencesStorage(globalThis.localStorage, globalThis.sessionStorage);
 
 const root = document.getElementById("root");
 

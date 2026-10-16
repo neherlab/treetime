@@ -1,20 +1,16 @@
-import { zUiSettings, type UiSettings } from "@neherlab/app-contracts";
+import { zUiDraft, zUiSettings, type UiDraft, type UiSettings } from "@neherlab/app-contracts";
 import { appSettings, appSettingsUi, type ApiClient } from "@neherlab/app-contracts/client";
 
 export const PREFERENCES_STORAGE_KEY = "treetime-preferences";
 
+export const DRAFT_STORAGE_KEY = "treetime-draft";
+
 export function browserPreferencesStorage(
-  storage: Pick<Storage, "getItem" | "setItem">,
+  shared: BrowserStorage,
+  tab: BrowserStorage,
   reportInvalid: (message: string) => void = reportToConsole,
 ): PreferencesStorage {
-  return {
-    load: () => Promise.resolve(storedPreferences(storage.getItem(PREFERENCES_STORAGE_KEY), reportInvalid)),
-    save: (preferences) => {
-      storage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
-
-      return Promise.resolve();
-    },
-  };
+  return new BrowserPreferencesStorage(shared, tab, reportInvalid);
 }
 
 export function apiPreferencesStorage(client: ApiClient): PreferencesStorage {
@@ -31,28 +27,82 @@ export interface PreferencesStorage {
   save(preferences: UiSettings): Promise<void>;
 }
 
-function storedPreferences(text: string | null, reportInvalid: (message: string) => void): UiSettings {
-  if (text === null) {
-    return {};
+export type BrowserStorage = Pick<Storage, "getItem" | "setItem">;
+
+export function reportToConsole(message: string): void {
+  console.error(`[TreeTime] ${message}`);
+}
+
+class BrowserPreferencesStorage implements PreferencesStorage {
+  readonly #shared: BrowserStorage;
+  readonly #tab: BrowserStorage;
+  readonly #reportInvalid: (message: string) => void;
+  #sharedText: string | null = null;
+
+  constructor(shared: BrowserStorage, tab: BrowserStorage, reportInvalid: (message: string) => void) {
+    this.#shared = shared;
+    this.#tab = tab;
+    this.#reportInvalid = reportInvalid;
   }
 
-  try {
-    const value: unknown = JSON.parse(text);
+  load(): Promise<UiSettings> {
+    const loaded = sharedPreferences(
+      this.#parse(this.#shared.getItem(PREFERENCES_STORAGE_KEY), assertUiSettings, "preferences") ?? {},
+    );
 
-    assertUiSettings(value);
+    this.#sharedText = JSON.stringify(loaded);
 
-    return value;
-  } catch (error: unknown) {
-    reportInvalid(`the preferences saved in this browser are not valid and are ignored: ${String(error)}`);
+    const draft = this.#parse(this.#tab.getItem(DRAFT_STORAGE_KEY), assertUiDraft, "unfinished form");
 
-    return {};
+    if (draft !== undefined) {
+      loaded.draft = draft;
+    }
+
+    return Promise.resolve(loaded);
   }
+
+  save({ draft, ...preferences }: UiSettings): Promise<void> {
+    const text = JSON.stringify(sharedPreferences(preferences));
+
+    if (text !== this.#sharedText) {
+      this.#shared.setItem(PREFERENCES_STORAGE_KEY, text);
+      this.#sharedText = text;
+    }
+
+    if (draft !== undefined) {
+      this.#tab.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    }
+
+    return Promise.resolve();
+  }
+
+  #parse<T>(text: string | null, assert: (value: unknown) => asserts value is T, label: string): T | undefined {
+    if (text === null) {
+      return undefined;
+    }
+
+    try {
+      const value: unknown = JSON.parse(text);
+
+      assert(value);
+
+      return value;
+    } catch (error: unknown) {
+      this.#reportInvalid(`ignored the ${label} saved in this browser, which cannot be read: ${String(error)}`);
+
+      return undefined;
+    }
+  }
+}
+
+function sharedPreferences({ sidebar_width: sidebarWidth }: UiSettings): UiSettings {
+  return sidebarWidth === undefined ? {} : { sidebar_width: sidebarWidth };
 }
 
 function assertUiSettings(value: unknown): asserts value is UiSettings {
   zUiSettings.parse(value);
 }
 
-export function reportToConsole(message: string): void {
-  console.error(`[TreeTime] ${message}`);
+function assertUiDraft(value: unknown): asserts value is UiDraft {
+  zUiDraft.parse(value);
 }
