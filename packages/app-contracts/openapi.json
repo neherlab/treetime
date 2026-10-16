@@ -7485,17 +7485,17 @@
         ]
       },
       "BranchOptMethod": {
-        "description": "Per-edge branch length optimization method.\n\nControls how `run_optimize_mixed()` finds the maximum-likelihood branch\nlength for each edge: Brent's method or Newton-Raphson, both in $\\sqrt{t}$\nspace.",
+        "description": "Per-edge branch length optimization method.\n\nControls how the maximum-likelihood branch length of each edge is found:\nBrent's method or Newton-Raphson, both in $\\sqrt{t}$ space.",
         "oneOf": [
           {
-            "description": "Brent's method in $\\sqrt{t}$ space.\n\nMatches v0 exactly (same algorithm, same parameterization). The $\\sqrt{t}$\nreparameterization smooths the objective, giving parabolic interpolation\na better fit. Default method for golden master comparison against v0.",
+            "description": "Brent's method in $\\sqrt{t}$ space.\n\nDerivative-free. Uses the same algorithm and parameterization as v0, so\nresults match v0. The $\\sqrt{t}$ reparameterization smooths the\nobjective, giving parabolic interpolation a better fit. This is the\ndefault.",
             "type": "string",
-            "const": "brent-sqrt"
+            "const": "brent"
           },
           {
             "description": "Newton-Raphson in $\\sqrt{t}$ space.\n\nReparameterizes the optimization variable as $s = \\sqrt{t}$ and applies\nthe chain rule to transform derivatives. Reduces the indel Hessian\nsingularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme\ncases ($t < 0.001$, $k > 10$).",
             "type": "string",
-            "const": "newton-sqrt"
+            "const": "newton"
           }
         ]
       },
@@ -7716,7 +7716,7 @@
             "x-cli-flag": "--branch-length-initial-guess"
           },
           "opt_method": {
-            "description": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are\n`brent-sqrt` (default and v0-compatible) and `newton-sqrt`.",
+            "description": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are\n`brent` (default, matches v0) and `newton`.",
             "$ref": "#/components/schemas/BranchOptMethod",
             "x-cli-flag": "--opt-method"
           },

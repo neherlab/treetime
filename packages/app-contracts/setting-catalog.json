@@ -8715,22 +8715,22 @@
           "nullable": false,
           "options": [
             {
-              "value": "brent-sqrt",
+              "value": "brent",
               "help": "Brent's method in $\\sqrt{t}$ space."
             },
             {
-              "value": "newton-sqrt",
+              "value": "newton",
               "help": "Newton-Raphson in $\\sqrt{t}$ space."
             }
           ],
           "item_kind": "string",
-          "default_value": "brent-sqrt",
+          "default_value": "brent",
           "examples": [],
           "value_names": [
             "OPT_METHOD"
           ],
           "conflicts": [],
-          "help": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are `brent-sqrt` (default and v0-compatible) and `newton-sqrt`.",
+          "help": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are `brent` (default, matches v0) and `newton`.",
           "more": ""
         },
         {

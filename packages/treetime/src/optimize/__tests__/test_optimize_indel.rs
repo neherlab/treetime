@@ -221,7 +221,7 @@ pub(super) mod tests {
       total_length_low,
       &contributions_low,
       &indel_counts_low,
-      BranchOptMethod::NewtonSqrt,
+      BranchOptMethod::Newton,
       1.0,
       false,
       &mut branch_lengths_low,
@@ -234,7 +234,7 @@ pub(super) mod tests {
       total_length_high,
       &contributions_high,
       &indel_counts_high,
-      BranchOptMethod::NewtonSqrt,
+      BranchOptMethod::Newton,
       8.0,
       false,
       &mut branch_lengths_high,
@@ -324,8 +324,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimize_indel_run_optimize_nonzero_with_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
@@ -377,7 +377,7 @@ pub(super) mod tests {
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-    let error = run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, BranchOptMethod::BrentSqrt, &mut branch_lengths)
+    let error = run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, BranchOptMethod::Brent, &mut branch_lengths)
       .expect_err("negative branch length must return an error");
     let message = format!("{error:?}");
     assert!(message.contains("finite and non-negative"), "Unexpected error: {message}");
@@ -386,8 +386,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimize_indel_zero_bl_pipeline_escapes_zero(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
@@ -625,8 +625,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimize_indel_min_branch_length_clamping(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;

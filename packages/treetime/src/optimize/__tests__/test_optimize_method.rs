@@ -25,8 +25,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimize_method_equivalence_no_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
@@ -52,8 +52,8 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimize_method_local_optimality(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let OptimizedFirstEdge { graph, reconstruction, indel_rate, branch_length: bl } = optimize_first_edge_with_indels(method, 4)?;
@@ -87,7 +87,7 @@ pub(super) mod tests {
       reconstruction,
       indel_rate,
       branch_length: bl,
-    } = optimize_first_edge_with_indels(BranchOptMethod::NewtonSqrt, 2)?;
+    } = optimize_first_edge_with_indels(BranchOptMethod::Newton, 2)?;
     let metrics = eval_metrics_first_edge(&graph, &reconstruction, indel_rate, bl)?;
     let s = bl.sqrt();
     let (dl_ds, d2l_ds2) = chain_rule_sqrt(s, metrics.derivative, metrics.second_derivative);
@@ -114,13 +114,13 @@ pub(super) mod tests {
   #[case::k4(4)]
   #[trace]
   fn test_optimize_method_cross_method_lh_agreement(#[case] n_indels: usize) -> Result<(), Report> {
-    let lh_brent = optimize_first_edge_with_indels(BranchOptMethod::BrentSqrt, n_indels)?.log_lh()?;
-    let lh_newton = optimize_first_edge_with_indels(BranchOptMethod::NewtonSqrt, n_indels)?.log_lh()?;
+    let lh_brent = optimize_first_edge_with_indels(BranchOptMethod::Brent, n_indels)?.log_lh()?;
+    let lh_newton = optimize_first_edge_with_indels(BranchOptMethod::Newton, n_indels)?.log_lh()?;
 
     let lh_diff = (lh_brent - lh_newton).abs();
     assert!(
       lh_diff < 1e-3,
-      "BrentSqrt lh ({lh_brent}) and NewtonSqrt lh ({lh_newton}) differ by {lh_diff}"
+      "Brent lh ({lh_brent}) and Newton lh ({lh_newton}) differ by {lh_diff}"
     );
 
     Ok(())
@@ -128,12 +128,12 @@ pub(super) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::brent_sqrt_k1( BranchOptMethod::BrentSqrt,  1)]
-  #[case::brent_sqrt_k2( BranchOptMethod::BrentSqrt,  2)]
-  #[case::brent_sqrt_k4( BranchOptMethod::BrentSqrt,  4)]
-  #[case::newton_sqrt_k1(BranchOptMethod::NewtonSqrt, 1)]
-  #[case::newton_sqrt_k2(BranchOptMethod::NewtonSqrt, 2)]
-  #[case::newton_sqrt_k4(BranchOptMethod::NewtonSqrt, 4)]
+  #[case::brent_k1( BranchOptMethod::Brent,  1)]
+  #[case::brent_k2( BranchOptMethod::Brent,  2)]
+  #[case::brent_k4( BranchOptMethod::Brent,  4)]
+  #[case::newton_k1(BranchOptMethod::Newton, 1)]
+  #[case::newton_k2(BranchOptMethod::Newton, 2)]
+  #[case::newton_k4(BranchOptMethod::Newton, 4)]
   #[trace]
   fn test_optimize_method_positive_with_indels(#[case] method: BranchOptMethod, #[case] n_indels: usize) -> Result<(), Report> {
     let bl = optimize_first_edge_with_indels(method, n_indels)?.branch_length;

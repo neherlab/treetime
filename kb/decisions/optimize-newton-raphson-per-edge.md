@@ -1,6 +1,6 @@
 # Per-edge branch length optimization: Brent and Newton-Raphson in sqrt(t) space
 
-v1 offers two per-edge branch length optimization methods via `--opt-method`: Brent's method and Newton-Raphson, both in $\sqrt{t}$ space. The default `brent-sqrt` matches v0 exactly. v0 offers only Brent in $\sqrt{t}$ space.
+v1 offers two per-edge branch length optimization methods via `--opt-method`: Brent's method and Newton-Raphson, both in $\sqrt{t}$ space. The default `brent` matches v0 exactly. v0 offers only Brent in $\sqrt{t}$ space.
 
 ## What v0 does
 
@@ -20,13 +20,13 @@ v1 `run_optimize_mixed()` ([packages/treetime/src/optimize/dispatch.rs](../../pa
 
 ### Brent's method (derivative-free)
 
-1. `brent-sqrt` (default). Brent's method in $\sqrt{t}$ space via `argmin::BrentOpt`. Matches v0 on the success path: the cost function evaluates $-\ell(s^2)$ and bracket endpoints transform as $\sqrt{\text{lower}}$, $\sqrt{\text{upper}}$. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero. Differs from v0 on solver failure: v1 surfaces the error to the caller via `Result<f64, Report>`, while v0 silently substitutes the raw Hamming distance.
+1. `brent` (default). Brent's method in $\sqrt{t}$ space via `argmin::BrentOpt`. Matches v0 on the success path: the cost function evaluates $-\ell(s^2)$ and bracket endpoints transform as $\sqrt{\text{lower}}$, $\sqrt{\text{upper}}$. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero. Differs from v0 on solver failure: v1 surfaces the error to the caller via `Result<f64, Report>`, while v0 silently substitutes the raw Hamming distance.
 
 ### Newton-Raphson (analytical derivatives)
 
 The substitution Hessian (posterior variance of eigenvalues) is computed in the centered Welford form $\sum_c w_c (\lambda_c - \bar\lambda)^2$, which avoids the catastrophic cancellation of the two-moment form $E[\lambda^2] - E[\lambda]^2$ when the posterior is tightly peaked.
 
-2. `newton-sqrt`. Newton-Raphson in $\sqrt{t}$ space with analytical derivatives from eigendecomposition-based coefficient caching. Reparameterizes as $s = \sqrt{t}$ and applies the chain rule: $d\ell/ds = 2s \cdot d\ell/dt$, $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$. Reduces the Poisson indel Hessian singularity from $O(1/t^2)$ in $t$ space to $O(1/t)$, so the indel term dominates the substitution Hessian on short branches less than in $t$ space.
+2. `newton`. Newton-Raphson in $\sqrt{t}$ space with analytical derivatives from eigendecomposition-based coefficient caching. Reparameterizes as $s = \sqrt{t}$ and applies the chain rule: $d\ell/ds = 2s \cdot d\ell/dt$, $d^2\ell/ds^2 = 4s^2 \cdot d^2\ell/dt^2 + 2 \cdot d\ell/dt$. Reduces the Poisson indel Hessian singularity from $O(1/t^2)$ in $t$ space to $O(1/t)$, so the indel term dominates the substitution Hessian on short branches less than in $t$ space.
 
 Both methods share:
 
@@ -41,11 +41,11 @@ Both methods share:
 
 **Brent for robustness.** Brent's method is derivative-free and guaranteed to converge within the bracket. It serves as both a reference implementation and a fallback for cases where Newton behaves poorly.
 
-**Default matches v0.** The `brent-sqrt` default ensures golden master tests pass and users get v0-equivalent behavior without configuration.
+**Default matches v0.** The `brent` default ensures golden master tests pass and users get v0-equivalent behavior without configuration.
 
 ## Tradeoffs
 
-**sqrt(t) reparameterization.** Used by `brent-sqrt` (default, matches v0 on the success path; on solver failure v1 returns `Err(Report)` rather than v0's silent Hamming-distance fallback) and `newton-sqrt`.
+**sqrt(t) reparameterization.** Used by `brent` (default, matches v0 on the success path; on solver failure v1 returns `Err(Report)` rather than v0's silent Hamming-distance fallback) and `newton`.
 
 **Still lost: regularization penalty.** v0 adds `exp(t^4/10000)` when optimizing with profiles. v1 does not apply this penalty. The grid search upper bound and Brent bracket provide a soft cap.
 

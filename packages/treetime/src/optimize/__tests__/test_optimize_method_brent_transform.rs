@@ -88,7 +88,7 @@ mod tests {
       total_length,
       &contributions,
       &indel_counts,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       &mut branch_lengths,
     )?;
 
@@ -100,11 +100,11 @@ mod tests {
 
     assert!(
       lh_opt >= lh_lower - 1e-10,
-      "BrentSqrt optimum lh ({lh_opt}) < lower bracket lh ({lh_lower})"
+      "Brent optimum lh ({lh_opt}) < lower bracket lh ({lh_lower})"
     );
     assert!(
       lh_opt >= lh_upper - 1e-10,
-      "BrentSqrt optimum lh ({lh_opt}) < upper bracket lh ({lh_upper})"
+      "Brent optimum lh ({lh_opt}) < upper bracket lh ({lh_upper})"
     );
 
     Ok(())

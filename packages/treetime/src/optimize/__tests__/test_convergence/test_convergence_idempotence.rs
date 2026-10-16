@@ -14,8 +14,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimization_converges_with_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -66,8 +66,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_second_optimization_produces_same_likelihood(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;

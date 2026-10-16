@@ -34,7 +34,7 @@ mod tests {
       max_iter,
       0.0,
       0.75,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       false,
       TopologyOps::default(),
       branch_lengths,
@@ -77,7 +77,7 @@ mod tests {
       1,
       0.0,
       0.75,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       false,
       TopologyOps::default(),
       branch_lengths,
@@ -108,7 +108,7 @@ mod tests {
       max_iter,
       dp,
       0.0,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       false,
       TopologyOps::default(),
       branch_lengths,
@@ -136,7 +136,7 @@ mod tests {
       0,
       1e-2,
       0.75,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       false,
       TopologyOps::default(),
       branch_lengths,
@@ -164,7 +164,7 @@ mod tests {
       10,
       0.0,
       0.75,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       false,
       TopologyOps::default(),
       branch_lengths,
@@ -205,7 +205,7 @@ mod tests {
       10,
       0.0,
       0.75,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       false,
       TopologyOps::default(),
       branch_lengths,
@@ -227,8 +227,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_run_optimize_loop_returns_first_iteration_when_likelihood_declines_from_start(
     #[case] method: BranchOptMethod,

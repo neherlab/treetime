@@ -1848,13 +1848,12 @@ export const zInitialGuessMode = z.union([
 /**
  * Per-edge branch length optimization method.
  *
- * Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
- * length for each edge: Brent's method or Newton-Raphson, both in $\sqrt{t}$
- * space.
+ * Controls how the maximum-likelihood branch length of each edge is found:
+ * Brent's method or Newton-Raphson, both in $\sqrt{t}$ space.
  */
 export const zBranchOptMethod = z.union([
-  z.literal('brent-sqrt'),
-  z.literal('newton-sqrt')
+  z.literal('brent'),
+  z.literal('newton')
 ]);
 
 /**

@@ -5,7 +5,7 @@
 
 v0's `optimize_tree_marginal` uses a progressive tolerance schedule: `tol = 1e-8 + 0.01^(i+1)` where `i` is the iteration index (0-based). At iteration 0 (the pre-step), this evaluates to `tol = 0.02`, intentionally coarse to prioritize speed over precision in early iterations.
 
-v1's pre-step uses `BrentSqrt` with its default tolerance (Brent's method default from `argmin`, approximately 1e-8). This is tighter than v0's first-iteration tolerance.
+v1's pre-step uses `Brent` with its default tolerance (Brent's method default from `argmin`, approximately 1e-8). This is tighter than v0's first-iteration tolerance.
 
 ## Impact
 

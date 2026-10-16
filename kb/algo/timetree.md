@@ -34,7 +34,7 @@ Before time inference, the timetree pipeline runs one pass of per-edge ML branch
 v1: `fn optimize_branch_lengths` [packages/treetime/src/timetree/pre_loop.rs#L209](../../packages/treetime/src/timetree/pre_loop.rs#L209), called through `fn ml_optimize` [packages/treetime/src/timetree/pre_loop.rs#L115](../../packages/treetime/src/timetree/pre_loop.rs#L115) twice: before and after rerooting ([packages/treetime/src/timetree/pre_loop.rs#L27-L71](../../packages/treetime/src/timetree/pre_loop.rs#L27-L71)).
 v0: `optimize_tree(max_iter=1)` in [`packages/legacy/treetime/treetime/treetime.py`](../../packages/legacy/treetime/treetime/treetime.py) at lines 243 and 266.
 
-The pre-step gathers the per-edge contributions of the marginal reconstruction and calls `fn run_optimize_mixed` of the optimize command, or `fn run_optimize_mixed_inner` with a zero indel rate when indels are off [packages/treetime/src/timetree/pre_loop.rs#L220-L240](../../packages/treetime/src/timetree/pre_loop.rs#L220-L240). It uses the `BrentSqrt` method (matching v0's Brent in sqrt(t) space).
+The pre-step gathers the per-edge contributions of the marginal reconstruction and calls `fn run_optimize_mixed` of the optimize command, or `fn run_optimize_mixed_inner` with a zero indel rate when indels are off [packages/treetime/src/timetree/pre_loop.rs#L220-L240](../../packages/treetime/src/timetree/pre_loop.rs#L220-L240). It uses the `Brent` method (matching v0's Brent in sqrt(t) space).
 
 ---
 

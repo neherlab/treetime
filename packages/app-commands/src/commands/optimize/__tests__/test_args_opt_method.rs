@@ -17,8 +17,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::brent_sqrt( "brent-sqrt",  BranchOptMethodCli::BrentSqrt)]
-  #[case::newton_sqrt("newton-sqrt", BranchOptMethodCli::NewtonSqrt)]
+  #[case::brent( "brent",  BranchOptMethodCli::Brent)]
+  #[case::newton("newton", BranchOptMethodCli::Newton)]
   #[trace]
   fn test_args_opt_method_kebab_case_parses(#[case] flag: &str, #[case] expected: BranchOptMethodCli) {
     let args = OptMethodArgs::try_parse_from(["treetime", &format!("--opt-method={flag}")]).unwrap();
@@ -26,17 +26,15 @@ mod tests {
   }
 
   #[test]
-  fn test_args_opt_method_default_is_brent_sqrt() {
+  fn test_args_opt_method_default_is_brent() {
     let args = OptMethodArgs::try_parse_from(["treetime"]).unwrap();
-    assert_eq!(BranchOptMethodCli::BrentSqrt, args.opt_method);
+    assert_eq!(BranchOptMethodCli::Brent, args.opt_method);
   }
 
   #[rustfmt::skip]
   #[rstest]
   #[case::unknown(   "brent-foo")]
-  #[case::brent(     "brent")]
   #[case::brent_log( "brent-log")]
-  #[case::newton(    "newton")]
   #[case::newton_log("newton-log")]
   #[trace]
   fn test_args_opt_method_rejects_unsupported(#[case] flag: &str) {
@@ -48,8 +46,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::brent_sqrt( BranchOptMethodCli::BrentSqrt,  BranchOptMethod::BrentSqrt)]
-  #[case::newton_sqrt(BranchOptMethodCli::NewtonSqrt, BranchOptMethod::NewtonSqrt)]
+  #[case::brent( BranchOptMethodCli::Brent,  BranchOptMethod::Brent)]
+  #[case::newton(BranchOptMethodCli::Newton, BranchOptMethod::Newton)]
   #[trace]
   fn test_args_opt_method_converts_to_core(#[case] cli: BranchOptMethodCli, #[case] expected: BranchOptMethod) {
     assert_eq!(expected, BranchOptMethod::from(cli));

@@ -521,9 +521,9 @@ variant = "dense"
 args = "--dense=true"
 
 [[optimize]]
-variant = "newton-sqrt"
+variant = "newton"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --opt-method=newton-sqrt"
+args = "--dense=false --opt-method=newton"
 
 [[optimize]]
 variant = "reroot-min-dev"

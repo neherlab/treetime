@@ -10,8 +10,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimization_handles_zero_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let tree_newick = "((A:0.0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
@@ -48,8 +48,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimization_handles_very_short_branches(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let tree_newick = "((A:0.0001,B:0.0001)AB:0.0001,(C:0.0001,D:0.0001)CD:0.0001)root:0.0001;";
@@ -86,8 +86,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimization_handles_long_branches(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let tree_newick = "((A:1.0,B:2.0)AB:1.0,(C:2.0,D:1.2)CD:0.5)root:0.1;";

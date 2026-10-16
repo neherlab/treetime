@@ -89,8 +89,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_dispatch_zero_boundary_k80_identical_sequences(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
@@ -152,7 +152,7 @@ mod tests {
       total_length,
       &contributions,
       &indel_counts,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       &mut branch_lengths,
     )?;
 
@@ -200,7 +200,7 @@ mod tests {
       total_length,
       &contributions,
       &indel_counts,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       &mut branch_lengths,
     )?;
     for (i, edge_ref) in graph.get_edges().enumerate() {
@@ -359,7 +359,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::brent_sqrt(BranchOptMethod::BrentSqrt)]
+  #[case::brent(BranchOptMethod::Brent)]
   #[trace]
   fn test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {

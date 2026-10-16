@@ -215,7 +215,7 @@ pub struct TreetimeOptimizeArgsRaw {
   pub branch_length_initial_guess: InitialGuessModeCli,
 
   /// Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are
-  /// `brent-sqrt` (default and v0-compatible) and `newton-sqrt`.
+  /// `brent` (default, matches v0) and `newton`.
   #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethodCli::default(), help_heading = "Branch lengths"))]
   pub opt_method: BranchOptMethodCli,
 
@@ -312,9 +312,8 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 
 /// Per-edge branch length optimization method.
 ///
-/// Controls how `run_optimize_mixed()` finds the maximum-likelihood branch
-/// length for each edge: Brent's method or Newton-Raphson, both in $\sqrt{t}$
-/// space.
+/// Controls how the maximum-likelihood branch length of each edge is found:
+/// Brent's method or Newton-Raphson, both in $\sqrt{t}$ space.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[schemars(rename_all = "kebab-case")]
@@ -323,11 +322,12 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 pub enum BranchOptMethodCli {
   /// Brent's method in $\sqrt{t}$ space.
   ///
-  /// Matches v0 exactly (same algorithm, same parameterization). The $\sqrt{t}$
-  /// reparameterization smooths the objective, giving parabolic interpolation
-  /// a better fit. Default method for golden master comparison against v0.
+  /// Derivative-free. Uses the same algorithm and parameterization as v0, so
+  /// results match v0. The $\sqrt{t}$ reparameterization smooths the
+  /// objective, giving parabolic interpolation a better fit. This is the
+  /// default.
   #[default]
-  BrentSqrt,
+  Brent,
 
   /// Newton-Raphson in $\sqrt{t}$ space.
   ///
@@ -335,10 +335,10 @@ pub enum BranchOptMethodCli {
   /// the chain rule to transform derivatives. Reduces the indel Hessian
   /// singularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme
   /// cases ($t < 0.001$, $k > 10$).
-  NewtonSqrt,
+  Newton,
 }
 
-impl_from_mirror!(BranchOptMethodCli => BranchOptMethod { BrentSqrt, NewtonSqrt });
+impl_from_mirror!(BranchOptMethodCli => BranchOptMethod { Brent, Newton });
 
 /// Controls whether marginal reconstruction estimates initial branch lengths
 /// from substitutions divided by effective alignment length. Preserving valid

@@ -24,13 +24,13 @@ The optimize command has no sampling dates, so only date-free rooting policies a
 
 ## Per-Edge Likelihood (v0 parity via different method)
 
-v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 offers two methods via `--opt-method`: Brent and Newton-Raphson, both in $\sqrt{t}$ space. Default is `brent-sqrt` (matches v0). Both v0 and v1 use eigendecomposition-based likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
+v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 offers two methods via `--opt-method`: Brent and Newton-Raphson, both in $\sqrt{t}$ space. Default is `brent` (matches v0). Both v0 and v1 use eigendecomposition-based likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Eigenvalue-space coefficient caching (dense: `msg.dot(V) * msg.dot(V_inv.T)`, sparse: per-site with multiplicity)
 - [x] Analytical first and second derivatives (v1-only, v0 uses derivative-free Brent)
 - [x] Newton's method in sqrt(t) space (`newton_sqrt_inner`, max 10 inner iterations, step in `[s - sqrt(s^2 + 1), s]`, absolute tolerance floor 1e-8, reduces indel Hessian singularity from O(1/t^2) to O(1/t))
 - [x] Brent's method in sqrt(t) space (`brent_sqrt_inner`, derivative-free via `argmin::BrentOpt`, default, matches v0 exactly)
-- [x] Per-edge optimization method selection (`--opt-method`: `brent-sqrt` default, `newton-sqrt`)
+- [x] Per-edge optimization method selection (`--opt-method`: `brent` default, `newton`)
 - [x] Grid search fallback when second derivative >= 0 (100 points, log-spaced grid with 0.5 subs/site minimum upper bound)
 - [x] Zero branch length short-circuit (combined likelihood > 0.01 and derivative < 0 at zero)
 - [x] `compute_derivatives` flag to skip derivative computation for log-likelihood-only evaluation

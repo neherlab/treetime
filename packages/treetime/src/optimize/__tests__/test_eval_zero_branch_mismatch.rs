@@ -63,7 +63,7 @@ mod tests {
       total_length,
       &contributions,
       &indel_counts,
-      BranchOptMethod::NewtonSqrt,
+      BranchOptMethod::Newton,
       &mut branch_lengths,
     )?;
 

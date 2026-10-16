@@ -13,8 +13,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimization_converges_within_iterations(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -30,7 +30,7 @@ mod tests {
       let contributions_ref = gather_edge_contributions(&graph_ref, &recon_ref)?;
       let indel_counts_ref = gather_edge_indel_counts(&graph_ref, &recon_ref);
       for _ in 0..max_iter {
-        run_optimize_mixed(&graph_ref, total_length_ref, &contributions_ref, &indel_counts_ref, BranchOptMethod::BrentSqrt, &mut branch_lengths_ref)?;
+        run_optimize_mixed(&graph_ref, total_length_ref, &contributions_ref, &indel_counts_ref, BranchOptMethod::Brent, &mut branch_lengths_ref)?;
       }
       let (_, lh) = compute_total_lh(&graph_ref, recon_ref, &branch_lengths_ref)?;
       lh
@@ -54,7 +54,7 @@ mod tests {
     let lh_diff = (final_lh - lh_ref).abs();
     assert!(
       lh_diff < 1e-2,
-      "{method:?} final lh {final_lh:.6} differs from BrentSqrt reference {lh_ref:.6} by {lh_diff:.6} > 1e-2"
+      "{method:?} final lh {final_lh:.6} differs from Brent reference {lh_ref:.6} by {lh_diff:.6} > 1e-2"
     );
 
     Ok(())
@@ -62,8 +62,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimization_improves_or_maintains_likelihood(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
@@ -99,8 +99,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::newton_sqrt(BranchOptMethod::NewtonSqrt)]
-  #[case::brent_sqrt( BranchOptMethod::BrentSqrt)]
+  #[case::newton(BranchOptMethod::Newton)]
+  #[case::brent( BranchOptMethod::Brent)]
   #[trace]
   fn test_optimization_produces_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;

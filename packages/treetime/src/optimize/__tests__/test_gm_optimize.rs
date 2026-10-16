@@ -30,7 +30,7 @@ mod tests {
       .and_then(|p| p.parent())
       .unwrap();
 
-    let result = setup_and_run(workspace_root, case, BranchOptMethod::BrentSqrt)?;
+    let result = setup_and_run(workspace_root, case, BranchOptMethod::Brent)?;
 
     let v1_total_bl: f64 = result
       .graph
@@ -57,7 +57,7 @@ mod tests {
       .and_then(|p| p.parent())
       .unwrap();
 
-    let result = setup_and_run(workspace_root, case, BranchOptMethod::BrentSqrt)?;
+    let result = setup_and_run(workspace_root, case, BranchOptMethod::Brent)?;
 
     let v1_branch_lengths: BTreeMap<String, f64> = result
       .graph
@@ -108,8 +108,8 @@ mod tests {
     let mut undamped_case = case.clone();
     undamped_case.damping = 0.0;
 
-    let undamped = setup_and_run(workspace_root, &undamped_case, BranchOptMethod::BrentSqrt)?;
-    let damped = setup_and_run(workspace_root, case, BranchOptMethod::BrentSqrt)?;
+    let undamped = setup_and_run(workspace_root, &undamped_case, BranchOptMethod::Brent)?;
+    let damped = setup_and_run(workspace_root, case, BranchOptMethod::Brent)?;
 
     let undamped_sign_flips = count_sign_flips(&undamped.lh_history);
     let damped_sign_flips = count_sign_flips(&damped.lh_history);

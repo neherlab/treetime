@@ -1,7 +1,7 @@
 # Newton per-edge optimizer returns points it never verified
 
 > [!IMPORTANT]
-> **Decision required.** The Newton method (`--opt-method newton-sqrt`) can return a branch length with a lower log-likelihood than its start, and it does not report non-convergence. The options below differ in how far the method departs from its current outputs. Established tools use option 1 (safeguarded Newton with a likelihood check); v0 has no Newton method, so v0 parity does not constrain the choice.
+> **Decision required.** The Newton method (`--opt-method newton`) can return a branch length with a lower log-likelihood than its start, and it does not report non-convergence. The options below differ in how far the method departs from its current outputs. Established tools use option 1 (safeguarded Newton with a likelihood check); v0 has no Newton method, so v0 parity does not constrain the choice.
 
 ## Problem
 
@@ -64,7 +64,7 @@ The K80 surface of [Dinh and Matsen 2017](https://doi.org/10.1214/16-AAP1240) us
 
 1. **Safeguarded Newton with a likelihood check**: keep a bracket from the derivative sign, take bisection steps when the curvature has the wrong sign or the step leaves the bracket, and accept the result only when $\ell(\text{result}) \geq \ell(\text{start})$; otherwise return the start. Report the iteration-limit exit to the caller. Matches IQ-TREE and coraxlib. Outputs change only where the current exits are wrong or imprecise (non-concave start, curvature break)
 2. **Likelihood check only**: keep the current iteration and add the comparison with the start at every exit. Smallest change; the non-concave-start exit keeps its grid precision loss
-3. **Remove the Newton method**: Brent is the default and the v0-compatible method; Newton has no v0 counterpart. Removes the CLI value `newton-sqrt` and its tests
+3. **Remove the Newton method**: Brent is the default and the v0-compatible method; Newton has no v0 counterpart. Removes the CLI value `newton` and its tests
 
 ## Cross-references
 

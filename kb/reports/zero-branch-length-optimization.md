@@ -78,8 +78,8 @@ graph TD
     end
 
     subgraph solver ["Solver dispatch"]
-        newton["NewtonSqrt"]
-        brent["BrentSqrt"]
+        newton["Newton"]
+        brent["Brent"]
     end
 
     subgraph post ["Post-dispatch reconciliation"]

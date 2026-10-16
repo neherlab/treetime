@@ -296,12 +296,8 @@ fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimiza
   let min_branch_length = min_branch_length_for_indels(indels, one_mutation);
 
   let new_branch_length = match method {
-    BranchOptMethod::BrentSqrt => {
-      brent_sqrt_inner(branch_length, contributions, indels, min_branch_length, one_mutation)
-    },
-    BranchOptMethod::NewtonSqrt => {
-      newton_sqrt_inner(branch_length, contributions, indels, min_branch_length, one_mutation)
-    },
+    BranchOptMethod::Brent => brent_sqrt_inner(branch_length, contributions, indels, min_branch_length, one_mutation),
+    BranchOptMethod::Newton => newton_sqrt_inner(branch_length, contributions, indels, min_branch_length, one_mutation),
   }?;
 
   let new_branch_length =

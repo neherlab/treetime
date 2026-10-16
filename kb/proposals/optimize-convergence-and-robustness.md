@@ -50,7 +50,7 @@ Per-edge Poisson term $\ell_{\text{indel}}(t) = k \ln(\mu t) - \mu t - \ln(k!)$ 
 
 ### Per-edge optimizers
 
-Two methods via `--opt-method`: Brent and Newton in $\sqrt{t}$ space. Default `brent-sqrt` (matches v0). Grid search fallback for non-concave regions. See [optimize-newton-raphson-per-edge](../decisions/optimize-newton-raphson-per-edge.md).
+Two methods via `--opt-method`: Brent and Newton in $\sqrt{t}$ space. Default `brent` (matches v0). Grid search fallback for non-concave regions. See [optimize-newton-raphson-per-edge](../decisions/optimize-newton-raphson-per-edge.md).
 
 ## Implemented features
 

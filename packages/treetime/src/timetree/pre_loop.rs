@@ -223,7 +223,7 @@ fn optimize_branch_lengths(
       total_length,
       &partition,
       &indel_counts,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       0.0,
       true,
       &mut branch_lengths,
@@ -234,7 +234,7 @@ fn optimize_branch_lengths(
       total_length,
       &partition,
       &indel_counts,
-      BranchOptMethod::BrentSqrt,
+      BranchOptMethod::Brent,
       &mut branch_lengths,
     )?;
   }
