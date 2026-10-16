@@ -6,12 +6,17 @@ use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
 use maplit::btreemap;
-use ndarray::Array1;
+use smallvec::SmallVec;
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Index;
 use std::sync::Arc;
 use treetime_primitives::AlphabetLike;
 use treetime_primitives::{AsciiChar, LogLh, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
+
+pub(crate) const INLINE_STATES: usize = 4;
+
+pub(crate) type SiteProfile = SmallVec<[f64; INLINE_STATES]>;
 
 const AMBIGUOUS: u8 = 1;
 const UNKNOWN: u8 = 2;
@@ -143,26 +148,81 @@ pub struct SparseEdgeForward {
   pub(crate) msg_from_parent: SparseSeqDistribution,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct SparseSeqDistribution {
   pub(crate) variable: VarPosMap,
 
-  pub(crate) fixed: BTreeMap<AsciiChar, Array1<f64>>,
-
-  pub(crate) fixed_counts: Composition,
+  pub(crate) fixed: FixedProfiles,
 
   pub(crate) log_lh: LogLh,
 }
 
-impl Default for SparseSeqDistribution {
-  fn default() -> Self {
-    Self {
-      variable: VarPosMap::default(),
-      fixed: btreemap! {},
-      fixed_counts: Composition::new(std::iter::empty::<AsciiChar>(), AsciiChar::from_byte_unchecked(b'-')),
-      log_lh: LogLh::ZERO,
+#[derive(Clone, Debug, Default)]
+pub struct FixedProfiles {
+  entries: SmallVec<[FixedProfile; INLINE_STATES]>,
+}
+
+impl FixedProfiles {
+  pub(crate) fn get(&self, state: AsciiChar) -> Option<&FixedProfile> {
+    self
+      .entries
+      .binary_search_by_key(&state, |entry| entry.state)
+      .ok()
+      .map(|index| &self.entries[index])
+  }
+
+  pub(crate) fn insert(&mut self, state: AsciiChar, count: usize, dis: SiteProfile) {
+    let entry = FixedProfile { state, count, dis };
+    if self.entries.last().is_none_or(|last| last.state < state) {
+      self.entries.push(entry);
+      return;
+    }
+    match self.entries.binary_search_by_key(&state, |entry| entry.state) {
+      Ok(index) => self.entries[index] = entry,
+      Err(index) => self.entries.insert(index, entry),
     }
   }
+
+  pub(crate) fn iter(&self) -> impl Iterator<Item = &FixedProfile> {
+    self.entries.iter()
+  }
+
+  pub(crate) fn len(&self) -> usize {
+    self.entries.len()
+  }
+
+  pub(crate) fn map_dis(&self, transform: impl Fn(&SiteProfile) -> SiteProfile) -> Self {
+    Self {
+      entries: self
+        .entries
+        .iter()
+        .map(|entry| FixedProfile {
+          state: entry.state,
+          count: entry.count,
+          dis: transform(&entry.dis),
+        })
+        .collect(),
+    }
+  }
+}
+
+impl Index<AsciiChar> for FixedProfiles {
+  type Output = FixedProfile;
+
+  #[expect(
+    clippy::expect_used,
+    reason = "a state without a fixed profile is a programming error, as an absent key is for a map index"
+  )]
+  fn index(&self, state: AsciiChar) -> &FixedProfile {
+    self.get(state).expect("state has no fixed profile")
+  }
+}
+
+#[derive(Clone, Debug)]
+pub struct FixedProfile {
+  pub(crate) state: AsciiChar,
+  pub(crate) count: usize,
+  pub(crate) dis: SiteProfile,
 }
 
 #[derive(Clone, Debug)]
@@ -219,13 +279,11 @@ pub struct FitchSeqInfo {
   pub(crate) fitch: FitchSeqDistribution,
 }
 
-#[derive(Clone, Debug)]
-pub struct VarPos {
-  pub(crate) dis: Array1<f64>,
+#[derive(Clone, Copy, Debug)]
+pub struct VarPos<'a> {
+  pub(crate) dis: &'a [f64],
   pub(crate) state: AsciiChar,
 }
-
-impl VarPos {}
 
 fn observe_seq(seq: &Seq, alphabet: &Alphabet) -> SeqObservation {
   let flags = char_flags(alphabet);

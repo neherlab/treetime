@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::partition::marginal::sample::{Resolve, resolve_profile};
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
 use crate::seq::overlay::SeqOverlay;
+use ndarray::aview1;
 use std::sync::Arc;
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::array::ndarray::argmax_first;
@@ -54,8 +55,8 @@ pub(crate) fn map_seq_sampled(node: &SparseNodeState, alphabet: &Alphabet, resol
       if node.profile.variable.contains_key(pos) {
         continue;
       }
-      if let Some(fixed) = node.profile.fixed.get(&seq[pos]) {
-        seq[pos] = alphabet.char(resolve_profile(fixed.view(), resolve));
+      if let Some(fixed) = node.profile.fixed.get(seq[pos]) {
+        seq[pos] = alphabet.char(resolve_profile(aview1(&fixed.dis), resolve));
       }
     }
   }
@@ -73,7 +74,7 @@ fn variable_states<'a>(
     .variable
     .iter()
     .filter(|&(&pos, _)| node.sequence[pos] != alphabet.gap())
-    .map(move |(&pos, var)| (pos, alphabet.char(resolve_profile(var.dis.view(), resolve))))
+    .map(move |(&pos, var)| (pos, alphabet.char(resolve_profile(aview1(var.dis), resolve))))
 }
 
 pub(crate) fn reconstruct_leaf_sequence(
@@ -110,21 +111,22 @@ pub(crate) fn impute_state(
   parent: &SparseNodeState,
   alphabet: &Alphabet,
 ) -> AsciiChar {
-  let posterior = down
-    .variable
-    .get(pos)
-    .map(|var| &var.dis)
-    .or_else(|| down.fixed.get(&map_state(parent, pos, alphabet)));
+  let posterior = down.variable.get(pos).map(|var| var.dis).or_else(|| {
+    down
+      .fixed
+      .get(map_state(parent, pos, alphabet))
+      .map(|fixed| fixed.dis.as_slice())
+  });
   let (Some(posterior), Ok(mask)) = (posterior, alphabet.get_profile(observed)) else {
     return observed;
   };
-  let combined = posterior * mask;
+  let combined = &aview1(posterior) * mask;
   argmax_first(&combined.view()).map_or(observed, |idx| alphabet.char(idx))
 }
 
 pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
   match node.profile.variable.get(pos) {
-    Some(var) => alphabet.char(argmax_first(&var.dis.view()).unwrap_or(0)),
+    Some(var) => alphabet.char(argmax_first(&aview1(var.dis)).unwrap_or(0)),
     None => node.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),
   }
 }

@@ -7,6 +7,7 @@ use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations}
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
 use itertools::{Either, Itertools};
+use ndarray::aview1;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
 use std::iter;
@@ -161,7 +162,7 @@ fn internal_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> As
     return state;
   }
   node.profile.variable.get(pos).map_or(state, |var| {
-    alphabet.char(resolve_profile(var.dis.view(), &mut Resolve::Argmax))
+    alphabet.char(resolve_profile(aview1(var.dis), &mut Resolve::Argmax))
   })
 }
 

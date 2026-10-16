@@ -8,6 +8,7 @@ mod tests {
   use crate::partition::fitch::passes::compress_sequences;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
+  use crate::seq::composition::Composition;
   use crate::test_utils::find_node_key_by_name;
   use crate::test_utils::get_common_length;
   use crate::test_utils::leaf_seq_inputs;
@@ -21,7 +22,7 @@ mod tests {
   };
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
-  use treetime_primitives::{AlignmentRecord, AsciiChar};
+  use treetime_primitives::{AlignmentRecord, AlphabetLike, AsciiChar};
   use treetime_utils::vec_of_owned;
 
   #[test]
@@ -165,17 +166,12 @@ mod tests {
     assert_eq!(vec_of_owned!["11--13: TT -> --"], orig_root_ab_indels);
 
     let root_node = &recon.partition.obs_nodes[&new_root_key];
-    let c = AsciiChar::from_byte_unchecked;
-    #[rustfmt::skip]
-    let expected_comp =       btreemap! {
-        c(b'-') => 4, c(b'A') => 3, c(b'B') => 0, c(b'C') => 4,
-        c(b'D') => 0, c(b'G') => 2, c(b'H') => 0, c(b'K') => 0,
-        c(b'M') => 0, c(b'N') => 0, c(b'R') => 0, c(b'S') => 0,
-        c(b'T') => 3, c(b'V') => 0, c(b'W') => 0, c(b'Y') => 0,
-      };
+    let mut expected_comp = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    for (c, count) in [(b'-', 4), (b'A', 3), (b'C', 4), (b'G', 2), (b'T', 3)] {
+      expected_comp.adjust_count(AsciiChar::from_byte_unchecked(c), count);
+    }
     assert_eq!(
-      &expected_comp,
-      root_node.composition.counts(),
+      expected_comp, root_node.composition,
       "new root node composition should match root_sequence character counts"
     );
 
@@ -423,7 +419,7 @@ mod tests {
         let edge = edge_ref;
         (edge.source() == new_root_key).then(|| {
           let edge_data = &recon.edges.forward[&edge.key()];
-          let total: usize = edge_data.msg_to_child.fixed_counts.counts().values().sum();
+          let total: usize = edge_data.msg_to_child.fixed.iter().map(|fixed| fixed.count).sum();
           (edge.target(), total)
         })
       })
@@ -432,7 +428,7 @@ mod tests {
     for (target, total) in &root_edge_totals {
       assert!(
         *total > 0,
-        "msg_to_child.fixed_counts for edge from new root to {target:?} should have non-zero entries (total={total})"
+        "msg_to_child.fixed counts for edge from new root to {target:?} should have non-zero entries (total={total})"
       );
     }
 

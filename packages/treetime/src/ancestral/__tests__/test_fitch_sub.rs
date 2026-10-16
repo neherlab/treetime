@@ -537,10 +537,11 @@ mod tests {
 
     finalize_sequence_forward(&mut sequence, &[], &[], &mut composition, &NUC_ALPHABET, true);
 
-    let counts = composition.counts();
-    assert_eq!(counts[&AsciiChar::from_byte_unchecked(b'A')], 2);
-    assert_eq!(counts[&AsciiChar::from_byte_unchecked(b'C')], 1);
-    assert_eq!(counts[&AsciiChar::from_byte_unchecked(b'G')], 1);
+    let mut expected = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    for (c, count) in [(b'A', 2), (b'C', 1), (b'G', 1)] {
+      expected.adjust_count(AsciiChar::from_byte_unchecked(c), count);
+    }
+    assert_eq!(expected, composition);
   }
 
   #[test]
@@ -550,11 +551,7 @@ mod tests {
 
     finalize_sequence_forward(&mut sequence, &[], &[], &mut composition, &NUC_ALPHABET, false);
 
-    let counts = composition.counts();
-    assert_eq!(
-      counts[&AsciiChar::from_byte_unchecked(b'A')],
-      0,
-      "Non-root does not recompute composition"
-    );
+    let expected = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    assert_eq!(expected, composition, "Non-root does not recompute composition");
   }
 }

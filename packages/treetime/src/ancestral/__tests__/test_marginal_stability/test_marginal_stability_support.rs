@@ -11,6 +11,7 @@ pub(super) mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
+  use ndarray::aview1;
   use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::fasta_read;
@@ -41,15 +42,15 @@ pub(super) mod tests {
     );
 
     for var_pos in profile.variable.values() {
-      pretty_assert_array_finite!(var_pos.dis);
-      pretty_assert_array_nonneg!(var_pos.dis, epsilon = 1e-15);
-      pretty_assert_ulps_eq!(var_pos.dis.sum(), 1.0, max_ulps = max_ulps);
+      pretty_assert_array_finite!(aview1(var_pos.dis));
+      pretty_assert_array_nonneg!(aview1(var_pos.dis), epsilon = 1e-15);
+      pretty_assert_ulps_eq!(aview1(var_pos.dis).sum(), 1.0, max_ulps = max_ulps);
     }
 
-    for fixed_dis in profile.fixed.values() {
-      pretty_assert_array_finite!(fixed_dis);
-      pretty_assert_array_nonneg!(fixed_dis, epsilon = 1e-15);
-      pretty_assert_ulps_eq!(fixed_dis.sum(), 1.0, max_ulps = max_ulps);
+    for fixed_dis in profile.fixed.iter().map(|fixed| &fixed.dis) {
+      pretty_assert_array_finite!(aview1(fixed_dis));
+      pretty_assert_array_nonneg!(aview1(fixed_dis), epsilon = 1e-15);
+      pretty_assert_ulps_eq!(aview1(fixed_dis).sum(), 1.0, max_ulps = max_ulps);
     }
   }
 

@@ -3,7 +3,7 @@ mod tests {
   use crate::ancestral::__tests__::prop_generators::input::{arb_marginal_input, arb_marginal_input_small};
   use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
   use crate::partition::storage::sparse::SparseSeqDistribution;
-  use ndarray::Array2;
+  use ndarray::{Array2, aview1};
   use proptest::prelude::*;
   use treetime_utils::{prop_assert_array_finite, prop_assert_array_nonneg};
 
@@ -29,9 +29,9 @@ mod tests {
     );
 
     for (pos, var_pos) in &profile.variable {
-      prop_assert_array_finite!(var_pos.dis);
-      prop_assert_array_nonneg!(var_pos.dis, epsilon = 1e-14);
-      let sum: f64 = var_pos.dis.sum();
+      prop_assert_array_finite!(aview1(var_pos.dis));
+      prop_assert_array_nonneg!(aview1(var_pos.dis), epsilon = 1e-14);
+      let sum: f64 = aview1(var_pos.dis).sum();
       if !approx::abs_diff_eq!(sum, 1.0, epsilon = 1e-8) {
         return Err(TestCaseError::fail(format!(
           "variable position {pos}: sum = {sum}, expected 1.0 (epsilon = 1e-8)"
@@ -39,10 +39,10 @@ mod tests {
       }
     }
 
-    for (char_key, fixed_dis) in &profile.fixed {
-      prop_assert_array_finite!(fixed_dis);
-      prop_assert_array_nonneg!(fixed_dis, epsilon = 1e-14);
-      let sum: f64 = fixed_dis.sum();
+    for (char_key, fixed_dis) in profile.fixed.iter().map(|fixed| (fixed.state, &fixed.dis)) {
+      prop_assert_array_finite!(aview1(fixed_dis));
+      prop_assert_array_nonneg!(aview1(fixed_dis), epsilon = 1e-14);
+      let sum: f64 = aview1(fixed_dis).sum();
       if !approx::abs_diff_eq!(sum, 1.0, epsilon = 1e-8) {
         return Err(TestCaseError::fail(format!(
           "fixed distribution for {char_key:?}: sum = {sum}, expected 1.0 (epsilon = 1e-8)"

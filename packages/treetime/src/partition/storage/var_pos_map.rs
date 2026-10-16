@@ -1,97 +1,81 @@
-use crate::partition::storage::sparse::VarPos;
-use std::collections::BTreeMap;
+use crate::partition::storage::sparse::{SiteProfile, VarPos};
+use smallvec::smallvec;
 use std::iter::Map;
-use std::ops::Index;
 use std::slice::Iter;
+use treetime_primitives::AsciiChar;
+
+type Entry = (usize, AsciiChar, SiteProfile);
 
 impl<'a> IntoIterator for &'a VarPosMap {
-  type Item = (&'a usize, &'a VarPos);
-  type IntoIter = Map<Iter<'a, (usize, VarPos)>, fn(&'a (usize, VarPos)) -> (&'a usize, &'a VarPos)>;
+  type Item = (&'a usize, VarPos<'a>);
+  type IntoIter = Map<Iter<'a, Entry>, fn(&'a Entry) -> (&'a usize, VarPos<'a>)>;
 
   fn into_iter(self) -> Self::IntoIter {
-    self.entries.iter().map(|(pos, value)| (pos, value))
+    self
+      .entries
+      .iter()
+      .map(|(pos, state, dis)| (pos, VarPos { dis, state: *state }))
   }
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct VarPosMap {
-  entries: Vec<(usize, VarPos)>,
+  entries: Vec<Entry>,
 }
 
 impl VarPosMap {
+  pub(crate) fn with_capacity(capacity: usize) -> Self {
+    Self {
+      entries: Vec::with_capacity(capacity),
+    }
+  }
+
   pub(crate) fn len(&self) -> usize {
     self.entries.len()
   }
 
-  pub(crate) fn get(&self, pos: usize) -> Option<&VarPos> {
-    let index = self.entries.partition_point(|(key, _)| *key < pos);
+  pub(crate) fn get(&self, pos: usize) -> Option<VarPos<'_>> {
     self
       .entries
-      .get(index)
-      .filter(|(key, _)| *key == pos)
-      .map(|(_, value)| value)
+      .binary_search_by_key(&pos, |(key, _, _)| *key)
+      .ok()
+      .map(|index| {
+        let (_, state, dis) = &self.entries[index];
+        VarPos { dis, state: *state }
+      })
   }
 
   pub(crate) fn contains_key(&self, pos: usize) -> bool {
-    self.entries.binary_search_by_key(&pos, |(key, _)| *key).is_ok()
+    self.entries.binary_search_by_key(&pos, |(key, _, _)| *key).is_ok()
   }
 
-  pub(crate) fn insert(&mut self, pos: usize, value: VarPos) {
-    if self.entries.last().is_none_or(|(last, _)| *last < pos) {
-      self.entries.push((pos, value));
+  pub(crate) fn insert(&mut self, pos: usize, state: AsciiChar, dis: &[f64]) {
+    self.insert_with(pos, state, dis.len(), |row| row.copy_from_slice(dis));
+  }
+
+  pub(crate) fn insert_with(&mut self, pos: usize, state: AsciiChar, n_states: usize, fill: impl FnOnce(&mut [f64])) {
+    let mut dis: SiteProfile = smallvec![0.0; n_states];
+    fill(&mut dis);
+    let entry = (pos, state, dis);
+    if self.entries.last().is_none_or(|(last, _, _)| *last < pos) {
+      self.entries.push(entry);
       return;
     }
-    match self.entries.binary_search_by_key(&pos, |(key, _)| *key) {
-      Ok(index) => self.entries[index].1 = value,
-      Err(index) => self.entries.insert(index, (pos, value)),
+    match self.entries.binary_search_by_key(&pos, |(key, _, _)| *key) {
+      Ok(index) => self.entries[index] = entry,
+      Err(index) => self.entries.insert(index, entry),
     }
   }
 
-  pub(crate) fn iter(&self) -> impl Iterator<Item = (&usize, &VarPos)> {
-    self.entries.iter().map(|(pos, value)| (pos, value))
+  pub(crate) fn iter(&self) -> impl Iterator<Item = (&usize, VarPos<'_>)> {
+    self.into_iter()
   }
 
   pub(crate) fn keys(&self) -> impl Iterator<Item = &usize> {
-    self.entries.iter().map(|(pos, _)| pos)
+    self.entries.iter().map(|(pos, _, _)| pos)
   }
 
-  pub(crate) fn values(&self) -> impl Iterator<Item = &VarPos> {
-    self.entries.iter().map(|(_, value)| value)
-  }
-}
-
-impl FromIterator<(usize, VarPos)> for VarPosMap {
-  fn from_iter<I: IntoIterator<Item = (usize, VarPos)>>(iter: I) -> Self {
-    let mut map = Self::default();
-    for (pos, value) in iter {
-      map.insert(pos, value);
-    }
-    map
-  }
-}
-
-impl From<BTreeMap<usize, VarPos>> for VarPosMap {
-  fn from(map: BTreeMap<usize, VarPos>) -> Self {
-    Self {
-      entries: map.into_iter().collect(),
-    }
-  }
-}
-
-impl From<VarPosMap> for BTreeMap<usize, VarPos> {
-  fn from(map: VarPosMap) -> Self {
-    map.entries.into_iter().collect()
-  }
-}
-
-impl Index<usize> for VarPosMap {
-  type Output = VarPos;
-
-  #[expect(
-    clippy::expect_used,
-    reason = "a position that is not variable is a programming error, as an absent key is for a map index"
-  )]
-  fn index(&self, pos: usize) -> &VarPos {
-    self.get(pos).expect("position is not a variable position")
+  pub(crate) fn values(&self) -> impl Iterator<Item = VarPos<'_>> {
+    self.into_iter().map(|(_, value)| value)
   }
 }

@@ -91,7 +91,7 @@ mod tests {
     #[case] expected_ll: f64,
   ) {
     let mut dis = dis;
-    let ll = normalize_1d_inplace(&mut dis, weight);
+    let ll = normalize_1d_inplace(dis.view_mut(), weight);
     pretty_assert_abs_diff_eq!(expected_dis, dis, epsilon = 1e-12);
     pretty_assert_abs_diff_eq!(expected_ll, ll, epsilon = 1e-12);
   }
@@ -105,7 +105,7 @@ mod tests {
   fn test_marginal_shared_normalize_1d_inplace_fallback(#[case] dis: Array1<f64>, #[case] weight: f64) {
     let mut dis = dis;
     let n = dis.len();
-    let ll = normalize_1d_inplace(&mut dis, weight);
+    let ll = normalize_1d_inplace(dis.view_mut(), weight);
     let expected_uniform = Array1::from_elem(n, 1.0 / n.to_f64_exact());
     pretty_assert_abs_diff_eq!(expected_uniform, dis, epsilon = 1e-12);
     assert!(ll.is_infinite() && ll.is_sign_negative(), "expected NEG_INFINITY, got {ll}");

@@ -76,6 +76,10 @@ pub(crate) struct CandidateSites {
 }
 
 impl CandidateSites {
+  pub(crate) fn len(&self) -> usize {
+    self.sites.len()
+  }
+
   pub(crate) fn iter(&self) -> impl Iterator<Item = (usize, AsciiChar, &[Option<AsciiChar>])> {
     let n = self.n_messages;
     self

@@ -1,24 +1,23 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
-use crate::partition::marginal::shared::normalize::{
-  divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child,
-};
+use crate::partition::marginal::shared::normalize::{forward_log_lh_add_normalization, forward_log_lh_remove_child};
 use crate::partition::marginal::shared::update::MarginalForward;
 use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, SiteSlot};
 use crate::partition::marginal::sparse::message::{
-  combine_messages, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
+  combine_messages, divide_out_site, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
 };
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::marginal::sparse::reconstruct::{map_state, parsimony_seq};
 use crate::partition::storage::sparse::{
-  SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution, VarPos,
+  FixedProfiles, SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState,
+  SparseSeqDistribution,
 };
 use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
-use maplit::btreemap;
+use ndarray::aview_mut1;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
@@ -188,45 +187,39 @@ fn compute_msg_to_child(
   let sites = events.finish();
 
   let mut seq_dis = SparseSeqDistribution {
-    variable: VarPosMap::default(),
-    fixed: btreemap! {},
-    fixed_counts: parent_obs.composition.clone(),
+    variable: VarPosMap::with_capacity(sites.len()),
+    fixed: FixedProfiles::default(),
     log_lh: forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh),
   };
   let mut delta_ll = LogLh::ZERO;
+  let mut removed = [0_usize; 128];
   for (pos, parent_state, child_state) in sites.iter() {
     let child_state = child_state[0].ok_or_else(|| make_internal_report!("Position {pos} has no child state"))?;
-    let divisor = child_dis
-      .variable
-      .get(pos)
-      .map_or(&child_dis.fixed[&child_state], |distribution| &distribution.dis);
-    let numerator = parent
-      .profile
-      .variable
-      .get(pos)
-      .map_or(&parent.profile.fixed[&parent_state], |distribution| &distribution.dis);
-    let mut dis = divide_out(numerator, divisor);
-    let normalization = normalize_1d_inplace(&mut dis, 1.0);
-    delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
-    seq_dis.variable.insert(
-      pos,
-      VarPos {
-        dis,
-        state: parent_state,
-      },
+    let divisor = child_dis.variable.get(pos).map_or_else(
+      || child_dis.fixed[child_state].dis.as_slice(),
+      |distribution| distribution.dis,
     );
-    seq_dis.fixed_counts.adjust_count(parent_state, -1);
-  }
-  for (state, profile) in &parent.profile.fixed {
-    let mut dis = divide_out(profile, &child_dis.fixed[state]);
-    let weight = seq_dis
-      .fixed_counts
-      .get(*state)
-      .ok_or_else(|| make_internal_report!("Fixed state {state} has no count"))?
-      .to_f64_exact();
-    let normalization = normalize_1d_inplace(&mut dis, weight);
+    let numerator = parent.profile.variable.get(pos).map_or_else(
+      || parent.profile.fixed[parent_state].dis.as_slice(),
+      |distribution| distribution.dis,
+    );
+    let mut dis = divide_out_site(numerator, divisor);
+    let normalization = normalize_1d_inplace(aview_mut1(&mut dis), 1.0);
     delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
-    seq_dis.fixed.insert(*state, dis);
+    seq_dis.variable.insert(pos, parent_state, &dis);
+    removed[usize::from(parent_state)] += 1;
+  }
+  for fixed in parent.profile.fixed.iter() {
+    let state = fixed.state;
+    let mut dis = divide_out_site(&fixed.dis, &child_dis.fixed[state].dis);
+    let count = parent_obs
+      .composition
+      .get(state)
+      .ok_or_else(|| make_internal_report!("Fixed state {state} has no count"))?
+      .saturating_sub(removed[usize::from(state)]);
+    let normalization = normalize_1d_inplace(aview_mut1(&mut dis), count.to_f64_exact());
+    delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
+    seq_dis.fixed.insert(state, count, dis);
   }
   seq_dis.log_lh += delta_ll;
   Ok(seq_dis)

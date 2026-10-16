@@ -5,7 +5,7 @@ use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeForward, SparseNodeState, SparseSeqDistribution, VarPos,
 };
 use eyre::Report;
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, Array2, aview1};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -76,18 +76,21 @@ fn accumulate_sparse_transitions(
     let pc = msg_to_child
       .variable
       .get(*pos)
-      .map_or_else(|| fixed_profile_for_var(msg_to_child, pp_var), |v| &v.dis);
-    accumulate_site_transition_weighted(&pp_var.dis, pc, exp_qt, branch_length, n_states, nij, Ti, 1);
+      .map_or_else(|| fixed_profile_for_var(msg_to_child, pp_var), |v| v.dis);
+    accumulate_site_transition_weighted(pp_var.dis, pc, exp_qt, branch_length, n_states, nij, Ti, 1);
   }
 
-  for (ch, parent_fixed) in &msg_to_parent.fixed {
-    let count = msg_to_parent.fixed_counts.get(*ch).unwrap_or(0);
+  for parent_fixed in msg_to_parent.fixed.iter() {
+    let count = parent_fixed.count;
     if count == 0 {
       continue;
     }
-    let child_fixed = msg_to_child.fixed.get(ch).unwrap_or(parent_fixed);
+    let child_fixed = msg_to_child
+      .fixed
+      .get(parent_fixed.state)
+      .map_or(&parent_fixed.dis, |child_fixed| &child_fixed.dis);
     accumulate_site_transition_weighted(
-      parent_fixed,
+      &parent_fixed.dis,
       child_fixed,
       exp_qt,
       branch_length,
@@ -99,8 +102,8 @@ fn accumulate_sparse_transitions(
   }
 }
 
-fn fixed_profile_for_var<'a>(dist: &'a SparseSeqDistribution, var: &'a VarPos) -> &'a Array1<f64> {
-  dist.fixed.get(&var.state).unwrap_or(&var.dis)
+fn fixed_profile_for_var<'a>(dist: &'a SparseSeqDistribution, var: VarPos<'a>) -> &'a [f64] {
+  dist.fixed.get(var.state).map_or(var.dis, |fixed| fixed.dis.as_slice())
 }
 
 #[expect(
@@ -108,8 +111,8 @@ fn fixed_profile_for_var<'a>(dist: &'a SparseSeqDistribution, var: &'a VarPos) -
   reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
 )]
 fn accumulate_site_transition_weighted(
-  pp: &Array1<f64>,
-  pc: &Array1<f64>,
+  pp: &[f64],
+  pc: &[f64],
   exp_qt: &Array2<f64>,
   branch_length: f64,
   n_states: usize,
@@ -153,16 +156,16 @@ fn accumulate_site_transition_weighted(
 fn aggregate_sparse_profile(profile: &SparseSeqDistribution, n_states: usize) -> Array1<f64> {
   let mut result = Array1::zeros(n_states);
   for var in profile.variable.values() {
-    if is_profile_informative(var.dis.view(), n_states) {
-      if let Some(idx) = argmax_first(&var.dis.view()) {
+    if is_profile_informative(aview1(var.dis), n_states) {
+      if let Some(idx) = argmax_first(&aview1(var.dis)) {
         result[idx] += 1.0;
       }
     }
   }
-  for (ch, fixed_profile) in &profile.fixed {
-    let count = profile.fixed_counts.get(*ch).unwrap_or(0).to_f64_exact();
-    if count > 0.0 && is_profile_informative(fixed_profile.view(), n_states) {
-      if let Some(idx) = argmax_first(&fixed_profile.view()) {
+  for fixed in profile.fixed.iter() {
+    let count = fixed.count.to_f64_exact();
+    if count > 0.0 && is_profile_informative(aview1(&fixed.dis), n_states) {
+      if let Some(idx) = argmax_first(&aview1(&fixed.dis)) {
         result[idx] += count;
       }
     }

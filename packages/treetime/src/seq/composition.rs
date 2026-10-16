@@ -23,10 +23,6 @@ impl Composition {
     self.counts.get(&c).copied()
   }
 
-  pub(crate) fn counts(&self) -> &BTreeMap<AsciiChar, usize> {
-    &self.counts
-  }
-
   pub(crate) fn with_seq(
     sequence: impl AsRef<[AsciiChar]>,
     alphabet_chars: impl IntoIterator<Item = AsciiChar>,

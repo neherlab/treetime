@@ -3,11 +3,10 @@ use crate::partition::storage::sparse::{SparseEdgeBackward, SparseEdgeForward, S
 use crate::seq::mutation::Sub;
 use eyre::{OptionExt, Report};
 use itertools::Itertools;
-use ndarray::Array1;
+use ndarray::{Array1, aview1};
 use std::collections::BTreeMap;
 use std::iter::zip;
 use treetime_utils::cast::ToF64Exact;
-use treetime_utils::make_internal_report;
 
 pub(crate) fn get_coefficients(
   gtr: &GTR,
@@ -58,31 +57,27 @@ pub(crate) fn get_coefficients(
   let mut site_contributions = Vec::with_capacity(variable_positions.len() + msg_to_child.fixed.len());
   for (&pos, (parent_state, child_state)) in zip(&variable_positions, variable_states) {
     let parent = if let Some(parent) = msg_to_child.variable.get(pos) {
-      &parent.dis
+      parent.dis
     } else {
-      &msg_to_child.fixed[&parent_state]
+      msg_to_child.fixed[parent_state].dis.as_slice()
     };
 
     let child = if let Some(child) = msg_to_parent.variable.get(pos) {
-      &child.dis
+      child.dis
     } else {
-      &msg_to_parent.fixed[&child_state]
+      msg_to_parent.fixed[child_state].dis.as_slice()
     };
     site_contributions.push(SiteContribution {
       multiplicity: 1.0,
-      coefficients: child.dot(&gtr.v) * parent.dot(&gtr.v_inv.t()),
+      coefficients: aview1(child).dot(&gtr.v) * aview1(parent).dot(&gtr.v_inv.t()),
     });
   }
-  for state in msg_to_child.fixed.keys() {
-    let parent = &msg_to_child.fixed[state];
-    let child = &msg_to_parent.fixed[state];
+  for parent_fixed in msg_to_child.fixed.iter() {
+    let parent = &parent_fixed.dis;
+    let child = &msg_to_parent.fixed[parent_fixed.state].dis;
     site_contributions.push(SiteContribution {
-      multiplicity: msg_to_child
-        .fixed_counts
-        .get(*state)
-        .ok_or_else(|| make_internal_report!("Fixed state {state} has no count"))?
-        .to_f64_exact(),
-      coefficients: child.dot(&gtr.v) * parent.dot(&gtr.v_inv.t()),
+      multiplicity: parent_fixed.count.to_f64_exact(),
+      coefficients: aview1(child).dot(&gtr.v) * aview1(parent).dot(&gtr.v_inv.t()),
     });
   }
   Ok(PartitionContribution::new(site_contributions, gtr.clone()))

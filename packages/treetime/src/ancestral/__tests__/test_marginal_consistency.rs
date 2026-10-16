@@ -18,7 +18,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
-  use ndarray::{Array1, array};
+  use ndarray::{Array1, array, aview1};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::LazyLock;
@@ -169,7 +169,7 @@ mod tests {
 
       for (&pos, var_pos) in &sparse_node.profile.variable {
         let dense_row = dense_node.profile.dis.row(pos).to_owned();
-        pretty_assert_ulps_eq!(dense_row, var_pos.dis.clone(), epsilon = 1e-6);
+        pretty_assert_ulps_eq!(dense_row, aview1(var_pos.dis).to_owned(), epsilon = 1e-6);
       }
     }
 
@@ -238,7 +238,7 @@ mod tests {
       );
 
       for (pos, var_pos) in &node_data.profile.variable {
-        let sum: f64 = var_pos.dis.sum();
+        let sum: f64 = aview1(var_pos.dis).sum();
         assert!(
           sum.is_finite(),
           "Sparse variable position {pos} sum is not finite: {sum}"
@@ -246,8 +246,8 @@ mod tests {
         pretty_assert_ulps_eq!(sum, 1.0, epsilon = 1e-6);
       }
 
-      for (char_key, fixed_dis) in &node_data.profile.fixed {
-        let sum: f64 = fixed_dis.sum();
+      for (char_key, fixed_dis) in node_data.profile.fixed.iter().map(|fixed| (fixed.state, &fixed.dis)) {
+        let sum: f64 = aview1(fixed_dis).sum();
         assert!(
           sum.is_finite(),
           "Sparse fixed distribution for char {char_key:?} sum is not finite: {sum}"
