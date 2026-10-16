@@ -3,6 +3,7 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, compute_total_lh, setup_reconstruction, simple_alignment,
   };
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
@@ -148,8 +149,10 @@ mod tests {
       dp,
       damping,
       method,
-      false,
-      TopologyOps::default(), branch_lengths, &names_tt_2
+      IndelPolicy::Include,
+      TopologyOps::default(),
+      branch_lengths,
+      &names_tt_2,
     )?;
     let reconstruction = result.reconstruction;
 
@@ -195,8 +198,10 @@ mod tests {
       dp,
       0.75,
       method,
-      false,
-      TopologyOps::default(), branch_lengths, &names_tt_1
+      IndelPolicy::Include,
+      TopologyOps::default(),
+      branch_lengths,
+      &names_tt_1,
     )?;
     let reconstruction = result.reconstruction;
 

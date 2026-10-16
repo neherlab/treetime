@@ -4,7 +4,8 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{F81Params, JC69Params, f81, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts};
+  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
@@ -79,17 +80,16 @@ mod tests {
     *reconstruction_stale.gtr_mut() = f81_gtr.clone();
     {
       let total_length = reconstruction_stale.sequence_length();
-      let indel_counts = gather_edge_indel_counts(&graph_stale, &reconstruction_stale);
+      let indels = IndelPolicy::Include.edge_indels(&graph_stale, &reconstruction_stale, &branch_lengths_stale);
       let sub_counts = gather_edge_sub_counts(&graph_stale, &reconstruction_stale)?;
       let effective_lengths = gather_edge_effective_lengths(&graph_stale, &reconstruction_stale)?;
       initial_guess_mixed(
         &graph_stale,
         total_length,
-        &indel_counts,
+        &indels,
         &sub_counts,
         &effective_lengths,
         ExistingBranchLengths::Overwrite,
-        false,
         &mut branch_lengths_stale,
       )?;
     }
@@ -107,17 +107,16 @@ mod tests {
       reconstruction_fresh.marginal_update(&graph_fresh, &branch_lengths_or_zero(&branch_lengths_fresh))?;
     {
       let total_length = reconstruction_fresh.sequence_length();
-      let indel_counts = gather_edge_indel_counts(&graph_fresh, &reconstruction_fresh);
+      let indels = IndelPolicy::Include.edge_indels(&graph_fresh, &reconstruction_fresh, &branch_lengths_fresh);
       let sub_counts = gather_edge_sub_counts(&graph_fresh, &reconstruction_fresh)?;
       let effective_lengths = gather_edge_effective_lengths(&graph_fresh, &reconstruction_fresh)?;
       initial_guess_mixed(
         &graph_fresh,
         total_length,
-        &indel_counts,
+        &indels,
         &sub_counts,
         &effective_lengths,
         ExistingBranchLengths::Overwrite,
-        false,
         &mut branch_lengths_fresh,
       )?;
     }
@@ -149,17 +148,16 @@ mod tests {
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     {
       let total_length = reconstruction.sequence_length();
-      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
       let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
       let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
       initial_guess_mixed(
         &graph,
         total_length,
-        &indel_counts,
+        &indels,
         &sub_counts,
         &effective_lengths,
         ExistingBranchLengths::Overwrite,
-        false,
         &mut branch_lengths,
       )?;
     }
@@ -176,17 +174,16 @@ mod tests {
     let (reconstruction2, _) = reconstruction2.marginal_update(&graph2, &branch_lengths_or_zero(&branch_lengths2))?;
     {
       let total_length = reconstruction2.sequence_length();
-      let indel_counts = gather_edge_indel_counts(&graph2, &reconstruction2);
+      let indels = IndelPolicy::Include.edge_indels(&graph2, &reconstruction2, &branch_lengths2);
       let sub_counts = gather_edge_sub_counts(&graph2, &reconstruction2)?;
       let effective_lengths = gather_edge_effective_lengths(&graph2, &reconstruction2)?;
       initial_guess_mixed(
         &graph2,
         total_length,
-        &indel_counts,
+        &indels,
         &sub_counts,
         &effective_lengths,
         ExistingBranchLengths::Overwrite,
-        false,
         &mut branch_lengths2,
       )?;
     }

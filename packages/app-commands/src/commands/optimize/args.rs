@@ -19,6 +19,7 @@ use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
+use treetime::optimize::indel::IndelPolicy;
 use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -32,6 +33,7 @@ pub struct TreetimeOptimizeArgs {
   pub(crate) tree: PathBuf,
   pub(crate) branch_length_initial_guess: InitialGuessMode,
   pub(crate) opt_method: BranchOptMethod,
+  pub(crate) indel_policy: IndelPolicy,
   pub(crate) topology_ops: TopologyOps,
 }
 
@@ -77,6 +79,11 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       tree,
       branch_length_initial_guess: raw.branch_length_initial_guess.into(),
       opt_method: raw.opt_method.into(),
+      indel_policy: if raw.no_indels {
+        IndelPolicy::Exclude
+      } else {
+        IndelPolicy::Include
+      },
       topology_ops: TopologyOps {
         collapse_short_branches: !raw.no_collapse_short_branches,
         merge_siblings: !raw.no_merge_siblings,

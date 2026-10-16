@@ -1,10 +1,8 @@
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
-use crate::optimize::dispatch::initial_guess_mixed;
-use crate::optimize::dispatch::run_optimize_mixed_inner;
-use crate::optimize::gather::gather_edge_indel_counts;
-use crate::optimize::indel::{estimate_indel_rate, total_indel_log_lh};
+use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
+use crate::optimize::indel::{EdgeIndels, IndelPolicy};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::ExistingBranchLengths;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
@@ -37,7 +35,7 @@ pub(crate) fn run_optimize_loop(
   dp: f64,
   damping: f64,
   opt_method: BranchOptMethod,
-  no_indels: bool,
+  indel_policy: IndelPolicy,
   topology_ops: TopologyOps,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -46,12 +44,7 @@ pub(crate) fn run_optimize_loop(
   let mut branch_lengths = branch_lengths;
   let mut reconstruction = reconstruction;
 
-  let indel_rate = if no_indels {
-    0.0
-  } else {
-    let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
-    estimate_indel_rate(graph, &indel_counts, &branch_lengths)
-  };
+  let indels = indel_policy.edge_indels(graph, &reconstruction, &branch_lengths);
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter + 1);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
@@ -60,7 +53,7 @@ pub(crate) fn run_optimize_loop(
   let mut best: Option<BestIteration> = None;
 
   for i in 0..max_iter {
-    let iteration = compute_iteration(graph, &branch_lengths, reconstruction, indel_rate, no_indels)?;
+    let iteration = compute_iteration(graph, &branch_lengths, reconstruction, &indels)?;
     reconstruction = iteration.reconstruction;
     let lh = iteration.likelihood.total_lh;
     lh_history.push(lh);
@@ -84,8 +77,7 @@ pub(crate) fn run_optimize_loop(
       i,
       damping,
       opt_method,
-      indel_rate,
-      no_indels,
+      &indels,
       topology_ops,
       &mut branch_lengths,
       &mut names,
@@ -100,7 +92,7 @@ pub(crate) fn run_optimize_loop(
   }
 
   if stopped_at.is_none() && max_iter > 0 {
-    let iteration = compute_iteration(graph, &branch_lengths, reconstruction, indel_rate, no_indels)?;
+    let iteration = compute_iteration(graph, &branch_lengths, reconstruction, &indels)?;
     reconstruction = iteration.reconstruction;
     let lh = iteration.likelihood.total_lh;
     lh_history.push(lh);
@@ -202,22 +194,18 @@ fn update_branch_lengths(
   iteration: usize,
   damping: f64,
   opt_method: BranchOptMethod,
-  indel_rate: f64,
-  no_indels: bool,
+  indels: &EdgeIndels,
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &mut BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<TopologyCleanup, Report> {
   let old_branch_lengths = branch_lengths.clone();
-  let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
-  run_optimize_mixed_inner(
+  run_optimize_mixed(
     graph,
     reconstruction.sequence_length(),
     &reconstruction,
-    &indel_counts,
+    &indels.recount(graph, &reconstruction),
     opt_method,
-    indel_rate,
-    no_indels,
     branch_lengths,
   )?;
 
@@ -254,20 +242,16 @@ fn compute_iteration(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   reconstruction: MarginalReconstruction,
-  indel_rate: f64,
-  no_indels: bool,
+  indels: &EdgeIndels,
 ) -> Result<OptimizeIteration, Report> {
   let (reconstruction, marginal_lh) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
   let (sparse_lh, dense_lh) = match reconstruction {
     MarginalReconstruction::Sparse(_) => (marginal_lh, LogLh::ZERO),
     MarginalReconstruction::Dense(_) => (LogLh::ZERO, marginal_lh),
   };
-  let indel_lh = if no_indels {
-    LogLh::ZERO
-  } else {
-    let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
-    total_indel_log_lh(graph, &indel_counts, branch_lengths, indel_rate)?
-  };
+  let indel_lh = indels
+    .recount(graph, &reconstruction)
+    .total_log_lh(graph, branch_lengths)?;
   let total_lh = sparse_lh + dense_lh + indel_lh;
 
   Ok(OptimizeIteration {
@@ -277,7 +261,7 @@ fn compute_iteration(
       dense_lh,
       indel_lh,
       total_lh,
-      indel_rate,
+      indel_rate: indels.rate(),
     },
   })
 }
@@ -408,11 +392,10 @@ pub(crate) struct TopologyCleanup {
 pub(crate) fn apply_initial_guess_mode(
   graph: &Graph,
   total_length: usize,
-  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
+  indels: &EdgeIndels,
   sub_counts: &BTreeMap<GraphEdgeKey, usize>,
   effective_lengths: &BTreeMap<GraphEdgeKey, usize>,
   mode: InitialGuessMode,
-  no_indels: bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
@@ -426,21 +409,19 @@ pub(crate) fn apply_initial_guess_mode(
     InitialGuessMode::Auto => initial_guess_mixed(
       graph,
       total_length,
-      indel_counts,
+      indels,
       sub_counts,
       effective_lengths,
       ExistingBranchLengths::Keep,
-      no_indels,
       branch_lengths,
     ),
     InitialGuessMode::Always => initial_guess_mixed(
       graph,
       total_length,
-      indel_counts,
+      indels,
       sub_counts,
       effective_lengths,
       ExistingBranchLengths::Overwrite,
-      no_indels,
       branch_lengths,
     ),
     InitialGuessMode::Never => {
@@ -452,7 +433,7 @@ pub(crate) fn apply_initial_guess_mode(
           invalid_branch_lengths.join("\n  ")
         );
       }
-      if !no_indels && any_indel_edge_has_zero_branch_length(graph, indel_counts, branch_lengths) {
+      if indels.has_indel_edge_with_zero_length(graph, branch_lengths) {
         return make_error!(
           "--branch-length-initial-guess=never requires non-zero branch lengths on edges that carry indels, \
            but some indel-bearing edges have branch length zero. \
@@ -463,22 +444,6 @@ pub(crate) fn apply_initial_guess_mode(
       Ok(())
     },
   }
-}
-
-pub(crate) fn any_indel_edge_has_zero_branch_length(
-  graph: &Graph,
-  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> bool {
-  graph.get_edges().any(|edge_ref| {
-    let edge = edge_ref;
-    let edge_key = edge.key();
-    let bl = branch_lengths[&edge_key].unwrap_or(0.0);
-    if bl != 0.0 {
-      return false;
-    }
-    indel_counts[&edge_key] > 0
-  })
 }
 
 pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -> Option<String> {

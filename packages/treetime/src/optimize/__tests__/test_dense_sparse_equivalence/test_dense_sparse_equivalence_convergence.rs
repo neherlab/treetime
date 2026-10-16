@@ -5,7 +5,8 @@ mod tests {
   };
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
+  use crate::optimize::gather::gather_edge_contributions;
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::BranchOptMethod;
   use eyre::Report;
   use rstest::rstest;
@@ -32,8 +33,8 @@ mod tests {
     for _ in 0..50 {
       let total_length = reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
       let lh;
       (reconstruction, lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let lh = lh.value();
@@ -86,8 +87,8 @@ mod tests {
     for _ in 0..50 {
       let total_length = reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
       let lh;
       (reconstruction, lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let lh = lh.value();

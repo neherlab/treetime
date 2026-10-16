@@ -6,8 +6,8 @@ mod tests {
   };
   use crate::optimize::__tests__::test_optimize_method::tests::helpers::*;
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
-  use crate::optimize::indel::IndelTerm;
+  use crate::optimize::gather::gather_edge_contributions;
+  use crate::optimize::indel::{IndelPolicy, IndelTerm};
   use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
   use crate::optimize::method_brent::{BranchLengthBracket, brent_bracket, brent_sqrt_inner};
   use crate::optimize::params::BranchOptMethod;
@@ -76,7 +76,7 @@ mod tests {
     let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     let input_bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
     let one_mutation = 1.0 / total_length.to_f64_exact();
@@ -87,7 +87,7 @@ mod tests {
       &graph,
       total_length,
       &contributions,
-      &indel_counts,
+      &indels,
       BranchOptMethod::Brent,
       &mut branch_lengths,
     )?;

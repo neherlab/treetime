@@ -4,7 +4,8 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::initial_guess_mixed;
-  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts};
+  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::run_optimize_loop;
@@ -46,17 +47,16 @@ mod tests {
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let total_length = reconstruction.sequence_length();
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(
       &graph,
       total_length,
-      &indel_counts,
+      &indels,
       &sub_counts,
       &effective_lengths,
       ExistingBranchLengths::Overwrite,
-      false,
       &mut branch_lengths,
     )?;
 
@@ -69,7 +69,7 @@ mod tests {
       0.1,
       0.75,
       BranchOptMethod::Brent,
-      false,
+      IndelPolicy::Include,
       TopologyOps::default(),
       branch_lengths,
       &names_tt_2,
@@ -113,17 +113,16 @@ mod tests {
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let total_length = reconstruction.sequence_length();
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     initial_guess_mixed(
       &graph,
       total_length,
-      &indel_counts,
+      &indels,
       &sub_counts,
       &effective_lengths,
       ExistingBranchLengths::Overwrite,
-      false,
       &mut branch_lengths,
     )?;
 
@@ -135,7 +134,7 @@ mod tests {
       0.1,
       0.75,
       BranchOptMethod::Brent,
-      false,
+      IndelPolicy::Include,
       TopologyOps::default(),
       branch_lengths,
       &names_tt_1,

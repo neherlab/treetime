@@ -5,8 +5,9 @@ use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
-use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
-use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts};
+use crate::optimize::dispatch::run_optimize_mixed;
+use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
+use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_rates, run_optimize_loop};
@@ -93,18 +94,19 @@ pub fn run(
 
   {
     let total_length = reconstruction.sequence_length();
-    let indel_counts = gather_edge_indel_counts(&input.graph, &reconstruction);
+    let indels = params
+      .indel_policy
+      .edge_indels(&input.graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&input.graph, &reconstruction).map_err(OperationError::classify)?;
     let effective_lengths =
       gather_edge_effective_lengths(&input.graph, &reconstruction).map_err(OperationError::classify)?;
     apply_initial_guess_mode(
       &input.graph,
       total_length,
-      &indel_counts,
+      &indels,
       &sub_counts,
       &effective_lengths,
       params.initial_guess,
-      params.no_indels,
       &mut branch_lengths,
       names,
       log,
@@ -119,7 +121,7 @@ pub fn run(
       &input.graph,
       reconstruction,
       params.opt_method,
-      params.no_indels,
+      params.indel_policy,
       &mut branch_lengths,
     )
     .map_err(OperationError::classify)?;
@@ -138,7 +140,7 @@ pub fn run(
     params.dp,
     params.damping,
     params.opt_method,
-    params.no_indels,
+    params.indel_policy,
     params.topology_ops,
     branch_lengths,
     &loop_names,
@@ -170,7 +172,7 @@ pub struct OptimizeParams {
   pub damping: f64,
   pub opt_method: BranchOptMethod,
   pub initial_guess: InitialGuessMode,
-  pub no_indels: bool,
+  pub indel_policy: IndelPolicy,
   pub reroot_spec: Option<RerootSpec>,
   pub topology_ops: TopologyOps,
 }
@@ -196,36 +198,20 @@ fn pre_reroot_optimize(
   graph: &Graph,
   reconstruction: MarginalReconstruction,
   opt_method: BranchOptMethod,
-  no_indels: bool,
+  indel_policy: IndelPolicy,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<MarginalReconstruction, Report> {
   let old_branch_lengths = branch_lengths.clone();
 
-  {
-    let total_length = reconstruction.sequence_length();
-    let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
-    if no_indels {
-      run_optimize_mixed_inner(
-        graph,
-        total_length,
-        &reconstruction,
-        &indel_counts,
-        opt_method,
-        0.0,
-        true,
-        branch_lengths,
-      )?;
-    } else {
-      run_optimize_mixed(
-        graph,
-        total_length,
-        &reconstruction,
-        &indel_counts,
-        opt_method,
-        branch_lengths,
-      )?;
-    }
-  }
+  let indels = indel_policy.edge_indels(graph, &reconstruction, branch_lengths);
+  run_optimize_mixed(
+    graph,
+    reconstruction.sequence_length(),
+    &reconstruction,
+    &indels,
+    opt_method,
+    branch_lengths,
+  )?;
 
   apply_damping(branch_lengths, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
   Ok(

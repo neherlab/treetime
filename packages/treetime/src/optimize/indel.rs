@@ -1,5 +1,7 @@
 use crate::optimize::branch_length::validate_branch_length_value;
+use crate::optimize::gather::gather_edge_indel_counts;
 use crate::optimize::likelihood::OptimizationMetrics;
+use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use eyre::Report;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use statrs::function::factorial::ln_factorial;
@@ -11,58 +13,93 @@ use treetime_utils::cast::ToF64Exact;
 use treetime_utils::cast::usize_to_u64;
 use treetime_utils::{make_error, make_report};
 
-pub(crate) fn estimate_indel_rate(
-  graph: &Graph,
-  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> f64 {
-  let per_edge = graph
-    .get_edges()
-    .collect::<Vec<_>>()
-    .into_par_iter()
-    .map(|edge_ref| {
-      let edge_key = edge_ref.key();
-      let branch_length = branch_lengths[&edge_key].unwrap_or(0.0);
-      let edge_indels = indel_counts[&edge_key];
-      (edge_indels, branch_length)
-    })
-    .collect::<Vec<_>>();
-  let total_indels = per_edge.iter().map(|(indels, _)| indels).sum::<usize>();
-  let total_branch_length = per_edge.iter().map(|(_, branch_length)| branch_length).sum::<f64>();
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IndelPolicy {
+  Include,
+  Exclude,
+}
 
-  if total_branch_length > 0.0 && total_indels > 0 {
-    total_indels.to_f64_exact() / total_branch_length
-  } else {
-    0.0
+impl IndelPolicy {
+  pub(crate) fn edge_indels(
+    self,
+    graph: &Graph,
+    reconstruction: &MarginalReconstruction,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> EdgeIndels {
+    match self {
+      Self::Include => {
+        let counts = gather_edge_indel_counts(graph, reconstruction);
+        let rate = estimate_indel_rate(graph, &counts, branch_lengths);
+        EdgeIndels::Included { counts, rate }
+      },
+      Self::Exclude => EdgeIndels::Excluded,
+    }
   }
 }
 
-pub(crate) fn total_indel_log_lh(
-  graph: &Graph,
-  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  indel_rate: f64,
-) -> Result<LogLh, Report> {
-  graph
-    .get_edges()
-    .collect::<Vec<_>>()
-    .into_par_iter()
-    .map(|edge_ref| -> Result<LogLh, Report> {
+#[derive(Clone, Debug)]
+pub(crate) enum EdgeIndels {
+  Included {
+    counts: BTreeMap<GraphEdgeKey, usize>,
+    rate: f64,
+  },
+  Excluded,
+}
+
+impl EdgeIndels {
+  pub(crate) fn recount(&self, graph: &Graph, reconstruction: &MarginalReconstruction) -> Self {
+    match self {
+      Self::Included { rate, .. } => Self::Included {
+        counts: gather_edge_indel_counts(graph, reconstruction),
+        rate: *rate,
+      },
+      Self::Excluded => Self::Excluded,
+    }
+  }
+
+  pub(crate) fn rate(&self) -> f64 {
+    match self {
+      Self::Included { rate, .. } => *rate,
+      Self::Excluded => 0.0,
+    }
+  }
+
+  pub(crate) fn term(&self, edge_key: GraphEdgeKey) -> IndelTerm {
+    match self {
+      Self::Included { counts, rate } => IndelTerm::new(counts[&edge_key], *rate),
+      Self::Excluded => IndelTerm::new(0, 0.0),
+    }
+  }
+
+  pub(crate) fn chain_term(&self, edges: &[GraphEdgeKey], held_length: f64) -> IndelTerm {
+    IndelTerm {
+      count: edges.iter().map(|&edge_key| self.term(edge_key).count).sum(),
+      rate: self.rate(),
+      held_length,
+    }
+  }
+
+  pub(crate) fn total_log_lh(
+    &self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<LogLh, Report> {
+    match self {
+      Self::Included { counts, rate } => total_indel_log_lh(graph, counts, branch_lengths, *rate),
+      Self::Excluded => Ok(LogLh::ZERO),
+    }
+  }
+
+  pub(crate) fn has_indel_edge_with_zero_length(
+    &self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> bool {
+    graph.get_edges().any(|edge_ref| {
       let edge_key = edge_ref.key();
-      let branch_length = branch_lengths[&edge_key].ok_or_else(|| {
-        make_report!("Cannot evaluate indel likelihood for edge {edge_key} with a missing branch length")
-      })?;
-      validate_branch_length_value(branch_length)?;
-      let indel_count: usize = indel_counts[&edge_key];
-      if indel_count > 0 && branch_length <= 0.0 {
-        Ok(LogLh::IMPOSSIBLE)
-      } else {
-        Ok(poisson_indel_log_lh(indel_count, indel_rate, branch_length)?.log_lh)
-      }
+      branch_lengths[&edge_key].unwrap_or(0.0) == 0.0 && self.term(edge_key).requires_positive_length()
     })
-    .collect::<Vec<_>>()
-    .into_iter()
-    .sum()
+  }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -88,6 +125,64 @@ impl IndelTerm {
   pub(crate) fn requires_positive_length(&self) -> bool {
     self.count > 0 && self.held_length == 0.0
   }
+
+  pub(crate) fn length_estimate(&self) -> Option<f64> {
+    (self.count > 0 && self.rate > 0.0).then(|| self.count.to_f64_exact() / self.rate)
+  }
+}
+
+fn estimate_indel_rate(
+  graph: &Graph,
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+) -> f64 {
+  let per_edge = graph
+    .get_edges()
+    .collect::<Vec<_>>()
+    .into_par_iter()
+    .map(|edge_ref| {
+      let edge_key = edge_ref.key();
+      let branch_length = branch_lengths[&edge_key].unwrap_or(0.0);
+      let edge_indels = indel_counts[&edge_key];
+      (edge_indels, branch_length)
+    })
+    .collect::<Vec<_>>();
+  let total_indels = per_edge.iter().map(|(indels, _)| indels).sum::<usize>();
+  let total_branch_length = per_edge.iter().map(|(_, branch_length)| branch_length).sum::<f64>();
+
+  if total_branch_length > 0.0 && total_indels > 0 {
+    total_indels.to_f64_exact() / total_branch_length
+  } else {
+    0.0
+  }
+}
+
+fn total_indel_log_lh(
+  graph: &Graph,
+  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  indel_rate: f64,
+) -> Result<LogLh, Report> {
+  graph
+    .get_edges()
+    .collect::<Vec<_>>()
+    .into_par_iter()
+    .map(|edge_ref| -> Result<LogLh, Report> {
+      let edge_key = edge_ref.key();
+      let branch_length = branch_lengths[&edge_key].ok_or_else(|| {
+        make_report!("Cannot evaluate indel likelihood for edge {edge_key} with a missing branch length")
+      })?;
+      validate_branch_length_value(branch_length)?;
+      let indel_count: usize = indel_counts[&edge_key];
+      if indel_count > 0 && branch_length <= 0.0 {
+        Ok(LogLh::IMPOSSIBLE)
+      } else {
+        Ok(poisson_indel_log_lh(indel_count, indel_rate, branch_length)?.log_lh)
+      }
+    })
+    .collect::<Vec<_>>()
+    .into_iter()
+    .sum()
 }
 
 pub(crate) fn poisson_indel_log_lh(k: usize, mu: f64, t: f64) -> Result<OptimizationMetrics, Report> {

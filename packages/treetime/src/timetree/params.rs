@@ -3,6 +3,7 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::make_report;
+use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
 use crate::progress::LogSink;
 use crate::seq::alignment::{NodeSeqInput, get_common_length_of_node_inputs};
@@ -79,7 +80,7 @@ pub struct TimetreeParams {
   pub model: GtrModelName,
   pub dense: Option<bool>,
   pub branch_length_mode: BranchLengthMode,
-  pub no_indels: bool,
+  pub indel_policy: IndelPolicy,
   pub sequence_length: Option<usize>,
   pub clock_rate: Option<f64>,
   pub clock_std_dev: Option<f64>,

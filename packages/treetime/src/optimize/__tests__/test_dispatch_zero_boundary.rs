@@ -5,10 +5,8 @@ mod tests {
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, K80Params, get_gtr_by_name, jc69, k80};
   use crate::gtr::gtr::{GTR, RateScale};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
-  use crate::optimize::gather::{
-    gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
-  };
-  use crate::optimize::indel::IndelTerm;
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_effective_lengths, gather_edge_sub_counts};
+  use crate::optimize::indel::{IndelPolicy, IndelTerm};
   use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
   use crate::optimize::method_newton::newton_sqrt_inner;
   use crate::optimize::params::BranchOptMethod;
@@ -70,17 +68,16 @@ mod tests {
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
     let total_length = reconstruction.sequence_length();
-    let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(graph, &reconstruction, branch_lengths);
     let sub_counts = gather_edge_sub_counts(graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(graph, &reconstruction)?;
     initial_guess_mixed(
       graph,
       total_length,
-      &indel_counts,
+      &indels,
       &sub_counts,
       &effective_lengths,
       ExistingBranchLengths::Keep,
-      false,
       branch_lengths,
     )?;
 
@@ -101,7 +98,7 @@ mod tests {
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     for (i, edge_ref) in graph.get_edges().enumerate() {
       let bl = branch_lengths[&edge_ref.key()].unwrap();
@@ -111,7 +108,7 @@ mod tests {
       );
     }
 
-    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     for (i, edge_ref) in graph.get_edges().enumerate() {
       let bl = branch_lengths[&edge_ref.key()].unwrap();
@@ -139,7 +136,7 @@ mod tests {
     let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     assert_eq!(
       None,
@@ -151,7 +148,7 @@ mod tests {
       &graph,
       total_length,
       &contributions,
-      &indel_counts,
+      &indels,
       BranchOptMethod::Brent,
       &mut branch_lengths,
     )?;
@@ -182,7 +179,7 @@ mod tests {
     let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     assert!(
       reconstruction.gtr().certified_decay_rate().is_some(),
@@ -199,7 +196,7 @@ mod tests {
       &graph,
       total_length,
       &contributions,
-      &indel_counts,
+      &indels,
       BranchOptMethod::Brent,
       &mut branch_lengths,
     )?;
@@ -370,7 +367,7 @@ mod tests {
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     assert_eq!(
       0,
@@ -378,7 +375,7 @@ mod tests {
       "precondition: no zero-length internal edges before optimization"
     );
 
-    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     let zero_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(

@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::optimize::indel::IndelTerm;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
   use crate::timetree::inference::runner::{EPS, GRID_POINTS};
@@ -22,14 +23,13 @@ mod tests {
     let contributions: Vec<OptimizationContribution> = vec![];
     let distribution = compute_branch_length_distribution(
       &contributions,
- 0,
- 0.0,
- 0.1,
- 1e-3,
+      IndelTerm::new(0, 0.0),
+      0.1,
+      1e-3,
       GRID_POINTS,
- 1.0,
- 1.0,
- MaxGridPoints::default(),
+      1.0,
+      1.0,
+      MaxGridPoints::default(),
     )?;
 
     assert_abs_diff_eq!(helpers::eval(&distribution, t), 0.0, epsilon = 1e-12);
@@ -121,8 +121,7 @@ mod tests {
 
     let distribution = compute_branch_length_distribution(
       &contributions,
-      indel_count,
-      indel_rate,
+      IndelTerm::new(indel_count, indel_rate),
       5.0,
       one_mutation,
       GRID_POINTS,
@@ -150,8 +149,7 @@ mod tests {
 
     let distribution = compute_branch_length_distribution(
       &contributions,
-      indel_count,
-      indel_rate,
+      IndelTerm::new(indel_count, indel_rate),
       5.0,
       one_mutation,
       GRID_POINTS,
@@ -179,14 +177,13 @@ mod tests {
     let contributions: Vec<OptimizationContribution> = vec![];
     let with_zero_indels = compute_branch_length_distribution(
       &contributions,
- 0,
- 0.0,
- 0.01,
- 1e-3,
+      IndelTerm::new(0, 0.0),
+      0.01,
+      1e-3,
       GRID_POINTS,
- 1.0,
- 1.0,
- MaxGridPoints::default(),
+      1.0,
+      1.0,
+      MaxGridPoints::default(),
     )?;
 
     assert_abs_diff_eq!(helpers::eval(&with_zero_indels, t), 0.0, epsilon = 1e-12);
@@ -198,8 +195,7 @@ mod tests {
     let contributions: Vec<OptimizationContribution> = vec![];
     let distribution = compute_branch_length_distribution(
       &contributions,
-      0,
-      0.0,
+      IndelTerm::new(0, 0.0),
       0.1,
       1e-3,
       GRID_POINTS,
@@ -218,8 +214,7 @@ mod tests {
     let contributions: Vec<OptimizationContribution> = vec![];
     let distribution = compute_branch_length_distribution(
       &contributions,
-      0,
-      0.0,
+      IndelTerm::new(0, 0.0),
       2.0,
       1e-3,
       GRID_POINTS,
@@ -239,8 +234,7 @@ mod tests {
     let one_mutation = 1e-3;
     let distribution = compute_branch_length_distribution(
       &contributions,
-      1,
-      1.0,
+      IndelTerm::new(1, 1.0),
       1.0,
       one_mutation,
       GRID_POINTS,
@@ -267,8 +261,7 @@ mod tests {
     let contributions: Vec<OptimizationContribution> = vec![];
     let distribution = compute_branch_length_distribution(
       &contributions,
-      0,
-      0.0,
+      IndelTerm::new(0, 0.0),
       0.1,
       1e-3,
       GRID_POINTS,
@@ -289,8 +282,7 @@ mod tests {
     let (indel_count, indel_rate) = (1_usize, 1.0);
     let distribution = compute_branch_length_distribution(
       &contributions,
-      indel_count,
-      indel_rate,
+      IndelTerm::new(indel_count, indel_rate),
       1.0,
       1e-3,
       GRID_POINTS,
@@ -347,8 +339,7 @@ mod tests {
       let contributions: Vec<OptimizationContribution> = vec![];
       compute_branch_length_distribution(
         &contributions,
-        0,
-        1.0,
+        IndelTerm::new(0, 1.0),
         1.0,
         1e-3,
         GRID_POINTS,

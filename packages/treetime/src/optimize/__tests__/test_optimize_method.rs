@@ -4,8 +4,8 @@ pub(super) mod tests {
     TREE_NEWICK, setup_reconstruction, simple_alignment,
   };
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
-  use crate::optimize::indel::{estimate_indel_rate, poisson_indel_log_lh};
+  use crate::optimize::gather::gather_edge_contributions;
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::likelihood::{OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only};
   use crate::optimize::method_newton::{chain_rule_sqrt, newton_tolerance_sqrt};
   use crate::optimize::params::BranchOptMethod;
@@ -37,9 +37,9 @@ pub(super) mod tests {
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
-    run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
+    run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     for (i, edge_ref) in graph.get_edges().enumerate() {
       let bl = branch_lengths[&edge_ref.key()].unwrap_or(f64::NAN);
@@ -160,6 +160,8 @@ pub(super) mod tests {
 
   pub(crate) mod helpers {
     use super::*;
+    use crate::optimize::gather::gather_edge_indel_counts;
+    use crate::optimize::indel::poisson_indel_log_lh;
 
     pub(crate) fn setup_with_indels(
       graph: &Graph,
@@ -182,10 +184,9 @@ pub(super) mod tests {
         .unwrap()
         .indels = indels;
 
-      let indel_rate = {
-        let indel_counts = gather_edge_indel_counts(graph, &reconstruction);
-        estimate_indel_rate(graph, &indel_counts, branch_lengths)
-      };
+      let indel_rate = IndelPolicy::Include
+        .edge_indels(graph, &reconstruction, branch_lengths)
+        .rate();
 
       Ok((reconstruction, indel_rate))
     }
@@ -201,12 +202,12 @@ pub(super) mod tests {
       let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
       let total_length = reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
       run_optimize_mixed(
         &graph,
         total_length,
         &contributions,
-        &indel_counts,
+        &indels,
         method,
         &mut branch_lengths,
       )?;

@@ -4,8 +4,8 @@ use crate::clock::clock_filter::{ClockFilterResult, clock_filter};
 use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::reroot::RerootParams;
-use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
-use crate::optimize::gather::gather_edge_indel_counts;
+use crate::optimize::dispatch::run_optimize_mixed;
+use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::BranchOptMethod;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
@@ -33,7 +33,7 @@ pub(crate) fn run_pre_loop(
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
   let state = if inputs.has_alignment {
-    ml_optimize(state, params.no_indels, "pre-reroot", log)?
+    ml_optimize(state, params.indel_policy, "pre-reroot", log)?
   } else {
     state
   };
@@ -61,7 +61,7 @@ pub(crate) fn run_pre_loop(
     progress_info!(log, "Using input branch lengths for timetree inference");
     state
   } else {
-    ml_optimize(state, params.no_indels, "post-reroot", log)?
+    ml_optimize(state, params.indel_policy, "post-reroot", log)?
   };
   cancel.check()?;
   stages.report("Initial timetree inference", 0.2, "");
@@ -80,14 +80,20 @@ pub(crate) fn run_pre_loop(
   .wrap_err("Failed to reroot tree (post-ancestral)")
 }
 
-fn ml_optimize(state: PreLoopState, no_indels: bool, label: &str, log: &dyn LogSink) -> Result<PreLoopState, Report> {
+fn ml_optimize(
+  state: PreLoopState,
+  indel_policy: IndelPolicy,
+  label: &str,
+  log: &dyn LogSink,
+) -> Result<PreLoopState, Report> {
   let BranchModel::Marginal(partition) = state.branch_model else {
     return Ok(state);
   };
   progress_info!(log, "### ML branch-length optimization ({label})");
   let (partition, _) = partition.marginal_update(&state.graph, &branch_lengths_or_zero(&state.branch_lengths))?;
-  let (partition, branch_lengths) = optimize_branch_lengths(&state.graph, partition, state.branch_lengths, no_indels)
-    .wrap_err_with(|| format!("ML branch-length optimization ({label}) failed"))?;
+  let (partition, branch_lengths) =
+    optimize_branch_lengths(&state.graph, partition, state.branch_lengths, indel_policy)
+      .wrap_err_with(|| format!("ML branch-length optimization ({label}) failed"))?;
   Ok(PreLoopState {
     branch_model: BranchModel::Marginal(partition),
     branch_lengths,
@@ -210,34 +216,20 @@ fn optimize_branch_lengths(
   graph: &Graph,
   partition: MarginalReconstruction,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  no_indels: bool,
+  indel_policy: IndelPolicy,
 ) -> Result<(MarginalReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
   let old_branch_lengths = branch_lengths;
   let mut branch_lengths = old_branch_lengths.clone();
 
-  let total_length = partition.sequence_length();
-  let indel_counts = gather_edge_indel_counts(graph, &partition);
-  if no_indels {
-    run_optimize_mixed_inner(
-      graph,
-      total_length,
-      &partition,
-      &indel_counts,
-      BranchOptMethod::Brent,
-      0.0,
-      true,
-      &mut branch_lengths,
-    )?;
-  } else {
-    run_optimize_mixed(
-      graph,
-      total_length,
-      &partition,
-      &indel_counts,
-      BranchOptMethod::Brent,
-      &mut branch_lengths,
-    )?;
-  }
+  let indels = indel_policy.edge_indels(graph, &partition, &branch_lengths);
+  run_optimize_mixed(
+    graph,
+    partition.sequence_length(),
+    &partition,
+    &indels,
+    BranchOptMethod::Brent,
+    &mut branch_lengths,
+  )?;
 
   apply_damping(&mut branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
   let (partition, _) = partition.marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?;

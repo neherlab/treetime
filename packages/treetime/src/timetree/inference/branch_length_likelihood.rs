@@ -16,8 +16,7 @@ use treetime_utils::array::ndarray::{first, last};
 
 pub(crate) fn compute_branch_length_distribution(
   contributions: &[OptimizationContribution],
-  indel_count: usize,
-  indel_rate: f64,
+  indels: IndelTerm,
   current_branch_length: f64,
   one_mutation: f64,
   n_grid_points: usize,
@@ -28,7 +27,6 @@ pub(crate) fn compute_branch_length_distribution(
   debug_assert!(clock_rate > 0.0, "clock_rate must be positive, got {clock_rate:.6e}");
   debug_assert!(gamma > 0.0);
 
-  let indels = IndelTerm::new(indel_count, indel_rate);
   let finite_boundary = branch_length_has_finite_boundary(contributions, indels)?;
   let min_bl = if finite_boundary {
     0.0

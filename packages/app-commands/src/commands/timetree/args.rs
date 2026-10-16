@@ -21,6 +21,7 @@ use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
+use treetime::optimize::indel::IndelPolicy;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::timetree::params::TimeMarginalMode;
 use treetime_grid::MaxGridPoints;
@@ -43,6 +44,7 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) raw: TreetimeTimetreeArgsRaw,
   pub(crate) tree: PathBuf,
   pub(crate) branch_length_mode: BranchLengthMode,
+  pub(crate) indel_policy: IndelPolicy,
   pub(crate) time_marginal: TimeMarginalMode,
   pub(crate) max_grid_points: MaxGridPoints,
   pub(crate) include_leaves: bool,
@@ -66,6 +68,11 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
     Ok(Self {
       tree,
       branch_length_mode: raw.branch_length_mode.into(),
+      indel_policy: if raw.no_indels {
+        IndelPolicy::Exclude
+      } else {
+        IndelPolicy::Include
+      },
       time_marginal: raw.time_marginal.into(),
       max_grid_points: raw.max_grid_points.unwrap_or_default(),
       include_leaves: raw.include_leaves || raw.reconstruct_tip_states,

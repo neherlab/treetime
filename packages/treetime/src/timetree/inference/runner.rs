@@ -2,8 +2,7 @@ use crate::branch_lengths::one_mutation;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::optimize::gather::gather_edge_indel_counts;
-use crate::optimize::indel::estimate_indel_rate;
+use crate::optimize::indel::IndelPolicy;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::LogSink;
 use crate::timetree::branch_model::BranchModel;
@@ -57,7 +56,7 @@ fn infer_times(
     branch_lengths,
     names,
     clock_model,
-    no_indels,
+    indel_policy,
     max_grid_points,
     ..
   } = *inputs;
@@ -82,7 +81,7 @@ fn infer_times(
         branch_lengths,
         gammas,
         clock_rate,
-        no_indels,
+        indel_policy,
         max_grid_points,
         log,
       )?
@@ -128,7 +127,7 @@ pub(crate) struct TimeInferenceInputs<'a> {
   pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   pub clock_model: &'a ClockModel,
   pub clock_rate_fixed: bool,
-  pub no_indels: bool,
+  pub indel_policy: IndelPolicy,
   pub max_grid_points: MaxGridPoints,
 }
 
@@ -230,25 +229,21 @@ fn compute_branch_distributions_marginal_mode(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   gammas: &BTreeMap<GraphEdgeKey, f64>,
   clock_rate: f64,
-  no_indels: bool,
+  indel_policy: IndelPolicy,
   max_grid_points: MaxGridPoints,
   log: &dyn LogSink,
 ) -> Result<BTreeMap<GraphEdgeKey, BranchLikelihood>, Report> {
   let total_sites = partition.sequence_length();
   let one_mutation = one_mutation(total_sites);
 
-  let indel_counts = gather_edge_indel_counts(graph, partition);
-  let indel_rate = if no_indels {
-    0.0
-  } else {
-    estimate_indel_rate(graph, &indel_counts, branch_lengths)
-  };
+  let indels = indel_policy.edge_indels(graph, partition, branch_lengths);
 
   progress_info!(
     log,
     "Computing branch distributions from 1 partition(s) with {total_sites} total sites"
   );
   debug!("One mutation = {one_mutation:.6e} substitutions/site");
+  let indel_rate = indels.rate();
   debug!("Indel rate = {indel_rate:.6e} indels/(site*time)");
 
   graph
@@ -263,11 +258,9 @@ fn compute_branch_distributions_marginal_mode(
       debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
       let contributions = [partition.create_edge_contribution(edge_key)?];
-      let indel_count: usize = if no_indels { 0 } else { indel_counts[&edge_key] };
       let distribution = compute_branch_length_distribution(
         &contributions,
-        indel_count,
-        indel_rate,
+        indels.term(edge_key),
         branch_length,
         one_mutation,
         GRID_POINTS,

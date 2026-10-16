@@ -278,6 +278,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::optimize::indel::IndelPolicy;
     use pretty_assertions::assert_eq;
 
     pub(super) fn newick(state: &RoundState) -> Result<String, Report> {
@@ -404,7 +405,7 @@ mod tests {
           names: &names,
           clock_model: &clock_model,
           clock_rate_fixed: false,
-          no_indels: false,
+          indel_policy: IndelPolicy::Include,
           max_grid_points: MaxGridPoints::default(),
         },
         None,

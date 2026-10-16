@@ -120,6 +120,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::optimize::indel::IndelPolicy;
 
     pub(super) struct LeafOutcome {
       pub expected_bad: bool,
@@ -177,7 +178,7 @@ mod tests {
           names: &names,
           clock_model: &clock_model,
           clock_rate_fixed: false,
-          no_indels: false,
+          indel_policy: IndelPolicy::Include,
           max_grid_points: MaxGridPoints::default(),
         },
         None,

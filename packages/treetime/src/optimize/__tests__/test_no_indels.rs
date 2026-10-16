@@ -11,10 +11,9 @@ mod tests {
   use crate::optimize::__tests__::test_optimize_indel::tests::{
     inject_indels_on_first_edge, setup_identical_reconstruction,
   };
-  use crate::optimize::dispatch::run_optimize_mixed_inner;
-  use crate::optimize::gather::{
-    gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
-  };
+  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::gather::{gather_edge_contributions, gather_edge_effective_lengths, gather_edge_sub_counts};
+  use crate::optimize::indel::{EdgeIndels, IndelPolicy};
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::run_loop::{apply_initial_guess_mode, run_optimize_loop};
   use crate::progress::NoopProgress;
@@ -67,7 +66,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::Brent,
-      false,
+      IndelPolicy::Include,
       TopologyOps::default(),
       branch_lengths_with,
       &names_tt_4,
@@ -81,7 +80,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::Brent,
-      true,
+      IndelPolicy::Exclude,
       TopologyOps::default(),
       branch_lengths_without,
       &names_tt_3,
@@ -120,15 +119,12 @@ mod tests {
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-    run_optimize_mixed_inner(
+    run_optimize_mixed(
       &graph,
       total_length,
       &contributions,
-      &indel_counts,
+      &EdgeIndels::Excluded,
       BranchOptMethod::Brent,
-      0.0,
-      true,
       &mut branch_lengths,
     )?;
 
@@ -159,7 +155,7 @@ mod tests {
       0.1,
       0.75,
       BranchOptMethod::Brent,
-      false,
+      IndelPolicy::Include,
       TopologyOps::default(),
       branch_lengths_nf,
       &names_tt_2,
@@ -173,7 +169,7 @@ mod tests {
       0.1,
       0.75,
       BranchOptMethod::Brent,
-      true,
+      IndelPolicy::Exclude,
       TopologyOps::default(),
       branch_lengths_f,
       &names_tt_1,
@@ -200,17 +196,16 @@ mod tests {
     let (graph, names, mut reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &mut reconstruction)?;
     let total_length = reconstruction.sequence_length();
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Exclude.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
     let result = apply_initial_guess_mode(
       &graph,
       total_length,
-      &indel_counts,
+      &indels,
       &sub_counts,
       &effective_lengths,
       InitialGuessMode::Never,
-      true,
       &mut branch_lengths,
       &names,
       &NoopProgress,
@@ -248,15 +243,15 @@ mod tests {
     let reconstruction_without_indel = setup_identical_reconstruction(&graph_without_indel, &graph_without_indel_names, &mut branch_lengths_without_indel)?;
 
     let total_length_with_indel = reconstruction_with_indel.sequence_length();
-    let indel_counts_with_indel = gather_edge_indel_counts(&graph_with_indel, &reconstruction_with_indel);
+    let indels_with_indel = IndelPolicy::Exclude.edge_indels(&graph_with_indel, &reconstruction_with_indel, &branch_lengths_with_indel);
     let sub_counts_with_indel = gather_edge_sub_counts(&graph_with_indel, &reconstruction_with_indel)?;
     let effective_lengths_with_indel = gather_edge_effective_lengths(&graph_with_indel, &reconstruction_with_indel)?;
-    apply_initial_guess_mode(&graph_with_indel, total_length_with_indel, &indel_counts_with_indel, &sub_counts_with_indel, &effective_lengths_with_indel, mode, true, &mut branch_lengths_with_indel, &graph_with_indel_names, &NoopProgress)?;
+    apply_initial_guess_mode(&graph_with_indel, total_length_with_indel, &indels_with_indel, &sub_counts_with_indel, &effective_lengths_with_indel, mode, &mut branch_lengths_with_indel, &graph_with_indel_names, &NoopProgress)?;
     let total_length_without_indel = reconstruction_without_indel.sequence_length();
-    let indel_counts_without_indel = gather_edge_indel_counts(&graph_without_indel, &reconstruction_without_indel);
+    let indels_without_indel = IndelPolicy::Exclude.edge_indels(&graph_without_indel, &reconstruction_without_indel, &branch_lengths_without_indel);
     let sub_counts_without_indel = gather_edge_sub_counts(&graph_without_indel, &reconstruction_without_indel)?;
     let effective_lengths_without_indel = gather_edge_effective_lengths(&graph_without_indel, &reconstruction_without_indel)?;
-    apply_initial_guess_mode(&graph_without_indel, total_length_without_indel, &indel_counts_without_indel, &sub_counts_without_indel, &effective_lengths_without_indel, mode, true, &mut branch_lengths_without_indel, &graph_without_indel_names, &NoopProgress)?;
+    apply_initial_guess_mode(&graph_without_indel, total_length_without_indel, &indels_without_indel, &sub_counts_without_indel, &effective_lengths_without_indel, mode, &mut branch_lengths_without_indel, &graph_without_indel_names, &NoopProgress)?;
 
     let expected = get_branch_lengths(&graph_without_indel, &branch_lengths_without_indel);
     let actual = get_branch_lengths(&graph_with_indel, &branch_lengths_with_indel);

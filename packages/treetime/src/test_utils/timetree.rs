@@ -2,6 +2,7 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::RerootSpec;
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::gtr::get_gtr::GtrModelName;
+use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
 use crate::progress::{LogEvent, LogLevel, LogSink};
 use crate::test_utils::find_node_key_by_name;
@@ -54,7 +55,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     model: GtrModelName::JC69,
     dense: None,
     branch_length_mode: BranchLengthMode::Marginal,
-    no_indels: false,
+    indel_policy: IndelPolicy::Include,
     sequence_length: None,
     clock_rate: None,
     clock_std_dev: None,

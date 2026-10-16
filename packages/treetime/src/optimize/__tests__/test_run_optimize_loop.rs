@@ -4,6 +4,7 @@ mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_dense_reconstruction, setup_reconstruction, simple_alignment,
   };
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
@@ -35,7 +36,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::Brent,
-      false,
+      IndelPolicy::Include,
       TopologyOps::default(),
       branch_lengths,
       &names_tt_6,
@@ -78,7 +79,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::Brent,
-      false,
+      IndelPolicy::Include,
       TopologyOps::default(),
       branch_lengths,
       &names_tt_5,
@@ -109,7 +110,7 @@ mod tests {
       dp,
       0.0,
       BranchOptMethod::Brent,
-      false,
+      IndelPolicy::Include,
       TopologyOps::default(),
       branch_lengths,
       &names_tt_4,
@@ -137,7 +138,7 @@ mod tests {
       1e-2,
       0.75,
       BranchOptMethod::Brent,
-      false,
+      IndelPolicy::Include,
       TopologyOps::default(),
       branch_lengths,
       &names_tt_3,
@@ -165,7 +166,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::Brent,
-      false,
+      IndelPolicy::Include,
       TopologyOps::default(),
       branch_lengths,
       &names_tt_2,
@@ -206,7 +207,7 @@ mod tests {
       0.0,
       0.75,
       BranchOptMethod::Brent,
-      false,
+      IndelPolicy::Include,
       TopologyOps::default(),
       branch_lengths,
       &names_tt_1,
@@ -250,7 +251,7 @@ mod tests {
     let max_iter = 4;
     let dp = 0.0;
     let damping = 0.0;
-    let no_indels = true;
+    let indel_policy = IndelPolicy::Exclude;
 
     let result = run_optimize_loop(
       &mut graph,
@@ -259,7 +260,7 @@ mod tests {
       dp,
       damping,
       method,
-      no_indels,
+      indel_policy,
       TopologyOps::default(),
       start_branch_lengths.clone(),
       &names,

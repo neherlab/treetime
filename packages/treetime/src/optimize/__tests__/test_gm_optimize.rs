@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
 
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::BranchOptMethod;
   use approx::assert_relative_eq;
   use eyre::Report;
@@ -19,7 +20,10 @@ mod tests {
   // #[case::rsv_a_20("rsv_a_20_jc69_damped")] // slow
   // #[case::lassa_l_20("lassa_l_20_jc69_damped")] // slow
   // #[case::mpox_clade_ii_20("mpox_clade_ii_20_jc69_damped")] // slow
-  fn test_gm_optimize(#[case] case_name: &str) -> Result<(), Report> {
+  fn test_gm_optimize(
+    #[case] case_name: &str,
+    #[values(IndelPolicy::Include, IndelPolicy::Exclude)] indel_policy: IndelPolicy,
+  ) -> Result<(), Report> {
     let inputs = load_gm_inputs();
     let outputs = load_gm_outputs();
     let case = &inputs[case_name];
@@ -30,7 +34,7 @@ mod tests {
       .and_then(|p| p.parent())
       .unwrap();
 
-    let result = setup_and_run(workspace_root, case, BranchOptMethod::Brent)?;
+    let result = setup_and_run(workspace_root, case, BranchOptMethod::Brent, indel_policy)?;
 
     let v1_total_bl: f64 = result
       .graph
@@ -57,7 +61,7 @@ mod tests {
       .and_then(|p| p.parent())
       .unwrap();
 
-    let result = setup_and_run(workspace_root, case, BranchOptMethod::Brent)?;
+    let result = setup_and_run(workspace_root, case, BranchOptMethod::Brent, IndelPolicy::Include)?;
 
     let v1_branch_lengths: BTreeMap<String, f64> = result
       .graph
@@ -108,8 +112,13 @@ mod tests {
     let mut undamped_case = case.clone();
     undamped_case.damping = 0.0;
 
-    let undamped = setup_and_run(workspace_root, &undamped_case, BranchOptMethod::Brent)?;
-    let damped = setup_and_run(workspace_root, case, BranchOptMethod::Brent)?;
+    let undamped = setup_and_run(
+      workspace_root,
+      &undamped_case,
+      BranchOptMethod::Brent,
+      IndelPolicy::Include,
+    )?;
+    let damped = setup_and_run(workspace_root, case, BranchOptMethod::Brent, IndelPolicy::Include)?;
 
     let undamped_sign_flips = count_sign_flips(&undamped.lh_history);
     let damped_sign_flips = count_sign_flips(&damped.lh_history);
@@ -148,7 +157,8 @@ mod tests {
     use crate::branch_lengths::branch_lengths_or_zero;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::optimize::dispatch::initial_guess_mixed;
-    use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts};
+    use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
+    use crate::optimize::indel::IndelPolicy;
     use crate::optimize::params::ExistingBranchLengths;
     use crate::optimize::params::{BranchOptMethod, TopologyOps};
     use crate::optimize::run_loop::run_optimize_loop;
@@ -210,6 +220,7 @@ mod tests {
       workspace_root: &Path,
       case: &GmOptimizeCase,
       method: BranchOptMethod,
+      indel_policy: IndelPolicy,
     ) -> Result<OptimizeResult, Report> {
       let alphabet = Alphabet::default();
 
@@ -231,17 +242,16 @@ mod tests {
 
       {
         let total_length = reconstruction.sequence_length();
-        let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+        let indels = indel_policy.edge_indels(&graph, &reconstruction, &branch_lengths);
         let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
         let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
         initial_guess_mixed(
           &graph,
           total_length,
-          &indel_counts,
+          &indels,
           &sub_counts,
           &effective_lengths,
           ExistingBranchLengths::Overwrite,
-          false,
           &mut branch_lengths,
         )?;
       }
@@ -255,7 +265,7 @@ mod tests {
         dp,
         case.damping,
         method,
-        false,
+        indel_policy,
         TopologyOps::default(),
         branch_lengths,
         &names_tt_1,

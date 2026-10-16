@@ -97,6 +97,7 @@ mod tests {
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::cancel::NoopCancel;
     use treetime::gtr::get_gtr::GtrModelName;
+    use treetime::optimize::indel::IndelPolicy;
     use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
     use treetime::progress::NoopProgress;
@@ -124,7 +125,7 @@ mod tests {
       damping: 0.75,
       opt_method: BranchOptMethod::default(),
       initial_guess: InitialGuessMode::default(),
-      no_indels: false,
+      indel_policy: IndelPolicy::Include,
       reroot_spec: None,
       topology_ops: TopologyOps::default(),
     };

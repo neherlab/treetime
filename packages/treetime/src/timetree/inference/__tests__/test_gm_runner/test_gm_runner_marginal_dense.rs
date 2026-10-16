@@ -10,6 +10,7 @@ mod tests {
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::optimize::indel::IndelPolicy;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
@@ -46,7 +47,10 @@ mod tests {
   // TODO: investigate why uniform branch distribution grids produce 0.92-year shift at
   // root-adjacent nodes. All other nodes within 0.1 years. Related:
   // kb/issues/M-timetree-branch-grid-uniform-resolution.md
-  fn test_gm_runner_marginal_dense(#[case] dataset: &str) -> Result<(), Report> {
+  fn test_gm_runner_marginal_dense(
+    #[case] dataset: &str,
+    #[values(IndelPolicy::Include, IndelPolicy::Exclude)] indel_policy: IndelPolicy,
+  ) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
     let expected = case.marginal_dense();
 
@@ -104,7 +108,7 @@ mod tests {
         names: &run_names,
         clock_model: &clock_model,
         clock_rate_fixed: false,
-        no_indels: false,
+        indel_policy,
         max_grid_points: MaxGridPoints::default(),
       },
       None,

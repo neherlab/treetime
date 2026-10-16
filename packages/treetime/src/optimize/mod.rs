@@ -6,7 +6,7 @@ pub(super) mod dense_eval;
 pub(crate) mod dispatch;
 pub(super) mod eval;
 pub(crate) mod gather;
-pub(crate) mod indel;
+pub mod indel;
 pub(crate) mod iteration;
 pub mod likelihood;
 pub(super) mod method_brent;

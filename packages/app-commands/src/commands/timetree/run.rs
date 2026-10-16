@@ -139,7 +139,7 @@ fn timetree_params(
     model: args.model_args.model_name(),
     dense: args.dense,
     branch_length_mode: args.branch_length_mode,
-    no_indels: args.no_indels,
+    indel_policy: args.indel_policy,
     sequence_length: args.sequence_length,
     clock_rate: args.clock_rate,
     clock_std_dev: args.clock_std_dev,

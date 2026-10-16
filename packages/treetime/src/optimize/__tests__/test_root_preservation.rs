@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::dispatch::run_optimize_mixed_inner;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
+  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::gather::gather_edge_contributions;
+  use crate::optimize::indel::EdgeIndels;
   use crate::optimize::params::BranchOptMethod;
   use crate::pretty_assert_abs_diff_eq;
   use approx::assert_abs_diff_eq;
@@ -41,15 +42,12 @@ mod tests {
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-    run_optimize_mixed_inner(
+    run_optimize_mixed(
       &graph,
       total_length,
       &contributions,
-      &indel_counts,
+      &EdgeIndels::Excluded,
       BranchOptMethod::Brent,
-      0.0,
-      true,
       &mut branch_lengths,
     )?;
 
@@ -74,15 +72,12 @@ mod tests {
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-    run_optimize_mixed_inner(
+    run_optimize_mixed(
       &graph,
       total_length,
       &contributions,
-      &indel_counts,
+      &EdgeIndels::Excluded,
       BranchOptMethod::Brent,
-      0.0,
-      true,
       &mut branch_lengths,
     )?;
 
@@ -129,15 +124,12 @@ mod tests {
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-    run_optimize_mixed_inner(
+    run_optimize_mixed(
       &graph,
       total_length,
       &contributions,
-      &indel_counts,
+      &EdgeIndels::Excluded,
       BranchOptMethod::Brent,
-      0.0,
-      true,
       &mut branch_lengths,
     )?;
     Ok(())
@@ -161,15 +153,12 @@ mod tests {
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
-    run_optimize_mixed_inner(
+    run_optimize_mixed(
       &graph,
       total_length,
       &contributions,
-      &indel_counts,
+      &EdgeIndels::Excluded,
       BranchOptMethod::Brent,
-      0.0,
-      true,
       &mut branch_lengths,
     )?;
 
@@ -282,8 +271,9 @@ mod tests {
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::branch_lengths::branch_lengths_or_zero;
     use crate::gtr::get_gtr::{JC69Params, jc69};
-    use crate::optimize::dispatch::run_optimize_mixed_inner;
+    use crate::optimize::dispatch::run_optimize_mixed;
     use crate::optimize::gather::gather_edge_contributions;
+    use crate::optimize::indel::EdgeIndels;
     use crate::optimize::params::BranchOptMethod;
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
@@ -350,14 +340,15 @@ mod tests {
       indel_rate: f64,
     ) -> Result<(), Report> {
       let contributions = gather_edge_contributions(&setup.graph, &setup.reconstruction)?;
-      run_optimize_mixed_inner(
+      run_optimize_mixed(
         &setup.graph,
         setup.reconstruction.sequence_length(),
         &contributions,
-        indel_counts,
+        &EdgeIndels::Included {
+          counts: indel_counts.clone(),
+          rate: indel_rate,
+        },
         BranchOptMethod::Brent,
-        indel_rate,
-        false,
         &mut setup.branch_lengths,
       )
     }

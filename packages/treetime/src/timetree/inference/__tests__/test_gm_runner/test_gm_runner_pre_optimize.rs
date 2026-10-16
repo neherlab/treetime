@@ -4,6 +4,7 @@ mod tests {
     ALPHABET, OUTPUTS, load_alignment_for_dataset, load_dates_for_dataset,
   };
   use crate::cancel::NoopCancel;
+  use crate::optimize::indel::IndelPolicy;
   use crate::progress::NoopProgress;
   use crate::test_utils::{dates_by_node, leaf_seq_inputs, marginal_timetree_params};
   use crate::timetree::params::TimetreeParams;
@@ -19,7 +20,10 @@ mod tests {
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20")]
   #[trace]
-  fn test_gm_runner_pre_optimize_changes_branch_lengths_and_dates_every_node(#[case] dataset: &str) -> Result<(), Report> {
+  fn test_gm_runner_pre_optimize_changes_branch_lengths_and_dates_every_node(
+    #[case] dataset: &str,
+    #[values(IndelPolicy::Include, IndelPolicy::Exclude)] indel_policy: IndelPolicy,
+  ) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
     let nwk_parsed = nwk_read(case.rerooted_tree_nwk().as_bytes())?;
     let names = nwk_parsed.names();
@@ -40,6 +44,7 @@ mod tests {
     };
     let params = TimetreeParams {
       clock_rate: Some(case.clock_rate()),
+      indel_policy,
       ..marginal_timetree_params()
     };
 

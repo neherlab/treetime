@@ -71,7 +71,7 @@ pub(crate) fn run_initial_round(
     names: &names,
     clock_model: &clock_model,
     clock_rate_fixed: params.clock_rate.is_some(),
-    no_indels: params.no_indels,
+    indel_policy: params.indel_policy,
     max_grid_points: params.max_grid_points,
   };
   let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, log);
@@ -391,7 +391,7 @@ impl RoundState {
       names: &self.names,
       clock_model: &self.clock_model,
       clock_rate_fixed: inputs.params.clock_rate.is_some(),
-      no_indels: inputs.params.no_indels,
+      indel_policy: inputs.params.indel_policy,
       max_grid_points: inputs.params.max_grid_points,
     }
   }

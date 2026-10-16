@@ -13,6 +13,7 @@ mod tests {
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::optimize::indel::IndelPolicy;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
@@ -64,7 +65,7 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
         names: &run_names,
         clock_model: &clock_model,
         clock_rate_fixed: false,
-        no_indels: false,
+        indel_policy: IndelPolicy::Include,
         max_grid_points: MaxGridPoints::default(),
       },
       Some(&coalescent),

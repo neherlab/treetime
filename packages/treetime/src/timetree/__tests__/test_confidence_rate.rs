@@ -168,6 +168,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::optimize::indel::IndelPolicy;
 
     pub(super) struct SusceptibilityFixture {
       graph: Graph,
@@ -245,7 +246,7 @@ mod tests {
           names: &self.names,
           clock_model: &self.clock_model,
           clock_rate_fixed: false,
-          no_indels: false,
+          indel_policy: IndelPolicy::Include,
           max_grid_points: MaxGridPoints::default(),
         }
       }

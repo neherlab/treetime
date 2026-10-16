@@ -56,7 +56,7 @@ pub fn run_optimize(
     damping: args.damping,
     opt_method: args.opt_method,
     initial_guess: args.branch_length_initial_guess,
-    no_indels: args.no_indels,
+    indel_policy: args.indel_policy,
     reroot_spec: args.reroot_spec(&graph, &names)?,
     topology_ops: args.topology_ops,
   };

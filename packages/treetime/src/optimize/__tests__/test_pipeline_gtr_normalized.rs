@@ -3,6 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
   use crate::progress::NoopProgress;
@@ -44,7 +45,7 @@ mod tests {
       damping: 0.0,
       opt_method: BranchOptMethod::default(),
       initial_guess: InitialGuessMode::default(),
-      no_indels: false,
+      indel_policy: IndelPolicy::Include,
       reroot_spec: None,
       topology_ops: TopologyOps::default(),
     };

@@ -2,7 +2,8 @@
 mod tests {
   use super::super::test_convergence_support::tests::{compute_total_lh, setup_reconstruction, simple_alignment};
   use crate::optimize::dispatch::run_optimize_mixed;
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_indel_counts};
+  use crate::optimize::gather::gather_edge_contributions;
+  use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::BranchOptMethod;
   use eyre::Report;
   use rstest::rstest;
@@ -24,10 +25,10 @@ mod tests {
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
     }
 
     let (_, final_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
@@ -62,10 +63,10 @@ mod tests {
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
     }
 
     let (_, final_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
@@ -100,10 +101,10 @@ mod tests {
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, total_length, &contributions, &indel_counts, method, &mut branch_lengths)?;
+      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
     }
 
     let (_, final_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
