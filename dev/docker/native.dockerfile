@@ -74,16 +74,20 @@ COPY dev/docker/files/fetch dev/docker/files/checksums /
 # GCC 14 is the C compiler and link driver; it also provides the static
 # libgfortran that the OpenBLAS archive needs. It does not know the Debian
 # multiarch layout, so the include and library paths name it.
-# LLVM provides libclang for bindgen.
+# LLVM provides libclang for bindgen. OpenBLAS, liblzma, and libzstd are the
+# prebuilt archives of binarylandia; /.cargo/config.toml, which
+# install-compression-libs writes, makes cargo link liblzma and libzstd instead
+# of compiling them.
 ENV C_INCLUDE_PATH="/usr/include/x86_64-linux-gnu"
 ENV CPLUS_INCLUDE_PATH="/usr/include/x86_64-linux-gnu"
 ENV LIBRARY_PATH="/usr/local/lib64:/usr/local/lib:/usr/lib/x86_64-linux-gnu"
 ENV LD_LIBRARY_PATH="/usr/local/lib64:/usr/local/lib"
-COPY dev/docker/files/install-gcc dev/docker/files/install-llvm dev/docker/files/install-openblas /
+COPY dev/docker/files/install-gcc dev/docker/files/install-llvm dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
 RUN set -euxo pipefail >/dev/null \
 && /install-gcc "/usr/local" \
 && /install-llvm "/usr/local" \
 && /install-openblas "x86_64-unknown-linux-gnu" "/usr/local" \
+&& /install-compression-libs "x86_64-unknown-linux-gnu" "/usr/local" \
 && rm /install-gcc /install-llvm /install-openblas
 
 # The Rust toolchain of rust-toolchain.toml, then the pinned nightly of the lint
@@ -128,11 +132,11 @@ done \
 && cargo dylint --version
 
 # Emscripten builds the WebAssembly back end of the web2 app for
-# wasm32-unknown-emscripten: rustc links through emcc, and emcc compiles the C
-# of the compression codecs. OpenBLAS comes prebuilt from
-# binarylandia/build_openblas for this Emscripten version, because Emscripten
-# gives no ABI guarantee between versions; an Emscripten upgrade needs a new
-# build_openblas release first. Only the emcc front end goes on
+# wasm32-unknown-emscripten: rustc links through emcc. OpenBLAS comes prebuilt
+# from binarylandia/build_openblas, and liblzma and libzstd from
+# binarylandia/staticbourg, for this Emscripten version, because Emscripten
+# gives no ABI guarantee between versions; an Emscripten upgrade needs new
+# releases of both first. Only the emcc front end goes on
 # PATH, so native builds and bindgen keep the LLVM above. bindgen reads the C
 # headers of the target from the Emscripten sysroot, searched before the host
 # include path of C_INCLUDE_PATH, with default visibility: clang hides the
@@ -145,8 +149,9 @@ COPY dev/docker/files/install-emscripten dev/docker/files/install-openblas-emscr
 RUN set -euxo pipefail >/dev/null \
 && /install-emscripten "/opt/emscripten" \
 && /install-openblas-emscripten "/usr/local/wasm32-unknown-emscripten" \
+&& /install-compression-libs "wasm32-unknown-emscripten" "/usr/local/wasm32-unknown-emscripten" \
 && chmod -R a+rwX "/opt/emscripten/emscripten/cache" \
-&& rm /install-emscripten /install-openblas-emscripten
+&& rm /install-emscripten /install-openblas-emscripten /install-compression-libs
 
 # dev/docker/run runs as the host user with HOME=/tmp/home.
 RUN set -euxo pipefail >/dev/null \

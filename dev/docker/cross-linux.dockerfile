@@ -63,13 +63,14 @@ ENV HOST_GCC_DIR="${PREFIX_HOST}"
 ENV PREFIX_CROSS="/opt/cross-${CROSS_COMPILE}"
 ENV CROSS_GCC_DIR="${PREFIX_CROSS}"
 ENV OPENBLAS_LIB_DIR="${PREFIX_CROSS}/lib"
-COPY dev/docker/files/install-gcc-cross dev/docker/files/install-llvm dev/docker/files/install-openblas /
+COPY dev/docker/files/install-gcc-cross dev/docker/files/install-llvm dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
 RUN set -euxo pipefail >/dev/null \
 && /install-gcc-cross "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
 && /install-llvm "/usr/local" \
 && /install-gcc-cross "${CROSS_GCC_TRIPLET}" "${CROSS_GCC_DIR}" \
 && /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
-&& rm /install-gcc-cross /install-llvm /install-openblas
+&& /install-compression-libs "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
+&& rm /install-gcc-cross /install-llvm /install-openblas /install-compression-libs
 
 ENV CROSS_SYSROOT="${CROSS_GCC_DIR}/${CROSS_GCC_TRIPLET}/sysroot"
 

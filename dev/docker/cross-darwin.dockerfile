@@ -49,13 +49,14 @@ ENV HOST_GCC_DIR="${PREFIX_HOST}"
 ENV PREFIX_CROSS="/opt/cross-${CROSS_COMPILE}"
 ENV OSX_CROSS_PATH="/opt/osxcross"
 ENV OPENBLAS_LIB_DIR="${PREFIX_CROSS}/lib"
-COPY dev/docker/files/install-gcc-cross dev/docker/files/install-llvm dev/docker/files/install-osxcross dev/docker/files/install-openblas /
+COPY dev/docker/files/install-gcc-cross dev/docker/files/install-llvm dev/docker/files/install-osxcross dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
 RUN set -euxo pipefail >/dev/null \
 && /install-gcc-cross "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
 && /install-llvm "/usr/local" \
 && /install-osxcross "${OSX_CROSS_PATH}" \
 && /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
-&& rm /install-gcc-cross /install-llvm /install-osxcross /install-openblas
+&& /install-compression-libs "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
+&& rm /install-gcc-cross /install-llvm /install-osxcross /install-openblas /install-compression-libs
 
 ENV OSXCROSS_MP_INC="1"
 ENV MACOSX_DEPLOYMENT_TARGET="10.12"
