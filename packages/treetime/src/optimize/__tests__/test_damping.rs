@@ -6,7 +6,7 @@ mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
+  use crate::optimize::run_loop::{ConvergenceReason, OptimizeLoopSettings, run_optimize_loop};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -145,12 +145,14 @@ mod tests {
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      max_iter,
-      dp,
-      damping,
-      method,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter,
+        dp,
+        damping,
+        opt_method: method,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths,
       &names_tt_2,
     )?;
@@ -194,12 +196,14 @@ mod tests {
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      10,
-      dp,
-      0.75,
-      method,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter: 10,
+        dp,
+        damping: 0.75,
+        opt_method: method,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths,
       &names_tt_1,
     )?;

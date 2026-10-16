@@ -31,15 +31,16 @@ use treetime_utils::make_error;
 pub(crate) fn run_optimize_loop(
   graph: &mut Graph,
   reconstruction: MarginalReconstruction,
-  max_iter: usize,
-  dp: f64,
-  damping: f64,
-  opt_method: BranchOptMethod,
-  indel_policy: IndelPolicy,
-  topology_ops: TopologyOps,
+  settings: &OptimizeLoopSettings,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<OptimizeLoopResult, Report> {
+  let OptimizeLoopSettings {
+    max_iter,
+    dp,
+    indel_policy,
+    ..
+  } = *settings;
   let mut names = names.clone();
   let mut branch_lengths = branch_lengths;
   let mut reconstruction = reconstruction;
@@ -48,8 +49,6 @@ pub(crate) fn run_optimize_loop(
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter + 1);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
-  let mut lh_prev = LogLh::IMPOSSIBLE;
-  let mut lh_prev_prev = LogLh::IMPOSSIBLE;
   let mut best: Option<BestIteration> = None;
 
   for i in 0..max_iter {
@@ -66,7 +65,7 @@ pub(crate) fn run_optimize_loop(
 
     record_if_best(&mut best, i, lh, &branch_lengths);
     let best_lh = best.as_ref().map_or(lh, |best| best.log_lh);
-    if let Some(reason) = stop_reason(i, dp, lh, lh_prev, lh_prev_prev, best_lh) {
+    if let Some(reason) = stop_reason(&lh_history, best_lh, dp) {
       stopped_at = Some((i, reason));
       break;
     }
@@ -75,10 +74,8 @@ pub(crate) fn run_optimize_loop(
       graph,
       reconstruction,
       i,
-      damping,
-      opt_method,
+      settings,
       &indels,
-      topology_ops,
       &mut branch_lengths,
       &mut names,
     )?;
@@ -86,9 +83,6 @@ pub(crate) fn run_optimize_loop(
     if cleanup.topology_changed {
       best = None;
     }
-
-    lh_prev_prev = lh_prev;
-    lh_prev = lh;
   }
 
   if stopped_at.is_none() && max_iter > 0 {
@@ -123,6 +117,16 @@ pub(crate) fn run_optimize_loop(
     lh_history,
     stopped_at,
   })
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct OptimizeLoopSettings {
+  pub max_iter: usize,
+  pub dp: f64,
+  pub damping: f64,
+  pub opt_method: BranchOptMethod,
+  pub indel_policy: IndelPolicy,
+  pub topology_ops: TopologyOps,
 }
 
 #[derive(Clone, Debug)]
@@ -161,14 +165,12 @@ struct BestIteration {
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-fn stop_reason(
-  iteration: usize,
-  dp: f64,
-  lh: LogLh,
-  lh_prev: LogLh,
-  lh_prev_prev: LogLh,
-  best_lh: LogLh,
-) -> Option<ConvergenceReason> {
+fn stop_reason(lh_history: &[LogLh], best_lh: LogLh, dp: f64) -> Option<ConvergenceReason> {
+  let iteration = lh_history.len().checked_sub(1)?;
+  let earlier = |steps: usize| iteration.checked_sub(steps).map_or(LogLh::IMPOSSIBLE, |i| lh_history[i]);
+  let lh = lh_history[iteration];
+  let lh_prev = earlier(1);
+  let lh_prev_prev = earlier(2);
   if (lh - lh_prev).abs() < dp.abs() {
     Some(ConvergenceReason::Converged)
   } else if iteration >= 2 && (lh - lh_prev_prev).abs() < dp.abs() {
@@ -192,10 +194,8 @@ fn update_branch_lengths(
   graph: &mut Graph,
   reconstruction: MarginalReconstruction,
   iteration: usize,
-  damping: f64,
-  opt_method: BranchOptMethod,
+  settings: &OptimizeLoopSettings,
   indels: &EdgeIndels,
-  topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &mut BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<TopologyCleanup, Report> {
@@ -205,23 +205,23 @@ fn update_branch_lengths(
     reconstruction.sequence_length(),
     &reconstruction,
     &indels.recount(graph, &reconstruction),
-    opt_method,
+    settings.opt_method,
     branch_lengths,
   )?;
 
-  let zero_optimal_edges = if topology_ops.collapse_short_branches {
+  let zero_optimal_edges = if settings.topology_ops.collapse_short_branches {
     find_zero_optimal_internal_edges(graph, &reconstruction, branch_lengths)
   } else {
     vec![]
   };
 
-  apply_damping(branch_lengths, &old_branch_lengths, damping, iteration);
+  apply_damping(branch_lengths, &old_branch_lengths, settings.damping, iteration);
 
   prune_and_merge_in_loop(
     graph,
     reconstruction,
     &zero_optimal_edges,
-    topology_ops,
+    settings.topology_ops,
     branch_lengths,
     names,
   )

@@ -161,7 +161,7 @@ mod tests {
     use crate::optimize::indel::IndelPolicy;
     use crate::optimize::params::ExistingBranchLengths;
     use crate::optimize::params::{BranchOptMethod, TopologyOps};
-    use crate::optimize::run_loop::run_optimize_loop;
+    use crate::optimize::run_loop::{OptimizeLoopSettings, run_optimize_loop};
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
     use crate::test_utils::leaf_seq_inputs;
@@ -261,12 +261,14 @@ mod tests {
       let result = run_optimize_loop(
         &mut graph,
         reconstruction,
-        case.max_iter,
-        dp,
-        case.damping,
-        method,
-        indel_policy,
-        TopologyOps::default(),
+        &OptimizeLoopSettings {
+          max_iter: case.max_iter,
+          dp,
+          damping: case.damping,
+          opt_method: method,
+          indel_policy,
+          topology_ops: TopologyOps::default(),
+        },
         branch_lengths,
         &names_tt_1,
       )?;

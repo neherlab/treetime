@@ -15,7 +15,7 @@ mod tests {
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_effective_lengths, gather_edge_sub_counts};
   use crate::optimize::indel::{EdgeIndels, IndelPolicy};
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
-  use crate::optimize::run_loop::{apply_initial_guess_mode, run_optimize_loop};
+  use crate::optimize::run_loop::{apply_initial_guess_mode, OptimizeLoopSettings, run_optimize_loop};
   use crate::progress::NoopProgress;
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
@@ -62,12 +62,14 @@ mod tests {
     let result_with = run_optimize_loop(
       &mut graph_with,
       reconstruction_with,
-      1,
-      0.0,
-      0.75,
-      BranchOptMethod::Brent,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter: 1,
+        dp: 0.0,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths_with,
       &names_tt_4,
     )?;
@@ -76,12 +78,14 @@ mod tests {
     let result_without = run_optimize_loop(
       &mut graph_without,
       reconstruction_without,
-      1,
-      0.0,
-      0.75,
-      BranchOptMethod::Brent,
-      IndelPolicy::Exclude,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter: 1,
+        dp: 0.0,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Exclude,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths_without,
       &names_tt_3,
     )?;
@@ -151,12 +155,14 @@ mod tests {
     let result_no_flag = run_optimize_loop(
       &mut graph_no_flag,
       reconstruction_nf,
-      3,
-      0.1,
-      0.75,
-      BranchOptMethod::Brent,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter: 3,
+        dp: 0.1,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths_nf,
       &names_tt_2,
     )?;
@@ -165,12 +171,14 @@ mod tests {
     let result_flag = run_optimize_loop(
       &mut graph_flag,
       reconstruction_f,
-      3,
-      0.1,
-      0.75,
-      BranchOptMethod::Brent,
-      IndelPolicy::Exclude,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter: 3,
+        dp: 0.1,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Exclude,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths_f,
       &names_tt_1,
     )?;

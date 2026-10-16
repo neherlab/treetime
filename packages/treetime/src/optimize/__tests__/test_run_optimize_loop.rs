@@ -6,7 +6,7 @@ mod tests {
   };
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
+  use crate::optimize::run_loop::{ConvergenceReason, OptimizeLoopSettings, run_optimize_loop};
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -32,12 +32,14 @@ mod tests {
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      max_iter,
-      0.0,
-      0.75,
-      BranchOptMethod::Brent,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter,
+        dp: 0.0,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths,
       &names_tt_6,
     )?;
@@ -75,12 +77,14 @@ mod tests {
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      1,
-      0.0,
-      0.75,
-      BranchOptMethod::Brent,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter: 1,
+        dp: 0.0,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths,
       &names_tt_5,
     )?;
@@ -106,12 +110,14 @@ mod tests {
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      max_iter,
-      dp,
-      0.0,
-      BranchOptMethod::Brent,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter,
+        dp,
+        damping: 0.0,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths,
       &names_tt_4,
     )?;
@@ -134,12 +140,14 @@ mod tests {
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      0,
-      1e-2,
-      0.75,
-      BranchOptMethod::Brent,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter: 0,
+        dp: 1e-2,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths,
       &names_tt_3,
     )?;
@@ -162,12 +170,14 @@ mod tests {
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      10,
-      0.0,
-      0.75,
-      BranchOptMethod::Brent,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter: 10,
+        dp: 0.0,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths,
       &names_tt_2,
     )?;
@@ -203,12 +213,14 @@ mod tests {
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      10,
-      0.0,
-      0.75,
-      BranchOptMethod::Brent,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter: 10,
+        dp: 0.0,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths,
       &names_tt_1,
     )?;
@@ -256,12 +268,14 @@ mod tests {
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      max_iter,
-      dp,
-      damping,
-      method,
-      indel_policy,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter,
+        dp,
+        damping,
+        opt_method: method,
+        indel_policy,
+        topology_ops: TopologyOps::default(),
+      },
       start_branch_lengths.clone(),
       &names,
     )?;

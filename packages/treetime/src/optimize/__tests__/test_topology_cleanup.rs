@@ -9,7 +9,7 @@ pub(super) mod tests {
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop};
+  use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, OptimizeLoopSettings, run_optimize_loop};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -489,12 +489,14 @@ pub(super) mod tests {
     run_optimize_loop(
       &mut graph,
       reconstruction,
-      10,
-      1e-2,
-      0.75,
-      method,
-      IndelPolicy::Include,
-      ops,
+      &OptimizeLoopSettings {
+        max_iter: 10,
+        dp: 1e-2,
+        damping: 0.75,
+        opt_method: method,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: ops,
+      },
       branch_lengths,
       &names_tt_2,
     )?;
@@ -562,12 +564,14 @@ pub(super) mod tests {
     let result = run_optimize_loop(
       &mut graph,
       reconstruction,
-      10,
-      1e-2,
-      0.75,
-      BranchOptMethod::Brent,
-      IndelPolicy::Include,
-      TopologyOps::default(),
+      &OptimizeLoopSettings {
+        max_iter: 10,
+        dp: 1e-2,
+        damping: 0.75,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
       branch_lengths,
       &names_tt_1,
     )?;

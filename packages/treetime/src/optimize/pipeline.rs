@@ -10,7 +10,9 @@ use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_cou
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
-use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_rates, run_optimize_loop};
+use crate::optimize::run_loop::{
+  OptimizeLoopSettings, apply_initial_guess_mode, normalize_partition_rates, run_optimize_loop,
+};
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::{LogSink, StageSink};
@@ -136,12 +138,7 @@ pub fn run(
   let loop_result = run_optimize_loop(
     &mut input.graph,
     reconstruction,
-    params.max_iter,
-    params.dp,
-    params.damping,
-    params.opt_method,
-    params.indel_policy,
-    params.topology_ops,
+    &params.loop_settings(),
     branch_lengths,
     &loop_names,
   )
@@ -175,6 +172,19 @@ pub struct OptimizeParams {
   pub indel_policy: IndelPolicy,
   pub reroot_spec: Option<RerootSpec>,
   pub topology_ops: TopologyOps,
+}
+
+impl OptimizeParams {
+  fn loop_settings(&self) -> OptimizeLoopSettings {
+    OptimizeLoopSettings {
+      max_iter: self.max_iter,
+      dp: self.dp,
+      damping: self.damping,
+      opt_method: self.opt_method,
+      indel_policy: self.indel_policy,
+      topology_ops: self.topology_ops,
+    }
+  }
 }
 
 pub struct OptimizeInput {
