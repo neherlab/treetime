@@ -2,9 +2,17 @@
 
 ## Problem
 
-`grid_search_inner` at [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) enumerates `GRID_SEARCH_POINTS = 100` log-spaced positive candidates between `0.1 * one_mutation` and `max(1.5 * bl + one_mutation, 0.5)`. The 100-point choice is neither derived from a convergence analysis nor tested for sufficiency. A multi-modal surface with a narrow mode could fall between adjacent grid points and get missed, and the reconciliation path in `reconcile_zero_boundary` could then prefer a suboptimal grid point over a true positive mode.
+`fn grid_search_inner()` [packages/treetime/src/optimize/zero_boundary.rs#L70](../../packages/treetime/src/optimize/zero_boundary.rs#L70) enumerates `GRID_SEARCH_POINTS = 100` log-spaced positive candidates between `0.1 * one_mutation` and `max(1.5 * bl + one_mutation, 0.5)`. The 100-point choice is neither derived from a convergence analysis nor tested for sufficiency. A multi-modal surface with a narrow mode could fall between adjacent grid points and get missed, and the reconciliation path in `reconcile_zero_boundary` could then prefer a suboptimal grid point over a true positive mode.
 
 The log spacing spans 3-4 decades for typical branch lengths (from $\sim 10^{-4}$ to $\sim 0.5$), so 100 points give roughly 25-33 points per decade. A mode narrower than one grid step would be invisible.
+
+## Evidence
+
+The grid result is used without refinement. Throwaway instrumentation on `rust` at `77dd3a84` (method in [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md#evidence)) measured the Newton path that returns the grid result directly when the start is not concave:
+
+- 17 of 9,544 Newton optimizations took this path (`flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`; dense and sparse; `--model infer|jc69`)
+- 15 of them ended more than $10^{-6}$ log-likelihood units below the reference maximum, 3 more than $10^{-3}$. Example: `flu/h3n2/200`, grid point $7.28\cdot10^{-4}$, reference $7.11\cdot10^{-4}$, shortfall $2.7\cdot10^{-4}$
+- Consecutive grid points differ by a factor of 1.10 to 1.12 on these datasets (the grid spans $[0.1 \cdot \text{one\_mutation}, 0.5]$ in 100 points), so the best grid point can be up to about 5% away from a maximum even for a broad mode A short local refinement (Brent between the neighbors of the best grid point) removes this error without more grid points
 
 ## Impact
 
@@ -18,4 +26,5 @@ Negligible for surfaces with modes wider than one grid step. Unknown for surface
 
 ## Cross-references
 
-- [packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs) (`grid_search_inner`, `grid_search_branch_lengths`, `GRID_SEARCH_POINTS`)
+- [packages/treetime/src/optimize/zero_boundary.rs](../../packages/treetime/src/optimize/zero_boundary.rs) (`grid_search_inner`, `grid_search_branch_lengths`, `GRID_SEARCH_POINTS`)
+- [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md)
