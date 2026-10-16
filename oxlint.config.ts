@@ -111,12 +111,6 @@ export default projectConfig({
       },
     },
     {
-      files: WEB_SCOPES,
-      rules: {
-        "custom/use-themed-cn": ["error", { module: "app-ui/src/ui/cn.ts" }],
-      },
-    },
-    {
       files: ["packages/app-desktop/src/**"],
       rules: {
         "import/no-nodejs-modules": "off",

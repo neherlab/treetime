@@ -29,7 +29,7 @@ const REJECTED_LIBRARY_PATTERNS = [
   },
   {
     group: ["clsx", "tailwind-merge", "tailwind-merge/*"],
-    message: "Import `cn`, the class name helper of the themed ui module, which merges Tailwind classes.",
+    message: "Import `cn` from the `cn` package, which merges Tailwind classes.",
   },
 ];
 

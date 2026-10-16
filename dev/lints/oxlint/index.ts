@@ -19,7 +19,6 @@ import { noVagueIdentifiersRule } from "./rules/no-vague-identifiers.ts";
 import { noVersionedNamesRule } from "./rules/no-versioned-names.ts";
 import { requireIoTimeoutRule } from "./rules/require-io-timeout.ts";
 import { requireSuppressionReasonRule } from "./rules/require-suppression-reason.ts";
-import { useThemedCnRule } from "./rules/use-themed-cn.ts";
 
 export default definePlugin({
   meta: { name: "custom" },
@@ -43,6 +42,5 @@ export default definePlugin({
     "no-versioned-names": noVersionedNamesRule,
     "require-io-timeout": requireIoTimeoutRule,
     "require-suppression-reason": requireSuppressionReasonRule,
-    "use-themed-cn": useThemedCnRule,
   },
 });
