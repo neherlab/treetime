@@ -55,9 +55,9 @@ mod tests {
     )?;
     let actual = gtr_from_inference(&infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?)?;
 
-    pretty_assert_ulps_eq!(&expected.w, &actual.W, epsilon = 1e-8);
-    pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-8);
-    pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-8);
+    pretty_assert_ulps_eq!(&expected.w, &actual.W(), epsilon = 1e-8);
+    pretty_assert_ulps_eq!(&expected.pi, &actual.pi(), epsilon = 1e-8);
+    pretty_assert_ulps_eq!(expected.mu, actual.mu(), epsilon = 1e-8);
 
     Ok(())
   }
@@ -86,9 +86,9 @@ mod tests {
     )?;
     let actual = gtr_from_inference(&infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?)?;
 
-    pretty_assert_ulps_eq!(&expected.w, &actual.W, epsilon = 1e-6);
-    pretty_assert_ulps_eq!(&expected.pi, &actual.pi, epsilon = 1e-6);
-    pretty_assert_ulps_eq!(expected.mu, actual.mu, epsilon = 1e-6);
+    pretty_assert_ulps_eq!(&expected.w, &actual.W(), epsilon = 1e-6);
+    pretty_assert_ulps_eq!(&expected.pi, &actual.pi(), epsilon = 1e-6);
+    pretty_assert_ulps_eq!(expected.mu, actual.mu(), epsilon = 1e-6);
 
     Ok(())
   }

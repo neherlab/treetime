@@ -495,29 +495,30 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
 pub(crate) fn normalize_partition_rates(
   partitions: &mut [(usize, &mut GTR)],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) {
+) -> Result<(), Report> {
   let total_length: usize = partitions.iter().map(|(length, _)| *length).sum();
 
   if total_length == 0 {
-    return;
+    return Ok(());
   }
 
   let weighted_rate: f64 = partitions
     .iter()
-    .map(|(length, gtr)| length.to_f64_exact() * gtr.mu)
+    .map(|(length, gtr)| length.to_f64_exact() * gtr.mu())
     .sum();
 
   let total_average = weighted_rate / total_length.to_f64_exact();
 
   if total_average == 0.0 {
-    return;
+    return Ok(());
   }
 
   for (_, gtr) in partitions.iter_mut() {
-    gtr.mu /= total_average;
+    gtr.set_mu(gtr.mu() / total_average)?;
   }
 
   for value in branch_lengths.values_mut().flatten() {
     *value *= total_average;
   }
+  Ok(())
 }

@@ -63,9 +63,9 @@ mod tests {
       infer_gtr_fitch(&fitch, &graph, &branch_lengths_or_zero(&branch_lengths), &NoopProgress)?
     };
 
-    pretty_assert_ulps_eq!(gtr_a.mu, gtr_b.mu, epsilon = 1e-15);
-    pretty_assert_ulps_eq!(gtr_a.pi, gtr_b.pi, epsilon = 1e-15);
-    pretty_assert_ulps_eq!(gtr_a.W, gtr_b.W, epsilon = 1e-15);
+    pretty_assert_ulps_eq!(gtr_a.mu(), gtr_b.mu(), epsilon = 1e-15);
+    pretty_assert_ulps_eq!(gtr_a.pi(), gtr_b.pi(), epsilon = 1e-15);
+    pretty_assert_ulps_eq!(gtr_a.W(), gtr_b.W(), epsilon = 1e-15);
     Ok(())
   }
 }

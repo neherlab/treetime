@@ -17,8 +17,8 @@ mod tests {
 
     let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
 
-    let child_v = child.dot(&gtr.v);
-    let parent_v_inv_t = parent.dot(&gtr.v_inv.t());
+    let child_v = child.dot(gtr.v());
+    let parent_v_inv_t = parent.dot(&gtr.v_inv().t());
     let expected = child_v * parent_v_inv_t;
 
     pretty_assert_ulps_eq!(contribution.coefficients, expected, max_ulps = 10);
@@ -35,6 +35,6 @@ mod tests {
 
     let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
 
-    pretty_assert_ulps_eq!(contribution.gtr.eigvals, gtr.eigvals, max_ulps = 10);
+    pretty_assert_ulps_eq!(contribution.gtr.eigvals(), gtr.eigvals(), max_ulps = 10);
   }
 }

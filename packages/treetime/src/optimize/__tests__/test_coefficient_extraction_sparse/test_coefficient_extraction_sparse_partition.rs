@@ -12,7 +12,7 @@ mod tests {
     let contribution = PartitionContribution::new(vec![], gtr);
 
     assert!(contribution.site_contributions.is_empty());
-    assert_eq!(4, contribution.gtr.eigvals.len());
+    assert_eq!(4, contribution.gtr.eigvals().len());
   }
 
   #[test]

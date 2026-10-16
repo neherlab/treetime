@@ -39,29 +39,29 @@ mod tests {
   ) -> Result<(), Report> {
     let result = infer_both(tree_path, alignment_path)?;
 
-    let pi_cos = cosine_similarity(&result.dense.pi, &result.sparse.pi);
-    let w_rel = relative_frobenius(&result.dense.W, &result.sparse.W);
-    let mu_rel = relative_diff(result.dense.mu, result.sparse.mu);
+    let pi_cos = cosine_similarity(result.dense.pi(), result.sparse.pi());
+    let w_rel = relative_frobenius(result.dense.W(), result.sparse.W());
+    let mu_rel = relative_diff(result.dense.mu(), result.sparse.mu());
 
     assert!(
       pi_cos > 0.997,
       "pi cosine similarity too low: {pi_cos} (threshold 0.997)\n  dense:  {:?}\n  sparse: {:?}",
-      result.dense.pi.as_slice().unwrap(),
-      result.sparse.pi.as_slice().unwrap(),
+      result.dense.pi().as_slice().unwrap(),
+      result.sparse.pi().as_slice().unwrap(),
     );
 
     assert!(
       w_rel < 0.21,
       "W relative Frobenius norm too large: {w_rel} (threshold 0.21)\n  dense W:\n{}\n  sparse W:\n{}",
-      result.dense.W,
-      result.sparse.W,
+      result.dense.W(),
+      result.sparse.W(),
     );
 
     assert!(
       mu_rel < 0.23,
       "mu relative difference too large: {mu_rel} (threshold 0.23)\n  dense:  {}\n  sparse: {}",
-      result.dense.mu,
-      result.sparse.mu,
+      result.dense.mu(),
+      result.sparse.mu(),
     );
 
     Ok(())

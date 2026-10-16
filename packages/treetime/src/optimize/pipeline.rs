@@ -87,7 +87,8 @@ pub fn run(
 
   if params.model == GtrModelName::Infer {
     let length = reconstruction.sequence_length();
-    normalize_partition_rates(&mut [(length, reconstruction.gtr_mut())], &mut branch_lengths);
+    normalize_partition_rates(&mut [(length, reconstruction.gtr_mut())], &mut branch_lengths)
+      .map_err(OperationError::classify)?;
   }
 
   {

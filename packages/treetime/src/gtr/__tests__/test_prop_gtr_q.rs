@@ -35,22 +35,22 @@ mod tests {
     #[test]
     fn test_prop_gtr_q_detailed_balance(gtr in arb_gtr_nuc()) {
       let q = rate_matrix(&gtr);
-      prop_assert_detailed_balance(&q, &gtr.pi, 1e-10)?;
+      prop_assert_detailed_balance(&q, gtr.pi(), 1e-10)?;
     }
 
     #[test]
     fn test_prop_gtr_q_w_symmetric(gtr in arb_gtr_nuc()) {
-      prop_assert_array_abs_diff_eq!(gtr.W, gtr.W.t().to_owned(), epsilon = 1e-14);
+      prop_assert_array_abs_diff_eq!(gtr.W().clone(), gtr.W().t().to_owned(), epsilon = 1e-14);
     }
 
     #[test]
     fn test_prop_gtr_q_pi_sums_to_one(gtr in arb_gtr_nuc()) {
-      prop_assert_abs_diff_eq!(gtr.pi.sum(), 1.0, epsilon = 1e-10);
+      prop_assert_abs_diff_eq!(gtr.pi().sum(), 1.0, epsilon = 1e-10);
     }
 
     #[test]
     fn test_prop_gtr_q_pi_positive(gtr in arb_gtr_nuc()) {
-      prop_assert_array_positive!(gtr.pi);
+      prop_assert_array_positive!(gtr.pi());
     }
 
     #[test]

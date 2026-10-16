@@ -13,8 +13,8 @@ mod tests {
     let parent_dis = array![0.4, 0.3, 0.2, 0.1];
     let child_dis = array![0.1, 0.2, 0.3, 0.4];
 
-    let child_v = child_dis.dot(&gtr.v);
-    let parent_v_inv_t = parent_dis.dot(&gtr.v_inv.t());
+    let child_v = child_dis.dot(gtr.v());
+    let parent_v_inv_t = parent_dis.dot(&gtr.v_inv().t());
     let expected_coefficients = child_v * parent_v_inv_t;
 
     let site = SiteContribution {
@@ -38,8 +38,8 @@ mod tests {
     let parent_dis = array![1.0, 0.0, 0.0, 0.0];
     let child_dis = array![1.0, 0.0, 0.0, 0.0];
 
-    let child_v = child_dis.dot(&gtr.v);
-    let parent_v_inv_t = parent_dis.dot(&gtr.v_inv.t());
+    let child_v = child_dis.dot(gtr.v());
+    let parent_v_inv_t = parent_dis.dot(&gtr.v_inv().t());
     let coefficients = child_v * parent_v_inv_t;
 
     let site = SiteContribution {
@@ -64,8 +64,8 @@ mod tests {
     let parent_dis = array![1.0, 0.0, 0.0, 0.0];
     let child_dis = array![0.0, 1.0, 0.0, 0.0];
 
-    let child_v = child_dis.dot(&gtr.v);
-    let parent_v_inv_t = parent_dis.dot(&gtr.v_inv.t());
+    let child_v = child_dis.dot(gtr.v());
+    let parent_v_inv_t = parent_dis.dot(&gtr.v_inv().t());
     let coefficients = child_v * parent_v_inv_t;
 
     let site = SiteContribution {

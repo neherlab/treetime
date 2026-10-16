@@ -54,7 +54,7 @@ pub(crate) fn infer_gtr_impl(
     W = (&(&nij.view() + &nij.t() + 2.0 * &pc_mat) / mu)
       / (&outer(&pi, Ti)? + &outer(Ti, &pi)? + TINY_NUMBER + 2.0 * &pc_mat);
     W.diag_mut().fill(0.0);
-    W /= avg_transition(&W, &pi)?;
+    W /= avg_transition(&W, &pi);
 
     if fixed_pi.is_none() {
       pi = (&nij.sum_axis(Axis(1)) + &pc_mat.sum_axis(Axis(1)) + root_state)

@@ -60,7 +60,7 @@ mod tests {
     let p = gtr.expQt(t);
     let q = rate_matrix(&gtr);
 
-    let taylor_approx = Array2::eye(4) + gtr.mu * t * &q;
+    let taylor_approx = Array2::eye(4) + gtr.mu() * t * &q;
 
     assert_abs_diff_eq!(p, taylor_approx, epsilon = 1e-10);
 
@@ -79,7 +79,7 @@ mod tests {
     let t = 100.0;
     let p = gtr.expQt(t);
 
-    let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi[i]);
+    let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi()[i]);
 
     assert_abs_diff_eq!(p, expected, epsilon = 1e-6);
 
@@ -103,7 +103,7 @@ mod tests {
       "P contains NaN or Inf at t={t}"
     );
 
-    let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi[i]);
+    let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi()[i]);
     assert_abs_diff_eq!(p, expected, epsilon = 1e-10);
 
     Ok(())

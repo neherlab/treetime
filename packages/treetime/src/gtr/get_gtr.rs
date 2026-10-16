@@ -54,10 +54,10 @@ impl GtrOutput {
     Self {
       model_type,
       model_name,
-      mu: gtr.mu,
-      pi: gtr.pi.clone(),
-      w: gtr.W.clone(),
-      n_states: gtr.pi.len(),
+      mu: gtr.mu(),
+      pi: gtr.pi().clone(),
+      w: gtr.W().clone(),
+      n_states: gtr.pi().len(),
       attribute,
       states,
     }
@@ -122,15 +122,13 @@ pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = Array1::<f64>::ones(n_states);
-  let mut gtr = GTR::builder()
+  GTR::builder()
     .n_states(n_states)
     .mu(mu)
     .maybe_W(W)
     .pi(pi)
     .rate_scale(RateScale::Normalized)
-    .build()?;
-  gtr.unimodal_branch_likelihood = true;
-  Ok(gtr)
+    .build()
 }
 
 #[derive(Copy, Clone, Debug, SmartDefault)]
@@ -173,15 +171,13 @@ pub(crate) fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Repo
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / n_states.to_f64_exact());
-  let mut gtr = GTR::builder()
+  GTR::builder()
     .n_states(n_states)
     .mu(mu)
     .maybe_W(W)
     .pi(pi)
     .rate_scale(RateScale::Normalized)
-    .build()?;
-  gtr.unimodal_branch_likelihood = true;
-  Ok(gtr)
+    .build()
 }
 
 #[derive(Clone, Debug, SmartDefault)]

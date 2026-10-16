@@ -239,7 +239,7 @@ mod tests {
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut reconstruction = setup_dense_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
-    reconstruction.gtr_mut().mu = 1.0;
+    reconstruction.gtr_mut().set_mu(1.0)?;
     let distance_above_optimum = 0.003;
     let start_branch_length = (chain_alignment_jc69_distance() + distance_above_optimum) / 4.0;
     let start_branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = branch_lengths

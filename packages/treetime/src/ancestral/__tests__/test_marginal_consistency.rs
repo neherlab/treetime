@@ -20,6 +20,7 @@ mod tests {
   use itertools::Itertools;
   use ndarray::{Array1, array, aview1};
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::BTreeMap;
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
@@ -28,8 +29,8 @@ mod tests {
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
-  use treetime_utils::make_report;
   use treetime_utils::sync::random::get_random_number_generator;
+  use treetime_utils::{assert_error, make_report};
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -460,11 +461,13 @@ mod tests {
     })?;
     let (log_lh_scalar, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
 
-    let mut gtr_uniform = jc69(JC69Params {
-      alphabet: AlphabetName::Nuc,
-      ..JC69Params::default()
-    })?;
-    gtr_uniform.site_rates = Some(Array1::ones(seq_len));
+    let gtr_uniform = GTR::builder()
+      .n_states(4)
+      .mu(1.0)
+      .pi(Array1::ones(4))
+      .rate_scale(RateScale::Normalized)
+      .site_rates(Array1::ones(seq_len))
+      .build()?;
     let (log_lh_uniform, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
 
     pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
@@ -488,15 +491,56 @@ mod tests {
     })?;
     let (log_lh_scalar, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
 
-    let mut gtr_uniform = jc69(JC69Params {
-      alphabet: AlphabetName::Nuc,
-      ..JC69Params::default()
-    })?;
-    gtr_uniform.site_rates = Some(Array1::ones(seq_len));
+    let gtr_uniform = GTR::builder()
+      .n_states(4)
+      .mu(1.0)
+      .pi(Array1::ones(4))
+      .rate_scale(RateScale::Normalized)
+      .site_rates(Array1::ones(seq_len))
+      .build()?;
     let (log_lh_uniform, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
 
     pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
 
     Ok(())
   }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::dense( run_dense_marginal)]
+  #[case::sparse(run_sparse_marginal)]
+  #[trace]
+  fn test_marginal_site_rates_rejected_by_branch_length_contribution(#[case] #[notrace] run: MarginalRunner) -> Result<(), Report> {
+    let aln = gap_free_alignment()?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
+    let seq_len = get_common_length(&aln)?;
+
+    let gtr = GTR::builder()
+      .n_states(4)
+      .mu(1.0)
+      .pi(Array1::ones(4))
+      .rate_scale(RateScale::Normalized)
+      .site_rates(Array1::ones(seq_len))
+      .build()?;
+    let (_, reconstruction) = run(&graph, &branch_lengths, &names, &aln, gtr)?;
+    let edge_key = graph.get_edges().next().expect("tree has an edge").key();
+
+    assert_error!(
+      reconstruction.create_edge_contribution(edge_key),
+      "Branch length likelihood does not support per-site rates: the substitution model has site rates, but the branch length objective applies one rate to all sites"
+    );
+
+    Ok(())
+  }
+
+  type MarginalRunner = fn(
+    &Graph,
+    &BTreeMap<GraphEdgeKey, Option<f64>>,
+    &BTreeMap<GraphNodeKey, Option<String>>,
+    &[AlignmentRecord],
+    GTR,
+  ) -> Result<(f64, MarginalReconstruction), Report>;
 }

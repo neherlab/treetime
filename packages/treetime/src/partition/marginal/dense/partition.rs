@@ -139,7 +139,7 @@ impl PartitionMarginalDense {
     backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
     forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
     edge_key: GraphEdgeKey,
-  ) -> OptimizationContribution {
+  ) -> Result<OptimizationContribution, Report> {
     OptimizationContribution::from_dense(gtr, &backward[&edge_key], &forward[&edge_key])
   }
 

@@ -64,7 +64,7 @@ mod tests {
     );
 
     let q = rate_matrix(&gtr);
-    let flux = &q * &gtr.pi.view().insert_axis(Axis(0));
+    let flux = &q * &gtr.pi().view().insert_axis(Axis(0));
     pretty_assert_abs_diff_eq!(flux, flux.t().to_owned(), epsilon = 1e-10);
 
     Ok(())
@@ -93,7 +93,7 @@ mod tests {
 
     let diff = &p - &p_k;
     let max_diff = diff.iter().map(|x| x.abs()).fold(0.0_f64, f64::max);
-    let max_pi_diff = gtr.pi.iter().map(|x| (x - 0.25).abs()).fold(0.0_f64, f64::max);
+    let max_pi_diff = gtr.pi().iter().map(|x| (x - 0.25).abs()).fold(0.0_f64, f64::max);
     let kappa = 2.0;
     let bound = kappa * max_pi_diff;
 
@@ -159,7 +159,7 @@ mod tests {
       "P contains NaN or Inf"
     );
 
-    let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi[i]);
+    let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi()[i]);
     assert_abs_diff_eq!(p, expected, epsilon = 1e-3);
 
     Ok(())

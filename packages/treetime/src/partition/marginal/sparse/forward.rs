@@ -105,7 +105,7 @@ fn process_node_forward_indexed(
     let sites = events.finish();
 
     let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
-    let msg_from_parent = if let Some(site_rates) = &gtr.site_rates {
+    let msg_from_parent = if let Some(site_rates) = gtr.site_rates() {
       propagate_raw_per_site(
         gtr,
         site_rates,

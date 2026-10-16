@@ -27,14 +27,14 @@ mod tests {
 
     for factor in [0.99, 1.01] {
       let mut neighbour = gtr.clone();
-      neighbour.mu *= factor;
+      neighbour.set_mu(neighbour.mu() * factor)?;
       let at_neighbour = partition.marginal_update(&neighbour, &input.graph, &input.branch_lengths, &node_states)?;
       assert!(
         refined.log_lh.value() >= at_neighbour.log_lh.value(),
         "log likelihood at the optimized mu {} ({}) must not be lower than at mu {} ({})",
-        gtr.mu,
+        gtr.mu(),
         refined.log_lh.value(),
-        neighbour.mu,
+        neighbour.mu(),
         at_neighbour.log_lh.value()
       );
     }
@@ -75,9 +75,9 @@ mod tests {
       &NoopProgress,
     )?;
 
-    pretty_assert_abs_diff_eq!(dense_gtr.mu, sparse_gtr.mu, epsilon = 1e-7);
-    pretty_assert_abs_diff_eq!(dense_gtr.pi, sparse_gtr.pi, epsilon = 1e-7);
-    pretty_assert_abs_diff_eq!(dense_gtr.W, sparse_gtr.W, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(dense_gtr.mu(), sparse_gtr.mu(), epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(dense_gtr.pi(), sparse_gtr.pi(), epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(dense_gtr.W(), sparse_gtr.W(), epsilon = 1e-7);
     pretty_assert_abs_diff_eq!(
       dense_refined.log_lh.value(),
       sparse_refined.log_lh.value(),

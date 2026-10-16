@@ -2,7 +2,8 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::gtr::get_gtr::{GtrModelName, JC69Params, get_gtr_by_name, jc69};
+  use crate::gtr::get_gtr::{GtrModelName, JC69Params, K80Params, get_gtr_by_name, jc69, k80};
+  use crate::gtr::gtr::{GTR, RateScale};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::gather::{
     gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
@@ -21,7 +22,7 @@ mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use ndarray::array;
+  use ndarray::{Array2, array};
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
@@ -128,9 +129,8 @@ mod tests {
   #[case::k80(  GtrModelName::K80)]
   #[case::hky85(GtrModelName::HKY85)]
   #[case::t92(  GtrModelName::T92)]
-  #[case::tn93( GtrModelName::TN93)]
   #[trace]
-  fn test_dispatch_zero_boundary_non_unimodal_models_all_reach_zero(#[case] model: GtrModelName,
+  fn test_dispatch_zero_boundary_uncertified_models_all_reach_zero(#[case] model: GtrModelName,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(IDENTICAL_TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
@@ -141,9 +141,10 @@ mod tests {
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
-    assert!(
-      !reconstruction.gtr().unimodal_branch_likelihood,
-      "precondition: {model:?} must be classified as non-unimodal"
+    assert_eq!(
+      None,
+      reconstruction.gtr().certified_decay_rate(),
+      "precondition: {model:?} must have no certified single decay rate"
     );
 
     run_optimize_mixed(
@@ -166,26 +167,32 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_dispatch_zero_boundary_jc69_pre_dispatch_shortcut_reaches_zero() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::jc69(GtrModelName::JC69)]
+  #[case::tn93(GtrModelName::TN93)]
+  #[trace]
+  fn test_dispatch_zero_boundary_certified_models_pre_dispatch_shortcut_reaches_zero(
+    #[case] model: GtrModelName,
+  ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(IDENTICAL_TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::JC69, &mut branch_lengths)?;
+    let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indel_counts = gather_edge_indel_counts(&graph, &reconstruction);
 
     assert!(
-      reconstruction.gtr().unimodal_branch_likelihood,
-      "precondition: JC69 must be classified as unimodal"
+      reconstruction.gtr().certified_decay_rate().is_some(),
+      "precondition: {model:?} must have a certified single decay rate"
     );
 
     let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     assert!(
       is_zero_branch_optimal(&contributions[&first_edge_key]),
-      "precondition: JC69 identical-sequence contributions must trigger the pre-dispatch shortcut"
+      "precondition: {model:?} identical-sequence contributions must trigger the pre-dispatch shortcut"
     );
 
     run_optimize_mixed(
@@ -200,7 +207,7 @@ mod tests {
       let bl = branch_lengths[&edge_ref.key()].unwrap();
       assert!(
         bl == 0.0,
-        "JC69: edge {i} branch length must be exactly 0 after optimization, got {bl}"
+        "{model:?}: edge {i} branch length must be exactly 0 after optimization, got {bl}"
       );
     }
 
@@ -208,16 +215,16 @@ mod tests {
   }
 
   fn make_dinh_matsen_k80_contribution() -> OptimizationContribution {
-    let mut gtr = jc69(JC69Params::default()).unwrap();
-    gtr.eigvals = array![-1.0, -0.5, -0.5, 0.0];
-    gtr.unimodal_branch_likelihood = false;
-
     #[rustfmt::skip]
     let coefficients = array![
       [-0.04545042,  0.02261158,  0.02261158, 0.25],
       [ 0.04456328, -0.02228164, -0.02228164, 0.25],
     ];
-    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
+    OptimizationContribution::Dense(optimize::dense::PartitionContribution {
+      coefficients,
+      rate_eigvals: array![-1.0, -0.5, -0.5, 0.0],
+      gtr: k80(K80Params::default()).unwrap(),
+    })
   }
 
   #[test]
@@ -440,21 +447,33 @@ mod tests {
   }
 
   #[test]
-  fn test_dispatch_zero_boundary_reconcile_exact_zero_unimodal_passes_through() {
+  fn test_dispatch_zero_boundary_reconcile_exact_zero_certified_passes_through() {
     let gtr = jc69(JC69Params::default()).unwrap();
     let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
     let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = [contribution];
 
     assert!(
-      contributions[0].has_unimodal_branch_likelihood(),
-      "precondition: JC69 must be classified as unimodal"
+      contributions[0].certified_decay_rate().is_some(),
+      "precondition: JC69 must have a certified single decay rate"
     );
 
     let result = reconcile_zero_boundary(0.0, 0.1, &contributions, IndelTerm::new(0, 0.0), 0.01).unwrap();
     assert!(
       result == 0.0,
-      "reconcile_zero_boundary must pass exact-zero through for unimodal models, got {result}"
+      "reconcile_zero_boundary must pass exact-zero through for a certified decay rate, got {result}"
+    );
+  }
+
+  #[test]
+  fn test_dispatch_zero_boundary_reconcile_exact_zero_mixed_decay_rates_finds_positive_mode() {
+    let contributions = mixed_decay_rate_contributions();
+    let result = reconcile_zero_boundary(0.0, 0.5, &contributions, IndelTerm::new(0, 0.0), 0.01).unwrap();
+    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).unwrap().value();
+    let lh_result = evaluate_mixed_log_lh_only(&contributions, result).unwrap().value();
+    assert!(
+      lh_result > lh_zero,
+      "contributions with different decay rates must leave zero for a better positive length: log_lh({result})={lh_result} vs log_lh(0)={lh_zero}"
     );
   }
 
@@ -466,5 +485,22 @@ mod tests {
       result == 0.0,
       "reconcile_zero_boundary must pass exact-zero through when indels are present, got {result}"
     );
+  }
+
+  fn mixed_decay_rate_contributions() -> [OptimizationContribution; 2] {
+    let fast = binary_contribution(5.0, array![[0.96, 1.0]]);
+    let slow = binary_contribution(0.5, array![[-0.8, 1.0]]);
+    [fast, slow]
+  }
+
+  fn binary_contribution(mu: f64, coefficients: Array2<f64>) -> OptimizationContribution {
+    let gtr = GTR::builder()
+      .n_states(2)
+      .mu(mu)
+      .pi(array![0.5, 0.5])
+      .rate_scale(RateScale::Normalized)
+      .build()
+      .unwrap();
+    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
   }
 }

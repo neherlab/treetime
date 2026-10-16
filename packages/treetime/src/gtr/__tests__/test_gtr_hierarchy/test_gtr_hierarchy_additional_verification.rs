@@ -54,7 +54,7 @@ mod tests {
     let q2 = rate_matrix(&h2);
     assert_abs_diff_eq!(q1, q2, epsilon = 1e-14);
 
-    assert!((h1.mu - h2.mu).abs() > 0.1);
+    assert!((h1.mu() - h2.mu()).abs() > 0.1);
 
     Ok(())
   }

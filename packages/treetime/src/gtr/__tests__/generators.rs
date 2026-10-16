@@ -134,9 +134,9 @@ pub(super) mod tests {
 
         #[test]
         fn test_prop_generators_arb_gtr_nuc_valid(gtr in arb_gtr_nuc()) {
-          prop_assert_abs_diff_eq!(gtr.pi.sum(), 1.0, epsilon = 1e-10);
-          prop_assert_array_abs_diff_eq!(gtr.W, gtr.W.t().to_owned(), epsilon = 1e-14);
-          prop_assert!(gtr.mu > 0.0, "mu must be positive: {}", gtr.mu);
+          prop_assert_abs_diff_eq!(gtr.pi().sum(), 1.0, epsilon = 1e-10);
+          prop_assert_array_abs_diff_eq!(gtr.W().clone(), gtr.W().t().to_owned(), epsilon = 1e-14);
+          prop_assert!(gtr.mu() > 0.0, "mu must be positive: {}", gtr.mu());
         }
       }
     }

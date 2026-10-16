@@ -28,7 +28,7 @@ mod tests {
     gtr: &GTR,
     multiplicity: f64,
   ) -> optimize::sparse::SiteContribution {
-    let coefficients = parent.dot(&gtr.v) * child.dot(&gtr.v_inv.t());
+    let coefficients = parent.dot(gtr.v()) * child.dot(&gtr.v_inv().t());
     optimize::sparse::SiteContribution {
       multiplicity,
       coefficients,

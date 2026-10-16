@@ -60,7 +60,7 @@ fn process_node_backward_indexed(
   let sequence = Arc::clone(&context.input.sequence);
   let (profile, parent_message) = if let Some((edge_key, edge_obs)) = context.parent_edge {
     let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
-    let msg_from_child = if let Some(site_rates) = &gtr.site_rates {
+    let msg_from_child = if let Some(site_rates) = gtr.site_rates() {
       propagate_raw_per_site(
         gtr,
         site_rates,
@@ -164,6 +164,6 @@ fn combine_child_messages(
     &child_messages,
     &sites,
     alphabet,
-    context.is_root.then_some(&gtr.pi),
+    context.is_root.then_some(gtr.pi()),
   )
 }

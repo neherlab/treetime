@@ -1,17 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::gtr::get_gtr::{
-    F81Params, HKY85Params, JC69Params, Jtt92Params, K80Params, T92Params, TN93Params, f81, hky85, jc69, jtt92, k80,
-    t92, tn93,
-  };
-  use crate::gtr::gtr::GTR;
+  use crate::gtr::get_gtr::{F81Params, JC69Params, K80Params, f81, jc69, k80};
+  use crate::gtr::gtr::{GTR, RateScale};
   use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
   use crate::optimize::zero_boundary::is_zero_branch_optimal;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
-  use rstest::rstest;
 
   fn make_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).unwrap();
@@ -162,10 +158,11 @@ mod tests {
 
   #[test]
   fn test_is_zero_branch_optimal_nonfinite_derivative_returns_false() {
-    let mut gtr = jc69(JC69Params::default()).unwrap();
-    gtr.eigvals = array![-1e300, 0.0, 0.0, 0.0];
-    let coefficients = array![[1.0, 0.0, 0.0, -1.0 + f64::EPSILON * 2.0]];
-    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution {
+      coefficients: array![[1.0, 0.0, 0.0, -1.0 + f64::EPSILON * 2.0]],
+      rate_eigvals: array![-1e300, 0.0, 0.0, 0.0],
+      gtr: jc69(JC69Params::default()).unwrap(),
+    });
 
     assert!(contribution.all_sites_valid_at_zero());
     assert!(!contribution.zero_branch_length_derivative().is_finite());
@@ -240,41 +237,6 @@ mod tests {
   }
 
   #[test]
-  fn test_is_zero_branch_optimal_jc69_is_unimodal() {
-    let gtr = jc69(JC69Params::default()).unwrap();
-    assert!(gtr.unimodal_branch_likelihood);
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_f81_is_unimodal() {
-    let gtr = f81(F81Params::default()).unwrap();
-    assert!(gtr.unimodal_branch_likelihood);
-  }
-
-  #[test]
-  fn test_is_zero_branch_optimal_k80_is_not_unimodal() {
-    let gtr = k80(K80Params::default()).unwrap();
-    assert!(!gtr.unimodal_branch_likelihood);
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::jc69( jc69(JC69Params::default()).unwrap(),  true)]
-  #[case::f81(  f81(F81Params::default()).unwrap(),    true)]
-  #[case::k80(  k80(K80Params::default()).unwrap(),    false)]
-  #[case::hky85(hky85(HKY85Params::default()).unwrap(), false)]
-  #[case::t92(  t92(T92Params::default()).unwrap(),    false)]
-  #[case::tn93( tn93(TN93Params::default()).unwrap(),  false)]
-  #[case::jtt92(jtt92(Jtt92Params::default()).unwrap(), false)]
-  #[trace]
-  fn test_is_zero_branch_optimal_model_unimodal_classification(
-    #[case] gtr: GTR,
-    #[case] expected_unimodal: bool,
-  ) {
-    assert_eq!(expected_unimodal, gtr.unimodal_branch_likelihood);
-  }
-
-  #[test]
   fn test_is_zero_branch_optimal_k80_bypasses_shortcut() {
     let k80_contrib = make_k80_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
     assert!(k80_contrib.zero_branch_length_derivative() < 0.0);
@@ -282,7 +244,7 @@ mod tests {
   }
 
   #[test]
-  fn test_is_zero_branch_optimal_mixed_unimodal_non_unimodal_returns_false() {
+  fn test_is_zero_branch_optimal_certified_and_uncertified_returns_false() {
     let jc69_contrib = make_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
     let k80_contrib = make_k80_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
     assert!(is_zero_branch_optimal(&[make_dense_contribution(array![[
@@ -298,11 +260,39 @@ mod tests {
       ..F81Params::default()
     })
     .unwrap();
-    assert!(gtr.unimodal_branch_likelihood);
+    assert!(gtr.certified_decay_rate().is_some());
 
     let coefficients = array![[0.0, 1.0, 0.0, 0.0]];
     let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     assert!(is_zero_branch_optimal(&[contribution]));
+  }
+
+  #[test]
+  fn test_is_zero_branch_optimal_different_decay_rates_returns_false() {
+    let [fast, slow] = mixed_decay_rate_contributions();
+
+    let expected_derivative = -0.96 * 10.0 / 1.96 + 0.8 / 0.2;
+    let derivative = fast.zero_branch_length_derivative() + slow.zero_branch_length_derivative();
+    assert_abs_diff_eq!(expected_derivative, derivative, epsilon = 1e-12);
+
+    let contributions = [fast, slow];
+    let log_lh = |t: f64| evaluate_mixed_log_lh_only(&contributions, t).unwrap().value();
+    let expected_log_lh = |t: f64| ((1.0 + 0.96 * (-10.0 * t).exp()) * (1.0 - 0.8 * (-t).exp())).ln();
+    assert_abs_diff_eq!(expected_log_lh(0.0), log_lh(0.0), epsilon = 1e-12);
+    assert_abs_diff_eq!(expected_log_lh(0.5), log_lh(0.5), epsilon = 1e-12);
+    assert!(
+      log_lh(0.5) > log_lh(0.0),
+      "precondition: L(0.5) must exceed L(0) although the derivative at zero is negative"
+    );
+
+    assert!(!is_zero_branch_optimal(&contributions));
+  }
+
+  #[test]
+  fn test_is_zero_branch_optimal_equal_decay_rates_uses_shortcut() {
+    let first = binary_contribution(5.0, array![[0.96, 1.0]]);
+    let second = binary_contribution(5.0, array![[0.5, 1.0]]);
+    assert!(is_zero_branch_optimal(&[first, second]));
   }
 
   #[test]
@@ -321,16 +311,16 @@ mod tests {
 
   #[test]
   fn test_is_zero_branch_optimal_k80_dinh_matsen_multimodal_counterexample() {
-    let mut gtr = jc69(JC69Params::default()).unwrap();
-    gtr.eigvals = array![-1.0, -0.5, -0.5, 0.0];
-    gtr.unimodal_branch_likelihood = false;
-
     #[rustfmt::skip]
     let coefficients = array![
       [-0.04545042, 0.02261158, 0.02261158, 0.25],
       [ 0.04456328, -0.02228164, -0.02228164, 0.25],
     ];
-    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
+    let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution {
+      coefficients,
+      rate_eigvals: array![-1.0, -0.5, -0.5, 0.0],
+      gtr: k80(K80Params::default()).unwrap(),
+    });
     let contributions = [contribution];
 
     assert!(contributions[0].all_sites_valid_at_zero());
@@ -355,5 +345,22 @@ mod tests {
     );
 
     assert!(!is_zero_branch_optimal(&contributions));
+  }
+
+  fn mixed_decay_rate_contributions() -> [OptimizationContribution; 2] {
+    let fast = binary_contribution(5.0, array![[0.96, 1.0]]);
+    let slow = binary_contribution(0.5, array![[-0.8, 1.0]]);
+    [fast, slow]
+  }
+
+  fn binary_contribution(mu: f64, coefficients: Array2<f64>) -> OptimizationContribution {
+    let gtr = GTR::builder()
+      .n_states(2)
+      .mu(mu)
+      .pi(array![0.5, 0.5])
+      .rate_scale(RateScale::Normalized)
+      .build()
+      .unwrap();
+    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
   }
 }

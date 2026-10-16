@@ -189,7 +189,7 @@ fn indexed_node_backward(
       msg_to_parent,
     })
   } else {
-    let mut dis = &msg_to_parent.dis * &gtr.pi;
+    let mut dis = &msg_to_parent.dis * gtr.pi();
     let delta_ll = normalize_inplace(&mut dis);
     node.profile = DenseSeqDistribution {
       dis,

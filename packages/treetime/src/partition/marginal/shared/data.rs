@@ -21,7 +21,7 @@ pub(crate) fn count_transitions_dense(
   backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
   forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
 ) -> Result<MutationCounts, Report> {
-  let n_states = gtr.pi.len();
+  let n_states = gtr.pi().len();
   let mut nij = Array2::zeros((n_states, n_states));
   let mut Ti = Array1::zeros(n_states);
 

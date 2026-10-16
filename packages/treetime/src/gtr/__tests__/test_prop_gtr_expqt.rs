@@ -35,9 +35,9 @@ mod tests {
 
     #[test]
     fn test_prop_gtr_expqt_equilibrium_limit(gtr in arb_gtr_nuc()) {
-      let t = 1000.0 / gtr.mu.max(0.001);
+      let t = 1000.0 / gtr.mu().max(0.001);
       let p = gtr.expQt(t);
-      let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi[i]);
+      let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi()[i]);
       prop_assert_array_abs_diff_eq!(p, expected, epsilon = 1e-6);
     }
 
@@ -53,8 +53,8 @@ mod tests {
     #[test]
     fn test_prop_gtr_expqt_stationary_preserved(gtr in arb_gtr_nuc(), t in arb_branch_len()) {
       let p = gtr.expQt(t);
-      let pi_evolved = p.dot(&gtr.pi);
-      prop_assert_array_abs_diff_eq!(pi_evolved, gtr.pi, epsilon = 1e-10);
+      let pi_evolved = p.dot(gtr.pi());
+      prop_assert_array_abs_diff_eq!(pi_evolved, gtr.pi(), epsilon = 1e-10);
     }
 
     #[test]

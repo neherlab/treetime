@@ -288,12 +288,12 @@ mod tests {
     }
 
     pub(super) fn compare_gtr(gtr: &GTR, expected: &GtrOutput) {
-      assert_abs_diff_eq!(gtr.mu, expected.mu, epsilon = 1e-14);
-      assert_abs_diff_eq!(gtr.pi, expected.pi, epsilon = 1e-14);
-      assert_abs_diff_eq!(gtr.W, expected.w, epsilon = 1e-14);
+      assert_abs_diff_eq!(gtr.mu(), expected.mu, epsilon = 1e-14);
+      assert_abs_diff_eq!(gtr.pi(), &expected.pi, epsilon = 1e-14);
+      assert_abs_diff_eq!(gtr.W(), &expected.w, epsilon = 1e-14);
       assert_abs_diff_eq!(rate_matrix(gtr), expected.q, epsilon = 1e-14);
 
-      assert_abs_diff_eq!(sorted(&gtr.eigvals), sorted(&expected.eigenvals), epsilon = 1e-14);
+      assert_abs_diff_eq!(sorted(gtr.eigvals()), sorted(&expected.eigenvals), epsilon = 1e-14);
 
       for entry in &expected.exp_qts {
         let actual = gtr.expQt(entry.time);

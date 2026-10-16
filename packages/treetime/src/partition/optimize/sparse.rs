@@ -69,7 +69,7 @@ pub(crate) fn get_coefficients(
     };
     site_contributions.push(SiteContribution {
       multiplicity: 1.0,
-      coefficients: aview1(child).dot(&gtr.v) * aview1(parent).dot(&gtr.v_inv.t()),
+      coefficients: aview1(child).dot(gtr.v()) * aview1(parent).dot(&gtr.v_inv().t()),
     });
   }
   for parent_fixed in msg_to_child.fixed.iter() {
@@ -77,7 +77,7 @@ pub(crate) fn get_coefficients(
     let child = &msg_to_parent.fixed[parent_fixed.state].dis;
     site_contributions.push(SiteContribution {
       multiplicity: parent_fixed.count.to_f64_exact(),
-      coefficients: aview1(child).dot(&gtr.v) * aview1(parent).dot(&gtr.v_inv.t()),
+      coefficients: aview1(child).dot(gtr.v()) * aview1(parent).dot(&gtr.v_inv().t()),
     });
   }
   Ok(PartitionContribution::new(site_contributions, gtr.clone()))

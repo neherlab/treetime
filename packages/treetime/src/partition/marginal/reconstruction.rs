@@ -217,12 +217,12 @@ impl MarginalReconstruction {
 
   pub(crate) fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     match self {
-      Self::Dense(reconstruction) => Ok(reconstruction.partition.create_edge_contribution(
+      Self::Dense(reconstruction) => reconstruction.partition.create_edge_contribution(
         &reconstruction.gtr,
         &reconstruction.edges.backward,
         &reconstruction.edges.forward,
         edge_key,
-      )),
+      ),
       Self::Sparse(reconstruction) => reconstruction.partition.create_edge_contribution(
         &reconstruction.gtr,
         &reconstruction.edges.backward,

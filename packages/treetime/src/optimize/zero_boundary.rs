@@ -19,10 +19,7 @@ pub(super) fn min_branch_length_for_indels(indels: IndelTerm, one_mutation: f64)
 }
 
 pub(crate) fn is_zero_branch_optimal(contributions: &[OptimizationContribution]) -> bool {
-  if !contributions
-    .iter()
-    .all(|contrib| contrib.has_unimodal_branch_likelihood())
-  {
+  if shared_certified_decay_rate(contributions).is_none() {
     return false;
   }
 
@@ -56,7 +53,7 @@ pub(super) fn reconcile_zero_boundary(
   let zero_might_lose_to_positive = candidate == 0.0
     && !indels.requires_positive_length()
     && all_valid_at_zero
-    && !contributions.iter().all(|c| c.has_unimodal_branch_likelihood());
+    && shared_certified_decay_rate(contributions).is_none();
 
   let zero_invalid_passthrough = candidate == 0.0 && !all_valid_at_zero;
 
@@ -118,4 +115,13 @@ pub(super) fn is_zero_better_than_grid_best(
   let log_lh_zero = evaluate_with_indels_log_lh_only(contributions, indels, 0.0)?;
   let log_lh_best = evaluate_with_indels_log_lh_only(contributions, indels, best_positive)?;
   Ok(log_lh_zero > log_lh_best)
+}
+
+fn shared_certified_decay_rate(contributions: &[OptimizationContribution]) -> Option<f64> {
+  let (first, rest) = contributions.split_first()?;
+  let decay_rate = first.certified_decay_rate()?;
+  rest
+    .iter()
+    .all(|contrib| contrib.certified_decay_rate() == Some(decay_rate))
+    .then_some(decay_rate)
 }

@@ -20,8 +20,8 @@ pub(super) mod tests {
     let exp_qt2 = gtr.expQt(t2);
 
     let mut likelihood = 0.0;
-    for s in 0..gtr.pi.len() {
-      likelihood += gtr.pi[s] * exp_qt1[[obs_a, s]] * exp_qt2[[obs_b, s]];
+    for s in 0..gtr.pi().len() {
+      likelihood += gtr.pi()[s] * exp_qt1[[obs_a, s]] * exp_qt2[[obs_b, s]];
     }
     likelihood
   }
@@ -30,8 +30,8 @@ pub(super) mod tests {
     let exp_qt = gtr.expQt(t);
 
     let mut likelihood = 0.0;
-    for s in 0..gtr.pi.len() {
-      let mut product = gtr.pi[s];
+    for s in 0..gtr.pi().len() {
+      let mut product = gtr.pi()[s];
       for &obs in observations {
         product *= exp_qt[[obs, s]];
       }
@@ -59,7 +59,7 @@ pub(super) mod tests {
     for s_root in 0..4 {
       for s_ab in 0..4 {
         let msg_ab = exp_qt_a[[obs_a, s_ab]] * exp_qt_b[[obs_b, s_ab]];
-        likelihood += gtr.pi[s_root] * exp_qt_c[[obs_c, s_root]] * exp_qt_ab[[s_ab, s_root]] * msg_ab;
+        likelihood += gtr.pi()[s_root] * exp_qt_c[[obs_c, s_root]] * exp_qt_ab[[s_ab, s_root]] * msg_ab;
       }
     }
     likelihood

@@ -240,12 +240,12 @@ mod tests {
       vec_of_owned!["germany", "usa"],
       output.states.iter().map(|s| s.to_owned()).collect_vec()
     );
-    assert_eq!(2, output.gtr.pi.len());
-    assert_abs_diff_eq!(1.0, output.gtr.pi.sum(), epsilon = 1e-10);
+    assert_eq!(2, output.gtr.pi().len());
+    assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-10);
     assert!(
-      output.gtr.mu > 0.1 && output.gtr.mu < 100.0,
+      output.gtr.mu() > 0.1 && output.gtr.mu() < 100.0,
       "mu should be in reasonable range for 2-state model: {}",
-      output.gtr.mu
+      output.gtr.mu()
     );
 
     let assignments = trait_assignments_by_name(&output, &names);
@@ -288,12 +288,12 @@ mod tests {
       vec_of_owned!["france", "germany", "usa"],
       output.states.iter().map(|s| s.to_owned()).collect_vec()
     );
-    assert_abs_diff_eq!(1.0, output.gtr.pi.sum(), epsilon = 1e-12);
+    assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-12);
 
     let total = 7.0;
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[0], epsilon = 1e-12);
-    assert_abs_diff_eq!(4.0 / total, output.gtr.pi[1], epsilon = 1e-12);
-    assert_abs_diff_eq!(2.0 / total, output.gtr.pi[2], epsilon = 1e-12);
+    assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[0], epsilon = 1e-12);
+    assert_abs_diff_eq!(4.0 / total, output.gtr.pi()[1], epsilon = 1e-12);
+    assert_abs_diff_eq!(2.0 / total, output.gtr.pi()[2], epsilon = 1e-12);
 
     Ok(())
   }
@@ -325,12 +325,12 @@ mod tests {
       vec_of_owned!["france", "germany", "usa"],
       output.states.iter().map(|s| s.to_owned()).collect_vec()
     );
-    assert_abs_diff_eq!(1.0, output.gtr.pi.sum(), epsilon = 1e-12);
+    assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-12);
 
     let total = 7.0;
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[0], epsilon = 1e-12);
-    assert_abs_diff_eq!(4.0 / total, output.gtr.pi[1], epsilon = 1e-12);
-    assert_abs_diff_eq!(2.0 / total, output.gtr.pi[2], epsilon = 1e-12);
+    assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[0], epsilon = 1e-12);
+    assert_abs_diff_eq!(4.0 / total, output.gtr.pi()[1], epsilon = 1e-12);
+    assert_abs_diff_eq!(2.0 / total, output.gtr.pi()[2], epsilon = 1e-12);
 
     Ok(())
   }
@@ -358,10 +358,10 @@ mod tests {
       false,
     )?;
 
-    assert_abs_diff_eq!(1.0, output.gtr.pi.sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(0.2, output.gtr.pi[0], epsilon = 1e-10);
-    assert_abs_diff_eq!(0.2, output.gtr.pi[1], epsilon = 1e-10);
-    assert_abs_diff_eq!(0.6, output.gtr.pi[2], epsilon = 1e-10);
+    assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-10);
+    assert_abs_diff_eq!(0.2, output.gtr.pi()[0], epsilon = 1e-10);
+    assert_abs_diff_eq!(0.2, output.gtr.pi()[1], epsilon = 1e-10);
+    assert_abs_diff_eq!(0.6, output.gtr.pi()[2], epsilon = 1e-10);
 
     Ok(())
   }
@@ -390,10 +390,10 @@ mod tests {
     )?;
 
     let total = 5.0;
-    assert_abs_diff_eq!(1.0, output.gtr.pi.sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[0], epsilon = 1e-10);
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi[1], epsilon = 1e-10);
-    assert_abs_diff_eq!(3.0 / total, output.gtr.pi[2], epsilon = 1e-10);
+    assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-10);
+    assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[0], epsilon = 1e-10);
+    assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[1], epsilon = 1e-10);
+    assert_abs_diff_eq!(3.0 / total, output.gtr.pi()[2], epsilon = 1e-10);
 
     Ok(())
   }
@@ -409,8 +409,8 @@ mod tests {
     let (filtered, _filtered_names) =
       run_mugration_case("(A:0.1,B:0.1)root;", &traits, None, None, 0, None, false, true)?;
 
-    let pi_v0 = &v0.gtr.pi;
-    let pi_filtered = &filtered.gtr.pi;
+    let pi_v0 = &v0.gtr.pi();
+    let pi_filtered = &filtered.gtr.pi();
     assert!(
       (pi_v0[0] - pi_filtered[0]).abs() > 1e-9,
       "uninformative-root filtering must change the inferred equilibrium: v0 pi={pi_v0:?}, filtered pi={pi_filtered:?}"
@@ -427,12 +427,12 @@ mod tests {
     };
 
     let (base, _base_names) = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, None, 5, None, false, false)?;
-    let base_mu = base.gtr.mu;
+    let base_mu = base.gtr.mu();
 
     let (corrected, _corrected_names) =
       run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, None, 5, Some(2.0), false, false)?;
 
-    assert_abs_diff_eq!(corrected.gtr.mu, base_mu * 2.0, epsilon = 1e-6);
+    assert_abs_diff_eq!(corrected.gtr.mu(), base_mu * 2.0, epsilon = 1e-6);
 
     Ok(())
   }
@@ -463,25 +463,25 @@ mod tests {
     let (no_iter, _no_iter_names) = run_mugration_case(tree, &traits, None, None, 0, None, false, false)?;
     let (with_iter, _with_iter_names) = run_mugration_case(tree, &traits, None, None, 5, None, false, false)?;
 
-    let mu_changed = (no_iter.gtr.mu - with_iter.gtr.mu).abs() > 1e-6;
+    let mu_changed = (no_iter.gtr.mu() - with_iter.gtr.mu()).abs() > 1e-6;
     let pi_changed = no_iter
       .gtr
-      .pi
+      .pi()
       .iter()
-      .zip(with_iter.gtr.pi.iter())
+      .zip(with_iter.gtr.pi().iter())
       .any(|(a, b)| (a - b).abs() > 1e-6);
     assert!(
       mu_changed || pi_changed,
       "iterative refinement must change the model: mu_0={}, mu_5={}, pi_0={:?}, pi_5={:?}",
-      no_iter.gtr.mu,
-      with_iter.gtr.mu,
-      no_iter.gtr.pi,
-      with_iter.gtr.pi
+      no_iter.gtr.mu(),
+      with_iter.gtr.mu(),
+      no_iter.gtr.pi(),
+      with_iter.gtr.pi()
     );
 
-    assert!(with_iter.gtr.mu > 0.0);
-    assert_abs_diff_eq!(with_iter.gtr.pi.sum(), 1.0, epsilon = 1e-10);
-    assert!(with_iter.gtr.pi.iter().all(|&p| p > 0.0));
+    assert!(with_iter.gtr.mu() > 0.0);
+    assert_abs_diff_eq!(with_iter.gtr.pi().sum(), 1.0, epsilon = 1e-10);
+    assert!(with_iter.gtr.pi().iter().all(|&p| p > 0.0));
 
     Ok(())
   }
@@ -498,7 +498,7 @@ mod tests {
 
     let (output, _names) = run_mugration_case(tree, &traits, None, None, 5, None, false, false)?;
 
-    let pi_usa = output.gtr.pi[1];
+    let pi_usa = output.gtr.pi()[1];
     assert!(
       pi_usa > 0.5,
       "pi[usa] should reflect 3/4 observed frequency, got {pi_usa:.4}"
@@ -512,8 +512,8 @@ mod tests {
     let traits = btreemap! { o!("A") => o!("usa"), o!("B") => o!("germany") };
     let (output, _names) = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, None, 0, None, false, false)?;
 
-    assert_abs_diff_eq!(output.gtr.pi.sum(), 1.0, epsilon = 1e-10);
-    assert!(output.gtr.mu > 0.0);
+    assert_abs_diff_eq!(output.gtr.pi().sum(), 1.0, epsilon = 1e-10);
+    assert!(output.gtr.mu() > 0.0);
 
     Ok(())
   }

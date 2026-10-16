@@ -139,7 +139,7 @@ mod tests {
         );
       }
 
-      let pi_sum = input.gtr.pi.sum();
+      let pi_sum = input.gtr.pi().sum();
       prop_assert!(
         (pi_sum - 1.0).abs() < 1e-10,
         "GTR pi should sum to 1: {pi_sum}"

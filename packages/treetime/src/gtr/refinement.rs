@@ -38,8 +38,8 @@ pub(crate) fn refine_gtr_model<P: MarginalPasses>(
   let mut gtr = gtr;
   for i in 0..=iterations {
     let counts = partition.count_transitions(&gtr, graph, branch_lengths, &node_states, &backward, &forward)?;
-    gtr = infer_gtr(&counts, &options, gtr.pi.len(), log)?;
-    debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu);
+    gtr = infer_gtr(&counts, &options, gtr.pi().len(), log)?;
+    debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu());
   }
 
   let update = partition.marginal_update(&gtr, graph, branch_lengths, P::backward_input(&node_states))?;
@@ -78,17 +78,17 @@ where
   let mut backward = backward;
   for i in 0..=iterations {
     let counts = partition.count_transitions(&gtr, graph, branch_lengths, &nodes, &backward, &forward)?;
-    gtr = infer_gtr(&counts, &options, gtr.pi.len(), log)?;
+    gtr = infer_gtr(&counts, &options, gtr.pi().len(), log)?;
     (gtr, nodes, backward) = optimize_gtr_rate(partition, gtr, &nodes, graph, branch_lengths, log)?;
-    debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu);
+    debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu());
   }
 
   if let Some(correction) = sampling_bias_correction {
-    gtr.mu *= correction;
+    gtr.set_mu(gtr.mu() * correction)?;
     progress_info!(
       log,
       "Applied sampling bias correction {correction:.4}, mu = {:.6}",
-      gtr.mu
+      gtr.mu()
     );
   }
 
@@ -122,8 +122,8 @@ fn log_final(gtr: &GTR, log_lh: LogLh, log: &dyn LogSink) {
     log,
     "GTR refinement: final log likelihood = {:.4}, mu = {:.6}, pi = {:?}",
     log_lh.value(),
-    gtr.mu,
-    gtr.pi
+    gtr.mu(),
+    gtr.pi()
   );
 }
 
@@ -145,7 +145,7 @@ fn optimize_gtr_rate<P: MarginalPasses>(
 where
   P::Node: Clone,
 {
-  let old_mu = gtr.mu;
+  let old_mu = gtr.mu();
   let sqrt_old_mu = old_mu.sqrt();
 
   let lo = 0.01 * sqrt_old_mu;
@@ -153,7 +153,10 @@ where
 
   let evaluate = |sqrt_mu: f64| -> (f64, Option<GtrRateCandidate<P>>) {
     let mut candidate_gtr = gtr.clone();
-    candidate_gtr.mu = sqrt_mu * sqrt_mu;
+    if let Err(e) = candidate_gtr.set_mu(sqrt_mu * sqrt_mu) {
+      progress_warn!(log, "GTR rate optimization: invalid rate at sqrt(mu)={sqrt_mu:.6}: {e}");
+      return (f64::INFINITY, None);
+    }
     let input = P::fresh_backward_input(nodes);
     match partition.marginal_backward(&candidate_gtr, graph, branch_lengths, &input) {
       Ok(MarginalBackward {
@@ -214,7 +217,8 @@ where
       at_opt.ok_or_else(|| make_internal_report!("GTR rate optimization: selected candidate failed to evaluate"))?;
     debug!(
       "GTR rate optimization: optimized mu = {:.6} (from {:.6})",
-      gtr.mu, old_mu
+      gtr.mu(),
+      old_mu
     );
     Ok((gtr, nodes, backward))
   } else {
@@ -226,7 +230,7 @@ where
           partition.marginal_backward(&gtr, graph, branch_lengths, P::backward_input(nodes))?;
         (gtr, node_states, backward)
       };
-    restored_gtr.mu = old_mu;
+    restored_gtr.set_mu(old_mu)?;
     debug!("GTR rate optimization: skipped (no bracket), keeping mu = {old_mu:.6}");
     Ok((restored_gtr, restored_nodes, restored_backward))
   }

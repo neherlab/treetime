@@ -8,9 +8,9 @@ mod tests {
     let refined = helpers::run_flu_20(None, 3)?;
 
     assert!(
-      refined.mu > 0.0,
+      refined.mu() > 0.0,
       "mu should be positive after GTR iterations, got {}",
-      refined.mu
+      refined.mu()
     );
     assert_ne!(
       format!("{initial:#?}"),
@@ -27,9 +27,9 @@ mod tests {
     let refined = helpers::run_flu_20(Some(true), 3)?;
 
     assert!(
-      refined.mu > 0.0,
+      refined.mu() > 0.0,
       "mu should be positive after GTR iterations, got {}",
-      refined.mu
+      refined.mu()
     );
     assert_ne!(
       format!("{initial:#?}"),

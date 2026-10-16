@@ -29,10 +29,10 @@ mod tests {
   fn test_jc69_eigenvalues_structure() {
     let gtr = jc69(JC69Params::default()).expect("JC69 creation failed");
 
-    let zero_count = gtr.eigvals.iter().filter(|&&ev| ev.abs() < 1e-10).count();
+    let zero_count = gtr.eigvals().iter().filter(|&&ev| ev.abs() < 1e-10).count();
     assert_eq!(1, zero_count, "JC69 should have exactly one zero eigenvalue");
 
-    for &ev in &gtr.eigvals {
+    for &ev in gtr.eigvals() {
       assert!(ev <= 1e-10, "JC69 eigenvalues should be non-positive");
     }
   }

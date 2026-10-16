@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
-  use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::sparse::message::propagate_raw_per_site;
   use crate::partition::storage::sparse::{FixedProfiles, SparseSeqDistribution};
   use crate::partition::storage::var_pos_map::VarPosMap;
   use approx::assert_abs_diff_eq;
-  use ndarray::{Array1, array, aview1};
+  use helpers::jc69_with_site_rates;
+  use ndarray::{array, aview1};
   use treetime_primitives::{AsciiChar, LogLh};
 
   #[test]
@@ -14,10 +14,7 @@ mod tests {
     let c = AsciiChar::from_byte_unchecked(b'C');
     let g = AsciiChar::from_byte_unchecked(b'G');
 
-    let mut gtr = jc69(JC69Params::default()).unwrap();
-    gtr.site_rates = Some(Array1::from_vec(vec![
-      0.5, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 0.1,
-    ]));
+    let gtr = jc69_with_site_rates(array![0.5, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 0.1,]);
 
     let t = 0.3;
     #[rustfmt::skip]
@@ -37,7 +34,7 @@ mod tests {
       log_lh: LogLh::ZERO,
     };
 
-    let result = propagate_raw_per_site(&gtr, gtr.site_rates.as_ref().unwrap(), t, false, &seq_dis, None);
+    let result = propagate_raw_per_site(&gtr, gtr.site_rates().unwrap(), t, false, &seq_dis, None);
 
     let expected_0 = array![
       0.7821749895006883,
@@ -73,10 +70,7 @@ mod tests {
     let c = AsciiChar::from_byte_unchecked(b'C');
     let g = AsciiChar::from_byte_unchecked(b'G');
 
-    let mut gtr = jc69(JC69Params::default()).unwrap();
-    gtr.site_rates = Some(Array1::from_vec(vec![
-      0.5, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 0.1,
-    ]));
+    let gtr = jc69_with_site_rates(array![0.5, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 1.0, 0.1,]);
 
     let t = 0.3;
     #[rustfmt::skip]
@@ -96,7 +90,7 @@ mod tests {
       log_lh: LogLh::ZERO,
     };
 
-    let result = propagate_raw_per_site(&gtr, gtr.site_rates.as_ref().unwrap(), t, true, &seq_dis, None);
+    let result = propagate_raw_per_site(&gtr, gtr.site_rates().unwrap(), t, true, &seq_dis, None);
 
     let expected_0 = array![
       0.7821749895006883,
@@ -124,5 +118,21 @@ mod tests {
       expected_10,
       epsilon = 1e-14
     );
+  }
+
+  mod helpers {
+    use crate::gtr::gtr::{GTR, RateScale};
+    use ndarray::Array1;
+
+    pub(super) fn jc69_with_site_rates(site_rates: Array1<f64>) -> GTR {
+      GTR::builder()
+        .n_states(4)
+        .mu(1.0)
+        .pi(Array1::ones(4))
+        .rate_scale(RateScale::Normalized)
+        .site_rates(site_rates)
+        .build()
+        .unwrap()
+    }
   }
 }

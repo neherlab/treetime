@@ -22,7 +22,7 @@ pub(crate) fn count_transitions_sparse(
   backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
   forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
 ) -> Result<MutationCounts, Report> {
-  let n_states = gtr.pi.len();
+  let n_states = gtr.pi().len();
   let min_bl = MIN_BRANCH_LENGTH_FRACTION / length.to_f64_exact();
   let mut nij = Array2::zeros((n_states, n_states));
   let mut Ti = Array1::zeros(n_states);

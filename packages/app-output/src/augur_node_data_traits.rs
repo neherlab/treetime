@@ -51,10 +51,10 @@ pub fn build_augur_node_data_traits(
 fn trait_models(traits: &TreeTraits<'_>, model: &GTR) -> BTreeMap<String, AugurNodeDataJsonTraitModel> {
   let alphabet = traits.states.iter().chain(["?"]).map(str::to_owned).collect();
   let model = AugurNodeDataJsonTraitModel {
-    rate: model.mu,
+    rate: model.mu(),
     alphabet,
-    equilibrium_probabilities: model.pi.to_vec(),
-    transition_matrix: model.W.outer_iter().map(|row| row.to_vec()).collect(),
+    equilibrium_probabilities: model.pi().to_vec(),
+    transition_matrix: model.W().outer_iter().map(|row| row.to_vec()).collect(),
     other: BTreeMap::new(),
   };
   btreemap! { traits.attribute.to_owned() => model }
