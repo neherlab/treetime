@@ -19,6 +19,10 @@ pub struct VarPosMap {
 }
 
 impl VarPosMap {
+  pub(crate) fn len(&self) -> usize {
+    self.entries.len()
+  }
+
   pub(crate) fn get(&self, pos: usize) -> Option<&VarPos> {
     let index = self.entries.partition_point(|(key, _)| *key < pos);
     self

@@ -5,13 +5,14 @@ use crate::partition::marginal::shared::normalize::{
   divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child,
 };
 use crate::partition::marginal::shared::update::MarginalForward;
+use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, SiteSlot};
 use crate::partition::marginal::sparse::message::{
   combine_messages, normalize_1d_inplace, propagate_raw, propagate_raw_per_site,
 };
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::marginal::sparse::reconstruct::{map_state, parsimony_seq};
 use crate::partition::storage::sparse::{
-  SparseEdgeBackward, SparseEdgeForward, SparseNodeObs, SparseNodeState, SparseSeqDistribution, VarPos,
+  SparseEdgeBackward, SparseEdgeForward, SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution, VarPos,
 };
 use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::mutation::Sub;
@@ -83,25 +84,26 @@ fn process_node_forward_indexed(
 
     let msg_to_child = compute_msg_to_child(obs, parent, parent_obs, edge_obs, backward)?;
 
-    let mut variable_pos = btreemap! {};
-    let mut parent_state = btreemap! {};
-    let mut child_state = btreemap! {};
+    let n_events =
+      3 * edge_obs.fitch_subs().len() + 2 * (msg_to_child.variable.len() + backward.msg_to_parent.variable.len());
+    let mut events = CandidateSiteEvents::with_capacity(2, n_events);
     for mutation in edge_obs.fitch_subs() {
       let current_state = mutation.qry();
-      variable_pos.insert(mutation.pos(), current_state);
-      parent_state.entry(mutation.pos()).or_insert_with(|| mutation.reff());
-      child_state.entry(mutation.pos()).or_insert(current_state);
+      events.insert(mutation.pos(), SiteSlot::State, current_state);
+      events.or_insert(mutation.pos(), SiteSlot::Reference(0), mutation.reff());
+      events.or_insert(mutation.pos(), SiteSlot::Reference(1), current_state);
     }
     for (pos, profile) in &msg_to_child.variable {
       if !range_contains(&obs.non_char, *pos) {
-        variable_pos.entry(*pos).or_insert(profile.state);
-        parent_state.entry(*pos).or_insert(profile.state);
+        events.or_insert(*pos, SiteSlot::State, profile.state);
+        events.or_insert(*pos, SiteSlot::Reference(0), profile.state);
       }
     }
     for (pos, profile) in &backward.msg_to_parent.variable {
-      variable_pos.entry(*pos).or_insert(profile.state);
-      child_state.entry(*pos).or_insert(profile.state);
+      events.or_insert(*pos, SiteSlot::State, profile.state);
+      events.or_insert(*pos, SiteSlot::Reference(1), profile.state);
     }
+    let sites = events.finish();
 
     let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
     let msg_from_parent = if let Some(site_rates) = &gtr.site_rates {
@@ -123,8 +125,7 @@ fn process_node_forward_indexed(
     let profile = combine_messages(
       &obs.composition,
       &[&msg_from_parent, &backward.msg_to_parent],
-      &variable_pos,
-      &[parent_state, child_state],
+      &sites,
       alphabet,
       None,
     )?;
@@ -168,41 +169,37 @@ fn compute_msg_to_child(
   child_obs: &SparseNodeObs,
   parent: &SparseNodeState,
   parent_obs: &SparseNodeObs,
-  edge_obs: &crate::partition::storage::sparse::SparseEdgeObs,
+  edge_obs: &SparseEdgeObs,
   backward: &SparseEdgeBackward,
 ) -> Result<SparseSeqDistribution, Report> {
+  let child_dis = &backward.msg_from_child;
+  let n_events = 2 * (edge_obs.fitch_subs().len() + parent.profile.variable.len() + child_dis.variable.len());
+  let mut events = CandidateSiteEvents::with_capacity(1, n_events);
+  for mutation in edge_obs.fitch_subs() {
+    events.insert(mutation.pos(), SiteSlot::Reference(0), mutation.qry());
+    events.insert(mutation.pos(), SiteSlot::State, mutation.reff());
+  }
+  for (pos, profile) in parent.profile.variable.iter().chain(&child_dis.variable) {
+    if !range_contains(&child_obs.non_char, *pos) {
+      events.or_insert(*pos, SiteSlot::Reference(0), profile.state);
+      events.or_insert(*pos, SiteSlot::State, profile.state);
+    }
+  }
+  let sites = events.finish();
+
   let mut seq_dis = SparseSeqDistribution {
     variable: VarPosMap::default(),
     fixed: btreemap! {},
     fixed_counts: parent_obs.composition.clone(),
     log_lh: forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh),
   };
-  let child_dis = &backward.msg_from_child;
-  let mut parent_states = btreemap! {};
-  let mut child_states = btreemap! {};
-  for mutation in edge_obs.fitch_subs() {
-    child_states.insert(mutation.pos(), mutation.qry());
-    parent_states.insert(mutation.pos(), mutation.reff());
-  }
-  for (pos, profile) in &parent.profile.variable {
-    if !range_contains(&child_obs.non_char, *pos) {
-      child_states.entry(*pos).or_insert(profile.state);
-      parent_states.entry(*pos).or_insert(profile.state);
-    }
-  }
-  for (pos, profile) in &child_dis.variable {
-    if !range_contains(&child_obs.non_char, *pos) {
-      child_states.entry(*pos).or_insert(profile.state);
-      parent_states.entry(*pos).or_insert(profile.state);
-    }
-  }
-
   let mut delta_ll = LogLh::ZERO;
-  for (pos, parent_state) in parent_states {
+  for (pos, parent_state, child_state) in sites.iter() {
+    let child_state = child_state[0].ok_or_else(|| make_internal_report!("Position {pos} has no child state"))?;
     let divisor = child_dis
       .variable
       .get(pos)
-      .map_or(&child_dis.fixed[&child_states[&pos]], |distribution| &distribution.dis);
+      .map_or(&child_dis.fixed[&child_state], |distribution| &distribution.dis);
     let numerator = parent
       .profile
       .variable
@@ -241,7 +238,7 @@ fn compute_ml_subs_for_nodes(
   parent_obs: &SparseNodeObs,
   child: &SparseNodeState,
   child_obs: &SparseNodeObs,
-  edge_obs: &crate::partition::storage::sparse::SparseEdgeObs,
+  edge_obs: &SparseEdgeObs,
 ) -> Result<Vec<Sub>, Report> {
   let positions = edge_obs
     .fitch_subs()

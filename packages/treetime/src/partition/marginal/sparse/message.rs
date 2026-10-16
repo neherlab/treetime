@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
+use crate::partition::marginal::sparse::candidate_sites::CandidateSites;
 use crate::partition::storage::sparse::{SparseSeqDistribution, VarPos};
 use crate::partition::storage::var_pos_map::VarPosMap;
 use crate::seq::composition::Composition;
@@ -19,8 +20,7 @@ const EPS: f64 = 1e-4;
 pub(crate) fn combine_messages(
   composition: &Composition,
   messages: &[&SparseSeqDistribution],
-  variable_pos: &BTreeMap<usize, AsciiChar>,
-  reference_states: &[BTreeMap<usize, AsciiChar>],
+  sites: &CandidateSites,
   alphabet: &Alphabet,
   gtr_weight: Option<&Array1<f64>>,
 ) -> Result<SparseSeqDistribution, Report> {
@@ -50,21 +50,21 @@ pub(crate) fn combine_messages(
     })
     .collect();
 
-  for (&pos, &state) in variable_pos {
+  for (pos, state, references) in sites.iter() {
     let mut all_states_equal = true;
     let mut log_vec = initial_log.clone();
 
-    for (msg, states, log_fixed) in izip!(messages, reference_states, &log_fixed) {
+    for (msg, reference, log_fixed) in izip!(messages, references, &log_fixed) {
       if let Some(var) = msg.variable.get(pos) {
         log_vec.zip_mut_with(&var.dis, |lv, &p| *lv += p.ln());
         if var.state != state {
           all_states_equal = false;
         }
-      } else if let Some(ref_state) = states.get(&pos) {
-        if alphabet.is_canonical(*ref_state) {
-          log_vec.zip_mut_with(&log_fixed[ref_state], |lv, &lp| *lv += lp);
+      } else if let Some(ref_state) = *reference {
+        if alphabet.is_canonical(ref_state) {
+          log_vec.zip_mut_with(&log_fixed[&ref_state], |lv, &lp| *lv += lp);
         }
-        if ref_state != &state {
+        if ref_state != state {
           all_states_equal = false;
         }
       } else {

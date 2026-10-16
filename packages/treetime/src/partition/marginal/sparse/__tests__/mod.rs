@@ -1,3 +1,4 @@
+mod test_candidate_sites;
 mod test_message;
 mod test_mutations;
 mod test_node_sequence;

@@ -1,13 +1,14 @@
 use crate::gtr::gtr::GTR;
 use crate::hacks::fix_branch_length::fix_branch_length;
 use crate::partition::marginal::shared::update::MarginalBackward;
+use crate::partition::marginal::sparse::candidate_sites::{CandidateSiteEvents, SiteSlot};
 use crate::partition::marginal::sparse::message::{combine_messages, propagate_raw, propagate_raw_per_site};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{
   SparseEdgeBackward, SparseEdgeObs, SparseNodeState, SparseSeqDistribution, VarPos,
 };
 use eyre::Report;
-use maplit::btreemap;
+use itertools::izip;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
@@ -75,49 +76,44 @@ fn process_node_backward_indexed(
       log_lh: LogLh::ZERO,
     }
   } else {
-    let mut variable_pos = btreemap! {};
-
     let n_children = context.children.len();
-    let mut child_states = vec![btreemap! {}; n_children];
     let mut child_messages = Vec::with_capacity(n_children);
-
-    for (ci, child) in context.children.iter().enumerate() {
-      let child_edge_obs = &partition.obs_edges[&child.edge_key];
+    let mut n_events = 0;
+    for child in context.children {
       let child_backward = child.edge_message()?;
-      for mutation in child_edge_obs.fitch_subs() {
-        variable_pos.insert(mutation.pos(), mutation.reff());
-        child_states[ci].insert(mutation.pos(), mutation.qry());
-      }
-      for (pos, profile) in &child_backward.msg_from_child.variable {
-        variable_pos.entry(*pos).or_insert(profile.state);
-      }
+      n_events +=
+        2 * partition.obs_edges[&child.edge_key].fitch_subs().len() + child_backward.msg_from_child.variable.len();
       child_messages.push(&child_backward.msg_from_child);
     }
 
-    for (ci, child) in context.children.iter().enumerate() {
-      let child_obs = &partition.obs_nodes[&child.node_key];
-      for (pos, parent_state) in &variable_pos {
-        if child_states[ci].contains_key(pos) {
-          continue;
-        }
-        let state = if range_contains(&child_obs.non_char, *pos) {
-          if range_contains(&child_obs.gaps, *pos) {
-            alphabet.gap()
-          } else {
-            alphabet.unknown()
-          }
-        } else {
-          *parent_state
-        };
-        child_states[ci].insert(*pos, state);
+    let mut events = CandidateSiteEvents::with_capacity(n_children, n_events);
+    for (ci, (child, child_message)) in izip!(context.children, &child_messages).enumerate() {
+      for mutation in partition.obs_edges[&child.edge_key].fitch_subs() {
+        events.insert(mutation.pos(), SiteSlot::State, mutation.reff());
+        events.insert(mutation.pos(), SiteSlot::Reference(ci), mutation.qry());
+      }
+      for (pos, profile) in &child_message.variable {
+        events.or_insert(*pos, SiteSlot::State, profile.state);
       }
     }
+    let mut sites = events.finish();
+    sites.fill_missing_references(|ci, pos, parent_state| {
+      let child_obs = &partition.obs_nodes[&context.children[ci].node_key];
+      if range_contains(&child_obs.non_char, pos) {
+        if range_contains(&child_obs.gaps, pos) {
+          alphabet.gap()
+        } else {
+          alphabet.unknown()
+        }
+      } else {
+        parent_state
+      }
+    });
 
     combine_messages(
       &obs.composition,
       &child_messages,
-      &variable_pos,
-      &child_states,
+      &sites,
       alphabet,
       context.is_root.then_some(&gtr.pi),
     )?
