@@ -1,6 +1,6 @@
 # Per-edge branch length optimization: Brent and Newton-Raphson in sqrt(t) space
 
-v1 offers two per-edge branch length optimization methods via `--opt-method`: Brent's method and Newton-Raphson, both in $\sqrt{t}$ space. The default `brent` matches v0 exactly. v0 offers only Brent in $\sqrt{t}$ space.
+v1 offers two per-edge branch length optimization methods via `--opt-method`: Brent's method and Newton-Raphson, both in $\sqrt{t}$ space. The default `brent` uses the v0 method, Brent in $\sqrt{t}$ space, but differs from v0 in the search interval, the start, the objective penalty, the stopping tolerance, and the failure handling, so per-edge results differ slightly ([kb/issues/M-optimize-brent-setup-differs-from-v0.md](../issues/M-optimize-brent-setup-differs-from-v0.md)). v0 offers only Brent in $\sqrt{t}$ space.
 
 ## What v0 does
 
@@ -12,7 +12,7 @@ v0 `optimal_t_compressed()` ([packages/legacy/treetime/treetime/gtr.py#L816-L920
 
 3. Hamming distance fallback. If `scipy.optimize.minimize_scalar` reports failure, v0 falls back to the raw Hamming distance between parent and child sequences as the branch length estimate.
 
-v0 also adds a regularization penalty `exp(t^4/10000)` when optimizing with marginal profiles (`profiles=True`) to prevent unbounded branch growth.
+v0 also adds a regularization penalty `exp(s^4/10000)`, that is $e^{t^2/10^4}$, when optimizing with marginal profiles (`profiles=True`) to prevent unbounded branch growth. In the code the argument of `_neg_prob` is named `t` but holds $s$.
 
 ## What v1 does
 
@@ -20,7 +20,7 @@ v1 `run_optimize_mixed()` ([packages/treetime/src/optimize/dispatch.rs](../../pa
 
 ### Brent's method (derivative-free)
 
-1. `brent` (default). Brent's method in $\sqrt{t}$ space via `argmin::BrentOpt`. Matches v0 on the success path: the cost function evaluates $-\ell(s^2)$ and bracket endpoints transform as $\sqrt{\text{lower}}$, $\sqrt{\text{upper}}$. Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero. Differs from v0 on solver failure: v1 surfaces the error to the caller via `Result<f64, Report>`, while v0 silently substitutes the raw Hamming distance.
+1. `brent` (default). Brent's method in $\sqrt{t}$ space via `argmin::BrentOpt`. The cost function evaluates $-\ell(s^2)$ and the interval endpoints transform as $\sqrt{\text{lower}}$, $\sqrt{\text{upper}}$, as in v0. It differs from v0 on the success path too: the interval is $[\max(t_\text{min}, 10^{-12}), \max(1.5\,t_0 + \text{one mutation}, 0.5)]$ instead of $t \le 4$, the solver starts at a golden-section point instead of the Hamming distance and can return a point slightly worse than the start, the objective has no penalty, and the tolerance is absolute ($10^{-5}$ in $s$) instead of v0's relative per-iteration schedule ([kb/issues/M-optimize-brent-setup-differs-from-v0.md](../issues/M-optimize-brent-setup-differs-from-v0.md)). Tolerance $\epsilon_s$ in $s$-space maps to $t$-space precision $\approx 2s^* \epsilon_s$, tighter near zero. Differs from v0 on solver failure: v1 surfaces an error to the caller via `Result<f64, Report>`, while v0 silently substitutes the raw Hamming distance when SciPy reports non-convergence. v1 does not read argmin's termination status, so a stop at the iteration limit is used silently.
 
 ### Newton-Raphson (analytical derivatives)
 
@@ -41,15 +41,15 @@ Both methods share:
 
 **Brent for robustness.** Brent's method is derivative-free and guaranteed to converge within the bracket. It serves as both a reference implementation and a fallback for cases where Newton behaves poorly.
 
-**Default matches v0.** The `brent` default ensures golden master tests pass and users get v0-equivalent behavior without configuration.
+**Default is the v0 method.** The `brent` default keeps v0's solver and parameterization without configuration; the setup differences from v0 are recorded in [kb/issues/M-optimize-brent-setup-differs-from-v0.md](../issues/M-optimize-brent-setup-differs-from-v0.md).
 
 ## Tradeoffs
 
-**sqrt(t) reparameterization.** Used by `brent` (default, matches v0 on the success path; on solver failure v1 returns `Err(Report)` rather than v0's silent Hamming-distance fallback) and `newton`.
+**sqrt(t) reparameterization.** Used by `brent` (default; the interval, start, objective, tolerance, and failure handling differ from v0, see [kb/issues/M-optimize-brent-setup-differs-from-v0.md](../issues/M-optimize-brent-setup-differs-from-v0.md)) and `newton`.
 
-**Still lost: regularization penalty.** v0 adds `exp(t^4/10000)` when optimizing with profiles. v1 does not apply this penalty. The grid search upper bound and Brent bracket provide a soft cap.
+**Still lost: regularization penalty.** v0 adds `exp(s^4/10000)` ($e^{t^2/10^4}$) when optimizing with profiles. v1 does not apply this penalty. The grid search upper bound and Brent bracket provide a soft cap.
 
-**Still lost: Hamming distance fallback.** v0 returns raw Hamming distance when Brent reports failure. v1 has no equivalent: solver failures propagate through `Result<f64, Report>` to `run_optimize_mixed`, which surfaces them to the caller. v1 prefers a loud error over v0's silent substitution because the silent fallback biased downstream branch lengths and made likelihood comparisons unreliable.
+**Still lost: Hamming distance fallback.** v0 returns raw Hamming distance when Brent reports failure. v1 has no equivalent: solver errors propagate through `Result<f64, Report>` to `run_optimize_mixed`, which surfaces them to the caller; a stop at the iteration limit is not detected. v1 prefers a loud error over v0's silent substitution because the silent fallback biased downstream branch lengths and made likelihood comparisons unreliable.
 
 **Gained: method selection.** Users can choose between Brent's method and Newton-Raphson via `--opt-method`, matching the pattern in the `clock` command's `--branch-split-method`.
 

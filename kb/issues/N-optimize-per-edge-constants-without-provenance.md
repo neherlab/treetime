@@ -51,7 +51,7 @@ Accuracy and coverage of the recorded choices. Measurements (below) cannot prove
 
 ## Evidence on current effects
 
-From the measurements in [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md#evidence) and [N-optimize-brent-ignores-termination-status.md](N-optimize-brent-ignores-termination-status.md#evidence) (`flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`):
+From the measurements in [M-optimize-newton-returns-unverified-point.md](M-optimize-newton-returns-unverified-point.md#evidence) and [M-optimize-brent-setup-differs-from-v0.md](M-optimize-brent-setup-differs-from-v0.md#evidence) (`flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`):
 
 - `BRENT_MAX_ITER = 50` was never reached (largest count 29)
 - `NEWTON_MAX_ITER = 10` was reached on 2 of 9,544 Newton optimizations
