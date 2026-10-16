@@ -21,13 +21,13 @@ A detailed item-by-item audit with code locations, callers, callees, and converg
 
 | ID  | Location                                                                                                                              | Algorithm             | argmin candidate?                |
 | :-- | :------------------------------------------------------------------------------------------------------------------------------------ | :-------------------- | :------------------------------- |
-| H1  | [dispatch.rs#L533-L711](../../../packages/treetime/src/optimize/dispatch.rs#L533-L711)                       | Newton-Raphson + grid | **High** - wrap as `Solver` (P1) |
+| H1  | [dispatch.rs#L272-L308](../../../packages/treetime/src/optimize/dispatch.rs#L272-L308)                       | Newton-Raphson + grid | **High** - wrap as `Solver` (P1) |
 | H2  | [common.rs#L93-L163](../../../packages/treetime/src/gtr/infer_gtr/common.rs#L93-L163)                                                 | Fixed-point iteration | No - domain-specific ECM         |
-| H3  | [run.rs#L275-L410](../../../packages/treetime/src/commands/optimize/run.rs#L275-L410)                                                 | EM-like outer loop    | No - pipeline coordination       |
+| H3  | [run_loop.rs#L33-L135](../../../packages/treetime/src/optimize/run_loop.rs#L33-L135)                                                 | EM-like outer loop    | No - pipeline coordination       |
 | H4  | [run.rs#L236-L279](../../../packages/treetime/src/commands/timetree/run.rs#L236-L279)                                                 | Refinement pipeline   | No - multi-phase pipeline        |
 | H5  | [distribution.rs#L425-L491](../../../packages/treetime-distribution/src/distribution_core/distribution.rs#L425-L491)                  | HPD bisection         | **Medium** - `BrentRoot` (P2)    |
 | H6  | Same as E3                                                                                                                            | Grid search           | Retire (P4)                      |
-| H7  | [dispatch.rs#L399-L421](../../../packages/treetime/src/optimize/dispatch.rs#L399-L421)                       | Grid fallback         | **Medium** - `BrentOpt` (P5)     |
+| H7  | [zero_boundary.rs#L67-L95](../../../packages/treetime/src/optimize/zero_boundary.rs#L67-L95)                       | Grid fallback         | **Medium** - `BrentOpt` (P5)     |
 | H8  | [function.rs#L250](../../../packages/treetime-distribution/src/distribution_core/function.rs#L250)                                    | Array argmax          | No - array scan                  |
 | H9  | [distribution.rs#L236-L293](../../../packages/treetime-distribution/src/distribution_core/distribution.rs#L236-L293)                  | CDF linear scan       | No - sorted lookup               |
 | H10 | [branch_length_likelihood.rs#L31-L63](../../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L31-L63) | Grid evaluation       | No - full distribution needed    |

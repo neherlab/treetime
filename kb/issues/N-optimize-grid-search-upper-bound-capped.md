@@ -8,11 +8,19 @@
 
 ## Problem
 
-`fn grid_search_branch_lengths()` [packages/treetime/src/optimize/zero_boundary.rs#L106](../../packages/treetime/src/optimize/zero_boundary.rs#L106) computes the grid upper bound as `max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER)` with `GRID_SEARCH_MIN_UPPER = 0.5` [packages/treetime/src/optimize/zero_boundary.rs#L10](../../packages/treetime/src/optimize/zero_boundary.rs#L10). The floor ensures the grid covers the biologically plausible range even when the current branch length estimate is zero or very small. The upper bound grows proportionally with the input, so for inputs above $0.5 / 1.5 \approx 0.33$ the proportional term dominates.
+`fn grid_search_branch_lengths()` [packages/treetime/src/optimize/zero_boundary.rs#L97-L105](../../packages/treetime/src/optimize/zero_boundary.rs#L97-L105) computes the grid upper bound as `max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER)` with `GRID_SEARCH_MIN_UPPER = 0.5` [packages/treetime/src/optimize/zero_boundary.rs#L11](../../packages/treetime/src/optimize/zero_boundary.rs#L11). The floor ensures the grid covers the biologically plausible range even when the current branch length estimate is zero or very small. The upper bound grows proportionally with the input, so for inputs above $0.5 / 1.5 \approx 0.33$ the proportional term dominates.
 
-For a non-unimodal surface whose global maximum lies far beyond $1.5 \cdot \text{input}$ (e.g. a saturated substitution regime with true $t \gg 0.5$), the grid scan cannot reach it. `fn reconcile_zero_boundary()` [packages/treetime/src/optimize/zero_boundary.rs#L40](../../packages/treetime/src/optimize/zero_boundary.rs#L40) would then either return zero (if zero beats every visible grid point) or return the best visible positive mode, both of which are wrong in the saturated regime.
+For a non-unimodal surface whose global maximum lies far beyond $1.5 \cdot \text{input}$ (e.g. a saturated substitution regime with true $t \gg 0.5$), the grid scan cannot reach it. `fn reconcile_zero_boundary()` [packages/treetime/src/optimize/zero_boundary.rs#L42](../../packages/treetime/src/optimize/zero_boundary.rs#L42) would then either return zero (if zero beats every visible grid point) or return the best visible positive mode, both of which are wrong in the saturated regime.
 
-The Brent search interval uses the same bound: `fn brent_bracket()` [packages/treetime/src/optimize/method_brent.rs#L101-L105](../../packages/treetime/src/optimize/method_brent.rs#L101-L105) sets the upper end to `max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER)`, so the Brent methods cannot move a branch beyond this bound in one step either.
+The Brent search interval uses the same bound: `fn brent_bracket()` [packages/treetime/src/optimize/method_brent.rs#L37-L42](../../packages/treetime/src/optimize/method_brent.rs#L37-L42) sets the upper end to `max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER)`, so the Brent methods cannot move a branch beyond this bound in one step either.
+
+## Evidence
+
+The K80 surface of [Dinh and Matsen 2017](https://doi.org/10.1214/16-AAP1240) used in `test_dispatch_zero_boundary.rs` (`fn make_dinh_matsen_k80_contribution()`) has a local maximum at $t \approx 0.167$ ($\ell = -2.77333$) and its global maximum at $t \approx 6.37$ ($\ell = -2.77254$). Both values follow from the fixture coefficients (stationary points of $P(x) = p_1(x)\, p_2(x)$ with $x = e^{-t/2}$, $p_1 = 0.25 + 0.04522316\, x - 0.04545042\, x^2$, $p_2 = 0.25 - 0.04456328\, x + 0.04456328\, x^2$).
+
+- With `one_mutation = 0.01` and a start $t_0 \leq 2$, the upper end $\max(1.5 t_0 + \text{one\_mutation}, 0.5)$ is at most $3.01$, so neither the grid nor the Brent bracket contains $6.37$
+- The maximum also lies outside the v0 search range $t \leq 4$ (bracket $s \in [-2, 2]$) and the fixture omits the v0 profile penalty, so finding it is not a v0 parity requirement
+- Tests of the bounded recovery assert only that a positive point beats zero inside the grid; they are not tests of global optimization
 
 ## Impact
 

@@ -9,9 +9,9 @@
 
 This choice is correct in the common case: the input branch length is the optimizer's best prior estimate of the true scale. The corner case where the input is uninformative or wildly misleading is not covered:
 
-- Input branch length is zero (e.g. uncalibrated tree): grid extent falls back to `max(0.1 * one_mutation, GRID_SEARCH_MIN_UPPER = 0.5)`, which may not contain the true mode if the true scale is outside $[0.1 \cdot \text{one\_mutation}, 0.5]$.
+- Input branch length is zero (e.g. uncalibrated tree): the grid spans $[0.1 \cdot \text{one\_mutation},\ \max(\text{one\_mutation}, 0.5)]$, which may not contain the true mode if the true scale is outside that interval.
 - Input branch length is much smaller than the true mode (e.g. bad initial guess): `1.5 * bl + one_mutation < true_mode`, and the cap at `0.5` saves the day only if `true_mode < 0.5`.
-- Input branch length is much larger than the true mode: grid scans a range far from the true mode, may miss it entirely if the grid's log spacing puts all points above the true scale.
+- Input branch length is much larger than the true mode: the grid lower end stays at $0.1 \cdot \text{one\_mutation}$, so the 100 points spread over more decades and the resolution per decade drops; the true mode is missed only when it lies below the lower end.
 
 ## Evidence
 
@@ -28,8 +28,8 @@ Negligible when the initial guess is calibrated (the standard workflow). On data
 ## Proposed action
 
 1. Test with a fixture where the input branch length is $100\times$ away from the true mode in each direction (above and below), verify the grid still covers the true mode.
-2. If the test fails, consider passing a more informative extent: e.g. the maximum of the input branch length and `one_mutation * sqrt(sequence_length)` (the standard deviation of the Hamming distance distribution under a neutral model), or an invariant derived from the current contribution coefficients.
-3. Document the admissibility contract: "the caller must pass a `branch_length_for_extent` whose true optimum lies within $[\text{extent} / 10, 1.5 \cdot \text{extent} + \text{one\_mutation}]$ or $[\text{extent} / 10, 0.5]$, whichever is larger".
+2. If the test fails, consider passing a more informative extent: e.g. the maximum of the input branch length and the standard deviation of the Hamming distance, $\sqrt{p (1 - p) / L}$ for the observed difference fraction $p$ over $L$ sites (at most $1 / (2 \sqrt{L})$), or an invariant derived from the current contribution coefficients.
+3. Document the admissibility contract: "the grid covers $[0.1 \cdot \text{one\_mutation},\ \max(1.5 \cdot \text{extent} + \text{one\_mutation}, 0.5)]$; the true optimum must lie inside it".
 
 ## Cross-references
 

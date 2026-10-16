@@ -16,9 +16,9 @@ The unrestricted shortcut could collapse a branch to zero even when a positive b
 
 ## Implementation
 
-- `GTR.unimodal_branch_likelihood` field at [packages/treetime/src/gtr/gtr.rs#L198-L209](../../packages/treetime/src/gtr/gtr.rs#L198-L209): tracks whether the model's $L(t)$ is proven unimodal
-- Set `true` for JC69 at [packages/treetime/src/gtr/get_gtr.rs#L189-L190](../../packages/treetime/src/gtr/get_gtr.rs#L189-L190) and F81 at [packages/treetime/src/gtr/get_gtr.rs#L251-L252](../../packages/treetime/src/gtr/get_gtr.rs#L251-L252)
-- `is_zero_branch_optimal()` at [packages/treetime/src/optimize/zero_boundary.rs#L203-L210](../../packages/treetime/src/optimize/zero_boundary.rs#L203-L210): checks all contributions have unimodal models before applying derivative shortcut
+- `fn GTR::certified_decay_rate()` [packages/treetime/src/gtr/gtr.rs#L121-L123](../../packages/treetime/src/gtr/gtr.rs#L121-L123): the decay rate shared by every nonzero eigenvalue, `None` for models where $L(t)$ is not proven unimodal
+- `fn GTR::new()` sets the unit decay rate only when all exchangeabilities are equal and positive [packages/treetime/src/gtr/gtr.rs#L100-L101](../../packages/treetime/src/gtr/gtr.rs#L100-L101) (`fn has_equal_positive_exchangeabilities()` [packages/treetime/src/gtr/gtr.rs#L222](../../packages/treetime/src/gtr/gtr.rs#L222)), which holds for JC69, F81, and binary models
+- `fn is_zero_branch_optimal()` [packages/treetime/src/optimize/zero_boundary.rs#L21-L40](../../packages/treetime/src/optimize/zero_boundary.rs#L21-L40): applies the derivative shortcut only when `fn shared_certified_decay_rate()` [packages/treetime/src/optimize/zero_boundary.rs#L120-L127](../../packages/treetime/src/optimize/zero_boundary.rs#L120-L127) finds the same certified decay rate in every contribution
 
 ## Impact
 
