@@ -103,7 +103,7 @@ react_pin_reason := "Auspice runs in-process and is verified only on React 19"
 
 # Groups of the full gate, one CI job each (`just check-group <group>`). Hawk
 # needs a second full compilation and runs locally only.
-checks_format := "fmt-check-rs fmt-check-ts fmt-check-other lint-shell lint-docker lint-workflows deny shear fixtures-check"
+checks_format := "fmt-check-rs fmt-check-ts fmt-check-other lint-shell lint-docker lint-workflows deny shear fixtures-check prebuilt-libs-check"
 checks_clippy := "lint-rs lint-wasm"
 checks_dylint := "dylint"
 checks_tests := "test-rs test-wasm"
@@ -536,6 +536,11 @@ generated-check: _js
 [group("generated")]
 fixtures-check:
     dev/fixtures-check
+
+# Fail when the prebuilt liblzma or libzstd of the container images differs from the C version that liblzma-sys or zstd-sys bundles
+[group("generated")]
+prebuilt-libs-check:
+    dev/prebuilt-libs-check
 
 # Start the web and API dev servers in the foreground until Ctrl-C
 [group("app")]

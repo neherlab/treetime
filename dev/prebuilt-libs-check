@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+#
+# Usage: $0
+#
+# Check that the prebuilt liblzma and libzstd archives, which the container
+# images link in place of the C sources of liblzma-sys and zstd-sys
+# (dev/docker/files/install-compression-libs), have the C versions that those
+# crates in Cargo.lock bundle. A crate update that changes the bundled C version
+# needs a binarylandia/staticbourg release of that version first. Exits 1 on a
+# mismatch.
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+install_script="dev/docker/files/install-compression-libs"
+
+# The xz version that each liblzma-sys release bundles (xz/src/liblzma/api/lzma/version.h
+# of the crate). zstd-sys names its zstd version in its own version.
+declare -A liblzma_sys_bundles=(
+  ["0.4.9"]="5.8.4"
+)
+
+lock_version() {
+  yq -p toml -o yaml ".package[] | select(.name == \"$1\") | .version" Cargo.lock
+}
+
+script_version() {
+  sed -n "s/^$1=\"\(.*\)\"$/\1/p" "${install_script}"
+}
+
+rc=0
+
+liblzma_sys="$(lock_version liblzma-sys)"
+lzma_expected="${liblzma_sys_bundles[${liblzma_sys}]:-}"
+lzma_installed="$(script_version lzma_version)"
+if [[ -z "${lzma_expected}" ]]; then
+  printf 'liblzma-sys %s in Cargo.lock has no xz version in %s; add it\n' "${liblzma_sys}" "$0" >&2
+  rc=1
+elif [[ "${lzma_expected}" != "${lzma_installed}" ]]; then
+  printf 'liblzma-sys %s bundles xz %s, but %s installs xz %s\n' "${liblzma_sys}" "${lzma_expected}" "${install_script}" "${lzma_installed}" >&2
+  rc=1
+fi
+
+zstd_sys="$(lock_version zstd-sys)"
+zstd_expected="${zstd_sys##*+zstd.}"
+zstd_installed="$(script_version zstd_version)"
+if [[ "${zstd_expected}" != "${zstd_installed}" ]]; then
+  printf 'zstd-sys %s bundles zstd %s, but %s installs zstd %s\n' "${zstd_sys}" "${zstd_expected}" "${install_script}" "${zstd_installed}" >&2
+  rc=1
+fi
+
+exit "${rc}"
