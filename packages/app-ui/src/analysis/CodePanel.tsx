@@ -5,6 +5,7 @@ import {
   type ConfigCode,
   type UiCodeFormat,
 } from "@neherlab/app-contracts";
+import { cn } from "cn";
 import { useCallback, useMemo, useState } from "react";
 import FileUp from "~icons/lucide/file-up";
 
@@ -14,7 +15,6 @@ import { Panel } from "../components/Panel";
 import { commandSwitchNote } from "../settings/commands";
 import { useDraftStore } from "../store/draft";
 import { Button } from "../ui/button";
-import { cn } from "../ui/cn";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { Spinner } from "../ui/spinner";
 import { Textarea } from "../ui/textarea";

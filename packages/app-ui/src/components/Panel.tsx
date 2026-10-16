@@ -1,11 +1,11 @@
 import type { RunRecord } from "@neherlab/app-contracts";
+import { cn } from "cn";
 import type { ReactNode } from "react";
 import CircleX from "~icons/lucide/circle-x";
 import TriangleAlert from "~icons/lucide/triangle-alert";
 
 import { formatDuration } from "../format";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { cn } from "../ui/cn";
 
 export function Panel({
   title,

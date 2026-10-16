@@ -1,8 +1,7 @@
+import { cn } from "cn";
 import type * as React from "react";
 import * as RechartsPrimitive from "recharts";
 import type { TooltipPayloadEntry, TooltipValueType } from "recharts";
-
-import { cn } from "./cn";
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
 

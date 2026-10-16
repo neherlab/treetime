@@ -2,11 +2,11 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { useMediaQuery } from "@mantine/hooks";
 import { useHotkey } from "@tanstack/react-hotkeys";
+import { cn } from "cn";
 import * as React from "react";
 import PanelLeftIcon from "~icons/lucide/panel-left";
 
 import { Button } from "./button";
-import { cn } from "./cn";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./sheet";
 import {
   clampSidebarWidth,

@@ -1,8 +1,8 @@
 import { Autocomplete } from "@base-ui/react/autocomplete";
+import { cn } from "cn";
 import type * as React from "react";
 import SearchIcon from "~icons/lucide/search";
 
-import { cn } from "./cn";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./dialog";
 
 function Command<Groups extends readonly { items: readonly unknown[] }[]>(

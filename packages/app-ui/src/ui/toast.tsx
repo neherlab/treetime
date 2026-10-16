@@ -1,4 +1,5 @@
 import { Toast as ToastPrimitive } from "@base-ui/react/toast";
+import { cn } from "cn";
 import * as React from "react";
 import CircleCheckIcon from "~icons/lucide/circle-check";
 import InfoIcon from "~icons/lucide/info";
@@ -8,7 +9,6 @@ import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 import XIcon from "~icons/lucide/x";
 
 import { Button } from "./button";
-import { cn } from "./cn";
 
 const ACTION_BUTTON = <Button variant="outline" size="sm" />;
 

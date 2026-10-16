@@ -1,6 +1,5 @@
+import { cn } from "cn";
 import LoaderCircleIcon from "~icons/lucide/loader-circle";
-
-import { cn } from "./cn";
 
 function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
   return (

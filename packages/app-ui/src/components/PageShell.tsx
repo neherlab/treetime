@@ -1,6 +1,5 @@
+import { cn } from "cn";
 import type { ReactNode } from "react";
-
-import { cn } from "../ui/cn";
 
 export function PageShell({ children, className }: { children: ReactNode; className?: string }) {
   return (

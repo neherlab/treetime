@@ -1,11 +1,11 @@
 import type { AppCommand, JsonValue, SettingKind, SettingOption, SettingSpec } from "@neherlab/app-contracts";
+import { cn } from "cn";
 import { useCallback, useMemo, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { baseName, pathList } from "../settings/inputs";
 import { isJsonObject, sameJson } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
-import { cn } from "../ui/cn";
 import { Input } from "../ui/input";
 import { NativeSelect, NativeSelectOption } from "../ui/native-select";
 import { Switch } from "../ui/switch";

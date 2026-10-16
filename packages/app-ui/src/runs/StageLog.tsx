@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import { type ReactNode, useCallback, useId, useMemo, useState } from "react";
 import CircleCheck from "~icons/lucide/circle-check";
 import CircleX from "~icons/lucide/circle-x";
@@ -16,7 +17,6 @@ import {
 } from "../results/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Badge } from "../ui/badge";
-import { cn } from "../ui/cn";
 import { Spinner } from "../ui/spinner";
 import { LogLines } from "./LogLines";
 

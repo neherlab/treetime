@@ -10,6 +10,7 @@ import {
   type RowData,
   type SortingState,
 } from "@tanstack/react-table";
+import { cn } from "cn";
 import { useCallback, useMemo } from "react";
 import {
   Cell,
@@ -28,7 +29,6 @@ import ArrowDown from "~icons/lucide/arrow-down";
 import ArrowUp from "~icons/lucide/arrow-up";
 import ArrowUpDown from "~icons/lucide/arrow-up-down";
 
-import { cn } from "../ui/cn";
 import { sortDescriptor } from "./sortDescriptor";
 
 interface DataColumnMeta {

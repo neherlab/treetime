@@ -1,4 +1,5 @@
 import type { AppCommand, JsonValue, SettingSpec, SparseConfig } from "@neherlab/app-contracts";
+import { cn } from "cn";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 import RotateCcw from "~icons/lucide/rotate-ccw";
@@ -7,7 +8,6 @@ import { isChanged, resetValue } from "../settings/config";
 import { isJsonObject } from "../settings/json";
 import { formatList } from "../settings/lists";
 import { Button } from "../ui/button";
-import { cn } from "../ui/cn";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { Label } from "../ui/label";
 import { settingFieldId } from "./fieldIds";

@@ -1,8 +1,7 @@
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
+import { cn } from "cn";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronUpIcon from "~icons/lucide/chevron-up";
-
-import { cn } from "./cn";
 
 function Accordion({ className, ...props }: AccordionPrimitive.Root.Props) {
   return <AccordionPrimitive.Root data-slot="accordion" className={cn("flex w-full flex-col", className)} {...props} />;

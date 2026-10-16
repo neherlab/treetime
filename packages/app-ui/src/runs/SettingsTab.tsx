@@ -1,6 +1,7 @@
 import type { RunRecord, SparseConfig, UiCodeFormat } from "@neherlab/app-contracts";
 import { configCheck } from "@neherlab/app-contracts/client";
 import { keepPreviousData } from "@tanstack/react-query";
+import { cn } from "cn";
 import { Fragment, useMemo, useState } from "react";
 import RotateCcw from "~icons/lucide/rotate-ccw";
 
@@ -13,7 +14,6 @@ import { Panel } from "../components/Panel";
 import { commandSettings, groupedSpecs } from "../settings/catalog";
 import { settingValue } from "../settings/config";
 import { Button } from "../ui/button";
-import { cn } from "../ui/cn";
 import { Label } from "../ui/label";
 import { Switch } from "../ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";

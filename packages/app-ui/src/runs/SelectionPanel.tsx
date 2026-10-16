@@ -2,13 +2,13 @@ import type { ResultTree } from "@neherlab/app-contracts";
 import { cladeInRuns } from "@neherlab/app-contracts/client";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { cn } from "cn";
 import { useCallback, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
 import { Panel } from "../components/Panel";
 import { formatLevel } from "../format";
 import { Button } from "../ui/button";
-import { cn } from "../ui/cn";
 import { DateIntervals, type DateRow } from "./DateIntervals";
 import type { TreeLink } from "./TreeWorkspace";
 

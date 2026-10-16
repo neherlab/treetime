@@ -11,6 +11,7 @@ import type {
   SettingSpec,
   SparseConfig,
 } from "@neherlab/app-contracts";
+import { cn } from "cn";
 import { useCallback, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -22,7 +23,6 @@ import { isChanged, resetValue, settingValue } from "../settings/config";
 import { isNumber, isString, sameJson } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
 import { Badge } from "../ui/badge";
-import { cn } from "../ui/cn";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { NativeSelect, NativeSelectOption } from "../ui/native-select";

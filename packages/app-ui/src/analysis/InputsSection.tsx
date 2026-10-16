@@ -1,4 +1,5 @@
 import type { AppCommand, InputFacts, InputSlot } from "@neherlab/app-contracts";
+import { cn } from "cn";
 import { useCallback, useMemo, useState } from "react";
 import { useWatch } from "react-hook-form";
 import Upload from "~icons/lucide/upload";
@@ -9,7 +10,6 @@ import { useHost } from "../host-context";
 import { commandSettings } from "../settings/catalog";
 import { baseName, pathList, slotFactsText, slotProblem } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
-import { cn } from "../ui/cn";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { EXAMPLES_PANEL_KINDS, EXAMPLES_PANELS, ExamplesPanel, type ExamplesPanelKind } from "./ExamplesPanel";
 import { fromFormValue, type FormConfig } from "./formValues";

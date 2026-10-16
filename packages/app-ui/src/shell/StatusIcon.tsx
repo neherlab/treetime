@@ -1,4 +1,5 @@
 import type { RunStatus } from "@neherlab/app-contracts";
+import { cn } from "cn";
 import type { ComponentType, SVGProps } from "react";
 import Ban from "~icons/lucide/ban";
 import CircleCheck from "~icons/lucide/circle-check";
@@ -6,8 +7,6 @@ import CircleDashed from "~icons/lucide/circle-dashed";
 import CircleX from "~icons/lucide/circle-x";
 import LoaderCircle from "~icons/lucide/loader-circle";
 import OctagonAlert from "~icons/lucide/octagon-alert";
-
-import { cn } from "../ui/cn";
 
 const STATUS_LOOK: Record<
   RunStatus,
