@@ -4251,12 +4251,12 @@
           ]
         },
         "branch_length_initial_guess": {
-          "description": "Initial branch length estimate before Newton optimization.\n\n- auto: estimate only edges with missing or invalid branch lengths,\n  preserve valid input values (default)\n- always: estimate all edges, overwriting input branch lengths\n- never: use input branch lengths as-is; fails if any are missing",
+          "description": "Initial branch length estimate before the per-edge optimization.\n\n- auto: estimate only edges with missing or invalid branch lengths,\n  preserve valid input values (default)\n- always: estimate all edges, overwriting input branch lengths\n- never: use input branch lengths as-is; fails if any are missing",
           "$ref": "#/$defs/InitialGuessMode",
           "default": "auto"
         },
         "opt_method": {
-          "description": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are\n`brent` (default, matches v0) and `newton`.",
+          "description": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are\n`brent` (default) and `newton`.",
           "$ref": "#/$defs/BranchOptMethod",
           "default": "brent"
         },
@@ -4440,7 +4440,7 @@
         {
           "anyOf": [
             {
-              "description": "Brent's method in $\\sqrt{t}$ space.\n\nDerivative-free. Uses the same algorithm and parameterization as v0, so\nresults match v0. The $\\sqrt{t}$ reparameterization smooths the\nobjective, giving parabolic interpolation a better fit. This is the\ndefault.",
+              "description": "Brent's method in $\\sqrt{t}$ space.\n\nDerivative-free line search that combines parabolic interpolation with\ngolden-section steps. Optimizing $s=\\sqrt{t}$ instead of $t$ smooths the\nlikelihood near short branches, so the interpolation fits better. v0\nuses the same method and parameterization, with its own search bounds\nand stopping rule, so branch lengths can differ slightly from v0. This\nis the default.",
               "type": "string",
               "const": "brent"
             },
@@ -4453,7 +4453,7 @@
         {
           "anyOf": [
             {
-              "description": "Newton-Raphson in $\\sqrt{t}$ space.\n\nReparameterizes the optimization variable as $s = \\sqrt{t}$ and applies\nthe chain rule to transform derivatives. Reduces the indel Hessian\nsingularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme\ncases ($t < 0.001$, $k > 10$).",
+              "description": "Newton-Raphson in $\\sqrt{t}$ space.\n\nUses the first and second derivatives of the likelihood, including the\nindel term, and converges in few iterations on well-behaved edges.\nChoose it to compare against the default; branch lengths can differ\nfrom the default and from v0.",
               "type": "string",
               "const": "newton"
             },

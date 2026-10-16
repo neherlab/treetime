@@ -8699,7 +8699,7 @@
             "BRANCH_LENGTH_INITIAL_GUESS"
           ],
           "conflicts": [],
-          "help": "Initial branch length estimate before Newton optimization.",
+          "help": "Initial branch length estimate before the per-edge optimization.",
           "more": "- auto: estimate only edges with missing or invalid branch lengths, preserve valid input values (default) - always: estimate all edges, overwriting input branch lengths - never: use input branch lengths as-is; fails if any are missing"
         },
         {
@@ -8730,7 +8730,7 @@
             "OPT_METHOD"
           ],
           "conflicts": [],
-          "help": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are `brent` (default, matches v0) and `newton`.",
+          "help": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are `brent` (default) and `newton`.",
           "more": ""
         },
         {

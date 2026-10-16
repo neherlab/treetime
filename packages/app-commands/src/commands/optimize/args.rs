@@ -212,7 +212,7 @@ pub struct TreetimeOptimizeArgsRaw {
   #[default = 0.0]
   pub damping: f64,
 
-  /// Initial branch length estimate before Newton optimization.
+  /// Initial branch length estimate before the per-edge optimization.
   ///
   /// - auto: estimate only edges with missing or invalid branch lengths,
   ///   preserve valid input values (default)
@@ -222,7 +222,7 @@ pub struct TreetimeOptimizeArgsRaw {
   pub branch_length_initial_guess: InitialGuessModeCli,
 
   /// Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are
-  /// `brent` (default, matches v0) and `newton`.
+  /// `brent` (default) and `newton`.
   #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethodCli::default(), help_heading = "Branch lengths"))]
   pub opt_method: BranchOptMethodCli,
 
@@ -329,19 +329,21 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 pub enum BranchOptMethodCli {
   /// Brent's method in $\sqrt{t}$ space.
   ///
-  /// Derivative-free. Uses the same algorithm and parameterization as v0, so
-  /// results match v0. The $\sqrt{t}$ reparameterization smooths the
-  /// objective, giving parabolic interpolation a better fit. This is the
-  /// default.
+  /// Derivative-free line search that combines parabolic interpolation with
+  /// golden-section steps. Optimizing $s=\sqrt{t}$ instead of $t$ smooths the
+  /// likelihood near short branches, so the interpolation fits better. v0
+  /// uses the same method and parameterization, with its own search bounds
+  /// and stopping rule, so branch lengths can differ slightly from v0. This
+  /// is the default.
   #[default]
   Brent,
 
   /// Newton-Raphson in $\sqrt{t}$ space.
   ///
-  /// Reparameterizes the optimization variable as $s = \sqrt{t}$ and applies
-  /// the chain rule to transform derivatives. Reduces the indel Hessian
-  /// singularity from $O(1/t^2)$ to $O(1/t)$. Residual dominance on extreme
-  /// cases ($t < 0.001$, $k > 10$).
+  /// Uses the first and second derivatives of the likelihood, including the
+  /// indel term, and converges in few iterations on well-behaved edges.
+  /// Choose it to compare against the default; branch lengths can differ
+  /// from the default and from v0.
   Newton,
 }
 

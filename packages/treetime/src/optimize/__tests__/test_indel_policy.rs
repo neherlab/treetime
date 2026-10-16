@@ -1,14 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::TREE_NEWICK;
-  use crate::optimize::__tests__::test_optimize_indel::tests::{
-    inject_indels_on_first_edge, setup_identical_reconstruction,
-  };
+  use crate::optimize::__tests__::test_optimize_indel::tests::inject_indels_on_first_edge;
   use crate::optimize::dispatch::initial_guess_mixed;
   use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
   use crate::optimize::indel::{EdgeIndels, IndelPolicy, IndelTerm};
   use crate::optimize::params::ExistingBranchLengths;
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::test_utils::deletion;
   use eyre::Report;
   use helpers::{BRANCH_LENGTH, Fixture};
@@ -16,16 +12,11 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use statrs::function::factorial::ln_factorial;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]
   #[rstest]
-  // Poisson maximum-likelihood rate: 3 indels over 6 edges of length 0.125 gives 3 / 0.75
   #[case::include(IndelPolicy::Include, 4.0)]
   #[case::exclude(IndelPolicy::Exclude, 0.0)]
   #[trace]
@@ -78,7 +69,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  // Poisson log-likelihood k ln(mu t) - mu t - ln k! with k = 3, mu = 4, t = 0.5, and its derivatives k/t - mu and -k/t^2
   #[case::include(IndelPolicy::Include, (3.0 * 2.0_f64.ln() - 2.0 - ln_factorial(3), 2.0, -12.0))]
   #[case::exclude(IndelPolicy::Exclude, (0.0,                                         0.0,  0.0))]
   #[trace]
@@ -96,7 +86,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  // Sum of Poisson log-likelihoods: 3 ln(4 * 0.125) - 4 * 0.125 - ln 3! on the indel edge, -4 * 0.125 on each of the 5 other edges
   #[case::include(IndelPolicy::Include, 3.0 * 0.5_f64.ln() - 3.0 - ln_factorial(3))]
   #[case::exclude(IndelPolicy::Exclude, 0.0)]
   #[trace]
@@ -141,7 +130,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  // Identical sequences give no substitutions; the indel edge starts at the Poisson optimum k / mu = 3 / 4
   #[case::include(IndelPolicy::Include, array![0.75, 0.0, 0.0, 0.0, 0.0, 0.0])]
   #[case::exclude(IndelPolicy::Exclude, array![0.0,  0.0, 0.0, 0.0, 0.0, 0.0])]
   #[trace]
@@ -177,7 +165,6 @@ mod tests {
       rate: 4.0,
       held_length: 0.0,
     };
-    // Poisson maximum-likelihood length k / mu, where the derivative k/t - mu vanishes
     let expected = 0.75;
     pretty_assert_ulps_eq!(expected, term.length_estimate().expect("positive count and rate"));
   }
@@ -212,7 +199,20 @@ mod tests {
   }
 
   mod helpers {
-    use super::*;
+    use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::TREE_NEWICK;
+    use crate::optimize::__tests__::test_optimize_indel::tests::{
+      inject_indels_on_first_edge, setup_identical_reconstruction,
+    };
+    use crate::optimize::indel::{EdgeIndels, IndelPolicy};
+    use crate::partition::marginal::reconstruction::MarginalReconstruction;
+    use crate::test_utils::deletion;
+    use eyre::Report;
+    use ndarray::Array1;
+    use std::collections::BTreeMap;
+    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
+    use treetime_io::nwk::nwk_read;
+    use treetime_primitives::Seq;
 
     pub(super) const BRANCH_LENGTH: f64 = 0.125;
 

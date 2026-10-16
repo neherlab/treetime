@@ -4662,7 +4662,7 @@ export type OptimizeConfig = {
    */
   damping?: number;
   /**
-   * Initial branch length estimate before Newton optimization.
+   * Initial branch length estimate before the per-edge optimization.
    *
    * - auto: estimate only edges with missing or invalid branch lengths,
    *   preserve valid input values (default)
@@ -4672,7 +4672,7 @@ export type OptimizeConfig = {
   branch_length_initial_guess?: InitialGuessMode;
   /**
    * Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are
-   * `brent` (default, matches v0) and `newton`.
+   * `brent` (default) and `newton`.
    */
   opt_method?: BranchOptMethod;
   /**
