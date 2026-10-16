@@ -46,7 +46,9 @@ impl<P: IndexedPartition> MarginalPasses for P {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     (): &(),
   ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
-    indexed_backward(self.inputs(), gtr, self.indexed_kind(), graph, branch_lengths)
+    let kind = self.indexed_kind();
+    gtr.check_site_count(kind.site_count())?;
+    indexed_backward(self.inputs(), gtr, kind, graph, branch_lengths)
   }
 
   fn marginal_forward(
@@ -57,15 +59,9 @@ impl<P: IndexedPartition> MarginalPasses for P {
     node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
   ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
-    indexed_forward(
-      self.inputs(),
-      gtr,
-      self.indexed_kind(),
-      graph,
-      branch_lengths,
-      node_states,
-      backward,
-    )
+    let kind = self.indexed_kind();
+    gtr.check_site_count(kind.site_count())?;
+    indexed_forward(self.inputs(), gtr, kind, graph, branch_lengths, node_states, backward)
   }
 
   fn count_transitions(
@@ -381,4 +377,13 @@ pub(crate) enum IndexedKind<'a> {
   Discrete {
     leaves: &'a BTreeMap<GraphNodeKey, Array2<f64>>,
   },
+}
+
+impl IndexedKind<'_> {
+  fn site_count(&self) -> usize {
+    match self {
+      IndexedKind::Dense { length, .. } => *length,
+      IndexedKind::Discrete { .. } => 1,
+    }
+  }
 }

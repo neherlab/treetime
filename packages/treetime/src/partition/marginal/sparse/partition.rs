@@ -201,6 +201,7 @@ impl MarginalPasses for PartitionMarginalSparse {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
     input: &Self::BackwardInput,
   ) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
+    gtr.check_site_count(self.length)?;
     backward::process_backward_indexed(self, gtr, graph, branch_lengths, input)
   }
 
@@ -212,6 +213,7 @@ impl MarginalPasses for PartitionMarginalSparse {
     node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
     backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
   ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
+    gtr.check_site_count(self.length)?;
     forward::process_forward_indexed(self, gtr, graph, branch_lengths, node_states, backward)
   }
 

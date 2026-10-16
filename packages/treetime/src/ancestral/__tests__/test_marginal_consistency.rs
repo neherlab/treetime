@@ -536,6 +536,37 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::dense_longer( run_dense_marginal,  17, "Number of site rates (17) differs from the number of sites in the partition (16)")]
+  #[case::dense_single( run_dense_marginal,  1,  "Number of site rates (1) differs from the number of sites in the partition (16)")]
+  #[case::sparse_longer(run_sparse_marginal, 17, "Number of site rates (17) differs from the number of sites in the partition (16)")]
+  #[case::sparse_shorter(run_sparse_marginal, 15, "Number of site rates (15) differs from the number of sites in the partition (16)")]
+  #[trace]
+  fn test_marginal_site_rates_length_must_match_alignment(
+    #[case] #[notrace] run: MarginalRunner,
+    #[case] n_site_rates: usize,
+    #[case] expected: &str,
+  ) -> Result<(), Report> {
+    let aln = gap_free_alignment()?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = nwk_parsed.branch_lengths;
+
+    let gtr = GTR::builder()
+      .n_states(4)
+      .mu(1.0)
+      .pi(Array1::ones(4))
+      .rate_scale(RateScale::Normalized)
+      .site_rates(Array1::ones(n_site_rates))
+      .build()?;
+
+    assert_error!(run(&graph, &branch_lengths, &names, &aln, gtr), expected);
+
+    Ok(())
+  }
+
   type MarginalRunner = fn(
     &Graph,
     &BTreeMap<GraphEdgeKey, Option<f64>>,

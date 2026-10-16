@@ -119,6 +119,16 @@ impl GTR {
     self.site_rates.as_ref()
   }
 
+  pub(crate) fn check_site_count(&self, n_sites: usize) -> Result<(), Report> {
+    match &self.site_rates {
+      Some(site_rates) if site_rates.len() != n_sites => make_error!(
+        "Number of site rates ({}) differs from the number of sites in the partition ({n_sites})",
+        site_rates.len()
+      ),
+      _ => Ok(()),
+    }
+  }
+
   pub fn certified_decay_rate(&self) -> Option<f64> {
     self.unit_decay_rate.map(|unit_decay_rate| unit_decay_rate * self.mu)
   }
