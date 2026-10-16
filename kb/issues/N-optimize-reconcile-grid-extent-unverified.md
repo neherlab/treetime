@@ -5,7 +5,7 @@
 
 ## Problem
 
-`fn reconcile_zero_boundary()` [packages/treetime/src/optimize/zero_boundary.rs#L45](../../packages/treetime/src/optimize/zero_boundary.rs#L45) takes a `branch_length_for_extent` parameter separate from `candidate`. The separation exists because `candidate` may be clamped to $0$ or to a tiny floor like $10^{-12}$ after the inner solver runs, and the grid extent must remain tied to a meaningful scale. `fn optimize_edge()` [packages/treetime/src/optimize/dispatch.rs#L307-L308](../../packages/treetime/src/optimize/dispatch.rs#L307-L308) passes the solver start as the extent: the input branch length, or `one_mutation` or $k / \text{rate}$ when the input is zero and the edge needs a positive start.
+`fn reconcile_zero_boundary()` [packages/treetime/src/optimize/zero_boundary.rs#L42](../../packages/treetime/src/optimize/zero_boundary.rs#L42) takes a `branch_length_for_extent` parameter separate from `candidate`. The separation exists because `candidate` may be clamped to $0$ or to a tiny floor like $10^{-12}$ after the inner solver runs, and the grid extent must remain tied to a meaningful scale. `fn optimize_edge()` [packages/treetime/src/optimize/dispatch.rs#L303-L304](../../packages/treetime/src/optimize/dispatch.rs#L303-L304) passes the solver start as the extent: the input branch length, or `one_mutation` or $k / \text{rate}$ when the input is zero and the edge needs a positive start.
 
 This choice is correct in the common case: the input branch length is the optimizer's best prior estimate of the true scale. The corner case where the input is uninformative or wildly misleading is not covered:
 

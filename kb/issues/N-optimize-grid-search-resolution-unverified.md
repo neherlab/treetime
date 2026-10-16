@@ -2,7 +2,7 @@
 
 ## Problem
 
-`fn grid_search_inner()` [packages/treetime/src/optimize/zero_boundary.rs#L70](../../packages/treetime/src/optimize/zero_boundary.rs#L70) enumerates `GRID_SEARCH_POINTS = 100` log-spaced positive candidates between `0.1 * one_mutation` and `max(1.5 * bl + one_mutation, 0.5)`. The 100-point choice is neither derived from a convergence analysis nor tested for sufficiency. A multi-modal surface with a narrow mode could fall between adjacent grid points and get missed, and the reconciliation path in `reconcile_zero_boundary` could then prefer a suboptimal grid point over a true positive mode.
+`fn grid_search_inner()` [packages/treetime/src/optimize/zero_boundary.rs#L67](../../packages/treetime/src/optimize/zero_boundary.rs#L67) enumerates `GRID_SEARCH_POINTS = 100` log-spaced positive candidates between `0.1 * one_mutation` and `max(1.5 * bl + one_mutation, 0.5)`. The 100-point choice is neither derived from a convergence analysis nor tested for sufficiency. A multi-modal surface with a narrow mode could fall between adjacent grid points and get missed, and the reconciliation path in `reconcile_zero_boundary` could then prefer a suboptimal grid point over a true positive mode.
 
 The log spacing spans 3-4 decades for typical branch lengths (from $\sim 10^{-4}$ to $\sim 0.5$), so 100 points give roughly 25-33 points per decade. A mode narrower than one grid step would be invisible.
 

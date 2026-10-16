@@ -5,17 +5,17 @@
 
 ## Problem
 
-`fn optimize_edge()` [packages/treetime/src/optimize/dispatch.rs#L272-L311](../../packages/treetime/src/optimize/dispatch.rs#L272-L311) handles the endpoint $t = 0$ of the branch length in these places:
+`fn optimize_edge()` [packages/treetime/src/optimize/dispatch.rs#L272-L307](../../packages/treetime/src/optimize/dispatch.rs#L272-L307) handles the endpoint $t = 0$ of the branch length in these places:
 
 1. **Start bumps** [dispatch.rs#L280-L290](../../packages/treetime/src/optimize/dispatch.rs#L280-L290): a zero start moves to $\max(k / \text{rate}, \text{one\_mutation})$ when the edge has $k > 0$ indels, or to `one_mutation` when some site has zero likelihood at $t = 0$
-2. **Unimodal shortcut** `fn is_zero_branch_optimal()` [packages/treetime/src/optimize/zero_boundary.rs#L21-L43](../../packages/treetime/src/optimize/zero_boundary.rs#L21-L43) before the solver: for unimodal models (JC69, F81, binary) without indels, return zero when $\ell'(0) < 0$
+2. **Unimodal shortcut** `fn is_zero_branch_optimal()` [packages/treetime/src/optimize/zero_boundary.rs#L21-L40](../../packages/treetime/src/optimize/zero_boundary.rs#L21-L40) before the solver: when every partition has the same certified decay rate (`certified_decay_rate()`, JC69, F81, and binary models) and the edge has no indels, return zero when $\ell'(0) < 0$
 3. **Solver floors**: the Brent bracket lower end `min_branch_length.max(1e-12)` [packages/treetime/src/optimize/method_brent.rs#L39](../../packages/treetime/src/optimize/method_brent.rs#L39), so Brent cannot return zero; `min_branch_length_for_indels()` [zero_boundary.rs#L13-L19](../../packages/treetime/src/optimize/zero_boundary.rs#L13-L19) gives $0.01 \cdot \text{one\_mutation}$ for edges that need a positive length. Newton clamps $s \geq 0$ and can return exactly zero
 4. **Grid inside Newton** [packages/treetime/src/optimize/method_newton.rs#L27-L29](../../packages/treetime/src/optimize/method_newton.rs#L27-L29): the grid search compares its best positive point with zero
-5. **Reconcile** `fn reconcile_zero_boundary()` [zero_boundary.rs#L45-L68](../../packages/treetime/src/optimize/zero_boundary.rs#L45-L68) after the solver: runs the grid search when a positive candidate is worse than zero, when a zero candidate comes from a non-unimodal model, or when a zero candidate is invalid at zero
+5. **Reconcile** `fn reconcile_zero_boundary()` [zero_boundary.rs#L42-L65](../../packages/treetime/src/optimize/zero_boundary.rs#L42-L65) after the solver: runs the grid search when a positive candidate is worse than zero, when a zero candidate comes from a non-unimodal model, or when a zero candidate is invalid at zero
 
 ### Repeated scans
 
-`OptimizationContribution::all_sites_valid_at_zero()` [packages/treetime/src/partition/optimize/contribution.rs#L51-L56](../../packages/treetime/src/partition/optimize/contribution.rs#L51-L56) scans every site of every partition (as costly as one log-likelihood evaluation without the exponentials). Per edge it runs in the start bump (zero start only), in `is_zero_branch_optimal` (unimodal models), in `reconcile_zero_boundary` (always), in `is_zero_better_than_grid_best` [zero_boundary.rs#L115](../../packages/treetime/src/optimize/zero_boundary.rs#L115) (positive candidate), and again in `is_zero_better_than_grid_best` at the end of every grid search. The result depends only on the edge's contributions, so one scan per edge is enough.
+`OptimizationContribution::all_sites_valid_at_zero()` [packages/treetime/src/partition/optimize/contribution.rs#L58-L63](../../packages/treetime/src/partition/optimize/contribution.rs#L58-L63) scans every site of every partition (as costly as one log-likelihood evaluation without the exponentials). Per edge it runs in the start bump (zero start only), in `is_zero_branch_optimal` (unimodal models), in `reconcile_zero_boundary` (always), in `is_zero_better_than_grid_best` [zero_boundary.rs#L112](../../packages/treetime/src/optimize/zero_boundary.rs#L112) (positive candidate), and again in `is_zero_better_than_grid_best` at the end of every grid search. The result depends only on the edge's contributions, so one scan per edge is enough.
 
 ### Misleading names
 
