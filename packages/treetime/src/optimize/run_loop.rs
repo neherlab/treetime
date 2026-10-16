@@ -167,7 +167,11 @@ struct BestIteration {
 
 fn stop_reason(lh_history: &[LogLh], best_lh: LogLh, dp: f64) -> Option<ConvergenceReason> {
   let iteration = lh_history.len().checked_sub(1)?;
-  let earlier = |steps: usize| iteration.checked_sub(steps).map_or(LogLh::IMPOSSIBLE, |i| lh_history[i]);
+  let earlier = |steps: usize| {
+    iteration
+      .checked_sub(steps)
+      .map_or(LogLh::IMPOSSIBLE, |i| lh_history[i])
+  };
   let lh = lh_history[iteration];
   let lh_prev = earlier(1);
   let lh_prev_prev = earlier(2);

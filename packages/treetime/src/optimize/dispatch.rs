@@ -135,9 +135,7 @@ impl SeriesChain {
         } else {
           vec![1.0 / edges.len().to_f64_exact(); edges.len()]
         };
-        let longest = (0..edges.len()).fold(0, |best, i| {
-          if edge_lengths[i] > edge_lengths[best] { i } else { best }
-        });
+        let longest = (0..edges.len()).fold(0, |best, i| if edge_lengths[i] > edge_lengths[best] { i } else { best });
         Self {
           optimized: edges[longest],
           edges,
