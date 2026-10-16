@@ -7,6 +7,7 @@ mod test_convergence_sc2;
 mod test_damping;
 mod test_dense_edge_subs;
 mod test_dense_sparse_equivalence;
+mod test_dispatch_input_lengths;
 mod test_dispatch_zero_boundary;
 mod test_eval_zero_branch_mismatch;
 mod test_gm_optimize;
