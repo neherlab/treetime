@@ -12,7 +12,7 @@ mod tests {
 
     let actual = compute_lineage_count_distribution(&events, 0)?;
 
-    pretty_assert_ulps_eq!(actual.eval(1999.0), 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(actual.eval(1999.0), 2.0, max_ulps = 4);
     pretty_assert_ulps_eq!(actual.eval(2000.0), 2.0, max_ulps = 4);
     pretty_assert_ulps_eq!(actual.eval(2005.0), 2.0, max_ulps = 4);
     pretty_assert_ulps_eq!(actual.eval(2010.0), 0.0, max_ulps = 4);
@@ -31,7 +31,7 @@ mod tests {
 
     let actual = compute_lineage_count_distribution(&events, 0)?;
 
-    pretty_assert_ulps_eq!(actual.eval_left(2000.0), 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(actual.eval_left(2000.0), 2.0, max_ulps = 4);
     pretty_assert_ulps_eq!(actual.eval(2000.0), 4.0, max_ulps = 4);
     pretty_assert_ulps_eq!(actual.eval(2010.0), 0.0, max_ulps = 4);
     Ok(())
@@ -61,7 +61,7 @@ mod tests {
 
     let actual = compute_lineage_count_distribution(&events, 1)?;
 
-    pretty_assert_ulps_eq!(actual.eval(1999.0), 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(actual.eval(1999.0), 2.0, max_ulps = 4);
     pretty_assert_ulps_eq!(actual.eval(2000.0), 3.0, max_ulps = 4);
     pretty_assert_ulps_eq!(actual.eval(2005.0), 2.0, max_ulps = 4);
     pretty_assert_ulps_eq!(actual.eval(2010.0), 1.0, max_ulps = 4);

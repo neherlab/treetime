@@ -9,6 +9,8 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
+const LINEAGES_BEFORE_ROOT: f64 = 2.0;
+
 pub(super) fn compute_lineage_count_distribution(
   events: &[(CalendarTime, i32)],
   terminal_lineage_count: i32,
@@ -41,7 +43,8 @@ pub(super) fn compute_lineage_count_distribution(
   }
 
   let breakpoints = Array1::from_vec(breakpoints);
-  let values = once(1.0).chain(values).collect_vec();
+  // a root placed before the earliest merger has not merged yet, so its prior sees two lineages there
+  let values = once(LINEAGES_BEFORE_ROOT).chain(values).collect_vec();
   let values = Array1::from_vec(values);
 
   Ok(PiecewiseConstantFn::new(breakpoints, values))

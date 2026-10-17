@@ -50,6 +50,27 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_coalescent_model_cherry_root_density_is_kingman_before_and_after_the_reference_root() -> Result<(), Report> {
+    // two tips at 2010 that merge at 2005 in the reference tree; before 2005 the root still sees two lineages
+    let (tc, tip) = (3.0, 2010.0);
+    let model = model(array![2005.0, tip], array![2.0, 2.0, 0.0], tc)?;
+    let density = |t: f64| -> Result<f64, Report> {
+      Ok((-(model.root_contribution(t, 2)? + 2.0 * model.leaf_contribution(tip))).exp())
+    };
+
+    for t in [2009.0, 2006.0, 2004.0, 1990.0] {
+      pretty_assert_abs_diff_eq!((-(tip - t) / tc).exp() / tc, density(t)?, epsilon = 1e-12);
+    }
+    let n = 200_000;
+    let dt = 100.0 / n.to_f64_exact();
+    let mass = (0..n)
+      .map(|i| density(tip - (i.to_f64_exact() + 0.5) * dt).map(|value| value * dt))
+      .sum::<Result<f64, Report>>()?;
+    pretty_assert_abs_diff_eq!(1.0, mass, epsilon = 1e-6);
+    Ok(())
+  }
+
   proptest! {
     #[test]
     fn test_prop_coalescent_model_node_and_edge_objectives_match(
