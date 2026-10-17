@@ -13,40 +13,62 @@ use treetime_utils::make_error;
 pub struct CoalescentModel {
   lineage_counts: PiecewiseConstantFn,
   tc: Distribution,
+  /// H(t): integral from t to the present of the per-lineage merger rate
   expected_mergers: PiecewiseLinearFn,
+  /// Slope of H(t) before the first breakpoint of k(t), at its lineage count and Tc there
+  merger_rate_before: f64,
 }
 
 impl CoalescentModel {
   pub(crate) fn new(lineage_counts: &PiecewiseConstantFn, tc: &Distribution) -> Result<Self, Report> {
     let expected_mergers = compute_integral_merger_rate(tc, lineage_counts)?;
+    let first = lineage_counts.breakpoints()[0];
+    let tc_first = tc
+      .eval(first)
+      .wrap_err_with(|| format!("When evaluating coalescent Tc at calendar time {first:.6e}"))?;
+    if !tc_first.is_finite() || tc_first <= 0.0 {
+      return make_error!("Coalescent Tc must be finite and positive at calendar time {first:.6e}, got {tc_first:.6e}");
+    }
     Ok(Self {
       lineage_counts: lineage_counts.clone(),
       tc: tc.clone(),
       expected_mergers,
+      merger_rate_before: compute_merger_rate_per_lineage_scalar(lineage_counts.values()[0], tc_first),
     })
   }
 
   pub(crate) fn leaf_contribution(&self, time: f64) -> f64 {
-    -self.expected_mergers.eval(time)
+    -self.expected_mergers_at(time)
   }
 
   pub(crate) fn internal_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
     let n_mergers = n_children.saturating_sub(1).to_f64_exact();
     let total_merger_rate = self.total_merger_rate(time)?;
-    Ok(n_mergers * (self.expected_mergers.eval(time) - total_merger_rate.ln()))
+    Ok(n_mergers * (self.expected_mergers_at(time) - total_merger_rate.ln()))
   }
 
   pub(crate) fn root_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
-    Ok(self.internal_contribution(time, n_children)? + self.expected_mergers.eval(time))
+    Ok(self.internal_contribution(time, n_children)? + self.expected_mergers_at(time))
   }
 
   pub(crate) fn edge_contribution(&self, edge: &CoalescentEdgeData) -> Result<f64, Report> {
     let parent_time = edge.parent_time().value();
     let child_time = edge.child_time().value();
-    let survival_term = self.expected_mergers.eval(parent_time) - self.expected_mergers.eval(child_time);
+    let survival_term = self.expected_mergers_at(parent_time) - self.expected_mergers_at(child_time);
     let n_siblings = edge.n_siblings();
     let merger_credit = self.total_merger_rate(parent_time)?.ln() * (n_siblings - 1.0) / n_siblings;
     Ok(survival_term - merger_credit)
+  }
+
+  /// H(t), continued before the first breakpoint of k(t) at the rate there, so that exp(-H) decays exponentially into
+  /// the past instead of staying flat
+  fn expected_mergers_at(&self, time: f64) -> f64 {
+    let first = self.lineage_counts.breakpoints()[0];
+    if time < first {
+      self.expected_mergers.eval(first) + (first - time) * self.merger_rate_before
+    } else {
+      self.expected_mergers.eval(time)
+    }
   }
 
   fn total_merger_rate(&self, time: f64) -> Result<f64, Report> {

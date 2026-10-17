@@ -45,10 +45,8 @@ mod tests {
     let snapshot: Snapshot = json_read_file(Path::new(FIXTURES_DIR).join(snapshot_file))
       .wrap_err_with(|| format!("When reading snapshot {snapshot_file}"))?;
     let (graph, names, constraints) = load_graph(&snapshot)?;
-    let model = CoalescentModel::new(
-      &compute_lineage_counts(&graph, &coalescent_node_times(&graph, &constraints))?,
-      &Distribution::constant(snapshot.inputs.tc),
-    )?;
+    let lineage_counts = compute_lineage_counts(&graph, &coalescent_node_times(&graph, &constraints))?;
+    let model = CoalescentModel::new(&lineage_counts, &Distribution::constant(snapshot.inputs.tc))?;
     let tbp_grid = Grid::from_range_n_points(
       snapshot.tbp_grid.start,
       snapshot.tbp_grid.end,
@@ -80,7 +78,23 @@ mod tests {
       })
       .collect::<Result<_, Report>>()?;
 
-    pretty_assert_map_abs_diff_eq!(&snapshot.node_contributions, &actual, epsilon = 1e-6);
+    // before the root v0 keeps one lineage and a flat merger integral; v1 keeps two lineages and continues the
+    // integral, so the comparison covers the grid from the root on
+    let root_time = lineage_counts.breakpoints()[0];
+    let from_root = |contributions: &IndexMap<String, Array1<f64>>| -> IndexMap<String, Array1<f64>> {
+      contributions
+        .iter()
+        .map(|(name, values)| {
+          let kept = values
+            .iter()
+            .zip(&calendar_grid)
+            .filter(|&(_, &time)| time >= root_time)
+            .map(|(&value, _)| value);
+          (name.clone(), Array1::from_iter(kept))
+        })
+        .collect()
+    };
+    pretty_assert_map_abs_diff_eq!(&from_root(&snapshot.node_contributions), &from_root(&actual), epsilon = 1e-6);
     Ok(())
   }
 
