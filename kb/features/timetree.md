@@ -126,6 +126,7 @@
 - [x] Rate susceptibility activated via `--confidence` with `--covariation` or `--clock-std-dev`
 - [x] `--confidence` promotion of `time_marginal` from `never` to `only-final`
 - [x] `--covariation` wired into timetree clock regression
+- [x] Clock rate maximizing the marginal likelihood of the node times in each refinement round when a coalescent prior is active - new in v1, see [timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md)
 - [x] Reroot method and tip/MRCA selection passed into clock rerooting
 
 ## Output
