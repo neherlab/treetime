@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockVarianceParams};
+  use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
   use crate::clock::date_constraints::DateConstraints;
   use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
   use crate::clock::reroot::RerootParams;
@@ -21,7 +21,7 @@ mod tests {
     deletion, find_node_key_by_name, fitch_edge_obs, half_residual_sum_of_squares, sparse_edge_obs,
   };
   use crate::timetree::branch_model::BranchModel;
-  use crate::timetree::optimization::reroot::{RerootedTree, reroot_tree};
+  use crate::timetree::optimization::reroot::{RerootFitParams, RerootedTree, reroot_tree};
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
@@ -123,11 +123,10 @@ mod tests {
       branch_lengths,
       branch_model,
       &constraints,
-      &ClockFitParams {
+      &RerootFitParams {
         outliers: &BTreeSet::new(),
         clock_params: &clock_params,
         clock_rate: None,
-        keep_root: false,
         branch_params: &BranchPointOptimizationParams::default(),
         reroot_params: &RerootParams::new(RerootSpec::default(), true),
         prev_clock_rate: None,
@@ -485,11 +484,10 @@ mod tests {
       branch_lengths,
       branch_model,
       &constraints,
-      &ClockFitParams {
+      &RerootFitParams {
         outliers: &BTreeSet::new(),
         clock_params: &clock_params,
         clock_rate: None,
-        keep_root: false,
         branch_params: &BranchPointOptimizationParams::default(),
         reroot_params: &RerootParams::new(RerootSpec::default(), true),
         prev_clock_rate: None,
@@ -518,11 +516,10 @@ mod tests {
       branch_lengths,
       branch_model,
       &constraints,
-      &ClockFitParams {
+      &RerootFitParams {
         outliers: &BTreeSet::new(),
         clock_params: &clock_params,
         clock_rate: Some(clock_model_1.clock_rate()),
-        keep_root: false,
         branch_params: &BranchPointOptimizationParams::default(),
         reroot_params: &RerootParams::new(RerootSpec::default(), true),
         prev_clock_rate: None,

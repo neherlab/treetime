@@ -106,16 +106,11 @@ fn estimate_clock_model_with_prefilter(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockModel, Option<BTreeSet<GraphNodeKey>>), Report> {
-  let ClockParams {
-    clock_params: options,
-    clock_filter: clock_filter_threshold,
-    keep_root,
-    allow_negative_rate,
-    branch_params,
-    reroot_spec,
-  } = params;
+  let options = &params.clock_params;
+  let branch_params = &params.branch_params;
+  let reroot_spec = &params.reroot_spec;
   let (keep_root, clock_filter_threshold, allow_negative_rate) =
-    (*keep_root, *clock_filter_threshold, *allow_negative_rate);
+    (params.keep_root, params.clock_filter, params.allow_negative_rate);
   let (tree, filter_outliers) = if clock_filter_threshold > 0.0 {
     let reroot_params = RerootParams::new(reroot_spec.clone(), false);
     let (tree, result) = estimate_clock_model_with_reroot_policy(

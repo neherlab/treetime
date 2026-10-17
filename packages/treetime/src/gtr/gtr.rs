@@ -16,7 +16,7 @@ pub struct GTR {
   W: Array2<f64>,
   #[getset(get = "pub")]
   pi: Array1<f64>,
-  eigvals: Array1<f64>,
+  pub(super) eigvals: Array1<f64>,
   #[getset(get = "pub(crate)")]
   v: Array2<f64>,
   #[getset(get = "pub(crate)")]

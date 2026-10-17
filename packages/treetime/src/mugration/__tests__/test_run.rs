@@ -1,94 +1,19 @@
 #[cfg(test)]
 mod tests {
-  use crate::cancel::NoopCancel;
   use crate::mugration::pipeline::{
-    MugrationInput, MugrationOutput, MugrationParams, apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform,
-    run, validate_weight_coverage,
+    MugrationParams, apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform, validate_weight_coverage,
   };
   use crate::partition::storage::discrete::DiscreteStates;
-  use crate::progress::NoopProgress;
-  use crate::test_utils::{TraitsByNode, traits_by_node};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use indexmap::{IndexMap, IndexSet};
+  use helpers::{confidence_of, mugration_params, run_mugration_case, trait_assignments_by_name};
+  use indexmap::IndexSet;
   use itertools::Itertools;
   use maplit::btreemap;
   use ndarray::array;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
   use std::iter::once;
-  use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::nwk_read;
   use treetime_utils::{o, vec_of_owned};
-
-  fn mugration_params() -> MugrationParams {
-    MugrationParams {
-      missing_data: o!("?"),
-      pc: None,
-      missing_weights_threshold: 0.5,
-      iterations: 5,
-      sampling_bias_correction: None,
-      smooth_initial_pi: false,
-      filter_uninformative_root: false,
-    }
-  }
-
-  fn run_mugration_case(
-    nwk: &str,
-    traits: &BTreeMap<String, String>,
-    weights: Option<BTreeMap<String, f64>>,
-    params: &MugrationParams,
-  ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
-    let nwk_parsed = nwk_read(nwk.as_bytes())?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-
-    let TraitsByNode {
-      traits,
-      observed_values,
-    } = traits_by_node(traits.clone(), &graph, &names);
-    let input = MugrationInput {
-      graph,
-      traits,
-      observed_values,
-      weights,
-      branch_lengths,
-    };
-    let output = run(params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())?;
-    Ok((output, names))
-  }
-
-  fn trait_assignments_by_name(
-    output: &MugrationOutput,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-  ) -> IndexMap<String, String> {
-    output
-      .graph
-      .get_nodes()
-      .filter_map(|node| {
-        let key = node.key();
-        let name = names[&key].clone().unwrap_or_else(|| format!("node_{}", key.0));
-        output.reconstructed_traits[&key].clone().map(|value| (name, value))
-      })
-      .collect()
-  }
-
-  fn confidence_of(
-    output: &MugrationOutput,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-    node_name: &str,
-  ) -> ndarray::Array1<f64> {
-    let key = output
-      .graph
-      .get_nodes()
-      .map(|node| node.key())
-      .find(|key| names[key].as_deref() == Some(node_name))
-      .unwrap_or_else(|| panic!("missing node '{node_name}'"));
-    output.confidences[&key]
-      .clone()
-      .expect("node has no confidence profile")
-  }
 
   #[test]
   fn test_run_validate_weight_coverage_rejects_above_threshold() {
@@ -531,5 +456,88 @@ mod tests {
     assert!(output.gtr.mu() > 0.0);
 
     Ok(())
+  }
+
+  mod helpers {
+    use crate::cancel::NoopCancel;
+    use crate::mugration::pipeline::{MugrationInput, MugrationOutput, MugrationParams, run};
+    use crate::progress::NoopProgress;
+    use crate::test_utils::{TraitsByNode, traits_by_node};
+    use eyre::Report;
+    use indexmap::IndexMap;
+    use ndarray::Array1;
+    use std::collections::BTreeMap;
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_io::nwk::nwk_read;
+    use treetime_utils::o;
+
+    pub(super) fn mugration_params() -> MugrationParams {
+      MugrationParams {
+        missing_data: o!("?"),
+        pc: None,
+        missing_weights_threshold: 0.5,
+        iterations: 5,
+        sampling_bias_correction: None,
+        smooth_initial_pi: false,
+        filter_uninformative_root: false,
+      }
+    }
+
+    pub(super) fn run_mugration_case(
+      nwk: &str,
+      traits: &BTreeMap<String, String>,
+      weights: Option<BTreeMap<String, f64>>,
+      params: &MugrationParams,
+    ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+      let nwk_parsed = nwk_read(nwk.as_bytes())?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let branch_lengths = nwk_parsed.branch_lengths;
+
+      let TraitsByNode {
+        traits,
+        observed_values,
+      } = traits_by_node(traits.clone(), &graph, &names);
+      let input = MugrationInput {
+        graph,
+        traits,
+        observed_values,
+        weights,
+        branch_lengths,
+      };
+      let output = run(params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())?;
+      Ok((output, names))
+    }
+
+    pub(super) fn trait_assignments_by_name(
+      output: &MugrationOutput,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+    ) -> IndexMap<String, String> {
+      output
+        .graph
+        .get_nodes()
+        .filter_map(|node| {
+          let key = node.key();
+          let name = names[&key].clone().unwrap_or_else(|| format!("node_{}", key.0));
+          output.reconstructed_traits[&key].clone().map(|value| (name, value))
+        })
+        .collect()
+    }
+
+    pub(super) fn confidence_of(
+      output: &MugrationOutput,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      node_name: &str,
+    ) -> Array1<f64> {
+      let key = output
+        .graph
+        .get_nodes()
+        .map(|node| node.key())
+        .find(|key| names[key].as_deref() == Some(node_name))
+        .unwrap_or_else(|| panic!("missing node '{node_name}'"));
+      output.confidences[&key]
+        .clone()
+        .expect("node has no confidence profile")
+    }
   }
 }

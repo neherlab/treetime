@@ -22,23 +22,10 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_io::discrete_states_csv::discrete_attrs_read_file;
-use treetime_utils::error::make_error;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
+use treetime_utils::make_error;
 
 const UNMATCHED_NAMES_SHOWN: usize = 10;
-
-pub(crate) fn validate_weights(weights: &BTreeMap<String, f64>, weights_filepath: &Path) -> Result<(), Report> {
-  match weights
-    .iter()
-    .find(|(_, weight)| !(weight.is_finite() && **weight > 0.0))
-  {
-    Some((state, weight)) => make_error!(
-      "Weights file '{}': weight of state '{state}' is {weight}, expected a finite positive number",
-      weights_filepath.display()
-    ),
-    None => Ok(()),
-  }
-}
 
 pub fn run_mugration(
   mugration_args: &TreetimeMugrationArgs,
@@ -136,6 +123,19 @@ pub fn run_mugration(
 
   stages.report("Done", 1.0, "");
   Ok(())
+}
+
+pub(crate) fn validate_weights(weights: &BTreeMap<String, f64>, weights_filepath: &Path) -> Result<(), Report> {
+  match weights
+    .iter()
+    .find(|(_, weight)| !(weight.is_finite() && **weight > 0.0))
+  {
+    Some((state, weight)) => make_error!(
+      "Weights file '{}': weight of state '{state}' is {weight}, expected a finite positive number",
+      weights_filepath.display()
+    ),
+    None => Ok(()),
+  }
 }
 
 pub(crate) fn pair_traits(
