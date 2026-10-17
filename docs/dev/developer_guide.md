@@ -353,7 +353,7 @@ A full run writes large outputs; the `.dot` files of the larger datasets reach a
 
 ### TreeTime v0 and Python scripts
 
-TreeTime v0 (`packages/legacy/treetime`), the golden-master capture scripts, and the research scripts in `test_scripts/` share one Python environment, defined in `pixi.toml` and locked in `pixi.lock`. It pins every package and uses OpenBLAS 0.3.28 on a single thread, the same BLAS as the Rust build, so v0 and v1 run the same linear algebra kernels. The environment puts v0 of the checkout on `PYTHONPATH`, so both the v0 `treetime` command and `import treetime` in scripts work.
+TreeTime v0 (`packages/legacy/treetime`), the golden-master capture scripts, and the research scripts in `test_scripts/` share one Python environment, defined in `pixi.toml` and locked in `pixi.lock`. It pins every package and uses OpenBLAS 0.3.34 on a single thread, the same BLAS as the Rust build, so v0 and v1 run the same linear algebra kernels. The environment puts v0 of the checkout on `PYTHONPATH`, so both the v0 `treetime` command and `import treetime` in scripts work.
 
 In the Python image:
 

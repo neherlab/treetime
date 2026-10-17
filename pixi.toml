@@ -12,7 +12,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64"]
 exclude-newer = "7d"
 
 # v0 runs from the checkout, and OpenBLAS matches the Rust build
-# (dev/docker/files/install-openblas): version 0.3.28, single-threaded.
+# (dev/docker/files/install-openblas): version 0.3.34, single-threaded.
 [activation.env]
 PYTHONPATH = "$PIXI_PROJECT_ROOT/packages/legacy/treetime"
 OPENBLAS_NUM_THREADS = "1"
@@ -22,7 +22,7 @@ treetime = "python -m treetime"
 
 [dependencies]
 libblas = { version = "*", build = "*openblas" }
-libopenblas = "==0.3.28"
+libopenblas = "==0.3.34"
 python = "==3.12.14"
 
 biopython = "==1.88"
