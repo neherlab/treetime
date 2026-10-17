@@ -4,7 +4,7 @@ use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
-use crate::progress::{LogEvent, LogLevel, LogSink};
+use crate::progress::{LogEvent, LogLevel, LogSink, RunWarning};
 use crate::test_utils::find_node_key_by_name;
 use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
 use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeInference, given_times};
@@ -126,6 +126,7 @@ pub(crate) fn point_date_constraints(
 #[derive(Default)]
 pub(crate) struct RecordingLog {
   events: Mutex<Vec<LogEvent>>,
+  run_warnings: Mutex<Vec<RunWarning>>,
 }
 
 impl RecordingLog {
@@ -137,6 +138,10 @@ impl RecordingLog {
       .filter(|event| event.level == LogLevel::Warn)
       .map(|event| event.message.clone())
       .collect()
+  }
+
+  pub(crate) fn run_warnings(&self) -> Vec<RunWarning> {
+    self.run_warnings.lock().clone()
   }
 }
 
@@ -150,5 +155,10 @@ impl LogSink for RecordingLog {
 
   fn log_enabled(&self, _level: LogLevel) -> bool {
     true
+  }
+
+  fn warning(&self, warning: &RunWarning) {
+    self.log(LogLevel::Warn, &warning.message);
+    self.run_warnings.lock().push(warning.clone());
   }
 }

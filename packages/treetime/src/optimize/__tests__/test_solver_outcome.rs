@@ -3,8 +3,9 @@ mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::solver_outcome::{ConvergenceSummary, UnconvergedEdges};
   use crate::progress::{RunWarning, RunWarningKind};
+  use crate::test_utils::RecordingLog;
   use eyre::Report;
-  use helpers::{RecordingWarnings, edges_into};
+  use helpers::edges_into;
   use pretty_assertions::assert_eq;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::{o, vec_of_owned};
@@ -36,7 +37,7 @@ mod tests {
       &names,
     );
     pre_reroot.merge(rounds);
-    let log = RecordingWarnings::default();
+    let log = RecordingLog::default();
 
     pre_reroot.report(BranchOptMethod::Newton, &log);
 
@@ -47,7 +48,7 @@ mod tests {
       ),
       names: vec_of_owned!["A", "AB", "C"],
     }];
-    assert_eq!(expected, log.warnings.into_inner());
+    assert_eq!(expected, log.run_warnings());
     Ok(())
   }
 
@@ -65,7 +66,7 @@ mod tests {
       &graph,
       &names,
     );
-    let log = RecordingWarnings::default();
+    let log = RecordingLog::default();
 
     summary.report(BranchOptMethod::Brent, &log);
 
@@ -76,7 +77,7 @@ mod tests {
       ),
       names: vec_of_owned!["B"],
     }];
-    assert_eq!(expected, log.warnings.into_inner());
+    assert_eq!(expected, log.run_warnings());
     Ok(())
   }
 
@@ -88,38 +89,19 @@ mod tests {
     let mut summary = ConvergenceSummary::default();
     summary.record(&UnconvergedEdges::default(), &graph, &names);
     summary.record(&UnconvergedEdges::default(), &graph, &names);
-    let log = RecordingWarnings::default();
+    let log = RecordingLog::default();
 
     summary.report(BranchOptMethod::Brent, &log);
 
-    assert_eq!(Vec::<RunWarning>::new(), log.warnings.into_inner());
+    assert_eq!(Vec::<RunWarning>::new(), log.run_warnings());
     Ok(())
   }
 
   mod helpers {
-    use crate::progress::{LogLevel, LogSink, RunWarning};
-    use parking_lot::Mutex;
     use std::collections::BTreeMap;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-
-    #[derive(Default)]
-    pub(super) struct RecordingWarnings {
-      pub(super) warnings: Mutex<Vec<RunWarning>>,
-    }
-
-    impl LogSink for RecordingWarnings {
-      fn log(&self, _level: LogLevel, _message: &str) {}
-
-      fn log_enabled(&self, _level: LogLevel) -> bool {
-        true
-      }
-
-      fn warning(&self, warning: &RunWarning) {
-        self.warnings.lock().push(warning.clone());
-      }
-    }
 
     pub(super) fn edges_into(
       graph: &Graph,
