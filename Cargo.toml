@@ -184,7 +184,7 @@ pest_derive = "=2.9.1"
 plotters = { version = "=0.3.7", default-features = false, features = ["all_series", "all_elements", "svg_backend"] }
 pretty_assertions = "=1.4.1"
 pretty_dtoa = "=0.3.0"
-proptest = "=1.6.0"
+proptest = "=1.11.0"
 prost = { version = "=0.14.1", features = ["no-recursion-limit"] }
 prost-build = "=0.14.1"
 rand = { version = "=0.10.3", features = ["log"] }
@@ -203,7 +203,7 @@ sha2 = "=0.11.0"
 shlex = "=1.3.0"
 smallvec = "=1.16.1"
 smart-default = "=0.7.1"
-statrs = "=0.18.0"
+statrs = "=0.19.1"
 strsim = "=0.11.1"
 strum = "=0.27.2"
 strum_macros = "=0.27.2"
