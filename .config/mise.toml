@@ -4,6 +4,9 @@ min_version = "2026.9.10"
 lockfile = true
 locked = true
 minimum_release_age = "7d"
+# Releases of the project's own binarylandia organization are exempt from the
+# seven-day wait; their upstream sources still follow it.
+minimum_release_age_excludes = ["github:binarylandia/appville"]
 
 [tool_alias]
 cargo-dylint = "github:trailofbits/dylint"

@@ -99,6 +99,10 @@ inherits = "dist"
 strip = "none"
 
 
+# The numrs repositories are forks owned by the project, exempt from the
+# seven-day quarantine; the publish-age checks (-Zmin-publish-age and
+# dev/crate-age) read only crates.io packages. The openblas-src fork is upstream
+# without the build script code that downloads and compiles OpenBLAS.
 [patch.crates-io]
 openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "bdc5d5f" }
 
