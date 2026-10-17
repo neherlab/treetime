@@ -3,10 +3,10 @@ use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
 use crate::optimize::gather::InitialGuessEvidence;
-use crate::optimize::indel::{EdgeIndels, IndelPolicy};
+use crate::optimize::indel::EdgeIndels;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::ExistingBranchLengths;
-use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
+use crate::optimize::params::{InitialGuessMode, OptimizeLoopSettings, TopologyOps};
 use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
@@ -121,16 +121,6 @@ struct LoopState {
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   names: BTreeMap<GraphNodeKey, Option<String>>,
   convergence: ConvergenceSummary,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct OptimizeLoopSettings {
-  pub max_iter: usize,
-  pub dp: f64,
-  pub damping: f64,
-  pub opt_method: BranchOptMethod,
-  pub indel_policy: IndelPolicy,
-  pub topology_ops: TopologyOps,
 }
 
 #[derive(Clone, Debug)]

@@ -160,8 +160,9 @@ mod tests {
     use crate::optimize::gather::InitialGuessEvidence;
     use crate::optimize::indel::IndelPolicy;
     use crate::optimize::params::ExistingBranchLengths;
+    use crate::optimize::params::OptimizeLoopSettings;
     use crate::optimize::params::{BranchOptMethod, TopologyOps};
-    use crate::optimize::run_loop::{OptimizeLoopSettings, run_optimize_loop};
+    use crate::optimize::run_loop::run_optimize_loop;
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
     use crate::test_utils::leaf_seq_inputs;

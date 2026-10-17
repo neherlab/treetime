@@ -5,8 +5,9 @@ mod tests {
   };
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::iteration::apply_damping;
+  use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{ConvergenceReason, OptimizeLoopSettings, run_optimize_loop};
+  use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;

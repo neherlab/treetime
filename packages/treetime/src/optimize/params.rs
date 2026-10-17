@@ -1,3 +1,4 @@
+use crate::optimize::indel::IndelPolicy;
 use smart_default::SmartDefault;
 use strum_macros::Display;
 
@@ -38,4 +39,14 @@ pub enum InitialGuessMode {
 pub enum ExistingBranchLengths {
   Keep,
   Overwrite,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct OptimizeLoopSettings {
+  pub max_iter: usize,
+  pub dp: f64,
+  pub damping: f64,
+  pub opt_method: BranchOptMethod,
+  pub indel_policy: IndelPolicy,
+  pub topology_ops: TopologyOps,
 }

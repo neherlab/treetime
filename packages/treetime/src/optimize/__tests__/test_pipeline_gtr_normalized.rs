@@ -4,9 +4,9 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::optimize::indel::IndelPolicy;
+  use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
-  use crate::optimize::run_loop::OptimizeLoopSettings;
   use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
   use approx::assert_ulps_eq;

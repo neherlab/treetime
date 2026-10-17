@@ -14,8 +14,9 @@ mod tests {
   use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::gather::{InitialGuessEvidence, gather_edge_contributions};
   use crate::optimize::indel::{EdgeIndels, IndelPolicy};
+  use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
-  use crate::optimize::run_loop::{OptimizeLoopSettings, apply_initial_guess_mode, run_optimize_loop};
+  use crate::optimize::run_loop::{apply_initial_guess_mode, run_optimize_loop};
   use crate::progress::NoopProgress;
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;

@@ -5,8 +5,9 @@ mod tests {
     TREE_NEWICK, setup_dense_reconstruction, setup_reconstruction, simple_alignment,
   };
   use crate::optimize::indel::IndelPolicy;
+  use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{ConvergenceReason, OptimizeLoopSettings, run_optimize_loop};
+  use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;

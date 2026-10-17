@@ -166,9 +166,9 @@ mod tests {
     use crate::clock::find_best_root::params::RerootSpec;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::optimize::indel::IndelPolicy;
+    use crate::optimize::params::OptimizeLoopSettings;
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use crate::optimize::pipeline::OptimizeParams;
-    use crate::optimize::run_loop::OptimizeLoopSettings;
     use crate::seq::alignment::NodeSeqInput;
     use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;

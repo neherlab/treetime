@@ -98,9 +98,9 @@ mod tests {
     use treetime::cancel::NoopCancel;
     use treetime::gtr::get_gtr::GtrModelName;
     use treetime::optimize::indel::IndelPolicy;
+    use treetime::optimize::params::OptimizeLoopSettings;
     use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
-    use treetime::optimize::run_loop::OptimizeLoopSettings;
     use treetime::progress::NoopProgress;
     use treetime::seq::alignment::pair_leaf_sequences;
     use treetime_io::fasta::fasta_read_file;

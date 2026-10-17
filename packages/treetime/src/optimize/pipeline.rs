@@ -9,10 +9,9 @@ use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
+use crate::optimize::params::OptimizeLoopSettings;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
-use crate::optimize::run_loop::{
-  OptimizeLoopSettings, apply_initial_guess_mode, normalize_partition_rates, run_optimize_loop,
-};
+use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_rates, run_optimize_loop};
 use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::marginal::reconstruction::MarginalReconstruction;

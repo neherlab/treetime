@@ -8,10 +8,9 @@ pub(super) mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::ExistingBranchLengths;
+  use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
-  use crate::optimize::run_loop::{
-    OptimizeLoopSettings, find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop,
-  };
+  use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;

@@ -14,7 +14,7 @@ pub(super) mod method_newton;
 pub mod observer;
 pub mod params;
 pub mod pipeline;
-pub mod run_loop;
+pub(super) mod run_loop;
 pub(crate) mod solver_outcome;
 pub(super) mod sparse_eval;
 pub(crate) mod topology;
