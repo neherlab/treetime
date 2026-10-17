@@ -1,3 +1,2 @@
-mod test_newton_convergence_evaluate_mixed;
+mod test_newton_convergence_evaluate_partitions;
 mod test_newton_convergence_support;
-mod test_newton_convergence_tolerance;

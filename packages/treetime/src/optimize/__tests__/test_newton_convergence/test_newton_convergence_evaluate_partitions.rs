@@ -1,16 +1,16 @@
 #[cfg(test)]
 mod tests {
   use super::super::test_newton_convergence_support::tests::make_dense_contribution;
-  use crate::optimize::likelihood::evaluate_mixed;
+  use crate::optimize::likelihood::evaluate_partitions;
   use ndarray::array;
 
   #[test]
-  fn test_evaluate_mixed_returns_finite_values() {
+  fn test_evaluate_partitions_returns_finite_values() {
     let coefficients = array![[0.25, 0.25, 0.25, 0.25], [0.25, 0.25, 0.25, 0.25],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
-    let metrics = evaluate_mixed(&contributions, 0.1).expect("valid branch length");
+    let metrics = evaluate_partitions(&contributions, 0.1).expect("valid branch length");
 
     assert!(metrics.log_lh.value().is_finite());
     assert!(metrics.derivative.is_finite());
@@ -18,25 +18,25 @@ mod tests {
   }
 
   #[test]
-  fn test_evaluate_mixed_log_lh_negative() {
+  fn test_evaluate_partitions_log_lh_negative() {
     let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
-    let metrics = evaluate_mixed(&contributions, 0.1).expect("valid branch length");
+    let metrics = evaluate_partitions(&contributions, 0.1).expect("valid branch length");
 
     assert!(metrics.log_lh.value() <= 0.0);
   }
 
   #[test]
-  fn test_evaluate_mixed_multiple_branch_lengths() {
+  fn test_evaluate_partitions_multiple_branch_lengths() {
     let coefficients = array![[0.9, 0.03, 0.03, 0.04], [0.03, 0.9, 0.03, 0.04],];
     let contribution = make_dense_contribution(coefficients);
     let contributions = vec![contribution];
 
     let branch_lengths = [0.001, 0.01, 0.1, 0.5, 1.0];
     for &bl in &branch_lengths {
-      let metrics = evaluate_mixed(&contributions, bl).expect("valid branch length");
+      let metrics = evaluate_partitions(&contributions, bl).expect("valid branch length");
       assert!(metrics.log_lh.value().is_finite(), "log_lh should be finite at bl={bl}");
       assert!(metrics.derivative.is_finite(), "derivative should be finite at bl={bl}");
       assert!(
