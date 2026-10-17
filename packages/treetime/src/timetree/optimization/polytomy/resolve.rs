@@ -26,7 +26,7 @@ pub(crate) fn resolve_polytomies(
   mutation_rate: f64,
   total_length: usize,
   merger_rate: &PiecewiseConstantFn,
-  rng: &mut dyn rand::RngCore,
+  rng: &mut dyn rand::Rng,
   node_times: &NodeTimes,
 ) -> Result<PolytomyResolution, Report> {
   let polytomy_keys = find_polytomy_nodes(&graph);
@@ -98,7 +98,7 @@ fn resolve_single_polytomy(
   mutation_rate: f64,
   total_length: usize,
   merger_rate: &PiecewiseConstantFn,
-  rng: &mut dyn rand::RngCore,
+  rng: &mut dyn rand::Rng,
   topology_validated: &mut bool,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   node_times: &NodeTimes,

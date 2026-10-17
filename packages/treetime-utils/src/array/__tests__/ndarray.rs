@@ -7,7 +7,6 @@ mod tests {
 
   use crate::array::ndarray::*;
   use crate::pretty_assert_ulps_eq;
-  use crate::sync::random::get_random_number_generator;
   use eyre::Report;
   use ndarray::{Array1, Array2, Axis, array};
   use rstest::rstest;
@@ -116,29 +115,6 @@ mod tests {
     let result_outer_ti_pi = outer(&ti, &pi).unwrap();
     pretty_assert_ulps_eq!(expected_outer_pi_ti, result_outer_pi_ti, max_ulps = 4);
     pretty_assert_ulps_eq!(expected_outer_ti_pi, result_outer_ti_pi, max_ulps = 4);
-  }
-
-  #[rstest]
-  fn generates_predictable_random_uniform() {
-    let mut rng = get_random_number_generator(42);
-
-    let r: Array2<f64> = random((3, 4), &mut rng);
-    #[rustfmt::skip]
-    let expected = array![
-      [0.47098793460940813, 0.77817923328818700, 0.72803987044229210, 0.24949100191426288],
-      [0.41172712062120720, 0.76245969702116350, 0.79208560304293950, 0.68138502792473000],
-      [0.67137133889579470, 0.85151789643141470, 0.31181959423520780, 0.73982541135527980],
-    ];
-    pretty_assert_ulps_eq!(r, expected);
-
-    let r: Array2<f64> = random((3, 4), &mut rng);
-    #[rustfmt::skip]
-    let expected = array![
-      [0.09054507828914282, 0.72883120582400560, 0.04697932861607845, 0.58466146369624310],
-      [0.60534170114191200, 0.23101797776198140, 0.66710289504536500, 0.92825277017181910],
-      [0.07155806372486850, 0.21012760390829310, 0.60105776255346570, 0.94540503820318000],
-    ];
-    pretty_assert_ulps_eq!(r, expected);
   }
 
   #[rstest]

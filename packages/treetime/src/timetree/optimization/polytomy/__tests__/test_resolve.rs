@@ -12,7 +12,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
-  use rand::RngCore;
+  use rand::Rng;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::assign_node_names::assign_node_names;
   use treetime_graph::edge::GraphEdgeKey;
@@ -383,7 +383,7 @@ mod tests {
       graph: Graph,
       branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
       times: &mut NodeTimes,
-      rng: &mut dyn RngCore,
+      rng: &mut dyn Rng,
     ) -> Result<(Graph, usize), Report> {
       let merger_rate = PiecewiseConstantFn::new(array![], array![TEST_MERGER_RATE]);
       let PolytomyResolution {

@@ -1,5 +1,5 @@
 use eyre::Report;
-use rand::Rng;
+use rand::RngExt;
 use rand_distr::{Distribution as _, Exp1};
 use std::collections::VecDeque;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
@@ -11,7 +11,7 @@ pub(crate) fn simulate_subtree(
   t_stop: f64,
   mutation_rate: f64,
   merger_rate: &PiecewiseConstantFn,
-  rng: &mut dyn rand::RngCore,
+  rng: &mut dyn rand::Rng,
 ) -> Result<SubtreePlan, Report> {
   validate_inputs(children, t_stop, mutation_rate)?;
 
@@ -82,7 +82,7 @@ pub(crate) fn simulate_subtree(
       elapsed += hazard_left / rate_total;
       let event_time = t_start - elapsed;
 
-      if rng.gen_bool(rate_mut / rate_total) {
+      if rng.random_bool(rate_mut / rate_total) {
         place_mutation(&mut alive, total_mutations, rng)?;
       } else {
         let merger = coalesce_pair(&mut alive, event_time, n_children + mergers.len(), rng)?;
@@ -177,8 +177,8 @@ struct Pending {
   elapsed: f64,
 }
 
-fn place_mutation(alive: &mut [Tracked], total_mutations: u64, rng: &mut dyn rand::RngCore) -> Result<(), Report> {
-  let mut remaining = rng.gen_range(0..total_mutations);
+fn place_mutation(alive: &mut [Tracked], total_mutations: u64, rng: &mut dyn rand::Rng) -> Result<(), Report> {
+  let mut remaining = rng.random_range(0..total_mutations);
   for lineage in alive.iter_mut() {
     let mutations = u64::from(lineage.mutations);
     if remaining < mutations {
@@ -197,7 +197,7 @@ fn coalesce_pair(
   alive: &mut Vec<Tracked>,
   time: f64,
   new_id: usize,
-  rng: &mut dyn rand::RngCore,
+  rng: &mut dyn rand::Rng,
 ) -> Result<Merger, Report> {
   let ready: Vec<usize> = alive
     .iter()
@@ -213,8 +213,8 @@ fn coalesce_pair(
     );
   }
 
-  let first = rng.gen_range(0..ready.len());
-  let mut second = rng.gen_range(0..ready.len() - 1);
+  let first = rng.random_range(0..ready.len());
+  let mut second = rng.random_range(0..ready.len() - 1);
   if second >= first {
     second += 1;
   }

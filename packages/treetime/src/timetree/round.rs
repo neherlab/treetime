@@ -29,7 +29,7 @@ use crate::timetree::optimization::relaxed_clock::{RelaxedClockPrior, apply_rela
 use crate::timetree::params::{TimetreeContext, TimetreeParams};
 use crate::timetree::pre_loop::PreLoopState;
 use eyre::{Report, WrapErr};
-use rand::RngCore;
+use rand::Rng;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 use treetime_graph::assign_node_names::{assign_node_names, restrict_node_names};
@@ -118,7 +118,7 @@ pub(crate) fn refinement_round(
   merger_rate: &PiecewiseConstantFn,
   prior: Option<&CoalescentModel>,
   state: RoundState,
-  rng: &mut dyn RngCore,
+  rng: &mut dyn Rng,
   log: &dyn LogSink,
 ) -> Result<(RoundState, RoundOutcome), Report> {
   let total_length = state.branch_model.sequence_length();
@@ -199,7 +199,7 @@ fn refine_topology(
   state: RoundState,
   total_length: usize,
   merger_rate: &PiecewiseConstantFn,
-  rng: &mut dyn RngCore,
+  rng: &mut dyn Rng,
   log: &dyn LogSink,
 ) -> Result<(RoundState, TopologyOutcome), Report> {
   if !inputs.params.resolve_polytomies {

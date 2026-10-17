@@ -1,5 +1,5 @@
 use ndarray::ArrayView1;
-use rand::{Rng, RngCore};
+use rand::{Rng, RngExt};
 use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::argmax_first;
 
@@ -28,7 +28,7 @@ pub(crate) fn resolve_profile(profile: ArrayView1<f64>, resolve: &mut Resolve) -
   }
 }
 
-pub(crate) fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut dyn RngCore) -> usize {
+pub(crate) fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut dyn Rng) -> usize {
   let cumsum: Vec<f64> = profile
     .iter()
     .scan(0.0, |acc, &x| {
@@ -42,11 +42,11 @@ pub(crate) fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut dyn RngCor
     return 0;
   }
 
-  let threshold = rng.r#gen::<f64>() * total;
+  let threshold = rng.random::<f64>() * total;
   cumsum.iter().position(|&c| c >= threshold).unwrap_or(0)
 }
 
 pub(crate) enum Resolve<'r> {
   Argmax,
-  Sample(&'r mut dyn RngCore),
+  Sample(&'r mut dyn Rng),
 }

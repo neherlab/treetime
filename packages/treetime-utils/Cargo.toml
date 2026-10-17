@@ -39,7 +39,6 @@ liblzma = { workspace = true }
 log = { workspace = true }
 maplit = { workspace = true }
 ndarray = { workspace = true }
-ndarray-rand = { workspace = true }
 ndarray-stats = { workspace = true }
 num = { workspace = true }
 num-traits = { workspace = true }
@@ -47,6 +46,7 @@ openblas-src = { workspace = true }
 ordered-float = { workspace = true }
 parking_lot = { workspace = true }
 pretty_dtoa = { workspace = true }
+rand = { workspace = true }
 rand_isaac = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }

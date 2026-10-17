@@ -17,7 +17,7 @@ use crate::progress::{LogSink, StageSink};
 use crate::progress_warn;
 use crate::seq::alignment::NodeSeqInput;
 use eyre::Report;
-use rand::RngCore;
+use rand::Rng;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -62,7 +62,7 @@ pub(crate) fn reconstruct_partition(
   node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   options: &ReconstructionOptions,
-  rng: &mut dyn RngCore,
+  rng: &mut dyn Rng,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
@@ -140,7 +140,7 @@ fn reconstruct_marginal(
   gtr_refinement: Option<usize>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   options: &ReconstructionOptions,
-  rng: &mut dyn RngCore,
+  rng: &mut dyn Rng,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,

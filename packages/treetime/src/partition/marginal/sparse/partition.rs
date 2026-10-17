@@ -167,7 +167,7 @@ impl PartitionMarginalSparse {
     graph: &Graph,
     node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
     sample_mode: SampleMode,
-    rng: &mut dyn rand::RngCore,
+    rng: &mut dyn rand::Rng,
   ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
     sample_internal_sequences(graph, sample_mode, |key| {
       map_seq_sampled(&node_states[&key], &self.alphabet, &mut Resolve::Sample(&mut *rng))

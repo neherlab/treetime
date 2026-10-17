@@ -18,7 +18,7 @@ use crate::seq::mutation::{
 use crate::seq::overlay::SeqOverlay;
 use crate::seq::sink::SeqSink;
 use eyre::Report;
-use rand::RngCore;
+use rand::Rng;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -86,7 +86,7 @@ impl MarginalReconstruction {
     &self,
     graph: &Graph,
     sample_mode: SampleMode,
-    rng: &mut dyn RngCore,
+    rng: &mut dyn Rng,
   ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
     each_kind!(self, |reconstruction| reconstruction.partition.sample_sequences(
       graph,

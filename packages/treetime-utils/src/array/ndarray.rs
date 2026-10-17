@@ -1,14 +1,10 @@
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{Array, Array1, Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix1, Ix2, ShapeBuilder, Zip};
-use ndarray_rand::RandomExt;
-use ndarray_rand::rand::Rng;
-use ndarray_rand::rand::distributions::Uniform;
-use ndarray_rand::rand::distributions::uniform::SampleUniform;
 use ndarray_stats::QuantileExt;
 use num_traits::float::FloatCore;
 use num_traits::real::Real;
-use num_traits::{Float, One, Zero};
+use num_traits::{Float, Zero};
 use ordered_float::OrderedFloat;
 use std::f64::consts::E;
 use std::ops::AddAssign;
@@ -106,13 +102,6 @@ pub fn cumsum_axis<T: Copy + AddAssign, D: Dimension>(a: &Array<T, D>, axis: Axi
   let mut result = a.to_owned();
   result.accumulate_axis_inplace(axis, |&prev, curr| *curr += prev);
   result
-}
-
-pub fn random<T: Copy + SampleUniform + Zero + One, D: Dimension, Sh: ShapeBuilder<Dim = D>, R: Rng>(
-  shape: Sh,
-  rng: &mut R,
-) -> Array<T, D> {
-  Array::<T, D>::random_using(shape, Uniform::<T>::new::<T, T>(T::zero(), T::one()), rng)
 }
 
 pub fn reverse<T: Clone, S: Data<Elem = T>>(arr: &ArrayBase<S, Ix1>) -> Array1<T> {
