@@ -713,6 +713,6 @@ All augur links pinned to commit `024292af6daf` (2026-05-20).
 - augur test fixtures: [`tests/functional/ancestral/data/`](https://github.com/nextstrain/augur/tree/024292af6daf/tests/functional/ancestral/data), [`tests/functional/refine/data/`](https://github.com/nextstrain/augur/tree/024292af6daf/tests/functional/refine/data), [`tests/functional/traits/`](https://github.com/nextstrain/augur/tree/024292af6daf/tests/functional/traits)
 - treetime v1 Sub type: `packages/treetime/src/seq/mutation.rs`
 - treetime v1 mutation access: `packages/treetime/src/partition/traits.rs`
-- treetime v1 ancestral command: `packages/treetime/src/commands/ancestral/run.rs`
+- treetime v1 ancestral command: `packages/app-commands/src/commands/ancestral/run.rs`
 - treetime v1 payloads: `packages/treetime/src/payload/ancestral.rs`, `packages/treetime/src/payload/timetree.rs`
 - workflow repos: [`nextstrain/seasonal-flu`](https://github.com/nextstrain/seasonal-flu), [`nextstrain/ncov`](https://github.com/nextstrain/ncov)

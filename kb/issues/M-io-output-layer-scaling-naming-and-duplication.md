@@ -50,7 +50,7 @@ Required behavior: reimplement mugration on top of ancestral reconstruction. Mug
 ## KB entries describe removed code
 
 - `kb/issues/H-graph-lock-topology-is-exposed-to-consumers.md` describes `Arc<RwLock<Node>>`; the graph has no locks now
-- `kb/issues/M-command-output-ownership-is-scattered.md` and `kb/issues/M-output-module-mixes-topology-ordering.md` cite paths under `packages/treetime/src/commands/`, which no longer exists
+- `kb/issues/M-output-module-mixes-topology-ordering.md` describes the removed `commands/shared/output.rs` layout; topology-order arguments now live in `packages/app-commands/src/commands/shared/topology_order_args.rs`, apart from `packages/app-output/src/output_plan.rs`
 
 Required behavior: update each entry to the current code, or delete it when the problem it records is gone.
 

@@ -10,7 +10,11 @@ Tree output uses a shared zero-based `MutationEvent` representation, canonical s
 
 ## Problems
 
-- Amino-acid node-data has a private second implementation of insertion/deletion string expansion using unchecked arithmetic instead of the canonical helper [`packages/treetime/src/commands/ancestral/aa_node_data.rs#L308`](../../packages/treetime/src/commands/ancestral/aa_node_data.rs#L308).
+- Amino-acid node-data has a private second implementation of insertion/deletion string expansion using unchecked arithmetic instead of the canonical helper.
+
+> [!WARNING]
+> **Needs review.** The cited implementation was in `packages/treetime/src/commands/ancestral/aa_node_data.rs`, which no longer exists. `fn aa_mutation_strings()` in `packages/app-output/src/augur_node_data_ancestral.rs#L139-L147` now renders amino-acid events through `fn mutation_event_strings()` in `packages/treetime/src/seq/mutation.rs#L224-L239`. Confirm that no second implementation remains, then remove this problem.
+
 - Amino-acid indel representation and coordinate parity with augur remain undecided in [N-amino-acid-mutation-indel-representation-undecided.md](N-amino-acid-mutation-indel-representation-undecided.md).
 
 ## Required invariant

@@ -8,7 +8,7 @@ v1 serializes the inferred coalescent time scale from the `timetree` command wit
 
 **v0**: `MergerModel` writes a single `skyline.tsv` with columns `date`, `N_e`, `lower`, `upper`, one row per interpolation date across the tree's span ([`packages/legacy/treetime/treetime/CLI_io.py#L248`](../../packages/legacy/treetime/treetime/CLI_io.py#L248)). The coalescent time scale $T_c$ is not reported; only the derived effective population size $N_e$ and its band appear.
 
-**v1**: The serializers in [`packages/treetime/src/commands/timetree/output/coalescent.rs`](../../packages/treetime/src/commands/timetree/output/coalescent.rs) emit two shapes from one document:
+**v1**: The serializers in [`packages/treetime/src/timetree/coalescent.rs`](../../packages/treetime/src/timetree/coalescent.rs) emit two shapes from one document:
 
 - Rich JSON (`timetree.coalescent.json`): a complete `inputs` block (mode, the skyline `n_points` and `stiffness` where they apply, the confidence width, and generations per year) and an `outputs` block (the coalescent `log_likelihood` where inferred, and `segments`), each segment carrying a numeric-date `segment` interval and nested `T_c` and `N_e` objects with `value`/`lower`/`upper`. The JSON carries the full document; a field that does not apply to the mode (for example `n_points` for a constant or fixed `T_c`, or `log_likelihood` for a fixed `T_c`) is omitted.
 - Flat delimited TSV/CSV (`timetree.coalescent.tsv`, `timetree.coalescent.csv`): the selected per-segment projection, one row per segment with dotted columns `segment.start`, `segment.end`, `T_c.value`, `T_c.lower`, `T_c.upper`, `N_e.value`, `N_e.lower`, `N_e.upper`, and no inputs or likelihood. The TSV is in the default `--output-all` set; CSV and JSON are opt-in.

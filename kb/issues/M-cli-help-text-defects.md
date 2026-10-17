@@ -183,8 +183,8 @@ Root help lists tooling commands at the same level as analysis commands with no 
 
 ## Affected code
 
-- CLI arg definitions: `packages/treetime/src/commands/*/args.rs`
-- Shared arg structs: `packages/treetime/src/commands/shared/*.rs`
+- CLI arg definitions: `packages/app-commands/src/commands/*/args.rs`
+- Shared arg structs: `packages/app-commands/src/commands/shared/*.rs`
 - Top-level command descriptions: `packages/app-cli/src/cli/treetime_cli.rs`
 - Method enum: `packages/treetime/src/ancestral/params.rs`
 

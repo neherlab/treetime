@@ -136,8 +136,8 @@ Reconstruct a node's full sequence by applying fitch subs and indels to the pare
 
 Count total mutations across all partitions for an edge. Used to determine whether a leaf or internal node has enough signal to keep or should be pruned.
 
-- `parse_node_names()` [prune/run.rs#L99](../../packages/treetime/src/commands/prune/run.rs#L99)
-- `edge.fitch_subs().len()` [prune/run.rs#L146](../../packages/treetime/src/commands/prune/run.rs#L146)
+- `parse_node_names()` [prune/run.rs#L213](../../packages/app-commands/src/commands/prune/run.rs#L213)
+- `edge.fitch_subs().len()` [prune/prune.rs#L77](../../packages/treetime/src/prune/prune.rs#L77)
 
 ### Find shared subs between sibling edges
 

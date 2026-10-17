@@ -6,7 +6,7 @@
 > [!WARNING]
 > **Needs review.** The tree-output refactor removed the TreeIR projection and wired `ancestral_to_auspice` into the writer. Whether ancestral Auspice is now produced completely and for **every** method (Fitch parsimony as well as sparse/dense marginal), and whether its payload matches the v0 fields below, is **not yet confirmed** against the current writer.
 
-V0's `ancestral` command produces `auspice_tree.json` through `def export_sequences_and_tree()`. V1 now writes Auspice output directly from the graph via `fn ancestral_to_auspice()` [`packages/treetime/src/commands/shared/tree_output.rs#L240`](../../packages/treetime/src/commands/shared/tree_output.rs#L240).
+V0's `ancestral` command produces `auspice_tree.json` through `def export_sequences_and_tree()`. V1 now writes Auspice output directly from the graph via `fn auspice_tree()` [`packages/app-output/src/auspice.rs#L29`](../../packages/app-output/src/auspice.rs#L29).
 
 V0's ancestral Auspice JSON contains `node_attrs.div` (cumulative `mutation_length`), `branch_attrs.mutations.nuc` (per-branch mutations), `node_attrs.confidence` (pseudo-bootstrap), `meta.genome_annotations.nuc`, and `node_attrs.bad_branch`. It contains no dates because `timetree=false`.
 
@@ -42,9 +42,9 @@ O1 adds the `bad_branch` filter, which then becomes the default coloring in plac
 - `def create_auspice_json()` [packages/legacy/treetime/treetime/CLI_io.py#L277-L341](../../packages/legacy/treetime/treetime/CLI_io.py#L277-L341)
 - `def export_sequences_and_tree()` Auspice dispatch [packages/legacy/treetime/treetime/CLI_io.py#L220](../../packages/legacy/treetime/treetime/CLI_io.py#L220)
 - `def ancestral_reconstruction()` output dispatch [packages/legacy/treetime/treetime/wrappers.py#L641-L648](../../packages/legacy/treetime/treetime/wrappers.py#L641-L648)
-- `fn write_tree_for_partition()` [packages/treetime/src/commands/ancestral/run.rs#L235-L270](../../packages/treetime/src/commands/ancestral/run.rs#L235-L270)
+- `fn write_ancestral_trees()` [packages/app-commands/src/commands/shared/ancestral_trees.rs#L18-L55](../../packages/app-commands/src/commands/shared/ancestral_trees.rs#L18-L55)
 - `pub fn write_tree_outputs()` and `fn require_ir()` [packages/treetime-io/src/graph.rs#L61-L126](../../packages/treetime-io/src/graph.rs#L61-L126)
-- `fn CommandKind.available_tree_outputs()` [packages/treetime/src/commands/shared/output.rs#L297-L322](../../packages/treetime/src/commands/shared/output.rs#L297-L322)
+- `fn CommandKind.available_tree_outputs()` [packages/app-output/src/output_plan.rs#L336-L346](../../packages/app-output/src/output_plan.rs#L336-L346)
 - `fn write_graph_file_with()` rejects TreeIR-dependent writers when no projection is available [packages/treetime-io/src/graph.rs#L88-L98](../../packages/treetime-io/src/graph.rs#L88-L98)
 
 ## Validation

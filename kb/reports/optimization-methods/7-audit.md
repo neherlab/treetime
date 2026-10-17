@@ -24,7 +24,7 @@ A detailed item-by-item audit with code locations, callers, callees, and converg
 | H1  | [dispatch.rs#L272-L308](../../../packages/treetime/src/optimize/dispatch.rs#L272-L308)                       | Newton-Raphson + grid | **High** - wrap as `Solver` (P1) |
 | H2  | [common.rs#L93-L163](../../../packages/treetime/src/gtr/infer_gtr/common.rs#L93-L163)                                                 | Fixed-point iteration | No - domain-specific ECM         |
 | H3  | [run_loop.rs#L33-L135](../../../packages/treetime/src/optimize/run_loop.rs#L33-L135)                                                 | EM-like outer loop    | No - pipeline coordination       |
-| H4  | [run.rs#L236-L279](../../../packages/treetime/src/commands/timetree/run.rs#L236-L279)                                                 | Refinement pipeline   | No - multi-phase pipeline        |
+| H4  | [refinement_loop.rs](../../../packages/treetime/src/timetree/refinement_loop.rs)                                                       | Refinement pipeline   | No - multi-phase pipeline        |
 | H5  | [distribution.rs#L425-L491](../../../packages/treetime-distribution/src/distribution_core/distribution.rs#L425-L491)                  | HPD bisection         | **Medium** - `BrentRoot` (P2)    |
 | H6  | Same as E3                                                                                                                            | Grid search           | Retire (P4)                      |
 | H7  | [zero_boundary.rs#L67-L95](../../../packages/treetime/src/optimize/zero_boundary.rs#L67-L95)                       | Grid fallback         | **Medium** - `BrentOpt` (P5)     |

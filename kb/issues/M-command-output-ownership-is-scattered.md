@@ -1,6 +1,6 @@
 # Command output ownership is scattered
 
-The shared output module owns selection, default sets, path resolution, and tree-format dispatch [`packages/treetime/src/commands/shared/output.rs#L28`](../../packages/treetime/src/commands/shared/output.rs#L28) [`packages/treetime/src/commands/shared/tree_output.rs#L72`](../../packages/treetime/src/commands/shared/tree_output.rs#L72). Each command runner still registers non-tree fields, checks data prerequisites, chooses projection inputs and comment providers, and writes non-tree outputs independently.
+The shared output module owns selection, default sets, path resolution, and tree-format dispatch [`packages/app-output/src/output_plan.rs#L18`](../../packages/app-output/src/output_plan.rs#L18) [`packages/app-output/src/tree_output.rs#L53`](../../packages/app-output/src/tree_output.rs#L53). Each command runner still registers non-tree fields, checks data prerequisites, chooses projection inputs and comment providers, and writes non-tree outputs independently.
 
 `OutputCoreArgs::resolve()` is pure, and tree projection and writing are centralized. Ownership of a complete output plan and materialization contract remains distributed across command modules.
 

@@ -7,8 +7,8 @@ The nucleotide mutation output is substitution-only, matching augur node-data. T
 
 ## Evidence
 
-- Amino-acid node-data chains substitutions with range-based indels [`packages/treetime/src/commands/ancestral/aa_node_data.rs#L270-L276`](../../packages/treetime/src/commands/ancestral/aa_node_data.rs#L270-L276); the substitution diff excludes gap positions [`packages/treetime/src/commands/ancestral/aa_node_data.rs#L326-L329`](../../packages/treetime/src/commands/ancestral/aa_node_data.rs#L326-L329), so gaps reach output only via the indel track.
-- The Auspice writer drops indels for the nucleotide track but not amino-acid tracks `fn group_mutations()` [`packages/treetime/src/commands/shared/tree_output.rs#L1473-L1502`](../../packages/treetime/src/commands/shared/tree_output.rs#L1473-L1502).
+- Amino-acid node-data chains substitutions with range-based indels [`packages/treetime/src/ancestral/aa.rs#L153-L199`](../../packages/treetime/src/ancestral/aa.rs#L153-L199) and [`packages/app-output/src/augur_node_data_ancestral.rs#L139-L147`](../../packages/app-output/src/augur_node_data_ancestral.rs#L139-L147); the substitution diff excludes gap positions [`packages/treetime/src/ancestral/aa.rs#L226-L229`](../../packages/treetime/src/ancestral/aa.rs#L226-L229), so gaps reach output only via the indel track.
+- The Auspice writer drops indels for the nucleotide track but not amino-acid tracks `fn group_mutations()` [`packages/app-output/src/auspice.rs#L266-L280`](../../packages/app-output/src/auspice.rs#L266-L280).
 
 ## Open question
 

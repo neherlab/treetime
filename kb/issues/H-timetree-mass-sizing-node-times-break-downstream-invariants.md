@@ -9,7 +9,7 @@ With probability-mass grid sizing enabled for timetree distributions (`rewindow_
 
 Reproduce on `dev` with the division bound in place:
 
-- `test_pipeline_timetree_convergence` (`packages/treetime/src/commands/timetree/__tests__/test_pipeline.rs`) fails with `Positional log-likelihood must be negative, got inf`.
+- `test_pipeline_timetree_convergence` (`packages/app-commands/src/commands/timetree/__tests__/test_pipeline.rs`) fails with `Positional log-likelihood must be negative, got inf`.
 - `test_round_rebuilds_complete_coalescent_state_after_topology_change` and `test_round_unchanged_topology_recomputes_missing_time` (`packages/treetime/src/timetree/__tests__/test_round.rs`) fail: polytomy resolution merges no lineage (`Changed { resolved_nodes: 1 }` -> `Unchanged`), which cascades to `Polytomy resolution requires an inferred time for node N, but it has none` on the follow-up refinement.
 
 ## Impact and scope

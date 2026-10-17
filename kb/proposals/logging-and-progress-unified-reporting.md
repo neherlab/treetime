@@ -245,7 +245,7 @@ Location:
 
 SPANTRACE:
    0: treetime::commands::ancestral with run=a3f1 dataset=flu/h3n2/20
-      at packages/treetime/src/commands/ancestral.rs:41
+      at packages/app-commands/src/commands/ancestral/run.rs:41
 ```
 
 Packages: `color-eyre` formats the report in both versions. The span section comes from the `ErrorLayer` of `tracing-error`, which `color-eyre` renders when the layer is installed. The exact layout is that crate's default.

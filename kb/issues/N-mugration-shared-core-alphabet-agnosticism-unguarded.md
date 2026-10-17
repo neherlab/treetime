@@ -28,7 +28,7 @@ So the discrete path plugs into an alphabet-parameterized core through the `Part
 
 ## Coverage gap
 
-- `packages/treetime/src/commands/mugration/__tests__/test_discrete_marginal.rs` runs the shared marginal core on a 2-state discrete alphabet and asserts node profiles. It exercises one small state count and does not assert the agnosticism contract or a non-4 alphabet through the count path.
+- `packages/treetime/src/mugration/__tests__/test_discrete_marginal.rs` runs the shared marginal core on a 2-state discrete alphabet and asserts node profiles. It exercises one small state count and does not assert the agnosticism contract or a non-4 alphabet through the count path.
 - The discrete transition-count delegation lacks a complete hand oracle; this narrower part is tracked in [N-mugration-count-transitions-untested.md](N-mugration-count-transitions-untested.md).
 
 ## Fix approach

@@ -1,6 +1,9 @@
 # Shared output module mixes output planning with topology ordering
 
-`commands/shared/output.rs` contains output kinds, command capability policy, CLI output fields, path derivation, and resolved output maps alongside topology-order arguments, target-order file loading, graph traversal, and private Newick payload types [`packages/treetime/src/commands/shared/output.rs`](../../packages/treetime/src/commands/shared/output.rs).
+`commands/shared/output.rs` contains output kinds, command capability policy, CLI output fields, path derivation, and resolved output maps alongside topology-order arguments, target-order file loading, graph traversal, and private Newick payload types.
+
+> [!WARNING]
+> **Needs review.** `commands/shared/output.rs` no longer exists. Output planning is in `packages/app-output/src/output_plan.rs`, which holds no topology-order code, and topology-order arguments are in `packages/app-commands/src/commands/shared/topology_order_args.rs`. Check whether the split this issue requires is done, then update or delete the issue.
 
 ## Cohesion problem
 

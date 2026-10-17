@@ -2,31 +2,6 @@
 
 A check of every relative Markdown link target in `kb/` finds links whose target file does not exist. The missing targets prevent readers and automated checks from following the KB's evidence graph. Most of them point to source files that moved during refactors.
 
-## Removed `packages/treetime/src/commands/` tree
-
-Command code moved to `packages/app-commands/src/commands/` and the output code to `packages/app-output/src/`. Links to the old `packages/treetime/src/commands/...` paths are in:
-
-- `kb/decisions/ancestral-iterative-gtr-refinement.md`
-- `kb/decisions/coalescent-output-schema.md`
-- `kb/decisions/command-prune-standalone.md`
-- `kb/decisions/prune-merge-jukes-cantor-branch-length.md`
-- `kb/issues/M-command-output-ownership-is-scattered.md`
-- `kb/issues/M-core-mutation-representation-and-format-projection-inconsistent.md`
-- `kb/issues/M-output-module-mixes-topology-ordering.md`
-- `kb/issues/N-amino-acid-mutation-indel-representation-undecided.md`
-- `kb/issues/N-ancestral-auspice-json-not-produced.md`
-- `kb/issues/N-datetime-date-and-range-representation-inconsistent.md`
-- `kb/issues/N-optimize-topology-cleanup-fitch-vs-ml-subs.md`
-- `kb/proposals/amino-acid-mutation-output-substitution-only.md`
-- `kb/proposals/optimize-convergence-and-robustness.md`
-- `kb/reports/iterative-tree-refinement/8-initial-estimation.md`
-- `kb/reports/optimization-methods/4-outer-loops.md`
-- `kb/reports/optimization-methods/7-audit.md`
-- `kb/reports/optimize-dense-sparse-architecture.md`
-- `kb/reports/sparse-subs-accessors.md`
-- `kb/reports/zero-branch-length-optimization.md`
-- `kb/v0-errata/optimize-signed-convergence-check.md`
-
 ## Removed flat `packages/treetime/src/partition/` modules
 
 The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `storage/` subdirectories. Links to the old flat files (`marginal_core.rs`, `marginal_dense.rs`, `marginal_discrete.rs`, `marginal_helpers.rs`, `marginal_passes.rs`, `marginal_sparse.rs`, `optimize_dense.rs`, `optimize_sparse.rs`, `optimization_contribution.rs`, `dense.rs`, `sparse.rs`, `fitch.rs`, `timetree.rs`, `traits.rs`, `indexed_pass.rs`) are in:
