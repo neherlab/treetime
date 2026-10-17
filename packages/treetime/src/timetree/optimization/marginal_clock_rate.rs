@@ -1,10 +1,9 @@
-//! Clock rate that maximizes the marginal likelihood of the node times.
+//! Clock rate step toward the maximum of the marginal likelihood of the node times.
 //!
 //! The branch-time distributions are a rate-independent likelihood on a branch-length grid, divided by the clock rate
 //! (`fn compute_branch_length_distribution()`). A different rate therefore rescales their time axis, and each
 //! candidate rate costs one backward pass, not a new branch-likelihood computation.
 
-use crate::brent::minimize_brent;
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::make_report;
@@ -18,12 +17,10 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::MaxGridPoints;
 
-/// The search covers the reference rate divided and multiplied by this factor; the refinement loop repeats the search
-/// every round, so a rate beyond it is reached in a later round
-const RATE_SEARCH_FACTOR: f64 = 3.0;
-/// Relative tolerance on the square root of the rate
-const RATE_SEARCH_TOLERANCE: f64 = 1e-3;
-const RATE_SEARCH_MAX_ITERS: u64 = 20;
+/// The marginal likelihood is probed at the reference rate divided and multiplied by this factor
+const PROBE_FACTOR: f64 = 1.25;
+/// The parabola's maximum is taken at most this factor away from the reference rate
+const MAX_TARGET_FACTOR: f64 = 2.0;
 
 pub(crate) struct MarginalRateInputs<'a> {
   pub graph: &'a Graph,
@@ -37,8 +34,12 @@ pub(crate) struct MarginalRateInputs<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct MarginalRateFit {
+pub(crate) struct MarginalRateStep {
+  /// Rate half-way, in log rate, from the reference rate to `target_rate`
   pub clock_rate: f64,
+  /// Maximum of the parabola through the probes, within `MAX_TARGET_FACTOR` of the reference rate
+  pub target_rate: f64,
+  /// Log marginal likelihood at the reference rate
   pub log_lh: f64,
 }
 
@@ -83,38 +84,53 @@ pub(crate) fn marginal_log_lh_at_rate(inputs: &MarginalRateInputs<'_>, clock_rat
   backward.log_marginal_likelihood(inputs.graph.root_key()?)
 }
 
-/// Maximizes the log marginal likelihood over the clock rate by Brent's method on its square root, which keeps the rate
-/// positive. A rate whose backward pass fails or leaves the root without a distribution scores as impossible.
-pub(crate) fn optimize_marginal_clock_rate(inputs: &MarginalRateInputs<'_>) -> Result<MarginalRateFit, Report> {
+/// One damped step of the clock rate toward the maximum of the log marginal likelihood. A parabola in log rate through
+/// the reference rate and the rates `PROBE_FACTOR` below and above gives a target, at most `MAX_TARGET_FACTOR` away;
+/// without a maximum the target is that bound on the side of the better probe. The rate moves half-way to the target.
+/// The refinement loop repeats the step every round, with the times, Tc and the reconstruction re-estimated in between,
+/// so the rate needs no precise optimum, and the half step damps its coupling to the times. A probe whose backward pass
+/// fails or leaves the root without a distribution counts as impossible.
+pub(crate) fn step_marginal_clock_rate(inputs: &MarginalRateInputs<'_>) -> Result<MarginalRateStep, Report> {
   let reference = inputs.reference_rate;
   if !(reference.is_finite() && reference > 0.0) {
     return Err(make_report!(
-      "Marginal clock rate search needs a positive reference rate, got {reference}"
+      "Marginal clock rate step needs a positive reference rate, got {reference}"
     ));
   }
-  let (lower, upper) = (
-    (reference / RATE_SEARCH_FACTOR).sqrt(),
-    (reference * RATE_SEARCH_FACTOR).sqrt(),
-  );
-  let minimum = minimize_brent(
-    lower,
-    upper,
-    Some((RATE_SEARCH_TOLERANCE, f64::EPSILON)),
-    RATE_SEARCH_MAX_ITERS,
-    |s| {
-      let log_lh = marginal_log_lh_at_rate(inputs, s * s).ok().flatten();
-      Ok(log_lh.map_or(f64::INFINITY, |log_lh| -log_lh))
-    },
-  )?;
-  if !minimum.value.is_finite() {
+  let probe = |factor: f64| {
+    marginal_log_lh_at_rate(inputs, reference * factor)
+      .ok()
+      .flatten()
+      .unwrap_or(f64::NEG_INFINITY)
+  };
+  let log_lh = probe(1.0);
+  if !log_lh.is_finite() {
     return Err(make_report!(
-      "Marginal clock rate search found no rate between {} and {} with a finite marginal likelihood",
-      lower * lower,
-      upper * upper
+      "Marginal clock rate step found no finite marginal likelihood at the reference rate {reference}"
     ));
   }
-  Ok(MarginalRateFit {
-    clock_rate: minimum.x * minimum.x,
-    log_lh: -minimum.value,
+  let target = log_rate_target(probe(1.0 / PROBE_FACTOR), log_lh, probe(PROBE_FACTOR));
+  Ok(MarginalRateStep {
+    clock_rate: reference * (0.5 * target).exp(),
+    target_rate: reference * target.exp(),
+    log_lh,
   })
+}
+
+/// Log of the target rate relative to the reference: the maximum of the parabola through `(-h, below)`, `(0, at)` and
+/// `(h, above)` with h = ln(PROBE_FACTOR), bounded by ln(MAX_TARGET_FACTOR)
+fn log_rate_target(below: f64, at: f64, above: f64) -> f64 {
+  let h = PROBE_FACTOR.ln();
+  let bound = MAX_TARGET_FACTOR.ln();
+  let curvature = above + below - 2.0 * at;
+  let target = if curvature.is_finite() && curvature < 0.0 {
+    h * (below - above) / (2.0 * curvature)
+  } else if above.max(below) <= at {
+    0.0
+  } else if above > below {
+    bound
+  } else {
+    -bound
+  };
+  target.clamp(-bound, bound)
 }
