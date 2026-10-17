@@ -8,11 +8,13 @@ set -euxo pipefail
 
 triplet="${1:?triplet}"
 dest="${2:?prefix}"
-release="2026-10-14_07-10-01"
+version="0.3.34"
+build_time="2026-10-17_19-46-58"
+release="openblas-${version}-${build_time}"
 archive="/tmp/openblas.tar.xz"
 mkdir -p "${dest}"
 
-/fetch "https://github.com/binarylandia/build_openblas/releases/download/${release}/openblas-static-0.3.28-${triplet}-${release}.tar.xz" "${archive}"
+/fetch "https://github.com/binarylandia/build_openblas/releases/download/${release}/openblas-static-${version}-${triplet}-${build_time}.tar.xz" "${archive}"
 pixz -dp "$(nproc)" <"${archive}" | tar -C "${dest}" -x
 rm "${archive}"
 test -f "${dest}/lib/libopenblas.a"
