@@ -1,7 +1,8 @@
 # Coalescent lineage counts are frozen for the prior and live for the statistic
 
 $k(t)$ plays two roles in the timetree loop, and only one of them may track the times being
-inferred. As the **prior** on node times it is frozen at the tree entering the optimization loop.
+inferred. As the **prior** on node times it is frozen at the tree entering the optimization loop,
+after one rebuild in the initial round.
 As the **statistic** that $T_c$ is estimated from and the likelihood evaluated against it is read
 from the live tree. Deriving both from the current times makes the prior self-referential and the
 loop does not converge.
@@ -38,7 +39,7 @@ tree:
 
 | quantity | status | where it comes from |
 | --- | --- | --- |
-| $k(t)$, `lineage_counts` | fixed | `compute_lineage_counts(graph)`, once, before the loop |
+| $k(t)$, `lineage_counts` | fixed | `compute_lineage_counts(graph)` in the initial round, rebuilt once, before the loop |
 | $T_c$, `tc` | estimated | `optimize_skyline` against the live tree, re-run each round when the mode optimizes it |
 | $H(t)=\int\kappa$, `expected_mergers` | compound | `compute_integral_merger_rate(tc, lineage_counts)`, materialised at construction |
 
@@ -47,9 +48,27 @@ tree:
 decides which $k(t)$ the prior gets. `None` means the run carries no coalescent prior; the absent
 option *is* the gate, rather than a model plus a flag telling the function to ignore it.
 
+## One rebuild, then frozen
+
+The prior-free times of the initial round give $k_0$, which seeds the first pass under the prior.
+$k(t)$ is then rebuilt once from the times inferred under that prior and frozen. $k_0$ comes from a
+tree without a coalescent prior, typically with a much older root and stretched deep branches, so
+the prior it imposes disagrees with the times it produces. Rebuilding every round brings back the
+self-referential loop.
+
+On simulated data (10 rounds, 30 sets per cell, true topology and root, `--coalescent-opt`), the
+rebuild lowers the median root date error from 3.43 to 1.87 years at $L=10^3$, $\mu=10^{-3}$ and
+from 1.41 to 0.79 years at $L=10^4$, $\mu=3\cdot10^{-4}$, and the node date RMSE from 0.365 to
+0.261 and from 0.170 to 0.153 years. It lowers the clock rate by about 8%. At $L=10^3$,
+$\mu=3\cdot10^{-4}$, where 47 substitutions fall on 400 tips, the deep part of the tree then drifts
+between rounds, by 3-70 years in 17 of 28 sets, against below one year with $k_0$; the node date
+RMSE rises from 0.406 to 0.473 years. These numbers include committing the root at its posterior
+median (see [timetree-root-time-at-posterior-median.md](timetree-root-time-at-posterior-median.md)).
+Rebuilding every round made the root swing by decades at that signal and gave no better dates elsewhere.
+
 ## Freezing, not re-freezing
 
-$k(t)$ is frozen once and never updated, including across polytomy resolution, which genuinely
+After the rebuild $k(t)$ is never updated, including across polytomy resolution, which genuinely
 adds internal nodes. A skyline $T_c(t)$ has enough expressiveness to absorb that; a single
 constant $T_c$ has less. Re-freezing on topology change is the obvious refinement if the fixed-$T_c$
 modes turn out to drift, and is a one-line change in `refine_topology`.
