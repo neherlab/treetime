@@ -2,27 +2,29 @@
 #
 # Usage: $0 <triplet> <prefix>
 #
-# Install a GCC 14 cross toolchain for a target triplet into a prefix.
+# Install a GCC 14 cross toolchain of binarylandia/build_crosstool-ng for a
+# target triplet into a prefix.
 #
 set -euxo pipefail
 
 triplet="${1:?triplet}"
 dest="${2:?prefix}"
-release="2026-10-17_03-18-44"
+version="14.4.0"
+build_time="2026-10-17_17-07-26"
+release="gcc-${version}-${build_time}"
 archive="/tmp/gcc-cross.tar.xz"
 mkdir -p "${dest}"
 
-/fetch "https://github.com/binarylandia/build_crosstool-ng/releases/download/${release}/gcc-14.2.0-${triplet}-${release}.tar.xz" "${archive}"
+/fetch "https://github.com/binarylandia/build_crosstool-ng/releases/download/${release}/gcc-${version}-${triplet}-${build_time}.tar.xz" "${archive}"
 pixz -dp "$(nproc)" <"${archive}" | tar -C "${dest}" -x
 rm "${archive}"
 
+# The MinGW toolchain comes with libgcc_eh.a, which rustc links, and with its
+# sysroot flattened out of the extra mingw/ directory, so Linux and Windows
+# targets share the sysroot variables; build_crosstool-ng adds both.
 if [[ "${triplet}" =~ (mingw|windows) ]]; then
-  # The MinGW toolchain has no libgcc_eh.a, which rustc links; libgcc.a provides the symbols.
-  # https://github.com/r-windows/rtools-packages/issues/185
-  ln -s "libgcc.a" "${dest}/lib/gcc/x86_64-w64-mingw32/14.2.0/libgcc_eh.a"
-  # The MinGW sysroot nests under an extra mingw/ directory; flatten it so Linux
-  # and Windows targets share the sysroot variables.
-  cp -r "${dest}/x86_64-w64-mingw32/sysroot/mingw/"* "${dest}/x86_64-w64-mingw32/sysroot/"
+  test -e "${dest}/lib/gcc/${triplet}/${version}/libgcc_eh.a"
+  test -d "${dest}/${triplet}/sysroot/lib"
 fi
 
 test "$("${dest}/bin/${triplet}-gcc" -dumpmachine)" = "${triplet}"
