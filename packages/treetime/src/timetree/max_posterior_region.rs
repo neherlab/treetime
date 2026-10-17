@@ -144,6 +144,7 @@ fn highest_density_interval(
     .find(|&(_, above)| mass_at(above, cells_at(above)) >= fraction);
 
   let Some((below, above)) = reached else {
+    // TODO: this region can hold less than `fraction`; kb/issues/M-timetree-max-posterior-region-fallback-holds-less-than-fraction.md
     return (earlier.support_end(), later.support_end());
   };
   let cells = cells_at(above);

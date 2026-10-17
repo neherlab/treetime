@@ -161,6 +161,7 @@ mod tests {
     Ok(())
   }
 
+  // TODO: the expected region holds about 87.4% of the mass for a 90% request; kb/issues/M-timetree-max-posterior-region-fallback-holds-less-than-fraction.md
   #[test]
   fn test_max_posterior_region_spans_support_when_no_level_holds_fraction() -> Result<(), Report> {
     let t = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
