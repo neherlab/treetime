@@ -4,7 +4,7 @@ pub(crate) mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::guess_initial_branch_lengths;
-  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
+  use crate::optimize::gather::InitialGuessEvidence;
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::fitch::passes::create_fitch_partition;
@@ -103,10 +103,8 @@ pub(crate) mod tests {
   ) -> Result<(), Report> {
     guess_initial_branch_lengths(
       graph,
-      reconstruction.sequence_length(),
       &IndelPolicy::Include.edge_indels(graph, reconstruction, branch_lengths),
-      &gather_edge_sub_counts(graph, reconstruction)?,
-      &gather_edge_effective_lengths(graph, reconstruction)?,
+      &InitialGuessEvidence::gather(graph, reconstruction)?,
       ExistingBranchLengths::Overwrite,
       branch_lengths,
     )

@@ -1,6 +1,6 @@
 use crate::branch_lengths::one_mutation;
 use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
-use crate::optimize::gather::EdgeContributions;
+use crate::optimize::gather::{EdgeContributions, InitialGuessEvidence};
 use crate::optimize::indel::{EdgeIndels, IndelTerm};
 use crate::optimize::method_brent::solve_brent;
 use crate::optimize::method_newton::solve_newton;
@@ -183,18 +183,16 @@ impl SeriesChain {
 
 pub(crate) fn guess_initial_branch_lengths(
   graph: &Graph,
-  total_length: usize,
   indels: &EdgeIndels,
-  sub_counts: &BTreeMap<GraphEdgeKey, usize>,
-  effective_lengths: &BTreeMap<GraphEdgeKey, usize>,
+  evidence: &InitialGuessEvidence,
   existing: ExistingBranchLengths,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  if total_length == 0 {
+  if evidence.total_length == 0 {
     return make_error!("Total sequence length across all partitions is zero; cannot compute initial guess");
   }
 
-  let one_mutation = one_mutation(total_length);
+  let one_mutation = one_mutation(evidence.total_length);
 
   for edge_ref in graph.get_edges() {
     let edge_key = edge_ref.key();
@@ -209,9 +207,9 @@ pub(crate) fn guess_initial_branch_lengths(
       }
     }
 
-    let sub_count: usize = sub_counts[&edge_key];
+    let sub_count: usize = evidence.sub_counts[&edge_key];
 
-    let effective_length: usize = effective_lengths[&edge_key];
+    let effective_length: usize = evidence.effective_lengths[&edge_key];
 
     let branch_length = if effective_length > 0 {
       let sub_estimate = sub_count.to_f64_exact() / effective_length.to_f64_exact();

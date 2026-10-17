@@ -53,6 +53,22 @@ pub(crate) fn gather_edge_contributions(
     .collect()
 }
 
+pub(crate) struct InitialGuessEvidence {
+  pub total_length: usize,
+  pub sub_counts: BTreeMap<GraphEdgeKey, usize>,
+  pub effective_lengths: BTreeMap<GraphEdgeKey, usize>,
+}
+
+impl InitialGuessEvidence {
+  pub(crate) fn gather(graph: &Graph, reconstruction: &MarginalReconstruction) -> Result<Self, Report> {
+    Ok(Self {
+      total_length: reconstruction.sequence_length(),
+      sub_counts: gather_edge_sub_counts(graph, reconstruction)?,
+      effective_lengths: gather_edge_effective_lengths(graph, reconstruction)?,
+    })
+  }
+}
+
 pub(crate) fn gather_edge_indel_counts(
   graph: &Graph,
   reconstruction: &MarginalReconstruction,
@@ -68,7 +84,7 @@ pub(crate) fn gather_edge_indel_counts(
     .collect()
 }
 
-pub(crate) fn gather_edge_sub_counts(
+fn gather_edge_sub_counts(
   graph: &Graph,
   reconstruction: &MarginalReconstruction,
 ) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
@@ -83,7 +99,7 @@ pub(crate) fn gather_edge_sub_counts(
     .collect()
 }
 
-pub(crate) fn gather_edge_effective_lengths(
+fn gather_edge_effective_lengths(
   graph: &Graph,
   reconstruction: &MarginalReconstruction,
 ) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {

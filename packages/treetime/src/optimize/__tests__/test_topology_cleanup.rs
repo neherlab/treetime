@@ -4,7 +4,7 @@ pub(super) mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_effective_lengths, gather_edge_sub_counts};
+  use crate::optimize::gather::{InitialGuessEvidence, gather_edge_contributions};
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::ExistingBranchLengths;
@@ -138,9 +138,8 @@ pub(super) mod tests {
 
     let total_length = reconstruction.sequence_length();
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    guess_initial_branch_lengths(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
+    let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
+    guess_initial_branch_lengths(&graph, &indels, &evidence, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -220,9 +219,8 @@ pub(super) mod tests {
 
     let total_length = reconstruction.sequence_length();
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    guess_initial_branch_lengths(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
+    let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
+    guess_initial_branch_lengths(&graph, &indels, &evidence, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -399,9 +397,8 @@ pub(super) mod tests {
 
     let total_length = reconstruction.sequence_length();
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    guess_initial_branch_lengths(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
+    let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
+    guess_initial_branch_lengths(&graph, &indels, &evidence, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -476,11 +473,9 @@ pub(super) mod tests {
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states));
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let total_length = reconstruction.sequence_length();
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    guess_initial_branch_lengths(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
+    let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
+    guess_initial_branch_lengths(&graph, &indels, &evidence, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -548,16 +543,12 @@ pub(super) mod tests {
       sp_node_states,
     ));
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let total_length = reconstruction.sequence_length();
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
+    let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
-      total_length,
       &indels,
-      &sub_counts,
-      &effective_lengths,
+      &evidence,
       ExistingBranchLengths::Overwrite,
       &mut branch_lengths,
     )?;

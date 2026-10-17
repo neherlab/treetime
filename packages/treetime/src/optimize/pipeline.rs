@@ -6,7 +6,7 @@ use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::optimize_edge_lengths;
-use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
+use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
@@ -95,19 +95,14 @@ pub fn run(
   }
 
   {
-    let total_length = reconstruction.sequence_length();
     let indels = params
       .indel_policy
       .edge_indels(&input.graph, &reconstruction, &branch_lengths);
-    let sub_counts = gather_edge_sub_counts(&input.graph, &reconstruction).map_err(OperationError::classify)?;
-    let effective_lengths =
-      gather_edge_effective_lengths(&input.graph, &reconstruction).map_err(OperationError::classify)?;
+    let evidence = InitialGuessEvidence::gather(&input.graph, &reconstruction).map_err(OperationError::classify)?;
     apply_initial_guess_mode(
       &input.graph,
-      total_length,
       &indels,
-      &sub_counts,
-      &effective_lengths,
+      &evidence,
       params.initial_guess,
       &mut branch_lengths,
       names,

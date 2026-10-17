@@ -2,7 +2,7 @@
 mod tests {
   use crate::optimize::__tests__::test_optimize_indel::tests::inject_indels_on_first_edge;
   use crate::optimize::dispatch::guess_initial_branch_lengths;
-  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
+  use crate::optimize::gather::InitialGuessEvidence;
   use crate::optimize::indel::{EdgeIndels, IndelPolicy, IndelTerm};
   use crate::optimize::params::ExistingBranchLengths;
   use crate::test_utils::deletion;
@@ -138,10 +138,8 @@ mod tests {
     let indels = fixture.edge_indels(policy);
     guess_initial_branch_lengths(
       &fixture.graph,
-      fixture.reconstruction.sequence_length(),
       &indels,
-      &gather_edge_sub_counts(&fixture.graph, &fixture.reconstruction)?,
-      &gather_edge_effective_lengths(&fixture.graph, &fixture.reconstruction)?,
+      &InitialGuessEvidence::gather(&fixture.graph, &fixture.reconstruction)?,
       ExistingBranchLengths::Overwrite,
       &mut fixture.branch_lengths,
     )?;

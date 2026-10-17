@@ -2,6 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
+  use crate::optimize::gather::InitialGuessEvidence;
   use crate::optimize::indel::EdgeIndels;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
@@ -38,12 +39,15 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let total_length = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 0)?.length;
+    let evidence = InitialGuessEvidence {
+      total_length,
+      sub_counts: BTreeMap::new(),
+      effective_lengths: BTreeMap::new(),
+    };
     let result = guess_initial_branch_lengths(
       &graph,
-      total_length,
       &EdgeIndels::Excluded,
-      &BTreeMap::new(),
-      &BTreeMap::new(),
+      &evidence,
       ExistingBranchLengths::Overwrite,
       &mut branch_lengths,
     );

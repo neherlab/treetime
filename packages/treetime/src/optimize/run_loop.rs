@@ -2,6 +2,7 @@ use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
+use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::indel::{EdgeIndels, IndelPolicy};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::ExistingBranchLengths;
@@ -397,16 +398,10 @@ pub(crate) struct TopologyCleanup {
   pub topology_changed: bool,
 }
 
-#[expect(
-  clippy::too_many_arguments,
-  reason = "the total length, the indels, the substitution counts and the effective lengths are separate products of the reconstruction that the caller gathers, and the tests build each one on its own; the branch lengths are the only mutable output"
-)]
 pub(crate) fn apply_initial_guess_mode(
   graph: &Graph,
-  total_length: usize,
   indels: &EdgeIndels,
-  sub_counts: &BTreeMap<GraphEdgeKey, usize>,
-  effective_lengths: &BTreeMap<GraphEdgeKey, usize>,
+  evidence: &InitialGuessEvidence,
   mode: InitialGuessMode,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -418,21 +413,13 @@ pub(crate) fn apply_initial_guess_mode(
   }
 
   match mode {
-    InitialGuessMode::Auto => guess_initial_branch_lengths(
-      graph,
-      total_length,
-      indels,
-      sub_counts,
-      effective_lengths,
-      ExistingBranchLengths::Keep,
-      branch_lengths,
-    ),
+    InitialGuessMode::Auto => {
+      guess_initial_branch_lengths(graph, indels, evidence, ExistingBranchLengths::Keep, branch_lengths)
+    },
     InitialGuessMode::Always => guess_initial_branch_lengths(
       graph,
-      total_length,
       indels,
-      sub_counts,
-      effective_lengths,
+      evidence,
       ExistingBranchLengths::Overwrite,
       branch_lengths,
     ),

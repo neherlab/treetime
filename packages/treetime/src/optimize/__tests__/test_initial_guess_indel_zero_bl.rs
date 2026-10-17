@@ -4,7 +4,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::guess_initial_branch_lengths;
-  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
+  use crate::optimize::gather::InitialGuessEvidence;
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -28,16 +28,12 @@ mod tests {
   fn test_initial_guess_auto_preserves_zero_bl_without_indels() -> Result<(), Report> {
     let (graph, reconstruction, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
-    let total_length = reconstruction.sequence_length();
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
+    let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
-      total_length,
       &indels,
-      &sub_counts,
-      &effective_lengths,
+      &evidence,
       ExistingBranchLengths::Keep,
       &mut branch_lengths,
     )?;
@@ -69,16 +65,12 @@ mod tests {
         });
     }
 
-    let total_length = reconstruction.sequence_length();
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
-    let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
+    let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
-      total_length,
       &indels,
-      &sub_counts,
-      &effective_lengths,
+      &evidence,
       ExistingBranchLengths::Keep,
       &mut branch_lengths,
     )?;

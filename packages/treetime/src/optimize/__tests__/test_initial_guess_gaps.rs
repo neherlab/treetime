@@ -4,7 +4,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::dispatch::guess_initial_branch_lengths;
-  use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
+  use crate::optimize::gather::InitialGuessEvidence;
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::fitch::passes::create_fitch_partition;
@@ -258,14 +258,11 @@ mod tests {
     {
       let total_length = reconstruction_clean.sequence_length();
       let indels = IndelPolicy::Include.edge_indels(&graph_clean, &reconstruction_clean, &branch_lengths_clean);
-      let sub_counts = gather_edge_sub_counts(&graph_clean, &reconstruction_clean)?;
-      let effective_lengths = gather_edge_effective_lengths(&graph_clean, &reconstruction_clean)?;
+      let evidence = InitialGuessEvidence::gather(&graph_clean, &reconstruction_clean)?;
       guess_initial_branch_lengths(
         &graph_clean,
-        total_length,
         &indels,
-        &sub_counts,
-        &effective_lengths,
+        &evidence,
         ExistingBranchLengths::Overwrite,
         &mut branch_lengths_clean,
       )?;
@@ -282,16 +279,12 @@ mod tests {
     let mut branch_lengths_gappy = nwk_parsed.branch_lengths;
     let reconstruction_gappy = setup_sparse(&graph_gappy, &graph_gappy_names, &aln_gappy, &branch_lengths_gappy)?;
     {
-      let total_length = reconstruction_gappy.sequence_length();
       let indels = IndelPolicy::Include.edge_indels(&graph_gappy, &reconstruction_gappy, &branch_lengths_gappy);
-      let sub_counts = gather_edge_sub_counts(&graph_gappy, &reconstruction_gappy)?;
-      let effective_lengths = gather_edge_effective_lengths(&graph_gappy, &reconstruction_gappy)?;
+      let evidence = InitialGuessEvidence::gather(&graph_gappy, &reconstruction_gappy)?;
       guess_initial_branch_lengths(
         &graph_gappy,
-        total_length,
         &indels,
-        &sub_counts,
-        &effective_lengths,
+        &evidence,
         ExistingBranchLengths::Overwrite,
         &mut branch_lengths_gappy,
       )?;

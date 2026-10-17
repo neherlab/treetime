@@ -5,7 +5,7 @@ mod tests {
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, K80Params, get_gtr_by_name, jc69, k80};
   use crate::gtr::gtr::{GTR, Mu};
   use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
-  use crate::optimize::gather::{gather_edge_contributions, gather_edge_effective_lengths, gather_edge_sub_counts};
+  use crate::optimize::gather::{InitialGuessEvidence, gather_edge_contributions};
   use crate::optimize::indel::{IndelPolicy, IndelTerm};
   use crate::optimize::likelihood::evaluate_partitions_log_lh_only;
   use crate::optimize::method_newton::solve_newton;
@@ -69,19 +69,9 @@ mod tests {
     ));
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
-    let total_length = reconstruction.sequence_length();
     let indels = IndelPolicy::Include.edge_indels(graph, &reconstruction, branch_lengths);
-    let sub_counts = gather_edge_sub_counts(graph, &reconstruction)?;
-    let effective_lengths = gather_edge_effective_lengths(graph, &reconstruction)?;
-    guess_initial_branch_lengths(
-      graph,
-      total_length,
-      &indels,
-      &sub_counts,
-      &effective_lengths,
-      ExistingBranchLengths::Keep,
-      branch_lengths,
-    )?;
+    let evidence = InitialGuessEvidence::gather(graph, &reconstruction)?;
+    guess_initial_branch_lengths(graph, &indels, &evidence, ExistingBranchLengths::Keep, branch_lengths)?;
 
     Ok(reconstruction)
   }
