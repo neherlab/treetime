@@ -1,5 +1,8 @@
 # Propagate convergence metric evaluation errors instead of swallowing them
 
+> [!WARNING]
+> **Needs review.** `log_lh_total` and `log_lh_pos` were removed; `ConvergenceMetrics` now carries `log_lh_seq`, `log_lh_time` and `log_lh_coal`. The composition problem below no longer arises for a total, but a failed `log_lh_coal` still disappears from a row silently.
+
 When a configured coalescent model's log-likelihood evaluation fails, the error is downgraded to `None` and the component is excluded from `log_lh_total`. This makes trace rows with failed components numerically incomparable to rows where all components succeeded.
 
 ## Current behavior
