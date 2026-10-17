@@ -8,7 +8,7 @@ set -euxo pipefail
 
 triplet="${1:?triplet}"
 dest="${2:?prefix}"
-release="2024-11-08_06-06-34"
+release="2026-10-17_03-18-44"
 archive="/tmp/gcc-cross.tar.xz"
 mkdir -p "${dest}"
 
