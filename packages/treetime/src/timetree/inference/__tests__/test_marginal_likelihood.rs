@@ -5,6 +5,7 @@ mod tests {
   use crate::test_utils::{find_node_key_by_name, parent_edge_key, unknown_branches};
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::result::BranchLikelihood;
+  use crate::timetree::optimization::marginal_clock_rate::branches_at_rate;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::{Array1, array};
@@ -25,13 +26,16 @@ mod tests {
   // (t_I, t_root), for the same branch distributions and coalescent factors.
 
   #[rstest]
-  #[case::no_prior(None)]
-  #[case::coalescent(Some(5.0))]
-  #[case::coalescent_long_tc(Some(20.0))]
+  #[case::no_prior_reference_rate(1e-3, None)]
+  #[case::no_prior_slower(0.5e-3, None)]
+  #[case::coalescent_reference_rate(1e-3, Some(5.0))]
+  #[case::coalescent_slower(0.5e-3, Some(5.0))]
+  #[case::coalescent_faster_long_tc(2e-3, Some(20.0))]
   #[trace]
-  fn test_marginal_likelihood_matches_brute_force(#[case] tc: Option<f64>) -> Result<(), Report> {
+  fn test_marginal_likelihood_matches_brute_force(#[case] rate: f64, #[case] tc: Option<f64>) -> Result<(), Report> {
     let setup = helpers::setup()?;
-    let branches = &setup.branches;
+    // branch distributions at `rate`, rescaled from those at the reference rate
+    let branches = &branches_at_rate(&setup.branches, helpers::REFERENCE_RATE, rate)?;
     let model = tc.map(helpers::coalescent).transpose()?;
     let backward = propagate_distributions_backward(
       &setup.graph,
