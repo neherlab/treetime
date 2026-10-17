@@ -34,7 +34,7 @@ On sc2/2844, $\hat\mu \approx 12{,}000$ oscillates proportionally with total bra
 
 ## Implementation
 
-Restore `estimate_indel_rate()` inside the loop body of `run_optimize_loop()`, computing a fresh $\hat\mu$ each iteration after `update_marginal()` and before `run_optimize_mixed_inner()`. The `--no-indels` gate remains: when set, the rate stays at 0.0 regardless.
+Restore `estimate_indel_rate()` inside the loop body of `run_optimize_loop()`, computing a fresh $\hat\mu$ each iteration after `update_marginal()` and before `optimize_edge_lengths()`. `--no-indels` selects `IndelPolicy::Exclude`, which leaves the indel term out of the objective, so the re-estimation applies to `IndelPolicy::Include` only.
 
 ## Validation
 

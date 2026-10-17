@@ -17,22 +17,22 @@ Low for most datasets. Indels are rare in typical viral phylogenetics. The effec
 ## Implementation
 
 - `optimize/indel.rs`: Poisson log-likelihood, derivatives, global rate estimation
-- `optimize/dispatch.rs`: indel contribution added to `run_optimize_mixed`, `initial_guess_mixed`, and the zero-branch optimality check
+- `optimize/dispatch.rs`: indel contribution added to `optimize_edge_lengths`, `guess_initial_branch_lengths`, and the zero-branch optimality check
 - `optimize/run_loop.rs`: `run_optimize_loop()` estimates `indel_rate` once from the branch lengths it receives and passes it to both tree-level evaluation and per-edge optimization in every iteration
 - `optimize/likelihood.rs`: `evaluate_with_indels_log_lh_only()`, also used by the timetree branch-length distribution grid (`timetree/inference/branch_length_likelihood.rs`, `timetree/inference/runner.rs`), with `indel_rate` estimated once per pass and `indel_count` computed per edge
 - `edge_indel_count()` on the sparse and dense partitions and on `MarginalReconstruction`
 
 ## Convergence note
 
-The indel rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated once at the start of each `run_optimize_loop()` call [`packages/treetime/src/optimize/run_loop.rs#L48-L53`](../../packages/treetime/src/optimize/run_loop.rs#L48-L53) and held fixed for its iterations. It uses the branch lengths that enter the loop, which come from `initial_guess_mixed` when the input lacks valid lengths. That function bootstraps indel-only edges to `one_mutation` (a small value) when no rate is available, which makes the denominator small and the rate estimate high, biasing those branches shorter. Because the rate is fixed during the loop, this bias does not correct itself within one call.
+The indel rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated once at the start of each `run_optimize_loop()` call [`packages/treetime/src/optimize/run_loop.rs#L48-L53`](../../packages/treetime/src/optimize/run_loop.rs#L48-L53) and held fixed for its iterations. It uses the branch lengths that enter the loop, which come from `guess_initial_branch_lengths` when the input lacks valid lengths. That function bootstraps indel-only edges to `one_mutation` (a small value) when no rate is available, which makes the denominator small and the rate estimate high, biasing those branches shorter. Because the rate is fixed during the loop, this bias does not correct itself within one call.
 
-`run_optimize_loop()` uses the same $\hat{\mu}$ both for the recorded outer-loop likelihood and for `run_optimize_mixed()`, so edge optimization, `LH`, convergence checks, and rollback logic all see the same objective.
+`run_optimize_loop()` uses the same $\hat{\mu}$ both for the recorded outer-loop likelihood and for `optimize_edge_lengths()`, so edge optimization, `LH`, convergence checks, and rollback logic all see the same objective.
 
 A rate recomputed in every iteration would amplify a 2-cycle caused by the sparse variable/fixed position boundary. On sc2/2844, $\hat{\mu} \approx 12{,}000$ (3751 indels / 0.31 total BL), and a 0.06% BL oscillation shifts $\hat{\mu}$ proportionally across all edges. Computing $\hat{\mu}$ once before the loop avoids this. See [optimize-convergence-and-robustness](../proposals/optimize-convergence-and-robustness.md) P4.
 
 ## Double-counting caveat
 
-The indel rate estimator and per-edge count in `run_optimize_mixed()` sum `edge_indel_count()` across all partitions. When dense and sparse partitions represent the same alignment, this produces the correct count only if one partition type has zero indels. Currently, Fitch reconstruction populates indels on sparse partitions only. If indel detection is added for dense partitions, partition-aware deduplication is needed to avoid doubling the count and the Poisson curvature.
+The indel rate estimator and per-edge count in `optimize_edge_lengths()` sum `edge_indel_count()` across all partitions. When dense and sparse partitions represent the same alignment, this produces the correct count only if one partition type has zero indels. Currently, Fitch reconstruction populates indels on sparse partitions only. If indel detection is added for dense partitions, partition-aware deduplication is needed to avoid doubling the count and the Poisson curvature.
 
 ## Integration note
 

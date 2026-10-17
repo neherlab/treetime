@@ -14,13 +14,13 @@ This proposal addresses deeper architectural improvements that would eliminate o
 
 ### Outer loop
 
-`run_optimize_loop()` [packages/treetime/src/commands/optimize/run.rs#L275](../../packages/treetime/src/commands/optimize/run.rs#L275)
+`run_optimize_loop()` [packages/treetime/src/optimize/run_loop.rs#L31](../../packages/treetime/src/optimize/run_loop.rs#L31)
 
 ```
 for i in 0..max_iter:
   1. E-step: update_marginal(sparse) + update_marginal(dense)
   2. convergence check
-  3. M-step: run_optimize_mixed (Newton/Brent per edge, with indel Poisson term)
+  3. M-step: optimize_edge_lengths (Newton/Brent per edge, with indel Poisson term)
   4. find zero-optimal internal edges (before damping)
   5. apply_damping
   6. topology cleanup: collapse zero edges, merge shared mutations
@@ -50,21 +50,21 @@ Per-edge Poisson term $\ell_{\text{indel}}(t) = k \ln(\mu t) - \mu t - \ln(k!)$ 
 
 ### Per-edge optimizers
 
-Two methods via `--opt-method`: Brent and Newton in $\sqrt{t}$ space. Default `brent` (matches v0). Grid search fallback for non-concave regions. See [optimize-newton-raphson-per-edge](../decisions/optimize-newton-raphson-per-edge.md).
+Two methods via `--opt-method`: Brent and Newton in $\sqrt{t}$ space. Default `brent` (matches v0). The Newton method keeps a slope bracket and bisects when a Newton step leaves it; the grid search serves the zero-boundary reconciliation. See [optimize-newton-raphson-per-edge](../decisions/optimize-newton-raphson-per-edge.md).
 
 ## Implemented features
 
 | ID  | Feature                                               | Reference                                                                                                                                                                        |
 | --- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| I1  | Exponential damping (`--damping`, default 0.75)       | `apply_damping()` [optimize/run.rs#L513](../../packages/treetime/src/commands/optimize/run.rs#L513)                                                                              |
+| I1  | Exponential damping (`--damping`, default 0.75)       | `apply_damping()` [optimize/iteration.rs#L7](../../packages/treetime/src/optimize/iteration.rs#L7)                                                                              |
 | I2  | Two per-edge methods (`--opt-method`)                 | [optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs), [optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)             |
 | I3  | Grid search fallback (100-point, non-concave regions) | [optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs)                                                                                                         |
-| I4  | `--model` wired to GTR dispatch                       | [optimize/run.rs](../../packages/treetime/src/commands/optimize/run.rs)                                                                                                          |
+| I4  | `--model` wired to GTR dispatch                       | [optimize/pipeline.rs](../../packages/treetime/src/optimize/pipeline.rs)                                                                                                          |
 | I5  | Gap-aware initial guess (`edge_effective_length`)     | [partition/optimization_contribution.rs](../../packages/treetime/src/partition/optimization_contribution.rs)                                                                     |
 | I6  | Zero-branch short-circuit (unimodal models)           | `is_zero_branch_optimal()` [optimize/zero_boundary.rs#L328](../../packages/treetime/src/optimize/zero_boundary.rs#L328)                                                          |
 | I7  | Eigenvalue-space coefficient caching                  | [partition/optimize_sparse.rs](../../packages/treetime/src/partition/optimize_sparse.rs), [partition/optimize_dense.rs](../../packages/treetime/src/partition/optimize_dense.rs) |
 | I8  | Poisson indel contribution                            | [optimize/indel.rs](../../packages/treetime/src/optimize/indel.rs)                                                                                                               |
-| I9  | Collapse guard (skip edges with mutations)            | `find_zero_optimal_internal_edges()` [optimize/run.rs#L563](../../packages/treetime/src/commands/optimize/run.rs#L563)                                                           |
+| I9  | Collapse guard (skip edges with mutations)            | `find_zero_optimal_internal_edges()` [optimize/run_loop.rs#L291](../../packages/treetime/src/optimize/run_loop.rs#L291)                                                           |
 
 ## Proposed improvements
 
@@ -97,10 +97,10 @@ Two methods via `--opt-method`: Brent and Newton in $\sqrt{t}$ space. Default `b
 
 ### Outer loop
 
-<a id="indel-rate-caching"></a>**P4. Indel rate caching.** Compute `estimate_indel_rate` once (after topology stabilizes) and pass to `run_optimize_mixed` as a fixed parameter.
+<a id="indel-rate-caching"></a>**P4. Indel rate caching.** Compute `estimate_indel_rate` once (after topology stabilizes) and pass to `optimize_edge_lengths` as a fixed parameter.
 
 - Addresses: the $\hat{\mu}$ feedback loop that amplifies the 2-cycle. On sc2/2844, $\hat{\mu} \approx 12{,}000$ oscillates proportionally with total BL.
-- Implementation: ~10 lines. Add `indel_rate: f64` parameter to `run_optimize_mixed`. Recompute in `run_optimize_loop` while topology changes occur (`prune_and_merge_in_loop` returns true); cache once topology stabilizes.
+- Implementation: ~10 lines. Add `indel_rate: f64` parameter to `optimize_edge_lengths`. Recompute in `run_optimize_loop` while topology changes occur (`prune_and_merge_in_loop` returns true); cache once topology stabilizes.
 - Pros: eliminates feedback between total BL and indel rate in the stable regime
 - Cons: changes the optimization objective. Under the current model, $\hat{\mu}$ is defined from current branch lengths and varies between iterations. Caching freezes it, optimizing under a different (fixed-rate) model. In practice the rate converges along with branch lengths, so the fixed-rate model is accurate at convergence. But the path to convergence differs.
 - Note: this is a model change, not neutral hardening.
@@ -133,17 +133,9 @@ Uses a window of $m$ previous iterates ($m = 5\text{--}10$) and residuals to sol
 
 v0 uses $\text{tol} = 10^{-8} + 0.01^{i+1}$ in `optimal_t_compressed` ([packages/legacy/treetime/treetime/gtr.py#L816-L920](../../packages/legacy/treetime/treetime/gtr.py#L816-L920)). Early iterations use loose tolerance (profiles are rough). Later iterations tighten as profiles stabilize.
 
-- Implementation: add `tolerance` parameter to `run_optimize_mixed`, pass from `run_optimize_loop` with iteration-dependent scaling
+- Implementation: add `tolerance` parameter to `optimize_edge_lengths`, pass from `run_optimize_loop` with iteration-dependent scaling
 - Pros: reduces wasted computation on early iterations. Matches v0 behavior.
 - Cons: minimal impact for typical datasets (loop converges in 5-10 iterations)
-
-**P8. Backtracking line search for Newton.** After computing the Newton step $\Delta = -f'/f''$ where $f'$ and $f''$ are the first and second derivatives of the log-likelihood with respect to branch length, verify the step improves log-likelihood. Halve and retry (up to 5 halvings) if not.
-
-RAxML-NG's `nr_safe` mode (Kozlov et al. 2019) recomputes per-branch likelihood and reverts if worsened. IQ-TREE (Minh et al. 2020) checks per-round monotonicity. v1 has neither.
-
-- Implementation: wrap the Newton step with a likelihood-only evaluation check
-- Pros: prevents per-edge overshoot. Matches RAxML-NG safeguard.
-- Cons: 1-5 extra likelihood evaluations per edge per iteration (small cost, reuses cached coefficients)
 
 ### Model integration
 
@@ -170,7 +162,6 @@ v0 code: [packages/legacy/treetime/treetime/treeanc.py#L1307-L1309](../../packag
 | Sparse correctness  | P1, P2, P3 | Reduce or eliminate the variable/fixed boundary error. P1 is simplest, P3 eliminates the boundary entirely. |
 | Convergence speed   | P5, P6     | Faster convergence for large trees. SQUAREM is simpler.                                                     |
 | v0 parity           | P7, P9     | Match v0 features (progressive tolerance, GTR inference in loop).                                           |
-| Per-edge robustness | P8         | Match RAxML-NG/IQ-TREE safeguards.                                                                          |
 | Indel model         | P4         | Remove feedback amplifier. Model change, requires careful validation.                                       |
 
 ## Comparison with other phylogenetic software
@@ -200,7 +191,7 @@ The optimizer convergence work progressed through three phases:
 
 1. Initial convergence fixes: damping (I1), gap-aware initial guess (I5), `--model` wiring (I4), per-edge method selection (I2). Damping alone is insufficient (see phase 2).
 
-2. Sparse 2-cycle discovery: investigation of non-convergence on sc2/2844 (M-optimize-sparse-em-2-cycle (resolved)) revealed that damping alone is insufficient. The sparse variable/fixed position classification oscillates between iterations, creating a discrete objective discontinuity. Dense mode has no such boundary and converges correctly. PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) commented out `estimate_indel_rate` in `initial_guess_mixed` based on incorrect root-cause analysis. v1 defaults at the time (`max_iter=20`, `dp=0.01`) diverged from v0 (`max_iter=10`, `LHtol=0.1`) without documented reason (now aligned). Peer review identified that v0's signed convergence check is a defect (see [errata](../v0-errata/optimize-signed-convergence-check.md)) and that variable-set freezing and indel-rate caching are model changes requiring separate validation.
+2. Sparse 2-cycle discovery: investigation of non-convergence on sc2/2844 (M-optimize-sparse-em-2-cycle (resolved)) revealed that damping alone is insufficient. The sparse variable/fixed position classification oscillates between iterations, creating a discrete objective discontinuity. Dense mode has no such boundary and converges correctly. PR [neherlab/treetime#558](https://github.com/neherlab/treetime/pull/558) commented out `estimate_indel_rate` in `guess_initial_branch_lengths` based on incorrect root-cause analysis. v1 defaults at the time (`max_iter=20`, `dp=0.01`) diverged from v0 (`max_iter=10`, `LHtol=0.1`) without documented reason (now aligned). Peer review identified that v0's signed convergence check is a defect (see [errata](../v0-errata/optimize-signed-convergence-check.md)) and that variable-set freezing and indel-rate caching are model changes requiring separate validation.
 
 3. Immediate fix (M-optimize-sparse-em-2-cycle (resolved)): makes the convergence loop robust to non-monotone behavior without changing the sparse model. This proposal covers the architectural improvements that address the non-monotonicity at its source.
 

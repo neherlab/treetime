@@ -34,7 +34,7 @@ After inverting fitch subs on edges along the old-root-to-new-root path, ML subs
 
 Count discrete substitutions per edge across all partitions to estimate initial branch lengths before the optimization loop. Called from `optimize` and `timetree` commands.
 
-- `initial_guess_mixed()` [optimize/dispatch.rs#L729](../../packages/treetime/src/optimize/dispatch.rs#L729)
+- `guess_initial_branch_lengths()` [optimize/dispatch.rs#L729](../../packages/treetime/src/optimize/dispatch.rs#L729)
 - `partition.edge_subs()` [optimize/dispatch.rs#L774](../../packages/treetime/src/optimize/dispatch.rs#L774)
 - `edge.ml_subs()` [partition/marginal_sparse.rs#L269](../../packages/treetime/src/partition/marginal_sparse.rs#L269)
 

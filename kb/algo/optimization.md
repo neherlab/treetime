@@ -2,11 +2,11 @@
 
 ## Newton-Raphson for Branch Length Optimization
 
-Per-edge branch length optimization using Newton's method with analytical first and second derivatives of the log-likelihood, in sqrt(t) space (`newton_sqrt_inner`): chain rule with $s = \sqrt{t}$, update $s_{\text{new}} = s - \operatorname{clamp}(\ell'_s/\ell''_s,\ s - \sqrt{s^2 + 1},\ s)$. The lower step bound limits one step to a $t$ increase of 1. The parameterization reduces the Poisson indel Hessian singularity from $O(1/t^2)$ in $t$ space to $O(1/t)$.
+Per-edge branch length optimization using Newton's method with analytical first and second derivatives of the log-likelihood, in sqrt(t) space (`solve_newton`): chain rule with $s = \sqrt{t}$, update $s_{\text{new}} = s - \operatorname{clamp}(\ell'_s/\ell''_s,\ s - \sqrt{s^2 + 1},\ s)$. The lower step bound limits one step to a $t$ increase of 1. The parameterization reduces the Poisson indel Hessian singularity from $O(1/t^2)$ in $t$ space to $O(1/t)$.
 
-A non-negative initial second derivative triggers a 100-point log-spaced grid search. If the second derivative becomes non-negative after a Newton step, the iteration stops and returns its current candidate.
+The search keeps a bracket $[s_{lo}, s_{hi}]$ in $s$-space that the sign of the slope narrows after each evaluation. A Newton step is taken when the curvature is negative and the step stays inside the bracket; otherwise the iteration bisects the bracket away from the current point. The iteration reports convergence only at a concave maximum within tolerance or when the bracket is narrower than the tolerance, and returns the best evaluated point. After 50 iterations it returns the best point with the status iteration limit, which raises the `branch-lengths-not-converged` run warning.
 
-Newton's method converges only from a start inside its basin of attraction. Input branch lengths usually satisfy this. Edges with missing or invalid lengths, or all edges with `--branch-length-initial-guess=always`, start from the observed substitution count divided by the edge's effective (non-gap) length, or from the indel count over the indel rate on an edge with indels only. v1: `fn initial_guess_mixed()` in [`packages/treetime/src/optimize/dispatch.rs#L167`](../../packages/treetime/src/optimize/dispatch.rs#L167).
+Newton's method converges only from a start inside its basin of attraction. Input branch lengths usually satisfy this. Edges with missing or invalid lengths, or all edges with `--branch-length-initial-guess=always`, start from the observed substitution count divided by the edge's effective (non-gap) length, or from the indel count over the indel rate on an edge with indels only. v1: `fn guess_initial_branch_lengths()` in [`packages/treetime/src/optimize/dispatch.rs#L167`](../../packages/treetime/src/optimize/dispatch.rs#L167).
 
 v1: [`packages/treetime/src/optimize/method_newton.rs`](../../packages/treetime/src/optimize/method_newton.rs).
 
@@ -18,7 +18,7 @@ The method is described in <a id="cite-1"></a>[Nocedal and Wright 2006](https://
 
 ## Brent's Method for Branch Length Optimization
 
-Per-edge branch length optimization using Brent's derivative-free method (<a id="cite-3"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[3](#ref-3)]) via `argmin::BrentOpt`, in sqrt(t) space (`brent_sqrt_inner`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. This is the default and uses v0's parameterization. Tolerance $\epsilon_s$ in $s$-space maps locally to $t$-space precision $\approx 2s^* \epsilon_s$.
+Per-edge branch length optimization using Brent's derivative-free method (<a id="cite-3"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[3](#ref-3)]) via `argmin::BrentOpt`, in sqrt(t) space (`solve_brent`): bracket $[\sqrt{\text{min\_bl}}, \sqrt{\text{upper}}]$, cost function evaluates $-\ell(s^2)$. This is the default and uses v0's parameterization. Tolerance $\epsilon_s$ in $s$-space maps locally to $t$-space precision $\approx 2s^* \epsilon_s$.
 
 v1: [`packages/treetime/src/optimize/method_brent.rs`](../../packages/treetime/src/optimize/method_brent.rs).
 

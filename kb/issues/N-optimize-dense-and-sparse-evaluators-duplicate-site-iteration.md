@@ -4,4 +4,4 @@
 
 ## Proposed solution
 
-Let `fn evaluate_mixed_impl()` [packages/treetime/src/optimize/likelihood.rs](../../packages/treetime/src/optimize/likelihood.rs) call `evaluate_site_contributions(contribution.sites(), contribution.rate_eigvals(), ...)` directly, and delete `dense_eval.rs` and `sparse_eval.rs`. The tests that call the two wrappers (the `test_coefficient_extraction_*` modules) then wrap their contributions in `OptimizationContribution` and evaluate through the same entry point.
+Let `fn sum_partition_metrics()` [packages/treetime/src/optimize/likelihood.rs](../../packages/treetime/src/optimize/likelihood.rs) call `evaluate_site_contributions(contribution.sites(), contribution.rate_eigvals(), ...)` directly, and delete `dense_eval.rs` and `sparse_eval.rs`. The tests that call the two wrappers (the `test_coefficient_extraction_*` modules) then wrap their contributions in `OptimizationContribution` and evaluate through the same entry point.

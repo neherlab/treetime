@@ -117,7 +117,7 @@
 ## Confidence Intervals
 
 - [x] 90% maximum posterior region from marginal posteriors (`max_posterior_region()`)
-- [x] `combine_confidence()` quadrature sum
+- [x] `combine_in_quadrature()` quadrature sum
 - [x] Inverse CDF of the posterior grid for regions with the peak on a boundary
 - [x] Rate susceptibility analysis (`compute_rate_susceptibility()`)
 - [x] `date_uncertainty_due_to_rate()` via probit function (erfinv)

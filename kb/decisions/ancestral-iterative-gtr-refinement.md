@@ -11,8 +11,8 @@ Key implementation decisions:
 - The `TransitionCounting` trait in `partition/traits.rs` generalizes transition counting across all marginal partition types (dense, discrete, sparse), with each type implementing counting over its native data layout.
 - `MarginalData::count_transitions` provides the shared dense/discrete implementation. Sparse has its own implementation via private associated functions on `PartitionMarginalSparse`.
 - `refine_gtr_iterative` in `gtr/refinement.rs` accepts any partition implementing `TransitionCounting + PartitionMarginalPasses + HasGtr`.
-- Rate optimization (`optimize_gtr_rate`) is configurable via `optimize_rate: bool`: mugration passes `true`, ancestral passes `false`. Per the proposal recommendation, Brent-style mu optimization is unnecessary for multi-site sequence data where `infer_gtr_impl` already estimates mu from large counts.
-- `get_branch_mutation_matrix` and `accumulate_mutation_counts` live in `gtr/infer_gtr/common.rs` alongside `MutationCounts` and `infer_gtr_impl`.
+- Rate optimization (`optimize_gtr_rate`) is configurable via `optimize_rate: bool`: mugration passes `true`, ancestral passes `false`. Per the proposal recommendation, Brent-style mu optimization is unnecessary for multi-site sequence data where `infer_gtr_from_counts` already estimates mu from large counts.
+- `get_branch_mutation_matrix` and `accumulate_mutation_counts` live in `gtr/infer_gtr/common.rs` alongside `MutationCounts` and `infer_gtr_from_counts`.
 
 ## Current behavior
 
@@ -88,7 +88,7 @@ That is a latent-variable maximum-likelihood problem. Alternating between:
 
 is an EM-like or coordinate-ascent strategy. It is scientifically standard to expect such alternation to improve or stabilize the fit when the current model is far from the local optimum.
 
-The current v1 GTR core already performs **inner** iteration on `W`, `pi`, and `mu` for fixed sufficient statistics in [`infer_gtr_impl()`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L97-L157). The proposal adds **outer** iteration over the latent-state statistics themselves.
+The current v1 GTR core already performs **inner** iteration on `W`, `pi`, and `mu` for fixed sufficient statistics in [`infer_gtr_from_counts()`](../../packages/treetime/src/gtr/infer_gtr/common.rs#L97-L157). The proposal adds **outer** iteration over the latent-state statistics themselves.
 
 ### Inner iteration vs outer refinement
 
@@ -167,7 +167,7 @@ The first version should **not** mirror mugration mechanically.
 
 Recommended differences from mugration:
 
-- reuse v1's existing `infer_gtr_impl()` for parameter updates
+- reuse v1's existing `infer_gtr_from_counts()` for parameter updates
 - add an outer loop around `update_marginal()` plus `get_gtr_dense()` or `get_gtr_sparse()`
 - use likelihood-based stopping criteria
 - avoid adding a separate Brent-style `mu` optimization step unless validation demonstrates a measurable benefit
@@ -175,7 +175,7 @@ Recommended differences from mugration:
 This recommendation follows from the scientific role of the data:
 
 - mugration has one effective site, so the overall switching rate is weakly identified and extra `mu` optimization is more likely to matter
-- sequence ancestral reconstruction already estimates `mu` from large multi-site counts inside `infer_gtr_impl()`
+- sequence ancestral reconstruction already estimates `mu` from large multi-site counts inside `infer_gtr_from_counts()`
 
 ## Expected benefits
 

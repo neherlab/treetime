@@ -14,7 +14,7 @@ This distance is the bracket midpoint for Brent's method. Both profiles represen
 
 ## What v1 does
 
-v1's `initial_guess_mixed()` ([packages/treetime/src/optimize/dispatch.rs#L729-L806](../../packages/treetime/src/optimize/dispatch.rs#L729-L806)) computes:
+v1's `guess_initial_branch_lengths()` ([packages/treetime/src/optimize/dispatch.rs#L729-L806](../../packages/treetime/src/optimize/dispatch.rs#L729-L806)) computes:
 
 ```
 sub_count    = sum of edge_subs().len() across partitions
@@ -43,5 +43,5 @@ The initial guess serves only as a starting point for Newton/Brent optimization.
 
 ## Affected commands
 
-- `optimize` (via `initial_guess_mixed`)
+- `optimize` (via `guess_initial_branch_lengths`)
 - `timetree` (uses `PartitionOptimizeOps` through shared optimization code)

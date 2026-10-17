@@ -28,16 +28,16 @@ v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with 
 
 - [x] Eigenvalue-space coefficient caching (dense: `msg.dot(V) * msg.dot(V_inv.T)`, sparse: per-site with multiplicity)
 - [x] Analytical first and second derivatives (v1-only, v0 uses derivative-free Brent)
-- [x] Newton's method in sqrt(t) space (`newton_sqrt_inner`, max 10 inner iterations, step in `[s - sqrt(s^2 + 1), s]`, absolute tolerance floor 1e-8, reduces indel Hessian singularity from O(1/t^2) to O(1/t))
-- [x] Brent's method in sqrt(t) space (`brent_sqrt_inner`, derivative-free via `argmin::BrentOpt`, default, matches v0 exactly)
+- [x] Newton's method in sqrt(t) space (`solve_newton`, safeguarded by a slope bracket and bisection, max 50 inner iterations, step in `[s - sqrt(s^2 + 1), s]`, absolute tolerance floor 1e-8, reduces indel Hessian singularity from O(1/t^2) to O(1/t))
+- [x] Brent's method in sqrt(t) space (`solve_brent`, derivative-free via `argmin::BrentOpt`, default, matches v0 exactly)
 - [x] Per-edge optimization method selection (`--opt-method`: `brent` default, `newton`)
-- [x] Grid search fallback when second derivative >= 0 (100 points, log-spaced grid with 0.5 subs/site minimum upper bound)
+- [x] Grid search for zero-boundary reconciliation (100 points, log-spaced grid with 0.5 subs/site minimum upper bound)
 - [x] Zero branch length short-circuit (combined likelihood > 0.01 and derivative < 0 at zero)
 - [x] `compute_derivatives` flag to skip derivative computation for log-likelihood-only evaluation
 - [x] Typed aggregate likelihood results and convergence history (`LogLh`), with native `f64` derivative kernels
 - [x] Collect dense contribution (`PartitionMarginalDense`)
 - [x] Collect sparse contribution (`PartitionMarginalSparse`, multiplicity-weighted)
-- [x] Unified mixed-partition evaluation (`evaluate_mixed()` sums metrics across partition types)
+- [x] Unified mixed-partition evaluation (`evaluate_partitions()` sums metrics across partition types)
 - [x] sqrt(t) reparameterization (Brent in s=sqrt(t) space, matching v0)
 - [ ] Regularization penalty for profile-based optimization (v0: `exp(t^4/10000)` prevents unbounded growth)
 - [ ] Hamming distance fallback when optimization fails (v0 falls back to observed distance)
@@ -77,7 +77,7 @@ The merge, hoist, and retire steps form one per-polytomy routine (`resolve_polyt
 - [x] `PartitionOptimizeOps` trait implemented by both dense and sparse partitions
 - [x] `collect_edge_contributions()` gathers contributions for one edge across partition types
 - [x] `compute_branch_length_distribution()` evaluates log-likelihood (substitution + Poisson indel) on grid, converts to time-domain distribution
-- [x] `evaluate_with_indels_log_lh_only()` for grid evaluation without derivatives (matches `run_optimize_mixed()`'s edge evaluator)
+- [x] `evaluate_with_indels_log_lh_only()` for grid evaluation without derivatives (matches `optimize_edge_lengths()`'s edge evaluator)
 
 ## Branch Length Modes (v0 has 3 modes, v1 implements marginal only)
 

@@ -12,4 +12,4 @@ When the root is uninformative (posterior near-uniform across states) and the fl
 
 ## Rationale
 
-Filtering eliminates a state-order-dependent bias in the `root_state` vector that feeds `infer_gtr_impl()` pi estimation when the root carries no phylogenetic signal. It is opt-in because exact v0 parity is the default; the divergence occurs only when the flag is set.
+Filtering eliminates a state-order-dependent bias in the `root_state` vector that feeds `infer_gtr_from_counts()` pi estimation when the root carries no phylogenetic signal. It is opt-in because exact v0 parity is the default; the divergence occurs only when the flag is set.

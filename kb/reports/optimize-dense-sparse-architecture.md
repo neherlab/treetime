@@ -6,7 +6,7 @@
 > - `trait PartitionOptimizeOps`, `trait PartitionBranchOps`, `collect_optimize_partitions()`, and `run_optimize()` are gone. `MarginalReconstruction` ([partition/marginal/reconstruction.rs#L218](../../packages/treetime/src/partition/marginal/reconstruction.rs#L218), `fn create_edge_contribution()`) now supplies the contributions, and `optimize/pipeline.rs` with `optimize/run_loop.rs` run the loop
 > - `OptimizationContribution::evaluate()` and the `evaluate_*_contribution_impl()` functions no longer exist, so asymmetries A1 and A2 describe code that has changed
 > - `OptimizationContribution::from_dense()` and `from_sparse()` both return `Result` (A5 is resolved)
-> - The solver files hold the square-root coordinate variants only (`brent_sqrt_inner()`, `newton_sqrt_inner()`), not three coordinate spaces
+> - The solver files hold the square-root coordinate variants only (`solve_brent()`, `solve_newton()`), not three coordinate spaces
 > - File names in headings (`optimize_dense.rs`, `optimize_sparse.rs`, `optimize_unified.rs`) are the old names of `partition/optimize/dense.rs`, `partition/optimize/sparse.rs`, and `partition/optimize/contribution.rs`
 
 ## Why are there separate dense/sparse optimize files?
@@ -21,7 +21,7 @@ The branch-length optimizer needs per-site coefficients in eigenvalue space ($k_
 - [`optimize_eval.rs`](../../packages/treetime/src/optimize/eval.rs) - fn `evaluate_site_contributions()` ([optimize/eval.rs#L11](../../packages/treetime/src/optimize/eval.rs#L11)), the single shared evaluator that consumes that iterator and computes log-likelihood + derivatives
 - [`optimize_unified.rs`](../../packages/treetime/src/partition/optimize/contribution.rs) - enum `OptimizationContribution` ([partition/optimize/contribution.rs#L10](../../packages/treetime/src/partition/optimize/contribution.rs#L10)) wraps both modes so callers never see dense vs sparse. Contains the actual optimization loop, solvers dispatch, zero-branch detection, grid search
 
-**Is this arrangement optimal?** The two `_eval` adapter files are borderline redundant. They exist only because fn `evaluate_mixed_impl()` ([optimize/likelihood.rs#L42](../../packages/treetime/src/optimize/likelihood.rs#L42)) needs to pass a `compute_derivatives` flag that the enum's own fn `evaluate()` ([optimize/dispatch.rs#L130](../../packages/treetime/src/optimize/dispatch.rs#L130)) does not expose. Folding them into `dispatch.rs` or adding the flag to the enum method would eliminate two files. The two coefficient extraction files (`optimize_dense.rs`, `optimize_sparse.rs`) are genuinely necessary - the input data structures differ.
+**Is this arrangement optimal?** The two `_eval` adapter files are borderline redundant. They exist only because fn `sum_partition_metrics()` ([optimize/likelihood.rs#L42](../../packages/treetime/src/optimize/likelihood.rs#L42)) needs to pass a `compute_derivatives` flag that the enum's own fn `evaluate()` ([optimize/dispatch.rs#L130](../../packages/treetime/src/optimize/dispatch.rs#L130)) does not expose. Folding them into `dispatch.rs` or adding the flag to the enum method would eliminate two files. The two coefficient extraction files (`optimize_dense.rs`, `optimize_sparse.rs`) are genuinely necessary - the input data structures differ.
 
 ## Data flow
 
@@ -75,7 +75,7 @@ Ordered by data flow: callers, mode-specific extraction, shared evaluation, solv
 
 Top-level fn `run_optimize()` and fn `run_optimize_loop()` [optimize/run_loop.rs#L33](../../packages/treetime/src/optimize/run_loop.rs#L33). Loads inputs, creates partitions, runs the iterative loop. Each iteration: marginal reconstruction, likelihood evaluation, branch-length optimization, damping, topology cleanup. Owns convergence logic (converged, oscillating, worsened, numerical failure).
 
-fn `collect_optimize_partitions()` erases the dense/sparse distinction into `Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>`, then passes that to fn `run_optimize_mixed()` [optimize/dispatch.rs#L19](../../packages/treetime/src/optimize/dispatch.rs#L19).
+fn `collect_optimize_partitions()` erases the dense/sparse distinction into `Vec<Arc<RwLock<dyn PartitionOptimizeOps>>>`, then passes that to fn `optimize_edge_lengths()` [optimize/dispatch.rs#L19](../../packages/treetime/src/optimize/dispatch.rs#L19).
 
 ### `partition_ops.rs` - trait boundary between partitions and optimizer
 
@@ -86,7 +86,7 @@ trait `PartitionOptimizeOps`: the interface `dispatch.rs` requires from a partit
 
 Implemented by struct `PartitionMarginalSparse` and struct `PartitionMarginalDense`. Each delegates to fn `OptimizationContribution::from_sparse()` [partition/optimize/contribution.rs#L26](../../packages/treetime/src/partition/optimize/contribution.rs#L26) or fn `OptimizationContribution::from_dense()` [partition/optimize/contribution.rs#L16](../../packages/treetime/src/partition/optimize/contribution.rs#L16).
 
-Extends trait `PartitionBranchOps` (fn `edge_subs()` [partition/marginal/reconstruction.rs#L171](../../packages/treetime/src/partition/marginal/reconstruction.rs#L171), fn `edge_effective_length()` [partition/marginal/reconstruction.rs#L207](../../packages/treetime/src/partition/marginal/reconstruction.rs#L207), fn `sequence_length()` [partition/marginal/reconstruction.rs#L53](../../packages/treetime/src/partition/marginal/reconstruction.rs#L53) - used by fn `initial_guess_mixed()` [optimize/dispatch.rs#L212](../../packages/treetime/src/optimize/dispatch.rs#L212)).
+Extends trait `PartitionBranchOps` (fn `edge_subs()` [partition/marginal/reconstruction.rs#L171](../../packages/treetime/src/partition/marginal/reconstruction.rs#L171), fn `edge_effective_length()` [partition/marginal/reconstruction.rs#L207](../../packages/treetime/src/partition/marginal/reconstruction.rs#L207), fn `sequence_length()` [partition/marginal/reconstruction.rs#L53](../../packages/treetime/src/partition/marginal/reconstruction.rs#L53) - used by fn `guess_initial_branch_lengths()` [optimize/dispatch.rs#L212](../../packages/treetime/src/optimize/dispatch.rs#L212)).
 
 ### `optimize_dense.rs` - dense coefficient extraction
 
@@ -112,7 +112,7 @@ Adapt each struct `PartitionContribution` into the `(multiplicity, coefficients)
 - fn `evaluate_dense_contribution()` [optimize/dense_eval.rs#L6](../../packages/treetime/src/optimize/dense_eval.rs#L6) - iterates `coefficients.outer_iter()` with multiplicity 1.0
 - fn `evaluate_sparse_contribution()` [optimize/sparse_eval.rs#L6](../../packages/treetime/src/optimize/sparse_eval.rs#L6) - iterates `site_contributions` with stored multiplicities
 
-These exist as separate files because fn `evaluate_mixed_impl()` [optimize/likelihood.rs#L42](../../packages/treetime/src/optimize/likelihood.rs#L42) calls fn `evaluate_dense_contribution_impl()` / fn `evaluate_sparse_contribution_impl()` directly with a `compute_derivatives` flag, bypassing enum `OptimizationContribution`'s fn `evaluate()`.
+These exist as separate files because fn `sum_partition_metrics()` [optimize/likelihood.rs#L42](../../packages/treetime/src/optimize/likelihood.rs#L42) calls fn `evaluate_dense_contribution_impl()` / fn `evaluate_sparse_contribution_impl()` directly with a `compute_derivatives` flag, bypassing enum `OptimizationContribution`'s fn `evaluate()`.
 
 ### `optimize_eval.rs` - shared site evaluator
 
@@ -140,15 +140,15 @@ struct `OptimizationMetrics` [optimize/likelihood.rs#L59](../../packages/treetim
 
 Optimization functions (all mode-agnostic, operate on `&[OptimizationContribution]`):
 
-- fn `run_optimize_mixed()` [optimize/dispatch.rs#L19](../../packages/treetime/src/optimize/dispatch.rs#L19) - per-edge loop: collect contributions, check zero-branch shortcut, dispatch to solver, reconcile boundary
-- fn `initial_guess_mixed()` [optimize/dispatch.rs#L212](../../packages/treetime/src/optimize/dispatch.rs#L212) - substitution-counting initial branch length estimates
+- fn `optimize_edge_lengths()` [optimize/dispatch.rs#L19](../../packages/treetime/src/optimize/dispatch.rs#L19) - per-edge loop: collect contributions, check zero-branch shortcut, dispatch to solver, reconcile boundary
+- fn `guess_initial_branch_lengths()` [optimize/dispatch.rs#L212](../../packages/treetime/src/optimize/dispatch.rs#L212) - substitution-counting initial branch length estimates
 - fn `is_zero_branch_optimal()` [optimize/zero_boundary.rs#L21](../../packages/treetime/src/optimize/zero_boundary.rs#L21) - derivative-sign test (unimodal models only)
-- fn `evaluate_mixed()` [optimize/likelihood.rs#L18](../../packages/treetime/src/optimize/likelihood.rs#L18) / fn `evaluate_with_indels()` [optimize/likelihood.rs#L8](../../packages/treetime/src/optimize/likelihood.rs#L8) - sum contributions across partitions
+- fn `evaluate_partitions()` [optimize/likelihood.rs#L18](../../packages/treetime/src/optimize/likelihood.rs#L18) / fn `evaluate_with_indels()` [optimize/likelihood.rs#L8](../../packages/treetime/src/optimize/likelihood.rs#L8) - sum contributions across partitions
 - fn `reconcile_zero_boundary()` [optimize/zero_boundary.rs#L42](../../packages/treetime/src/optimize/zero_boundary.rs#L42) - grid search fallback for boundary cases
 
 ### `method_newton.rs` / `method_brent.rs` - solvers
 
-Newton and Brent implementations in three coordinate spaces each (t, sqrt(t), log(t)). Called from fn `run_optimize_mixed()` [optimize/dispatch.rs#L19](../../packages/treetime/src/optimize/dispatch.rs#L19). Consume `&[OptimizationContribution]` and struct `OptimizationMetrics`. No awareness of dense vs sparse.
+Newton and Brent implementations in three coordinate spaces each (t, sqrt(t), log(t)). Called from fn `optimize_edge_lengths()` [optimize/dispatch.rs#L19](../../packages/treetime/src/optimize/dispatch.rs#L19). Consume `&[OptimizationContribution]` and struct `OptimizationMetrics`. No awareness of dense vs sparse.
 
 ### `optimize_indel.rs` - indel contribution
 
@@ -161,9 +161,9 @@ Poisson log-likelihood for indel events: $\ell(t) = k \ln(\mu t) - \mu t - \ln(k
 
 ## Asymmetries and proposed improvements
 
-### A1. `evaluate_mixed_impl()` re-dispatches on the enum it already abstracts
+### A1. `sum_partition_metrics()` re-dispatches on the enum it already abstracts
 
-fn `evaluate_mixed_impl()` [optimize/likelihood.rs#L42](../../packages/treetime/src/optimize/likelihood.rs#L42) manually matches on `OptimizationContribution::Dense` / `Sparse` and calls into the `_eval` adapter files. But fn `sites()` [partition/optimize/contribution.rs#L37](../../packages/treetime/src/partition/optimize/contribution.rs#L37) and fn `gtr()` [partition/optimize/contribution.rs#L51](../../packages/treetime/src/partition/optimize/contribution.rs#L51) already provide the unified interface. The body could be:
+fn `sum_partition_metrics()` [optimize/likelihood.rs#L42](../../packages/treetime/src/optimize/likelihood.rs#L42) manually matches on `OptimizationContribution::Dense` / `Sparse` and calls into the `_eval` adapter files. But fn `sites()` [partition/optimize/contribution.rs#L37](../../packages/treetime/src/partition/optimize/contribution.rs#L37) and fn `gtr()` [partition/optimize/contribution.rs#L51](../../packages/treetime/src/partition/optimize/contribution.rs#L51) already provide the unified interface. The body could be:
 
 ```rust
 for contribution in contributions {
@@ -181,7 +181,7 @@ This would eliminate both [`optimize_dense_eval.rs`](../../packages/treetime/src
 
 ### A2. fn `evaluate()` lacks `compute_derivatives` parameter
 
-fn `OptimizationContribution::evaluate()` always computes derivatives. This is why fn `evaluate_mixed_impl()` exists as a separate function instead of calling `evaluate()` in a loop. Adding a `compute_derivatives: bool` parameter to `evaluate()` would unify the two paths:
+fn `OptimizationContribution::evaluate()` always computes derivatives. This is why fn `sum_partition_metrics()` exists as a separate function instead of calling `evaluate()` in a loop. Adding a `compute_derivatives: bool` parameter to `evaluate()` would unify the two paths:
 
 ```rust
 pub fn evaluate(&self, branch_length: f64, compute_derivatives: bool) -> OptimizationMetrics {
@@ -189,7 +189,7 @@ pub fn evaluate(&self, branch_length: f64, compute_derivatives: bool) -> Optimiz
 }
 ```
 
-fn `evaluate_mixed_impl()` then becomes trivial and could be inlined into fn `evaluate_mixed()` [optimize/likelihood.rs#L18](../../packages/treetime/src/optimize/likelihood.rs#L18) and fn `evaluate_mixed_log_lh_only()` [optimize/likelihood.rs#L35](../../packages/treetime/src/optimize/likelihood.rs#L35).
+fn `sum_partition_metrics()` then becomes trivial and could be inlined into fn `evaluate_partitions()` [optimize/likelihood.rs#L18](../../packages/treetime/src/optimize/likelihood.rs#L18) and fn `evaluate_partitions_log_lh_only()` [optimize/likelihood.rs#L35](../../packages/treetime/src/optimize/likelihood.rs#L35).
 
 ### A3. Two structs named `PartitionContribution` with different shapes
 
@@ -213,7 +213,7 @@ The sparse lookups should not fail in well-formed data (they look up positions t
 
 ### Summary
 
-Applying A1 + A2 would eliminate `optimize_dense_eval.rs` and `optimize_sparse_eval.rs` (2 files, ~50 lines) and simplify `evaluate_mixed_impl` into a one-liner. No behavior change.
+Applying A1 + A2 would eliminate `optimize_dense_eval.rs` and `optimize_sparse_eval.rs` (2 files, ~50 lines) and simplify `sum_partition_metrics` into a one-liner. No behavior change.
 
 Applying A3 renames two structs for clarity. No behavior change.
 

@@ -34,7 +34,7 @@ Before time inference, the timetree pipeline runs one pass of per-edge ML branch
 v1: `fn optimize_branch_lengths` [packages/treetime/src/timetree/pre_loop.rs#L209](../../packages/treetime/src/timetree/pre_loop.rs#L209), called through `fn ml_optimize` [packages/treetime/src/timetree/pre_loop.rs#L115](../../packages/treetime/src/timetree/pre_loop.rs#L115) twice: before and after rerooting ([packages/treetime/src/timetree/pre_loop.rs#L27-L71](../../packages/treetime/src/timetree/pre_loop.rs#L27-L71)).
 v0: `optimize_tree(max_iter=1)` in [`packages/legacy/treetime/treetime/treetime.py`](../../packages/legacy/treetime/treetime/treetime.py) at lines 243 and 266.
 
-The pre-step gathers the per-edge contributions of the marginal reconstruction and calls `fn run_optimize_mixed` of the optimize command, or `fn run_optimize_mixed_inner` with a zero indel rate when indels are off [packages/treetime/src/timetree/pre_loop.rs#L220-L240](../../packages/treetime/src/timetree/pre_loop.rs#L220-L240). It uses the `Brent` method (matching v0's Brent in sqrt(t) space).
+The pre-step gathers the per-edge contributions of the marginal reconstruction and calls `fn optimize_edge_lengths`, with a zero indel rate when indels are off [packages/treetime/src/timetree/pre_loop.rs#L220-L240](../../packages/treetime/src/timetree/pre_loop.rs#L220-L240). It uses the `Brent` method (matching v0's Brent in sqrt(t) space).
 
 ---
 
@@ -44,7 +44,7 @@ Computes per-edge time distributions from partition contributions, clock rate, a
 
 v1: [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs).
 
-- `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L44-L82](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L44-L82): evaluates the Poisson indel log-likelihood alongside the substitution log-likelihood on the grid (matching `run_optimize_mixed()`), then converts the branch-length grid to a time grid using `effective_clock_rate = clock_rate * gamma`, where `gamma > 1` means faster evolution (shorter time for same substitutions)
+- `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L44-L82](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L44-L82): evaluates the Poisson indel log-likelihood alongside the substitution log-likelihood on the grid (matching `optimize_edge_lengths()`), then converts the branch-length grid to a time grid using `effective_clock_rate = clock_rate * gamma`, where `gamma > 1` means faster evolution (shorter time for same substitutions)
 
 ---
 
@@ -246,7 +246,7 @@ Both v0 and v1 use 90% confidence regions throughout: `CI_FRACTION=0.9` in v1, `
 
 1. Mutation contribution from `max_posterior_region()` (`#max_posterior_region`) on the marginal time posterior
 2. Rate contribution from `date_uncertainty_due_to_rate()` on rate susceptibility triples, with the quantile pair that matches the peak location: `(0.05, 0.95)` for an interior peak, `(0, 0.9)` for a peak at the latest date, `(0.1, 1)` for a peak at the earliest date, as v0 passes them through `get_confidence_interval`
-3. Combination via `combined_confidence()` and `combine_confidence()`: quadrature sum, clipped to distribution domain
+3. Combination via `confidence_bounds()` and `combine_in_quadrature()`: quadrature sum, clipped to distribution domain
 4. Delta distributions yield `[date, date]`; nodes without a distribution and without rate dates yield the identity interval `[date, date]`
 
 ### Mutation contribution: HPD region
@@ -282,7 +282,7 @@ v0 note: `date_uncertainty_due_to_rate` has default parameter `interval=(0.05, 0
 
 ### Combination
 
-`combine_confidence()` (`#combine_confidence`) combines independent CI contributions via quadrature sum, treating the two deviations as independent Gaussian-like errors:
+`combine_in_quadrature()` (`#combine_in_quadrature`) combines independent CI contributions via quadrature sum, treating the two deviations as independent Gaussian-like errors:
 
 ```
 lower = center - sqrt((rate_lo - center)^2 + (mutation_lo - center)^2)

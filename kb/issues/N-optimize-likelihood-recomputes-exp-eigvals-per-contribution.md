@@ -4,7 +4,7 @@ Every evaluation of the branch-length objective computes the vector $\exp(\lambd
 
 ## Locations
 
-- `fn evaluate_mixed_impl()` [packages/treetime/src/optimize/likelihood.rs#L42-L56](../../packages/treetime/src/optimize/likelihood.rs#L42-L56) loops over the contributions of an edge and evaluates each one separately
+- `fn sum_partition_metrics()` [packages/treetime/src/optimize/likelihood.rs#L42-L56](../../packages/treetime/src/optimize/likelihood.rs#L42-L56) loops over the contributions of an edge and evaluates each one separately
 - `fn evaluate_dense_contribution()` and `fn evaluate_sparse_contribution()` pass the eigenvalues of the contribution's own GTR [packages/treetime/src/optimize/dense_eval.rs#L12](../../packages/treetime/src/optimize/dense_eval.rs#L12), [packages/treetime/src/optimize/sparse_eval.rs#L15](../../packages/treetime/src/optimize/sparse_eval.rs#L15)
 - `fn evaluate_site_contributions()` [packages/treetime/src/optimize/eval.rs#L23](../../packages/treetime/src/optimize/eval.rs#L23) computes `exp_ev` from the rate eigenvalues of the contribution
 

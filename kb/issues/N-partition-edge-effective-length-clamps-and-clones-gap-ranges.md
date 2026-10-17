@@ -11,7 +11,7 @@
 
 `self.length.saturating_sub(non_char_positions)` returns 0 when the union of non-character ranges covers more positions than the sequence length. That state breaks the invariant that the ranges lie inside the sequence, but the caller cannot tell it apart from an edge whose positions are all gaps or unknown.
 
-The only consumer, `fn initial_guess_mixed()` [packages/treetime/src/optimize/dispatch.rs#L203-L220](../../packages/treetime/src/optimize/dispatch.rs#L203-L220), guards the division `sub_count / effective_length` with `effective_length > 0`, so no division by zero occurs. For a zero length it falls back to `one_mutation` (edges with indels) or `0.1 * one_mutation`, so a broken range invariant silently produces a plausible initial branch length. `fn gather_edge_effective_lengths()` [packages/treetime/src/optimize/gather.rs#L86](../../packages/treetime/src/optimize/gather.rs#L86) collects the values for every edge.
+The only consumer, `fn guess_initial_branch_lengths()` [packages/treetime/src/optimize/dispatch.rs#L203-L220](../../packages/treetime/src/optimize/dispatch.rs#L203-L220), guards the division `sub_count / effective_length` with `effective_length > 0`, so no division by zero occurs. For a zero length it falls back to `one_mutation` (edges with indels) or `0.1 * one_mutation`, so a broken range invariant silently produces a plausible initial branch length. `fn gather_edge_effective_lengths()` [packages/treetime/src/optimize/gather.rs#L86](../../packages/treetime/src/optimize/gather.rs#L86) collects the values for every edge.
 
 ### range_union clones gap vectors
 

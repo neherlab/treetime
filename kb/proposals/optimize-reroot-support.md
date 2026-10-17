@@ -49,7 +49,7 @@ New pipeline when `--reroot` is set and `--keep-root` is not:
 2. Initialize + update marginal
 3. Normalize rates
 4. Apply initial guess
-5. Pre-reroot BL optimization pass (single `run_optimize_mixed` with damping 0.75)
+5. Pre-reroot BL optimization pass (single `optimize_edge_lengths` with damping 0.75)
 6. Compute `DivStats` edge statistics (two-pass traversal over branch lengths)
 7. `reroot_in_place::<DivStats>` with no-op fixup
 8. Apply reroot changes to partitions (`PartitionRerootOps::apply_reroot`)

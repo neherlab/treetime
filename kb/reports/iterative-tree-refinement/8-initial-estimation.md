@@ -40,7 +40,7 @@ initial_bl = #subs / effective_length
 
 For sparse partitions, substitutions come from Fitch-reconstructed states. For dense partitions, substitutions come from MAP states (argmax of node posteriors). Gap positions are excluded from both numerator and denominator, giving correctly scaled rates for gappy alignments.
 
-v1 code: `initial_guess_mixed()` in [`packages/treetime/src/optimize/dispatch.rs#L729`](../../../packages/treetime/src/optimize/dispatch.rs#L729).
+v1 code: `guess_initial_branch_lengths()` in [`packages/treetime/src/optimize/dispatch.rs#L729`](../../../packages/treetime/src/optimize/dispatch.rs#L729).
 
 ## The GTR model interaction
 
@@ -54,7 +54,7 @@ v1 code: the sequence in `run_optimize()` at [`packages/treetime/src/commands/op
 3. Infer GTR from compressed data
 4. Replace dummy GTR with inferred GTR
 5. Re-run marginal with inferred GTR
-6. Compute initial_guess_mixed()      <-- uses fresh marginal profiles
+6. Compute guess_initial_branch_lengths()      <-- uses fresh marginal profiles
 7. Enter optimization loop
 ```
 

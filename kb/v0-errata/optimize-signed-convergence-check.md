@@ -49,7 +49,7 @@ Under these conditions, $\Delta\text{LH} < 0$ does not occur in normal operation
 
 ## v1 status
 
-Implemented. `run_optimize_loop()` [packages/treetime/src/commands/optimize/run.rs#L260](../../packages/treetime/src/commands/optimize/run.rs#L260) uses a three-condition check via `ConvergenceReason` enum: converged (small absolute change), oscillating (small 2-step change detecting 2-cycles), or worsened (a decline after the best iteration). Every stop returns the best-observed branch lengths. See M-optimize-sparse-em-2-cycle (resolved).
+Implemented. `run_optimize_loop()` [packages/treetime/src/optimize/run_loop.rs#L31](../../packages/treetime/src/optimize/run_loop.rs#L31) uses a three-condition check via `ConvergenceReason` enum: converged (small absolute change), oscillating (small 2-step change detecting 2-cycles), or worsened (a decline after the best iteration). Every stop returns the best-observed branch lengths. See M-optimize-sparse-em-2-cycle (resolved).
 
 ## References
 

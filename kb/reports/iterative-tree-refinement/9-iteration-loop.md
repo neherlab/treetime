@@ -92,12 +92,12 @@ v0 code: [`packages/legacy/treetime/treetime/treetime.py#L307-L376`](../../../pa
 ### Loop 4: v1 `run_optimize`
 
 ```
-Initial: initial_guess_mixed()
+Initial: guess_initial_branch_lengths()
 Loop (max_iter):
   1. compute_iteration()                           <-- E-step: marginal_update() (sparse or dense) + total_lh
   2. if delta_lh < dp: break                       <-- also stops on oscillation, worsening, numerical failure
   3. old_branch_lengths = branch_lengths.clone()
-  4. run_optimize_mixed_inner()                    <-- M-step (Newton/Brent per edge)
+  4. optimize_edge_lengths()                    <-- M-step (Newton/Brent per edge)
   5. find_zero_optimal_internal_edges()            <-- record zero-optimal edges
   6. apply_damping(damping)                        <-- post-pass damping
   7. prune_and_merge_in_loop(zero_optimal_edges)   <-- topology cleanup

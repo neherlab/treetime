@@ -29,7 +29,7 @@ Fix: replace the `debug_assert_eq!` with a check that runs in all builds and ret
 
 Edges with no branch length get `one_mutation` (= 1.0 / total_sites) as a fallback when building Poisson branch-length distributions. A missing branch length could indicate a tree-loading error or an uninitialized edge, but the fallback silently assigns a plausible value.
 
-### infer_gtr_impl silently proceeds after non-convergence
+### infer_gtr_from_counts silently proceeds after non-convergence
 
 `packages/treetime/src/gtr/infer_gtr/common.rs:70-74:`
 

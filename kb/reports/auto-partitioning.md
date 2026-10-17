@@ -250,7 +250,7 @@ Informed by the software comparison and Puller et al. 2020 findings:
 | Component                                                       | Location                                                                                                                                   |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `struct MutationCounts { nij, Ti, root_state }`                 | [packages/treetime/src/gtr/infer_gtr/common.rs#L10-L46](../../packages/treetime/src/gtr/infer_gtr/common.rs#L10-L46)                       |
-| `fn infer_gtr_impl()` single-partition solver                   | [packages/treetime/src/gtr/infer_gtr/common.rs#L102-L163](../../packages/treetime/src/gtr/infer_gtr/common.rs#L102-L163)                   |
+| `fn infer_gtr_from_counts()` single-partition solver                   | [packages/treetime/src/gtr/infer_gtr/common.rs#L102-L163](../../packages/treetime/src/gtr/infer_gtr/common.rs#L102-L163)                   |
 | `struct GTRSiteSpecific` with per-site eigendecomposition       | [packages/treetime/src/gtr/gtr_site_specific.rs#L47-L67](../../packages/treetime/src/gtr/gtr_site_specific.rs#L47-L67)                     |
 | `fn infer_gtr_site_specific_impl()`                             | [packages/treetime/src/gtr/infer_gtr/site_specific.rs#L77-L187](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs#L77-L187)       |
 | `struct MutationCountsSiteSpecific { n_ija, T_ia, root_state }` | [packages/treetime/src/gtr/infer_gtr/site_specific.rs#L8-L26](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs#L8-L26)           |

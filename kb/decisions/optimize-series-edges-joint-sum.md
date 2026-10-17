@@ -6,7 +6,7 @@ For a reversible model the likelihood depends only on the sum of edges joined by
 
 **v0 location**: `optimize_tree_marginal()` at [`packages/legacy/treetime/treetime/treeanc.py#L1317-L1337`](../../packages/legacy/treetime/treetime/treeanc.py#L1317-L1337). Optimizes the root arc from the profiles of both subtrees, damps the total, distributes it by the previous ratio. The block runs once per root child, so the root arc is optimized and damped twice per iteration.
 
-**v1 location**: `run_optimize_mixed_inner()` and `struct SeriesChain` in [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs).
+**v1 location**: `optimize_edge_lengths()` and `struct SeriesChain` in [`packages/treetime/src/optimize/dispatch.rs`](../../packages/treetime/src/optimize/dispatch.rs).
 
 ## Algorithm
 

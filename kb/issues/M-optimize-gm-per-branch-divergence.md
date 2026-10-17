@@ -13,7 +13,7 @@ The optimize golden-master fixture `packages/treetime/src/optimize/__tests__/__f
 1. Topology cleanup criterion. v0's `prune_short_branches` collapses any
    internal branch with `bl < 0.1 * one_mutation && prob_t(parent, child, 0) > 0.1`. v1 collapses only branches the optimizer drives to exact zero. Branches the optimizer leaves at e.g. `1e-12 - 1e-3` subs/site that v0 collapses stay positive in v1 and absorb mass that v0 redistributes to siblings.
 2. Indel rate handling. v1 estimates `indel_rate` once at the start of
-   `run_optimize_mixed` and treats it as a constant; v0 may recompute per iteration. A different rate biases the per-edge Newton/Brent objective.
+   `run_optimize_loop()` (through `IndelPolicy::edge_indels()`) and treats it as a constant; v0 may recompute per iteration. A different rate biases the per-edge Newton/Brent objective.
 3. Damping schedule application order. v0 and v1 both apply
    `bl = bl_new * (1 - damping^(i+1)) + bl_old * damping^(i+1)`, but v1 restores zeros for internal zero-optimal edges after damping (see `prune_and_merge_in_loop`), while v0 prunes at the end of each pass with the threshold above. Different cleanup ordering can leave different mass distributions per branch even when the sum agrees.
 
