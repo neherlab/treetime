@@ -1,5 +1,8 @@
 # Log-space time distributions with hard/soft support boundaries
 
+> [!WARNING]
+> **Needs review.** `log_lh_pos` and `compute_positional_log_lh()` were removed in favour of `log_lh_time`, the log marginal likelihood of the node times; the regression criterion below that names `log_lh_pos` needs a replacement.
+
 Move timetree time distributions to a logarithmic y-axis and replace the current single-meaning support boundary with an explicit distinction between **hard** boundaries (a fact about the distribution: probability is zero beyond) and **soft** boundaries (a choice of representation: an analytic tail continues beyond). The explicit grid becomes a _sensible domain_ holding a target fraction of the probability mass, re-derived once per operation, rather than the distribution's support.
 
 **Type**: New v1 design. Supersedes part of [kb/decisions/timetree-inference-pass-boundary-tails.md](../decisions/timetree-inference-pass-boundary-tails.md) and amends [kb/decisions/distribution-intersection-grid-resolution.md](../decisions/distribution-intersection-grid-resolution.md).

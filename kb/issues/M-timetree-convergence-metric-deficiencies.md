@@ -1,14 +1,12 @@
 # Timetree convergence metric deficiencies
 
 > [!IMPORTANT]
-> **Decision required.** Two contracts are open, and no stop rule should be implemented until both are settled:
->
-> - Composition of `log_lh_total`: either the total is `None` unless every component is present, or the component set is fixed per run and a missing component is an error. A component dropping out mid-run must not look like a likelihood improvement. `log_lh_coal` goes missing for two reasons: the run has no coalescent (expected), or `collect_coalescent_edges` failed on an inverted edge (a defect, see [M-coalescent-edge-collection-nan-bypass-and-unreachable-fallback.md](M-coalescent-edge-collection-nan-bypass-and-unreachable-fallback.md))
-> - Role of likelihood in `has_converged`: test only the components that are part of the maximized objective; test the total as a plateau guard rather than a criterion; or keep the criterion on node times and treat likelihood as reporting only. The coalescent term is evaluated against live lineage counts while the times are inferred under frozen ones (see below), so the reported total is not the maximized objective
+> **Decision required.** Role of likelihood in `has_converged`: test `log_lh_time`, the log marginal likelihood of the node times; use it as a plateau guard rather than a criterion; or keep the criterion on node times and treat likelihood as reporting only. `log_lh_time` includes the coalescent prior, which is not normalized over node times and changes whenever the coalescent timescale or the lineage counts change, so it is comparable between rounds only while both are unchanged. `log_lh_coal` is evaluated against live lineage counts while the times are inferred under frozen ones (see below), so it is not the maximized objective either
 
-Remaining defects in the timetree convergence tracking system: the reported total log-likelihood is
-not comparable across iterations, it plays no part in the convergence decision, and sequence-diff
-counting undercounts across topology changes.
+Remaining defects in the timetree convergence tracking system: likelihood plays no part in the
+convergence decision, the reported likelihoods are not comparable across all iterations, and
+sequence-diff counting undercounts across topology changes. The summed `log_lh_total` was dropped
+together with the positional log-likelihood; the node-time term is now `log_lh_time`.
 
 The original first defect — the convergence check keying on `n_diff`, which does not measure what
 the loop moves — is resolved; see
@@ -22,20 +20,11 @@ retained only as the fallback when no node is dated on both sides of a round.
 
 [`metrics.rs`](../../packages/treetime/src/timetree/convergence/metrics.rs)
 
-`ConvergenceMetrics` carries `log_lh_seq`, `log_lh_pos`, `log_lh_coal` and `log_lh_total`, and
-`has_converged` uses none of them. A tree whose times have settled below tolerance while the
-likelihood is still moving is declared converged. This cannot be fixed independently of the next
-two items: the total is not currently a quantity a stop rule could be written against.
-
-### Total log-likelihood is a sum of different terms across iterations
-
-[`optimizer.rs#L67-L70`](../../packages/treetime/src/timetree/convergence/optimizer.rs#L67-L70)
-
-`log_lh_total` is `[log_lh_seq, log_lh_pos, log_lh_coal].into_iter().flatten().reduce(...)`. When a
-component is `Some` in one iteration and `None` in another the number of summed terms changes, so
-deltas across iterations compare different objectives. `log_lh_coal` in particular is `None` or
-`NaN` whenever `collect_coalescent_edges` fails, which happens silently — see
-[M-coalescent-edge-collection-nan-bypass-and-unreachable-fallback.md](M-coalescent-edge-collection-nan-bypass-and-unreachable-fallback.md).
+`ConvergenceMetrics` carries `log_lh_seq`, `log_lh_time` and `log_lh_coal`, and `has_converged`
+uses none of them. A tree whose times have settled below tolerance while the likelihood is still
+moving is declared converged. None of the three is currently a quantity a stop rule could be
+written against: `log_lh_time` changes with the coalescent timescale and lineage counts (see the
+decision block above), and `log_lh_coal` is a diagnostic (below).
 
 ### The coalescent term is not the objective the times were inferred under
 
@@ -60,7 +49,7 @@ attributes diffs for nodes present in only one snapshot instead of logging and d
 ## Impact
 
 - Convergence can be declared while the objective is still moving.
-- `log_lh_total` deltas are not usable as a convergence signal without first fixing composition.
+- `log_lh_time` deltas are not usable as a convergence signal across rounds that change the coalescent timescale or lineage counts.
 - The tracelog's `n_diff` column undercounts in rounds that changed the topology.
 
 ## Validation
