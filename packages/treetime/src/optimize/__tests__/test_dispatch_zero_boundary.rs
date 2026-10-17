@@ -1,80 +1,27 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::gtr::get_gtr::{GtrModelName, JC69Params, K80Params, get_gtr_by_name, jc69, k80};
-  use crate::gtr::gtr::{GTR, Mu};
-  use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
-  use crate::optimize::gather::{InitialGuessEvidence, gather_edge_contributions};
+  use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69};
+  use crate::optimize::dispatch::optimize_edge_lengths;
+  use crate::optimize::gather::gather_edge_contributions;
   use crate::optimize::indel::{IndelPolicy, IndelTerm};
   use crate::optimize::likelihood::evaluate_partitions_log_lh_only;
   use crate::optimize::method_newton::solve_newton;
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
   use crate::optimize::solver_outcome::Convergence;
-  use crate::optimize::zero_boundary::{ZeroLength, is_zero_branch_optimal, reconcile_zero_boundary};
-  use crate::partition::fitch::passes::create_fitch_partition;
-  use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
+  use crate::optimize::zero_boundary::{ZeroLength, is_zero_branch_optimal};
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
-  use crate::test_utils::leaf_seq_inputs;
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
-  use indoc::indoc;
-  use ndarray::{Array2, array};
+  use helpers::{
+    make_dinh_matsen_k80_contribution, mixed_decay_rate_contributions, reconcile, setup_identical_reconstruction,
+  };
+  use ndarray::array;
   use rstest::rstest;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
-  use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
-  use treetime_primitives::AlignmentRecord;
 
   const IDENTICAL_TREE_NEWICK: &str = "((A:0.1,B:0.1)AB:0.1,(C:0.1,D:0.1)CD:0.1)root:0.1;";
-
-  const IDENTICAL_ALIGNMENT: &str = indoc! {r#"
-    >A
-    ACGTACGTACGTACGT
-    >B
-    ACGTACGTACGTACGT
-    >C
-    ACGTACGTACGTACGT
-    >D
-    ACGTACGTACGTACGT
-  "#};
-
-  fn setup_identical_reconstruction(
-    graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-    model: GtrModelName,
-    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
-    let aln: Vec<AlignmentRecord> = fasta_read(IDENTICAL_ALIGNMENT.as_bytes(), &Alphabet::default())?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-
-    let fitch = create_fitch_partition(
-      graph,
-      Alphabet::new(AlphabetName::Nuc)?,
-      leaf_seq_inputs(graph, names, aln),
-    )?;
-    let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
-    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
-      sparse_partition,
-      get_gtr_by_name(model)?,
-      sparse_node_states,
-    ));
-    let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
-
-    let indels = IndelPolicy::Include.edge_indels(graph, &reconstruction, branch_lengths);
-    let evidence = InitialGuessEvidence::gather(graph, &reconstruction)?;
-    guess_initial_branch_lengths(graph, &indels, &evidence, ExistingBranchLengths::Keep, branch_lengths)?;
-
-    Ok(reconstruction)
-  }
 
   #[rustfmt::skip]
   #[rstest]
@@ -203,19 +150,6 @@ mod tests {
     }
 
     Ok(())
-  }
-
-  fn make_dinh_matsen_k80_contribution() -> OptimizationContribution {
-    #[rustfmt::skip]
-    let coefficients = array![
-      [-0.04545042,  0.02261158,  0.02261158, 0.25],
-      [ 0.04456328, -0.02228164, -0.02228164, 0.25],
-    ];
-    OptimizationContribution::Dense(optimize::dense::PartitionContribution {
-      coefficients,
-      rate_eigvals: array![-1.0, -0.5, -0.5, 0.0],
-      gtr: k80(K80Params::default()).unwrap(),
-    })
   }
 
   #[test]
@@ -471,30 +405,111 @@ mod tests {
     );
   }
 
-  fn mixed_decay_rate_contributions() -> [OptimizationContribution; 2] {
-    let fast = binary_contribution(5.0, array![[0.96, 1.0]]);
-    let slow = binary_contribution(0.5, array![[-0.8, 1.0]]);
-    [fast, slow]
-  }
+  mod helpers {
+    use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+    use crate::branch_lengths::branch_lengths_or_zero;
+    use crate::gtr::get_gtr::{GtrModelName, K80Params, get_gtr_by_name, k80};
+    use crate::gtr::gtr::{GTR, Mu};
+    use crate::optimize::dispatch::guess_initial_branch_lengths;
+    use crate::optimize::gather::InitialGuessEvidence;
+    use crate::optimize::indel::{IndelPolicy, IndelTerm};
+    use crate::optimize::params::ExistingBranchLengths;
+    use crate::optimize::zero_boundary::{ZeroLength, reconcile_zero_boundary};
+    use crate::partition::fitch::passes::create_fitch_partition;
+    use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
+    use crate::partition::optimize;
+    use crate::partition::optimize::contribution::OptimizationContribution;
+    use crate::test_utils::leaf_seq_inputs;
+    use eyre::Report;
+    use indoc::indoc;
+    use ndarray::{Array2, array};
+    use std::collections::BTreeMap;
+    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
+    use treetime_graph::node::GraphNodeKey;
+    use treetime_io::fasta::fasta_read;
+    use treetime_primitives::AlignmentRecord;
 
-  fn binary_contribution(mu: f64, coefficients: Array2<f64>) -> OptimizationContribution {
-    let gtr = GTR::builder()
-      .n_states(2)
-      .mu(Mu::Normalized(mu))
-      .pi(array![0.5, 0.5])
-      .build()
-      .unwrap();
-    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
-  }
+    const IDENTICAL_ALIGNMENT: &str = indoc! {r#"
+      >A
+      ACGTACGTACGTACGT
+      >B
+      ACGTACGTACGTACGT
+      >C
+      ACGTACGTACGTACGT
+      >D
+      ACGTACGTACGTACGT
+    "#};
 
-  fn reconcile(
-    candidate: f64,
-    start: f64,
-    contributions: &[OptimizationContribution],
-    indels: IndelTerm,
-    one_mutation: f64,
-  ) -> f64 {
-    let zero_length = ZeroLength::of_edge(contributions, indels);
-    reconcile_zero_boundary(candidate, start, contributions, indels, zero_length, one_mutation).unwrap()
+    pub(super) fn setup_identical_reconstruction(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      model: GtrModelName,
+      branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+    ) -> Result<MarginalReconstruction, Report> {
+      let aln: Vec<AlignmentRecord> = fasta_read(IDENTICAL_ALIGNMENT.as_bytes(), &Alphabet::default())?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
+
+      let fitch = create_fitch_partition(
+        graph,
+        Alphabet::new(AlphabetName::Nuc)?,
+        leaf_seq_inputs(graph, names, aln),
+      )?;
+      let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
+      let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+        sparse_partition,
+        get_gtr_by_name(model)?,
+        sparse_node_states,
+      ));
+      let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+
+      let indels = IndelPolicy::Include.edge_indels(graph, &reconstruction, branch_lengths);
+      let evidence = InitialGuessEvidence::gather(graph, &reconstruction)?;
+      guess_initial_branch_lengths(graph, &indels, &evidence, ExistingBranchLengths::Keep, branch_lengths)?;
+
+      Ok(reconstruction)
+    }
+
+    pub(super) fn make_dinh_matsen_k80_contribution() -> OptimizationContribution {
+      #[rustfmt::skip]
+      let coefficients = array![
+        [-0.04545042,  0.02261158,  0.02261158, 0.25],
+        [ 0.04456328, -0.02228164, -0.02228164, 0.25],
+      ];
+      OptimizationContribution::Dense(optimize::dense::PartitionContribution {
+        coefficients,
+        rate_eigvals: array![-1.0, -0.5, -0.5, 0.0],
+        gtr: k80(K80Params::default()).unwrap(),
+      })
+    }
+
+    pub(super) fn mixed_decay_rate_contributions() -> [OptimizationContribution; 2] {
+      let fast = binary_contribution(5.0, array![[0.96, 1.0]]);
+      let slow = binary_contribution(0.5, array![[-0.8, 1.0]]);
+      [fast, slow]
+    }
+
+    fn binary_contribution(mu: f64, coefficients: Array2<f64>) -> OptimizationContribution {
+      let gtr = GTR::builder()
+        .n_states(2)
+        .mu(Mu::Normalized(mu))
+        .pi(array![0.5, 0.5])
+        .build()
+        .unwrap();
+      OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
+    }
+
+    pub(super) fn reconcile(
+      candidate: f64,
+      start: f64,
+      contributions: &[OptimizationContribution],
+      indels: IndelTerm,
+      one_mutation: f64,
+    ) -> f64 {
+      let zero_length = ZeroLength::of_edge(contributions, indels);
+      reconcile_zero_boundary(candidate, start, contributions, indels, zero_length, one_mutation).unwrap()
+    }
   }
 }
