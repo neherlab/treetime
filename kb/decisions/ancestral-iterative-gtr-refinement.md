@@ -43,6 +43,9 @@ The v1 ancestral command in [`packages/treetime/src/ancestral/pipeline.rs`](../.
 
 Relevant orchestration is at [`packages/treetime/src/ancestral/plan.rs`](../../packages/treetime/src/ancestral/plan.rs).
 
+> [!WARNING]
+> **Needs review.** The two bullets above describe code that no longer exists: `get_gtr_sparse()` and `get_gtr_dense()` are gone, and no preliminary JC69 pass remains. Both modes now take the initial model from Fitch counts (`fn infer_gtr_fitch()` called from [`packages/treetime/src/partition/create.rs#L90`](../../packages/treetime/src/partition/create.rs#L90)), and `fn reconstruct_marginal()` runs an iterative refinement through `fn refine_gtr()` when refinement iterations are set ([`packages/treetime/src/ancestral/plan.rs#L137-L206`](../../packages/treetime/src/ancestral/plan.rs#L137-L206)). The statement below that the one-shot fit is the accepted workflow may therefore be outdated. The decision owner should confirm the current workflow before this text is rewritten
+
 This one-shot behavior is the current accepted ancestral workflow. The proposal does not claim that current v1 is missing an already-accepted algorithm. It proposes a possible future extension beyond the currently accepted workflow.
 
 ### Mugration contrast
