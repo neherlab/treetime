@@ -164,6 +164,13 @@ mod tests {
     assert_error!(normalized(pi, None), expected);
   }
 
+  #[test]
+  fn test_gtr_construction_rejects_pi_entry_underflowing_to_zero_in_normalization() {
+    let pi = array![5e-324, 1e10];
+    let expected = "Normalized equilibrium frequencies (pi) must be finite and positive, got [0, 1]";
+    assert_error!(normalized(pi, None), expected);
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::negative(array![[0.0, -1.0], [-1.0, 0.0]],          "Substitution matrix (W) must contain finite non-negative entries, got [[0, -1],\n [-1, 0]]")]

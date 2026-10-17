@@ -83,6 +83,9 @@ impl GTR {
       let pi_sum = pi.sum();
       pi / pi_sum
     };
+    if !pi.iter().all(|&p| p.is_finite() && p > 0.0) {
+      return make_error!("Normalized equilibrium frequencies (pi) must be finite and positive, got {pi}");
+    }
 
     let average_rate = avg_transition(&W, &pi);
     if !(average_rate.is_finite() && average_rate > 0.0) {
@@ -196,13 +199,6 @@ impl GTR {
   }
 }
 
-#[cfg(test)]
-impl GTR {
-  pub(crate) fn eigvals(&self) -> &Array1<f64> {
-    &self.eigvals
-  }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Mu {
   FromMatrix(f64),
@@ -210,7 +206,7 @@ pub enum Mu {
 }
 
 impl Mu {
-  pub fn value(self) -> f64 {
+  pub(crate) fn value(self) -> f64 {
     match self {
       Self::FromMatrix(mu) | Self::Normalized(mu) => mu,
     }
