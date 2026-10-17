@@ -51,18 +51,7 @@ pub fn run(
     },
     clock_model,
     filter_outliers,
-  ) = estimate_clock_model_with_prefilter(
-    tree,
-    &params.clock_params,
-    params.keep_root,
-    &params.branch_params,
-    params.clock_filter,
-    params.allow_negative_rate,
-    &params.reroot_spec,
-    names,
-    log,
-  )
-  .map_err(OperationError::classify)?;
+  ) = estimate_clock_model_with_prefilter(tree, params, names, log).map_err(OperationError::classify)?;
 
   let outliers = filter_outliers.unwrap_or_default();
 
@@ -111,21 +100,22 @@ pub struct ClockOutput {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-#[expect(
-  clippy::too_many_arguments,
-  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
-)]
 fn estimate_clock_model_with_prefilter(
   tree: ClockTree,
-  options: &ClockVarianceParams,
-  keep_root: bool,
-  branch_params: &BranchPointOptimizationParams,
-  clock_filter_threshold: f64,
-  allow_negative_rate: bool,
-  reroot_spec: &RerootSpec,
+  params: &ClockParams,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockModel, Option<BTreeSet<GraphNodeKey>>), Report> {
+  let ClockParams {
+    clock_params: options,
+    clock_filter: clock_filter_threshold,
+    keep_root,
+    allow_negative_rate,
+    branch_params,
+    reroot_spec,
+  } = params;
+  let (keep_root, clock_filter_threshold, allow_negative_rate) =
+    (*keep_root, *clock_filter_threshold, *allow_negative_rate);
   let (tree, filter_outliers) = if clock_filter_threshold > 0.0 {
     let reroot_params = RerootParams::new(reroot_spec.clone(), false);
     let (tree, result) = estimate_clock_model_with_reroot_policy(

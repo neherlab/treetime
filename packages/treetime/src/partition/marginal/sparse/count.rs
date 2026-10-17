@@ -36,15 +36,7 @@ pub(crate) fn count_transitions_sparse(
 
     let exp_qt = gtr.expQt(branch_length) + SUPERTINY_NUMBER;
 
-    accumulate_sparse_transitions(
-      msg_to_child,
-      msg_to_parent,
-      &exp_qt,
-      branch_length,
-      n_states,
-      &mut nij,
-      &mut Ti,
-    );
+    accumulate_sparse_transitions(msg_to_child, msg_to_parent, &exp_qt, branch_length, &mut nij, &mut Ti);
   }
 
   let root = graph.get_exactly_one_root()?;
@@ -68,7 +60,6 @@ fn accumulate_sparse_transitions(
   msg_to_parent: &SparseSeqDistribution,
   exp_qt: &Array2<f64>,
   branch_length: f64,
-  n_states: usize,
   nij: &mut Array2<f64>,
   Ti: &mut Array1<f64>,
 ) {
@@ -77,7 +68,7 @@ fn accumulate_sparse_transitions(
       .variable
       .get(*pos)
       .map_or_else(|| fixed_profile_for_var(msg_to_child, pp_var), |v| v.dis);
-    accumulate_site_transition_weighted(pp_var.dis, pc, exp_qt, branch_length, n_states, nij, Ti, 1);
+    accumulate_site_transition_weighted(pp_var.dis, pc, exp_qt, branch_length, nij, Ti, 1);
   }
 
   for parent_fixed in msg_to_parent.fixed.iter() {
@@ -89,16 +80,7 @@ fn accumulate_sparse_transitions(
       .fixed
       .get(parent_fixed.state)
       .map_or(&parent_fixed.dis, |child_fixed| &child_fixed.dis);
-    accumulate_site_transition_weighted(
-      &parent_fixed.dis,
-      child_fixed,
-      exp_qt,
-      branch_length,
-      n_states,
-      nij,
-      Ti,
-      count,
-    );
+    accumulate_site_transition_weighted(&parent_fixed.dis, child_fixed, exp_qt, branch_length, nij, Ti, count);
   }
 }
 
@@ -106,20 +88,16 @@ fn fixed_profile_for_var<'a>(dist: &'a SparseSeqDistribution, var: VarPos<'a>) -
   dist.fixed.get(var.state).map_or(var.dis, |fixed| fixed.dis.as_slice())
 }
 
-#[expect(
-  clippy::too_many_arguments,
-  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
-)]
 fn accumulate_site_transition_weighted(
   pp: &[f64],
   pc: &[f64],
   exp_qt: &Array2<f64>,
   branch_length: f64,
-  n_states: usize,
   nij: &mut Array2<f64>,
   Ti: &mut Array1<f64>,
   weight: usize,
 ) {
+  let n_states = exp_qt.nrows();
   let weight = weight.to_f64_exact();
   let mut site_sum = 0.0;
   let mut joint = Array2::zeros((n_states, n_states));

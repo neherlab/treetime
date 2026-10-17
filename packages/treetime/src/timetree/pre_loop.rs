@@ -1,7 +1,7 @@
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::clock_filter::{ClockFilterResult, clock_filter};
-use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
+use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockVarianceParams};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::reroot::RerootParams;
 use crate::optimize::dispatch::optimize_edge_lengths;
@@ -125,11 +125,15 @@ fn reroot(
     state.branch_lengths,
     state.branch_model,
     &inputs.context.date_constraints,
-    outliers,
-    clock_params,
-    params.clock_rate,
-    &inputs.context.branch_params,
-    &RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate),
+    &ClockFitParams {
+      outliers,
+      clock_params,
+      clock_rate: params.clock_rate,
+      keep_root: false,
+      branch_params: &inputs.context.branch_params,
+      reroot_params: &RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate),
+      prev_clock_rate: None,
+    },
     inputs.names,
     log,
   )?;

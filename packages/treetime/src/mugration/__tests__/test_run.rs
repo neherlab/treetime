@@ -21,34 +21,29 @@ mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_utils::{o, vec_of_owned};
 
-  #[expect(
-    clippy::too_many_arguments,
-    reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
-  )]
+  fn mugration_params() -> MugrationParams {
+    MugrationParams {
+      missing_data: o!("?"),
+      pc: None,
+      missing_weights_threshold: 0.5,
+      iterations: 5,
+      sampling_bias_correction: None,
+      smooth_initial_pi: false,
+      filter_uninformative_root: false,
+    }
+  }
+
   fn run_mugration_case(
     nwk: &str,
     traits: &BTreeMap<String, String>,
     weights: Option<BTreeMap<String, f64>>,
-    pc: Option<f64>,
-    iterations: usize,
-    sampling_bias_correction: Option<f64>,
-    smooth_initial_pi: bool,
-    filter_uninformative_root: bool,
+    params: &MugrationParams,
   ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
     let nwk_parsed = nwk_read(nwk.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    let params = MugrationParams {
-      missing_data: o!("?"),
-      pc,
-      missing_weights_threshold: 0.5,
-      iterations,
-      sampling_bias_correction,
-      smooth_initial_pi,
-      filter_uninformative_root,
-    };
     let TraitsByNode {
       traits,
       observed_values,
@@ -60,7 +55,7 @@ mod tests {
       weights,
       branch_lengths,
     };
-    let output = run(&params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())?;
+    let output = run(params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())?;
     Ok((output, names))
   }
 
@@ -233,7 +228,7 @@ mod tests {
       o!("A") => o!("usa"),
       o!("B") => o!("germany"),
     };
-    let (output, names) = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, None, 5, None, false, false)?;
+    let (output, names) = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, &mugration_params())?;
 
     assert_eq!(2, output.n_states);
     assert_eq!(
@@ -272,16 +267,7 @@ mod tests {
       o!("germany") => 4.0,
       o!("france") => 1.0,
     };
-    let (output, _names) = run_mugration_case(
-      "(A:0.1,B:0.2,C:0.3)root;",
-      &traits,
-      Some(weights),
-      None,
-      5,
-      None,
-      false,
-      false,
-    )?;
+    let (output, _names) = run_mugration_case("(A:0.1,B:0.2,C:0.3)root;", &traits, Some(weights), &mugration_params())?;
 
     assert_eq!(3, output.n_states);
     assert_eq!(
@@ -309,16 +295,7 @@ mod tests {
       o!("germany") => 4.0,
       o!("france") => 1.0,
     };
-    let (output, _names) = run_mugration_case(
-      "(A:0.1,B:0.2)root;",
-      &traits,
-      Some(weights),
-      None,
-      5,
-      None,
-      false,
-      false,
-    )?;
+    let (output, _names) = run_mugration_case("(A:0.1,B:0.2)root;", &traits, Some(weights), &mugration_params())?;
 
     assert_eq!(3, output.n_states);
     assert_eq!(
@@ -351,11 +328,10 @@ mod tests {
       "(A:0.1,B:0.2,C:0.3)root;",
       &traits,
       Some(weights),
-      Some(1.0),
-      5,
-      None,
-      false,
-      false,
+      &MugrationParams {
+        pc: Some(1.0),
+        ..mugration_params()
+      },
     )?;
 
     assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-10);
@@ -382,11 +358,11 @@ mod tests {
       "(A:0.1,B:0.2,C:0.3)root;",
       &traits,
       Some(weights),
-      Some(1.0),
-      5,
-      None,
-      true,
-      false,
+      &MugrationParams {
+        pc: Some(1.0),
+        smooth_initial_pi: true,
+        ..mugration_params()
+      },
     )?;
 
     let total = 5.0;
@@ -405,9 +381,25 @@ mod tests {
       o!("B") => o!("germany"),
     };
 
-    let (v0, _v0_names) = run_mugration_case("(A:0.1,B:0.1)root;", &traits, None, None, 0, None, false, false)?;
-    let (filtered, _filtered_names) =
-      run_mugration_case("(A:0.1,B:0.1)root;", &traits, None, None, 0, None, false, true)?;
+    let (v0, _v0_names) = run_mugration_case(
+      "(A:0.1,B:0.1)root;",
+      &traits,
+      None,
+      &MugrationParams {
+        iterations: 0,
+        ..mugration_params()
+      },
+    )?;
+    let (filtered, _filtered_names) = run_mugration_case(
+      "(A:0.1,B:0.1)root;",
+      &traits,
+      None,
+      &MugrationParams {
+        iterations: 0,
+        filter_uninformative_root: true,
+        ..mugration_params()
+      },
+    )?;
 
     let pi_v0 = &v0.gtr.pi();
     let pi_filtered = &filtered.gtr.pi();
@@ -426,11 +418,18 @@ mod tests {
       o!("B") => o!("germany"),
     };
 
-    let (base, _base_names) = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, None, 5, None, false, false)?;
+    let (base, _base_names) = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, &mugration_params())?;
     let base_mu = base.gtr.mu();
 
-    let (corrected, _corrected_names) =
-      run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, None, 5, Some(2.0), false, false)?;
+    let (corrected, _corrected_names) = run_mugration_case(
+      "(A:0.1,B:0.2)root;",
+      &traits,
+      None,
+      &MugrationParams {
+        sampling_bias_correction: Some(2.0),
+        ..mugration_params()
+      },
+    )?;
 
     assert_abs_diff_eq!(corrected.gtr.mu(), base_mu * 2.0, epsilon = 1e-6);
 
@@ -444,7 +443,7 @@ mod tests {
       o!("B") => o!("usa"),
     };
 
-    let result = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, None, 5, None, false, false);
+    let result = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, &mugration_params());
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
     assert!(err_msg.contains("only 1 discrete attributes"));
@@ -460,8 +459,16 @@ mod tests {
       o!("C") => o!("usa"),
     };
 
-    let (no_iter, _no_iter_names) = run_mugration_case(tree, &traits, None, None, 0, None, false, false)?;
-    let (with_iter, _with_iter_names) = run_mugration_case(tree, &traits, None, None, 5, None, false, false)?;
+    let (no_iter, _no_iter_names) = run_mugration_case(
+      tree,
+      &traits,
+      None,
+      &MugrationParams {
+        iterations: 0,
+        ..mugration_params()
+      },
+    )?;
+    let (with_iter, _with_iter_names) = run_mugration_case(tree, &traits, None, &mugration_params())?;
 
     let mu_changed = (no_iter.gtr.mu() - with_iter.gtr.mu()).abs() > 1e-6;
     let pi_changed = no_iter
@@ -496,7 +503,7 @@ mod tests {
       o!("D") => o!("germany"),
     };
 
-    let (output, _names) = run_mugration_case(tree, &traits, None, None, 5, None, false, false)?;
+    let (output, _names) = run_mugration_case(tree, &traits, None, &mugration_params())?;
 
     let pi_usa = output.gtr.pi()[1];
     assert!(
@@ -510,7 +517,15 @@ mod tests {
   #[test]
   fn test_zero_iterations_preserves_initial_model() -> Result<(), Report> {
     let traits = btreemap! { o!("A") => o!("usa"), o!("B") => o!("germany") };
-    let (output, _names) = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, None, 0, None, false, false)?;
+    let (output, _names) = run_mugration_case(
+      "(A:0.1,B:0.2)root;",
+      &traits,
+      None,
+      &MugrationParams {
+        iterations: 0,
+        ..mugration_params()
+      },
+    )?;
 
     assert_abs_diff_eq!(output.gtr.pi().sum(), 1.0, epsilon = 1e-10);
     assert!(output.gtr.mu() > 0.0);

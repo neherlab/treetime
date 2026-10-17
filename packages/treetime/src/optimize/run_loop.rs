@@ -399,7 +399,7 @@ pub(crate) struct TopologyCleanup {
 
 #[expect(
   clippy::too_many_arguments,
-  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
+  reason = "the total length, the indels, the substitution counts and the effective lengths are separate products of the reconstruction that the caller gathers, and the tests build each one on its own; the branch lengths are the only mutable output"
 )]
 pub(crate) fn apply_initial_guess_mode(
   graph: &Graph,
