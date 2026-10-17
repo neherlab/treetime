@@ -264,8 +264,7 @@ fn compute_branch_distributions_marginal_mode(
         branch_length,
         one_mutation,
         GRID_POINTS,
-        clock_rate,
-        gamma,
+        clock_rate * gamma,
         max_grid_points,
       )?;
 

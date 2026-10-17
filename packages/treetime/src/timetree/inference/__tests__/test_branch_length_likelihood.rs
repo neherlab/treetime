@@ -28,7 +28,6 @@ mod tests {
       1e-3,
       GRID_POINTS,
       1.0,
-      1.0,
       MaxGridPoints::default(),
     )?;
 
@@ -125,8 +124,7 @@ mod tests {
       5.0,
       one_mutation,
       GRID_POINTS,
-      clock_rate,
-      gamma,
+      clock_rate * gamma,
       MaxGridPoints::default(),
     )?;
 
@@ -153,8 +151,7 @@ mod tests {
       5.0,
       one_mutation,
       GRID_POINTS,
-      clock_rate,
-      gamma,
+      clock_rate * gamma,
       MaxGridPoints::default(),
     )?;
 
@@ -182,7 +179,6 @@ mod tests {
       1e-3,
       GRID_POINTS,
       1.0,
-      1.0,
       MaxGridPoints::default(),
     )?;
 
@@ -199,7 +195,6 @@ mod tests {
       0.1,
       1e-3,
       GRID_POINTS,
-      1.0,
       1.0,
       MaxGridPoints::default(),
     )?;
@@ -219,7 +214,6 @@ mod tests {
       1e-3,
       GRID_POINTS,
       1.0,
-      1.0,
       MaxGridPoints::default(),
     )?;
 
@@ -238,7 +232,6 @@ mod tests {
       1.0,
       one_mutation,
       GRID_POINTS,
-      1.0,
       1.0,
       MaxGridPoints::default(),
     )?;
@@ -266,7 +259,6 @@ mod tests {
       1e-3,
       GRID_POINTS,
       1.0,
-      1.0,
       MaxGridPoints::default(),
     )?;
 
@@ -286,7 +278,6 @@ mod tests {
       1.0,
       1e-3,
       GRID_POINTS,
-      1.0,
       1.0,
       MaxGridPoints::default(),
     )?;
@@ -343,7 +334,6 @@ mod tests {
         1.0,
         1e-3,
         GRID_POINTS,
-        1.0,
         1.0,
         MaxGridPoints::default(),
       )

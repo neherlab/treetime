@@ -20,12 +20,10 @@ pub(crate) fn compute_branch_length_distribution(
   current_branch_length: f64,
   one_mutation: f64,
   n_grid_points: usize,
-  clock_rate: f64,
-  gamma: f64,
+  branch_rate: f64,
   max_points: MaxGridPoints,
 ) -> Result<Arc<Distribution<NegLog>>, Report> {
-  debug_assert!(clock_rate > 0.0, "clock_rate must be positive, got {clock_rate:.6e}");
-  debug_assert!(gamma > 0.0);
+  debug_assert!(branch_rate > 0.0, "branch_rate must be positive, got {branch_rate:.6e}");
 
   let finite_boundary = branch_length_has_finite_boundary(contributions, indels)?;
   let min_bl = if finite_boundary {
@@ -40,7 +38,7 @@ pub(crate) fn compute_branch_length_distribution(
 
   let log_lh = peak_normalize_neg_log(&log_lh)?;
 
-  let TimeRange { time_min, time_max } = branch_length_grid_to_time_range(&grid, clock_rate, gamma);
+  let TimeRange { time_min, time_max } = branch_length_grid_to_time_range(&grid, branch_rate);
 
   let f = GridFn::from_range_values((time_min, time_max), log_lh)?;
 
@@ -98,11 +96,10 @@ fn peak_normalize_neg_log(log_lh: &Array1<f64>) -> Result<Array1<f64>, Report> {
   Ok(log_lh.mapv(|value| max_log_lh - value))
 }
 
-fn branch_length_grid_to_time_range(grid: &Array1<f64>, clock_rate: f64, gamma: f64) -> TimeRange {
-  let effective_clock_rate = clock_rate * gamma;
+fn branch_length_grid_to_time_range(grid: &Array1<f64>, branch_rate: f64) -> TimeRange {
   TimeRange {
-    time_min: first(grid) / effective_clock_rate,
-    time_max: last(grid) / effective_clock_rate,
+    time_min: first(grid) / branch_rate,
+    time_max: last(grid) / branch_rate,
   }
 }
 
