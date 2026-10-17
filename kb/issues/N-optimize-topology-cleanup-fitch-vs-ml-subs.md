@@ -24,8 +24,8 @@ In the post-collapse path, using `fitch_subs()` is unavoidable: `collapse_edge()
 
 ## Locations
 
-- Zero-optimal edge identification: [`packages/treetime/src/commands/optimize/run.rs#L563-L598`](../../packages/treetime/src/commands/optimize/run.rs#L563-L598) (`find_zero_optimal_internal_edges`)
-- Prune and merge dispatch: [`packages/treetime/src/commands/optimize/run.rs#L599-L642`](../../packages/treetime/src/commands/optimize/run.rs#L599-L642) (`prune_and_merge_in_loop`)
+- Zero-optimal edge identification: [`packages/treetime/src/optimize/run_loop.rs#L295-L319`](../../packages/treetime/src/optimize/run_loop.rs#L295-L319) (`find_zero_optimal_internal_edges`)
+- Prune and merge dispatch: [`packages/treetime/src/optimize/run_loop.rs#L321`](../../packages/treetime/src/optimize/run_loop.rs#L321) (`prune_and_merge_in_loop`)
 - Edge collapse: [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs)
 - Shared mutation merge: [`packages/treetime/src/optimize/topology/merge_shared_mutations.rs`](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs) (`merge_shared_mutation_branches` and helpers)
 - Fitch/ML accessors: [`packages/treetime/src/partition/sparse.rs#L112-L163`](../../packages/treetime/src/partition/sparse.rs#L112-L163) (`SparseEdgePartition`)

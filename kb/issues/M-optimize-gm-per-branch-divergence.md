@@ -39,7 +39,7 @@ Option 1 is the most aligned with the porting goal. Option 2 is the fastest path
 - `../decisions/command-prune-standalone.md` (v1 prune as
   a standalone command, not in the optimize loop)
 - [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs) (shared `collapse_edge()`)
-- `packages/treetime/src/commands/optimize/run.rs` `find_zero_optimal_internal_edges`
+- `packages/treetime/src/optimize/run_loop.rs` `find_zero_optimal_internal_edges`
   and `prune_and_merge_in_loop`
 - `packages/legacy/treetime/treetime/treeanc.py` `prune_short_branches` (line 1475)
 - Sparse EM 2-cycle non-convergence (fixed): v1 defaults now match v0 (`max_iter=10`, `dp=0.1`), which may have contributed to per-branch divergence

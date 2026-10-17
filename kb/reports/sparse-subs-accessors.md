@@ -176,8 +176,7 @@ When a zero-length internal edge is collapsed, its substitutions are composed wi
 
 Identify mutation-free internal edges as candidates for zero-length collapse. An edge with no fitch subs and no indels across all partitions is considered zero-length.
 
-- `compute_iteration_likelihood()` [optimize/run.rs#L389](../../packages/treetime/src/commands/optimize/run.rs#L389)
-- `e.fitch_subs().is_empty()` [optimize/run.rs#L583](../../packages/treetime/src/commands/optimize/run.rs#L583)
+- `fn find_zero_optimal_internal_edges()`: `e.fitch_subs().is_empty()` [optimize/run_loop.rs#L313](../../packages/treetime/src/optimize/run_loop.rs#L313)
 
 ### Build likelihood coefficients from variable positions
 

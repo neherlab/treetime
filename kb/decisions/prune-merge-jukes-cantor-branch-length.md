@@ -16,7 +16,7 @@ The v1 design notes for `optimize` proposed the feature:
 
 $$ d = -\frac{k-1}{k} \ln\!\left(1 - \frac{k}{k-1}\, p\right) $$
 
-where $p$ is the pooled p-distance (shared mutations divided by total alignment length across all partitions) and $k$ is the alphabet size read from the first partition. Both substitutions and indels contribute to the shared and remaining mutation counts. The formula matches the JC69 model currently hardcoded in [`run_prune()`](../../packages/treetime/src/commands/prune/run.rs#L53) and generalises naturally to amino-acid alphabets (k=20) without code changes.
+where $p$ is the pooled p-distance (shared mutations divided by total alignment length across all partitions) and $k$ is the alphabet size read from the first partition. Both substitutions and indels contribute to the shared and remaining mutation counts. The formula matches the JC69 model currently hardcoded in the prune pipeline [`fn run()`](../../packages/treetime/src/prune/pipeline.rs#L42) and generalises naturally to amino-acid alphabets (k=20) without code changes.
 
 Saturation at $p \to (k-1)/k$ is handled by clamping $p$ at $p_{sat}\,(1 - 10^{-6})$ before applying the formula. This keeps the result finite (about 10 substitutions per site for k=4, 13 for k=20), continuous in $p$, and safe from `log(0)` or NaN downstream.
 
@@ -28,8 +28,8 @@ Child branch lengths are computed from remaining (non-shared) mutations using th
 
 ## Affected commands
 
-- [`prune --merge-shared-mutations`](../../packages/treetime/src/commands/prune/run.rs#L73) - direct user-facing effect
-- [`optimize`](../../packages/treetime/src/commands/optimize/run.rs#L576) - calls `merge_shared_mutation_branches` in its topology-cleanup step before every per-edge optimization pass
+- [`prune --merge-shared-mutations`](../../packages/treetime/src/prune/pipeline.rs#L66) - direct user-facing effect
+- [`optimize`](../../packages/treetime/src/optimize/topology/resolve_polytomy.rs#L63) - merges shared mutations per polytomy through `merge_single_polytomy()` in `resolve_polytomies()`, which the optimize loop runs every iteration
 
 ## Tests
 

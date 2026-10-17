@@ -46,7 +46,7 @@ v1 code: `guess_initial_branch_lengths()` in [`packages/treetime/src/optimize/di
 
 The initial guess runs before the first optimization iteration but after the GTR model has been inferred. A subtlety: the marginal reconstruction (from which substitutions are counted) depends on the GTR model, and the GTR model is initially a dummy JC69. v1 runs marginal reconstruction twice -- once with dummy JC69, then once with the inferred GTR -- before computing the initial guess.
 
-v1 code: the sequence in `run_optimize()` at [`packages/treetime/src/commands/optimize/run.rs`](../../../packages/treetime/src/commands/optimize/run.rs):
+v1 code: the sequence in `fn run()` at [`packages/treetime/src/optimize/pipeline.rs`](../../../packages/treetime/src/optimize/pipeline.rs):
 
 ```
 1. Create sparse/dense partitions with dummy JC69
