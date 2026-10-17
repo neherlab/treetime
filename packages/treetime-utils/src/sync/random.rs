@@ -1,7 +1,7 @@
 use crate::make_internal_report;
 use eyre::Report;
-use rand::seq::IteratorRandom;
 use rand::rngs::Xoshiro256PlusPlus;
+use rand::seq::IteratorRandom;
 use rand::{Rng, RngExt, SeedableRng};
 
 pub fn get_random_number_generator(seed: u64) -> impl Rng + Send + Sync + Clone {
