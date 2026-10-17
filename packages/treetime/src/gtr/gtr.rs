@@ -203,12 +203,9 @@ impl GTR {
   }
 }
 
-/// Substitution rate argument of `GTR::new()` together with the unit that fixes its meaning.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Mu {
-  /// Multiplies the given substitution matrix, so the model keeps the absolute rates of the matrix.
   FromMatrix(f64),
-  /// Average substitution rate of the finished model.
   Normalized(f64),
 }
 
