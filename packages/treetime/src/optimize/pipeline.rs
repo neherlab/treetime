@@ -9,7 +9,7 @@ use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
-use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
+use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 use crate::optimize::run_loop::{
   OptimizeLoopSettings, apply_initial_guess_mode, normalize_partition_rates, run_optimize_loop,
 };
@@ -41,10 +41,10 @@ pub fn run(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<OptimizeOutput, OperationError> {
-  if !(0.0..1.0).contains(&params.damping) {
+  if !(0.0..1.0).contains(&params.loop_settings.damping) {
     return Err(OperationError::InvalidParams(make_report!(
       "damping must be in [0.0, 1.0), got {}",
-      params.damping
+      params.loop_settings.damping
     )));
   }
 
@@ -71,13 +71,13 @@ pub fn run(
   .map_err(OperationError::classify)?;
 
   if matches!(reconstruction, MarginalReconstruction::Dense(_)) {
-    if !params.topology_ops.merge_siblings {
+    if !params.loop_settings.topology_ops.merge_siblings {
       progress_warn!(
         log,
         "--no-merge-siblings has no effect in dense mode: sibling merging requires the sparse sequence representation"
       );
     }
-    if !params.topology_ops.flip_parent_child {
+    if !params.loop_settings.topology_ops.flip_parent_child {
       progress_warn!(
         log,
         "--no-flip-parent-child has no effect in dense mode: the reversion hoist requires the sparse sequence representation"
@@ -97,6 +97,7 @@ pub fn run(
 
   {
     let indels = params
+      .loop_settings
       .indel_policy
       .edge_indels(&input.graph, &reconstruction, &branch_lengths);
     let evidence = InitialGuessEvidence::gather(&input.graph, &reconstruction).map_err(OperationError::classify)?;
@@ -119,8 +120,8 @@ pub fn run(
     reconstruction = pre_reroot_optimize(
       &input.graph,
       reconstruction,
-      params.opt_method,
-      params.indel_policy,
+      params.loop_settings.opt_method,
+      params.loop_settings.indel_policy,
       &mut branch_lengths,
       names,
       &mut convergence,
@@ -137,13 +138,13 @@ pub fn run(
   let loop_result = run_optimize_loop(
     &mut input.graph,
     reconstruction,
-    &params.loop_settings(),
+    &params.loop_settings,
     branch_lengths,
     &loop_names,
   )
   .map_err(OperationError::classify)?;
   convergence.merge(loop_result.convergence);
-  convergence.report(params.opt_method, log);
+  convergence.report(params.loop_settings.opt_method, log);
   let branch_lengths = loop_result.branch_lengths;
 
   progress_info!(log, "Re-running marginal to populate subs_ml after optimization loop");
@@ -165,27 +166,9 @@ pub fn run(
 pub struct OptimizeParams {
   pub model: GtrModelName,
   pub dense: Option<bool>,
-  pub max_iter: usize,
-  pub dp: f64,
-  pub damping: f64,
-  pub opt_method: BranchOptMethod,
   pub initial_guess: InitialGuessMode,
-  pub indel_policy: IndelPolicy,
   pub reroot_spec: Option<RerootSpec>,
-  pub topology_ops: TopologyOps,
-}
-
-impl OptimizeParams {
-  fn loop_settings(&self) -> OptimizeLoopSettings {
-    OptimizeLoopSettings {
-      max_iter: self.max_iter,
-      dp: self.dp,
-      damping: self.damping,
-      opt_method: self.opt_method,
-      indel_policy: self.indel_policy,
-      topology_ops: self.topology_ops,
-    }
-  }
+  pub loop_settings: OptimizeLoopSettings,
 }
 
 pub struct OptimizeInput {

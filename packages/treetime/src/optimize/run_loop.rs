@@ -43,19 +43,21 @@ pub(crate) fn run_optimize_loop(
     indel_policy,
     ..
   } = *settings;
-  let mut names = names.clone();
-  let mut branch_lengths = branch_lengths;
+  let mut state = LoopState {
+    branch_lengths,
+    names: names.clone(),
+    convergence: ConvergenceSummary::default(),
+  };
   let mut reconstruction = reconstruction;
 
-  let indels = indel_policy.edge_indels(graph, &reconstruction, &branch_lengths);
+  let indels = indel_policy.edge_indels(graph, &reconstruction, &state.branch_lengths);
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter + 1);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
   let mut best: Option<BestIteration> = None;
-  let mut convergence = ConvergenceSummary::default();
 
   for i in 0..max_iter {
-    let iteration = compute_iteration(graph, &branch_lengths, reconstruction, &indels)?;
+    let iteration = compute_iteration(graph, &state.branch_lengths, reconstruction, &indels)?;
     reconstruction = iteration.reconstruction;
     let lh = iteration.likelihood.total_lh;
     lh_history.push(lh);
@@ -66,23 +68,14 @@ pub(crate) fn run_optimize_loop(
       break;
     }
 
-    record_if_best(&mut best, i, lh, &branch_lengths);
+    record_if_best(&mut best, i, lh, &state.branch_lengths);
     let best_lh = best.as_ref().map_or(lh, |best| best.log_lh);
     if let Some(reason) = stop_reason(&lh_history, best_lh, dp) {
       stopped_at = Some((i, reason));
       break;
     }
 
-    let cleanup = update_branch_lengths(
-      graph,
-      reconstruction,
-      i,
-      settings,
-      &indels,
-      &mut branch_lengths,
-      &mut names,
-      &mut convergence,
-    )?;
+    let cleanup = update_branch_lengths(graph, reconstruction, i, settings, &indels, &mut state)?;
     reconstruction = cleanup.reconstruction;
     if cleanup.topology_changed {
       best = None;
@@ -90,13 +83,13 @@ pub(crate) fn run_optimize_loop(
   }
 
   if stopped_at.is_none() && max_iter > 0 {
-    let iteration = compute_iteration(graph, &branch_lengths, reconstruction, &indels)?;
+    let iteration = compute_iteration(graph, &state.branch_lengths, reconstruction, &indels)?;
     reconstruction = iteration.reconstruction;
     let lh = iteration.likelihood.total_lh;
     lh_history.push(lh);
     log_iteration_likelihood(max_iter + 1, &iteration.likelihood);
     if lh.value().is_finite() {
-      record_if_best(&mut best, max_iter, lh, &branch_lengths);
+      record_if_best(&mut best, max_iter, lh, &state.branch_lengths);
     }
   }
 
@@ -108,24 +101,30 @@ pub(crate) fn run_optimize_loop(
       best.iteration + 1,
       float_to_significant_digits(best.log_lh.value(), 7)
     );
-    branch_lengths = best.branch_lengths;
+    state.branch_lengths = best.branch_lengths;
     reconstruction = reconstruction
-      .marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?
+      .marginal_update(graph, &branch_lengths_or_zero(&state.branch_lengths))?
       .0;
   }
 
   Ok(OptimizeLoopResult {
     reconstruction,
-    branch_lengths,
-    names,
+    branch_lengths: state.branch_lengths,
+    names: state.names,
     lh_history,
     stopped_at,
-    convergence,
+    convergence: state.convergence,
   })
 }
 
+struct LoopState {
+  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  names: BTreeMap<GraphNodeKey, Option<String>>,
+  convergence: ConvergenceSummary,
+}
+
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct OptimizeLoopSettings {
+pub struct OptimizeLoopSettings {
   pub max_iter: usize,
   pub dp: f64,
   pub damping: f64,
@@ -201,20 +200,19 @@ pub(crate) enum ConvergenceReason {
   NumericalFailure,
 }
 
-#[expect(
-  clippy::too_many_arguments,
-  reason = "the graph, branch lengths, names and convergence summary are the loop state that the caller borrows mutably one part at a time; the settings are already grouped in `OptimizeLoopSettings`"
-)]
 fn update_branch_lengths(
   graph: &mut Graph,
   reconstruction: MarginalReconstruction,
   iteration: usize,
   settings: &OptimizeLoopSettings,
   indels: &EdgeIndels,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &mut BTreeMap<GraphNodeKey, Option<String>>,
-  convergence: &mut ConvergenceSummary,
+  state: &mut LoopState,
 ) -> Result<TopologyCleanup, Report> {
+  let LoopState {
+    branch_lengths,
+    names,
+    convergence,
+  } = state;
   let old_branch_lengths = branch_lengths.clone();
   let unconverged = optimize_edge_lengths(
     graph,

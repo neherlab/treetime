@@ -6,6 +6,7 @@ mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
+  use crate::optimize::run_loop::OptimizeLoopSettings;
   use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
   use approx::assert_ulps_eq;
@@ -40,14 +41,16 @@ mod tests {
     let params = OptimizeParams {
       model: GtrModelName::Infer,
       dense: Some(false),
-      max_iter: 2,
-      dp: 0.1,
-      damping: 0.0,
-      opt_method: BranchOptMethod::default(),
       initial_guess: InitialGuessMode::default(),
-      indel_policy: IndelPolicy::Include,
       reroot_spec: None,
-      topology_ops: TopologyOps::default(),
+      loop_settings: OptimizeLoopSettings {
+        max_iter: 2,
+        dp: 0.1,
+        damping: 0.0,
+        opt_method: BranchOptMethod::default(),
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
     };
     let input = OptimizeInput {
       graph,

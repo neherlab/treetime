@@ -100,6 +100,7 @@ mod tests {
     use treetime::optimize::indel::IndelPolicy;
     use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
+    use treetime::optimize::run_loop::OptimizeLoopSettings;
     use treetime::progress::NoopProgress;
     use treetime::seq::alignment::pair_leaf_sequences;
     use treetime_io::fasta::fasta_read_file;
@@ -120,14 +121,16 @@ mod tests {
     let params = OptimizeParams {
       model: GtrModelName::default(),
       dense: None,
-      max_iter: 2,
-      dp: 0.1,
-      damping: 0.75,
-      opt_method: BranchOptMethod::default(),
       initial_guess: InitialGuessMode::default(),
-      indel_policy: IndelPolicy::Include,
       reroot_spec: None,
-      topology_ops: TopologyOps::default(),
+      loop_settings: OptimizeLoopSettings {
+        max_iter: 2,
+        dp: 0.1,
+        damping: 0.75,
+        opt_method: BranchOptMethod::default(),
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+      },
     };
     let sequences = pair_leaf_sequences(&graph, &names, sequences).sequences.nodes;
     let input = OptimizeInput {

@@ -15,6 +15,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::GtrOutput;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
+use treetime::optimize::run_loop::OptimizeLoopSettings;
 use treetime::partition::marginal::reconstruction::MarginalReconstruction;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
@@ -51,14 +52,16 @@ pub fn run_optimize(
   let params = OptimizeParams {
     model: args.model_args.model_name(),
     dense: args.dense,
-    max_iter: args.max_iter,
-    dp: args.dp,
-    damping: args.damping,
-    opt_method: args.opt_method,
     initial_guess: args.branch_length_initial_guess,
-    indel_policy: args.indel_policy,
     reroot_spec: args.reroot_spec(&graph, &names)?,
-    topology_ops: args.topology_ops,
+    loop_settings: OptimizeLoopSettings {
+      max_iter: args.max_iter,
+      dp: args.dp,
+      damping: args.damping,
+      opt_method: args.opt_method,
+      indel_policy: args.indel_policy,
+      topology_ops: args.topology_ops,
+    },
   };
 
   let unknown = alphabet.unknown();
