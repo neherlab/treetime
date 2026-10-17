@@ -122,12 +122,12 @@ mod tests {
   }
 
   #[test]
-  fn test_max_posterior_region_point_is_its_date() -> Result<(), Report> {
+  fn test_max_posterior_region_point_distribution_is_a_point_region() -> Result<(), Report> {
     let distribution = Distribution::<NegLog>::point(2020.5, 1.0);
 
     let region = max_posterior_region(&distribution, 0.9)?;
 
-    let expected = MaxPosteriorRegion::Point { t: 2020.5 };
+    let expected = MaxPosteriorRegion::Point;
     assert_eq!(Some(expected), region);
     Ok(())
   }

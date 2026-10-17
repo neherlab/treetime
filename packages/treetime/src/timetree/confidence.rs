@@ -135,7 +135,7 @@ pub(crate) fn combined_confidence(
   rate_dates: Option<&[f64; 3]>,
 ) -> (f64, f64) {
   let region = match region {
-    Some(MaxPosteriorRegion::Point { t }) => return (t, t),
+    Some(MaxPosteriorRegion::Point) => return (date, date),
     Some(MaxPosteriorRegion::Grid(region)) => Some(region),
     None => None,
   };

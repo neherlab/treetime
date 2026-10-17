@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::timetree::confidence::combine_confidence;
+  use crate::timetree::confidence::{combine_confidence, combined_confidence};
+  use crate::timetree::max_posterior_region::MaxPosteriorRegion;
   use approx::assert_relative_eq;
+  use rstest::rstest;
 
   #[test]
   fn test_combine_confidence_no_contributions() {
@@ -34,5 +36,21 @@ mod tests {
     let result = combine_confidence(10.0, (5.0, 15.0), Some((0.0, 20.0)), Some((0.0, 20.0)));
     assert_relative_eq!(result.0, 5.0);
     assert_relative_eq!(result.1, 15.0);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::without_rate_uncertainty(None)]
+  #[case::with_rate_uncertainty(   Some([2019.0, 2020.5, 2022.0]))]
+  #[case::with_shifted_rate_dates( Some([2020.0, 2020.2, 2020.4]))]
+  #[trace]
+  fn test_combined_confidence_point_region_is_the_date_without_limits(#[case] rate_dates: Option<[f64; 3]>) {
+    let date = 2020.5;
+    let unbounded = (f64::NEG_INFINITY, f64::INFINITY);
+
+    let interval = combined_confidence(date, unbounded, Some(MaxPosteriorRegion::Point), rate_dates.as_ref());
+
+    let v0_delta_region = (date, date);
+    assert_eq!(v0_delta_region, interval);
   }
 }

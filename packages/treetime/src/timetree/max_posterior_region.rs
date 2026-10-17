@@ -13,7 +13,7 @@ pub fn max_posterior_region(
   let normalized = distribution.normalize()?;
   match &normalized {
     Distribution::Empty => Ok(None),
-    Distribution::Point(_) => Ok(Some(MaxPosteriorRegion::Point { t: normalized.t()[0] })),
+    Distribution::Point(_) => Ok(Some(MaxPosteriorRegion::Point)),
     Distribution::Range(_) | Distribution::Function(_) => {
       let region = grid_max_posterior_region(&normalized.t(), &normalized.y()?, fraction)?;
       Ok(Some(MaxPosteriorRegion::Grid(region)))
@@ -85,7 +85,7 @@ pub(crate) fn grid_max_posterior_region(
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MaxPosteriorRegion {
-  Point { t: f64 },
+  Point,
   Grid(PosteriorRegion),
 }
 
