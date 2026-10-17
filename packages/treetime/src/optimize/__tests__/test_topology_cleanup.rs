@@ -3,7 +3,7 @@ pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
+  use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_effective_lengths, gather_edge_sub_counts};
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::iteration::apply_damping;
@@ -140,7 +140,7 @@ pub(super) mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    initial_guess_mixed(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
+    guess_initial_branch_lengths(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -159,7 +159,7 @@ pub(super) mod tests {
       let total_length = reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+      optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_11 = names.clone();
@@ -222,7 +222,7 @@ pub(super) mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    initial_guess_mixed(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
+    guess_initial_branch_lengths(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -239,7 +239,7 @@ pub(super) mod tests {
       let total_length = reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+      optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_10 = names.clone();
@@ -401,7 +401,7 @@ pub(super) mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    initial_guess_mixed(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
+    guess_initial_branch_lengths(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -418,7 +418,7 @@ pub(super) mod tests {
       let total_length = reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+      optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_7 = names.clone();
@@ -480,7 +480,7 @@ pub(super) mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    initial_guess_mixed(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
+    guess_initial_branch_lengths(&graph, total_length, &indels, &sub_counts, &effective_lengths, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
     let initial_node_count = graph.get_nodes().count();
 
@@ -552,7 +552,7 @@ pub(super) mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    initial_guess_mixed(
+    guess_initial_branch_lengths(
       &graph,
       total_length,
       &indels,

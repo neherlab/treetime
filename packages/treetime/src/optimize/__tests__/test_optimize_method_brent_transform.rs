@@ -5,11 +5,11 @@ mod tests {
     TREE_NEWICK, setup_reconstruction, simple_alignment,
   };
   use crate::optimize::__tests__::test_optimize_method::tests::helpers::*;
-  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::gather::gather_edge_contributions;
   use crate::optimize::indel::{IndelPolicy, IndelTerm};
   use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
-  use crate::optimize::method_brent::{BranchLengthBracket, brent_bracket, brent_sqrt_inner, brent_sqrt_minimize};
+  use crate::optimize::method_brent::{BranchLengthBracket, brent_bracket, brent_sqrt_minimize, solve_brent};
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::solver_outcome::Convergence;
   use crate::optimize::zero_boundary::min_branch_length_for_indels;
@@ -38,17 +38,11 @@ mod tests {
     let one_mutation = 1.0 / total_length.to_f64_exact();
     let branch_length = 0.01;
 
-    let solution = brent_sqrt_inner(branch_length, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
+    let solution = solve_brent(branch_length, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
     assert_eq!(Convergence::Converged, solution.convergence);
     let result = solution.branch_length;
-    assert!(
-      result >= 0.0,
-      "brent_sqrt_inner result must be non-negative, got {result}"
-    );
-    assert!(
-      result.is_finite(),
-      "brent_sqrt_inner result must be finite, got {result}"
-    );
+    assert!(result >= 0.0, "solve_brent result must be non-negative, got {result}");
+    assert!(result.is_finite(), "solve_brent result must be finite, got {result}");
 
     let lh_opt = evaluate_with_indels_log_lh_only(&contributions, IndelTerm::new(0, 0.0), result)
       .expect("valid branch length")
@@ -89,7 +83,7 @@ mod tests {
     let min_bl = min_branch_length_for_indels(IndelTerm::new(4, indel_rate), one_mutation);
     let BranchLengthBracket { lower, upper } = brent_bracket(input_bl, min_bl, one_mutation);
 
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph,
       total_length,
       &contributions,

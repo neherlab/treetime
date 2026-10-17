@@ -4,7 +4,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_from_counts};
   use crate::partition::fitch::gtr_inference::infer_gtr_fitch;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -118,7 +118,7 @@ mod tests {
         &recon.edges.backward,
         &recon.edges.forward,
       )?;
-      let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?;
+      let InferGtrResult { W, pi, mu } = infer_gtr_from_counts(&counts, &InferGtrOptions::default(), &NoopProgress)?;
       let n_states = recon.partition.alphabet.n_canonical();
       GTR::builder().n_states(n_states).mu(mu).W(W).pi(pi).build()?
     };

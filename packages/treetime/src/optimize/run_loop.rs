@@ -1,7 +1,7 @@
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
-use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
+use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
 use crate::optimize::indel::{EdgeIndels, IndelPolicy};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::ExistingBranchLengths;
@@ -207,7 +207,7 @@ fn update_branch_lengths(
   log: &dyn LogSink,
 ) -> Result<TopologyCleanup, Report> {
   let old_branch_lengths = branch_lengths.clone();
-  run_optimize_mixed(
+  optimize_edge_lengths(
     graph,
     reconstruction.sequence_length(),
     &reconstruction,
@@ -414,7 +414,7 @@ pub(crate) fn apply_initial_guess_mode(
   }
 
   match mode {
-    InitialGuessMode::Auto => initial_guess_mixed(
+    InitialGuessMode::Auto => guess_initial_branch_lengths(
       graph,
       total_length,
       indels,
@@ -423,7 +423,7 @@ pub(crate) fn apply_initial_guess_mode(
       ExistingBranchLengths::Keep,
       branch_lengths,
     ),
-    InitialGuessMode::Always => initial_guess_mixed(
+    InitialGuessMode::Always => guess_initial_branch_lengths(
       graph,
       total_length,
       indels,

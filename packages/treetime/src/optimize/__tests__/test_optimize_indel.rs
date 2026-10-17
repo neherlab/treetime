@@ -6,12 +6,12 @@ pub(super) mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_reconstruction, simple_alignment,
   };
-  use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
+  use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
   use crate::optimize::gather::{
     gather_edge_contributions, gather_edge_effective_lengths, gather_edge_indel_counts, gather_edge_sub_counts,
   };
   use crate::optimize::indel::{EdgeIndels, IndelPolicy, IndelTerm, poisson_indel_log_lh};
-  use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
+  use crate::optimize::likelihood::evaluate_partitions_log_lh_only;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::zero_boundary::{ZeroLength, is_zero_better_than, is_zero_branch_optimal};
@@ -194,7 +194,7 @@ pub(super) mod tests {
   }
 
   #[test]
-  fn test_optimize_indel_run_optimize_mixed_with_fixed_rate_uses_supplied_indel_rate() -> Result<(), Report> {
+  fn test_optimize_indel_optimize_edge_lengths_with_fixed_rate_uses_supplied_indel_rate() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let graph_low_names = nwk_parsed.names();
     let graph_low = nwk_parsed.graph;
@@ -221,7 +221,7 @@ pub(super) mod tests {
     let total_length_low = reconstruction_low.sequence_length();
     let contributions_low = gather_edge_contributions(&graph_low, &reconstruction_low)?;
     let indel_counts_low = gather_edge_indel_counts(&graph_low, &reconstruction_low);
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph_low,
       total_length_low,
       &contributions_low,
@@ -235,7 +235,7 @@ pub(super) mod tests {
     let total_length_high = reconstruction_high.sequence_length();
     let contributions_high = gather_edge_contributions(&graph_high, &reconstruction_high)?;
     let indel_counts_high = gather_edge_indel_counts(&graph_high, &reconstruction_high);
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph_high,
       total_length_high,
       &contributions_high,
@@ -272,7 +272,7 @@ pub(super) mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    initial_guess_mixed(
+    guess_initial_branch_lengths(
       &graph,
       total_length,
       &indels,
@@ -309,7 +309,7 @@ pub(super) mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    initial_guess_mixed(
+    guess_initial_branch_lengths(
       &graph,
       total_length,
       &indels,
@@ -349,7 +349,7 @@ pub(super) mod tests {
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+    optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     let bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
     assert!(
@@ -382,7 +382,7 @@ pub(super) mod tests {
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    let error = run_optimize_mixed(&graph, total_length, &contributions, &indels, BranchOptMethod::Brent, &mut branch_lengths)
+    let error = optimize_edge_lengths(&graph, total_length, &contributions, &indels, BranchOptMethod::Brent, &mut branch_lengths)
       .expect_err("negative branch length must return an error");
     let message = format!("{error:?}");
     assert!(message.contains("finite and non-negative"), "Unexpected error: {message}");
@@ -417,7 +417,7 @@ pub(super) mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    initial_guess_mixed(
+    guess_initial_branch_lengths(
       &graph,
       total_length,
       &indels,
@@ -437,7 +437,7 @@ pub(super) mod tests {
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+    optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     let bl_final = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
     assert!(bl_final > 0.0, "Optimized BL should be positive, got {bl_final}");
@@ -555,10 +555,10 @@ pub(super) mod tests {
     let indel_rate = 5.0;
     let indels = IndelTerm::new(indel_count, indel_rate);
 
-    let sub_lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0)
+    let sub_lh_zero = evaluate_partitions_log_lh_only(&contributions, 0.0)
       .expect("valid branch length")
       .value();
-    let sub_lh_best = evaluate_mixed_log_lh_only(&contributions, best_positive)
+    let sub_lh_best = evaluate_partitions_log_lh_only(&contributions, best_positive)
       .expect("valid branch length")
       .value();
     assert!(
@@ -665,7 +665,7 @@ pub(super) mod tests {
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-    run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+    optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     let bl = branch_lengths[&edge_ref.key()].unwrap();
 
@@ -693,7 +693,7 @@ pub(super) mod tests {
     let contribution = OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr));
     let contributions = vec![contribution];
 
-    let sub_only = evaluate_mixed_log_lh_only(&contributions, t).expect("valid branch length").value();
+    let sub_only = evaluate_partitions_log_lh_only(&contributions, t).expect("valid branch length").value();
     let indel_lh = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters").log_lh.value();
     let combined = sub_only + indel_lh;
 

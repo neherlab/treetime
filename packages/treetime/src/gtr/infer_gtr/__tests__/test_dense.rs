@@ -9,7 +9,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::infer_gtr::common::{
-    InferGtrOptions, accumulate_mutation_counts, get_branch_mutation_matrix, infer_gtr_impl,
+    InferGtrOptions, accumulate_mutation_counts, get_branch_mutation_matrix, infer_gtr_from_counts,
   };
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
@@ -248,7 +248,7 @@ mod tests {
       &recon.edges.backward,
       &recon.edges.forward,
     )?;
-    let result = infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?;
+    let result = infer_gtr_from_counts(&counts, &InferGtrOptions::default(), &NoopProgress)?;
 
     pretty_assert_abs_diff_eq!(result.W, result.W.t().to_owned(), epsilon = 1e-9);
     pretty_assert_ulps_eq!(1.0, result.pi.sum(), epsilon = 1e-9);

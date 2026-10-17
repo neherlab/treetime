@@ -9,7 +9,7 @@ use treetime_utils::cast::ToF64Exact;
 
 const TINY_NUMBER: f64 = 1e-12;
 
-pub(crate) fn infer_gtr_impl(
+pub(crate) fn infer_gtr_from_counts(
   counts: &MutationCounts,
   options: &InferGtrOptions,
   log: &dyn LogSink,

@@ -12,7 +12,7 @@ const NEWTON_ABS_TOL: f64 = 1e-8;
 
 const NEWTON_MAX_ITER: usize = 50;
 
-pub(super) fn newton_sqrt_inner(
+pub(super) fn solve_newton(
   branch_length: f64,
   contributions: &[OptimizationContribution],
   indels: IndelTerm,

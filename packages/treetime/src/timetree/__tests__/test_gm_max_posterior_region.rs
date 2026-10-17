@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::timetree::confidence::{CI_FRACTION, combined_confidence};
+  use crate::timetree::confidence::{CI_FRACTION, confidence_bounds};
   use crate::timetree::max_posterior_region::{
     MaxPosteriorRegion, PeakLocation, PosteriorRegion, grid_max_posterior_region,
   };
@@ -47,8 +47,8 @@ mod tests {
       upper: to_numdate(region.upper),
       ..region
     };
-    let without_rate = combined_confidence(expected.numdate, limits, Some(MaxPosteriorRegion::Grid(region)), None);
-    let with_rate = combined_confidence(
+    let without_rate = confidence_bounds(expected.numdate, limits, Some(MaxPosteriorRegion::Grid(region)), None);
+    let with_rate = confidence_bounds(
       expected.numdate,
       limits,
       Some(MaxPosteriorRegion::Grid(region)),

@@ -10,7 +10,7 @@ use eyre::{Report, WrapErr};
 
 const BRENT_MAX_ITER: u64 = 50;
 
-pub(super) fn brent_sqrt_inner(
+pub(super) fn solve_brent(
   branch_length: f64,
   contributions: &[OptimizationContribution],
   indels: IndelTerm,

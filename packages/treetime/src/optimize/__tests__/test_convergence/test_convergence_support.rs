@@ -3,7 +3,7 @@ pub(crate) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::dispatch::initial_guess_mixed;
+  use crate::optimize::dispatch::guess_initial_branch_lengths;
   use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::ExistingBranchLengths;
@@ -101,7 +101,7 @@ pub(crate) mod tests {
     reconstruction: &MarginalReconstruction,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(), Report> {
-    initial_guess_mixed(
+    guess_initial_branch_lengths(
       graph,
       reconstruction.sequence_length(),
       &IndelPolicy::Include.edge_indels(graph, reconstruction, branch_lengths),

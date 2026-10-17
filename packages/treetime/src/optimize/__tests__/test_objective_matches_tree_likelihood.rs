@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
+  use crate::optimize::likelihood::{evaluate_partitions, evaluate_partitions_log_lh_only};
   use crate::pretty_assert_abs_diff_eq;
   use eyre::Report;
   use helpers::{five_point_derivative, setup_skewed_pi};
@@ -23,8 +23,8 @@ mod tests {
       .map(|edge| -> Result<(f64, f64), Report> {
         let key = edge.key();
         let contribution = [tree.reconstruction.create_edge_contribution(key)?];
-        let objective_0 = evaluate_mixed_log_lh_only(&contribution, tree.branch_lengths[&key])?.value();
-        let objective = evaluate_mixed_log_lh_only(&contribution, t)?.value();
+        let objective_0 = evaluate_partitions_log_lh_only(&contribution, tree.branch_lengths[&key])?.value();
+        let objective = evaluate_partitions_log_lh_only(&contribution, t)?.value();
         Ok((
           tree.log_lh_with_branch_length(key, t)? - tree.log_lh_0,
           objective - objective_0,
@@ -50,7 +50,7 @@ mod tests {
       .map(|edge| -> Result<(f64, f64), Report> {
         let key = edge.key();
         let contribution = [tree.reconstruction.create_edge_contribution(key)?];
-        let derivative = evaluate_mixed(&contribution, t)?.derivative;
+        let derivative = evaluate_partitions(&contribution, t)?.derivative;
         let numerical = five_point_derivative(|t| tree.log_lh_with_branch_length(key, t), t)?;
         Ok((numerical, derivative))
       })
@@ -73,8 +73,8 @@ mod tests {
       .get_edges()
       .map(|edge| -> Result<(f64, f64), Report> {
         let contribution = [tree.reconstruction.create_edge_contribution(edge.key())?];
-        let second_derivative = evaluate_mixed(&contribution, t)?.second_derivative;
-        let numerical = five_point_derivative(|t| Ok(evaluate_mixed(&contribution, t)?.derivative), t)?;
+        let second_derivative = evaluate_partitions(&contribution, t)?.second_derivative;
+        let numerical = five_point_derivative(|t| Ok(evaluate_partitions(&contribution, t)?.derivative), t)?;
         Ok((numerical, second_derivative))
       })
       .process_results(|derivatives| derivatives.unzip())?;

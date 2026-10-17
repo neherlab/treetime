@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::gather::gather_edge_contributions;
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::BranchOptMethod;
@@ -59,7 +59,7 @@ mod tests {
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph,
       total_length,
       &contributions,

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};
-  use crate::optimize::likelihood::evaluate_mixed;
+  use crate::optimize::likelihood::evaluate_partitions;
   use crate::optimize::zero_boundary::grid_search_branch_lengths;
   use ndarray::array;
 
@@ -19,13 +19,13 @@ mod tests {
     let best_bl = grid_search(&contributions, branch_length, one_mutation);
 
     let branch_lengths = grid_search_branch_lengths(branch_length, one_mutation).unwrap();
-    let best_log_lh = evaluate_mixed(&contributions, best_bl)
+    let best_log_lh = evaluate_partitions(&contributions, best_bl)
       .expect("valid branch length")
       .log_lh
       .value();
 
     for &bl in &branch_lengths {
-      let log_lh = evaluate_mixed(&contributions, bl)
+      let log_lh = evaluate_partitions(&contributions, bl)
         .expect("valid branch length")
         .log_lh
         .value();

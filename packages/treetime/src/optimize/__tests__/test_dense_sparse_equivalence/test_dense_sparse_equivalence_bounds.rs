@@ -4,7 +4,7 @@ mod tests {
     TREE_NEWICK, gap_free_alignment, get_branch_lengths, setup_dense_only, setup_sparse_only,
   };
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::gather::gather_edge_contributions;
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::BranchOptMethod;
@@ -30,7 +30,7 @@ mod tests {
       let total_length = dense_reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph_dense, &dense_reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph_dense, &dense_reconstruction, &bl_dense);
-      run_optimize_mixed(&graph_dense, total_length, &contributions, &indels, method, &mut bl_dense)?;
+      optimize_edge_lengths(&graph_dense, total_length, &contributions, &indels, method, &mut bl_dense)?;
       (dense_reconstruction, _) = dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&bl_dense))?;
     }
 
@@ -47,7 +47,7 @@ mod tests {
       let total_length = sparse_reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph_sparse, &sparse_reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph_sparse, &sparse_reconstruction, &bl_sparse);
-      run_optimize_mixed(&graph_sparse, total_length, &contributions, &indels, method, &mut bl_sparse)?;
+      optimize_edge_lengths(&graph_sparse, total_length, &contributions, &indels, method, &mut bl_sparse)?;
       (sparse_reconstruction, _) = sparse_reconstruction.marginal_update(&graph_sparse, &branch_lengths_or_zero(&bl_sparse))?;
     }
 
@@ -90,7 +90,7 @@ mod tests {
       let total_length = dense_reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph_dense, &dense_reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph_dense, &dense_reconstruction, &bl_dense);
-      run_optimize_mixed(&graph_dense, total_length, &contributions, &indels, method, &mut bl_dense)?;
+      optimize_edge_lengths(&graph_dense, total_length, &contributions, &indels, method, &mut bl_dense)?;
       (dense_reconstruction, _) = dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&bl_dense))?;
     }
 
@@ -106,7 +106,7 @@ mod tests {
       let total_length = sparse_reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph_sparse, &sparse_reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph_sparse, &sparse_reconstruction, &bl_sparse);
-      run_optimize_mixed(&graph_sparse, total_length, &contributions, &indels, method, &mut bl_sparse)?;
+      optimize_edge_lengths(&graph_sparse, total_length, &contributions, &indels, method, &mut bl_sparse)?;
       (sparse_reconstruction, _) = sparse_reconstruction.marginal_update(&graph_sparse, &branch_lengths_or_zero(&bl_sparse))?;
     }
 

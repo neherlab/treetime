@@ -4,7 +4,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_from_counts};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::shared::update::MarginalPasses;
@@ -53,7 +53,11 @@ mod tests {
       &recon.edges.backward,
       &recon.edges.forward,
     )?;
-    let actual = gtr_from_inference(&infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?)?;
+    let actual = gtr_from_inference(&infer_gtr_from_counts(
+      &counts,
+      &InferGtrOptions::default(),
+      &NoopProgress,
+    )?)?;
 
     pretty_assert_ulps_eq!(&expected.w, &actual.W(), epsilon = 1e-8);
     pretty_assert_ulps_eq!(&expected.pi, &actual.pi(), epsilon = 1e-8);
@@ -84,7 +88,11 @@ mod tests {
       &recon.edges.backward,
       &recon.edges.forward,
     )?;
-    let actual = gtr_from_inference(&infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?)?;
+    let actual = gtr_from_inference(&infer_gtr_from_counts(
+      &counts,
+      &InferGtrOptions::default(),
+      &NoopProgress,
+    )?)?;
 
     pretty_assert_ulps_eq!(&expected.w, &actual.W(), epsilon = 1e-6);
     pretty_assert_ulps_eq!(&expected.pi, &actual.pi(), epsilon = 1e-6);

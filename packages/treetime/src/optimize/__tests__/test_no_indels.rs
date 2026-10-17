@@ -11,7 +11,7 @@ mod tests {
   use crate::optimize::__tests__::test_optimize_indel::tests::{
     inject_indels_on_first_edge, setup_identical_reconstruction,
   };
-  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_effective_lengths, gather_edge_sub_counts};
   use crate::optimize::indel::{EdgeIndels, IndelPolicy};
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
@@ -125,7 +125,7 @@ mod tests {
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph,
       total_length,
       &contributions,

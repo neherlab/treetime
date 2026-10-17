@@ -4,11 +4,11 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, K80Params, get_gtr_by_name, jc69, k80};
   use crate::gtr::gtr::{GTR, Mu};
-  use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
+  use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_effective_lengths, gather_edge_sub_counts};
   use crate::optimize::indel::{IndelPolicy, IndelTerm};
-  use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
-  use crate::optimize::method_newton::newton_sqrt_inner;
+  use crate::optimize::likelihood::evaluate_partitions_log_lh_only;
+  use crate::optimize::method_newton::solve_newton;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::run_loop::find_zero_optimal_internal_edges;
@@ -73,7 +73,7 @@ mod tests {
     let indels = IndelPolicy::Include.edge_indels(graph, &reconstruction, branch_lengths);
     let sub_counts = gather_edge_sub_counts(graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(graph, &reconstruction)?;
-    initial_guess_mixed(
+    guess_initial_branch_lengths(
       graph,
       total_length,
       &indels,
@@ -110,7 +110,7 @@ mod tests {
       );
     }
 
-    run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+    optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     for (i, edge_ref) in graph.get_edges().enumerate() {
       let bl = branch_lengths[&edge_ref.key()].unwrap();
@@ -146,7 +146,7 @@ mod tests {
       "precondition: {model:?} must have no certified single decay rate"
     );
 
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph,
       total_length,
       &contributions,
@@ -196,7 +196,7 @@ mod tests {
       "precondition: {model:?} identical-sequence contributions must trigger the pre-dispatch shortcut"
     );
 
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph,
       total_length,
       &contributions,
@@ -234,8 +234,10 @@ mod tests {
     let one_mutation = 0.01;
     let start = 0.2;
     let candidate = 1.0;
-    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).unwrap().value();
-    let lh_candidate = evaluate_mixed_log_lh_only(&contributions, candidate).unwrap().value();
+    let lh_zero = evaluate_partitions_log_lh_only(&contributions, 0.0).unwrap().value();
+    let lh_candidate = evaluate_partitions_log_lh_only(&contributions, candidate)
+      .unwrap()
+      .value();
     assert!(
       lh_candidate < lh_zero,
       "precondition: candidate log_lh({candidate})={lh_candidate} must be worse than log_lh(0)={lh_zero}"
@@ -243,7 +245,7 @@ mod tests {
 
     let result = reconcile(candidate, start, &contributions, IndelTerm::new(0, 0.0), one_mutation);
 
-    let lh_result = evaluate_mixed_log_lh_only(&contributions, result).unwrap().value();
+    let lh_result = evaluate_partitions_log_lh_only(&contributions, result).unwrap().value();
     assert!(
       lh_result > lh_zero,
       "the grid point must beat zero: log_lh({result})={lh_result} vs log_lh(0)={lh_zero}"
@@ -340,7 +342,7 @@ mod tests {
       "precondition: no zero-length internal edges before optimization"
     );
 
-    run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+    optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     let zero_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
     assert_eq!(
@@ -359,18 +361,18 @@ mod tests {
   #[case::rises_to_interval_end(    2.0,  3.01               )]
   #[case::reaches_global_maximum(   5.0,  6.369747058293658  )]
   #[trace]
-  fn test_dispatch_zero_boundary_newton_sqrt_inner_never_worse_than_start_and_converges_on_dinh_matsen_k80(
+  fn test_dispatch_zero_boundary_solve_newton_never_worse_than_start_and_converges_on_dinh_matsen_k80(
     #[case] t0: f64,
     #[case] expected: f64,
   ) {
     let contributions = [make_dinh_matsen_k80_contribution()];
     let one_mutation = 0.01;
 
-    let solution = newton_sqrt_inner(t0, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
+    let solution = solve_newton(t0, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
 
     assert_eq!(Convergence::Converged, solution.convergence);
-    let lh_start = evaluate_mixed_log_lh_only(&contributions, t0).unwrap().value();
-    let lh_result = evaluate_mixed_log_lh_only(&contributions, solution.branch_length).unwrap().value();
+    let lh_start = evaluate_partitions_log_lh_only(&contributions, t0).unwrap().value();
+    let lh_result = evaluate_partitions_log_lh_only(&contributions, solution.branch_length).unwrap().value();
     assert!(
       lh_result >= lh_start,
       "result t={} has log_lh {lh_result} below the start t0={t0} with {lh_start}",
@@ -385,11 +387,11 @@ mod tests {
   }
 
   #[test]
-  fn test_dispatch_zero_boundary_newton_sqrt_inner_keeps_feasible_start_below_minimum_branch_length() {
+  fn test_dispatch_zero_boundary_solve_newton_keeps_feasible_start_below_minimum_branch_length() {
     let contributions = [make_dinh_matsen_k80_contribution()];
     let (t0, min_branch_length, one_mutation) = (0.1, 0.5, 0.01);
 
-    let solution = newton_sqrt_inner(
+    let solution = solve_newton(
       t0,
       &contributions,
       IndelTerm::new(0, 0.0),
@@ -399,8 +401,8 @@ mod tests {
     .unwrap();
 
     assert_eq!(Convergence::Converged, solution.convergence);
-    let lh_start = evaluate_mixed_log_lh_only(&contributions, t0).unwrap().value();
-    let lh_result = evaluate_mixed_log_lh_only(&contributions, solution.branch_length)
+    let lh_start = evaluate_partitions_log_lh_only(&contributions, t0).unwrap().value();
+    let lh_result = evaluate_partitions_log_lh_only(&contributions, solution.branch_length)
       .unwrap()
       .value();
     assert!(
@@ -421,11 +423,11 @@ mod tests {
     let contributions = [make_dinh_matsen_k80_contribution()];
     let one_mutation = 0.01;
     let start = 0.6;
-    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).unwrap().value();
+    let lh_zero = evaluate_partitions_log_lh_only(&contributions, 0.0).unwrap().value();
 
     let result = reconcile(0.0, start, &contributions, IndelTerm::new(0, 0.0), one_mutation);
 
-    let lh_result = evaluate_mixed_log_lh_only(&contributions, result).unwrap().value();
+    let lh_result = evaluate_partitions_log_lh_only(&contributions, result).unwrap().value();
     assert!(
       lh_result > lh_zero,
       "the grid point must beat zero: log_lh({result})={lh_result} vs log_lh(0)={lh_zero}"
@@ -461,8 +463,8 @@ mod tests {
   fn test_dispatch_zero_boundary_reconcile_exact_zero_mixed_decay_rates_finds_positive_mode() {
     let contributions = mixed_decay_rate_contributions();
     let result = reconcile(0.0, 0.5, &contributions, IndelTerm::new(0, 0.0), 0.01);
-    let lh_zero = evaluate_mixed_log_lh_only(&contributions, 0.0).unwrap().value();
-    let lh_result = evaluate_mixed_log_lh_only(&contributions, result).unwrap().value();
+    let lh_zero = evaluate_partitions_log_lh_only(&contributions, 0.0).unwrap().value();
+    let lh_result = evaluate_partitions_log_lh_only(&contributions, result).unwrap().value();
     assert!(
       lh_result > lh_zero,
       "contributions with different decay rates must leave zero for a better positive length: log_lh({result})={lh_result} vs log_lh(0)={lh_zero}"

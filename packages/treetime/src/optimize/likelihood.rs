@@ -10,16 +10,16 @@ pub(crate) fn evaluate_with_indels(
   indels: IndelTerm,
   branch_length: f64,
 ) -> Result<OptimizationMetrics, Report> {
-  let mut metrics = evaluate_mixed(contributions, branch_length)?;
+  let mut metrics = evaluate_partitions(contributions, branch_length)?;
   metrics.add(&indels.metrics(branch_length)?);
   Ok(metrics)
 }
 
-pub(crate) fn evaluate_mixed(
+pub(crate) fn evaluate_partitions(
   contributions: &[OptimizationContribution],
   branch_length: f64,
 ) -> Result<OptimizationMetrics, Report> {
-  evaluate_mixed_impl(contributions, branch_length, true)
+  sum_partition_metrics(contributions, branch_length, true)
 }
 
 pub(crate) fn evaluate_with_indels_log_lh_only(
@@ -27,19 +27,19 @@ pub(crate) fn evaluate_with_indels_log_lh_only(
   indels: IndelTerm,
   branch_length: f64,
 ) -> Result<LogLh, Report> {
-  let sub_lh = evaluate_mixed_log_lh_only(contributions, branch_length)?;
+  let sub_lh = evaluate_partitions_log_lh_only(contributions, branch_length)?;
   let indel_lh = indels.metrics(branch_length)?.log_lh;
   Ok(sub_lh + indel_lh)
 }
 
-pub(crate) fn evaluate_mixed_log_lh_only(
+pub(crate) fn evaluate_partitions_log_lh_only(
   contributions: &[OptimizationContribution],
   branch_length: f64,
 ) -> Result<LogLh, Report> {
-  Ok(evaluate_mixed_impl(contributions, branch_length, false)?.log_lh)
+  Ok(sum_partition_metrics(contributions, branch_length, false)?.log_lh)
 }
 
-fn evaluate_mixed_impl(
+fn sum_partition_metrics(
   contributions: &[OptimizationContribution],
   branch_length: f64,
   compute_derivatives: bool,

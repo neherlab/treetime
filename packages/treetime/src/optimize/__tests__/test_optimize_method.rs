@@ -3,10 +3,10 @@ pub(super) mod tests {
   use crate::optimize::__tests__::test_convergence::test_convergence_support::tests::{
     TREE_NEWICK, setup_reconstruction, simple_alignment,
   };
-  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::gather::gather_edge_contributions;
   use crate::optimize::indel::IndelPolicy;
-  use crate::optimize::likelihood::{OptimizationMetrics, evaluate_mixed, evaluate_mixed_log_lh_only};
+  use crate::optimize::likelihood::{OptimizationMetrics, evaluate_partitions, evaluate_partitions_log_lh_only};
   use crate::optimize::method_newton::{chain_rule_sqrt, newton_tolerance_sqrt};
   use crate::optimize::params::BranchOptMethod;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
@@ -39,7 +39,7 @@ pub(super) mod tests {
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
-    run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+    optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     for (i, edge_ref) in graph.get_edges().enumerate() {
       let bl = branch_lengths[&edge_ref.key()].unwrap_or(f64::NAN);
@@ -203,7 +203,7 @@ pub(super) mod tests {
       let total_length = reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-      run_optimize_mixed(
+      optimize_edge_lengths(
         &graph,
         total_length,
         &contributions,
@@ -245,7 +245,7 @@ pub(super) mod tests {
       let edge_contributions = &contributions[&edge_key];
       let indel_count: usize = indel_counts[&edge_key];
 
-      let sub_lh = evaluate_mixed_log_lh_only(edge_contributions, t)
+      let sub_lh = evaluate_partitions_log_lh_only(edge_contributions, t)
         .expect("valid branch length")
         .value();
       let indel_lh = poisson_indel_log_lh(indel_count, indel_rate, t)
@@ -267,7 +267,7 @@ pub(super) mod tests {
       let edge_contributions = &contributions[&edge_key];
       let indel_count: usize = indel_counts[&edge_key];
 
-      let mut metrics = evaluate_mixed(edge_contributions, t).expect("valid branch length");
+      let mut metrics = evaluate_partitions(edge_contributions, t).expect("valid branch length");
       metrics.add(&poisson_indel_log_lh(indel_count, indel_rate, t).expect("valid Poisson parameters"));
       Ok(metrics)
     }

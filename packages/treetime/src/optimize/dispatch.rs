@@ -2,8 +2,8 @@ use crate::branch_lengths::one_mutation;
 use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
 use crate::optimize::gather::EdgeContributions;
 use crate::optimize::indel::{EdgeIndels, IndelTerm};
-use crate::optimize::method_brent::brent_sqrt_inner;
-use crate::optimize::method_newton::newton_sqrt_inner;
+use crate::optimize::method_brent::solve_brent;
+use crate::optimize::method_newton::solve_newton;
 use crate::optimize::params::{BranchOptMethod, ExistingBranchLengths};
 use crate::optimize::solver_outcome::{Convergence, EdgeSolution, UnconvergedEdges};
 use crate::optimize::zero_boundary::{
@@ -19,7 +19,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_utils::cast::ToF64Exact;
 
-pub(crate) fn run_optimize_mixed(
+pub(crate) fn optimize_edge_lengths(
   graph: &Graph,
   total_length: usize,
   contributions: &impl EdgeContributions,
@@ -181,7 +181,7 @@ impl SeriesChain {
   }
 }
 
-pub(crate) fn initial_guess_mixed(
+pub(crate) fn guess_initial_branch_lengths(
   graph: &Graph,
   total_length: usize,
   indels: &EdgeIndels,
@@ -252,8 +252,8 @@ fn optimize_edge(contributions: &[OptimizationContribution], edge: &EdgeOptimiza
   let min_branch_length = min_branch_length_for_indels(indels, one_mutation);
 
   let solution = match method {
-    BranchOptMethod::Brent => brent_sqrt_inner(start, contributions, indels, min_branch_length, one_mutation),
-    BranchOptMethod::Newton => newton_sqrt_inner(start, contributions, indels, min_branch_length, one_mutation),
+    BranchOptMethod::Brent => solve_brent(start, contributions, indels, min_branch_length, one_mutation),
+    BranchOptMethod::Newton => solve_newton(start, contributions, indels, min_branch_length, one_mutation),
   }?;
 
   Ok(EdgeSolution {

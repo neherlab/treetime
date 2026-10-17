@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use super::super::test_convergence_support::tests::{compute_total_lh, setup_reconstruction, simple_alignment};
-  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::gather::gather_edge_contributions;
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::BranchOptMethod;
@@ -28,7 +28,7 @@ mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+      optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
     }
 
     let (_, final_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
@@ -66,7 +66,7 @@ mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+      optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
     }
 
     let (_, final_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
@@ -104,7 +104,7 @@ mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     for _ in 0..10 {
-      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+      optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
     }
 
     let (_, final_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;

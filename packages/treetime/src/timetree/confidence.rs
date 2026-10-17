@@ -114,7 +114,7 @@ fn node_confidence_interval(
     .and_then(Distribution::time_bounds)
     .unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
 
-  let (lower, upper) = combined_confidence(date, limits, region, rate_dates);
+  let (lower, upper) = confidence_bounds(date, limits, region, rate_dates);
 
   let lower = lower.min(date);
   let upper = upper.max(date);
@@ -128,7 +128,7 @@ fn node_confidence_interval(
   }))
 }
 
-pub(crate) fn combined_confidence(
+pub(crate) fn confidence_bounds(
   date: f64,
   limits: (f64, f64),
   region: Option<MaxPosteriorRegion>,
@@ -139,16 +139,16 @@ pub(crate) fn combined_confidence(
     Some(MaxPosteriorRegion::Grid(region)) => Some(region),
     None => None,
   };
-  let mutation_contribution = region.map(|region| (region.lower, region.upper));
+  let region_bounds = region.map(|region| (region.lower, region.upper));
   let rate_quantiles = region.map_or((CI_LOWER_QUANTILE, CI_UPPER_QUANTILE), |region| {
     rate_quantiles_for_peak(region.peak)
   });
   let rate_contribution = rate_dates.map(|dates| date_uncertainty_due_to_rate(*dates, rate_quantiles));
 
-  if rate_contribution.is_none() && mutation_contribution.is_none() {
+  if rate_contribution.is_none() && region_bounds.is_none() {
     return (date, date);
   }
-  combine_confidence(date, limits, rate_contribution, mutation_contribution)
+  combine_in_quadrature(date, limits, rate_contribution, region_bounds)
 }
 
 const fn rate_quantiles_for_peak(peak: PeakLocation) -> (f64, f64) {
@@ -178,7 +178,7 @@ pub struct NodeConfidenceInterval {
   pub upper: f64,
 }
 
-pub(crate) fn combine_confidence(
+pub(crate) fn combine_in_quadrature(
   center: f64,
   limits: (f64, f64),
   c1: Option<(f64, f64)>,

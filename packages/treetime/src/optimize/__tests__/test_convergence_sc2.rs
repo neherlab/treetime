@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::dispatch::initial_guess_mixed;
+  use crate::optimize::dispatch::guess_initial_branch_lengths;
   use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::ExistingBranchLengths;
@@ -51,7 +51,7 @@ mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    initial_guess_mixed(
+    guess_initial_branch_lengths(
       &graph,
       total_length,
       &indels,
@@ -120,7 +120,7 @@ mod tests {
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let sub_counts = gather_edge_sub_counts(&graph, &reconstruction)?;
     let effective_lengths = gather_edge_effective_lengths(&graph, &reconstruction)?;
-    initial_guess_mixed(
+    guess_initial_branch_lengths(
       &graph,
       total_length,
       &indels,

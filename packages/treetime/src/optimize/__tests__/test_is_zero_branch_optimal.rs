@@ -3,7 +3,7 @@ mod tests {
   use crate::gtr::get_gtr::{F81Params, JC69Params, K80Params, f81, jc69, k80};
   use crate::gtr::gtr::{GTR, Mu};
   use crate::optimize::indel::IndelTerm;
-  use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
+  use crate::optimize::likelihood::evaluate_partitions_log_lh_only;
   use crate::optimize::zero_boundary::{ZeroLength, is_zero_branch_optimal};
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
@@ -277,7 +277,7 @@ mod tests {
     assert_abs_diff_eq!(expected_derivative, derivative, epsilon = 1e-12);
 
     let contributions = [fast, slow];
-    let log_lh = |t: f64| evaluate_mixed_log_lh_only(&contributions, t).unwrap().value();
+    let log_lh = |t: f64| evaluate_partitions_log_lh_only(&contributions, t).unwrap().value();
     let expected_log_lh = |t: f64| ((1.0 + 0.96 * (-10.0 * t).exp()) * (1.0 - 0.8 * (-t).exp())).ln();
     assert_abs_diff_eq!(expected_log_lh(0.0), log_lh(0.0), epsilon = 1e-12);
     assert_abs_diff_eq!(expected_log_lh(0.5), log_lh(0.5), epsilon = 1e-12);
@@ -327,7 +327,7 @@ mod tests {
     assert!(contributions[0].all_sites_valid_at_zero());
 
     let lh = |t: f64| {
-      evaluate_mixed_log_lh_only(&contributions, t)
+      evaluate_partitions_log_lh_only(&contributions, t)
         .expect("valid branch length")
         .value()
     };

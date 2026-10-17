@@ -3,7 +3,7 @@ mod tests {
 
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::indel::poisson_indel_log_lh;
-  use crate::optimize::likelihood::{evaluate_mixed, evaluate_mixed_log_lh_only};
+  use crate::optimize::likelihood::{evaluate_partitions, evaluate_partitions_log_lh_only};
   use crate::optimize::method_newton::chain_rule_sqrt;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
@@ -46,7 +46,7 @@ mod tests {
     let contributions = vec![contribution];
 
     let s = t.sqrt();
-    let metrics = evaluate_mixed(&contributions, t).expect("valid branch length");
+    let metrics = evaluate_partitions(&contributions, t).expect("valid branch length");
     let indel = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
     let dl_dt = metrics.derivative + indel.derivative;
     let d2l_dt2 = metrics.second_derivative + indel.second_derivative;
@@ -55,7 +55,7 @@ mod tests {
     let h = s * 1e-5;
     let eval_s = |sv: f64| {
       let tv = sv * sv;
-      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
+      evaluate_partitions_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
     };
     let dl_ds_numerical = (eval_s(s + h) - eval_s(s - h)) / (2.0 * h);
 
@@ -82,7 +82,7 @@ mod tests {
     let contributions = vec![contribution];
 
     let s = t.sqrt();
-    let metrics = evaluate_mixed(&contributions, t).expect("valid branch length");
+    let metrics = evaluate_partitions(&contributions, t).expect("valid branch length");
     let indel = poisson_indel_log_lh(k, mu, t).expect("valid Poisson parameters");
     let dl_dt = metrics.derivative + indel.derivative;
     let d2l_dt2 = metrics.second_derivative + indel.second_derivative;
@@ -91,7 +91,7 @@ mod tests {
     let h = s * 1e-4;
     let eval_s = |sv: f64| {
       let tv = sv * sv;
-      evaluate_mixed_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
+      evaluate_partitions_log_lh_only(&contributions, tv).expect("valid branch length").value() + poisson_indel_log_lh(k, mu, tv).expect("valid Poisson parameters").log_lh.value()
     };
     let d2l_ds2_numerical = (eval_s(s + h) - 2.0 * eval_s(s) + eval_s(s - h)) / (h * h);
 

@@ -4,7 +4,7 @@ mod tests {
     TREE_NEWICK, gap_free_alignment, setup_dense_only, setup_sparse_only,
   };
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::gather::gather_edge_contributions;
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::BranchOptMethod;
@@ -33,7 +33,7 @@ mod tests {
       let total_length = reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+      optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
       let lh;
       (reconstruction, lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let lh = lh.value();
@@ -84,7 +84,7 @@ mod tests {
       let total_length = reconstruction.sequence_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
-      run_optimize_mixed(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
+      optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
       let lh;
       (reconstruction, lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let lh = lh.value();

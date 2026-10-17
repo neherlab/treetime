@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::gather::gather_edge_contributions;
   use crate::optimize::indel::EdgeIndels;
   use crate::optimize::params::BranchOptMethod;
@@ -42,7 +42,7 @@ mod tests {
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph,
       total_length,
       &contributions,
@@ -72,7 +72,7 @@ mod tests {
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph,
       total_length,
       &contributions,
@@ -124,7 +124,7 @@ mod tests {
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph,
       total_length,
       &contributions,
@@ -153,7 +153,7 @@ mod tests {
 
     let total_length = reconstruction.sequence_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    run_optimize_mixed(
+    optimize_edge_lengths(
       &graph,
       total_length,
       &contributions,
@@ -271,7 +271,7 @@ mod tests {
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::branch_lengths::branch_lengths_or_zero;
     use crate::gtr::get_gtr::{JC69Params, jc69};
-    use crate::optimize::dispatch::run_optimize_mixed;
+    use crate::optimize::dispatch::optimize_edge_lengths;
     use crate::optimize::gather::gather_edge_contributions;
     use crate::optimize::indel::EdgeIndels;
     use crate::optimize::params::BranchOptMethod;
@@ -340,7 +340,7 @@ mod tests {
       indel_rate: f64,
     ) -> Result<(), Report> {
       let contributions = gather_edge_contributions(&setup.graph, &setup.reconstruction)?;
-      run_optimize_mixed(
+      optimize_edge_lengths(
         &setup.graph,
         setup.reconstruction.sequence_length(),
         &contributions,

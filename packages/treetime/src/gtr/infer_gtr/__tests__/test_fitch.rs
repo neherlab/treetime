@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_impl};
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, infer_gtr_from_counts};
   use crate::partition::fitch::gtr_inference::get_mutation_counts_fitch;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::pretty_assert_ulps_eq;
@@ -96,7 +96,7 @@ mod tests {
     let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
 
     let counts = get_mutation_counts_fitch(&graph, &fitch, &branch_lengths_or_zero(&branch_lengths))?;
-    let actual = infer_gtr_impl(
+    let actual = infer_gtr_from_counts(
       &counts,
       &InferGtrOptions {
         pc: 0.1,

@@ -5,7 +5,7 @@ use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
-use crate::optimize::dispatch::run_optimize_mixed;
+use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
@@ -219,7 +219,7 @@ fn pre_reroot_optimize(
   let old_branch_lengths = branch_lengths.clone();
 
   let indels = indel_policy.edge_indels(graph, &reconstruction, branch_lengths);
-  run_optimize_mixed(
+  optimize_edge_lengths(
     graph,
     reconstruction.sequence_length(),
     &reconstruction,

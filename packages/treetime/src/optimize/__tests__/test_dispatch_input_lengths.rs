@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::dispatch::run_optimize_mixed;
+  use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::indel::EdgeIndels;
   use crate::optimize::params::BranchOptMethod;
   use eyre::Report;
@@ -28,7 +28,7 @@ mod tests {
     branch_lengths.insert(edge_key, branch_length);
     let input = format!("{branch_lengths:?}");
 
-    let result = run_optimize_mixed(
+    let result = optimize_edge_lengths(
       &graph,
       10,
       &BTreeMap::new(),

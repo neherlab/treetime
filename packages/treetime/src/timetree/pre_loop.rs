@@ -4,7 +4,7 @@ use crate::clock::clock_filter::{ClockFilterResult, clock_filter};
 use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::reroot::RerootParams;
-use crate::optimize::dispatch::run_optimize_mixed;
+use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::BranchOptMethod;
@@ -225,7 +225,7 @@ fn optimize_branch_lengths(
   let mut branch_lengths = old_branch_lengths.clone();
 
   let indels = indel_policy.edge_indels(graph, &partition, &branch_lengths);
-  run_optimize_mixed(
+  optimize_edge_lengths(
     graph,
     partition.sequence_length(),
     &partition,

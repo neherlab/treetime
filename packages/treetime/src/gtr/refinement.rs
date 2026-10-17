@@ -1,6 +1,6 @@
 use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::GTR;
-use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_impl};
+use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_from_counts};
 use crate::make_internal_report;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalPasses, MarginalUpdate};
 use crate::progress::LogSink;
@@ -103,7 +103,7 @@ fn infer_gtr(
   n_states: usize,
   log: &dyn LogSink,
 ) -> Result<GTR, Report> {
-  let result = infer_gtr_impl(counts, options, log)?;
+  let result = infer_gtr_from_counts(counts, options, log)?;
   build_gtr_from_inference(n_states, &result)
 }
 

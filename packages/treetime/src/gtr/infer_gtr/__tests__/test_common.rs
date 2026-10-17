@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::gtr::avg_transition;
-  use crate::gtr::infer_gtr::common::{InferGtrOptions, MutationCounts, distance, infer_gtr_impl};
+  use crate::gtr::infer_gtr::common::{InferGtrOptions, MutationCounts, distance, infer_gtr_from_counts};
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
   use eyre::Report;
   use ndarray::array;
 
   #[test]
-  fn test_infer_gtr_impl() -> Result<(), Report> {
+  fn test_infer_gtr_from_counts() -> Result<(), Report> {
     let nij = array![
       [0.0, 1.0, 2.0, 1.0],
       [1.0, 0.0, 3.0, 2.0],
@@ -18,7 +18,7 @@ mod tests {
     let Ti = array![12.0, 20.0, 14.0, 12.4];
     let root_state = array![3.0, 2.0, 3.0, 4.0];
 
-    let actual = infer_gtr_impl(
+    let actual = infer_gtr_from_counts(
       &MutationCounts { nij, Ti, root_state },
       &InferGtrOptions {
         pc: 0.1,

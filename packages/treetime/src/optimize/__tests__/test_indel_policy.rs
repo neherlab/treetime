@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::__tests__::test_optimize_indel::tests::inject_indels_on_first_edge;
-  use crate::optimize::dispatch::initial_guess_mixed;
+  use crate::optimize::dispatch::guess_initial_branch_lengths;
   use crate::optimize::gather::{gather_edge_effective_lengths, gather_edge_sub_counts};
   use crate::optimize::indel::{EdgeIndels, IndelPolicy, IndelTerm};
   use crate::optimize::params::ExistingBranchLengths;
@@ -136,7 +136,7 @@ mod tests {
   fn test_indel_policy_initial_guess(#[case] policy: IndelPolicy, #[case] expected: Array1<f64>) -> Result<(), Report> {
     let mut fixture = Fixture::new()?;
     let indels = fixture.edge_indels(policy);
-    initial_guess_mixed(
+    guess_initial_branch_lengths(
       &fixture.graph,
       fixture.reconstruction.sequence_length(),
       &indels,

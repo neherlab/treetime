@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
+  use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
   use crate::optimize::indel::EdgeIndels;
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
@@ -17,7 +17,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let total_length = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 0)?.length;
-    let result = run_optimize_mixed(
+    let result = optimize_edge_lengths(
       &graph,
       total_length,
       &BTreeMap::new(),
@@ -38,7 +38,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let total_length = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 0)?.length;
-    let result = initial_guess_mixed(
+    let result = guess_initial_branch_lengths(
       &graph,
       total_length,
       &EdgeIndels::Excluded,
@@ -60,7 +60,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let total_length = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 0)?.length;
-    let result = run_optimize_mixed(
+    let result = optimize_edge_lengths(
       &graph,
       total_length,
       &BTreeMap::new(),

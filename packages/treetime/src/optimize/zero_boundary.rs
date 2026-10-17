@@ -8,7 +8,7 @@ use ordered_float::OrderedFloat;
 
 const GRID_SEARCH_POINTS: usize = 100;
 
-const GRID_SEARCH_MIN_UPPER: f64 = 0.5;
+const MIN_SEARCH_UPPER_BOUND: f64 = 0.5;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ZeroLength {
@@ -92,13 +92,13 @@ pub(super) fn reconcile_zero_boundary(
   let zero_candidate_excluded = candidate == 0.0 && zero_length == ZeroLength::ExcludedBySites;
 
   if zero_beats_candidate || zero_candidate_uncertified || zero_candidate_excluded {
-    grid_search_inner(start_branch_length, contributions, indels, zero_length, one_mutation)
+    grid_search_branch_length(start_branch_length, contributions, indels, zero_length, one_mutation)
   } else {
     Ok(candidate)
   }
 }
 
-pub(super) fn grid_search_inner(
+pub(super) fn grid_search_branch_length(
   branch_length: f64,
   contributions: &[OptimizationContribution],
   indels: IndelTerm,
@@ -122,7 +122,7 @@ pub(super) fn grid_search_inner(
     )?
     .map(|(branch_length, _)| branch_length)
     .ok_or_else(|| {
-      make_internal_report!("grid_search_inner: empty grid (GRID_SEARCH_POINTS = {GRID_SEARCH_POINTS})")
+      make_internal_report!("grid_search_branch_length: empty grid (GRID_SEARCH_POINTS = {GRID_SEARCH_POINTS})")
     })?;
 
   let zero_is_better = is_zero_better_than(contributions, indels, zero_length, best_positive)?;
@@ -140,7 +140,7 @@ pub(super) fn grid_search_branch_lengths(branch_length: f64, one_mutation: f64) 
 }
 
 pub(super) fn search_upper_bound(branch_length: f64, one_mutation: f64) -> f64 {
-  f64::max(1.5 * branch_length + one_mutation, GRID_SEARCH_MIN_UPPER)
+  f64::max(1.5 * branch_length + one_mutation, MIN_SEARCH_UPPER_BOUND)
 }
 
 pub(super) fn is_zero_better_than(

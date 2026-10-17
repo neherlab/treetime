@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub(super) mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::likelihood::evaluate_mixed;
+  use crate::optimize::likelihood::evaluate_partitions;
   use crate::optimize::zero_boundary::grid_search_branch_lengths;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
@@ -19,7 +19,7 @@ pub(super) mod tests {
     branch_lengths
       .iter()
       .max_by_key(|&&bl| {
-        let metrics = evaluate_mixed(contributions, bl).expect("valid branch length");
+        let metrics = evaluate_partitions(contributions, bl).expect("valid branch length");
         OrderedFloat(metrics.log_lh.value())
       })
       .copied()
