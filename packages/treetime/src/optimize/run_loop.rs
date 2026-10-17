@@ -7,6 +7,7 @@ use crate::optimize::indel::{EdgeIndels, IndelPolicy};
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::ExistingBranchLengths;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
+use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
@@ -35,7 +36,6 @@ pub(crate) fn run_optimize_loop(
   settings: &OptimizeLoopSettings,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  log: &dyn LogSink,
 ) -> Result<OptimizeLoopResult, Report> {
   let OptimizeLoopSettings {
     max_iter,
@@ -52,6 +52,7 @@ pub(crate) fn run_optimize_loop(
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter + 1);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
   let mut best: Option<BestIteration> = None;
+  let mut convergence = ConvergenceSummary::default();
 
   for i in 0..max_iter {
     let iteration = compute_iteration(graph, &branch_lengths, reconstruction, &indels)?;
@@ -80,7 +81,7 @@ pub(crate) fn run_optimize_loop(
       &indels,
       &mut branch_lengths,
       &mut names,
-      log,
+      &mut convergence,
     )?;
     reconstruction = cleanup.reconstruction;
     if cleanup.topology_changed {
@@ -119,6 +120,7 @@ pub(crate) fn run_optimize_loop(
     names,
     lh_history,
     stopped_at,
+    convergence,
   })
 }
 
@@ -145,6 +147,8 @@ pub(crate) struct OptimizeLoopResult {
 
   #[cfg_attr(not(test), expect(dead_code, reason = "read only in test code"))]
   pub stopped_at: Option<(usize, ConvergenceReason)>,
+
+  pub convergence: ConvergenceSummary,
 }
 
 fn record_if_best(
@@ -199,7 +203,7 @@ pub(crate) enum ConvergenceReason {
 
 #[expect(
   clippy::too_many_arguments,
-  reason = "the graph, branch lengths and names are the loop state that the caller borrows mutably one part at a time; the settings are already grouped in `OptimizeLoopSettings`"
+  reason = "the graph, branch lengths, names and convergence summary are the loop state that the caller borrows mutably one part at a time; the settings are already grouped in `OptimizeLoopSettings`"
 )]
 fn update_branch_lengths(
   graph: &mut Graph,
@@ -209,18 +213,18 @@ fn update_branch_lengths(
   indels: &EdgeIndels,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &mut BTreeMap<GraphNodeKey, Option<String>>,
-  log: &dyn LogSink,
+  convergence: &mut ConvergenceSummary,
 ) -> Result<TopologyCleanup, Report> {
   let old_branch_lengths = branch_lengths.clone();
-  optimize_edge_lengths(
+  let unconverged = optimize_edge_lengths(
     graph,
     reconstruction.sequence_length(),
     &reconstruction,
     &indels.recount(graph, &reconstruction),
     settings.opt_method,
     branch_lengths,
-  )?
-  .report(settings.opt_method, graph, names, log);
+  )?;
+  convergence.record(&unconverged, graph, names);
 
   let zero_optimal_edges = if settings.topology_ops.collapse_short_branches {
     find_zero_optimal_internal_edges(graph, &reconstruction, branch_lengths)

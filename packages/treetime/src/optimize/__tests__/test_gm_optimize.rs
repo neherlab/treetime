@@ -164,7 +164,6 @@ mod tests {
     use crate::optimize::run_loop::{OptimizeLoopSettings, run_optimize_loop};
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
-    use crate::progress::NoopProgress;
     use crate::test_utils::leaf_seq_inputs;
     use deser::Deserialize;
     use eyre::Report;
@@ -268,7 +267,6 @@ mod tests {
         },
         branch_lengths,
         &names_tt_1,
-        &NoopProgress,
       )?;
       let branch_lengths = result.branch_lengths;
 

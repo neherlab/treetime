@@ -8,6 +8,7 @@ use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::BranchOptMethod;
+use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
@@ -32,8 +33,16 @@ pub(crate) fn run_pre_loop(
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
+  let mut convergence = ConvergenceSummary::default();
   let state = if inputs.has_alignment {
-    ml_optimize(state, params.indel_policy, inputs.names, "pre-reroot", log)?
+    ml_optimize(
+      state,
+      params.indel_policy,
+      inputs.names,
+      "pre-reroot",
+      &mut convergence,
+      log,
+    )?
   } else {
     state
   };
@@ -61,8 +70,16 @@ pub(crate) fn run_pre_loop(
     progress_info!(log, "Using input branch lengths for timetree inference");
     state
   } else {
-    ml_optimize(state, params.indel_policy, inputs.names, "post-reroot", log)?
+    ml_optimize(
+      state,
+      params.indel_policy,
+      inputs.names,
+      "post-reroot",
+      &mut convergence,
+      log,
+    )?
   };
+  convergence.report(BranchOptMethod::Brent, log);
   cancel.check()?;
   stages.report("Initial timetree inference", 0.2, "");
   progress_info!(log, "### TreeTime: initial round");
@@ -85,6 +102,7 @@ fn ml_optimize(
   indel_policy: IndelPolicy,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   label: &str,
+  convergence: &mut ConvergenceSummary,
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let BranchModel::Marginal(partition) = state.branch_model else {
@@ -92,9 +110,15 @@ fn ml_optimize(
   };
   progress_info!(log, "### ML branch-length optimization ({label})");
   let (partition, _) = partition.marginal_update(&state.graph, &branch_lengths_or_zero(&state.branch_lengths))?;
-  let (partition, branch_lengths) =
-    optimize_branch_lengths(&state.graph, partition, state.branch_lengths, indel_policy, names, log)
-      .wrap_err_with(|| format!("ML branch-length optimization ({label}) failed"))?;
+  let (partition, branch_lengths) = optimize_branch_lengths(
+    &state.graph,
+    partition,
+    state.branch_lengths,
+    indel_policy,
+    names,
+    convergence,
+  )
+  .wrap_err_with(|| format!("ML branch-length optimization ({label}) failed"))?;
   Ok(PreLoopState {
     branch_model: BranchModel::Marginal(partition),
     branch_lengths,
@@ -223,21 +247,21 @@ fn optimize_branch_lengths(
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   indel_policy: IndelPolicy,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  log: &dyn LogSink,
+  convergence: &mut ConvergenceSummary,
 ) -> Result<(MarginalReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
   let old_branch_lengths = branch_lengths;
   let mut branch_lengths = old_branch_lengths.clone();
 
   let indels = indel_policy.edge_indels(graph, &partition, &branch_lengths);
-  optimize_edge_lengths(
+  let unconverged = optimize_edge_lengths(
     graph,
     partition.sequence_length(),
     &partition,
     &indels,
     BranchOptMethod::Brent,
     &mut branch_lengths,
-  )?
-  .report(BranchOptMethod::Brent, graph, names, log);
+  )?;
+  convergence.record(&unconverged, graph, names);
 
   apply_damping(&mut branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
   let (partition, _) = partition.marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?;

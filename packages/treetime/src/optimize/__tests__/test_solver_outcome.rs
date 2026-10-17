@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::params::BranchOptMethod;
-  use crate::optimize::solver_outcome::UnconvergedEdges;
+  use crate::optimize::solver_outcome::{ConvergenceSummary, UnconvergedEdges};
   use crate::progress::{RunWarning, RunWarningKind};
   use eyre::Report;
   use helpers::{RecordingWarnings, edges_into};
@@ -12,24 +12,69 @@ mod tests {
   const TREE_NEWICK: &str = "((A:0.1,B:0.1)AB:0.1,C:0.1)root;";
 
   #[test]
-  fn test_solver_outcome_reports_unconverged_edges_as_one_warning() -> Result<(), Report> {
+  fn test_solver_outcome_reports_unconverged_rounds_of_a_run_as_one_warning() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let unconverged = UnconvergedEdges {
-      edges: edges_into(&graph, &names, &["AB", "A"]),
-      optimized: 4,
-    };
+    let mut pre_reroot = ConvergenceSummary::default();
+    pre_reroot.record(
+      &UnconvergedEdges {
+        iteration_limit: edges_into(&graph, &names, &["AB", "A"]),
+        search_bound: edges_into(&graph, &names, &["C"]),
+      },
+      &graph,
+      &names,
+    );
+    let mut rounds = ConvergenceSummary::default();
+    rounds.record(&UnconvergedEdges::default(), &graph, &names);
+    rounds.record(
+      &UnconvergedEdges {
+        iteration_limit: edges_into(&graph, &names, &["A"]),
+        search_bound: vec![],
+      },
+      &graph,
+      &names,
+    );
+    pre_reroot.merge(rounds);
     let log = RecordingWarnings::default();
 
-    unconverged.report(BranchOptMethod::Newton, &graph, &names, &log);
+    pre_reroot.report(BranchOptMethod::Newton, &log);
 
     let expected = vec![RunWarning {
       kind: RunWarningKind::BranchLengthsNotConverged,
       message: o!(
-        "The newton branch-length optimizer reached its iteration limit on 2 of 4 edges. These edges keep the best length the optimizer evaluated, which may not maximize the likelihood"
+        "The newton branch-length optimizer did not converge on 3 edges in 2 of 3 optimization rounds: it reached its iteration limit on 2 edges; it stopped at the upper end of its search interval, where the likelihood still increased, on 1 edge. These edges keep the best length the optimizer evaluated, which may not maximize the likelihood"
       ),
-      names: vec_of_owned!["A", "AB"],
+      names: vec_of_owned!["A", "AB", "C"],
+    }];
+    assert_eq!(expected, log.warnings.into_inner());
+    Ok(())
+  }
+
+  #[test]
+  fn test_solver_outcome_reports_search_bound_alone_in_singular() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let mut summary = ConvergenceSummary::default();
+    summary.record(
+      &UnconvergedEdges {
+        iteration_limit: vec![],
+        search_bound: edges_into(&graph, &names, &["B"]),
+      },
+      &graph,
+      &names,
+    );
+    let log = RecordingWarnings::default();
+
+    summary.report(BranchOptMethod::Brent, &log);
+
+    let expected = vec![RunWarning {
+      kind: RunWarningKind::BranchLengthsNotConverged,
+      message: o!(
+        "The brent branch-length optimizer did not converge on 1 edge in 1 of 1 optimization round: it stopped at the upper end of its search interval, where the likelihood still increased, on 1 edge. These edges keep the best length the optimizer evaluated, which may not maximize the likelihood"
+      ),
+      names: vec_of_owned!["B"],
     }];
     assert_eq!(expected, log.warnings.into_inner());
     Ok(())
@@ -40,13 +85,12 @@ mod tests {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
-    let unconverged = UnconvergedEdges {
-      edges: vec![],
-      optimized: 4,
-    };
+    let mut summary = ConvergenceSummary::default();
+    summary.record(&UnconvergedEdges::default(), &graph, &names);
+    summary.record(&UnconvergedEdges::default(), &graph, &names);
     let log = RecordingWarnings::default();
 
-    unconverged.report(BranchOptMethod::Brent, &graph, &names, &log);
+    summary.report(BranchOptMethod::Brent, &log);
 
     assert_eq!(Vec::<RunWarning>::new(), log.warnings.into_inner());
     Ok(())

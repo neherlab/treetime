@@ -72,7 +72,6 @@ mod tests {
       },
       branch_lengths_with,
       &names_tt_4,
-      &NoopProgress,
     )?;
 
     let names_tt_3 = graph_without_names.clone();
@@ -89,7 +88,6 @@ mod tests {
       },
       branch_lengths_without,
       &names_tt_3,
-      &NoopProgress,
     )?;
 
     assert!(
@@ -167,7 +165,6 @@ mod tests {
       },
       branch_lengths_nf,
       &names_tt_2,
-      &NoopProgress,
     )?;
 
     let names_tt_1 = graph_flag_names.clone();
@@ -184,7 +181,6 @@ mod tests {
       },
       branch_lengths_f,
       &names_tt_1,
-      &NoopProgress,
     )?;
 
     assert_eq!(

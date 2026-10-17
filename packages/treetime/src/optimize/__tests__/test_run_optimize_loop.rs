@@ -7,7 +7,6 @@ mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, OptimizeLoopSettings, run_optimize_loop};
-  use crate::progress::NoopProgress;
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -43,7 +42,6 @@ mod tests {
       },
       branch_lengths,
       &names_tt_6,
-      &NoopProgress,
     )?;
 
     assert!(result.lh_history.len() >= 1);
@@ -89,7 +87,6 @@ mod tests {
       },
       branch_lengths,
       &names_tt_5,
-      &NoopProgress,
     )?;
 
     assert_eq!(2, result.lh_history.len());
@@ -123,7 +120,6 @@ mod tests {
       },
       branch_lengths,
       &names_tt_4,
-      &NoopProgress,
     )?;
 
     assert_eq!(Some((1, ConvergenceReason::Converged)), result.stopped_at);
@@ -154,7 +150,6 @@ mod tests {
       },
       branch_lengths,
       &names_tt_3,
-      &NoopProgress,
     )?;
 
     assert!(result.lh_history.is_empty());
@@ -185,7 +180,6 @@ mod tests {
       },
       branch_lengths,
       &names_tt_2,
-      &NoopProgress,
     )?;
 
     for (i, lh) in result.lh_history.iter().map(|log_lh| log_lh.value()).enumerate() {
@@ -229,7 +223,6 @@ mod tests {
       },
       branch_lengths,
       &names_tt_1,
-      &NoopProgress,
     )?;
     let branch_lengths = result.branch_lengths;
 
@@ -285,7 +278,6 @@ mod tests {
       },
       start_branch_lengths.clone(),
       &names,
-      &NoopProgress,
     )?;
 
     assert!(

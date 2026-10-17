@@ -13,6 +13,7 @@ use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use crate::optimize::run_loop::{
   OptimizeLoopSettings, apply_initial_guess_mode, normalize_partition_rates, run_optimize_loop,
 };
+use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::{LogSink, StageSink};
@@ -111,6 +112,7 @@ pub fn run(
     .map_err(OperationError::classify)?;
   }
 
+  let mut convergence = ConvergenceSummary::default();
   if let Some(spec) = &params.reroot_spec {
     progress_info!(log, "Rerooting before optimization: {spec:?}");
     stages.report("Rerooting", 0.2, "");
@@ -121,7 +123,7 @@ pub fn run(
       params.indel_policy,
       &mut branch_lengths,
       names,
-      log,
+      &mut convergence,
     )
     .map_err(OperationError::classify)?;
     reconstruction = reroot_optimize(&mut input.graph, spec, reconstruction, &mut branch_lengths, names)
@@ -138,9 +140,10 @@ pub fn run(
     &params.loop_settings(),
     branch_lengths,
     &loop_names,
-    log,
   )
   .map_err(OperationError::classify)?;
+  convergence.merge(loop_result.convergence);
+  convergence.report(params.opt_method, log);
   let branch_lengths = loop_result.branch_lengths;
 
   progress_info!(log, "Re-running marginal to populate subs_ml after optimization loop");
@@ -209,20 +212,20 @@ fn pre_reroot_optimize(
   indel_policy: IndelPolicy,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-  log: &dyn LogSink,
+  convergence: &mut ConvergenceSummary,
 ) -> Result<MarginalReconstruction, Report> {
   let old_branch_lengths = branch_lengths.clone();
 
   let indels = indel_policy.edge_indels(graph, &reconstruction, branch_lengths);
-  optimize_edge_lengths(
+  let unconverged = optimize_edge_lengths(
     graph,
     reconstruction.sequence_length(),
     &reconstruction,
     &indels,
     opt_method,
     branch_lengths,
-  )?
-  .report(opt_method, graph, names, log);
+  )?;
+  convergence.record(&unconverged, graph, names);
 
   apply_damping(branch_lengths, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
   Ok(

@@ -2548,7 +2548,7 @@
             "const": "duplicate-metadata-names"
           },
           {
-            "description": "The branch-length optimizer reached its iteration limit on some edges; their lengths may not maximize the likelihood.",
+            "description": "The branch-length optimizer did not converge on some edges: it reached its iteration limit, or it stopped at the upper end of its search interval while the likelihood still increased; their lengths may not maximize the likelihood.",
             "type": "string",
             "const": "branch-lengths-not-converged"
           }

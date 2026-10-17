@@ -64,14 +64,7 @@ pub(crate) fn optimize_edge_lengths(
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  let unconverged = UnconvergedEdges {
-    edges: optimized
-      .iter()
-      .filter(|(_, solution)| solution.convergence == Convergence::IterationLimit)
-      .map(|&(edge_key, _)| edge_key)
-      .collect(),
-    optimized: optimized.len(),
-  };
+  let unconverged = UnconvergedEdges::of(&optimized);
   lengths.extend(
     optimized
       .into_iter()

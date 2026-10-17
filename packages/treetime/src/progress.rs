@@ -59,7 +59,7 @@ pub enum RunWarningKind {
   DuplicateSequenceNames,
   /// More than one row of the metadata table has the same name.
   DuplicateMetadataNames,
-  /// The branch-length optimizer reached its iteration limit on some edges; their lengths may not maximize the likelihood.
+  /// The branch-length optimizer did not converge on some edges: it reached its iteration limit, or it stopped at the upper end of its search interval while the likelihood still increased; their lengths may not maximize the likelihood.
   BranchLengthsNotConverged,
 }
 
