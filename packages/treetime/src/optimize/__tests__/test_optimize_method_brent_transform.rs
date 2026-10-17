@@ -125,6 +125,25 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::minimum_inside_bracket(0.3,   Convergence::Converged  )]
+  #[case::minimum_below_bracket( 0.001, Convergence::Converged  )]
+  #[case::minimum_above_bracket( 2.0,   Convergence::SearchBound)]
+  #[trace]
+  fn test_optimize_method_brent_sqrt_minimize_reports_search_bound_only_at_upper_end(
+    #[case] minimum: f64,
+    #[case] expected: Convergence,
+  ) -> Result<(), Report> {
+    let bracket = BranchLengthBracket { lower: 1e-4, upper: 1.0 };
+    let solution = brent_sqrt_minimize(&QuadraticInSqrt { minimum }, &bracket, 50)?;
+    assert_eq!(
+      expected, solution.convergence,
+      "the bracket is s in [0.01, 1]; only a minimum of (s - {minimum})^2 above s = 1 leaves the cost still falling at the upper end"
+    );
+    Ok(())
+  }
+
   mod helpers {
     use argmin::core::{CostFunction, Error};
 

@@ -3,7 +3,9 @@ mod tests {
   use crate::optimize::method_newton::{SqrtInterval, SqrtSolution, newton_sqrt_maximize};
   use crate::optimize::solver_outcome::Convergence;
   use crate::pretty_assert_abs_diff_eq;
-  use helpers::{flat, poisson, shifted_poisson, squared_distance_from_midpoint};
+  use helpers::{
+    flat, fourth_power_of_distance_from_midpoint, poisson, shifted_poisson, squared_distance_from_midpoint,
+  };
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
   use rstest::rstest;
@@ -32,19 +34,23 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::maximum_above_interval((0.0001, 0.01), 0.01)]
-  #[case::maximum_below_interval((0.1,    1.0 ), 0.1 )]
+  #[case::maximum_above_interval((0.0001, 0.01), (0.01, Convergence::SearchBound))]
+  #[case::maximum_below_interval((0.1,    1.0 ), (0.1,  Convergence::Converged  ))]
   #[trace]
   fn test_optimize_method_newton_safeguard_returns_interval_end_nearest_an_outside_maximum(
     #[case] (lower, upper): (f64, f64),
-    #[case] expected: f64,
+    #[case] (expected, convergence): (f64, Convergence),
   ) {
     let interval = SqrtInterval { lower, upper };
 
     let solution = newton_sqrt_maximize(f64::midpoint(lower, upper), interval, 50, poisson(3.0, 1000.0)).unwrap();
 
-    let expected = SqrtSolution { s: expected, convergence: Convergence::Converged };
-    assert_eq!(expected, solution, "maximum s = sqrt(3/1000) = 0.0548 lies outside [{lower}, {upper}]");
+    let expected = SqrtSolution { s: expected, convergence };
+    assert_eq!(
+      expected,
+      solution,
+      "maximum s = sqrt(3/1000) = 0.0548 lies outside [{lower}, {upper}]; only the upper end is a search bound with the likelihood still rising"
+    );
   }
 
   #[test]
@@ -64,45 +70,61 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::at_stationary_minimum(  0.5,        0.0)]
-  #[case::near_stationary_minimum(0.5 + 1e-6, 1.0)]
+  #[case::at_stationary_minimum(  0.5,        (0.0, Convergence::Converged  ))]
+  #[case::near_stationary_minimum(0.5 + 1e-6, (1.0, Convergence::SearchBound))]
   #[trace]
   fn test_optimize_method_newton_safeguard_leaves_stationary_minimum_for_interval_end(
     #[case] start: f64,
-    #[case] expected: f64,
+    #[case] (expected, convergence): (f64, Convergence),
   ) {
     let interval = SqrtInterval { lower: 0.0, upper: 1.0 };
 
     let solution = newton_sqrt_maximize(start, interval, 50, squared_distance_from_midpoint).unwrap();
 
-    let expected = SqrtSolution { s: expected, convergence: Convergence::Converged };
+    let expected = SqrtSolution { s: expected, convergence };
     assert_eq!(
       expected,
       solution,
-      "(s - 0.5)^2 on [0, 1] has its minimum at 0.5 and its maximum 0.25 at both ends; from 0.5 the first bisection takes the lower half, from above 0.5 the slope points to 1"
+      "(s - 0.5)^2 on [0, 1] has its minimum at 0.5 and its maximum 0.25 at both ends; from 0.5 the first bisection takes the lower half, from above 0.5 the slope points to the upper end 1, where it is still positive"
     );
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::feasible_start_below_interval((0.04, 0.1,  1.0 ), 0.05)]
-  #[case::feasible_start_above_interval((0.2,  1e-4, 0.03), 0.05)]
-  #[case::infeasible_start_at_zero(     (0.0,  0.1,  1.0 ), 0.1 )]
+  #[case::feasible_start_below_interval((0.04, 0.1,  1.0 ), (0.04, Convergence::Converged  ))]
+  #[case::feasible_start_above_interval((0.2,  1e-4, 0.03), (0.03, Convergence::SearchBound))]
+  #[case::infeasible_start_at_zero(     (0.0,  0.1,  1.0 ), (0.1,  Convergence::Converged  ))]
   #[trace]
-  fn test_optimize_method_newton_safeguard_searches_from_feasible_start_outside_interval(
+  fn test_optimize_method_newton_safeguard_searches_inside_interval_and_keeps_better_start(
     #[case] (start, lower, upper): (f64, f64, f64),
-    #[case] expected: f64,
+    #[case] (expected, convergence): (f64, Convergence),
   ) {
     let interval = SqrtInterval { lower, upper };
 
     let solution = newton_sqrt_maximize(start, interval, 50, poisson(2.5, 1000.0)).unwrap();
 
-    assert_eq!(Convergence::Converged, solution.convergence);
+    assert_eq!(convergence, solution.convergence);
     pretty_assert_abs_diff_eq!(
       expected,
       solution.s,
       epsilon = 1e-8,
-      "maximum of 2k ln(s) - L s^2 at s = sqrt(2.5/1000) = 0.05; a start with finite log-likelihood joins the search interval, the start s = 0 has log-likelihood -inf and is clamped to [{lower}, {upper}]"
+      "log-likelihood 5 ln(s) - 1000 s^2 with its maximum at s = 0.05 outside [{lower}, {upper}]: the search stops at the interval end nearest the maximum, ln L(0.1) = -21.51 and ln L(0.03) = -18.43; the start s = 0.04 (ln L = -17.69) beats the end 0.1 and stays, the start s = 0.2 (ln L = -48.05) loses to the end 0.03, and the start s = 0 has ln L = -inf"
+    );
+  }
+
+  #[test]
+  fn test_optimize_method_newton_safeguard_leaves_flat_stationary_minimum() {
+    let interval = SqrtInterval { lower: 0.0, upper: 1.0 };
+
+    let solution = newton_sqrt_maximize(0.5, interval, 50, fourth_power_of_distance_from_midpoint).unwrap();
+
+    let expected = SqrtSolution {
+      s: 0.0,
+      convergence: Convergence::Converged,
+    };
+    assert_eq!(
+      expected, solution,
+      "(s - 0.5)^4 on [0, 1] has slope and curvature 0 at its minimum 0.5 and its maximum 1/16 at both ends; the neighbors 0.5 -+ tolerance are higher, the first bisection takes the lower half, and the Newton steps descend to 0"
     );
   }
 
@@ -147,7 +169,7 @@ mod tests {
     }
 
     pub(super) fn gen_start_within_search() -> impl Strategy<Value = f64> {
-      1e-4_f64..1.5_f64
+      1e-4_f64..3.0_f64
     }
 
     pub(super) fn gen_max_iter() -> impl Strategy<Value = usize> {
@@ -182,13 +204,15 @@ mod tests {
       sites in generators::gen_sites(),
       s0 in generators::gen_start_within_search(),
     ) {
-      let interval = SqrtInterval { lower: 1e-4, upper: 1.5 };
+      let interval = SqrtInterval { lower: 1e-4, upper: 3.0 };
       let evaluate = poisson(k, sites);
 
       let solution = newton_sqrt_maximize(s0, interval, 50, &evaluate).unwrap();
 
-      prop_assert_eq!(Convergence::Converged, solution.convergence);
-      let poisson_maximum_in_interval = (k / sites).sqrt().clamp(interval.lower, interval.upper);
+      let poisson_maximum = (k / sites).sqrt();
+      let convergence = if poisson_maximum > interval.upper { Convergence::SearchBound } else { Convergence::Converged };
+      prop_assert_eq!(convergence, solution.convergence);
+      let poisson_maximum_in_interval = poisson_maximum.clamp(interval.lower, interval.upper);
       prop_assert_abs_diff_eq!(
         poisson_maximum_in_interval * poisson_maximum_in_interval,
         solution.s * solution.s,
@@ -232,6 +256,14 @@ mod tests {
         log_lh: (s - 0.5) * (s - 0.5),
         slope: 2.0 * (s - 0.5),
         curvature: 2.0,
+      })
+    }
+
+    pub(super) fn fourth_power_of_distance_from_midpoint(s: f64) -> Result<SqrtPoint, Report> {
+      Ok(SqrtPoint {
+        log_lh: (s - 0.5).powi(4),
+        slope: 4.0 * (s - 0.5).powi(3),
+        curvature: 12.0 * (s - 0.5).powi(2),
       })
     }
 

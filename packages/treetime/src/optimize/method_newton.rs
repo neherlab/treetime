@@ -4,11 +4,15 @@ use crate::optimize::solver_outcome::{Convergence, EdgeSolution};
 use crate::optimize::zero_boundary::search_upper_bound;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use eyre::Report;
+use itertools::Itertools;
 use num::clamp;
+use ordered_float::OrderedFloat;
 
 const NEWTON_REL_TOL: f64 = 0.001;
 
 const NEWTON_ABS_TOL: f64 = 1e-8;
+
+const NEWTON_MAX_BRANCH_LENGTH_ERROR: f64 = 1e-6;
 
 const NEWTON_MAX_ITER: usize = 50;
 
@@ -44,8 +48,39 @@ pub(super) fn newton_sqrt_maximize(
   max_iter: usize,
   evaluate: impl Fn(f64) -> Result<SqrtPoint, Report>,
 ) -> Result<SqrtSolution, Report> {
-  let (interval, mut current) = initial_point(start, interval, &evaluate)?;
-  let mut best = current;
+  let incumbent = feasible_start_outside(start, &interval, &evaluate)?;
+  let first = Evaluated::at(clamp(start, interval.lower, interval.upper), &evaluate)?;
+  let search = search(first, interval, max_iter, &evaluate)?;
+  let best = match incumbent {
+    Some(incumbent) if incumbent.point.log_lh > search.best.point.log_lh => incumbent,
+    _ => search.best,
+  };
+  Ok(SqrtSolution {
+    s: best.s,
+    convergence: search.convergence,
+  })
+}
+
+fn feasible_start_outside(
+  start: f64,
+  interval: &SqrtInterval,
+  evaluate: impl Fn(f64) -> Result<SqrtPoint, Report>,
+) -> Result<Option<Evaluated>, Report> {
+  if interval.contains(start) {
+    return Ok(None);
+  }
+  let at_start = Evaluated::at(start, evaluate)?;
+  Ok((start >= 0.0 && at_start.point.log_lh.is_finite()).then_some(at_start))
+}
+
+fn search(
+  first: Evaluated,
+  interval: SqrtInterval,
+  max_iter: usize,
+  evaluate: impl Fn(f64) -> Result<SqrtPoint, Report>,
+) -> Result<Search, Report> {
+  let mut current = first;
+  let mut best = first;
   let mut best_is_current = true;
   let mut bracket = interval;
 
@@ -57,10 +92,19 @@ pub(super) fn newton_sqrt_maximize(
       if let Proposal::Newton(next) = proposal {
         best = best.better(Evaluated::at(next, &evaluate)?);
       }
-      return Ok(best.converged());
+      return finish(best, &interval, &evaluate);
+    }
+    if best_is_current && is_degenerate_stationary(&current.point) {
+      match higher_neighbor(&current, &interval, tolerance, &evaluate)? {
+        None => return finish(best, &interval, &evaluate),
+        Some(neighbor) => {
+          best = neighbor;
+          best_is_current = false;
+        },
+      }
     }
     if best_is_current && bracket.width() <= tolerance {
-      return Ok(best.converged());
+      return finish(best, &interval, &evaluate);
     }
     current = Evaluated::at(proposal.s(), &evaluate)?;
     best_is_current = current.point.log_lh >= best.point.log_lh;
@@ -69,10 +113,40 @@ pub(super) fn newton_sqrt_maximize(
     }
   }
 
-  Ok(SqrtSolution {
-    s: best.s,
+  Ok(Search {
+    best,
     convergence: Convergence::IterationLimit,
   })
+}
+
+fn finish(
+  best: Evaluated,
+  interval: &SqrtInterval,
+  evaluate: impl Fn(f64) -> Result<SqrtPoint, Report>,
+) -> Result<Search, Report> {
+  if interval.upper - best.s > newton_tolerance_sqrt(best.s) {
+    return Ok(Search {
+      best,
+      convergence: Convergence::Converged,
+    });
+  }
+  let at_upper = Evaluated::at(interval.upper, evaluate)?;
+  let convergence = if at_upper.point.slope > 0.0 {
+    Convergence::SearchBound
+  } else {
+    Convergence::Converged
+  };
+  let best = if at_upper.point.log_lh > best.point.log_lh {
+    at_upper
+  } else {
+    best
+  };
+  Ok(Search { best, convergence })
+}
+
+struct Search {
+  best: Evaluated,
+  convergence: Convergence,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -89,13 +163,6 @@ impl SqrtInterval {
       Self { upper: s, ..self }
     } else {
       self
-    }
-  }
-
-  fn including(self, s: f64) -> Self {
-    Self {
-      lower: self.lower.min(s),
-      upper: self.upper.max(s),
     }
   }
 
@@ -116,25 +183,33 @@ impl SqrtInterval {
   }
 }
 
-fn initial_point(
-  start: f64,
-  interval: SqrtInterval,
-  evaluate: impl Fn(f64) -> Result<SqrtPoint, Report>,
-) -> Result<(SqrtInterval, Evaluated), Report> {
-  if interval.contains(start) {
-    return Ok((interval, Evaluated::at(start, evaluate)?));
-  }
-  let at_start = Evaluated::at(start, &evaluate)?;
-  if start >= 0.0 && at_start.point.log_lh.is_finite() {
-    Ok((interval.including(start), at_start))
-  } else {
-    let clamped = clamp(start, interval.lower, interval.upper);
-    Ok((interval, Evaluated::at(clamped, evaluate)?))
-  }
+fn is_concave_maximum(point: &SqrtPoint, tolerance: f64) -> bool {
+  point.curvature < 0.0 && point.slope.abs() <= tolerance * point.curvature.abs()
 }
 
-fn is_concave_maximum(point: &SqrtPoint, tolerance: f64) -> bool {
-  point.curvature <= 0.0 && point.slope.abs() <= tolerance * point.curvature.abs()
+fn is_degenerate_stationary(point: &SqrtPoint) -> bool {
+  point.slope == 0.0 && point.curvature == 0.0
+}
+
+fn higher_neighbor(
+  current: &Evaluated,
+  interval: &SqrtInterval,
+  tolerance: f64,
+  evaluate: impl Fn(f64) -> Result<SqrtPoint, Report>,
+) -> Result<Option<Evaluated>, Report> {
+  let below = (current.s > interval.lower).then(|| f64::max(current.s - tolerance, interval.lower));
+  let above = (current.s < interval.upper).then(|| f64::min(current.s + tolerance, interval.upper));
+  let neighbors: Vec<Evaluated> = [below, above]
+    .into_iter()
+    .flatten()
+    .map(|s| Evaluated::at(s, &evaluate))
+    .try_collect()?;
+  Ok(
+    neighbors
+      .into_iter()
+      .filter(|neighbor| neighbor.point.log_lh > current.point.log_lh)
+      .max_by_key(|neighbor| OrderedFloat(neighbor.point.log_lh)),
+  )
 }
 
 fn propose(current: &Evaluated, interval: &SqrtInterval, bracket: &SqrtInterval, tolerance: f64) -> Proposal {
@@ -194,13 +269,6 @@ impl Evaluated {
       self
     }
   }
-
-  fn converged(self) -> SqrtSolution {
-    SqrtSolution {
-      s: self.s,
-      convergence: Convergence::Converged,
-    }
-  }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -217,7 +285,11 @@ pub(super) struct SqrtSolution {
 }
 
 pub(super) fn newton_tolerance_sqrt(s: f64) -> f64 {
-  f64::max(0.5 * NEWTON_REL_TOL * s, NEWTON_ABS_TOL)
+  let max_branch_length_error = NEWTON_MAX_BRANCH_LENGTH_ERROR / ((s * s + NEWTON_MAX_BRANCH_LENGTH_ERROR).sqrt() + s);
+  f64::max(
+    f64::min(0.5 * NEWTON_REL_TOL * s, max_branch_length_error),
+    NEWTON_ABS_TOL,
+  )
 }
 
 pub(super) fn sqrt_step_lower_bound(s: f64) -> f64 {

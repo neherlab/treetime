@@ -17,6 +17,7 @@ pub(crate) struct EdgeSolution {
 pub(crate) enum Convergence {
   Converged,
   IterationLimit,
+  SearchBound,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

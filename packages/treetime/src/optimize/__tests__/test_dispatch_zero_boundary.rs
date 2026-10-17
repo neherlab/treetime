@@ -280,21 +280,24 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::rises_to_local_maximum(   0.05, 0.16657011017500076)]
-  #[case::descends_to_local_maximum(0.6,  0.16657011017500076)]
-  #[case::rises_to_interval_end(    2.0,  3.01               )]
-  #[case::reaches_global_maximum(   5.0,  6.369747058293658  )]
+  #[case::rises_to_local_maximum(   0.05, (0.16657011017500076, Convergence::Converged  ))]
+  #[case::descends_to_local_maximum(0.6,  (0.16657011017500076, Convergence::Converged  ))]
+  #[case::rises_to_interval_end(    2.0,  (3.01,                Convergence::SearchBound))]
+  #[case::reaches_global_maximum(   5.0,  (6.369747058293658,   Convergence::Converged  ))]
   #[trace]
   fn test_dispatch_zero_boundary_solve_newton_never_worse_than_start_and_converges_on_dinh_matsen_k80(
     #[case] t0: f64,
-    #[case] expected: f64,
+    #[case] (expected, convergence): (f64, Convergence),
   ) {
     let contributions = [make_dinh_matsen_k80_contribution()];
     let one_mutation = 0.01;
 
     let solution = solve_newton(t0, &contributions, IndelTerm::new(0, 0.0), 0.0, one_mutation).unwrap();
 
-    assert_eq!(Convergence::Converged, solution.convergence);
+    assert_eq!(
+      convergence, solution.convergence,
+      "the end t = 3.01 of the search interval from t0 = 2 has the positive slope d ln L / dt = 5.68e-4 (numpy evaluation of the exact fixture coefficients), so only that start stops at the search bound with the likelihood still rising"
+    );
     let lh_start = evaluate_partitions_log_lh_only(&contributions, t0).unwrap().value();
     let lh_result = evaluate_partitions_log_lh_only(&contributions, solution.branch_length).unwrap().value();
     assert!(
@@ -325,20 +328,11 @@ mod tests {
     .unwrap();
 
     assert_eq!(Convergence::Converged, solution.convergence);
-    let lh_start = evaluate_partitions_log_lh_only(&contributions, t0).unwrap().value();
-    let lh_result = evaluate_partitions_log_lh_only(&contributions, solution.branch_length)
-      .unwrap()
-      .value();
-    assert!(
-      lh_result >= lh_start,
-      "result t={} has log_lh {lh_result} below the start t0={t0} with {lh_start}",
-      solution.branch_length
-    );
     pretty_assert_abs_diff_eq!(
-      0.16657011017500076,
+      t0,
       solution.branch_length,
-      epsilon = 1e-9,
-      "expected: local maximum t = 0.16657 of the Dinh and Matsen K80 surface (numpy roots of the cubic P'(x), see the test above), below the minimum branch length 0.5 and above the start 0.1"
+      epsilon = 1e-15,
+      "the search interval is [0.5, max(1.5 t0 + one_mutation, 0.5)] = [0.5, 0.5], where the slope is negative; the start t0 = 0.1 below it stays the incumbent because ln L(0.1) = -2.7733517 is above ln L(0.5) = -2.7736259 (numpy evaluation of the exact fixture coefficients)"
     );
   }
 

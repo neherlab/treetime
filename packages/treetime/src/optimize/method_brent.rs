@@ -10,6 +10,10 @@ use eyre::{Report, WrapErr};
 
 const BRENT_MAX_ITER: u64 = 50;
 
+const BRENT_REL_TOL: f64 = 1.490_116_119_384_765_6e-8;
+
+const BRENT_ABS_TOL: f64 = 1e-5;
+
 pub(super) fn solve_brent(
   branch_length: f64,
   contributions: &[OptimizationContribution],
@@ -29,16 +33,21 @@ pub(super) fn brent_sqrt_minimize<F>(
   max_iters: u64,
 ) -> Result<EdgeSolution, Report>
 where
-  F: CostFunction<Param = f64, Output = f64>,
+  F: CostFunction<Param = f64, Output = f64> + Copy,
 {
-  let solver = BrentOpt::new(bracket.lower.sqrt(), bracket.upper.sqrt());
+  let (lower, upper) = (bracket.lower.sqrt(), bracket.upper.sqrt());
+  let solver = BrentOpt::new(lower, upper).set_tolerance(BRENT_REL_TOL, BRENT_ABS_TOL);
   let res = Executor::new(cost_fn, solver)
     .configure(|cfg| cfg.max_iters(max_iters))
     .run()
     .map_err(|e| make_report!("argmin BrentOpt failed: {e}"))?;
 
   let state = res.state();
+  let s = state
+    .best_param
+    .ok_or_else(|| make_internal_report!("argmin BrentOpt finished without a best parameter"))?;
   let convergence = match state.get_termination_reason() {
+    Some(TerminationReason::SolverConverged) if ascends_at_upper_end(&cost_fn, s, upper)? => Convergence::SearchBound,
     Some(TerminationReason::SolverConverged) => Convergence::Converged,
     Some(TerminationReason::MaxItersReached) => Convergence::IterationLimit,
     reason => {
@@ -47,13 +56,26 @@ where
       ));
     },
   };
-  let s = state
-    .best_param
-    .ok_or_else(|| make_internal_report!("argmin BrentOpt finished without a best parameter"))?;
   Ok(EdgeSolution {
     branch_length: s * s,
     convergence,
   })
+}
+
+fn ascends_at_upper_end<F>(cost_fn: &F, s: f64, upper: f64) -> Result<bool, Report>
+where
+  F: CostFunction<Param = f64, Output = f64>,
+{
+  let tolerance = BRENT_REL_TOL * upper + BRENT_ABS_TOL;
+  if upper - s > 3.0 * tolerance {
+    return Ok(false);
+  }
+  let cost = |s: f64| {
+    cost_fn
+      .cost(&s)
+      .map_err(|e| make_report!("argmin BrentOpt cost failed at s={s}: {e}"))
+  };
+  Ok(cost(upper)? < cost(upper - tolerance)?)
 }
 
 pub(super) fn brent_bracket(branch_length: f64, min_branch_length: f64, one_mutation: f64) -> BranchLengthBracket {
