@@ -1,9 +1,7 @@
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
-use crate::timetree::convergence::likelihood::{
-  compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
-};
+use crate::timetree::convergence::likelihood::{compute_coalescent_log_lh, compute_sequence_log_lh};
 use crate::timetree::convergence::metrics::{ConvergenceMetrics, IterationClock, IterationRecord};
 use crate::timetree::convergence::node_times::NodeTimeChange;
 use crate::timetree::inference::result::TimeInference;
@@ -65,13 +63,9 @@ impl<'a> TimetreeOptimizer<'a> {
     log: &dyn LogSink,
   ) -> Result<(), Report> {
     let log_lh_seq = compute_sequence_log_lh(graph, branch_model);
-    let log_lh_pos = compute_positional_log_lh(graph, inference);
+    let log_lh_time = inference.log_lh_time;
     let log_lh_coal =
       coalescent_tc.and_then(|tc| compute_coalescent_log_lh(graph, tc, &inference.coalescent_node_times(), names, log));
-    let log_lh_total = [log_lh_seq, log_lh_pos, log_lh_coal]
-      .into_iter()
-      .flatten()
-      .reduce(|acc, v| acc + v);
 
     let metric = ConvergenceMetrics {
       n_diff: sequence_changes,
@@ -79,9 +73,8 @@ impl<'a> TimetreeOptimizer<'a> {
       max_time_change: time_change.max,
       rms_time_change: time_change.rms,
       log_lh_seq,
-      log_lh_pos,
+      log_lh_time,
       log_lh_coal,
-      log_lh_total,
     };
 
     if let Some(sink) = &mut self.trace_sink {
@@ -94,14 +87,13 @@ impl<'a> TimetreeOptimizer<'a> {
 
     progress_info!(
       log,
-      "  Iteration {}: max_dt={:.4}, rms_dt={:.4}, n_diff={sequence_changes}, n_resolved={resolved_nodes}, log_lh_seq={:.2}, log_lh_pos={:.2}, log_lh_coal={:.2}, log_lh_total={:.2}{}",
+      "  Iteration {}: max_dt={:.4}, rms_dt={:.4}, n_diff={sequence_changes}, n_resolved={resolved_nodes}, log_lh_seq={:.2}, log_lh_time={:.2}, log_lh_coal={:.2}{}",
       self.i,
       metric.max_time_change.unwrap_or(f64::NAN),
       metric.rms_time_change.unwrap_or(f64::NAN),
       metric.log_lh_seq.map_or(f64::NAN, |log_lh| log_lh.value()),
-      metric.log_lh_pos.map_or(f64::NAN, |log_lh| log_lh.value()),
+      metric.log_lh_time.map_or(f64::NAN, |log_lh| log_lh.value()),
       metric.log_lh_coal.map_or(f64::NAN, |log_lh| log_lh.value()),
-      metric.log_lh_total.map_or(f64::NAN, |log_lh| log_lh.value()),
       if metric.has_converged() { " [converged]" } else { "" }
     );
 

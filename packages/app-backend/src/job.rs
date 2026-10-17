@@ -129,12 +129,10 @@ pub struct IterationEvent {
   pub rms_time_change: Option<JsonFloat>,
   /// Log likelihood of the sequences.
   pub log_lh_seq: Option<JsonFloat>,
-  /// Log likelihood of the node positions under the clock model.
-  pub log_lh_pos: Option<JsonFloat>,
+  /// Log marginal likelihood of the node times: branch-time likelihoods relative to each branch's sequence optimum, coalescent prior included.
+  pub log_lh_time: Option<JsonFloat>,
   /// Log likelihood of the coalescent prior.
   pub log_lh_coal: Option<JsonFloat>,
-  /// Sum of the available log likelihoods.
-  pub log_lh_total: Option<JsonFloat>,
   /// Clock rate of the clock model the iteration used, in substitutions per site per year.
   pub clock_rate: JsonFloat,
   /// Squared correlation coefficient of the root-to-tip regression of that clock model; absent for a fixed rate.
@@ -151,9 +149,8 @@ impl From<&IterationRecord> for IterationEvent {
       max_time_change: metrics.max_time_change.map(JsonFloat),
       rms_time_change: metrics.rms_time_change.map(JsonFloat),
       log_lh_seq: metrics.log_lh_seq.map(JsonFloat::from),
-      log_lh_pos: metrics.log_lh_pos.map(JsonFloat::from),
+      log_lh_time: metrics.log_lh_time.map(JsonFloat::from),
       log_lh_coal: metrics.log_lh_coal.map(JsonFloat::from),
-      log_lh_total: metrics.log_lh_total.map(JsonFloat::from),
       clock_rate: JsonFloat(record.clock.clock_rate),
       r_squared: record.clock.r_squared.map(JsonFloat),
     }

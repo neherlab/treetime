@@ -15,7 +15,6 @@ mod tests {
   use treetime_utils::io::json::{json_read_file, json_value_read_file};
 
   #[test]
-  #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_pipeline_timetree_convergence() -> Result<(), Report> {
     let root = project_root();
     let outdir = root.join("tmp/test-convergence-pipeline");
@@ -45,8 +44,7 @@ mod tests {
     assert!(lines.len() >= 2, "Tracelog must have header + at least 1 data row");
 
     let header = lines[0];
-    let expected_header =
-      "n_diff,n_resolved,max_time_change,rms_time_change,log_lh_seq,log_lh_pos,log_lh_coal,log_lh_total";
+    let expected_header = "n_diff,n_resolved,max_time_change,rms_time_change,log_lh_seq,log_lh_time,log_lh_coal";
     assert_eq!(expected_header, header);
 
     let data_row = lines[1];
@@ -63,23 +61,17 @@ mod tests {
     let log_lh_seq: f64 = fields[col("log_lh_seq")]
       .parse()
       .expect("log_lh_seq must be a valid number");
-    let log_lh_pos: f64 = fields[col("log_lh_pos")]
+    let log_lh_time: f64 = fields[col("log_lh_time")]
       .parse()
-      .expect("log_lh_pos must be a valid number");
-    let log_lh_total: f64 = fields[col("log_lh_total")]
-      .parse()
-      .expect("log_lh_total must be a valid number");
+      .expect("log_lh_time must be a valid number");
     assert!(
       log_lh_seq < 0.0,
       "Sequence log-likelihood must be negative, got {log_lh_seq}"
     );
+    // a log marginal likelihood of node times has no fixed sign: it includes densities over time
     assert!(
-      log_lh_pos < 0.0,
-      "Positional log-likelihood must be negative, got {log_lh_pos}"
-    );
-    assert!(
-      log_lh_total < 0.0,
-      "Total log-likelihood must be negative, got {log_lh_total}"
+      log_lh_time.is_finite(),
+      "Node-time log-likelihood must be finite, got {log_lh_time}"
     );
 
     let nwk_path = outdir.join("timetree.nwk");
@@ -98,7 +90,6 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_pipeline_timetree_ladderize_applies_to_auspice() -> Result<(), Report> {
     let root = project_root();
     let output = tempfile::tempdir().wrap_err("When creating a temporary directory")?;
@@ -134,7 +125,6 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_pipeline_timetree_writes_coalescent_outputs() -> Result<(), Report> {
     let root = project_root();
     let output = tempfile::tempdir().wrap_err("When creating a temporary directory")?;

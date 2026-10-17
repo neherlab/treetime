@@ -3210,7 +3210,7 @@
             "x-unset": true
           },
           "log_likelihood": {
-            "description": "Total log likelihood of the last iteration.",
+            "description": "Log marginal likelihood of the node times in the last iteration (the iterations' `log_lh_time`).",
             "$ref": "#/components/schemas/JsonFloat",
             "x-unset": true
           },
@@ -3407,18 +3407,13 @@
             "$ref": "#/components/schemas/JsonFloat",
             "x-unset": true
           },
-          "log_lh_pos": {
-            "description": "Log likelihood of the node positions.",
+          "log_lh_time": {
+            "description": "Log marginal likelihood of the node times: branch-time likelihoods relative to each branch's sequence optimum, coalescent prior included.",
             "$ref": "#/components/schemas/JsonFloat",
             "x-unset": true
           },
           "log_lh_coal": {
             "description": "Log likelihood of the coalescent prior.",
-            "$ref": "#/components/schemas/JsonFloat",
-            "x-unset": true
-          },
-          "log_lh_total": {
-            "description": "Total log likelihood.",
             "$ref": "#/components/schemas/JsonFloat",
             "x-unset": true
           }
@@ -4663,18 +4658,13 @@
             "$ref": "#/components/schemas/JsonFloat",
             "x-unset": true
           },
-          "log_lh_pos": {
-            "description": "Log likelihood of the node positions under the clock model.",
+          "log_lh_time": {
+            "description": "Log marginal likelihood of the node times: branch-time likelihoods relative to each branch's sequence optimum, coalescent prior included.",
             "$ref": "#/components/schemas/JsonFloat",
             "x-unset": true
           },
           "log_lh_coal": {
             "description": "Log likelihood of the coalescent prior.",
-            "$ref": "#/components/schemas/JsonFloat",
-            "x-unset": true
-          },
-          "log_lh_total": {
-            "description": "Sum of the available log likelihoods.",
             "$ref": "#/components/schemas/JsonFloat",
             "x-unset": true
           },

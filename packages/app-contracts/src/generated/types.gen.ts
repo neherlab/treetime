@@ -1149,7 +1149,7 @@ export type TimetreeEstimates = {
    */
   relaxed_clock?: RelaxedClock;
   /**
-   * Total log likelihood of the last iteration.
+   * Log marginal likelihood of the node times in the last iteration (the iterations' `log_lh_time`).
    */
   log_likelihood?: JsonFloat;
   /**
@@ -1273,17 +1273,13 @@ export type IterationRow = {
    */
   log_lh_seq?: JsonFloat;
   /**
-   * Log likelihood of the node positions.
+   * Log marginal likelihood of the node times: branch-time likelihoods relative to each branch's sequence optimum, coalescent prior included.
    */
-  log_lh_pos?: JsonFloat;
+  log_lh_time?: JsonFloat;
   /**
    * Log likelihood of the coalescent prior.
    */
   log_lh_coal?: JsonFloat;
-  /**
-   * Total log likelihood.
-   */
-  log_lh_total?: JsonFloat;
 };
 
 /**
@@ -2094,17 +2090,13 @@ export type IterationEvent = {
    */
   log_lh_seq?: JsonFloat;
   /**
-   * Log likelihood of the node positions under the clock model.
+   * Log marginal likelihood of the node times: branch-time likelihoods relative to each branch's sequence optimum, coalescent prior included.
    */
-  log_lh_pos?: JsonFloat;
+  log_lh_time?: JsonFloat;
   /**
    * Log likelihood of the coalescent prior.
    */
   log_lh_coal?: JsonFloat;
-  /**
-   * Sum of the available log likelihoods.
-   */
-  log_lh_total?: JsonFloat;
   /**
    * Clock rate of the clock model the iteration used, in substitutions per site per year.
    */

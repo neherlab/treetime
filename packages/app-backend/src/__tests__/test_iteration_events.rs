@@ -36,9 +36,8 @@ mod tests {
           "max_time_change",
           "rms_time_change",
           "log_lh_seq",
-          "log_lh_pos",
+          "log_lh_time",
           "log_lh_coal",
-          "log_lh_total",
         ]
         .iter()
         .map(|key| match &value[key] {
@@ -105,9 +104,8 @@ mod tests {
       "n_diff": 0,
       "n_resolved": 0,
       "max_time_change": 0.5,
-      "log_lh_pos": -10.5,
+      "log_lh_time": -10.5,
       "log_lh_coal": "inf",
-      "log_lh_total": "inf",
       "clock_rate": 0.001,
     }))
     .unwrap();
@@ -117,9 +115,8 @@ mod tests {
       "n_diff": 0,
       "n_resolved": 0,
       "max_time_change": 0.5,
-          "log_lh_pos": -10.5,
+      "log_lh_time": -10.5,
       "log_lh_coal": "inf",
-      "log_lh_total": "inf",
       "clock_rate": 0.001,
       }),
       to_json_value(&&event).unwrap()
@@ -148,7 +145,7 @@ mod tests {
       let text = fs::read_to_string(path).unwrap();
       let mut lines = text.lines();
       assert_eq!(
-        Some("n_diff,n_resolved,max_time_change,rms_time_change,log_lh_seq,log_lh_pos,log_lh_coal,log_lh_total"),
+        Some("n_diff,n_resolved,max_time_change,rms_time_change,log_lh_seq,log_lh_time,log_lh_coal"),
         lines.next(),
         "the tracelog columns are unchanged"
       );

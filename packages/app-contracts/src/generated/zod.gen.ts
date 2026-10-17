@@ -648,9 +648,8 @@ export const zIterationRow = z.object({
   max_time_change: zJsonFloat.optional(),
   rms_time_change: zJsonFloat.optional(),
   log_lh_seq: zJsonFloat.optional(),
-  log_lh_pos: zJsonFloat.optional(),
-  log_lh_coal: zJsonFloat.optional(),
-  log_lh_total: zJsonFloat.optional()
+  log_lh_time: zJsonFloat.optional(),
+  log_lh_coal: zJsonFloat.optional()
 });
 
 /**
@@ -989,9 +988,8 @@ export const zIterationEvent = z.object({
   max_time_change: zJsonFloat.optional(),
   rms_time_change: zJsonFloat.optional(),
   log_lh_seq: zJsonFloat.optional(),
-  log_lh_pos: zJsonFloat.optional(),
+  log_lh_time: zJsonFloat.optional(),
   log_lh_coal: zJsonFloat.optional(),
-  log_lh_total: zJsonFloat.optional(),
   clock_rate: zJsonFloat,
   r_squared: zJsonFloat.optional()
 });

@@ -15,17 +15,14 @@ mod tests {
     constraint_coalescent_node_times, dense_partition_with_constant_leaves, empty_time_inference, find_node_key_by_name,
   };
   use crate::timetree::branch_model::BranchModel;
-  use crate::timetree::convergence::likelihood::{
-    compute_coalescent_log_lh, compute_positional_log_lh, compute_sequence_log_lh,
-  };
+  use crate::timetree::convergence::likelihood::{compute_coalescent_log_lh, compute_sequence_log_lh};
   use crate::timetree::convergence::node_times::NodeTimeChange;
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
-  use crate::timetree::inference::result::{BranchLikelihood, TimeInference};
+  use crate::timetree::inference::result::TimeInference;
   use eyre::Report;
   use maplit::btreemap;
   use ndarray::array;
   use std::collections::BTreeMap;
-  use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -59,33 +56,6 @@ mod tests {
   }
 
   #[test]
-  fn test_likelihood_positional_log_lh_sums_log_probabilities() -> Result<(), Report> {
-    let (graph, names) = helpers::positional_graph()?;
-    let expected = 0.25_f64.ln();
-
-    let state = helpers::positional_state(&graph, &names);
-    let actual = compute_positional_log_lh(&graph, &state)
-      .expect("positional log-likelihood must be available")
-      .value();
-
-    pretty_assert_ulps_eq!(expected, actual, max_ulps = 10);
-    Ok(())
-  }
-
-  #[test]
-  fn test_likelihood_positional_log_lh_absent_without_distributions() -> Result<(), Report> {
-    let nwk_parsed = nwk_read(b"(child:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-
-    let state = empty_time_inference(&graph);
-    let actual = compute_positional_log_lh(&graph, &state);
-
-    assert_eq!(None, actual);
-    Ok(())
-  }
-
-  #[test]
   fn test_likelihood_coalescent_log_lh_matches_total_lh() -> Result<(), Report> {
     let (graph, constraints) = helpers::coalescent_graph()?;
     let tc = Distribution::constant(1.0);
@@ -101,13 +71,15 @@ mod tests {
   }
 
   #[test]
-  fn test_likelihood_optimizer_total_sums_available_log_lh_components() -> Result<(), Report> {
-    let (graph, names) = helpers::positional_graph()?;
+  fn test_likelihood_optimizer_records_sequence_and_time_log_lh() -> Result<(), Report> {
+    let (graph, names) = helpers::two_node_graph()?;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
     let branch_model = BranchModel::Marginal(helpers::partition_with_root_log_lh(&graph, root_key, -2.0)?);
     let mut optimizer = TimetreeOptimizer::new(1);
-    let expected = -2.0 + 0.25_f64.ln();
-    let state = helpers::positional_state(&graph, &names);
+    let state = TimeInference {
+      log_lh_time: Some(LogLh::new(-3.5)),
+      ..empty_time_inference(&graph)
+    };
 
     assert!(optimizer.next_iter(&NoopProgress).is_some());
     optimizer.record(
@@ -122,15 +94,15 @@ mod tests {
       &BTreeMap::new(),
       &NoopProgress,
     )?;
-    let actual = optimizer
+    let metrics = optimizer
       .trace
       .first()
-      .expect("one convergence metric must be recorded")
-      .log_lh_total
-      .expect("total log-likelihood must be available")
-      .value();
+      .expect("one convergence metric must be recorded");
 
-    pretty_assert_ulps_eq!(expected, actual, max_ulps = 10);
+    assert_eq!(
+      (Some(LogLh::new(-2.0)), Some(LogLh::new(-3.5)), None),
+      (metrics.log_lh_seq, metrics.log_lh_time, metrics.log_lh_coal)
+    );
     Ok(())
   }
 
@@ -172,34 +144,11 @@ mod tests {
       }]))
     }
 
-    pub(super) fn positional_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    pub(super) fn two_node_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
       let nwk_parsed = nwk_read(b"(child:0.1)root;".as_slice())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       Ok((graph, names))
-    }
-
-    pub(super) fn positional_state(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> TimeInference {
-      let root_key = find_node_key_by_name(graph, names, "root").expect("root must exist");
-      let child_key = find_node_key_by_name(graph, names, "child").expect("child must exist");
-      let mut state = empty_time_inference(graph);
-      state
-        .posterior
-        .get_mut(&root_key)
-        .expect("root must have a posterior")
-        .time = Some(2000.0);
-      state
-        .posterior
-        .get_mut(&child_key)
-        .expect("child must have a posterior")
-        .time = Some(2005.0);
-      let edge_key = graph.get_edges().next().expect("one edge must exist").key();
-      let branch = BranchLikelihood {
-        distribution: Some(Arc::new(Distribution::range((0.0, 10.0), 0.25))),
-        time_length: None,
-      };
-      state.branches.insert(edge_key, branch);
-      state
     }
 
     pub(super) fn coalescent_graph() -> Result<(Graph, DateConstraints), Report> {

@@ -15,9 +15,8 @@ mod tests {
       max_time_change: Some(0.5),
       rms_time_change: Some(0.125),
       log_lh_seq: Some(LogLh::new(-10.0)),
-      log_lh_pos: Some(LogLh::new(-20.0)),
+      log_lh_time: Some(LogLh::new(-20.0)),
       log_lh_coal: Some(LogLh::new(-30.0)),
-      log_lh_total: Some(LogLh::new(-60.0)),
     };
     let expected = indoc! {r#"{
       "n_diff": 2,
@@ -25,9 +24,8 @@ mod tests {
       "max_time_change": 0.5,
       "rms_time_change": 0.125,
       "log_lh_seq": -10.0,
-      "log_lh_pos": -20.0,
-      "log_lh_coal": -30.0,
-      "log_lh_total": -60.0
+      "log_lh_time": -20.0,
+      "log_lh_coal": -30.0
     }"#};
 
     let actual = json_write_str(&metrics, JsonPretty(true))?;

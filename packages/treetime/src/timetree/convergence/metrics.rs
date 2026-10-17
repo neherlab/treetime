@@ -18,9 +18,10 @@ pub struct ConvergenceMetrics {
   pub max_time_change: Option<f64>,
   pub rms_time_change: Option<f64>,
   pub log_lh_seq: Option<LogLh>,
-  pub log_lh_pos: Option<LogLh>,
+  /// Log marginal likelihood of the node times: branch-time likelihoods relative to each branch's optimum, coalescent
+  /// prior included. Comparable between rounds only while the coalescent timescale and lineage counts are unchanged.
+  pub log_lh_time: Option<LogLh>,
   pub log_lh_coal: Option<LogLh>,
-  pub log_lh_total: Option<LogLh>,
 }
 
 impl ConvergenceMetrics {

@@ -47,9 +47,8 @@ const EVENTS: RunEvent[] = [
       max_time_change: 0.5,
       rms_time_change: 0.1,
       log_lh_seq: -100,
-      log_lh_pos: "-inf",
+      log_lh_time: "inf",
       log_lh_coal: "nan",
-      log_lh_total: "inf",
       clock_rate: 0.001,
     },
   },
@@ -75,7 +74,7 @@ describe("run event folding", () => {
       rSquared: undefined,
       maxTimeChange: 0.5,
       rmsTimeChange: 0.1,
-      logLhTotal: Number.POSITIVE_INFINITY,
+      logLhTime: Number.POSITIVE_INFINITY,
     });
   });
 

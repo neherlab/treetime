@@ -248,16 +248,15 @@ mod tests {
       }
     }
 
-    pub(super) fn metrics(log_lh_total: f64) -> ConvergenceMetrics {
+    pub(super) fn metrics(log_lh_time: f64) -> ConvergenceMetrics {
       ConvergenceMetrics {
         n_diff: 0,
         n_resolved: 0,
         max_time_change: Some(0.1),
         rms_time_change: Some(0.05),
-        log_lh_seq: Some(LogLh::new(log_lh_total + 10.0)),
-        log_lh_pos: Some(LogLh::new(-10.0)),
+        log_lh_seq: Some(LogLh::new(-1000.0)),
+        log_lh_time: Some(LogLh::new(log_lh_time)),
         log_lh_coal: None,
-        log_lh_total: Some(LogLh::new(log_lh_total)),
       }
     }
   }

@@ -31,7 +31,7 @@ export interface IterationPoint {
   rSquared: number | undefined;
   maxTimeChange: number | undefined;
   rmsTimeChange: number | undefined;
-  logLhTotal: number | undefined;
+  logLhTime: number | undefined;
 }
 
 export interface LogEntry {
@@ -228,10 +228,10 @@ function iterationPoint(event: IterationEvent): IterationPoint {
     rSquared: optionalFloat(event.r_squared),
     maxTimeChange: optionalFloat(event.max_time_change),
     rmsTimeChange: optionalFloat(event.rms_time_change),
-    logLhTotal: optionalFloat(event.log_lh_total),
+    logLhTime: optionalFloat(event.log_lh_time),
   };
 }
 
-function optionalFloat(value: IterationEvent["log_lh_total"]): number | undefined {
+function optionalFloat(value: IterationEvent["log_lh_time"]): number | undefined {
   return value === undefined ? undefined : fromJsonFloat(value);
 }

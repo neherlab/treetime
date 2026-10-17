@@ -30,9 +30,8 @@ pub fn timetree_results(outputs: &TimetreeOutputs<'_>, config: &TreetimeTimetree
         max_time_change: metrics.max_time_change.map(JsonFloat),
         rms_time_change: metrics.rms_time_change.map(JsonFloat),
         log_lh_seq: metrics.log_lh_seq.map(JsonFloat::from),
-        log_lh_pos: metrics.log_lh_pos.map(JsonFloat::from),
+        log_lh_time: metrics.log_lh_time.map(JsonFloat::from),
         log_lh_coal: metrics.log_lh_coal.map(JsonFloat::from),
-        log_lh_total: metrics.log_lh_total.map(JsonFloat::from),
       })
       .collect(),
     skyline: outputs
@@ -84,12 +83,10 @@ pub struct IterationRow {
   pub rms_time_change: Option<JsonFloat>,
   /// Log likelihood of the sequences.
   pub log_lh_seq: Option<JsonFloat>,
-  /// Log likelihood of the node positions.
-  pub log_lh_pos: Option<JsonFloat>,
+  /// Log marginal likelihood of the node times: branch-time likelihoods relative to each branch's sequence optimum, coalescent prior included.
+  pub log_lh_time: Option<JsonFloat>,
   /// Log likelihood of the coalescent prior.
   pub log_lh_coal: Option<JsonFloat>,
-  /// Total log likelihood.
-  pub log_lh_total: Option<JsonFloat>,
 }
 
 /// One segment of the coalescent time scale.
@@ -153,7 +150,7 @@ fn timetree_estimates(
     log_likelihood: outputs
       .trace
       .last()
-      .and_then(|metrics| metrics.log_lh_total.map(JsonFloat::from)),
+      .and_then(|metrics| metrics.log_lh_time.map(JsonFloat::from)),
     iterations: outputs.trace.len(),
   }
 }
@@ -187,7 +184,7 @@ pub struct TimetreeEstimates {
   pub coalescent_prior: CoalescentPrior,
   /// Relaxed clock the run used.
   pub relaxed_clock: Option<RelaxedClock>,
-  /// Total log likelihood of the last iteration.
+  /// Log marginal likelihood of the node times in the last iteration (the iterations' `log_lh_time`).
   pub log_likelihood: Option<JsonFloat>,
   /// Number of iterations the tracelog records.
   pub iterations: usize,

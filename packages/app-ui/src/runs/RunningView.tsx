@@ -72,7 +72,7 @@ function IterationPanel({ iterations }: { iterations: readonly IterationPoint[] 
               <NumberCell value={point.clockRate} format={formatRate} />
               <NumberCell value={point.maxTimeChange} format={fixed4} />
               <NumberCell value={point.rmsTimeChange} format={fixed4} />
-              <NumberCell value={point.logLhTotal} format={fixed1} />
+              <NumberCell value={point.logLhTime} format={fixed1} />
             </TableRow>
           ))}
         </TableBody>

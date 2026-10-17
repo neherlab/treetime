@@ -23,6 +23,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::{GridPointLimitExceeded, MaxGridPoints};
+use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
 
 pub(crate) const GRID_POINTS: usize = 300;
@@ -99,8 +100,9 @@ fn infer_times(
     max_grid_points,
   )?;
 
-  if let Some(log_lh) = backward.log_marginal_likelihood(graph.root_key()?)? {
-    progress_info!(log, "**Log marginal likelihood of node times:** {log_lh:.4}");
+  let log_lh_time = backward.log_marginal_likelihood(graph.root_key()?)?.map(LogLh::new);
+  if let Some(log_lh) = log_lh_time {
+    progress_info!(log, "**Log marginal likelihood of node times:** {:.4}", log_lh.value());
   }
 
   progress_info!(log, "## Propagating distributions forward");
@@ -116,6 +118,7 @@ fn infer_times(
 
   progress_info!(log, "# Timetree inference completed");
   Ok(TimeInference {
+    log_lh_time,
     bad_branches,
     branches,
     posterior,
