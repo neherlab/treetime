@@ -4,7 +4,7 @@ mod tests {
   use crate::test_utils::{find_node_key_by_name, parent_edge_key, unknown_branches};
   use crate::timetree::inference::result::BranchLikelihood;
   use crate::timetree::optimization::marginal_clock_rate::{
-    MarginalRateInputs, marginal_log_lh_at_rate, optimize_marginal_clock_rate,
+    MarginalRateInputs, branches_at_rate, marginal_log_lh_at_rate, step_marginal_clock_rate,
   };
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -37,11 +37,32 @@ mod tests {
   }
 
   #[test]
-  fn test_marginal_clock_rate_finds_the_maximum() -> Result<(), Report> {
+  fn test_marginal_clock_rate_steps_half_way_to_the_parabola_maximum() -> Result<(), Report> {
     let setup = helpers::cherry()?;
-    let fit = optimize_marginal_clock_rate(&setup.inputs())?;
-    // the search stops at a relative tolerance of 1e-3 on the square root of the rate
-    assert_abs_diff_eq!((6.0 + 28.0_f64.sqrt()) / 4.0, fit.clock_rate, epsilon = 6e-3);
+    let reference = 2.5;
+    let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
+    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference))?;
+
+    // parabola in x = ln(mu / 2.5) through the closed-form curve at x = -h, 0, h
+    let h = 1.25_f64.ln();
+    let curve = |x: f64| {
+      let mu = reference * x.exp();
+      -mu.ln() - (mu - 3.0).powi(2)
+    };
+    let (below, at, above) = (curve(-h), curve(0.0), curve(h));
+    let target = h * (below - above) / (2.0 * (above + below - 2.0 * at));
+    assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-2);
+    assert_abs_diff_eq!(reference * (0.5 * target).exp(), step.clock_rate, epsilon = 1e-2);
+    Ok(())
+  }
+
+  #[test]
+  fn test_marginal_clock_rate_without_a_maximum_steps_half_the_window_toward_the_better_probe() -> Result<(), Report> {
+    // at mu = 1 the curve -ln(mu) - (mu - 3)^2 is convex in ln(mu) over the probes and rises toward faster rates
+    let setup = helpers::cherry()?;
+    let step = step_marginal_clock_rate(&setup.inputs())?;
+    assert_abs_diff_eq!(2.0, step.target_rate, epsilon = 1e-12);
+    assert_abs_diff_eq!(2.0_f64.sqrt(), step.clock_rate, epsilon = 1e-12);
     Ok(())
   }
 
@@ -51,21 +72,29 @@ mod tests {
     const PRECISION: f64 = 4.0;
 
     pub(super) struct Cherry {
-      graph: Graph,
-      constraints: DateConstraints,
-      bad_branches: BTreeMap<GraphNodeKey, bool>,
-      branches: BTreeMap<treetime_graph::edge::GraphEdgeKey, BranchLikelihood>,
+      pub graph: Graph,
+      pub constraints: DateConstraints,
+      pub bad_branches: BTreeMap<GraphNodeKey, bool>,
+      pub branches: BTreeMap<treetime_graph::edge::GraphEdgeKey, BranchLikelihood>,
     }
 
     impl Cherry {
       pub(super) fn inputs(&self) -> MarginalRateInputs<'_> {
+        self.inputs_at(&self.branches, 1.0)
+      }
+
+      pub(super) fn inputs_at<'a>(
+        &'a self,
+        branches: &'a BTreeMap<treetime_graph::edge::GraphEdgeKey, BranchLikelihood>,
+        reference_rate: f64,
+      ) -> MarginalRateInputs<'a> {
         MarginalRateInputs {
           graph: &self.graph,
           date_constraints: &self.constraints,
           coalescent: None,
           bad_branches: &self.bad_branches,
-          branches: &self.branches,
-          reference_rate: 1.0,
+          branches,
+          reference_rate,
           max_points: MaxGridPoints::default(),
         }
       }

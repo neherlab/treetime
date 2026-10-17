@@ -23,7 +23,7 @@ use crate::timetree::inference::runner::{
   run_timetree, timetree_branch_lengths,
 };
 use crate::timetree::optimization::marginal_clock_rate::{
-  MarginalRateFit, MarginalRateInputs, optimize_marginal_clock_rate,
+  MarginalRateInputs, MarginalRateStep, step_marginal_clock_rate,
 };
 use crate::timetree::optimization::polytomy::resolve::{
   PolytomyResolution, require_internal_node_times, resolve_polytomies,
@@ -328,8 +328,8 @@ fn infer_times(
 }
 
 /// Re-estimates the clock model on the round's times, keeping the root. With a coalescent prior and no user-fixed rate,
-/// the rate maximizes the marginal likelihood of the node times under the round's prior, and the clock model is fitted
-/// with that rate fixed; otherwise the rate comes from the root-to-tip regression.
+/// the rate takes one damped step toward the maximum of the marginal likelihood of the node times under the round's
+/// prior, and the clock model is fitted with that rate fixed; otherwise the rate comes from the root-to-tip regression.
 fn update_clock_model(
   inputs: &RoundInputs<'_>,
   prior: Option<&CoalescentModel>,
@@ -389,7 +389,11 @@ fn marginal_clock_rate(
   log: &dyn LogSink,
 ) -> Result<f64, Report> {
   let reference_rate = state.clock_model.clock_rate();
-  let MarginalRateFit { clock_rate, log_lh } = optimize_marginal_clock_rate(&MarginalRateInputs {
+  let MarginalRateStep {
+    clock_rate,
+    target_rate,
+    log_lh,
+  } = step_marginal_clock_rate(&MarginalRateInputs {
     graph: &state.graph,
     date_constraints: &inputs.context.date_constraints,
     coalescent: Some(prior),
@@ -401,7 +405,7 @@ fn marginal_clock_rate(
   .wrap_err("Failed to estimate the clock rate from the marginal likelihood of the node times")?;
   progress_info!(
     log,
-    "Clock rate maximizing the marginal likelihood of the node times: {clock_rate:.6e} (was {reference_rate:.6e}), log_lh_time={log_lh:.2}"
+    "Clock rate stepped toward the maximum of the marginal likelihood of the node times: {clock_rate:.6e} (was {reference_rate:.6e}, target {target_rate:.6e}), log_lh_time={log_lh:.2}"
   );
   Ok(clock_rate)
 }
