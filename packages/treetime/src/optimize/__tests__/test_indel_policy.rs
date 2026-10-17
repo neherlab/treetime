@@ -7,7 +7,7 @@ mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::test_utils::deletion;
   use eyre::Report;
-  use helpers::{BRANCH_LENGTH, Fixture};
+  use helpers::{BRANCH_LENGTH, Fixture, INDEL_COUNT, INDEL_COUNT_F64, INDEL_COUNT_U64, INDEL_RATE};
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -17,7 +17,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::include(IndelPolicy::Include, 4.0)]
+  #[case::include(IndelPolicy::Include, INDEL_RATE)]
   #[case::exclude(IndelPolicy::Exclude, 0.0)]
   #[trace]
   fn test_indel_policy_rate_is_poisson_estimate_or_zero(
@@ -32,9 +32,9 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::include_indel_edge(IndelPolicy::Include, 0, (3, 4.0))]
-  #[case::include_other_edge(IndelPolicy::Include, 1, (0, 4.0))]
-  #[case::exclude_indel_edge(IndelPolicy::Exclude, 0, (0, 0.0))]
+  #[case::include_indel_edge(IndelPolicy::Include, 0, (INDEL_COUNT, INDEL_RATE))]
+  #[case::include_other_edge(IndelPolicy::Include, 1, (0,           INDEL_RATE))]
+  #[case::exclude_indel_edge(IndelPolicy::Exclude, 0, (0,           0.0))]
   #[trace]
   fn test_indel_policy_term_carries_edge_count_and_rate(
     #[case] policy: IndelPolicy,
@@ -51,7 +51,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::include(IndelPolicy::Include, (3, 4.0))]
+  #[case::include(IndelPolicy::Include, (INDEL_COUNT, INDEL_RATE))]
   #[case::exclude(IndelPolicy::Exclude, (0, 0.0))]
   #[trace]
   fn test_indel_policy_chain_term_sums_counts_and_keeps_held_length(
@@ -69,8 +69,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::include(IndelPolicy::Include, (3.0 * 2.0_f64.ln() - 2.0 - ln_factorial(3), 2.0, -12.0))]
-  #[case::exclude(IndelPolicy::Exclude, (0.0,                                         0.0,  0.0))]
+  #[case::include(IndelPolicy::Include, (INDEL_COUNT_F64 * (INDEL_RATE * 0.5).ln() - INDEL_RATE * 0.5 - ln_factorial(INDEL_COUNT_U64), INDEL_COUNT_F64 / 0.5 - INDEL_RATE, -INDEL_COUNT_F64 / (0.5 * 0.5)))]
+  #[case::exclude(IndelPolicy::Exclude, (0.0, 0.0, 0.0))]
   #[trace]
   fn test_indel_policy_objective_term_is_poisson_or_zero(
     #[case] policy: IndelPolicy,
@@ -86,7 +86,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::include(IndelPolicy::Include, 3.0 * 0.5_f64.ln() - 3.0 - ln_factorial(3))]
+  #[case::include(IndelPolicy::Include, INDEL_COUNT_F64 * (INDEL_RATE * BRANCH_LENGTH).ln() - 6.0 * INDEL_RATE * BRANCH_LENGTH - ln_factorial(INDEL_COUNT_U64))]
   #[case::exclude(IndelPolicy::Exclude, 0.0)]
   #[trace]
   fn test_indel_policy_total_log_lh_sums_poisson_terms_or_is_zero(
@@ -130,8 +130,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::include(IndelPolicy::Include, array![0.75, 0.0, 0.0, 0.0, 0.0, 0.0])]
-  #[case::exclude(IndelPolicy::Exclude, array![0.0,  0.0, 0.0, 0.0, 0.0, 0.0])]
+  #[case::include(IndelPolicy::Include, array![INDEL_COUNT_F64 / INDEL_RATE, 0.0, 0.0, 0.0, 0.0, 0.0])]
+  #[case::exclude(IndelPolicy::Exclude, array![0.0,                        0.0, 0.0, 0.0, 0.0, 0.0])]
   #[trace]
   fn test_indel_policy_initial_guess(#[case] policy: IndelPolicy, #[case] expected: Array1<f64>) -> Result<(), Report> {
     let mut fixture = Fixture::new()?;
@@ -159,11 +159,11 @@ mod tests {
   #[test]
   fn test_indel_policy_term_length_estimate_is_poisson_optimum() {
     let term = IndelTerm {
-      count: 3,
-      rate: 4.0,
+      count: INDEL_COUNT,
+      rate: INDEL_RATE,
       held_length: 0.0,
     };
-    let expected = 0.75;
+    let expected = INDEL_COUNT_F64 / INDEL_RATE;
     pretty_assert_ulps_eq!(expected, term.length_estimate().expect("positive count and rate"));
   }
 
@@ -182,7 +182,7 @@ mod tests {
     let recounted = indels.recount(&fixture.graph, &fixture.reconstruction);
     let term = recounted.term(fixture.edge(0));
     assert_eq!(2, term.count);
-    pretty_assert_ulps_eq!(4.0, term.rate);
+    pretty_assert_ulps_eq!(INDEL_RATE, term.rate);
     Ok(())
   }
 
@@ -213,6 +213,10 @@ mod tests {
     use treetime_primitives::Seq;
 
     pub(super) const BRANCH_LENGTH: f64 = 0.125;
+    pub(super) const INDEL_COUNT: usize = 3;
+    pub(super) const INDEL_COUNT_F64: f64 = 3.0;
+    pub(super) const INDEL_COUNT_U64: u64 = 3;
+    pub(super) const INDEL_RATE: f64 = INDEL_COUNT_F64 / (6.0 * BRANCH_LENGTH);
 
     pub(super) struct Fixture {
       pub graph: Graph,
