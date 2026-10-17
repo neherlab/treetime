@@ -223,6 +223,10 @@ pub(crate) fn blended_clock_branch_lengths(
   clock_branch_lengths
 }
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the tree, reconstruction, per-edge rate multipliers, clock rate, indel policy and grid limit are independent inputs of one time-inference pass"
+)]
 fn compute_branch_distributions_marginal_mode(
   graph: &Graph,
   partition: &MarginalReconstruction,

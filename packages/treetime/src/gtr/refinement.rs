@@ -15,6 +15,10 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the marginal passes take the partition, model, pass results, graph and branch lengths as separate values, so the refinement forwards them"
+)]
 pub(crate) fn refine_gtr_model<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
@@ -47,6 +51,10 @@ pub(crate) fn refine_gtr_model<P: MarginalPasses>(
   Ok((gtr, update))
 }
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the marginal passes take the partition, model, pass results, graph and branch lengths as separate values, so the refinement forwards them"
+)]
 pub(crate) fn refine_gtr_model_and_rate<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,

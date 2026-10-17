@@ -15,6 +15,10 @@ use treetime_utils::cast::ToF64Exact;
 use treetime_utils::cast::f64_to_usize_saturating;
 use treetime_utils::make_error;
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the tree state, branch model, coalescent merger rate and random generator come from different parts of the round state"
+)]
 pub(crate) fn resolve_polytomies(
   mut graph: Graph,
   mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,

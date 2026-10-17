@@ -9,6 +9,10 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the clock filter result and the given dates come from different steps of the pre-loop, and the report reads each of them"
+)]
 pub(crate) fn report_outliers(
   graph: &Graph,
   outliers: &BTreeSet<GraphNodeKey>,

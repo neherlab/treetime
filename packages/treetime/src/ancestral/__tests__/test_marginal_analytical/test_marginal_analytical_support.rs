@@ -40,6 +40,10 @@ pub(super) mod tests {
     likelihood
   }
 
+  #[expect(
+    clippy::too_many_arguments,
+    reason = "the parameters are the observed states and branch lengths of the closed-form three-taxon likelihood"
+  )]
   pub(crate) fn analytical_three_taxon_likelihood(
     gtr: &GTR,
     obs_a: usize,

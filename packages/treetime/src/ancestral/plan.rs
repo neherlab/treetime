@@ -51,6 +51,10 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPla
   }
 }
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the partition inputs come from the command and the random generator, cancellation, stage and log sinks are run services of the caller; no type holds both groups"
+)]
 pub(crate) fn reconstruct_partition(
   graph: &Graph,
   plan: &ReconstructionPlan,
@@ -126,6 +130,10 @@ fn reconstruct_fitch(
   Ok(AncestralPartition::Fitch(partition))
 }
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the partition inputs come from the command and the random generator, cancellation, stage and log sinks are run services of the caller; no type holds both groups"
+)]
 fn reconstruct_marginal(
   graph: &Graph,
   reconstruction: MarginalReconstruction,

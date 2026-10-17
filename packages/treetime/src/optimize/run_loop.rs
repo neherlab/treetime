@@ -196,6 +196,10 @@ pub(crate) enum ConvergenceReason {
   NumericalFailure,
 }
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the graph, branch lengths and names are the loop state that the caller borrows mutably one part at a time; the settings are already grouped in `OptimizeLoopSettings`"
+)]
 fn update_branch_lengths(
   graph: &mut Graph,
   reconstruction: MarginalReconstruction,

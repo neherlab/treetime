@@ -10,6 +10,10 @@ use eyre::{Report, WrapErr};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::sync::random::get_random_number_generator;
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the round inputs and state are grouped; the trace sink, cancellation, stage and log sinks are separate run services of the caller"
+)]
 pub(crate) fn run_refinement_loop(
   inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,

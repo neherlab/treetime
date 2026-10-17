@@ -47,6 +47,10 @@ impl<'a> TimetreeOptimizer<'a> {
     Some(IterationContext { i: self.i })
   }
 
+  #[expect(
+    clippy::too_many_arguments,
+    reason = "one iteration record combines the changes of the round with the tree, models and clock that the log-likelihood terms read"
+  )]
   pub(crate) fn record(
     &mut self,
     sequence_changes: usize,

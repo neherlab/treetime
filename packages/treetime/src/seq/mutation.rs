@@ -18,6 +18,10 @@ use treetime_primitives::AsciiChar;
 use treetime_primitives::Seq;
 use treetime_utils::error::{report_to_string, to_eyre_error};
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "dense and sparse reconstructions supply node sequences and edge indels as closures over their own state, next to the output switches and the optional sink"
+)]
 pub(crate) fn stream_sequence_mutations(
   graph: &Graph,
   alphabet: &Alphabet,
