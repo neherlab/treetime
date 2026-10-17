@@ -55,7 +55,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_qs",
- "thiserror 2.0.21",
+ "thiserror",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -152,7 +152,7 @@ dependencies = [
  "derive_more",
  "deser",
  "deser-serde",
- "dirs 6.0.0",
+ "dirs",
  "eyre",
  "indoc",
  "itertools",
@@ -448,7 +448,7 @@ dependencies = [
  "num-traits",
  "paste",
  "rand_xoshiro",
- "thiserror 2.0.21",
+ "thiserror",
  "web-time",
 ]
 
@@ -463,7 +463,7 @@ dependencies = [
  "num-complex",
  "num-integer",
  "num-traits",
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]
@@ -665,15 +665,6 @@ name = "bitflags"
 version = "2.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
-
-[[package]]
-name = "blas-src"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bae1f9c995f3deabb3eff7ed9272369a6f260e961c8723779b951c35056c45d"
-dependencies = [
- "openblas-src",
-]
 
 [[package]]
 name = "block-buffer"
@@ -1432,7 +1423,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10d60334b3b2e7c9d91ef8150abfb6fa4c1c39ebbcf4a81c2e346aad939fee3e"
 dependencies = [
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]
@@ -1599,31 +1590,11 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "3.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30baa043103c9d0c2a57cf537cc2f35623889dc0d405e6c3cccfadbc81c71309"
-dependencies = [
- "dirs-sys 0.3.7",
-]
-
-[[package]]
-name = "dirs"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3e8aa94d75141228480295a7d0e7feb620b1a5ad9f12bc40be62411e38cce4e"
 dependencies = [
- "dirs-sys 0.5.0",
-]
-
-[[package]]
-name = "dirs-sys"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
-dependencies = [
- "libc",
- "redox_users 0.4.6",
- "winapi",
+ "dirs-sys",
 ]
 
 [[package]]
@@ -1634,7 +1605,7 @@ checksum = "e01a3366d27ee9890022452ee61b2b63a67e6f13f58900b651ff5665f0bb1fab"
 dependencies = [
  "libc",
  "option-ext",
- "redox_users 0.5.3",
+ "redox_users",
  "windows-sys 0.61.2",
 ]
 
@@ -1869,7 +1840,7 @@ dependencies = [
  "core-foundation 0.9.4",
  "core-graphics",
  "core-text",
- "dirs 6.0.0",
+ "dirs",
  "dwrote",
  "float-ord",
  "freetype-sys",
@@ -2625,7 +2596,7 @@ dependencies = [
  "jni-sys",
  "log",
  "simd_cesu8",
- "thiserror 2.0.21",
+ "thiserror",
  "walkdir",
  "windows-link",
 ]
@@ -2749,7 +2720,7 @@ dependencies = [
  "lapack-sys",
  "num-traits",
  "openblas-src",
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]
@@ -3141,7 +3112,7 @@ dependencies = [
  "num",
  "realfft",
  "rustfft",
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]
@@ -3156,7 +3127,7 @@ dependencies = [
  "num-complex",
  "num-traits",
  "rand 0.8.8",
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]
@@ -3309,10 +3280,10 @@ checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
 
 [[package]]
 name = "openblas-src"
-version = "0.10.12"
-source = "git+https://github.com/numrs/openblas-src?rev=0964a10#0964a10ac04d7c7dde184f9555ccee45fac244b8"
+version = "0.10.16"
+source = "git+https://github.com/numrs/openblas-src?rev=bdc5d5f#bdc5d5fb53cf812133b0a968a83acdaa04aeb681"
 dependencies = [
- "dirs 3.0.2",
+ "pkg-config",
  "vcpkg",
 ]
 
@@ -3896,23 +3867,12 @@ dependencies = [
 
 [[package]]
 name = "redox_users"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
-dependencies = [
- "getrandom 0.2.17",
- "libredox",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "redox_users"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60dc65c0ff1a7ae1294b0c67b9f14baf70b644404010370171787bfac1038fc0"
 dependencies = [
  "libredox",
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]
@@ -4277,7 +4237,7 @@ dependencies = [
  "hashlink",
  "ordered-float",
  "saphyr-parser",
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]
@@ -4287,7 +4247,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0b1b76852c5643f558e7347e4de549474c3ecb7154295a189f4668428c1b453"
 dependencies = [
  "arraydeque",
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]
@@ -4749,31 +4709,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
-dependencies = [
- "thiserror-impl 1.0.69",
-]
-
-[[package]]
-name = "thiserror"
 version = "2.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09e52cb86a36cede5cb101bf8908837b3e4c6e5e59fe7fd85c23fb56200d189e"
 dependencies = [
- "thiserror-impl 2.0.21",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
+ "thiserror-impl",
 ]
 
 [[package]]
@@ -5071,7 +5011,6 @@ dependencies = [
  "approx",
  "argmin",
  "auto_ops",
- "blas-src",
  "bon",
  "color-eyre",
  "criterion",
@@ -5090,7 +5029,6 @@ dependencies = [
  "ndarray-stats",
  "num",
  "num-traits",
- "openblas-src",
  "ordered-float",
  "parking_lot",
  "pretty_assertions",
@@ -5275,7 +5213,6 @@ name = "treetime-utils"
 version = "1.0.0"
 dependencies = [
  "approx",
- "blas-src",
  "bzip2",
  "chrono",
  "chronoutil",
@@ -5302,7 +5239,6 @@ dependencies = [
  "ndarray-stats",
  "num",
  "num-traits",
- "openblas-src",
  "ordered-float",
  "parking_lot",
  "pretty_assertions",
@@ -5494,7 +5430,7 @@ dependencies = [
  "rayon",
  "rstest",
  "smart-default",
- "thiserror 2.0.21",
+ "thiserror",
 ]
 
 [[package]]

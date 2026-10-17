@@ -103,21 +103,19 @@ strip = "none"
 lapack-sys = { git = "https://github.com/numrs/lapack-sys", rev = "d3b1ca9" }
 lax = { git = "https://github.com/numrs/ndarray-linalg", rev = "ac7052e" }
 ndarray-linalg = { git = "https://github.com/numrs/ndarray-linalg", rev = "ac7052e" }
-openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "0964a10" }
+openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "bdc5d5f" }
 
 
 # The `#[wasm_bindgen]` exports of async methods call `wasm-bindgen-futures`, which
 # the crate source never names.
 [workspace.metadata.cargo-shear]
-ignored = ["blas-src", "openblas-src", "wasm-bindgen-futures"]
+ignored = ["wasm-bindgen-futures"]
 
 
 [workspace.dependencies]
-blas-src = { version = "=0.12.1", features = ["openblas-src"] }
 ndarray = { version = "=0.16.1", features = ["rayon", "approx", "blas"] }
 ndarray-linalg = { version = "=0.17.0", features = ["openblas-system"] }
 ndarray-stats = "=0.6.0"
-openblas-src = { version = "=0.10.12", features = ["system"] }
 
 bzip2 = { version = "=0.6.1", features = ["static"] }
 flate2 = "=1.1.9"

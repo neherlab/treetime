@@ -61,8 +61,6 @@ skip = [
   { crate = "cpufeatures:<0.3", reason = "headers 0.4 requires sha1 0.10 and its digest 0.10 stack; sha2 0.11 requires digest 0.11" },
   { crate = "crypto-common:<0.2", reason = "headers 0.4 requires sha1 0.10 and its digest 0.10 stack; sha2 0.11 requires digest 0.11" },
   { crate = "digest:<0.11", reason = "headers 0.4 requires sha1 0.10 and its digest 0.10 stack; sha2 0.11 requires digest 0.11" },
-  { crate = "dirs:<6", reason = "the pinned openblas-src fork requires dirs 3 in its build script; font-kit 0.14.3, required by plotters 0.3.7, requires dirs 6" },
-  { crate = "dirs-sys:<0.5", reason = "dirs 3, required by the pinned openblas-src fork" },
   { crate = "getrandom:<0.4", reason = "rand 0.8 requires getrandom 0.2; every jsonschema release requires getrandom 0.3 through ahash; rand 0.10 requires getrandom 0.4" },
   { crate = "libloading:<0.9", reason = "bindgen 0.70, pinned by the lapack-sys fork, requires libloading 0.8 through clang-sys; napi-sys requires 0.9" },
   { crate = "rand:<0.10", reason = "cauchy, num-complex, ndarray-linalg, ndarray-stats, and statrs with nalgebra require rand 0.8; TreeTime uses rand 0.10" },
