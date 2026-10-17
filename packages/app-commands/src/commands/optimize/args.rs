@@ -333,8 +333,8 @@ pub enum BranchOptMethodCli {
   /// golden-section steps. Optimizing $s=\sqrt{t}$ instead of $t$ smooths the
   /// likelihood near short branches, so the interpolation fits better. v0
   /// uses the same method and parameterization, with its own search bounds
-  /// and stopping rule, so branch lengths can differ slightly from v0. This
-  /// is the default.
+  /// and stopping rule, so branch lengths can differ from v0. This is the
+  /// default.
   #[default]
   Brent,
 

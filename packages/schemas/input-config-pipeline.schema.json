@@ -4440,7 +4440,7 @@
         {
           "anyOf": [
             {
-              "description": "Brent's method in $\\sqrt{t}$ space.\n\nDerivative-free line search that combines parabolic interpolation with\ngolden-section steps. Optimizing $s=\\sqrt{t}$ instead of $t$ smooths the\nlikelihood near short branches, so the interpolation fits better. v0\nuses the same method and parameterization, with its own search bounds\nand stopping rule, so branch lengths can differ slightly from v0. This\nis the default.",
+              "description": "Brent's method in $\\sqrt{t}$ space.\n\nDerivative-free line search that combines parabolic interpolation with\ngolden-section steps. Optimizing $s=\\sqrt{t}$ instead of $t$ smooths the\nlikelihood near short branches, so the interpolation fits better. v0\nuses the same method and parameterization, with its own search bounds\nand stopping rule, so branch lengths can differ from v0. This is the\ndefault.",
               "type": "string",
               "const": "brent"
             },
