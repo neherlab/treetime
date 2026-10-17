@@ -54,6 +54,22 @@ adds internal nodes. A skyline $T_c(t)$ has enough expressiveness to absorb that
 constant $T_c$ has less. Re-freezing on topology change is the obvious refinement if the fixed-$T_c$
 modes turn out to drift, and is a one-line change in `refine_topology`.
 
+## Before the root
+
+$k(t)$ ends at the root of the tree it was built from, but the root of a later pass may move older. A root
+placed before the earliest merger has not merged yet, so the count there is 2, and $H(t)$ continues at their
+per-lineage rate $1/(2T_c)$ at the earliest $T_c$. A cherry's root prior is then the Kingman density
+$(1/T_c)\,e^{-(t_{tip}-t)/T_c}$ on both sides of the reference root.
+
+v0 counts one lineage there and keeps $H$ flat, so the survival penalty stops at the reference root and the
+prior on an older root is flat and improper. Integrated over that flat region, the root adds about
+$\ln(1/\mu)$ to `log_lh_time` and pulls the marginal clock rate toward slow clocks. With frozen $k_0$ the
+reference root is the deep prior-free one and few runs reach the region; with $k(t)$ rebuilt from a prior
+pass the inferred root moved decades into it.
+
+From the root on, the node contributions still match v0 (`test_gm_coalescent_model_matches_v0_node_contributions`
+compares that range).
+
 ## Polytomy resolution uses the same model
 
 Polytomy resolution samples mergers at the per-branch coalescent rate, so it needs a model even for
