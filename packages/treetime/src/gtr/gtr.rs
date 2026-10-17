@@ -246,6 +246,10 @@ fn has_equal_positive_exchangeabilities(W: &Array2<f64>) -> bool {
     .is_some_and(|first| first > 0.0 && off_diagonal.all(|w| w == first))
 }
 
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+)]
 fn eig_single_site(
   W: &Array2<f64>,
   pi: ArrayView1<'_, f64>,

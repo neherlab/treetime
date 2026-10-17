@@ -78,6 +78,5 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-git = [
   "https://github.com/numrs/lapack-sys",
-  "https://github.com/numrs/ndarray-linalg",
   "https://github.com/numrs/openblas-src",
 ]

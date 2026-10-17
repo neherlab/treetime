@@ -802,6 +802,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
+name = "castaway"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dec551ab6e7578819132c713a93c022a05d60159dc86e7a7050223577484c55a"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "cauchy"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2712,8 +2721,9 @@ dependencies = [
 
 [[package]]
 name = "lax"
-version = "0.17.0"
-source = "git+https://github.com/numrs/ndarray-linalg?rev=ac7052e#ac7052e20c1c6d1915603de575cce02123c5f414"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5043cf8e975964af8a16080388fc629632630a56916bedc4631b9dc6f8048d28"
 dependencies = [
  "cauchy",
  "katexit",
@@ -3085,9 +3095,9 @@ dependencies = [
 
 [[package]]
 name = "ndarray"
-version = "0.16.1"
+version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "882ed72dce9365842bf196bdeedf5055305f11fc8c03dee7bb0194a6cad34841"
+checksum = "520080814a7a6b4a6e9070823bb24b4531daac8c4627e08ba5de8c5ef2f2752d"
 dependencies = [
  "approx",
  "cblas-sys",
@@ -3104,10 +3114,11 @@ dependencies = [
 
 [[package]]
 name = "ndarray-conv"
-version = "0.5.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "934c8fc85618e56ce261d448b743b2056274c680dd5166c07cb1036bf1f676c7"
+checksum = "ee3237bc3bd3c0812a13c7e76251f500686db835e7023cd7d6ed7e8d23d6a00f"
 dependencies = [
+ "castaway",
  "ndarray",
  "num",
  "realfft",
@@ -3117,8 +3128,9 @@ dependencies = [
 
 [[package]]
 name = "ndarray-linalg"
-version = "0.17.0"
-source = "git+https://github.com/numrs/ndarray-linalg?rev=ac7052e#ac7052e20c1c6d1915603de575cce02123c5f414"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb0783188ff249ab498417e0477f7fade3b312d1d287314ca76de570d9a83ee0"
 dependencies = [
  "cauchy",
  "katexit",
@@ -3132,9 +3144,9 @@ dependencies = [
 
 [[package]]
 name = "ndarray-stats"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17ebbe97acce52d06aebed4cd4a87c0941f4b2519b59b82b4feb5bd0ce003dfd"
+checksum = "9b6e54a8b65764f71827a90ca1d56965ec0c67f069f996477bd493402a901d1f"
 dependencies = [
  "indexmap",
  "itertools",
@@ -4671,7 +4683,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",

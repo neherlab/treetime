@@ -213,7 +213,8 @@ pub(crate) fn normalize_1d_inplace(mut dis: ArrayViewMut1<'_, f64>, weight: f64)
     dis /= norm;
     weight * norm.ln()
   } else {
-    dis.fill(1.0 / dis.len().to_f64_exact());
+    let uniform = 1.0 / dis.len().to_f64_exact();
+    dis.fill(uniform);
     f64::NEG_INFINITY
   }
 }

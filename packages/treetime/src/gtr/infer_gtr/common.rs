@@ -118,6 +118,10 @@ pub(crate) fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {
   (pi_old - pi).mapv(|x| x * x).sum().sqrt()
 }
 
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+)]
 pub(crate) fn is_profile_informative(profile: ArrayView1<'_, f64>, n_states: usize) -> bool {
   let uniform_threshold = 1.0 / n_states.to_f64_exact() + 1e-10;
   is_max_above(&profile, uniform_threshold)

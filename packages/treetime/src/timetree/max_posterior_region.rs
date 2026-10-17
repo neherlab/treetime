@@ -26,6 +26,10 @@ pub fn max_posterior_region(
   Ok(Some(MaxPosteriorRegion::Grid(region)))
 }
 
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+)]
 pub(crate) fn grid_max_posterior_region(
   t: ArrayView1<f64>,
   neglog: ArrayView1<f64>,
@@ -106,6 +110,10 @@ pub enum PeakLocation {
   Latest,
 }
 
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+)]
 fn latest_peak_index(neglog: ArrayView1<f64>) -> usize {
   neglog
     .iter()
@@ -115,6 +123,10 @@ fn latest_peak_index(neglog: ArrayView1<f64>) -> usize {
     .map_or(0, |(i, _)| i)
 }
 
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+)]
 fn highest_density_interval(
   t: ArrayView1<f64>,
   neglog: ArrayView1<f64>,
@@ -169,6 +181,10 @@ struct GridCdf<'a> {
 }
 
 impl<'a> GridCdf<'a> {
+  #[expect(
+    clippy::needless_pass_by_value,
+    reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+  )]
   fn new(t: ArrayView1<'a, f64>, heights: impl Iterator<Item = f64>) -> Self {
     let cells = t
       .iter()
@@ -215,6 +231,10 @@ struct LevelSide<'a> {
 }
 
 impl<'a> LevelSide<'a> {
+  #[expect(
+    clippy::needless_pass_by_value,
+    reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+  )]
   fn new(t: ArrayView1<'a, f64>, heights: impl Iterator<Item = f64>) -> Self {
     let envelope = heights
       .scan(f64::NEG_INFINITY, |running_max, h| {

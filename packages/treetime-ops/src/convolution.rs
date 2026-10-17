@@ -1,15 +1,17 @@
 use crate::traits::ConvolveAlgo;
 use eyre::Report;
 use ndarray::Array1;
-use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, FftProcessor, PaddingMode};
+use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, PaddingMode, get_fft_processor};
+use std::any::Any;
 use std::cell::RefCell;
 use std::cmp::Ordering;
+use treetime_utils::make_internal_report;
 
 const FFT_PROCESSORS_PER_THREAD: usize = 8;
 const MAX_CACHED_FFT_LEN: usize = 1 << 14;
 
 thread_local! {
-  static FFT_PROCESSORS_BY_FFT_LEN: RefCell<Vec<(usize, FftProcessor<f64>)>> = const { RefCell::new(Vec::new()) };
+  static FFT_PROCESSORS_BY_FFT_LEN: RefCell<Vec<(usize, Box<dyn Any>)>> = const { RefCell::new(Vec::new()) };
 }
 
 pub struct RiemannConvolve;
@@ -73,8 +75,8 @@ pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> 
     f_values.conv_fft(g_values, ConvMode::Full, PaddingMode::Zeros)?
   } else {
     FFT_PROCESSORS_BY_FFT_LEN.with_borrow_mut(|processors| {
-      let processor = processor_for_fft_len(processors, fft_len);
-      f_values.conv_fft_with_processor(g_values, ConvMode::Full, PaddingMode::Zeros, processor)
+      let processor = processor_for_fft_len(processors, fft_len, get_fft_processor::<f64, f64>)?;
+      Ok::<_, Report>(f_values.conv_fft_with_processor(g_values, ConvMode::Full, PaddingMode::Zeros, processor)?)
     })?
   };
   let continuous_conv = &discrete_conv * dx;
@@ -100,18 +102,26 @@ fn fft_len(padded_len: usize) -> usize {
   len
 }
 
-fn processor_for_fft_len(processors: &mut Vec<(usize, FftProcessor<f64>)>, fft_len: usize) -> &mut FftProcessor<f64> {
+fn processor_for_fft_len<P: Any>(
+  processors: &mut Vec<(usize, Box<dyn Any>)>,
+  fft_len: usize,
+  new_processor: impl FnOnce() -> P,
+) -> Result<&mut P, Report> {
   let entry = if let Some(index) = processors.iter().position(|(len, _)| *len == fft_len) {
     processors.remove(index)
   } else {
     if processors.len() >= FFT_PROCESSORS_PER_THREAD {
       processors.remove(0);
     }
-    (fft_len, FftProcessor::default())
+    let processor: Box<dyn Any> = Box::new(new_processor());
+    (fft_len, processor)
   };
   processors.push(entry);
   let index = processors.len() - 1;
-  &mut processors[index].1
+  processors[index]
+    .1
+    .downcast_mut::<P>()
+    .ok_or_else(|| make_internal_report!("FFT processor cache holds a processor of another type"))
 }
 
 #[cfg(test)]

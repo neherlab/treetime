@@ -21,6 +21,10 @@ impl SampleMode {
   }
 }
 
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+)]
 pub(crate) fn resolve_profile(profile: ArrayView1<f64>, resolve: &mut Resolve) -> usize {
   match resolve {
     Resolve::Argmax => argmax_first(&profile).unwrap_or(0),
@@ -28,6 +32,10 @@ pub(crate) fn resolve_profile(profile: ArrayView1<f64>, resolve: &mut Resolve) -
   }
 }
 
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
+)]
 pub(crate) fn sample_from_profile(profile: ArrayView1<f64>, rng: &mut dyn Rng) -> usize {
   let cumsum: Vec<f64> = profile
     .iter()
