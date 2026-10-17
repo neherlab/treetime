@@ -2,10 +2,16 @@ use crate::make_internal_report;
 use eyre::Report;
 use rand::seq::IteratorRandom;
 use rand::{Rng, RngExt, SeedableRng};
-#[expect(deprecated, reason = "rand_isaac 0.5 marks its generators deprecated; Isaac64 stays the run generator until it is replaced")]
+#[expect(
+  deprecated,
+  reason = "rand_isaac 0.5 marks its generators deprecated; Isaac64 stays the run generator until it is replaced"
+)]
 use rand_isaac::Isaac64Rng;
 
-#[expect(deprecated, reason = "rand_isaac 0.5 marks its generators deprecated; Isaac64 stays the run generator until it is replaced")]
+#[expect(
+  deprecated,
+  reason = "rand_isaac 0.5 marks its generators deprecated; Isaac64 stays the run generator until it is replaced"
+)]
 pub fn get_random_number_generator(seed: u64) -> impl Rng + Send + Sync + Clone {
   Isaac64Rng::seed_from_u64(seed)
 }
