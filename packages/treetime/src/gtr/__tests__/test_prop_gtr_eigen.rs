@@ -10,16 +10,17 @@ mod tests {
 
     #[test]
     fn test_prop_gtr_eigen_eigvals_nonpositive(gtr in arb_gtr_nuc()) {
-      prop_assert_array_upper_bounded!(gtr.eigvals(), bound = 0.0, epsilon = 1e-10);
+      prop_assert_array_upper_bounded!(gtr.rate_eigvals() / gtr.mu(), bound = 0.0, epsilon = 1e-10);
     }
 
     #[test]
     fn test_prop_gtr_eigen_eigvals_one_zero_eigenvalue(gtr in arb_gtr_nuc()) {
-      let zero_count = gtr.eigvals().iter().filter(|&&e| e.abs() < 1e-10).count();
+      let eigvals = gtr.rate_eigvals() / gtr.mu();
+      let zero_count = eigvals.iter().filter(|&&e| e.abs() < 1e-10).count();
       prop_assert!(
         zero_count == 1,
         "Expected exactly 1 zero eigenvalue, found {zero_count}: {:?}",
-        gtr.eigvals()
+        eigvals
       );
     }
 

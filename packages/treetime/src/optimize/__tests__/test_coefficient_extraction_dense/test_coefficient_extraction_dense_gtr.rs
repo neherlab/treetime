@@ -35,6 +35,6 @@ mod tests {
 
     let contribution = get_coefficients(&msg_to_parent, &msg_to_child, &gtr);
 
-    pretty_assert_ulps_eq!(contribution.gtr.eigvals(), gtr.eigvals(), max_ulps = 10);
+    pretty_assert_ulps_eq!(contribution.gtr.rate_eigvals(), gtr.rate_eigvals(), max_ulps = 10);
   }
 }

@@ -69,7 +69,7 @@ mod tests {
       ..F81Params::default()
     })?;
     let decay_rate = gtr.certified_decay_rate().unwrap();
-    let rate_eigvals = gtr.eigvals() * gtr.mu();
+    let rate_eigvals = gtr.rate_eigvals();
     let expected = array![-decay_rate, -decay_rate, -decay_rate, 0.0];
     assert_abs_diff_eq!(expected, rate_eigvals, epsilon = 1e-14);
     Ok(())
@@ -111,7 +111,11 @@ mod tests {
     let mut updated = original.clone();
     updated.set_mu(3.0)?;
     assert_ulps_eq!(3.0, updated.mu(), max_ulps = 0);
-    assert_eq!(original.eigvals(), updated.eigvals());
+    assert_ulps_eq!(
+      original.rate_eigvals() / original.mu(),
+      updated.rate_eigvals() / updated.mu(),
+      max_ulps = 4
+    );
     assert_eq!(original.v(), updated.v());
     assert_eq!(original.v_inv(), updated.v_inv());
     Ok(())

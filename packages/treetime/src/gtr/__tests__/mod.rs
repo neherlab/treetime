@@ -1,4 +1,3 @@
-mod eigvals;
 mod generators;
 mod prop_support;
 mod rate_matrix;
