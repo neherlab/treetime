@@ -9,7 +9,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime::gtr::gtr::{GTR, RateScale};
+  use treetime::gtr::gtr::{GTR, Mu};
   use treetime::partition::storage::discrete::DiscreteStates;
   use treetime_io::csv::{CsvWriter, TableFormat};
   use treetime_utils::{assert_error, o};
@@ -103,9 +103,8 @@ mod tests {
     let graph = mugration_graph(&setup, "country");
     let model = GTR::builder()
       .n_states(2)
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .pi(array![0.5, 0.5])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     assert_error!(

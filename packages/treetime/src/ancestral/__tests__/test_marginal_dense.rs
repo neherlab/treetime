@@ -4,7 +4,7 @@ mod tests {
   use crate::alphabet::alphabet::AlphabetName;
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::partition::marginal::sample::SampleMode;
@@ -48,9 +48,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     GTR::builder()
       .n_states(n_states)
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .pi(array![0.2, 0.3, 0.15, 0.35])
-      .rate_scale(RateScale::FromMatrix)
       .build()
   }
 
@@ -261,8 +260,7 @@ mod tests {
     let gtr = GTR::builder()
       .n_states(alphabet.n_canonical())
       .pi(pi)
-      .mu(mu)
-      .rate_scale(RateScale::FromMatrix)
+      .mu(Mu::FromMatrix(mu))
       .build()?;
 
     let nwk_parsed = nwk_read(b"((A:0.6,B:0.3):0.1,C:0.2)root:0.001;".as_slice())?;

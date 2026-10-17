@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::gtr::gtr::{GTR, RateScale};
+use crate::gtr::gtr::{GTR, Mu};
 use crate::make_error;
 use crate::progress::LogSink;
 use crate::progress_info;
@@ -124,10 +124,9 @@ pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
   let pi = Array1::<f64>::ones(n_states);
   GTR::builder()
     .n_states(n_states)
-    .mu(mu)
+    .mu(Mu::Normalized(mu))
     .maybe_W(W)
     .pi(pi)
-    .rate_scale(RateScale::Normalized)
     .build()
 }
 
@@ -147,10 +146,9 @@ pub(crate) fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, R
   let pi = Array1::<f64>::ones(n_states) / n_states.to_f64_exact();
   GTR::builder()
     .n_states(n_states)
-    .mu(mu)
+    .mu(Mu::Normalized(mu))
     .maybe_W(W)
     .pi(pi)
-    .rate_scale(RateScale::Normalized)
     .build()
 }
 
@@ -173,10 +171,9 @@ pub(crate) fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Repo
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / n_states.to_f64_exact());
   GTR::builder()
     .n_states(n_states)
-    .mu(mu)
+    .mu(Mu::Normalized(mu))
     .maybe_W(W)
     .pi(pi)
-    .rate_scale(RateScale::Normalized)
     .build()
 }
 
@@ -206,10 +203,9 @@ pub(crate) fn hky85(
   let pi = pi.unwrap_or_else(|| Array1::<f64>::ones(n_states) / n_states.to_f64_exact());
   GTR::builder()
     .n_states(n_states)
-    .mu(mu)
+    .mu(Mu::Normalized(mu))
     .maybe_W(W)
     .pi(pi)
-    .rate_scale(RateScale::Normalized)
     .build()
 }
 
@@ -246,10 +242,9 @@ pub(crate) fn t92(
   let pi = array![(1.0 - pi_GC) * 0.5, pi_GC * 0.5, pi_GC * 0.5, (1.0 - pi_GC) * 0.5];
   GTR::builder()
     .n_states(n_states)
-    .mu(mu)
+    .mu(Mu::Normalized(mu))
     .maybe_W(W)
     .pi(pi)
-    .rate_scale(RateScale::Normalized)
     .build()
 }
 
@@ -317,10 +312,9 @@ pub(crate) fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Re
   let n_states = alphabet.n_canonical();
   GTR::builder()
     .n_states(n_states)
-    .mu(mu)
+    .mu(Mu::Normalized(mu))
     .W(w)
     .pi(pi)
-    .rate_scale(RateScale::Normalized)
     .build()
 }
 
@@ -368,10 +362,9 @@ pub(crate) fn tn93(
 
   GTR::builder()
     .n_states(n_states)
-    .mu(mu)
+    .mu(Mu::Normalized(mu))
     .maybe_W(W)
     .pi(pi)
-    .rate_scale(RateScale::Normalized)
     .build()
 }
 

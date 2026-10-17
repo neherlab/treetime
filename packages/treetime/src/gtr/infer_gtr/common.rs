@@ -1,4 +1,4 @@
-use crate::gtr::gtr::avg_transition;
+use crate::gtr::gtr::{Mu, avg_transition};
 use crate::progress::LogSink;
 use crate::progress_warn;
 use eyre::Report;
@@ -77,7 +77,11 @@ pub(crate) fn infer_gtr_impl(
       "When inferring GTR parameters: Proper normalization was not reached."
     );
   }
-  Ok(InferGtrResult { W, pi, mu })
+  Ok(InferGtrResult {
+    W,
+    pi,
+    mu: Mu::FromMatrix(mu),
+  })
 }
 
 #[derive(Clone, Debug)]
@@ -107,7 +111,7 @@ pub struct InferGtrOptions {
 pub struct InferGtrResult {
   pub(crate) W: Array2<f64>,
   pub(crate) pi: Array1<f64>,
-  pub(crate) mu: f64,
+  pub(crate) mu: Mu,
 }
 
 pub(crate) fn distance(pi_old: &Array1<f64>, pi: &Array1<f64>) -> f64 {

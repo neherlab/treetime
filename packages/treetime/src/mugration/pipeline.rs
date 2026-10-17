@@ -2,7 +2,7 @@ use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::error::OperationError;
-use crate::gtr::gtr::{GTR, RateScale};
+use crate::gtr::gtr::{GTR, Mu};
 use crate::gtr::refinement::refine_gtr_model_and_rate;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
@@ -98,9 +98,8 @@ pub fn run(
 
   let gtr = GTR::builder()
     .n_states(n_states)
-    .mu(1.0)
+    .mu(Mu::FromMatrix(1.0))
     .pi(pi)
-    .rate_scale(RateScale::FromMatrix)
     .build()
     .map_err(OperationError::classify)?;
 

@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::__tests__::rate_matrix::rate_matrix;
   use crate::gtr::get_gtr::{F81Params, HKY85Params, JC69Params, K80Params, TN93Params, f81, hky85, jc69, k80, tn93};
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::array;
@@ -159,10 +159,9 @@ mod tests {
 
     let g = GTR::builder()
       .n_states(n_states)
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .W(w)
       .pi(pi)
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let q_t = rate_matrix(&t);

@@ -121,15 +121,14 @@ mod tests {
   }
 
   mod helpers {
-    use crate::gtr::gtr::{GTR, RateScale};
+    use crate::gtr::gtr::{GTR, Mu};
     use ndarray::Array1;
 
     pub(super) fn jc69_with_site_rates(site_rates: Array1<f64>) -> GTR {
       GTR::builder()
         .n_states(4)
-        .mu(1.0)
+        .mu(Mu::Normalized(1.0))
         .pi(Array1::ones(4))
-        .rate_scale(RateScale::Normalized)
         .site_rates(site_rates)
         .build()
         .unwrap()

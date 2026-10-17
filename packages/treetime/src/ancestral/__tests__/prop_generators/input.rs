@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::__tests__::prop_generators::alignment::{arb_alignment, arb_alignment_no_gaps};
 use crate::ancestral::__tests__::prop_generators::tree::{arb_tree_topology, taxa_names};
-use crate::gtr::gtr::{GTR, RateScale};
+use crate::gtr::gtr::{GTR, Mu};
 use ndarray::{Array1, Array2};
 use proptest::prelude::*;
 use std::collections::BTreeSet;
@@ -40,10 +40,9 @@ fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
     let n_states = alphabet.n_canonical();
     GTR::builder()
       .n_states(n_states)
-      .mu(mu)
+      .mu(Mu::FromMatrix(mu))
       .W(w)
       .pi(pi)
-      .rate_scale(RateScale::FromMatrix)
       .build()
       .expect("GTR construction should succeed with valid parameters")
   })

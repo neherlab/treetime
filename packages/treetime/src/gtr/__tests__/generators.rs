@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub(super) mod tests {
   pub(crate) mod generators {
-    use crate::gtr::gtr::{GTR, RateScale};
+    use crate::gtr::gtr::{GTR, Mu};
     use ndarray::{Array1, Array2, Axis, stack};
     use proptest::prelude::*;
 
@@ -73,10 +73,9 @@ pub(super) mod tests {
       (arb_pi_nuc(), arb_w_nuc(), 0.1_f64..5.0).prop_map(|(pi, w, mu)| {
         GTR::builder()
           .n_states(4)
-          .mu(mu)
+          .mu(Mu::FromMatrix(mu))
           .W(w)
           .pi(pi)
-          .rate_scale(RateScale::FromMatrix)
           .build()
           .expect("GTR construction should succeed with valid parameters")
       })

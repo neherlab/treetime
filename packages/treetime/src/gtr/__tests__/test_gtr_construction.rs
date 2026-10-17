@@ -4,7 +4,7 @@ mod tests {
     F81Params, HKY85Params, JC69Params, Jtt92Params, K80Params, T92Params, TN93Params, f81, hky85, jc69, jtt92, k80,
     t92, tn93,
   };
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
   use helpers::normalized;
@@ -92,10 +92,9 @@ mod tests {
   fn test_gtr_construction_decay_rate_from_matrix_scale() -> Result<(), Report> {
     let gtr = GTR::builder()
       .n_states(3)
-      .mu(1.5)
+      .mu(Mu::FromMatrix(1.5))
       .W(Array2::from_elem((3, 3), 2.0))
       .pi(array![0.2, 0.3, 0.5])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
     let mu_times_exchangeability = 1.5 * 2.0;
     assert_abs_diff_eq!(
@@ -126,7 +125,7 @@ mod tests {
   #[trace]
   fn test_gtr_construction_rejects_invalid_mu(#[case] mu: f64, #[case] expected: &str) -> Result<(), Report> {
     assert_error!(
-      GTR::builder().n_states(2).mu(mu).pi(array![0.5, 0.5]).rate_scale(RateScale::Normalized).build(),
+      GTR::builder().n_states(2).mu(Mu::Normalized(mu)).pi(array![0.5, 0.5]).build(),
       expected
     );
     let mut gtr = jc69(JC69Params::default())?;
@@ -139,10 +138,9 @@ mod tests {
     assert_error!(
       GTR::builder()
         .n_states(2)
-        .mu(f64::MAX)
+        .mu(Mu::FromMatrix(f64::MAX))
         .W(Array2::from_elem((2, 2), 4.0))
         .pi(array![0.5, 0.5])
-        .rate_scale(RateScale::FromMatrix)
         .build(),
       "Substitution rate (mu) must be finite and non-negative, got inf"
     );
@@ -186,9 +184,8 @@ mod tests {
     assert_error!(
       GTR::builder()
         .n_states(2)
-        .mu(1.0)
+        .mu(Mu::Normalized(1.0))
         .pi(array![0.5, 0.5])
-        .rate_scale(RateScale::Normalized)
         .site_rates(site_rates)
         .build(),
       expected
@@ -200,9 +197,8 @@ mod tests {
     let site_rates = array![0.0, 1.0];
     let gtr = GTR::builder()
       .n_states(2)
-      .mu(1.0)
+      .mu(Mu::Normalized(1.0))
       .pi(array![0.5, 0.5])
-      .rate_scale(RateScale::Normalized)
       .site_rates(site_rates.clone())
       .build()?;
     assert_eq!(Some(&site_rates), gtr.site_rates());
@@ -210,17 +206,16 @@ mod tests {
   }
 
   mod helpers {
-    use crate::gtr::gtr::{GTR, RateScale};
+    use crate::gtr::gtr::{GTR, Mu};
     use eyre::Report;
     use ndarray::{Array1, Array2};
 
     pub(super) fn normalized(pi: Array1<f64>, W: Option<Array2<f64>>) -> Result<GTR, Report> {
       GTR::builder()
         .n_states(pi.len())
-        .mu(1.0)
+        .mu(Mu::Normalized(1.0))
         .maybe_W(W)
         .pi(pi)
-        .rate_scale(RateScale::Normalized)
         .build()
     }
   }

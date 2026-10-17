@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
@@ -92,9 +92,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     GTR::builder()
       .n_states(n_states)
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .pi(array![0.2, 0.3, 0.15, 0.35])
-      .rate_scale(RateScale::FromMatrix)
       .build()
   }
 
@@ -103,9 +102,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     GTR::builder()
       .n_states(n_states)
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .pi(array![0.4, 0.15, 0.12, 0.33])
-      .rate_scale(RateScale::FromMatrix)
       .build()
   }
 

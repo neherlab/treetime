@@ -50,7 +50,7 @@ mod tests {
       epsilon = 1e-9
     );
 
-    pretty_assert_ulps_eq!(0.4004706866848004, actual.mu, epsilon = 1e-9);
+    pretty_assert_ulps_eq!(0.4004706866848004, actual.mu.value(), epsilon = 1e-9);
 
     pretty_assert_ulps_eq!(1.0, avg_transition(&actual.W, &actual.pi), epsilon = 1e-5);
 

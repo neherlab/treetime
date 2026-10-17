@@ -254,7 +254,11 @@ mod tests {
     pretty_assert_ulps_eq!(1.0, result.pi.sum(), epsilon = 1e-9);
     pretty_assert_array_positive!(result.pi);
 
-    assert!(result.mu > 0.0, "mu should be positive, got {}", result.mu);
+    assert!(
+      result.mu.value() > 0.0,
+      "mu should be positive, got {}",
+      result.mu.value()
+    );
 
     Ok(())
   }

@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::GTR;
   use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, infer_gtr_impl};
   use crate::partition::fitch::gtr_inference::infer_gtr_fitch;
   use crate::partition::fitch::passes::create_fitch_partition;
@@ -120,13 +120,7 @@ mod tests {
       )?;
       let InferGtrResult { W, pi, mu } = infer_gtr_impl(&counts, &InferGtrOptions::default(), &NoopProgress)?;
       let n_states = recon.partition.alphabet.n_canonical();
-      GTR::builder()
-        .n_states(n_states)
-        .mu(mu)
-        .W(W)
-        .pi(pi)
-        .rate_scale(RateScale::FromMatrix)
-        .build()?
+      GTR::builder().n_states(n_states).mu(mu).W(W).pi(pi).build()?
     };
 
     let sparse = {

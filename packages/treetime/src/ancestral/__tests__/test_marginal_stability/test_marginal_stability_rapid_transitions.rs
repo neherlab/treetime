@@ -5,7 +5,7 @@ mod tests {
     run_sparse_marginal_with_partitions,
   };
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use eyre::Report;
   use ndarray::array;
 
@@ -15,9 +15,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(10.0)
+      .mu(Mu::FromMatrix(10.0))
       .pi(array![0.25, 0.25, 0.25, 0.25])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:0.1,B:0.1)root;";
@@ -40,9 +39,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(10.0)
+      .mu(Mu::FromMatrix(10.0))
       .pi(array![0.25, 0.25, 0.25, 0.25])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:0.1,B:0.1)root;";
@@ -65,9 +63,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(100.0)
+      .mu(Mu::FromMatrix(100.0))
       .pi(array![0.25, 0.25, 0.25, 0.25])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:0.01,B:0.01)root;";
@@ -90,9 +87,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(10.0)
+      .mu(Mu::FromMatrix(10.0))
       .pi(array![0.4, 0.1, 0.2, 0.3])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "((A:0.05,B:0.05)AB:0.1,C:0.15)root;";
@@ -115,9 +111,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(50.0)
+      .mu(Mu::FromMatrix(50.0))
       .pi(array![0.9, 0.03, 0.04, 0.03])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:1e-8,B:1e-8)root;";
@@ -140,9 +135,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(50.0)
+      .mu(Mu::FromMatrix(50.0))
       .pi(array![0.9, 0.03, 0.04, 0.03])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:1e-8,B:1e-8)root;";

@@ -84,7 +84,7 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-    use crate::gtr::gtr::{GTR, RateScale};
+    use crate::gtr::gtr::{GTR, Mu};
     use crate::partition::fitch::passes::create_fitch_partition;
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::marginal::reconstruction::{
@@ -151,9 +151,8 @@ mod tests {
       .collect();
       let gtr = GTR::builder()
         .n_states(alphabet.n_canonical())
-        .mu(mu)
+        .mu(Mu::Normalized(mu))
         .pi(array![0.7, 0.2, 0.07, 0.03])
-        .rate_scale(RateScale::Normalized)
         .build()?;
 
       let inputs = leaf_seq_inputs(&graph, &names, aln);

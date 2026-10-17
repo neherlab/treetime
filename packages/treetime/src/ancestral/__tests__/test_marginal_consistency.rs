@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
@@ -394,10 +394,9 @@ mod tests {
 
     let gtr = GTR::builder()
       .n_states(alphabet.n_canonical())
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .W(W)
       .pi(pi)
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let tree_newick = "((A:0.601,B:0.301):0.1,C:0.2):0.001;";
@@ -463,9 +462,8 @@ mod tests {
 
     let gtr_uniform = GTR::builder()
       .n_states(4)
-      .mu(1.0)
+      .mu(Mu::Normalized(1.0))
       .pi(Array1::ones(4))
-      .rate_scale(RateScale::Normalized)
       .site_rates(Array1::ones(seq_len))
       .build()?;
     let (log_lh_uniform, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
@@ -493,9 +491,8 @@ mod tests {
 
     let gtr_uniform = GTR::builder()
       .n_states(4)
-      .mu(1.0)
+      .mu(Mu::Normalized(1.0))
       .pi(Array1::ones(4))
-      .rate_scale(RateScale::Normalized)
       .site_rates(Array1::ones(seq_len))
       .build()?;
     let (log_lh_uniform, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
@@ -520,9 +517,8 @@ mod tests {
 
     let gtr = GTR::builder()
       .n_states(4)
-      .mu(1.0)
+      .mu(Mu::Normalized(1.0))
       .pi(Array1::ones(4))
-      .rate_scale(RateScale::Normalized)
       .site_rates(Array1::ones(seq_len))
       .build()?;
     let (_, reconstruction) = run(&graph, &branch_lengths, &names, &aln, gtr)?;
@@ -556,9 +552,8 @@ mod tests {
 
     let gtr = GTR::builder()
       .n_states(4)
-      .mu(1.0)
+      .mu(Mu::Normalized(1.0))
       .pi(Array1::ones(4))
-      .rate_scale(RateScale::Normalized)
       .site_rates(Array1::ones(n_site_rates))
       .build()?;
 

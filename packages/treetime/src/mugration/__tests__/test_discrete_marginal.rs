@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use crate::o;
   use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, MarginalUpdate};
   use approx::assert_abs_diff_eq;
@@ -119,9 +119,8 @@ mod tests {
     let (partition, _) = helpers::make_partition(["usa", "germany"], &graph, &traits, &names)?;
     let gtr = GTR::builder()
       .n_states(2)
-      .mu(1.0)
+      .mu(Mu::Normalized(1.0))
       .pi(array![0.5, 0.5])
-      .rate_scale(RateScale::Normalized)
       .site_rates(array![1.0, 1.0])
       .build()?;
 
@@ -164,7 +163,7 @@ mod tests {
 
   mod helpers {
     use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
-    use crate::gtr::gtr::{GTR, RateScale};
+    use crate::gtr::gtr::{GTR, Mu};
     use crate::o;
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
@@ -192,9 +191,8 @@ mod tests {
       let n_states = discrete_states.len();
       let gtr = GTR::builder()
         .n_states(n_states)
-        .mu(1.0)
+        .mu(Mu::FromMatrix(1.0))
         .pi(Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact()))
-        .rate_scale(RateScale::FromMatrix)
         .build()?;
       let partition = PartitionMarginalDiscrete::new(
         discrete_states,

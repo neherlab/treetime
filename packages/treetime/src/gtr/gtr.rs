@@ -30,10 +30,9 @@ impl GTR {
   #[builder]
   pub fn new(
     n_states: usize,
-    mu: f64,
+    mu: Mu,
     W: Option<Array2<f64>>,
     pi: Array1<f64>,
-    rate_scale: RateScale,
     site_rates: Option<Array1<f64>>,
   ) -> Result<Self, Report> {
     let n = n_states;
@@ -61,7 +60,7 @@ impl GTR {
       }
     }
 
-    validate_mu(mu)?;
+    validate_mu(mu.value())?;
 
     if let Some(site_rates) = &site_rates {
       validate_site_rates(site_rates)?;
@@ -91,9 +90,9 @@ impl GTR {
         "Average substitution rate of the substitution matrix (W) under the equilibrium frequencies (pi) must be positive, got {average_rate}"
       );
     }
-    let mu = match rate_scale {
-      RateScale::FromMatrix => mu * average_rate,
-      RateScale::Normalized => mu,
+    let mu = match mu {
+      Mu::FromMatrix(mu) => mu * average_rate,
+      Mu::Normalized(mu) => mu,
     };
     validate_mu(mu)?;
     let W = W / average_rate;
@@ -204,10 +203,21 @@ impl GTR {
   }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum RateScale {
-  FromMatrix,
-  Normalized,
+/// Substitution rate argument of `GTR::new()` together with the unit that fixes its meaning.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Mu {
+  /// Multiplies the given substitution matrix, so the model keeps the absolute rates of the matrix.
+  FromMatrix(f64),
+  /// Average substitution rate of the finished model.
+  Normalized(f64),
+}
+
+impl Mu {
+  pub fn value(self) -> f64 {
+    match self {
+      Self::FromMatrix(mu) | Self::Normalized(mu) => mu,
+    }
+  }
 }
 
 pub(crate) fn avg_transition(W: &Array2<f64>, pi: &Array1<f64>) -> f64 {

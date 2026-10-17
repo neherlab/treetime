@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::get_gtr::{F81Params, JC69Params, K80Params, f81, jc69, k80};
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use crate::optimize::indel::IndelTerm;
   use crate::optimize::likelihood::evaluate_mixed_log_lh_only;
   use crate::optimize::zero_boundary::{ZeroLength, is_zero_branch_optimal};
@@ -357,9 +357,8 @@ mod tests {
   fn binary_contribution(mu: f64, coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = GTR::builder()
       .n_states(2)
-      .mu(mu)
+      .mu(Mu::Normalized(mu))
       .pi(array![0.5, 0.5])
-      .rate_scale(RateScale::Normalized)
       .build()
       .unwrap();
     OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))

@@ -127,7 +127,7 @@ mod tests {
       &actual.pi,
       epsilon = 1e-7
     );
-    pretty_assert_ulps_eq!(0.953916352368934, actual.mu, epsilon = 1e-7);
+    pretty_assert_ulps_eq!(0.953916352368934, actual.mu.value(), epsilon = 1e-7);
 
     Ok(())
   }

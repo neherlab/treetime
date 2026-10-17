@@ -5,7 +5,7 @@ mod tests {
     run_sparse_marginal_with_partitions,
   };
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use eyre::Report;
   use ndarray::array;
 
@@ -15,9 +15,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .pi(array![0.97, 0.01, 0.01, 0.01])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:0.1,B:0.2)root;";
@@ -44,9 +43,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .pi(array![0.97, 0.01, 0.01, 0.01])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:0.1,B:0.2)root;";
@@ -73,9 +71,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .pi(array![0.97, 0.01, 0.01, 0.01])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:0.1,B:0.2)root;";
@@ -98,9 +95,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .pi(array![0.9997, 0.0001, 0.0001, 0.0001])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let newick = "(A:0.1,B:0.1)root;";

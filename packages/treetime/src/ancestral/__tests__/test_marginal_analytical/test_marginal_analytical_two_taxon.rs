@@ -5,7 +5,7 @@ mod tests {
   };
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;
@@ -50,9 +50,8 @@ mod tests {
     let n_states = alphabet.n_canonical();
     let gtr = GTR::builder()
       .n_states(n_states)
-      .mu(1.0)
+      .mu(Mu::FromMatrix(1.0))
       .pi(array![0.4, 0.1, 0.2, 0.3])
-      .rate_scale(RateScale::FromMatrix)
       .build()?;
 
     let t1 = 0.15;

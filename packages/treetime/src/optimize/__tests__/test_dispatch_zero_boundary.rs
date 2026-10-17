@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, K80Params, get_gtr_by_name, jc69, k80};
-  use crate::gtr::gtr::{GTR, RateScale};
+  use crate::gtr::gtr::{GTR, Mu};
   use crate::optimize::dispatch::{initial_guess_mixed, run_optimize_mixed};
   use crate::optimize::gather::{gather_edge_contributions, gather_edge_effective_lengths, gather_edge_sub_counts};
   use crate::optimize::indel::{IndelPolicy, IndelTerm};
@@ -488,9 +488,8 @@ mod tests {
   fn binary_contribution(mu: f64, coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = GTR::builder()
       .n_states(2)
-      .mu(mu)
+      .mu(Mu::Normalized(mu))
       .pi(array![0.5, 0.5])
-      .rate_scale(RateScale::Normalized)
       .build()
       .unwrap();
     OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
