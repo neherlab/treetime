@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::timetree::max_posterior_region::{
-    PeakLocation, PosteriorRegion, grid_max_posterior_region, max_posterior_region,
+    PeakLocation, PosteriorRegion, grid_max_posterior_region, max_posterior_region, posterior_median,
   };
   use eyre::Report;
   use helpers::{grid, interpolate};
@@ -40,6 +40,48 @@ mod tests {
     assert_eq!(PeakLocation::Interior, region.peak);
     pretty_assert_abs_diff_eq!(0.9, gamma.cdf(region.upper) - gamma.cdf(region.lower), epsilon = 1e-8);
     pretty_assert_abs_diff_eq!(gamma.pdf(region.lower), gamma.pdf(region.upper), epsilon = 1e-8);
+    Ok(())
+  }
+
+  #[test]
+  fn test_posterior_median_of_a_skewed_gamma() -> Result<(), Report> {
+    let (shape, rate) = (3.0, 2.0);
+    let t = grid(1e-4, 12.0, 120_000);
+    let neglog = t.mapv(|x| 5.0 - (shape - 1.0) * x.ln() + rate * x);
+
+    let median = posterior_median(&Distribution::<NegLog>::function(t, neglog)?)?;
+
+    pretty_assert_abs_diff_eq!(
+      Gamma::new(shape, rate)?.inverse_cdf(0.5),
+      median.unwrap(),
+      epsilon = 1e-6
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_posterior_median_lies_between_two_equal_peaks() -> Result<(), Report> {
+    // two equal, narrow peaks at 2013 and 2015: the peak is either, the median is between them
+    let t = grid(2010.0, 2018.0, 80_001);
+    let neglog = t.mapv(|x| {
+      let a = (-(x - 2013.0).powi(2) / 0.02).exp();
+      let b = (-(x - 2015.0).powi(2) / 0.02).exp();
+      -(a + b).ln()
+    });
+
+    let median = posterior_median(&Distribution::<NegLog>::function(t, neglog)?)?.unwrap();
+
+    assert!(median > 2013.5 && median < 2014.5, "median {median}");
+    Ok(())
+  }
+
+  #[test]
+  fn test_posterior_median_of_point_and_empty() -> Result<(), Report> {
+    assert_eq!(
+      Some(2015.5),
+      posterior_median(&Distribution::<NegLog>::point(2015.5, 0.0))?
+    );
+    assert_eq!(None, posterior_median(&Distribution::<NegLog>::Empty)?);
     Ok(())
   }
 

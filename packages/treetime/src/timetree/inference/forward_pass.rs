@@ -6,6 +6,7 @@ use crate::timetree::inference::result::{
   BranchLikelihood, NodePosterior, TimeBackward, TimeDistribution, likely_time_of_node,
 };
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
+use crate::timetree::max_posterior_region::posterior_median;
 use eyre::{Report, WrapErr};
 use log::{Level, debug, log_enabled};
 use std::collections::BTreeMap;
@@ -91,7 +92,17 @@ fn propagate_distributions_forward_node(
     ForwardRefinement::ContradictedGivenDate => (normalized_subtree()?, true),
   };
 
-  let likely_time = likely_time_of_node(context.key, distribution.as_deref())?;
+  // a broad root posterior can have close peaks, and its peak then jumps between rounds; the median does not
+  let likely_time = if context.is_root && !context.is_leaf {
+    distribution
+      .as_deref()
+      .map(posterior_median)
+      .transpose()
+      .wrap_err_with(|| format!("When finding the median time of root {}", context.key))?
+      .flatten()
+  } else {
+    likely_time_of_node(context.key, distribution.as_deref())?
+  };
   let time = commit_node_time(
     names,
     context.key,

@@ -28,6 +28,19 @@ pub fn max_posterior_region(
   }
 }
 
+/// Time that splits the posterior mass in half, from its grid; `None` for an empty distribution
+pub(crate) fn posterior_median(distribution: &Distribution<NegLog>) -> Result<Option<f64>, Report> {
+  let normalized = distribution.normalize()?;
+  match &normalized {
+    Distribution::Empty => Ok(None),
+    Distribution::Point(_) => Ok(Some(normalized.t()[0])),
+    Distribution::Range(_) | Distribution::Function(_) => {
+      Ok(Some(GridCdf::new(&normalized.t(), &normalized.y()?).quantile(0.5)))
+    },
+    Distribution::Formula(_) => make_internal_error!("Normalization left a formula distribution undiscretized"),
+  }
+}
+
 pub(crate) fn grid_max_posterior_region(
   t: &Array1<f64>,
   neglog: &Array1<f64>,
