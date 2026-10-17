@@ -22,6 +22,9 @@ use crate::timetree::inference::runner::{
   CLOCK_BRANCH_LENGTH_DAMPING, CLOCK_BRANCH_LENGTH_UNDAMPED, TimeInferenceInputs, blended_clock_branch_lengths,
   run_timetree, timetree_branch_lengths,
 };
+use crate::timetree::optimization::marginal_clock_rate::{
+  MarginalRateFit, MarginalRateInputs, optimize_marginal_clock_rate,
+};
 use crate::timetree::optimization::polytomy::resolve::{
   PolytomyResolution, require_internal_node_times, resolve_polytomies,
 };
@@ -136,7 +139,7 @@ pub(crate) fn refinement_round(
     time_change: measure_node_time_change(&previous_times, &current_times),
     topology,
   };
-  let state = update_clock_model(inputs, state, log)?;
+  let state = update_clock_model(inputs, prior, state, log)?;
   Ok((state, outcome))
 }
 
@@ -324,7 +327,19 @@ fn infer_times(
   run_timetree(&state.time_inference_inputs(inputs), prior, log).wrap_err("Timetree inference failed")
 }
 
-fn update_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn LogSink) -> Result<RoundState, Report> {
+/// Re-estimates the clock model on the round's times, keeping the root. With a coalescent prior and no user-fixed rate,
+/// the rate maximizes the marginal likelihood of the node times under the round's prior, and the clock model is fitted
+/// with that rate fixed; otherwise the rate comes from the root-to-tip regression.
+fn update_clock_model(
+  inputs: &RoundInputs<'_>,
+  prior: Option<&CoalescentModel>,
+  state: RoundState,
+  log: &dyn LogSink,
+) -> Result<RoundState, Report> {
+  let clock_rate = match (inputs.params.clock_rate, prior) {
+    (None, Some(prior)) => Some(marginal_clock_rate(inputs, prior, &state, log)?),
+    (fixed, _) => fixed,
+  };
   let edge_inputs: BTreeMap<GraphEdgeKey, (Option<f64>, f64)> = state
     .time_inference
     .branches
@@ -349,7 +364,7 @@ fn update_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn Log
     &ClockFitParams {
       outliers: inputs.outliers,
       clock_params: &inputs.context.covariation_clock_params,
-      clock_rate: inputs.params.clock_rate,
+      clock_rate,
       keep_root,
       branch_params: &inputs.context.branch_params,
       reroot_params: &RerootParams::default(),
@@ -367,6 +382,30 @@ fn update_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn Log
     clock_points: points,
     ..state
   })
+}
+
+fn marginal_clock_rate(
+  inputs: &RoundInputs<'_>,
+  prior: &CoalescentModel,
+  state: &RoundState,
+  log: &dyn LogSink,
+) -> Result<f64, Report> {
+  let reference_rate = state.clock_model.clock_rate();
+  let MarginalRateFit { clock_rate, log_lh } = optimize_marginal_clock_rate(&MarginalRateInputs {
+    graph: &state.graph,
+    date_constraints: &inputs.context.date_constraints,
+    coalescent: Some(prior),
+    bad_branches: &state.time_inference.bad_branches,
+    branches: &state.time_inference.branches,
+    reference_rate,
+    max_points: inputs.params.max_grid_points,
+  })
+  .wrap_err("Failed to estimate the clock rate from the marginal likelihood of the node times")?;
+  progress_info!(
+    log,
+    "Clock rate maximizing the marginal likelihood of the node times: {clock_rate:.6e} (was {reference_rate:.6e}), log_lh_time={log_lh:.2}"
+  );
+  Ok(clock_rate)
 }
 
 pub(crate) struct RoundState {
