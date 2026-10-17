@@ -40,6 +40,7 @@ pub(crate) fn constraint_coalescent_node_times(
 
 pub(crate) fn empty_time_inference(graph: &Graph) -> TimeInference {
   TimeInference {
+    log_lh_time: None,
     bad_branches: graph.get_nodes().map(|node| (node.key(), false)).collect(),
     branches: unknown_branches(graph),
     posterior: graph

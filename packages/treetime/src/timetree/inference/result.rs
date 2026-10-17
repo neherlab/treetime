@@ -7,6 +7,7 @@ use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_primitives::LogLh;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TimeBackward {
@@ -59,6 +60,8 @@ pub(crate) fn likely_times(
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TimeInference {
+  /// Log marginal likelihood of the node times from the backward pass (see `fn TimeBackward::log_marginal_likelihood()`)
+  pub log_lh_time: Option<LogLh>,
   pub bad_branches: BTreeMap<GraphNodeKey, bool>,
   pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
   pub posterior: BTreeMap<GraphNodeKey, NodePosterior>,
