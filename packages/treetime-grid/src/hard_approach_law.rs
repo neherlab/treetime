@@ -56,10 +56,12 @@ impl HardApproachLaw {
     p_edge * dt_edge / (self.b + 1.0)
   }
 
+  /// The law of the same tail on the argument scaled by `factor` (a negative factor reflects it): the boundary moves,
+  /// the power-law exponent is scale-free
   #[must_use]
-  pub fn negate_arg(&self) -> Self {
+  pub fn scale_arg(&self, factor: f64) -> Self {
     HardApproachLaw {
-      t_hard: -self.t_hard,
+      t_hard: self.t_hard * factor,
       b: self.b,
     }
   }

@@ -268,6 +268,24 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
+  /// The same values on the argument scaled by `factor > 0`: x -> factor * x
+  pub fn scale_x(&self, factor: T) -> Result<Self, Report>
+  where
+    T: Float,
+  {
+    if factor.is_nan() || factor <= T::zero() {
+      return make_error!("Argument scale factor must be positive, got {factor:?}");
+    }
+    Ok(Self {
+      grid: Grid::from_start_dx(
+        self.grid.x_min() * factor,
+        self.grid.dx() * factor,
+        self.grid.n_points(),
+      )?,
+      y: self.y.clone(),
+    })
+  }
+
   #[expect(clippy::integer_division, reason = "integer division is the intended floor division")]
   pub fn negate_arg_inplace(&mut self) -> Result<(), Report>
   where

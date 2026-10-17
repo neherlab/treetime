@@ -106,15 +106,22 @@ mod tests {
     assert_abs_diff_eq!(expected, composed.slope, epsilon = 1e-14);
   }
 
+  #[rustfmt::skip]
   #[rstest]
-  #[case::positive(0.8)]
-  #[case::negative(-1.3)]
-  #[case::zero(0.0)]
+  #[case::reflect_positive( 0.8, -1.0, -0.8)]
+  #[case::reflect_negative(-1.3, -1.0,  1.3)]
+  #[case::reflect_flat(     0.0, -1.0,  0.0)]
+  #[case::stretch(          1.5,  2.0,  0.75)]
+  #[case::compress(        -1.5,  0.5, -3.0)]
   #[trace]
-  fn test_soft_tail_law_negate_arg_flips_sign_and_is_involution(#[case] slope: f64) {
-    let law = SoftTailLaw { slope };
-    assert_abs_diff_eq!(-slope, law.negate_arg().slope, epsilon = 1e-14);
-    assert_abs_diff_eq!(slope, law.negate_arg().negate_arg().slope, epsilon = 1e-14);
+  fn test_soft_tail_law_scale_arg_divides_the_slope(#[case] slope: f64, #[case] factor: f64, #[case] expected: f64) {
+    assert_abs_diff_eq!(expected, SoftTailLaw { slope }.scale_arg(factor).slope, epsilon = 1e-14);
+  }
+
+  #[test]
+  fn test_soft_tail_law_reflection_is_involution() {
+    let law = SoftTailLaw { slope: 0.8 };
+    assert_eq!(law, law.scale_arg(-1.0).scale_arg(-1.0));
   }
 
   #[test]

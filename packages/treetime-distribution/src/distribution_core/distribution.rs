@@ -177,6 +177,20 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
+  /// The same values on the time axis scaled by `factor > 0` (t -> factor * t)
+  pub fn scale_time(&self, factor: f64) -> Result<Self, Report> {
+    if factor.is_nan() || factor <= 0.0 {
+      return make_error!("Time scale factor must be positive, got {factor}");
+    }
+    match self {
+      Self::Empty => Ok(Self::Empty),
+      Self::Point(p) => Ok(Self::point(p.t() * factor, p.amplitude())),
+      Self::Range(r) => Ok(Self::range((r.start() * factor, r.end() * factor), r.amplitude())),
+      Self::Function(f) => Ok(Self::Function(f.scale_time(factor)?)),
+      Self::Formula(_) => make_error!("Time scaling is not implemented for Formula distributions"),
+    }
+  }
+
   /// Keeps the values and moves the level into the amplitude, so that the grid holds values near the peak. A function
   /// with no finite peak becomes `Empty`.
   pub fn repeak(&self) -> Result<Self, Report> {
