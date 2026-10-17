@@ -12,7 +12,7 @@
 
 For a non-unimodal surface whose global maximum lies far beyond $1.5 \cdot \text{input}$ (e.g. a saturated substitution regime with true $t \gg 0.5$), the grid scan cannot reach it. `fn reconcile_zero_boundary()` [packages/treetime/src/optimize/zero_boundary.rs#L42](../../packages/treetime/src/optimize/zero_boundary.rs#L42) would then either return zero (if zero beats every visible grid point) or return the best visible positive mode, both of which are wrong in the saturated regime.
 
-The Brent search interval uses the same bound: `fn brent_bracket()` [packages/treetime/src/optimize/method_brent.rs#L37-L42](../../packages/treetime/src/optimize/method_brent.rs#L37-L42) sets the upper end to `max(1.5 * branch_length + one_mutation, MIN_SEARCH_UPPER_BOUND)`, so the Brent methods cannot move a branch beyond this bound in one step either.
+The Brent search interval uses the same bound: `fn brent_bracket()` [packages/treetime/src/optimize/method_brent.rs#L81-L86](../../packages/treetime/src/optimize/method_brent.rs#L81-L86) sets the upper end to `max(1.5 * branch_length + one_mutation, MIN_SEARCH_UPPER_BOUND)`, so the Brent methods cannot move a branch beyond this bound in one step either.
 
 ## Evidence
 
