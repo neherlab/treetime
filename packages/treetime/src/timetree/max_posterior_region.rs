@@ -1,9 +1,10 @@
 use eyre::Report;
 use itertools::Itertools;
-use ndarray::Array1;
+use ndarray::{Array1, ArrayView1, s};
 use ordered_float::OrderedFloat;
 use std::iter::once;
 use treetime_distribution::{Distribution, NegLog};
+use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::{make_error, make_internal_error};
 
 pub fn max_posterior_region(
@@ -11,20 +12,23 @@ pub fn max_posterior_region(
   fraction: f64,
 ) -> Result<Option<MaxPosteriorRegion>, Report> {
   let normalized = distribution.normalize()?;
-  match &normalized {
-    Distribution::Empty => Ok(None),
-    Distribution::Point(_) => Ok(Some(MaxPosteriorRegion::Point)),
-    Distribution::Range(_) | Distribution::Function(_) => {
-      let region = grid_max_posterior_region(&normalized.t(), &normalized.y()?, fraction)?;
-      Ok(Some(MaxPosteriorRegion::Grid(region)))
+  let region = match &normalized {
+    Distribution::Empty => return Ok(None),
+    Distribution::Point(_) => return Ok(Some(MaxPosteriorRegion::Point)),
+    Distribution::Range(_) => grid_max_posterior_region(normalized.t().view(), normalized.y()?.view(), fraction)?,
+    Distribution::Function(function) => {
+      grid_max_posterior_region(normalized.t().view(), function.y().view(), fraction)?
     },
-    Distribution::Formula(_) => make_internal_error!("Normalization left a formula distribution undiscretized"),
-  }
+    Distribution::Formula(_) => {
+      return make_internal_error!("Normalization left a formula distribution undiscretized");
+    },
+  };
+  Ok(Some(MaxPosteriorRegion::Grid(region)))
 }
 
 pub(crate) fn grid_max_posterior_region(
-  t: &Array1<f64>,
-  neglog: &Array1<f64>,
+  t: ArrayView1<f64>,
+  neglog: ArrayView1<f64>,
   fraction: f64,
 ) -> Result<PosteriorRegion, Report> {
   let n_points = t.len();
@@ -57,8 +61,7 @@ pub(crate) fn grid_max_posterior_region(
     return make_error!("Posterior on [{}, {}] has no probability mass", t[0], t[n_points - 1]);
   }
 
-  let heights = neglog.mapv(|y| y - y_peak);
-  let cdf = GridCdf::new(t, &heights);
+  let cdf = GridCdf::new(t, neglog.iter().map(|y| y - y_peak));
 
   let region = if peak == n_points - 1 {
     PosteriorRegion {
@@ -73,7 +76,7 @@ pub(crate) fn grid_max_posterior_region(
       peak: PeakLocation::Earliest,
     }
   } else {
-    let (lower, upper) = highest_density_interval(t, &heights, peak, &cdf, fraction);
+    let (lower, upper) = highest_density_interval(t, neglog, y_peak, peak, &cdf, fraction);
     PosteriorRegion {
       lower,
       upper,
@@ -103,7 +106,7 @@ pub enum PeakLocation {
   Latest,
 }
 
-fn latest_peak_index(neglog: &Array1<f64>) -> usize {
+fn latest_peak_index(neglog: ArrayView1<f64>) -> usize {
   neglog
     .iter()
     .enumerate()
@@ -113,14 +116,19 @@ fn latest_peak_index(neglog: &Array1<f64>) -> usize {
 }
 
 fn highest_density_interval(
-  t: &Array1<f64>,
-  heights: &Array1<f64>,
+  t: ArrayView1<f64>,
+  neglog: ArrayView1<f64>,
+  y_peak: f64,
   peak: usize,
-  cdf: &GridCdf,
+  cdf: &GridCdf<'_>,
   fraction: f64,
 ) -> (f64, f64) {
-  let earlier = LevelSide::new((0..=peak).rev().map(|i| (t[i], heights[i])));
-  let later = LevelSide::new((peak..t.len()).map(|i| (t[i], heights[i])));
+  let height = |y: &f64| y - y_peak;
+  let earlier = LevelSide::new(
+    t.slice_move(s![..=peak;-1]),
+    neglog.slice(s![..=peak;-1]).iter().map(height),
+  );
+  let later = LevelSide::new(t.slice_move(s![peak..]), neglog.slice(s![peak..]).iter().map(height));
 
   let mass_at = |level: f64, cells: (usize, usize)| {
     cdf.at(later.position(cells.1, level)) - cdf.at(earlier.position(cells.0, level))
@@ -130,16 +138,12 @@ fn highest_density_interval(
   let levels = earlier
     .envelope
     .iter()
-    .chain(&later.envelope)
+    .merge(&later.envelope)
     .copied()
     .filter(|level| level.is_finite())
-    .sorted_by_key(|level| OrderedFloat(*level))
-    .dedup()
-    .collect_vec();
+    .dedup();
 
   let reached = levels
-    .iter()
-    .copied()
     .tuple_windows()
     .find(|&(_, above)| mass_at(above, cells_at(above)) >= fraction);
 
@@ -159,36 +163,32 @@ fn highest_density_interval(
   (earlier.position(cells.0, level), later.position(cells.1, level))
 }
 
-struct GridCdf {
-  t: Vec<f64>,
-  cumulative: Vec<f64>,
+struct GridCdf<'a> {
+  t: ArrayView1<'a, f64>,
+  cumulative: Array1<f64>,
 }
 
-impl GridCdf {
-  fn new(t: &Array1<f64>, heights: &Array1<f64>) -> Self {
-    let density = heights.mapv(|h| (-h).exp());
+impl<'a> GridCdf<'a> {
+  fn new(t: ArrayView1<'a, f64>, heights: impl Iterator<Item = f64>) -> Self {
     let cells = t
       .iter()
-      .zip(&density)
+      .zip(heights.map(|h| (-h).exp()))
       .tuple_windows()
-      .map(|((t0, p0), (t1, p1))| (t1 - t0) * f64::midpoint(*p0, *p1));
-    let unnormalized = once(0.0)
+      .map(|((t0, p0), (t1, p1))| (t1 - t0) * f64::midpoint(p0, p1));
+    let mut cumulative: Array1<f64> = once(0.0)
       .chain(cells.scan(0.0, |acc, mass| {
         *acc += mass;
         Some(*acc)
       }))
-      .collect_vec();
-    let total = unnormalized[unnormalized.len() - 1];
-    let cumulative = unnormalized.iter().map(|c| c / total).collect_vec();
-    Self {
-      t: t.to_vec(),
-      cumulative,
-    }
+      .collect();
+    let total = cumulative[cumulative.len() - 1];
+    cumulative.mapv_inplace(|c| c / total);
+    Self { t, cumulative }
   }
 
   fn at(&self, x: f64) -> f64 {
     let n_points = self.t.len();
-    let i = self.t.partition_point(|&ti| ti <= x).clamp(1, n_points - 1) - 1;
+    let i = partition_point(&self.t, |&ti| ti <= x).clamp(1, n_points - 1) - 1;
     let (t0, t1) = (self.t[i], self.t[i + 1]);
     let (c0, c1) = (self.cumulative[i], self.cumulative[i + 1]);
     c0 + (x - t0) / (t1 - t0) * (c1 - c0)
@@ -209,31 +209,29 @@ impl GridCdf {
   }
 }
 
-struct LevelSide {
-  t: Vec<f64>,
-  envelope: Vec<f64>,
+struct LevelSide<'a> {
+  t: ArrayView1<'a, f64>,
+  envelope: Array1<f64>,
 }
 
-impl LevelSide {
-  fn new(points: impl Iterator<Item = (f64, f64)>) -> Self {
-    let (t, heights): (Vec<f64>, Vec<f64>) = points.unzip();
+impl<'a> LevelSide<'a> {
+  fn new(t: ArrayView1<'a, f64>, heights: impl Iterator<Item = f64>) -> Self {
     let envelope = heights
-      .iter()
-      .scan(f64::NEG_INFINITY, |running_max, &h| {
+      .scan(f64::NEG_INFINITY, |running_max, h| {
         *running_max = running_max.max(h);
         Some(*running_max)
       })
-      .collect_vec();
+      .collect();
     Self { t, envelope }
   }
 
   fn support_end(&self) -> f64 {
-    let finite = self.envelope.partition_point(|h| h.is_finite());
+    let finite = partition_point(&self.envelope, |h| h.is_finite());
     self.t[finite - 1]
   }
 
   fn cell(&self, level: f64) -> usize {
-    self.envelope.partition_point(|&h| h < level)
+    partition_point(&self.envelope, |&h| h < level)
   }
 
   fn position(&self, cell: usize, level: f64) -> f64 {

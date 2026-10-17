@@ -19,7 +19,7 @@ mod tests {
     let t = grid(mean - 8.0 * std_dev, mean + 8.0 * std_dev, 160_001);
     let neglog = t.mapv(|x| 3.7 + (x - mean).powi(2) / (2.0 * std_dev * std_dev));
 
-    let region = grid_max_posterior_region(&t, &neglog, 0.9)?;
+    let region = grid_max_posterior_region(t.view(), neglog.view(), 0.9)?;
 
     let normal = Normal::new(mean, std_dev)?;
     assert_eq!(PeakLocation::Interior, region.peak);
@@ -34,7 +34,7 @@ mod tests {
     let t = grid(1e-4, 12.0, 120_000);
     let neglog = t.mapv(|x| -(shape - 1.0) * x.ln() + rate * x);
 
-    let region = grid_max_posterior_region(&t, &neglog, 0.9)?;
+    let region = grid_max_posterior_region(t.view(), neglog.view(), 0.9)?;
 
     let gamma = Gamma::new(shape, rate)?;
     assert_eq!(PeakLocation::Interior, region.peak);
@@ -60,7 +60,7 @@ mod tests {
     let t = grid(-2.0, 10.0, 120_001);
     let neglog = t.mapv(|x| -(main_weight * main.pdf(x) + side_weight * side.pdf(x)).ln());
 
-    let region = grid_max_posterior_region(&t, &neglog, fraction)?;
+    let region = grid_max_posterior_region(t.view(), neglog.view(), fraction)?;
 
     let mixture_cdf = |x: f64| main_weight * main.cdf(x) + side_weight * side.cdf(x);
     let level = interpolate(&t, &neglog, region.upper);
@@ -83,7 +83,7 @@ mod tests {
     let t = grid(2000.0, 2010.0, 100_001);
     let neglog = t.mapv(|x| x - 2000.0);
 
-    let region = grid_max_posterior_region(&t, &neglog, 0.9)?;
+    let region = grid_max_posterior_region(t.view(), neglog.view(), 0.9)?;
 
     let truncated_exponential_quantile = 2000.0 - (1.0 - 0.9 * (1.0 - (-10.0_f64).exp())).ln();
     assert_eq!(PeakLocation::Earliest, region.peak);
@@ -97,7 +97,7 @@ mod tests {
     let t = grid(2000.0, 2010.0, 100_001);
     let neglog = t.mapv(|x| 2010.0 - x);
 
-    let region = grid_max_posterior_region(&t, &neglog, 0.9)?;
+    let region = grid_max_posterior_region(t.view(), neglog.view(), 0.9)?;
 
     let truncated_exponential_quantile = 2010.0 + (1.0 - 0.9 * (1.0 - (-10.0_f64).exp())).ln();
     assert_eq!(PeakLocation::Latest, region.peak);
@@ -152,8 +152,8 @@ mod tests {
     let neglog = t.mapv(|x| (x - mean).powi(2) / (2.0 * std_dev * std_dev));
     let neglog_hard_tails = neglog.mapv(|y| if y > 30.0 { f64::INFINITY } else { y });
 
-    let region = grid_max_posterior_region(&t, &neglog, 0.9)?;
-    let region_hard_tails = grid_max_posterior_region(&t, &neglog_hard_tails, 0.9)?;
+    let region = grid_max_posterior_region(t.view(), neglog.view(), 0.9)?;
+    let region_hard_tails = grid_max_posterior_region(t.view(), neglog_hard_tails.view(), 0.9)?;
 
     assert_eq!(PeakLocation::Interior, region_hard_tails.peak);
     pretty_assert_abs_diff_eq!(region.lower, region_hard_tails.lower, epsilon = 1e-12);
@@ -167,7 +167,7 @@ mod tests {
     let t = array![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
     let neglog = array![1.0, 0.0, 5.0, 0.5, 0.5, f64::INFINITY];
 
-    let region = grid_max_posterior_region(&t, &neglog, 0.9)?;
+    let region = grid_max_posterior_region(t.view(), neglog.view(), 0.9)?;
 
     let trapezoid_cells = [
       f64::midpoint((-1.0_f64).exp(), 1.0),
@@ -190,19 +190,23 @@ mod tests {
 
   #[test]
   fn test_max_posterior_region_rejects_nan_ordinates() {
-    let result = grid_max_posterior_region(&array![0.0, 1.0, 2.0], &array![0.0, f64::NAN, 1.0], 0.9);
+    let result = grid_max_posterior_region(array![0.0, 1.0, 2.0].view(), array![0.0, f64::NAN, 1.0].view(), 0.9);
     assert_error!(result, "Posterior on [0, 2] has NaN negative log-likelihood values");
   }
 
   #[test]
   fn test_max_posterior_region_rejects_unsorted_grid() {
-    let result = grid_max_posterior_region(&array![0.0, 2.0, 1.0], &array![1.0, 0.0, 1.0], 0.9);
+    let result = grid_max_posterior_region(array![0.0, 2.0, 1.0].view(), array![1.0, 0.0, 1.0].view(), 0.9);
     assert_error!(result, "Time grid of a posterior must be strictly increasing");
   }
 
   #[test]
   fn test_max_posterior_region_rejects_grid_without_mass() {
-    let result = grid_max_posterior_region(&array![0.0, 1.0], &array![f64::INFINITY, f64::INFINITY], 0.9);
+    let result = grid_max_posterior_region(
+      array![0.0, 1.0].view(),
+      array![f64::INFINITY, f64::INFINITY].view(),
+      0.9,
+    );
     assert_error!(result, "Posterior on [0, 1] has no probability mass");
   }
 
@@ -220,7 +224,7 @@ mod tests {
         ((x - center).abs() / width).powf(power)
       });
 
-      let region = grid_max_posterior_region(&t, &neglog, 0.9).unwrap();
+      let region = grid_max_posterior_region(t.view(), neglog.view(), 0.9).unwrap();
 
       prop_assume!(region.peak == PeakLocation::Interior);
       prop_assert_abs_diff_eq!(interpolate(&t, &neglog, region.lower), interpolate(&t, &neglog, region.upper), epsilon = 1e-9);
@@ -236,8 +240,8 @@ mod tests {
       let t = grid(0.0, 1.0, 1001);
       let neglog = t.mapv(|x| ((x - center) / width).powi(2) + (x - center));
 
-      let region = grid_max_posterior_region(&t, &neglog, 0.9).unwrap();
-      let moved = grid_max_posterior_region(&t.mapv(|x| scale * x + shift), &neglog, 0.9).unwrap();
+      let region = grid_max_posterior_region(t.view(), neglog.view(), 0.9).unwrap();
+      let moved = grid_max_posterior_region(t.mapv(|x| scale * x + shift).view(), neglog.view(), 0.9).unwrap();
 
       prop_assert_eq!(region.peak, moved.peak);
       prop_assert_abs_diff_eq!(scale * region.lower + shift, moved.lower, epsilon = 1e-9);

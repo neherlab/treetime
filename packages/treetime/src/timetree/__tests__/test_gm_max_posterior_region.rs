@@ -41,7 +41,7 @@ mod tests {
     let to_numdate = |t: f64| expected.numdate_at_zero + t / expected.clock_rate;
     let limits = (to_numdate(expected.t[0]), to_numdate(expected.t[expected.t.len() - 1]));
 
-    let region = grid_max_posterior_region(&expected.t, &expected.neglog, CI_FRACTION)?;
+    let region = grid_max_posterior_region(expected.t.view(), expected.neglog.view(), CI_FRACTION)?;
     let region = PosteriorRegion {
       lower: to_numdate(region.lower),
       upper: to_numdate(region.upper),
@@ -75,7 +75,7 @@ mod tests {
       .as_ref()
       .expect("interior-peak fixture node carries the v0 CDF");
 
-    let region = grid_max_posterior_region(&expected.t, &expected.neglog, CI_FRACTION)?;
+    let region = grid_max_posterior_region(expected.t.view(), expected.neglog.view(), CI_FRACTION)?;
 
     let v0_mass =
       (interpolate(&expected.t, v0_cdf, region.upper) - interpolate(&expected.t, v0_cdf, region.lower)).abs();
