@@ -105,14 +105,11 @@ lax = { git = "https://github.com/numrs/ndarray-linalg", rev = "ac7052e" }
 ndarray-linalg = { git = "https://github.com/numrs/ndarray-linalg", rev = "ac7052e" }
 openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "0964a10" }
 
-argmin = { git = "https://github.com/argmin-rs/argmin", rev = "f5c3fd3" }
-argmin-math = { git = "https://github.com/argmin-rs/argmin", rev = "f5c3fd3" }
-
 
 # The `#[wasm_bindgen]` exports of async methods call `wasm-bindgen-futures`, which
 # the crate source never names.
 [workspace.metadata.cargo-shear]
-ignored = ["blas-src", "openblas-src", "argmin-math", "wasm-bindgen-futures"]
+ignored = ["blas-src", "openblas-src", "wasm-bindgen-futures"]
 
 
 [workspace.dependencies]
@@ -130,8 +127,7 @@ zstd = "=0.14.0"
 
 aide = { version = "=0.16.0-alpha.4", features = ["axum", "axum-json", "axum-query"] }
 approx = "=0.5.1"
-argmin = "=0.10.0"
-argmin-math = { version = "=0.4.0", features = ["ndarray_v0_16", "ndarray-linalg_0_17"] }
+argmin = { version = "=0.11.0", default-features = false }
 auto_ops = "=0.3.0"
 axum = { version = "=0.8.9", default-features = false, features = ["json"] }
 bon = "=3.9.3"

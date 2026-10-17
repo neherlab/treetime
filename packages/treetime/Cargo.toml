@@ -26,7 +26,6 @@ util-augur-node-data-json = { workspace = true }
 # [external]
 approx = { workspace = true }
 argmin = { workspace = true }
-argmin-math = { workspace = true }
 auto_ops = { workspace = true }
 blas-src = { workspace = true }
 bon = { workspace = true }
