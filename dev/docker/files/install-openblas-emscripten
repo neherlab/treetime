@@ -17,13 +17,13 @@
 set -euxo pipefail
 
 dest="${1:?prefix}"
-release="2026-10-15_14-49-12"
+release="2026-10-17_03-13-01"
 emscripten_version="6.0.10"
 archive="/tmp/openblas.tar.xz"
 installed_version_file="/opt/emscripten/emscripten/emscripten-version.txt"
 mkdir -p "${dest}"
 
-/fetch "https://github.com/binarylandia/build_openblas/releases/download/${release}/openblas-static-0.3.34.dev-eb00d597-wasm32-unknown-emscripten.${emscripten_version}-${release}.tar.xz" "${archive}"
+/fetch "https://github.com/binarylandia/build_openblas/releases/download/${release}/openblas-static-0.3.34-432-gde5d4914-wasm32-unknown-emscripten.${emscripten_version}-${release}.tar.xz" "${archive}"
 pixz -dp "$(nproc)" <"${archive}" | tar -C "${dest}" -x
 rm "${archive}"
 

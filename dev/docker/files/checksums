@@ -22,7 +22,7 @@ dd865c5a45ecb3f3b3146fef410e78e627abed264c11aafe72adcbb2102e2d98  openblas-stati
 c19dfc82a39663080a929c52963e2d7852caddbfd0bb68b50cfdd41190257309  openblas-static-0.3.28-x86_64-pc-windows-gnu-2026-10-14_07-10-01.tar.xz
 0b2dc6c2b80fb48e6494c45a2d137296a0f871fa23779a6e96f326f67cfda13b  openblas-static-0.3.28-x86_64-unknown-linux-gnu-2026-10-14_07-10-01.tar.xz
 8a3e5d3f4d236a808919fc0e5db977783c3a5ace4c3c1cf3cacce31b71dc788a  openblas-static-0.3.28-x86_64-unknown-linux-musl-2026-10-14_07-10-01.tar.xz
-1bfcf5e9fb144d66ec23c1b904bde1ac99fcb0916efbf9d8c80e177f965b595d  openblas-static-0.3.34.dev-eb00d597-wasm32-unknown-emscripten.6.0.10-2026-10-15_14-49-12.tar.xz
+f8ae26f829a075ac702655faf208f4e30fd0ccbae6fdc381bf38dd5327bdbf28  openblas-static-0.3.34-432-gde5d4914-wasm32-unknown-emscripten.6.0.10-2026-10-17_03-13-01.tar.xz
 4f57c5a35601b86bc275683e70aa15268f9de07b7c105050872603f1c1017fe1  osxcross-full-41f3856-2024-12-22_17-20-35.tar.xz
 dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71  rustup-init
 a51dd2829bdf725d268974728e032533b106ea01cb482a62288ec12627a7abbe  wasm-binaries.tar.xz
