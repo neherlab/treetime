@@ -100,7 +100,6 @@ strip = "none"
 
 
 [patch.crates-io]
-lapack-sys = { git = "https://github.com/numrs/lapack-sys", rev = "d3b1ca9" }
 openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "bdc5d5f" }
 
 

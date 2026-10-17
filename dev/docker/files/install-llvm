@@ -2,7 +2,7 @@
 #
 # Usage: $0 <prefix>
 #
-# Install LLVM and Clang 19, which bindgen needs (libclang), into a prefix.
+# Install LLVM and Clang 19 into a prefix.
 #
 set -euxo pipefail
 
