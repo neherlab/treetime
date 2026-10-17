@@ -52,9 +52,9 @@ A missing node state is a broken invariant. An empty sequence is written to the 
 
 ### Mass-sizing errors read as "not sizable"
 
-`packages/treetime-distribution/src/distribution_ops/mass_domain.rs:29-31:`
+`packages/treetime-distribution/src/distribution_ops/mass_domain.rs:46-52:`
 
-`peak_normalized_if_mass_sizable()` discards a `mass_profile()` error through `let Ok(..) else { return None; }`, so a distribution with an undeclared tail or fewer than two grid points is treated the same as one without finite total mass. Callers then take the fallback window intended for the second case.
+`peak_normalized_if_mass_sizable()` discards a `fn DistributionFunction.repeak()` error (`NaN` values) and a `mass_profile()` error through `let Ok(..) else { return None; }`, so a distribution with an undeclared tail or fewer than two grid points is treated the same as one without finite total mass. Callers then take the fallback window intended for the second case.
 
 ## Impact
 

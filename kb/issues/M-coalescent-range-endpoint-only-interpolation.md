@@ -6,7 +6,7 @@ For any nonlinear weight function -- the coalescent `internal_contribution` and 
 
 ## Affected code
 
-- [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L41-L42`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L41-L42): Range/Point branch extracts 2-element grid via `distribution.t()` and `distribution.y()`
+- [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L22-L26`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L22-L26): Range/Point branch extracts 2-element grid via `distribution.t()` and `distribution.y()`
 - [`packages/treetime/src/coalescent/coalescent.rs#L65-L73`](../../packages/treetime/src/coalescent/coalescent.rs#L65-L73): `internal_contribution` and `root_contribution` are nonlinear in $H(t)$ and $\ln(\lambda(t))$
 
 ## Impact

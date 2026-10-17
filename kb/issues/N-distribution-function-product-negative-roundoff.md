@@ -1,5 +1,8 @@
 # Function-function product yields tiny negative amplitudes from interpolation rounding
 
+> [!WARNING]
+> **Needs review.** The code no longer matches this description: `fn distribution_multiply_by_fn()` ([packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs)) adds negative-log weights to negative-log values and takes no logarithm, so it has no `Plain::is_defined` guard (Impact); `multiply_function_function` is now `fn multiply_functions()` in [packages/treetime-distribution/src/distribution_ops/multiply.rs#L163](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L163); and the timetree passes multiply `Distribution<NegLog>` operands, where a product is a sum of negative-log values and cannot turn negative. Re-check whether the defect remains for `Distribution<Plain>` only, and whether the trace below still reproduces.
+
 Multiplying two non-negative `Distribution::Function` operands can produce grid amplitudes that are slightly negative (order `-1e-26`), even though the exact product of two non-negative functions is non-negative everywhere. The negatives are pure floating-point rounding in the piecewise-linear interpolation, at grid points near the support tail where amplitudes are already tiny (order `1e-13`).
 
 ## Mechanism

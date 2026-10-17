@@ -41,7 +41,7 @@ The inference pipeline produces several distribution types. Each carries per-sid
 | Leaf time constraint    | `Error`           | `Error`             | default                                                                                                   | backward convolution input                                                      |
 | Branch length           | `HardApproach`    | `Linear` (fitted)   | `fn compute_branch_length_distribution()` (hard approach near `t=0`, `SoftTailLaw::fit` near `t_max`)     | convolution input (negated for backward); `fn compute_positional_log_lh()` eval |
 | Backward parent message | `Linear` (fitted) | `Hard`              | `fn Distribution::fit_soft_tail()` on the left, `with_right_extrap(Hard)` (backward_pass)                       | multiplication (combining children), division (forward cavity)                  |
-| Internal node time dist | `Linear` (fitted) | `Hard`              | product result (left tail composed in closed form by `fn distribution_product()`, preserved by normalize) | forward convolution input, division dividend                                    |
+| Internal node time dist | `Linear` (fitted) | `Hard`              | product result (left tail composed in closed form by `fn distribution_product()`, preserved by re-peaking) | forward convolution input, division dividend                                    |
 | Forward message         | `Hard`            | `Linear` (fitted)   | `with_left_extrap(Hard)`, `fn Distribution::fit_soft_tail()` on the right (forward_pass)                        | multiplication (refining node dist)                                             |
 | Refined node time dist  | `Hard`            | `Hard`              | multiplication result (composed from forward message and subtree dist, preserved by normalize)            | `fn Distribution.likely_time()` extraction                                      |
 
@@ -59,13 +59,31 @@ The branch-length distribution is the per-edge likelihood $L(t) \propto (\mu t)^
 
 Convolution reads only the grid ordinates and reconstructs the message tails from its own output, so it does not consume these tails; `negate()` swaps and sign-flips them for the backward message. The tails are consumed directly by `fn compute_positional_log_lh()`, which evaluates the distribution at the inferred duration $\text{child\_time} - \text{parent\_time}$: a duration beyond $t_\text{max}$ now reads the extrapolated `Linear` tail instead of failing the `Error` default and dropping the edge.
 
-### `normalize()` preserves tails
+### Amplitude, re-peaking and normalization
 
-Under the negative-log axis, `fn Distribution.normalize()` subtracts the minimum ordinate via `fn DistributionFunction.shift_y()`. A shift is closed form on both fitted laws -- the soft-tail slope and the hard approach law's shape are shift-invariant -- so `shift_y` carries the laws through unchanged. Every `DistributionFunction` regrid also preserves its per-side policy and fitted law, and `fn DistributionFunction.scale_y()` rescales the fitted laws.
+A `DistributionFunction` stores a shape on its grid and a level in its amplitude, as `Point` and `Range` do: its values are `Y::multiply(ampl, stored)`. The amplitude defaults to the unit level ($0$ under negative-log), so a function built from values holds them as stored values.
 
-This lets the backward pass combine child messages with a single product and normalization: the product composes the result tails (see [multiplication tails](#multiplication)) and normalization preserves them, so the folded result keeps its fitted `Linear` left tail and can still extend to reach a child with a disjoint finite grid. The child fold is `fn distribution_product()` (treetime-distribution), which co-locates the `Function` messages on one common grid and composes the summed left tail in closed form from the operands' own tails (`fn compose_multiplication_tail()`), so no tail is re-fit from the combined grid.
+- `fn Distribution.repeak()` moves the peak of the stored values into the amplitude and changes no value. It keeps the grid near the peak (no underflow) without losing the level. A function with no finite peak becomes `Empty`; a `NaN` value or amplitude is an error.
+- `fn Distribution.normalize()` sets the peak to the unit level and drops the level.
+- Under the negative-log axis both are an ordinate shift (`fn DistributionFunction.shift_y()`). A shift is closed form on both fitted laws -- the soft-tail slope and the hard approach law's shape are shift-invariant -- so the laws carry through unchanged. Every `DistributionFunction` regrid also preserves its per-side policy, fitted law and amplitude, and `fn DistributionFunction.scale_y()` rescales the fitted laws.
+- Equality compares values: two functions with the same grid, tails and values are equal however the level is split between grid and amplitude.
 
-The forward pass applies its own tail policies _after_ normalization because the forward message needs `Hard` left and a fitted `Linear` right regardless of the tails the multiplication produced. It fits the right soft tail from the normalized grid; the shift left the slope unchanged, so fitting before or after normalization gives the same law.
+The operations keep the amplitude:
+
+| Operation | Result amplitude |
+| --- | --- |
+| convolution | product of the operands' amplitudes; the FFT runs on the stored values |
+| product and division of functions | product or quotient of the amplitudes; the stored values are combined on the common grid |
+| `fn distribution_multiply_by_fn()` | the input's amplitude; the weights are added to the stored values |
+| resampling, re-windowing to mass, negation, tail fitting | unchanged |
+
+Combining stored values rather than values including the amplitude matters for reproducibility: adding a level of order one before re-peaking changes the last bits of the values, and the discrete grid choices downstream (point counts, mass windows) amplified that into node-date changes of up to $0.0025$ years.
+
+The backward pass re-peaks each node's combined distribution, the edge convolution and the mass re-windowing re-peak their results, so every message and subtree distribution carries its likelihood as its level, coalescent factors included. `fn Distribution.log_mass()` integrates the shape with its tails and adds the amplitude; `fn TimeBackward.log_marginal_likelihood()` evaluates it for the root's subtree distribution, the log marginal likelihood of the node times. Branch-length distributions stay peak-normalized, so the log marginal likelihood leaves out their peaks, which do not depend on the root or the clock rate. The numerical convolution and the mass windows drop up to $\epsilon$ of each message's mass, a bias of about $3 \cdot 10^{-3}$ per edge in the log marginal likelihood on a 400-tip simulation. The forward pass normalizes posteriors, so posterior values are unchanged.
+
+The backward pass combines child messages with a single product and re-peaking: the product composes the result tails (see [multiplication tails](#multiplication)) and re-peaking preserves them, so the folded result keeps its fitted `Linear` left tail and can still extend to reach a child with a disjoint finite grid. The child fold is `fn distribution_product()` (treetime-distribution), which co-locates the `Function` messages on one common grid and composes the summed left tail in closed form from the operands' own tails (`fn compose_multiplication_tail()`), so no tail is re-fit from the combined grid.
+
+The forward pass applies its own tail policies _after_ re-peaking because the forward message needs `Hard` left and a fitted `Linear` right regardless of the tails the multiplication produced. It fits the right soft tail from the re-peaked grid; the shift left the slope unchanged, so fitting before or after re-peaking gives the same law.
 
 ## Grid intersection contract
 
@@ -159,7 +177,7 @@ The soft sides union and extend under their tail laws, so an independently re-gr
 
 A subtlety this rule does not correct: when the divided-out child held the _tightest_ hard bound on a side, the parent product never stored the next factor's bound, so the quotient can only keep the dividend's (former child's) hard bound there -- a $0/0$ cancellation at the edge. The cavity is then slightly too tight on that side. Restoring the exact bound would require rebuilding the cavity from the retained factors instead of dividing the aggregate, tracked in [kb/issues/M-timetree-cavity-hard-bound-too-tight.md](../issues/M-timetree-cavity-hard-bound-too-tight.md).
 
-Coalescent contributions do not introduce another grid. The backward pass multiplies child messages first and evaluates the coalescent contribution pointwise on the resulting grid in negative-log space.
+Coalescent contributions do not introduce another grid. The backward pass multiplies child messages first and evaluates the coalescent contribution pointwise on the resulting grid in negative-log space (`fn distribution_multiply_by_fn()`). The result keeps the incoming tail laws, anchored at the new edge ordinate; it does not refit them. The coalescent cost steps wherever the number of lineages changes, and going into the past it can step down, where an older sample adds a lineage. A refit from the outermost grid points that straddles such a step fits a slope rising outward, which the clamp turns flat: the node distribution then has infinite mass. This happened at 3-7 recent nodes per 400-tip simulation with a coalescent prior. The kept tail ignores the cost beyond the grid edge (it rose by about 2 per year where measured, against message slopes of 14-27); dropping the refit left the date error unchanged within 0.2% (72 simulated runs, median ratio 1.000).
 
 ## Divergence from v0
 
@@ -188,9 +206,11 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 - [packages/treetime-grid/src/boundary_behavior.rs](../../packages/treetime-grid/src/boundary_behavior.rs): `enum BoundaryBehavior` (`Error`/`Hard`/`HardApproach`/`Constant`/`Linear`, every variant a complete value), `fn BoundaryBehavior.is_soft()`/`is_hard()`, `const DEFAULT_TAIL_FIT_POINTS`
 - [packages/treetime-grid/src/soft_tail_law.rs](../../packages/treetime-grid/src/soft_tail_law.rs): `struct SoftTailLaw` (single neg-log slope), `fn SoftTailLaw::fit()`, `fn SoftTailLaw::mass()`, `fn SoftTailLaw::compose_multiply()`
 - [packages/treetime-grid/src/grid_fn.rs](../../packages/treetime-grid/src/grid_fn.rs): policy-free grid interpolation; `fn GridFn.interp_with_extrap()` and `fn GridFn.resample_with_extrap()` accept explicit policies for one operation
-- [packages/treetime-distribution/src/distribution_core/function.rs](../../packages/treetime-distribution/src/distribution_core/function.rs): `left_extrap`/`right_extrap` fields and getters; policy builders; tail fitting; policy-preserving resampling, ordinate transforms, and argument negation
+- [packages/treetime-distribution/src/distribution_core/function.rs](../../packages/treetime-distribution/src/distribution_core/function.rs): `left_extrap`/`right_extrap` fields and getters; `ampl` with `fn DistributionFunction.amplitude()`, `fn DistributionFunction.with_amplitude()`, `fn DistributionFunction.values()`, `fn DistributionFunction.repeak()`, value-based `PartialEq`; `fn DistributionFunction.interp()` (values) and `fn DistributionFunction.interp_stored()`; policy builders; tail fitting; policy- and amplitude-preserving resampling, ordinate transforms, and argument negation
 - [packages/treetime-distribution/src/distribution_core/formula.rs](../../packages/treetime-distribution/src/distribution_core/formula.rs): exact Formula closure and finite sampling range, with no stored boundary policy
-- [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs): optional boundary getters; Function-only policy builders and tail fitting; hard compact variants; `fn Distribution.normalize()`
+- [packages/treetime-distribution/src/distribution_core/distribution.rs](../../packages/treetime-distribution/src/distribution_core/distribution.rs): optional boundary getters; Function-only policy builders and tail fitting; hard compact variants; `fn Distribution.normalize()`, `fn Distribution.repeak()`, `fn Distribution.log_mass()`
+- [packages/treetime-distribution/src/distribution_ops/mass_domain.rs](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs): `fn log_mass()` (shape and tails plus amplitude)
+- [packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs): `fn distribution_multiply_by_fn()` keeps the incoming tail laws and the amplitude
 
 ### Tail-aware arithmetic
 
@@ -199,16 +219,20 @@ Scientific workflows requiring posterior peak, normalization, or integrated-prob
 
 ### Inference pass tail application
 
-- [packages/treetime-distribution/src/distribution_core/distribution.rs#L174](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L174): `fn Distribution::fit_soft_tail()` -- fits the soft-side `Linear` tail of a message, errors on a degenerate grid, inert on non-Function messages. Shared by both passes.
-- [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs): backward message soft-left / hard-right assignment; the child fold delegates to `fn distribution_product()` (treetime-distribution), which composes the summed tails in closed form.
+- [packages/treetime-distribution/src/distribution_core/distribution.rs#L173](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L173): `fn Distribution::fit_soft_tail()` -- fits the soft-side `Linear` tail of a message, errors on a degenerate grid, inert on non-Function messages. Shared by both passes.
+- [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs): backward message soft-left / hard-right assignment; the child fold delegates to `fn distribution_product()` (treetime-distribution), which composes the summed tails in closed form; node distributions are re-peaked.
+- [packages/treetime/src/timetree/inference/result.rs](../../packages/treetime/src/timetree/inference/result.rs): `fn TimeBackward.log_marginal_likelihood()`
 - [packages/treetime-distribution/src/distribution_ops/multiply.rs](../../packages/treetime-distribution/src/distribution_ops/multiply.rs): `fn distribution_product()` folds the child `Function` messages on one common grid; `fn compose_multiplication_tail()` composes each side's result tail in closed form (soft slopes add, a hard bound dominates).
-- [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs): forward message hard-left / soft-right assignment, fit after `normalize()`.
+- [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs): forward message hard-left / soft-right assignment; posteriors are normalized, including the subtree distributions that the root and exactly dated nodes take as their posterior.
 
 ### Tests
 
 - [`packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply.rs): tail combinations (overlapping, disjoint, mixed `Constant`/`Hard`/`Error`, commutativity)
 - [`packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs): exact intersection under default boundaries, extension under explicit divisor tails
 - [`packages/treetime-distribution/src/distribution_core/__tests__/test_boundary_behavior.rs`](../../packages/treetime-distribution/src/distribution_core/__tests__/test_boundary_behavior.rs): boundary-variant evaluation and composition
+- [`packages/treetime-distribution/src/distribution_ops/__tests__/test_amplitude.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_amplitude.rs): re-peaking keeps values, normalization drops the level, convolution adds log masses, multiplication adds values, `fn Distribution.log_mass()`
+- [`packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply_by_fn.rs`](../../packages/treetime-distribution/src/distribution_ops/__tests__/test_multiply_by_fn.rs): incoming tail laws kept, including with a step in the weight inside the outermost fit points
+- [`packages/treetime/src/timetree/inference/__tests__/test_backward_pass.rs`](../../packages/treetime/src/timetree/inference/__tests__/test_backward_pass.rs): `test_backward_pass_root_carries_the_marginal_likelihood` against the closed form for two dated leaves with Gaussian branch likelihoods
 - [`packages/treetime-distribution/src/distribution_core/__tests__/test_function.rs`](../../packages/treetime-distribution/src/distribution_core/__tests__/test_function.rs): `fn Distribution::fit_soft_tail()` -- slope recovery, finite tail mass, inert on non-Function, error on degenerate grid
 
 ## Related knowledge base items

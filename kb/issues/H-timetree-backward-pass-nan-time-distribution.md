@@ -1,5 +1,8 @@
 # Timetree aborts with a NaN time distribution
 
+> [!WARNING]
+> **Needs review.** Commit `193628ba8d` re-peaks the node's combined distribution instead of normalizing it. The same `NaN` is now reported as "When re-peaking the time distribution of node 37: Cannot re-peak a distribution on [...]: its values contain NaN", from `fn DistributionFunction.repeak()` in [packages/treetime-distribution/src/distribution_core/function.rs#L340](../../packages/treetime-distribution/src/distribution_core/function.rs#L340). The quoted error and location below predate it.
+
 > [!IMPORTANT]
 > **Investigation required.** The source of the `NaN` is not traced. On one reproduction below, find the first factor of the combined message (child message, coalescent prior, date constraint) that holds `NaN` or `-inf`, and the operation that produces it.
 
