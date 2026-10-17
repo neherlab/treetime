@@ -81,11 +81,20 @@ pub(crate) fn run_initial_round(
   let time_inference = run(None)?;
 
   let (coalescent, timescale) = setup_coalescent(params, &graph, &time_inference, &names, log)?;
-  let time_inference = if coalescent.prior_wanted() {
+  let (coalescent, time_inference) = if coalescent.prior_wanted() {
     let prior = CoalescentModel::new(&coalescent.lineage_counts, &timescale.distribution)?;
-    run(Some(&prior))?
+    let time_inference = run(Some(&prior))?;
+    // k(t) from the prior-free times seeds the first prior pass; it is rebuilt once from the times inferred under that
+    // prior and then frozen
+    let lineage_counts = compute_lineage_counts(&graph, &time_inference.coalescent_node_times())
+      .wrap_err("Failed to compute coalescent lineage counts")?;
+    let coalescent = CoalescentSetup {
+      lineage_counts,
+      ..coalescent
+    };
+    (coalescent, time_inference)
   } else {
-    time_inference
+    (coalescent, time_inference)
   };
   let state = RoundState {
     graph,
