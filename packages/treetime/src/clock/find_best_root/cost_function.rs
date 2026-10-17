@@ -1,13 +1,10 @@
 use crate::branch_lengths::branch_length_or_zero;
-use crate::clock::clock_regression::ClockVarianceParams;
+use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, RegressedClockTree};
 use crate::clock::clock_set::ClockSet;
-use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::params::RootObjective;
 use argmin::core::{CostFunction, Error};
 use eyre::Report;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::graph::Graph;
 use treetime_utils::make_report;
 
 impl CostFunction for &BranchPointCostFunction<'_> {
@@ -40,14 +37,19 @@ pub struct BranchPointCostFunction<'a> {
 
 impl<'a> BranchPointCostFunction<'a> {
   pub(crate) fn new(
-    graph: &Graph,
-    inputs: &ClockInputs,
-    state: &ClockState,
+    regressed: RegressedClockTree<'a>,
     edge: GraphEdgeKey,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    options: &'a ClockVarianceParams,
     objective: RootObjective,
   ) -> Result<BranchPointCostFunction<'a>, Report> {
+    let RegressedClockTree {
+      tree: ClockTree {
+        graph,
+        branch_lengths,
+        inputs,
+      },
+      state,
+      clock_params: options,
+    } = regressed;
     let edge_obj = graph
       .get_edge(edge)
       .ok_or_else(|| make_report!("Edge not found: {edge}"))?;

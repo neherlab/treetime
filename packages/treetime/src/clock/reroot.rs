@@ -1,7 +1,7 @@
 use crate::branch_lengths::branch_length_or_zero;
-use crate::clock::clock_regression::{ClockTree, ClockVarianceParams};
+use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, RegressedClockTree};
 use crate::clock::clock_set::ClockSet;
-use crate::clock::clock_state::{ClockEdgeInput, ClockEdgeState, ClockInputs, ClockNodeInput, ClockState};
+use crate::clock::clock_state::{ClockEdgeInput, ClockEdgeState, ClockNodeInput, ClockState};
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::find_best_split::FindRootResult;
@@ -167,53 +167,26 @@ fn create_new_root_node(
 }
 
 pub(crate) fn select_root(
-  graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
-  options: &ClockVarianceParams,
+  regressed: RegressedClockTree<'_>,
   params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
   match &reroot_params.spec {
     RerootSpec::Method(RerootMethod::LeastSquares | RerootMethod::ClockFilter) => find_best_root(
-      graph,
-      inputs,
-      state,
-      options,
+      regressed,
       params,
-      branch_lengths,
       reroot_params.force_positive_rate,
       reroot_params.objective,
       names,
       log,
     ),
-    RerootSpec::Method(RerootMethod::MinDev) => find_best_root(
-      graph,
-      inputs,
-      state,
-      options,
-      params,
-      branch_lengths,
-      false,
-      RootObjective::FixedRate(0.0),
-      names,
-      log,
-    ),
-    RerootSpec::Method(RerootMethod::Oldest) => {
-      find_oldest_root(graph, inputs, state, options, branch_lengths, reroot_params.objective)
+    RerootSpec::Method(RerootMethod::MinDev) => {
+      find_best_root(regressed, params, false, RootObjective::FixedRate(0.0), names, log)
     },
-    RerootSpec::Tips(tips) => find_tip_group_root(
-      graph,
-      inputs,
-      state,
-      options,
-      tips,
-      branch_lengths,
-      reroot_params.objective,
-    ),
+    RerootSpec::Method(RerootMethod::Oldest) => find_oldest_root(regressed, reroot_params.objective),
+    RerootSpec::Tips(tips) => find_tip_group_root(regressed, tips, reroot_params.objective),
   }
 }
 
@@ -252,14 +225,8 @@ impl RerootParams {
   }
 }
 
-fn find_oldest_root(
-  graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
-  options: &ClockVarianceParams,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  objective: RootObjective,
-) -> Result<FindRootResult, Report> {
+fn find_oldest_root(regressed: RegressedClockTree<'_>, objective: RootObjective) -> Result<FindRootResult, Report> {
+  let ClockTree { graph, inputs, .. } = regressed.tree;
   let Some(oldest_key) = graph
     .get_leaves()
     .filter_map(|node| {
@@ -275,38 +242,31 @@ fn find_oldest_root(
     ));
   };
 
-  find_named_root_point(graph, inputs, state, options, oldest_key, branch_lengths, objective)
+  find_named_root_point(regressed, oldest_key, objective)
 }
 
 fn find_tip_group_root(
-  graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
-  options: &ClockVarianceParams,
+  regressed: RegressedClockTree<'_>,
   tips: &[GraphNodeKey],
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report> {
   if tips.is_empty() {
     return Err(input_error("--reroot-tips requires at least one tip name"));
   }
 
-  let mrca_key = common_ancestor(graph, tips)?;
-  find_named_root_point(graph, inputs, state, options, mrca_key, branch_lengths, objective)
+  let mrca_key = common_ancestor(&regressed.tree.graph, tips)?;
+  find_named_root_point(regressed, mrca_key, objective)
 }
 
 fn find_named_root_point(
-  graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
-  options: &ClockVarianceParams,
+  regressed: RegressedClockTree<'_>,
   node_key: GraphNodeKey,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   objective: RootObjective,
 ) -> Result<FindRootResult, Report> {
+  let graph = &regressed.tree.graph;
   let Some(edge) = graph.parent_inbound_edge(node_key)? else {
     let root = graph.get_exactly_one_root()?;
-    let clock_set = state.node(root.key()).clone();
+    let clock_set = regressed.state.node(root.key()).clone();
     return Ok(FindRootResult {
       edge: None,
       split: 0.0,
@@ -316,7 +276,7 @@ fn find_named_root_point(
   };
 
   let split = 0.5;
-  let cost_fn = BranchPointCostFunction::new(graph, inputs, state, edge, branch_lengths, options, objective)?;
+  let cost_fn = BranchPointCostFunction::new(regressed, edge, objective)?;
   let clock_set = cost_fn.evaluate_clock_set(split)?;
   Ok(FindRootResult {
     edge: Some(edge),

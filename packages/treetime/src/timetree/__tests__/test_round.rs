@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::{branch_lengths_or_zero, one_mutation};
   use crate::clock::clock_regression::{
-    ClockFit, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
+    ClockFit, ClockFitParams, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
   };
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
@@ -379,13 +379,15 @@ mod tests {
           branch_lengths,
           inputs,
         },
-        &BTreeSet::new(),
-        &ClockVarianceParams::default(),
-        Some(CLOCK_RATE),
-        true,
-        &BranchPointOptimizationParams::default(),
-        &RerootParams::default(),
-        None,
+        &ClockFitParams {
+          outliers: &BTreeSet::new(),
+          clock_params: &ClockVarianceParams::default(),
+          clock_rate: Some(CLOCK_RATE),
+          keep_root: true,
+          branch_params: &BranchPointOptimizationParams::default(),
+          reroot_params: &RerootParams::default(),
+          prev_clock_rate: None,
+        },
         &names,
         &NoopProgress,
       )?;

@@ -3,7 +3,9 @@ use crate::cancel::Cancel;
 use crate::clock::assign_dates::assign_dates;
 use crate::clock::clock_filter::clock_filter;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_regression::{
+  ClockFitParams, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
+};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
@@ -128,13 +130,15 @@ fn estimate_clock_model_with_prefilter(
     let reroot_params = RerootParams::new(reroot_spec.clone(), false);
     let (tree, result) = estimate_clock_model_with_reroot_policy(
       tree,
-      &BTreeSet::new(),
-      options,
-      None,
-      keep_root,
-      branch_params,
-      &reroot_params,
-      None,
+      &ClockFitParams {
+        outliers: &BTreeSet::new(),
+        clock_params: options,
+        clock_rate: None,
+        keep_root,
+        branch_params,
+        reroot_params: &reroot_params,
+        prev_clock_rate: None,
+      },
       names,
       log,
     )?;
@@ -173,13 +177,15 @@ fn estimate_clock_model_with_prefilter(
   };
   let (tree, result) = estimate_clock_model_with_reroot_policy(
     tree,
-    outliers,
-    options,
-    None,
-    keep_root,
-    branch_params,
-    &reroot_params,
-    None,
+    &ClockFitParams {
+      outliers,
+      clock_params: options,
+      clock_rate: None,
+      keep_root,
+      branch_params,
+      reroot_params: &reroot_params,
+      prev_clock_rate: None,
+    },
     names,
     log,
   )

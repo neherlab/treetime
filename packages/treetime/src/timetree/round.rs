@@ -1,7 +1,7 @@
 use crate::branch_lengths::one_mutation;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{
-  ClockFit, ClockRegressionPoint, ClockTree, estimate_clock_model_with_reroot_policy,
+  ClockFit, ClockFitParams, ClockRegressionPoint, ClockTree, estimate_clock_model_with_reroot_policy,
 };
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::reroot::RerootParams;
@@ -346,13 +346,15 @@ fn update_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn Log
       branch_lengths: state.branch_lengths,
       inputs: clock_inputs,
     },
-    inputs.outliers,
-    &inputs.context.covariation_clock_params,
-    inputs.params.clock_rate,
-    keep_root,
-    &inputs.context.branch_params,
-    &RerootParams::default(),
-    Some(previous_clock_rate),
+    &ClockFitParams {
+      outliers: inputs.outliers,
+      clock_params: &inputs.context.covariation_clock_params,
+      clock_rate: inputs.params.clock_rate,
+      keep_root,
+      branch_params: &inputs.context.branch_params,
+      reroot_params: &RerootParams::default(),
+      prev_clock_rate: Some(previous_clock_rate),
+    },
     &state.names,
     log,
   )

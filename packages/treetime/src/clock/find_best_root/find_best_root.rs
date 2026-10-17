@@ -1,5 +1,4 @@
-use crate::clock::clock_regression::ClockVarianceParams;
-use crate::clock::clock_state::{ClockInputs, ClockState};
+use crate::clock::clock_regression::{ClockTree, RegressedClockTree};
 use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::error::input_error;
@@ -9,18 +8,12 @@ use eyre::{Report, WrapErr};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::collections::container::get_exactly_one;
 
 pub(crate) fn find_best_root(
-  graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
-  options: &ClockVarianceParams,
+  regressed: RegressedClockTree<'_>,
   params: &BranchPointOptimizationParams,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   force_positive: bool,
   objective: RootObjective,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -31,6 +24,11 @@ pub(crate) fn find_best_root(
     "Starting root optimization with method: {params:?}, force_positive={force_positive}"
   );
 
+  let RegressedClockTree {
+    tree: ClockTree { graph, .. },
+    state,
+    ..
+  } = regressed;
   let root = graph.get_exactly_one_root()?;
   let mut best_root_node = root;
 
@@ -90,18 +88,7 @@ pub(crate) fn find_best_root(
     let inbound = best_root_node.inbound();
     let edge =
       get_exactly_one(inbound).wrap_err("Root optimization on a node with multiple parents is not implemented")?;
-    let res = find_best_split(
-      graph,
-      inputs,
-      state,
-      *edge,
-      branch_lengths,
-      options,
-      params,
-      objective,
-      names,
-      log,
-    )?;
+    let res = find_best_split(regressed, *edge, params, objective, names, log)?;
     debug!(
       "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
       res.chisq, res.split
@@ -119,18 +106,7 @@ pub(crate) fn find_best_root(
 
   for (child_branch_count, e) in best_root_node.outbound().iter().enumerate() {
     debug!("Optimizing position on child branch {child_branch_count}");
-    let res = find_best_split(
-      graph,
-      inputs,
-      state,
-      *e,
-      branch_lengths,
-      options,
-      params,
-      objective,
-      names,
-      log,
-    )?;
+    let res = find_best_split(regressed, *e, params, objective, names, log)?;
     debug!(
       "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
       child_branch_count, res.chisq, res.split

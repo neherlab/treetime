@@ -179,7 +179,7 @@ mod tests {
 
   mod helpers {
     use crate::clock::clock_regression::{
-      ClockRerootResult, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
+      ClockFitParams, ClockRerootResult, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
     };
     use crate::clock::clock_state::ClockInputs;
     use crate::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -258,13 +258,15 @@ mod tests {
           branch_lengths: nwk_parsed.branch_lengths,
           inputs,
         },
-        &BTreeSet::new(),
-        &ClockVarianceParams::default(),
-        clock_rate,
-        false,
-        optimization_params,
-        &reroot_params,
-        None,
+        &ClockFitParams {
+          outliers: &BTreeSet::new(),
+          clock_params: &ClockVarianceParams::default(),
+          clock_rate,
+          keep_root: false,
+          branch_params: optimization_params,
+          reroot_params: &reroot_params,
+          prev_clock_rate: None,
+        },
         &names,
         &NoopProgress,
       )?;

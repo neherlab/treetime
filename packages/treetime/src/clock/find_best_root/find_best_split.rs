@@ -1,6 +1,5 @@
-use crate::clock::clock_regression::ClockVarianceParams;
+use crate::clock::clock_regression::RegressedClockTree;
 use crate::clock::clock_set::ClockSet;
-use crate::clock::clock_state::{ClockInputs, ClockState};
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
 use crate::clock::find_best_root::{method_brent, method_golden_section, method_grid_search};
@@ -9,23 +8,18 @@ use crate::progress::LogSink;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
 pub(crate) fn find_best_split(
-  graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
+  regressed: RegressedClockTree<'_>,
   edge: GraphEdgeKey,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  options: &ClockVarianceParams,
   params: &BranchPointOptimizationParams,
   objective: RootObjective,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
-  let cost_fn = BranchPointCostFunction::new(graph, inputs, state, edge, branch_lengths, options, objective)?;
-  let branch = node_label(names, graph.get_target_node_key(edge)?);
+  let cost_fn = BranchPointCostFunction::new(regressed, edge, objective)?;
+  let branch = node_label(names, regressed.tree.graph.get_target_node_key(edge)?);
 
   match params {
     BranchPointOptimizationParams::Grid(params) => {

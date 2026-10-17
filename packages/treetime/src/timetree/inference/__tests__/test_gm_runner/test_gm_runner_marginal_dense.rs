@@ -4,7 +4,9 @@ mod tests {
     ALPHABET, OUTPUTS, extract_node_times, load_alignment_for_dataset, load_dates_for_dataset,
   };
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+  use crate::clock::clock_regression::{
+    ClockFitParams, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
+  };
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::load_date_constraints;
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -86,13 +88,17 @@ mod tests {
         branch_lengths,
         inputs: clock_estimate_inputs,
       },
-      &BTreeSet::new(),
-      &ClockVarianceParams::default(),
-      Some(case.clock_rate()),
-      true,
-      &BranchPointOptimizationParams::default(),
-      &RerootParams::default(),
-      None, &names, &NoopProgress
+      &ClockFitParams {
+        outliers: &BTreeSet::new(),
+        clock_params: &ClockVarianceParams::default(),
+        clock_rate: Some(case.clock_rate()),
+        keep_root: true,
+        branch_params: &BranchPointOptimizationParams::default(),
+        reroot_params: &RerootParams::default(),
+        prev_clock_rate: None,
+      },
+      &names,
+      &NoopProgress,
     )?;
     let clock_model = clock_reroot.into_clock_fit()?.model;
 

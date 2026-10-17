@@ -108,7 +108,9 @@ mod tests {
     use crate::cancel::NoopCancel;
     use crate::clock::assign_dates::assign_dates;
     use crate::clock::clock_filter::clock_filter;
-    use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+    use crate::clock::clock_regression::{
+      ClockFitParams, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
+    };
     use crate::clock::clock_state::ClockInputs;
     use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
     use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
@@ -168,13 +170,15 @@ mod tests {
           branch_lengths: nwk_parsed.branch_lengths,
           inputs,
         },
-        &BTreeSet::new(),
-        clock_params,
-        None,
-        false,
-        &BranchPointOptimizationParams::default(),
-        &RerootParams::new(RerootSpec::default(), false),
-        None,
+        &ClockFitParams {
+          outliers: &BTreeSet::new(),
+          clock_params,
+          clock_rate: None,
+          keep_root: false,
+          branch_params: &BranchPointOptimizationParams::default(),
+          reroot_params: &RerootParams::new(RerootSpec::default(), false),
+          prev_clock_rate: None,
+        },
         &names,
         &NoopProgress,
       )?;

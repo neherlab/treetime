@@ -24,16 +24,18 @@ use treetime_graph::reroot::{RerootResult, StemRemovalInfo};
 
 pub(crate) fn estimate_clock_model_with_reroot_policy(
   tree: ClockTree,
-  outliers: &BTreeSet<GraphNodeKey>,
-  options: &ClockVarianceParams,
-  clock_rate: Option<f64>,
-  keep_root: bool,
-  optimization_params: &BranchPointOptimizationParams,
-  reroot_params: &RerootParams,
-  prev_clock_rate: Option<f64>,
+  params: &ClockFitParams<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockRerootResult), Report> {
+  let ClockFitParams {
+    outliers,
+    clock_params,
+    clock_rate,
+    keep_root,
+    prev_clock_rate,
+    ..
+  } = *params;
   if let Some(rate) = clock_rate {
     progress_info!(
       log,
@@ -48,7 +50,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
     &tree.graph,
     &tree.inputs,
     outliers,
-    options,
+    clock_params,
     &tree.branch_lengths,
     prev_clock_rate,
   )?;
@@ -59,17 +61,14 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
     (tree, state, None)
   } else {
     let reroot_params = clock_rate.map_or_else(
-      || reroot_params.clone(),
-      |rate| reroot_params.with_objective(RootObjective::FixedRate(rate)),
+      || params.reroot_params.clone(),
+      |rate| params.reroot_params.with_objective(RootObjective::FixedRate(rate)),
     );
-    let reroot = RootSearch {
-      outliers,
-      options,
-      optimization_params,
+    let search = ClockFitParams {
       reroot_params: &reroot_params,
-      prev_clock_rate,
+      ..*params
     };
-    let (tree, state, reroot_result) = reroot_at_best_root(tree, state, &reroot, names, log)?;
+    let (tree, state, reroot_result) = reroot_at_best_root(tree, state, &search, names, log)?;
     (tree, state, Some(reroot_result))
   };
 
@@ -118,7 +117,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
 fn reroot_at_best_root(
   tree: ClockTree,
   state: ClockState,
-  search: &RootSearch<'_>,
+  search: &ClockFitParams<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockState, RerootResult), Report> {
@@ -127,7 +126,7 @@ fn reroot_at_best_root(
     &tree.graph,
     &tree.inputs,
     state,
-    search.options,
+    search.clock_params,
     &tree.branch_lengths,
     search.prev_clock_rate,
   )?;
@@ -149,7 +148,7 @@ fn reroot_at_best_root(
     tree,
     state,
     best_root,
-    search.options,
+    search.clock_params,
     search.reroot_params,
     stem_removal,
     names,
@@ -163,7 +162,7 @@ fn without_undated_stem(
   mut tree: ClockTree,
   state: ClockState,
   best_root: FindRootResult,
-  search: &RootSearch<'_>,
+  search: &ClockFitParams<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockState, FindRootResult, Option<StemRemovalInfo>), Report> {
@@ -174,7 +173,7 @@ fn without_undated_stem(
     &tree.graph,
     &tree.inputs,
     search.outliers,
-    search.options,
+    search.clock_params,
     &tree.branch_lengths,
     search.prev_clock_rate,
   )?;
@@ -182,7 +181,7 @@ fn without_undated_stem(
     &tree.graph,
     &tree.inputs,
     state,
-    search.options,
+    search.clock_params,
     &tree.branch_lengths,
     search.prev_clock_rate,
   )?;
@@ -193,29 +192,27 @@ fn without_undated_stem(
 fn search_root(
   tree: &ClockTree,
   state: &ClockState,
-  search: &RootSearch<'_>,
+  search: &ClockFitParams<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
-  select_root(
-    &tree.graph,
-    &tree.inputs,
+  let regressed = RegressedClockTree {
+    tree,
     state,
-    search.options,
-    search.optimization_params,
-    search.reroot_params,
-    &tree.branch_lengths,
-    names,
-    log,
-  )
+    clock_params: search.clock_params,
+  };
+  select_root(regressed, search.branch_params, search.reroot_params, names, log)
 }
 
-struct RootSearch<'a> {
-  outliers: &'a BTreeSet<GraphNodeKey>,
-  options: &'a ClockVarianceParams,
-  optimization_params: &'a BranchPointOptimizationParams,
-  reroot_params: &'a RerootParams,
-  prev_clock_rate: Option<f64>,
+#[derive(Clone, Copy)]
+pub(crate) struct ClockFitParams<'a> {
+  pub outliers: &'a BTreeSet<GraphNodeKey>,
+  pub clock_params: &'a ClockVarianceParams,
+  pub clock_rate: Option<f64>,
+  pub keep_root: bool,
+  pub branch_params: &'a BranchPointOptimizationParams,
+  pub reroot_params: &'a RerootParams,
+  pub prev_clock_rate: Option<f64>,
 }
 
 #[derive(Clone, Debug)]
@@ -270,6 +267,13 @@ pub(crate) struct ClockTree {
   pub graph: Graph,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub inputs: ClockInputs,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct RegressedClockTree<'a> {
+  pub tree: &'a ClockTree,
+  pub state: &'a ClockState,
+  pub clock_params: &'a ClockVarianceParams,
 }
 
 #[derive(Clone, Debug)]

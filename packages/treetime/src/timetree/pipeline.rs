@@ -3,7 +3,7 @@ use crate::branch_lengths::branch_length_or_zero;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockFit, ClockTree, ClockVarianceParams};
+use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree, ClockVarianceParams};
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
@@ -31,7 +31,7 @@ use crate::timetree::confidence::{
 };
 use crate::timetree::convergence::optimizer::TraceSink;
 use crate::timetree::inference::runner::timetree_branch_lengths;
-use crate::timetree::optimization::reroot::{DatedClockFit, fit_clock_to_dates};
+use crate::timetree::optimization::reroot::fit_clock_to_dates;
 use crate::timetree::params::{
   FinalSequences, TimeMarginalMode, TimetreeContext, TimetreeParams, build_covariation_clock_params,
   compute_effective_time_marginal,
@@ -283,21 +283,22 @@ fn estimate_initial_clock(
   log: &dyn LogSink,
 ) -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>, ClockFit), Report> {
   let reroot_params = RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate);
-  let fit = DatedClockFit {
+  let fit = ClockFitParams {
     outliers: &BTreeSet::new(),
     clock_params: &ClockVarianceParams::default(),
     clock_rate: params.clock_rate,
     keep_root: params.keep_root,
     branch_params: &context.branch_params,
     reroot_params: &reroot_params,
-    failure: "Failed to infer clock model",
+    prev_clock_rate: None,
   };
   let (
     ClockTree {
       graph, branch_lengths, ..
     },
     clock_reroot,
-  ) = fit_clock_to_dates(graph, branch_lengths, &context.date_constraints, &fit, names, log)?;
+  ) = fit_clock_to_dates(graph, branch_lengths, &context.date_constraints, &fit, names, log)
+    .wrap_err("Failed to infer clock model")?;
   Ok((graph, branch_lengths, clock_reroot.into_clock_fit()?))
 }
 

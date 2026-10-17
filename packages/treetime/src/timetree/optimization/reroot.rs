@@ -1,5 +1,5 @@
 use crate::clock::clock_regression::{
-  ClockFit, ClockRerootResult, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
+  ClockFit, ClockFitParams, ClockRerootResult, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
 };
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::date_constraints::DateConstraints;
@@ -40,21 +40,22 @@ pub(crate) fn reroot_tree(
     reroot_params.force_positive_rate
   );
 
-  let fit = DatedClockFit {
+  let params = ClockFitParams {
     outliers,
     clock_params,
     clock_rate,
     keep_root: false,
     branch_params,
     reroot_params,
-    failure: "Failed to estimate clock model with reroot",
+    prev_clock_rate: None,
   };
   let (
     ClockTree {
       graph, branch_lengths, ..
     },
     clock_reroot_result,
-  ) = fit_clock_to_dates(graph, branch_lengths, constraints, &fit, names, log)?;
+  ) = fit_clock_to_dates(graph, branch_lengths, constraints, &params, names, log)
+    .wrap_err("Failed to estimate clock model with reroot")?;
 
   let branch_model = match clock_reroot_result.reroot_result() {
     Some(reroot) => branch_model.apply_reroot(&graph, &branch_lengths, reroot, log)?,
@@ -73,7 +74,7 @@ pub(crate) fn fit_clock_to_dates(
   graph: Graph,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   constraints: &DateConstraints,
-  fit: &DatedClockFit<'_>,
+  params: &ClockFitParams<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockRerootResult), Report> {
@@ -85,27 +86,10 @@ pub(crate) fn fit_clock_to_dates(
       branch_lengths,
       inputs,
     },
-    fit.outliers,
-    fit.clock_params,
-    fit.clock_rate,
-    fit.keep_root,
-    fit.branch_params,
-    fit.reroot_params,
-    None,
+    params,
     names,
     log,
   )
-  .wrap_err(fit.failure)
-}
-
-pub(crate) struct DatedClockFit<'a> {
-  pub outliers: &'a BTreeSet<GraphNodeKey>,
-  pub clock_params: &'a ClockVarianceParams,
-  pub clock_rate: Option<f64>,
-  pub keep_root: bool,
-  pub branch_params: &'a BranchPointOptimizationParams,
-  pub reroot_params: &'a RerootParams,
-  pub failure: &'static str,
 }
 
 pub(crate) struct RerootedTree {
