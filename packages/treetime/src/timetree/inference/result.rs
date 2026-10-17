@@ -104,6 +104,7 @@ pub struct BranchLikelihood {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct NodePosterior {
   pub distribution: TimeDistribution,
+  /// Point estimate of the node's time: the posterior peak, and for the root the posterior median
   pub likely_time: Option<f64>,
   pub time: Option<f64>,
   pub contradicted: bool,
