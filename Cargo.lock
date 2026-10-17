@@ -3767,15 +3767,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rand_isaac"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62cb7dedb2feaa5c3ea9f47b7d6f5bde397a2dd7d0305a0cd35b51588607f415"
-dependencies = [
- "rand_core 0.10.1",
-]
-
-[[package]]
 name = "rand_xorshift"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5211,7 +5202,6 @@ dependencies = [
  "pretty_dtoa",
  "proptest",
  "rand 0.10.3",
- "rand_isaac",
  "rayon",
  "regex",
  "rstest",

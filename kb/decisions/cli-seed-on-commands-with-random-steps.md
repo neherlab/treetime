@@ -11,6 +11,7 @@ v0 adds `--rng-seed` to every subcommand parser in `packages/legacy/treetime/tre
 - The random steps of v1 are profile sampling in `ancestral` (`--sample-from-profile=root|all`) and polytomy resolution in `timetree` (`--resolve-polytomies`). The Fitch root tie-break is deterministic ([ancestral-fitch-deterministic-root-state.md](ancestral-fitch-deterministic-root-state.md)), so `clock` and `mugration` have no random step and do not accept `--seed`
 - `struct SeedArgs` in `packages/app-commands/src/commands/shared/seed.rs` owns the flag. `SeedArgs::resolve()` returns the given seed or draws one, and logs `<step> is stochastic; seed <seed> (pass --seed to reproduce this run)` when the run has a random step
 - The core takes a plain `u64` seed (`AncestralParams`, `AaParams`, `TimetreeParams`), and `get_random_number_generator()` in `packages/treetime-utils/src/sync/random.rs` takes a `u64`, so no core path reads entropy
+- The generator is Xoshiro256++ (`rand::rngs::Xoshiro256PlusPlus`), seeded from the `u64` through SplitMix64
 - In `ancestral`, the nucleotide and amino-acid reconstructions of one run share the resolved seed. Each reconstruction starts its own generator from that seed, so `--seed=N` reproduces both
 
 ## Rule for every random step
@@ -31,8 +32,10 @@ Two v0 random steps are not ported yet and must follow this rule when they are: 
 - A seed that no random step reads gives the user a false promise of reproducibility; [kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md) tracked the ignored `clock` and `mugration` flags
 - Drawing one seed per run and logging it makes an unseeded stochastic run reproducible after the fact, which v0 does not offer
 - v1 has no backward compatibility requirement, so a v0 invocation that passes `--rng-seed` to `clock` or `mugration` now fails with an unknown-argument error instead of silently ignoring the value
+- Xoshiro256++ fits scientific use: it passes the BigCrush and PractRand statistical test suites, its authors recommend it for simulation, and SplitMix64 seeding is the seeding they recommend ([Blackman and Vigna 2021](https://doi.org/10.1145/3460772)). It is fast, holds 32 bytes of state, can be copied, and gives the same numbers for a seed on every platform, WebAssembly included. `rand` ships it without a feature or an extra crate, and its output is fixed by the algorithm, so it does not change with `rand` releases the way `StdRng` may. A cryptographic generator such as ChaCha12 adds cost and gives unpredictability, which a scientific run does not need.
 
 ## Consequences
 
-- Seeded runs are reproducible within v1, but not identical to v0, because v1 uses the Isaac64 generator and v0 uses NumPy's PCG64 ([ancestral-sample-mode-default-argmax.md](ancestral-sample-mode-default-argmax.md), [timetree-stochastic-polytomy-resolution.md](timetree-stochastic-polytomy-resolution.md))
-- Tests draw random numbers only through `get_random_number_generator()`; `clippy.toml` rejects `rand::thread_rng`, `rand::rngs::StdRng`, `rand::rngs::SmallRng`, and `SeedableRng::from_entropy`
+- Seeded runs are reproducible within v1, but not identical to v0, because v1 uses the Xoshiro256++ generator and v0 uses NumPy's PCG64 ([ancestral-sample-mode-default-argmax.md](ancestral-sample-mode-default-argmax.md), [timetree-stochastic-polytomy-resolution.md](timetree-stochastic-polytomy-resolution.md))
+- Seeded results change when the generator or the sampling code of `rand` changes; a seed reproduces a run of the same TreeTime version
+- Tests draw random numbers only through `get_random_number_generator()`; `clippy.toml` rejects `rand::rng`, `rand::make_rng`, `rand::rngs::StdRng`, `rand::rngs::SmallRng`, and `rand::rngs::SysRng`

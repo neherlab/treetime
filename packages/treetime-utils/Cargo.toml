@@ -45,7 +45,6 @@ ordered-float = { workspace = true }
 parking_lot = { workspace = true }
 pretty_dtoa = { workspace = true }
 rand = { workspace = true }
-rand_isaac = { workspace = true }
 rayon = { workspace = true }
 regex = { workspace = true }
 serde_json = { workspace = true }
