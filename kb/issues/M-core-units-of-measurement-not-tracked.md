@@ -23,7 +23,7 @@ All physical quantities are `f64` with no type-level or documentation-level dist
 - Branch lengths transition from subs/site to years during clock model application with no type change at the boundary
 - Optimize command works in subs/site, timetree command works in both subs/site and years depending on pipeline stage -- the transition point is implicit
 - `fn ClockModel::clock_deviation(date: f64, div: f64)` accepts interchangeable primitives for calendar date and divergence [`packages/treetime/src/clock/clock_model.rs#L11`](../../packages/treetime/src/clock/clock_model.rs#L11).
-- `fn GTR::evolve(t: f64, ...)` calls `t` `branch length (time)`, while lower-level helpers separately distinguish branch-length space after absorbing the model rate [`packages/treetime/src/gtr/gtr.rs#L329`](../../packages/treetime/src/gtr/gtr.rs#L329) [`packages/treetime/src/gtr/gtr.rs#L464`](../../packages/treetime/src/gtr/gtr.rs#L464).
+- `fn GTR::evolve(t: f64, ...)` calls `t` `branch length (time)`, while lower-level helpers separately distinguish branch-length space after absorbing the model rate [`packages/treetime/src/gtr/gtr.rs#L151`](../../packages/treetime/src/gtr/gtr.rs#L151) [`packages/treetime/src/gtr/gtr.rs#L185`](../../packages/treetime/src/gtr/gtr.rs#L185).
 - `TimeLength`, divergence, branch length, rate multiplier, variance, and date APIs all expose raw `f64`, so signatures cannot prevent swapping values with incompatible units.
 
 ## Investigation scope

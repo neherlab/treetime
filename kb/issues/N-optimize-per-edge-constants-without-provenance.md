@@ -33,6 +33,7 @@ No reason is recorded for these constants or for the numeric value inside a reco
 
 - `NEWTON_REL_TOL`, `NEWTON_MAX_ITER`, `BRENT_MAX_ITER`, the Brent tolerance (a library default), and the grid lower end $0.1 \cdot \text{one\_mutation}$
 - The factor $1.5$ and the term $\text{one\_mutation}$ of the upper end
+- The Newton stopping rule $\varepsilon_s = 5\cdot10^{-4}s$ with the floor $10^{-8}$: on the Poisson surface the returned branch-length error is at most $2.5\cdot10^{-7}\,t$ (derivation in the property test `test_prop_optimize_method_newton_safeguard_matches_poisson_maximum`). This exceeds $10^{-6}$ for $t > 4$ and reaches $2.25\cdot10^{-6}$ at $s = 3$ ($t = 9$). The property test covers $s \le 1.5$ ($t \le 2.25$), where the bound is $5.6\cdot10^{-7}$, for this reason
 - The values $10^{-8}$ (`NEWTON_ABS_TOL`), $10^{-12}$ (bracket lower end), $0.01$ (indel floor), $100$ (grid points), and the step limit of one branch-length unit of the Newton clamp: the history records why each constant exists but not why it has this value. The coordinate change is not the unexplained part: the clamp $\delta_s \geq s - \sqrt{s^2 + 1}$ follows from limiting the increase of $t$ to one
 
 ### Unsupported rationale

@@ -48,7 +48,7 @@ The performance bottleneck is in the backward pass (`propagate_distributions_bac
 
 ### Grid spacing ratio blow-up
 
-`compute_branch_length_distribution()` in [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs) creates a 300-point branch-length grid via `create_simple_grid()` over `[one_mutation * 0.01, min(center * 5, 5.0)]`, then converts to the time domain by dividing by `effective_clock_rate = clock_rate * gamma`. Different edges have different gamma values, producing time-domain grids with different spacings.
+`compute_branch_length_distribution()` in [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs) creates a 300-point branch-length grid via `create_simple_grid()` over `[one_mutation * 0.01, min(center * 5, 5.0)]`, then converts to the time domain by dividing by `branch_rate` (the clock rate times `gamma`, computed by the caller). Different edges have different gamma values, producing time-domain grids with different spacings.
 
 `convolution_function_function()` in [`packages/treetime-distribution/src/distribution_ops/convolve.rs`](../../packages/treetime-distribution/src/distribution_ops/convolve.rs) resamples both inputs to `dx = min(dx_a, dx_b)` before convolving. When one distribution has very fine spacing (long branch, high gamma) and another has coarse spacing (short branch, low gamma), the resampled arrays become large. The convolution output has `len_a + len_b - 1` points, then is resampled back to the coarser grid.
 

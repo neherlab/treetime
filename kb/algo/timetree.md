@@ -44,7 +44,7 @@ Computes per-edge time distributions from partition contributions, clock rate, a
 
 v1: [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs).
 
-- `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L44-L82](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L44-L82): evaluates the Poisson indel log-likelihood alongside the substitution log-likelihood on the grid (matching `optimize_edge_lengths()`), then converts the branch-length grid to a time grid using `effective_clock_rate = clock_rate * gamma`, where `gamma > 1` means faster evolution (shorter time for same substitutions)
+- `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L17-L65](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L17-L65): evaluates the Poisson indel log-likelihood alongside the substitution log-likelihood on the grid (matching `optimize_edge_lengths()`), then converts the branch-length grid to a time grid using the argument `branch_rate` (the clock rate times `gamma`), where `gamma > 1` means faster evolution (shorter time for same substitutions)
 
 ---
 
@@ -145,7 +145,7 @@ The `one_mutation` parameter (sum of sequence lengths across all partitions) set
 
 ### Gamma consumption
 
-`compute_branch_length_distribution()` (`#compute_branch_length_distribution`) uses `effective_clock_rate = clock_rate * gamma` to convert the branch-length grid to a time grid. `edge_divergence()` (`#edge_divergence`) uses `time_length * rate * gamma` when re-estimating divergence from solver-updated time lengths.
+`compute_branch_length_distribution()` (`#compute_branch_length_distribution`) uses the argument `branch_rate` (the clock rate times `gamma`, computed by the caller) to convert the branch-length grid to a time grid. `edge_divergence()` (`#edge_divergence`) uses `time_length * rate * gamma` when re-estimating divergence from solver-updated time lengths.
 
 ### References
 

@@ -36,6 +36,7 @@ Notation: $t$ is the branch length, $s = \sqrt{t}$, $\ell$ the log-likelihood of
 
 - **Result below the start (v1 only).** When $t_0$ is already within the tolerance of the maximum, v1 can return a point with a lower $\ell$ than $t_0$. Measured on 875 of 9,542 edges (9%), by at most $9.6\cdot10^{-7}$ (see [Evidence](#evidence))
 - **Long branches.** v0 cannot return $t > 4$; a saturated branch stops at 4 (v0 logs a warning above $0.9 \cdot 4$). v1 has no fixed cap, but one step can reach at most $1.5\,t_0 + \text{one mutation}$ (at least 0.5), so a branch whose maximum lies far above $t_0$ needs several outer iterations to reach it: from $t_0 = 0.01$ to a maximum at $t = 2$ needs the upper ends $0.5, 0.75, 1.1, 1.7, 2.5$ (ignoring the one-mutation term and damping)
+- **Start outside the interval.** Brent evaluates only points inside $[\sqrt{\text{lower}}, \sqrt{\text{upper}}]$, so it never evaluates a start below its lower bound. The safeguarded Newton method keeps a start below the lower bound when its log-likelihood is finite and searches from there (`fn initial_point()` in [method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs))
 - **Near-zero branches.** Both reach $t = 0$ on the measured data: v0 because 0 is interior, v1 through the zero handling around the solver (752 measured edges ended within $10^{-4}$ in $s$ of the lower end and were replaced by zero)
 
 ### Established tools

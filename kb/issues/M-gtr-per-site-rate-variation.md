@@ -15,7 +15,7 @@ The design document's fixed rate-vector contract is distinct from discrete-gamma
 
 ## v1 current state
 
-`struct GTR` stores scalar `mu` together with optional `site_rates`, set only through the `site_rates` builder argument of `GTR::new()`, which rejects negative and non-finite rates [`packages/treetime/src/gtr/gtr.rs#L25`](../../packages/treetime/src/gtr/gtr.rs#L25). `GTR::evolve` and `GTR::propagate_profile` apply the site-rate vector [`packages/treetime/src/gtr/gtr.rs#L142-L170`](../../packages/treetime/src/gtr/gtr.rs#L142-L170), and sparse explicit positions use it in `propagate_raw_per_site` [`packages/treetime/src/partition/marginal/sparse/message.rs#L137`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L137).
+`struct GTR` stores scalar `mu` together with optional `site_rates`, set only through the `site_rates` builder argument of `GTR::new()`, which rejects negative and non-finite rates [`packages/treetime/src/gtr/gtr.rs#L24`](../../packages/treetime/src/gtr/gtr.rs#L24). `GTR::evolve` and `GTR::propagate_profile` apply the site-rate vector [`packages/treetime/src/gtr/gtr.rs#L151-L179`](../../packages/treetime/src/gtr/gtr.rs#L151-L179), and sparse explicit positions use it in `propagate_raw_per_site` [`packages/treetime/src/partition/marginal/sparse/message.rs#L137`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L137).
 
 No production path sets `site_rates`: no command passes the builder argument, and `GTR` has no deserializer. The per-site branches therefore run only in tests.
 

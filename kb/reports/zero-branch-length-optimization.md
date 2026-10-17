@@ -4,9 +4,9 @@ How TreeTime v1 decides when an edge has zero optimal branch length, handles bou
 
 ## Model classification
 
-Whether the zero-branch shortcut applies depends on the substitution model. `fn GTR::certified_decay_rate()` ([gtr/gtr.rs#L121-L123](../../packages/treetime/src/gtr/gtr.rs#L121-L123)) records this classification: it returns the decay rate shared by every nonzero eigenvalue, and `None` for other models. `fn GTR::new()` sets the unit decay rate when all exchangeabilities are equal and positive ([gtr/gtr.rs#L100-L101](../../packages/treetime/src/gtr/gtr.rs#L100-L101), `fn has_equal_positive_exchangeabilities()` [gtr/gtr.rs#L222](../../packages/treetime/src/gtr/gtr.rs#L222)).
+Whether the zero-branch shortcut applies depends on the substitution model. `fn GTR::certified_decay_rate()` ([gtr/gtr.rs#L130-L132](../../packages/treetime/src/gtr/gtr.rs#L130-L132)) records this classification: it returns the decay rate shared by every nonzero eigenvalue, and `None` for other models. `fn GTR::new()` sets the unit decay rate when all exchangeabilities are equal and positive ([gtr/gtr.rs#L100](../../packages/treetime/src/gtr/gtr.rs#L100), `fn has_equal_positive_exchangeabilities()` [gtr/gtr.rs#L246](../../packages/treetime/src/gtr/gtr.rs#L246)).
 
-JC69 (`fn jc69()` [gtr/get_gtr.rs#L120](../../packages/treetime/src/gtr/get_gtr.rs#L120)), F81 (`fn f81()` [gtr/get_gtr.rs#L169](../../packages/treetime/src/gtr/get_gtr.rs#L169)), and binary models (equal exchangeabilities by construction) are classified as <a id="gloss-use-1"></a>unimodal <sup>[1](#gloss-1)</sup>. K80, HKY85, TN93, and general GTR are not. The theoretical basis is <a id="cite-1a"></a>[Dinh and Matsen 2017](https://doi.org/10.1214/16-AAP1240) [[1](#ref-1)], Corollary 3.1: models with a single distinct nonzero eigenvalue have at most one stationary point on $(0, \infty)$.
+JC69 (`fn jc69()` [gtr/get_gtr.rs#L120](../../packages/treetime/src/gtr/get_gtr.rs#L120)), F81 (`fn f81()` [gtr/get_gtr.rs#L167](../../packages/treetime/src/gtr/get_gtr.rs#L167)), binary models (equal exchangeabilities by construction), and every other model with equal positive exchangeabilities, such as TN93 selected by name with its default `kappa1 = kappa2 = 1`, are classified as <a id="gloss-use-1"></a>unimodal <sup>[1](#gloss-1)</sup>. K80, HKY85, and T92 selected by name (default kappa 0.1) and general GTR with unequal exchangeabilities are not. The theoretical basis is <a id="cite-1a"></a>[Dinh and Matsen 2017](https://doi.org/10.1214/16-AAP1240) [[1](#ref-1)], Corollary 3.1: models with a single distinct nonzero eigenvalue have at most one stationary point on $(0, \infty)$.
 
 This classification drives the entire zero-branch pipeline. Unimodal models get a cheap derivative test. Non-unimodal models skip the test and rely on post-solver grid search to catch boundary errors.
 
@@ -26,12 +26,11 @@ During optimization, `min_branch_length_for_indels()` ([optimize/zero_boundary.r
 
 ### Phase 2: Pre-dispatch shortcut
 
-Before dispatching to a solver, `is_zero_branch_optimal()` ([optimize/zero_boundary.rs#L62](../../packages/treetime/src/optimize/zero_boundary.rs#L62)) checks whether the edge can be set to zero immediately ([optimize/dispatch.rs#L244](../../packages/treetime/src/optimize/dispatch.rs#L244)). This requires four conditions to hold simultaneously:
+Before dispatching to a solver, `is_zero_branch_optimal()` ([optimize/zero_boundary.rs#L62](../../packages/treetime/src/optimize/zero_boundary.rs#L62)) checks whether the edge can be set to zero immediately ([optimize/dispatch.rs#L244](../../packages/treetime/src/optimize/dispatch.rs#L244)). The caller first requires that the edge has no indels (`indels.count == 0`). The function then requires three conditions to hold simultaneously:
 
-1. Every partition uses a unimodal model with the same certified decay rate (`certified_decay_rate()`, [partition/optimize/contribution.rs#L72-L74](../../packages/treetime/src/partition/optimize/contribution.rs#L72-L74); `shared_certified_decay_rate()`, [optimize/zero_boundary.rs#L160](../../packages/treetime/src/optimize/zero_boundary.rs#L160))
-2. No indels on this edge (`indel_count == 0`)
-3. Every site has positive finite likelihood at $t = 0$ (`all_sites_valid_at_zero()`, [partition/optimize/contribution.rs#L58-L63](../../packages/treetime/src/partition/optimize/contribution.rs#L58-L63))
-4. The total derivative of log-likelihood at $t = 0$ is finite and negative
+1. Zero is admissible for the edge: `ZeroLength::of_edge()` returned `Admissible`, so every site has positive finite likelihood at $t = 0$ (`all_sites_valid_at_zero()`, [partition/optimize/contribution.rs#L58-L63](../../packages/treetime/src/partition/optimize/contribution.rs#L58-L63)) and no indel term requires a positive length
+2. Every partition uses a unimodal model with the same certified decay rate (`certified_decay_rate()`, [partition/optimize/contribution.rs#L72-L74](../../packages/treetime/src/partition/optimize/contribution.rs#L72-L74); `shared_certified_decay_rate()`, [optimize/zero_boundary.rs#L160](../../packages/treetime/src/optimize/zero_boundary.rs#L160))
+3. The total derivative of log-likelihood at $t = 0$ is finite and negative
 
 The derivative is computed by `zero_branch_length_derivative()` ([partition/optimize/contribution.rs#L76-L86](../../packages/treetime/src/partition/optimize/contribution.rs#L76-L86)):
 
@@ -57,9 +56,9 @@ All three cases route to `grid_search_branch_length()` ([optimize/zero_boundary.
 
 After branch-length optimization, the optimize loop collapses zero-length edges and restructures the tree.
 
-`find_zero_optimal_internal_edges()` ([optimize/run_loop.rs#L291](../../packages/treetime/src/optimize/run_loop.rs#L291)) runs after `optimize_edge_lengths()` and before damping ([optimize/run_loop.rs#L226](../../packages/treetime/src/optimize/run_loop.rs#L226)). It collects internal edges with branch length exactly zero and no mutations or indels on any partition. Leaf edges are excluded, matching v0's `prune_short_branches` which skips terminals.
+`find_zero_optimal_internal_edges()` ([optimize/run_loop.rs#L295](../../packages/treetime/src/optimize/run_loop.rs#L295)) runs after `optimize_edge_lengths()` and before damping ([optimize/run_loop.rs#L230](../../packages/treetime/src/optimize/run_loop.rs#L230)). It collects internal edges with branch length exactly zero and no mutations or indels on any partition. Leaf edges are excluded, matching v0's `prune_short_branches` which skips terminals.
 
-`prune_and_merge_in_loop()` ([optimize/run_loop.rs#L317](../../packages/treetime/src/optimize/run_loop.rs#L317)) then overrides damped branch lengths back to zero for these edges and collapses each one ([optimize/run_loop.rs#L346](../../packages/treetime/src/optimize/run_loop.rs#L346)). The underlying `collapse_edge()` ([optimize/topology/collapse.rs#L7-L43](../../packages/treetime/src/optimize/topology/collapse.rs#L7-L43)) removes the target node, reparents its children to the source, sums branch lengths, composes substitutions via the Markov semigroup property (reversions cancel), concatenates indels, and drops stale partition entries. `collapse_edge()` is also used by the prune command ([prune/prune.rs#L64](../../packages/treetime/src/prune/prune.rs#L64), [prune/prune.rs#L121](../../packages/treetime/src/prune/prune.rs#L121)).
+`prune_and_merge_in_loop()` ([optimize/run_loop.rs#L321](../../packages/treetime/src/optimize/run_loop.rs#L321)) then overrides damped branch lengths back to zero for these edges and collapses each one ([optimize/run_loop.rs#L355](../../packages/treetime/src/optimize/run_loop.rs#L355)). The underlying `collapse_edge()` ([optimize/topology/collapse.rs#L7-L43](../../packages/treetime/src/optimize/topology/collapse.rs#L7-L43)) removes the target node, reparents its children to the source, sums branch lengths, composes substitutions via the Markov semigroup property (reversions cancel), concatenates indels, and drops stale partition entries. `collapse_edge()` is also used by the prune command ([prune/prune.rs#L64](../../packages/treetime/src/prune/prune.rs#L64), [prune/prune.rs#L121](../../packages/treetime/src/prune/prune.rs#L121)).
 
 After collapsing, sibling branches in newly formed polytomies that share identical substitutions are merged under new internal nodes.
 
@@ -68,7 +67,7 @@ After collapsing, sibling branches in newly formed polytomies that share identic
 ```mermaid
 graph TD
     subgraph pre ["Pre-dispatch (unimodal models only)"]
-        valid["all_sites_valid_at_zero()"]
+        valid["ZeroLength::of_edge()"]
         unimodal["certified_decay_rate()"]
         deriv["zero_branch_length_derivative()"]
         is_zero["is_zero_branch_optimal()"]
@@ -117,7 +116,7 @@ graph TD
 | Unimodal (JC69, F81, binary)         | none    | yes                 | Derivative shortcut. Negative derivative -> zero. Otherwise solver.                           |
 | Unimodal                             | none    | no                  | Solver with bumped start ($1/L$). Post-dispatch reconciliation if solver returns zero.        |
 | Unimodal                             | present | any                 | Solver with Poisson floor. Zero never optimal (Poisson $-\infty$).                            |
-| Non-unimodal (K80, HKY85, TN93, GTR) | none    | yes                 | Solver. Post-dispatch grid search if solver returns zero or a positive value worse than zero. |
+| Non-unimodal (K80, HKY85, T92 at default kappa, GTR with unequal exchangeabilities) | none    | yes                 | Solver. Post-dispatch grid search if solver returns zero or a positive value worse than zero. |
 | Non-unimodal                         | none    | no                  | Solver with bumped start. Post-dispatch grid search if solver returns zero (invalid domain).  |
 | Non-unimodal                         | present | any                 | Solver with Poisson floor. Zero never optimal.                                                |
 

@@ -95,7 +95,7 @@ The intended model is a fixed rate vector $\mu^a$, where $a$ indexes alignment s
 
 v0 represents per-site rates and equilibrium frequencies in `GTR_site_specific`. Its implementation recomputes transition-matrix decompositions by site even when parameters happen to permit reuse. [`packages/legacy/treetime/treetime/gtr_site_specific.py`](../../packages/legacy/treetime/treetime/gtr_site_specific.py) Exact parity therefore concerns transition probabilities and inferred outputs; v1 may share a decomposition only if it produces the same numerical result under the approved contract.
 
-v1 stores scalar `mu` and optional `site_rates`. Its core transition matrices, dense propagation, and sparse explicit-position propagation consume the vector. No production path sets the vector, so those branches run only in tests. Rate construction or loading, compressed fixed-position behavior, optimizer coverage, validation, serialization, CLI wiring, and end-to-end parity remain unresolved. [`packages/treetime/src/gtr/gtr.rs#L28`](../../packages/treetime/src/gtr/gtr.rs#L28)
+v1 stores scalar `mu` and optional `site_rates`. Its core transition matrices, dense propagation, and sparse explicit-position propagation consume the vector. No production path sets the vector, so those branches run only in tests. Value validation of the vector and the length check against the partition exist. Rate construction or loading, compressed fixed-position behavior, optimizer coverage, serialization, CLI wiring, and end-to-end parity remain unresolved. [`packages/treetime/src/gtr/gtr.rs#L24`](../../packages/treetime/src/gtr/gtr.rs#L24)
 
 Known issue: [kb/issues/M-gtr-per-site-rate-variation.md](../issues/M-gtr-per-site-rate-variation.md).
 

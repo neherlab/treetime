@@ -16,14 +16,15 @@ The unrestricted shortcut could collapse a branch to zero even when a positive b
 
 ## Implementation
 
-- `fn GTR::certified_decay_rate()` [packages/treetime/src/gtr/gtr.rs#L121-L123](../../packages/treetime/src/gtr/gtr.rs#L121-L123): the decay rate shared by every nonzero eigenvalue, `None` for models where $L(t)$ is not proven unimodal
-- `fn GTR::new()` sets the unit decay rate only when all exchangeabilities are equal and positive [packages/treetime/src/gtr/gtr.rs#L100-L101](../../packages/treetime/src/gtr/gtr.rs#L100-L101) (`fn has_equal_positive_exchangeabilities()` [packages/treetime/src/gtr/gtr.rs#L222](../../packages/treetime/src/gtr/gtr.rs#L222)), which holds for JC69, F81, and binary models
+- `fn GTR::certified_decay_rate()` [packages/treetime/src/gtr/gtr.rs#L130-L132](../../packages/treetime/src/gtr/gtr.rs#L130-L132): the decay rate shared by every nonzero eigenvalue, `None` for models where $L(t)$ is not proven unimodal
+- `fn GTR::new()` sets the unit decay rate only when all exchangeabilities are equal and positive [packages/treetime/src/gtr/gtr.rs#L100](../../packages/treetime/src/gtr/gtr.rs#L100) (`fn has_equal_positive_exchangeabilities()` [packages/treetime/src/gtr/gtr.rs#L246](../../packages/treetime/src/gtr/gtr.rs#L246)), which holds for the F81 family: JC69, F81, binary models, TN93 selected by name (default `kappa1 = kappa2 = 1`), and custom, inferred, or mugration models with equal exchangeabilities. K80, HKY85, and T92 selected by name use the default kappa 0.1 and are not certified
 - `fn is_zero_branch_optimal()` [packages/treetime/src/optimize/zero_boundary.rs#L21-L40](../../packages/treetime/src/optimize/zero_boundary.rs#L21-L40): applies the derivative shortcut only when `fn shared_certified_decay_rate()` [packages/treetime/src/optimize/zero_boundary.rs#L120-L127](../../packages/treetime/src/optimize/zero_boundary.rs#L120-L127) finds the same certified decay rate in every contribution
 
 ## Impact
 
 - JC69 and F81 (default and most common models): no change
-- K80/HKY85/T92/TN93/JTT92/inferred: shortcut bypassed, branches that would have been set to zero now go through Newton/grid search
+- K80/HKY85/T92 (default kappa 0.1), JTT92, and inferred or custom models with unequal exchangeabilities: shortcut bypassed, branches that would have been set to zero now go through Newton/grid search
+- TN93 selected by name (default kappa 1) and any other model with equal exchangeabilities: certified, shortcut applies
 - Minor performance cost for trees with many near-zero edges under non-simple models
 
 ## References
