@@ -10,4 +10,5 @@ mod test_negation;
 mod test_product;
 mod test_prop_multiply_child_order;
 mod test_prop_overlap;
+mod test_scale_time;
 mod test_time_bounds;

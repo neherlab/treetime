@@ -295,8 +295,8 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     T: Float,
   {
     self.grid_fn.negate_arg_inplace()?;
-    self.left_extrap = negate_tail_law(self.left_extrap);
-    self.right_extrap = negate_tail_law(self.right_extrap);
+    self.left_extrap = scale_tail_law(self.left_extrap, -1.0);
+    self.right_extrap = scale_tail_law(self.right_extrap, -1.0);
     std::mem::swap(&mut self.left_extrap, &mut self.right_extrap);
     Ok(())
   }
@@ -335,6 +335,17 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 }
 
 impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
+  /// The same values on the time axis scaled by `factor > 0` (t -> factor * t), with the tail laws transformed to
+  /// match. The values are a likelihood, not a density, so they are not rescaled.
+  pub fn scale_time(&self, factor: f64) -> Result<Self, Report> {
+    Ok(Self::from_grid_fn_with_extrap(
+      self.grid_fn.scale_x(factor)?,
+      self.ampl,
+      scale_tail_law(self.left_extrap, factor),
+      scale_tail_law(self.right_extrap, factor),
+    ))
+  }
+
   /// Moves the peak of the stored values into the amplitude; the values are unchanged. `None` when no stored value is
   /// a finite peak (no probability anywhere).
   pub fn repeak(&self) -> Result<Option<Self>, Report> {
@@ -380,10 +391,11 @@ fn unit_amplitude<T: InterpElem, Y: YAxisPolicy>() -> T {
   Y::from_plain(1.0).into()
 }
 
-fn negate_tail_law(behavior: BoundaryBehavior) -> BoundaryBehavior {
+/// The tail law on the argument scaled by `factor`; a negative factor reflects it (the caller swaps the sides)
+fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
-    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.negate_arg()),
-    BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(law.negate_arg()),
+    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.scale_arg(factor)),
+    BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(law.scale_arg(factor)),
     other => other,
   }
 }
