@@ -131,7 +131,7 @@ pub fn sorted<T: FloatCore + Clone>(arr: &Array1<T>) -> Array1<T> {
   result
 }
 
-pub fn partition_point<T>(arr: &Array1<T>, mut pred: impl FnMut(&T) -> bool) -> usize {
+pub fn partition_point<T, S: Data<Elem = T>>(arr: &ArrayBase<S, Ix1>, mut pred: impl FnMut(&T) -> bool) -> usize {
   if let Some(values) = arr.as_slice() {
     values.partition_point(pred)
   } else {
