@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::clock_set::ClockSet;
-  use ndarray::array;
+
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[rstest]
   #[case::zero_branch(0.0)]
@@ -40,20 +40,6 @@ mod tests {
   }
 
   #[test]
-  fn test_clock_set_cov_is_hessian_inverse() {
-    let cs = ClockSet::leaf_contribution(Some(2020.5)).shift(0.03)
-      + ClockSet::leaf_contribution(Some(2021.0)).shift(0.05)
-      + ClockSet::leaf_contribution(Some(2019.0)).shift(0.01);
-
-    let h = cs.hessian();
-    let c = cs.cov();
-
-    let product = h.dot(&c);
-    let identity = array![[1.0, 0.0], [0.0, 1.0]];
-    pretty_assert_abs_diff_eq!(product, identity, epsilon = 1e-6);
-  }
-
-  #[test]
   fn test_clock_set_chisq_fixed_rate_matches_zero_rate_formula() {
     let cs = ClockSet::leaf_contribution(Some(0.0)).shift(1.0) + ClockSet::leaf_contribution(Some(1.0)).shift(3.0);
 
@@ -65,68 +51,5 @@ mod tests {
     let cs = ClockSet::leaf_contribution(Some(0.0)).shift(1.0) + ClockSet::leaf_contribution(Some(1.0)).shift(3.0);
 
     pretty_assert_ulps_eq!(cs.chisq_fixed_rate(1.0), 0.125, max_ulps = 4);
-  }
-
-  #[test]
-  fn test_clock_set_cov_is_hessian_inverse_centered() {
-    let cs = ClockSet::leaf_contribution(Some(0.5)).shift(0.03)
-      + ClockSet::leaf_contribution(Some(1.0)).shift(0.05)
-      + ClockSet::leaf_contribution(Some(-1.0)).shift(0.01);
-
-    let h = cs.hessian();
-    let c = cs.cov();
-    let product = h.dot(&c);
-    let identity = array![[1.0, 0.0], [0.0, 1.0]];
-    pretty_assert_abs_diff_eq!(product, identity, epsilon = 1e-10);
-  }
-
-  #[test]
-  fn test_clock_set_cov_off_diagonal_symmetry() {
-    let cs =
-      ClockSet::leaf_contribution(Some(2020.5)).shift(0.03) + ClockSet::leaf_contribution(Some(2021.0)).shift(0.05);
-
-    let c = cs.cov();
-    pretty_assert_abs_diff_eq!(c[[0, 1]], c[[1, 0]], epsilon = 1e-15);
-  }
-
-  #[test]
-  fn test_clock_set_cov_diagonal_positive() {
-    let cs =
-      ClockSet::leaf_contribution(Some(2020.5)).shift(0.03) + ClockSet::leaf_contribution(Some(2021.0)).shift(0.05);
-
-    let c = cs.cov();
-    assert!(c[[0, 0]] > 0.0, "rate variance must be positive");
-    assert!(c[[1, 1]] > 0.0, "intercept variance must be positive");
-  }
-
-  #[test]
-  fn test_clock_set_cov_off_diagonal_uses_t_sum_not_dt_sum() {
-    let cs =
-      ClockSet::leaf_contribution(Some(2020.0)).shift(0.05) + ClockSet::leaf_contribution(Some(2022.0)).shift(0.01);
-
-    assert!(
-      (cs.t_sum() - cs.dt_sum()).abs() > 1.0,
-      "test requires t_sum != dt_sum to be discriminating"
-    );
-
-    let det = cs.determinant();
-    let expected_off_diag = -cs.t_sum() / det;
-    let c = cs.cov();
-    pretty_assert_abs_diff_eq!(c[[0, 1]], expected_off_diag, epsilon = 1e-10);
-  }
-
-  #[test]
-  fn test_clock_set_cov_entrywise_against_formula() {
-    let cs = ClockSet::leaf_contribution(Some(0.5)).shift(0.03)
-      + ClockSet::leaf_contribution(Some(1.0)).shift(0.05)
-      + ClockSet::leaf_contribution(Some(-1.0)).shift(0.01);
-
-    let det_inv = 1.0 / cs.determinant();
-    let c = cs.cov();
-
-    pretty_assert_ulps_eq!(c[[0, 0]], cs.norm() * det_inv, max_ulps = 4);
-    pretty_assert_ulps_eq!(c[[0, 1]], -cs.t_sum() * det_inv, max_ulps = 4);
-    pretty_assert_ulps_eq!(c[[1, 0]], -cs.t_sum() * det_inv, max_ulps = 4);
-    pretty_assert_ulps_eq!(c[[1, 1]], cs.tsq_sum() * det_inv, max_ulps = 4);
   }
 }

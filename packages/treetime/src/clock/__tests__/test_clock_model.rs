@@ -5,7 +5,7 @@ mod tests {
   use crate::progress::NoopProgress;
   use eyre::Report;
   use indoc::indoc;
-  use ndarray::array;
+
   use pretty_assertions::assert_eq;
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
@@ -15,7 +15,6 @@ mod tests {
     let t2 = 10.0;
     let d1 = 0.0;
     let d2 = target_rate * (t2 - t1);
-    let variance = 1.0;
     let cs1 = ClockSet::leaf_contribution(Some(t1)).shift(d1);
     let cs2 = ClockSet::leaf_contribution(Some(t2)).shift(d2);
     &cs1 + &cs2
@@ -153,62 +152,75 @@ mod tests {
     Ok(())
   }
 
-  fn estimated_model() -> ClockModel {
+  fn estimated_model(rate_std: Option<f64>) -> ClockModel {
     let stats = ClockModelStats::Estimated(RegressionStats {
       chisq: 1.5,
       r_val: 0.9,
-      hessian: array![[1.0, 2.0], [3.0, 4.0]],
-      cov: array![[0.1, 0.0], [0.0, 0.2]],
+      rate_std,
     });
     ClockModel::for_testing_with_stats(0.003, -6.0, stats)
   }
 
   #[test]
-  fn test_clock_model_serializes_stats_matrices_as_nested_arrays() -> Result<(), Report> {
-    let expected = indoc! {r#"{
+  fn test_clock_model_serializes_the_rate_std_only_when_known() -> Result<(), Report> {
+    let with_std = indoc! {r#"{
       "clock_rate": 0.003,
       "intercept": -6.0,
       "stats": {
         "estimated": {
           "chisq": 1.5,
           "r_val": 0.9,
-          "hessian": [
-            [
-              1.0,
-              2.0
-            ],
-            [
-              3.0,
-              4.0
-            ]
-          ],
-          "cov": [
-            [
-              0.1,
-              0.0
-            ],
-            [
-              0.0,
-              0.2
-            ]
-          ]
+          "rate_std": 0.0002
         }
       }
     }"#};
-    let actual = json_write_str(&estimated_model(), JsonPretty(true))?;
-    assert_eq!(expected, actual);
+    let without_std = indoc! {r#"{
+      "clock_rate": 0.003,
+      "intercept": -6.0,
+      "stats": {
+        "estimated": {
+          "chisq": 1.5,
+          "r_val": 0.9
+        }
+      }
+    }"#};
+    assert_eq!(
+      (with_std, without_std),
+      (
+        json_write_str(&estimated_model(Some(2e-4)), JsonPretty(true))?.as_str(),
+        json_write_str(&estimated_model(None), JsonPretty(true))?.as_str()
+      )
+    );
     Ok(())
   }
 
   #[test]
-  fn test_clock_model_stats_matrices_json_roundtrip() -> Result<(), Report> {
-    let json = json_write_str(&estimated_model(), JsonPretty(true))?;
-    let restored: ClockModel = json_read_str(&json)?;
-    let ClockModelStats::Estimated(stats) = restored.stats() else {
-      panic!("expected Estimated stats after round-trip");
-    };
-    assert_eq!(&array![[1.0, 2.0], [3.0, 4.0]], &stats.hessian);
-    assert_eq!(&array![[0.1, 0.0], [0.0, 0.2]], &stats.cov);
+  fn test_clock_model_stats_json_roundtrip() -> Result<(), Report> {
+    for rate_std in [Some(2e-4), None] {
+      let json = json_write_str(&estimated_model(rate_std), JsonPretty(true))?;
+      let restored: ClockModel = json_read_str(&json)?;
+      assert_eq!(
+        (rate_std, Some(1.5), Some(0.9)),
+        (restored.rate_std(), restored.chisq(), restored.r_val())
+      );
+    }
+    Ok(())
+  }
+
+  // At the regression's own rate, the chi-squared of the line at a given rate is the regression's minimum
+  #[test]
+  fn test_clock_model_estimated_at_the_regression_rate_reproduces_the_regression_stats() -> Result<(), Report> {
+    let set = ClockSet::leaf_contribution(Some(2019.0)).shift(0.01)
+      + ClockSet::leaf_contribution(Some(2020.5)).shift(0.03)
+      + ClockSet::leaf_contribution(Some(2021.0)).shift(0.05);
+    let regression = ClockRegression::try_from(&set)?;
+    let model = ClockModel::from_regression(&regression)?;
+
+    let restated = model.estimated_at_rate(&set, Some(1e-3));
+
+    // the two formulas cancel differently on dates near 2020
+    approx::assert_relative_eq!(model.chisq().unwrap(), restated.chisq().unwrap(), max_relative = 1e-6);
+    assert_eq!((model.r_val(), Some(1e-3)), (restated.r_val(), restated.rate_std()));
     Ok(())
   }
 }
