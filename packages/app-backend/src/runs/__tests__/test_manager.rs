@@ -9,7 +9,7 @@ mod tests {
   use crate::runs::store::{RunStore, default_title};
   use app_commands::command::AppCommand;
   use chrono::{Local, TimeDelta, Utc};
-  use helpers::{accept, clock_config, create, event_types, terminal_status, timetree_config};
+  use helpers::{GatedReader, accept, clock_config, create, event_types, terminal_status, timetree_config};
   use maplit::btreeset;
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
@@ -244,24 +244,51 @@ mod tests {
     let runs = RunManager::open(root.path()).unwrap();
     let created = create(&runs, AppCommand::Clock, json!({}));
     let uploaded = runs
-      .upload_input(&created.id, "tree.nwk", &mut &[b'x'; 700][..], 1024)
+      .upload_input(&created.id, "tree.nwk", &[], &mut &[b'x'; 700][..], 1024)
       .unwrap();
     assert_eq!(
-      (700, runs.store().inputs_dir(&created.id).join("tree.nwk")),
+      (700, runs.store().inputs_dir(&created.id).join("1/tree.nwk")),
       (uploaded.size, uploaded.path)
     );
     assert_error!(
-      runs.upload_input(&created.id, "metadata.tsv", &mut &[b'x'; 400][..], 1024),
+      runs.upload_input(&created.id, "metadata.tsv", &[], &mut &[b'x'; 400][..], 1024),
       "the inputs of a run are limited to 1 KiB in total; `metadata.tsv` does not fit"
     );
-    assert!(!runs.store().inputs_dir(&created.id).join("metadata.tsv").exists());
     assert_eq!(
-      1000,
-      runs
-        .upload_input(&created.id, "tree.nwk", &mut &[b'x'; 1000][..], 1024)
-        .unwrap()
-        .size,
-      "replacing a file counts only its new size"
+      (false, 324),
+      (
+        runs.store().inputs_dir(&created.id).join("2").exists(),
+        runs
+          .upload_input(&created.id, "metadata.tsv", &[], &mut &[b'x'; 324][..], 1024)
+          .unwrap()
+          .size
+      )
+    );
+  }
+
+  #[test]
+  fn test_manager_upload_keeps_files_with_the_same_name_apart() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Ancestral, json!({}));
+    let ha = runs
+      .upload_input(&created.id, "aligned.fasta", &[], &mut &b">A\nACGT\n"[..], 1024)
+      .unwrap();
+    let na = runs
+      .upload_input(&created.id, "aligned.fasta", &[], &mut &b">A\nAC\n"[..], 1024)
+      .unwrap();
+    let inputs = runs.store().inputs_dir(&created.id);
+    assert_eq!(
+      (
+        (inputs.join("1/aligned.fasta"), o!(">A\nACGT\n")),
+        (inputs.join("2/aligned.fasta"), o!(">A\nAC\n")),
+        (o!("aligned.fasta"), o!("aligned.fasta")),
+      ),
+      (
+        (ha.path.clone(), fs::read_to_string(&ha.path).unwrap()),
+        (na.path.clone(), fs::read_to_string(&na.path).unwrap()),
+        (ha.name, na.name),
+      )
     );
   }
 
@@ -272,10 +299,240 @@ mod tests {
     let created = create(&runs, AppCommand::Clock, json!({}));
     for name in ["../x.nwk", "a/b.nwk", ".hidden", ".."] {
       assert_error!(
-        runs.upload_input(&created.id, name, &mut &b"x"[..], 1024),
+        runs.upload_input(&created.id, name, &[], &mut &b"x"[..], 1024),
         format!("upload name `{name}` must be a plain file name without directories")
       );
     }
+  }
+
+  #[test]
+  fn test_manager_repeated_release_keeps_a_later_upload_with_the_same_name() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Ancestral, json!({}));
+    let first = runs
+      .upload_input(&created.id, "aligned.fasta", &[], &mut &b">A\nACGT\n"[..], 1024)
+      .unwrap();
+    runs.release_input(&created.id, &first.path).unwrap();
+    let second = runs
+      .upload_input(&created.id, "aligned.fasta", &[], &mut &b">A\nAC\n"[..], 1024)
+      .unwrap();
+
+    runs.release_input(&created.id, &first.path).unwrap();
+
+    assert_eq!(
+      (runs.store().inputs_dir(&created.id).join("2/aligned.fasta"), true),
+      (second.path.clone(), second.path.is_file())
+    );
+  }
+
+  #[test]
+  fn test_manager_second_upload_waits_for_the_first_and_counts_it_toward_the_limit() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, json!({}));
+    let (mut first_body, started, resume) = GatedReader::new(vec![b'x'; 600]);
+
+    let (first, second) = thread::scope(|scope| {
+      let first = scope.spawn(|| runs.upload_input(&created.id, "a.nwk", &[], &mut first_body, 1000));
+      started.recv().unwrap();
+      let second = scope.spawn(|| runs.upload_input(&created.id, "b.nwk", &[], &mut &[b'x'; 600][..], 1000));
+      resume.send(()).unwrap();
+      (first.join().unwrap(), second.join().unwrap())
+    });
+
+    assert_eq!(
+      (
+        Some(600),
+        Some(o!(
+          "the inputs of a run are limited to 1000 bytes in total; `b.nwk` does not fit"
+        ))
+      ),
+      (
+        first.ok().map(|uploaded| uploaded.size),
+        second.err().map(|err| err.to_string())
+      )
+    );
+  }
+
+  #[test]
+  fn test_manager_start_during_an_upload_is_rejected_and_the_upload_completes() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, json!({}));
+    let (mut body, started, resume) = GatedReader::new(vec![b'x'; 600]);
+    let request = StartRunRequest {
+      command: None,
+      config: Some(sparse(clock_config())),
+    };
+
+    let (start, uploaded) = thread::scope(|scope| {
+      let upload = scope.spawn(|| runs.upload_input(&created.id, "a.nwk", &[], &mut body, 1000));
+      started.recv().unwrap();
+      let start = runs
+        .start(&created.id, &request, accept())
+        .err()
+        .map(|err| err.to_string());
+      resume.send(()).unwrap();
+      (start, upload.join().unwrap())
+    });
+
+    assert_eq!(
+      (
+        Some(format!(
+          "run `{}` cannot start while `a.nwk` is uploaded; start it again when the upload ends",
+          created.id.as_str()
+        )),
+        true,
+        RunStatus::Created
+      ),
+      (
+        start,
+        uploaded.unwrap().path.is_file(),
+        runs.get(&created.id).unwrap().status
+      )
+    );
+  }
+
+  #[test]
+  fn test_manager_upload_to_a_missing_run_keeps_no_input_lock() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+
+    let missing = JobId::random();
+
+    assert_error!(
+      runs.upload_input(&missing, "a.nwk", &[], &mut &b"(A,B);"[..], 1024),
+      format!("no run with id `{}`", missing.as_str())
+    );
+    assert_eq!(0, runs.inputs.lock().len());
+  }
+
+  #[test]
+  fn test_manager_cancel_before_start_drops_the_input_lock_and_later_uploads_are_rejected() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, json!({}));
+    runs
+      .upload_input(&created.id, "a.nwk", &[], &mut &b"(A,B);"[..], 1024)
+      .unwrap();
+
+    let cancelled = runs.cancel(&created.id).unwrap();
+    let late = runs.upload_input(&created.id, "b.nwk", &[], &mut &b"(A,B);"[..], 1024);
+
+    assert_eq!(
+      (
+        true,
+        0,
+        Some(format!(
+          "run `{}` has already started; inputs can be uploaded only before the run starts",
+          created.id.as_str()
+        ))
+      ),
+      (
+        cancelled,
+        runs.inputs.lock().len(),
+        late.err().map(|err| err.to_string())
+      )
+    );
+  }
+
+  #[test]
+  fn test_manager_cancel_during_an_upload_is_rejected_and_the_upload_completes() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, json!({}));
+    let (mut body, started, resume) = GatedReader::new(vec![b'x'; 600]);
+
+    let (cancel, uploaded) = thread::scope(|scope| {
+      let upload = scope.spawn(|| runs.upload_input(&created.id, "a.nwk", &[], &mut body, 1000));
+      started.recv().unwrap();
+      let cancel = runs.cancel(&created.id).err().map(|err| err.to_string());
+      resume.send(()).unwrap();
+      (cancel, upload.join().unwrap())
+    });
+
+    assert_eq!(
+      (
+        Some(format!(
+          "run `{}` cannot cancel while `a.nwk` is uploaded; cancel it again when the upload ends",
+          created.id.as_str()
+        )),
+        true,
+        RunStatus::Created
+      ),
+      (
+        cancel,
+        uploaded.unwrap().path.is_file(),
+        runs.get(&created.id).unwrap().status
+      )
+    );
+  }
+
+  #[test]
+  fn test_manager_start_drops_the_input_lock_and_later_uploads_are_rejected() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, json!({}));
+    runs
+      .upload_input(&created.id, "a.nwk", &[], &mut &b"(A,B);"[..], 1024)
+      .unwrap();
+    let request = StartRunRequest {
+      command: None,
+      config: Some(sparse(clock_config())),
+    };
+    let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
+
+    let late = runs.upload_input(&created.id, "b.nwk", &[], &mut &b"(A,B);"[..], 1024);
+
+    assert_eq!(
+      (
+        "ok",
+        0,
+        Some(format!(
+          "run `{}` has already started; inputs can be uploaded only before the run starts",
+          created.id.as_str()
+        ))
+      ),
+      (
+        terminal_status(&terminal),
+        runs.inputs.lock().len(),
+        late.err().map(|err| err.to_string())
+      )
+    );
+  }
+
+  #[test]
+  fn test_manager_start_removes_the_uploads_that_the_config_does_not_use() {
+    let root = tempdir().unwrap();
+    let runs = RunManager::open(root.path()).unwrap();
+    let created = create(&runs, AppCommand::Clock, json!({}));
+    let zika = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
+    let upload = |name: &str, bytes: Vec<u8>| {
+      runs
+        .upload_input(&created.id, name, &[], &mut &bytes[..], 1 << 20)
+        .unwrap()
+        .path
+    };
+    let replaced = upload("tree.nwk", b"(A,B);".to_vec());
+    let tree = upload("tree.nwk", fs::read(zika.join("tree.nwk")).unwrap());
+    let metadata = upload("metadata.tsv", fs::read(zika.join("metadata.tsv")).unwrap());
+    let request = StartRunRequest {
+      command: None,
+      config: Some(sparse(json!({ "tree": tree, "metadata": metadata }))),
+    };
+
+    let terminal = runs.start(&created.id, &request, accept()).unwrap().run();
+
+    let inputs = runs.store().inputs_dir(&created.id);
+    let remaining = fs::read_dir(&inputs)
+      .unwrap()
+      .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+      .collect::<BTreeSet<_>>();
+    assert_eq!(
+      ("ok", btreeset! { o!("2"), o!("3") }, false),
+      (terminal_status(&terminal), remaining, replaced.exists())
+    );
   }
 
   #[test]
@@ -408,8 +665,42 @@ mod tests {
     use crate::runs::record::{CreateRunRequest, RunRecord};
     use app_commands::command::AppCommand;
     use serde_json::{Value, json};
+    use std::io::{self, Read};
     use std::path::Path;
+    use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
     use treetime_utils::io::json::to_json_value;
+
+    pub(super) struct GatedReader {
+      bytes: Vec<u8>,
+      started: Option<SyncSender<()>>,
+      resume: Receiver<()>,
+    }
+
+    impl GatedReader {
+      pub(super) fn new(bytes: Vec<u8>) -> (Self, Receiver<()>, SyncSender<()>) {
+        let (started_sender, started) = sync_channel(1);
+        let (resume, resume_receiver) = sync_channel(1);
+        let reader = Self {
+          bytes,
+          started: Some(started_sender),
+          resume: resume_receiver,
+        };
+        (reader, started, resume)
+      }
+    }
+
+    impl Read for GatedReader {
+      fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        if let Some(started) = self.started.take() {
+          started.send(()).map_err(io::Error::other)?;
+          self.resume.recv().map_err(io::Error::other)?;
+        }
+        let count = buffer.len().min(self.bytes.len());
+        buffer[..count].copy_from_slice(&self.bytes[..count]);
+        self.bytes.drain(..count);
+        Ok(count)
+      }
+    }
 
     pub(super) fn accept() -> ConfigHook {
       Box::new(|_config: &mut Value| Ok(()))

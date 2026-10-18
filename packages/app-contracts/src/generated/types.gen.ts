@@ -6587,6 +6587,39 @@ export type RunsCancelResponses = {
 
 export type RunsCancelResponse = RunsCancelResponses[keyof RunsCancelResponses];
 
+export type RunsReleaseInputData = {
+  body?: never;
+  path: {
+    /**
+     * Id of the run.
+     */
+    id: JobId;
+  };
+  query: {
+    /**
+     * Path of the upload, as the upload answer gave it.
+     */
+    path: string;
+  };
+  url: '/api/runs/{id}/inputs';
+};
+
+export type RunsReleaseInputErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type RunsReleaseInputError = RunsReleaseInputErrors[keyof RunsReleaseInputErrors];
+
+export type RunsReleaseInputResponses = {
+  /**
+   * no content
+   */
+  200: unknown;
+};
+
 export type RunsFilesData = {
   body?: never;
   path: {
@@ -6878,7 +6911,13 @@ export type RunsUploadInputData = {
      */
     name: string;
   };
-  query?: never;
+  query?: {
+    /**
+     * Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size
+     * does not count toward the upload limit of this upload.
+     */
+    replaces?: Array<string>;
+  };
   url: '/api/runs/{id}/inputs/{name}';
 };
 

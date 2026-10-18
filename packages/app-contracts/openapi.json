@@ -489,6 +489,51 @@
         }
       }
     },
+    "/api/runs/{id}/inputs": {
+      "delete": {
+        "description": "Remove an uploaded file from the `inputs/` folder of a run that has not started. Removing an upload that is already gone succeeds.",
+        "operationId": "runsReleaseInput",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Id of the run.",
+            "required": true,
+            "schema": {
+              "description": "Id of the run.",
+              "$ref": "#/components/schemas/JobId"
+            },
+            "style": "simple"
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "description": "Path of the upload, as the upload answer gave it.",
+            "required": true,
+            "schema": {
+              "description": "Path of the upload, as the upload answer gave it.",
+              "type": "string"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "The error, with its causes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "no content"
+          }
+        }
+      }
+    },
     "/api/runs/{id}/files": {
       "get": {
         "description": "Files in the run's `out/` folder, with their sizes and kinds.",
@@ -931,6 +976,20 @@
               "type": "string"
             },
             "style": "simple"
+          },
+          {
+            "in": "query",
+            "name": "replaces",
+            "description": "Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit of this upload.",
+            "schema": {
+              "description": "Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size\ndoes not count toward the upload limit of this upload.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "style": "form"
           }
         ],
         "requestBody": {

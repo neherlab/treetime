@@ -2761,6 +2761,14 @@ export const zRunsCancelPath = z.object({
  */
 export const zRunsCancelResponse = zCancelRunResponse;
 
+export const zRunsReleaseInputPath = z.object({
+  id: zJobId
+});
+
+export const zRunsReleaseInputQuery = z.object({
+  path: z.string()
+});
+
 export const zRunsFilesPath = z.object({
   id: zJobId
 });
@@ -2854,6 +2862,10 @@ export const zRunsUploadInputBody = z.instanceof(Blob);
 export const zRunsUploadInputPath = z.object({
   id: zJobId,
   name: z.string()
+});
+
+export const zRunsUploadInputQuery = z.object({
+  replaces: z.array(z.string()).optional().default([])
 });
 
 /**

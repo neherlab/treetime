@@ -55,10 +55,13 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "20.14.6",
     "@iconify-json/lucide": "1.2.135",
     "@oxc-project/runtime": "0.150.0",
     "@svgr/core": "8.1.0",
     "@svgr/plugin-jsx": "8.1.0",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/user-event": "14.6.7",
     "@types/d3-scale": "4.0.9",
     "@types/luxon": "3.7.5",
     "@types/node": "catalog:",

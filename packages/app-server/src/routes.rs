@@ -12,7 +12,7 @@ use crate::events::{app_events_sse, run_events_sse};
 use crate::openapi::{add_components, add_discriminators};
 use crate::state::{AppState, ServerConfig};
 use aide::axum::ApiRouter;
-use aide::axum::routing::{get_with, post_with, put_with};
+use aide::axum::routing::{delete_with, get_with, post_with, put_with};
 use aide::openapi::{Contact, Info, License, OpenApi};
 use app_backend::bridge::error::ErrorCode;
 use app_backend::bridge::service::AppService;
@@ -45,6 +45,7 @@ use schemars::generate::SchemaSettings;
 use serde_json::Value;
 use std::any::Any;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -251,6 +252,15 @@ fn timed_routes() -> ApiRouter<Arc<AppState>> {
       post_with(runs_cancel, |op| {
         op.id("runsCancel")
           .description("Request cancellation of a run; the run ends with a `cancelled` terminal event.")
+      }),
+    )
+    .api_route(
+      "/api/runs/{id}/inputs",
+      delete_with(runs_release_input, |op| {
+        op.id("runsReleaseInput").description(
+          "Remove an uploaded file from the `inputs/` folder of a run that has not started. Removing an upload that \
+           is already gone succeeds.",
+        )
       }),
     )
     .api_route(
@@ -530,11 +540,16 @@ struct EventsQuery {
 async fn runs_upload_input(
   State(state): State<Arc<AppState>>,
   ApiPath(InputPath { id, name }): ApiPath<InputPath>,
+  ApiQuery(UploadInputQuery { replaces }): ApiQuery<UploadInputQuery>,
   OctetStream(body): OctetStream,
 ) -> Result<ApiJson<UploadedInput>, AppError> {
   let runs = Arc::clone(&state.runs);
   let limit = state.config.max_upload_size;
-  let uploaded = read_body_blocking(body, move |reader| runs.upload_input(&id, &name, reader, limit)).await?;
+  let replaces = replaces.into_iter().map(PathBuf::from).collect_vec();
+  let uploaded = read_body_blocking(body, move |reader| {
+    runs.upload_input(&id, &name, &replaces, reader, limit)
+  })
+  .await?;
   Ok(ApiJson(uploaded))
 }
 
@@ -546,6 +561,36 @@ struct InputPath {
   id: JobId,
   /// File name inside the run's `inputs/` folder.
   name: String,
+}
+
+/// Query of an upload.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(inline)]
+struct UploadInputQuery {
+  /// Paths of earlier uploads of the run that this upload replaces, as their upload answers gave them; their size
+  /// does not count toward the upload limit of this upload.
+  #[deser(default)]
+  #[schemars(default)]
+  replaces: Vec<String>,
+}
+
+async fn runs_release_input(
+  State(state): State<Arc<AppState>>,
+  ApiPath(RunPath { id }): ApiPath<RunPath>,
+  ApiQuery(query): ApiQuery<ReleaseInputQuery>,
+) -> Result<(), AppError> {
+  call(&state, move |service| {
+    service.runs().release_input(&id, Path::new(&query.path))
+  })
+  .await
+}
+
+/// Query of an upload to remove.
+#[derive(Clone, Debug, JsonSchema, Deserialize)]
+#[schemars(inline)]
+struct ReleaseInputQuery {
+  /// Path of the upload, as the upload answer gave it.
+  path: String,
 }
 
 async fn runs_file(

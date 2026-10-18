@@ -24,11 +24,11 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
   const accept = useMemo(() => dropzoneAccept(extensions), [extensions]);
 
   const upload = useCallback(
-    async (file: File) => {
+    async (files: File[]) => {
       setBusy(true);
 
       try {
-        await actions.addFile(settingKey, file, list);
+        await actions.addFiles(settingKey, files, list);
       } catch (error: unknown) {
         toasts.add({ title: `${title} cannot be added`, description: errorMessage(error) });
       } finally {
@@ -38,19 +38,10 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
     [actions, list, settingKey, title, toasts],
   );
 
-  const onDropAccepted = useCallback(
-    (files: File[]) => {
-      const [file] = files;
-
-      if (file !== undefined) {
-        void upload(file);
-      }
-    },
-    [upload],
-  );
+  const onDropAccepted = useCallback((files: File[]) => void upload(files), [upload]);
 
   const dialog = useDropzone({
-    multiple: false,
+    multiple: list,
     noClick: true,
     noKeyboard: true,
     noDrag: true,
@@ -78,10 +69,10 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
 
   return (
     <div className="flex shrink-0 gap-1">
-      <input {...dialog.getInputProps()} />
+      <input {...dialog.getInputProps()} aria-label={`${title} ${list ? "files" : "file"} to upload`} />
       <Button type="button" variant="outline" size="sm" onClick={onChoose} disabled={busy}>
         {busy && <Spinner />}
-        {buttonText(busy, filled)}
+        {buttonText(busy, filled, list)}
       </Button>
       {filled && (
         <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
@@ -97,29 +88,23 @@ export function useFileDrop(command: AppCommand, settingKey: string, list: boole
   const toasts = useToastManager();
 
   const addDropped = useCallback(
-    async (file: File) => {
+    async (files: File[]) => {
       try {
-        await actions.addFile(settingKey, file, list);
+        await actions.addFiles(settingKey, files, list);
       } catch (error: unknown) {
-        toasts.add({ title: `${file.name} cannot be added`, description: errorMessage(error) });
+        toasts.add({
+          title: `${files.map((file) => file.name).join(", ")} cannot be added`,
+          description: errorMessage(error),
+        });
       }
     },
     [actions, list, settingKey, toasts],
   );
 
-  const onDropAccepted = useCallback(
-    (files: File[]) => {
-      const [file] = files;
-
-      if (file !== undefined) {
-        void addDropped(file);
-      }
-    },
-    [addDropped],
-  );
+  const onDropAccepted = useCallback((files: File[]) => void addDropped(files), [addDropped]);
 
   return useDropzone({
-    multiple: false,
+    multiple: list,
     noClick: true,
     noKeyboard: true,
     noDragEventsBubbling: true,
@@ -131,10 +116,14 @@ function emptyValue(list: boolean): JsonValue | undefined {
   return list ? [] : undefined;
 }
 
-function buttonText(busy: boolean, filled: boolean): string {
+function buttonText(busy: boolean, filled: boolean, list: boolean): string {
   if (busy) {
     return "Uploading...";
   }
 
-  return filled ? "Replace" : "Choose file";
+  if (filled) {
+    return "Replace";
+  }
+
+  return list ? "Choose files" : "Choose file";
 }

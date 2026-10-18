@@ -25,8 +25,8 @@ use itertools::Itertools;
 use log::error;
 use parking_lot::Mutex;
 use schemars::JsonSchema;
-use serde_json::Value;
-use std::collections::BTreeMap;
+use serde_json::{Map, Value};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
@@ -36,18 +36,31 @@ use std::time::Instant;
 use treetime::cancel::Cancel;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::float::float_to_significant_digits;
+use treetime_utils::make_internal_error;
+use treetime_utils::o;
 
 const UPLOAD_BUFFER_SIZE: usize = 1 << 16;
 
 const APP_EVENT_CAPACITY: usize = 1024;
+
+const UPLOAD_AFTER_START: &str = "inputs can be uploaded only before the run starts";
+
+const RELEASE_AFTER_START: &str = "its uploads can be removed only before the run starts";
 
 const UNSTARTED_RUN_LIFETIME: TimeDelta = TimeDelta::days(1);
 
 pub struct RunManager {
   store: RunStore,
   active: Mutex<BTreeMap<JobId, Arc<ActiveRun>>>,
+  pub(super) inputs: Mutex<BTreeMap<JobId, Arc<RunInputs>>>,
   records: Mutex<()>,
   app_events: AppEventLog,
+}
+
+#[derive(Default)]
+pub(super) struct RunInputs {
+  lock: Mutex<()>,
+  uploading: Mutex<Option<String>>,
 }
 
 impl RunManager {
@@ -64,6 +77,7 @@ impl RunManager {
     Ok(Arc::new(Self {
       store,
       active: Mutex::new(BTreeMap::new()),
+      inputs: Mutex::new(BTreeMap::new()),
       records: Mutex::new(()),
       app_events: AppEventLog::new(APP_EVENT_CAPACITY, first_app_seq),
     }))
@@ -110,6 +124,12 @@ impl RunManager {
     hook: ConfigHook,
   ) -> Result<StartedRun, Report> {
     let mut active = self.active.lock();
+    let Some(inputs) = self.run_inputs(id)? else {
+      return Err(conflict(format!("run `{}` has already started", id.as_str())));
+    };
+    let Some(_inputs) = inputs.lock.try_lock() else {
+      return Err(upload_in_progress(id, &inputs, "start"));
+    };
     let record = self.modify(id, |record| {
       if record.status != RunStatus::Created {
         return Err(conflict(format!("run `{}` has already started", id.as_str())));
@@ -120,10 +140,12 @@ impl RunManager {
       } else if command != record.config.command() {
         record.config = config_from_request(command, &SparseConfig(record.config.settings()?))?;
       }
+      remove_unused_uploads(&self.store.inputs_dir(id), &record.config.settings()?)?;
       record.status = RunStatus::Running;
       record.started_at = Some(Utc::now());
       Ok(())
     })?;
+    self.inputs.lock().remove(id);
     let run = if let Some(run) = active.get(id) {
       Arc::clone(run)
     } else {
@@ -148,10 +170,12 @@ impl RunManager {
       run.token.cancel();
       return Ok(true);
     }
-    let record = self.store.read(id)?;
-    if record.status != RunStatus::Created {
+    let Some(inputs) = self.run_inputs(id)? else {
       return Ok(false);
-    }
+    };
+    let Some(_inputs) = inputs.lock.try_lock() else {
+      return Err(upload_in_progress(id, &inputs, "cancel"));
+    };
     let run = match active.remove(id) {
       Some(run) => run,
       None => Arc::new(ActiveRun::open(&self.store.events_path(id))?),
@@ -164,6 +188,7 @@ impl RunManager {
       record.finished_at = Some(Utc::now());
       Ok(())
     })?;
+    self.inputs.lock().remove(id);
     Ok(true)
   }
 
@@ -212,36 +237,62 @@ impl RunManager {
     &self,
     id: &JobId,
     name: &str,
+    replaces: &[PathBuf],
     body: &mut dyn Read,
     max_total_size: usize,
   ) -> Result<UploadedInput, Report> {
-    let record = self.store.read(id)?;
-    if record.status != RunStatus::Created {
-      return Err(conflict(format!(
-        "run `{}` has already started; inputs can be uploaded only before the run starts",
-        id.as_str()
-      )));
-    }
     validate_upload_name(name)?;
-    let dir = self.store.inputs_dir(id);
-    let target = dir.join(name);
-    let others: usize = fs::read_dir(&dir)
-      .wrap_err_with(|| format!("When listing '{}'", dir.display()))?
-      .map(|entry| -> Result<usize, Report> {
-        let entry = entry.wrap_err_with(|| format!("When listing '{}'", dir.display()))?;
-        let metadata = entry
-          .metadata()
-          .wrap_err_with(|| format!("When reading the size of '{}'", entry.path().display()))?;
-        Ok(if metadata.is_file() && entry.path() != target {
-          usize::try_from(metadata.len())?
-        } else {
-          0
-        })
-      })
-      .sum::<Result<usize, Report>>()?;
-    let allowed = max_total_size.saturating_sub(others);
+    let Some(inputs) = self.run_inputs(id)? else {
+      return Err(started(id, UPLOAD_AFTER_START));
+    };
+    let _inputs = inputs.lock.lock();
+    *inputs.uploading.lock() = Some(name.to_owned());
+    let uploaded = self.store_upload(id, name, replaces, body, max_total_size);
+    *inputs.uploading.lock() = None;
+    uploaded
+  }
 
-    write_atomically(&target, |file| {
+  pub fn release_input(&self, id: &JobId, path: &Path) -> Result<(), Report> {
+    let Some(inputs) = self.run_inputs(id)? else {
+      return Err(started(id, RELEASE_AFTER_START));
+    };
+    let _inputs = inputs.lock.lock();
+    self.ensure_unstarted(id, RELEASE_AFTER_START)?;
+    let file = upload_file(&self.store.inputs_dir(id), path).ok_or_else(|| not_an_upload(id, path))?;
+    remove_upload(&file)
+  }
+
+  fn run_inputs(&self, id: &JobId) -> Result<Option<Arc<RunInputs>>, Report> {
+    let mut inputs = self.inputs.lock();
+    if let Some(run) = inputs.get(id) {
+      return Ok(Some(Arc::clone(run)));
+    }
+    if self.store.read(id)?.status != RunStatus::Created {
+      return Ok(None);
+    }
+    Ok(Some(Arc::clone(inputs.entry(id.clone()).or_default())))
+  }
+
+  fn store_upload(
+    &self,
+    id: &JobId,
+    name: &str,
+    replaces: &[PathBuf],
+    body: &mut dyn Read,
+    max_total_size: usize,
+  ) -> Result<UploadedInput, Report> {
+    self.ensure_unstarted(id, UPLOAD_AFTER_START)?;
+    let dir = self.store.inputs_dir(id);
+    let replaced = replaces
+      .iter()
+      .map(|path| upload_file(&dir, path).ok_or_else(|| not_an_upload(id, path)))
+      .collect::<Result<BTreeSet<_>, _>>()?;
+    let replaced_size = replaced.iter().map(|path| file_size(path)).sum::<Result<usize, _>>()?;
+    let allowed = max_total_size.saturating_sub(files_size(&dir)?.saturating_sub(replaced_size));
+    let folder = claim_upload_folder(&dir)?;
+    let target = folder.join(name);
+
+    let written = write_atomically(&target, |file| {
       let mut buffer = vec![0_u8; UPLOAD_BUFFER_SIZE];
       let mut size: usize = 0;
       loop {
@@ -258,7 +309,13 @@ impl RunManager {
         }
         file.write_all(&buffer[..read]).wrap_err("When storing the upload")?;
       }
-    })?;
+    });
+    if let Err(report) = written {
+      return Err(match remove_dir_all_if_exists(&folder) {
+        Ok(()) => report,
+        Err(err) => err.wrap_err(report),
+      });
+    }
     let (size, sha256) = file_sha256(&target)?;
     Ok(UploadedInput {
       name: name.to_owned(),
@@ -266,6 +323,13 @@ impl RunManager {
       size,
       sha256,
     })
+  }
+
+  fn ensure_unstarted(&self, id: &JobId, consequence: &str) -> Result<(), Report> {
+    if self.store.read(id)?.status != RunStatus::Created {
+      return Err(started(id, consequence));
+    }
+    Ok(())
   }
 
   pub fn files(&self, id: &JobId) -> Result<Vec<RunFile>, Report> {
@@ -460,9 +524,150 @@ fn relative_outputs(outcome: &CommandOutcome, out_dir: &Path) -> Vec<OutputFile>
     .iter()
     .map(|file| OutputFile {
       path: file.path.strip_prefix(out_dir).unwrap_or(&file.path).to_path_buf(),
-      kind: file.kind,
+      ..file.clone()
     })
     .collect_vec()
+}
+
+fn files_size(dir: &Path) -> Result<usize, Report> {
+  fs::read_dir(dir)
+    .wrap_err_with(|| format!("When listing '{}'", dir.display()))?
+    .map(|entry| -> Result<usize, Report> {
+      let entry = entry.wrap_err_with(|| format!("When listing '{}'", dir.display()))?;
+      let path = entry.path();
+      let metadata = entry
+        .metadata()
+        .wrap_err_with(|| format!("When reading the size of '{}'", path.display()))?;
+      if metadata.is_dir() {
+        files_size(&path)
+      } else if metadata.is_file() {
+        Ok(usize::try_from(metadata.len())?)
+      } else {
+        Ok(0)
+      }
+    })
+    .sum()
+}
+
+#[expect(
+  clippy::create_dir,
+  reason = "`create_dir` fails on an existing folder, which claims each upload folder for one upload"
+)]
+fn claim_upload_folder(dir: &Path) -> Result<PathBuf, Report> {
+  for number in 1_usize.. {
+    let folder = dir.join(number.to_string());
+    match fs::create_dir(&folder) {
+      Ok(()) => return Ok(folder),
+      Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {},
+      Err(err) => return Err(Report::new(err).wrap_err(format!("When creating '{}'", folder.display()))),
+    }
+  }
+  make_internal_error!("No free upload folder in '{}'", dir.display())
+}
+
+fn upload_file(inputs_dir: &Path, path: &Path) -> Option<PathBuf> {
+  let mut components = path.strip_prefix(inputs_dir).ok()?.components();
+  let (Some(Component::Normal(folder)), Some(Component::Normal(name)), None) =
+    (components.next(), components.next(), components.next())
+  else {
+    return None;
+  };
+  folder.to_str()?.parse::<usize>().ok()?;
+  validate_upload_name(name.to_str()?).ok()?;
+  Some(inputs_dir.join(folder).join(name))
+}
+
+fn upload_in_progress(id: &JobId, inputs: &RunInputs, action: &str) -> Report {
+  let uploading = inputs.uploading.lock().clone();
+  conflict(format!(
+    "run `{}` cannot {action} while {} is uploaded; {action} it again when the upload ends",
+    id.as_str(),
+    uploading.map_or_else(|| o!("a file"), |name| format!("`{name}`"))
+  ))
+}
+
+fn started(id: &JobId, consequence: &str) -> Report {
+  conflict(format!("run `{}` has already started; {consequence}", id.as_str()))
+}
+
+fn not_an_upload(id: &JobId, path: &Path) -> Report {
+  invalid(format!(
+    "'{}' is not an upload of run `{}`",
+    path.display(),
+    id.as_str()
+  ))
+}
+
+fn file_size(path: &Path) -> Result<usize, Report> {
+  match fs::metadata(path) {
+    Ok(metadata) if metadata.is_file() => Ok(usize::try_from(metadata.len())?),
+    Ok(_) => Ok(0),
+    Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(0),
+    Err(err) => Err(Report::new(err).wrap_err(format!("When reading the size of '{}'", path.display()))),
+  }
+}
+
+fn remove_upload(file: &Path) -> Result<(), Report> {
+  match fs::remove_file(file) {
+    Err(err) if err.kind() != io::ErrorKind::NotFound => {
+      Err(Report::new(err).wrap_err(format!("When removing the upload '{}'", file.display())))
+    },
+    _ => Ok(()),
+  }
+}
+
+fn remove_dir_all_if_exists(folder: &Path) -> Result<(), Report> {
+  match fs::remove_dir_all(folder) {
+    Err(err) if err.kind() != io::ErrorKind::NotFound => {
+      Err(Report::new(err).wrap_err(format!("When removing the upload folder '{}'", folder.display())))
+    },
+    _ => Ok(()),
+  }
+}
+
+fn remove_unused_uploads(inputs_dir: &Path, settings: &Map<String, Value>) -> Result<(), Report> {
+  let referenced = settings
+    .values()
+    .flat_map(string_values)
+    .map(PathBuf::from)
+    .collect::<BTreeSet<_>>();
+  for folder in fs::read_dir(inputs_dir).wrap_err_with(|| format!("When listing '{}'", inputs_dir.display()))? {
+    let folder = folder
+      .wrap_err_with(|| format!("When listing '{}'", inputs_dir.display()))?
+      .path();
+    if !folder.is_dir()
+      || folder
+        .file_name()
+        .and_then(|name| name.to_str()?.parse::<usize>().ok())
+        .is_none()
+    {
+      continue;
+    }
+    for file in fs::read_dir(&folder).wrap_err_with(|| format!("When listing '{}'", folder.display()))? {
+      let file = file
+        .wrap_err_with(|| format!("When listing '{}'", folder.display()))?
+        .path();
+      if !referenced.contains(&file) {
+        remove_upload(&file)?;
+      }
+    }
+    match fs::remove_dir(&folder) {
+      Err(err) if err.kind() != io::ErrorKind::DirectoryNotEmpty => {
+        return Err(Report::new(err).wrap_err(format!("When removing the upload folder '{}'", folder.display())));
+      },
+      _ => {},
+    }
+  }
+  Ok(())
+}
+
+fn string_values(value: &Value) -> Vec<&str> {
+  match value {
+    Value::String(text) => vec![text.as_str()],
+    Value::Array(items) => items.iter().flat_map(string_values).collect(),
+    Value::Object(fields) => fields.values().flat_map(string_values).collect(),
+    Value::Null | Value::Bool(_) | Value::Number(_) => vec![],
+  }
 }
 
 fn validate_upload_name(name: &str) -> Result<(), Report> {

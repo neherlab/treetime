@@ -7,6 +7,7 @@ pub(crate) mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
+  use std::path::{Path, PathBuf};
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_run_streams_events_and_records_outputs() {
@@ -347,7 +348,7 @@ pub(crate) mod tests {
           .canonicalize()
           .unwrap()
           .join(&id)
-          .join("inputs/tree.nwk")
+          .join("inputs/1/tree.nwk")
       ),
       record["inputs"][0]["path"]
     );
@@ -369,7 +370,7 @@ pub(crate) mod tests {
     let id = record["id"].as_str().unwrap().to_owned();
     let small = test.upload(&id, "a.nwk", vec![b'x'; 600]).await;
     let too_much = test.upload(&id, "b.nwk", vec![b'x'; 600]).await;
-    let replace = test.upload(&id, "a.nwk", vec![b'x'; 900]).await;
+    let same_name = test.upload(&id, "a.nwk", vec![b'x'; 400]).await;
     assert_eq!(
       (
         200,
@@ -377,10 +378,94 @@ pub(crate) mod tests {
         json!("the inputs of a run are limited to 1000 bytes in total; `b.nwk` does not fit"),
         200
       ),
-      (small.0, too_much.0, too_much.1["message"].clone(), replace.0)
+      (small.0, too_much.0, too_much.1["message"].clone(), same_name.0)
     );
     let (status, body) = test.upload(&id, "..", vec![b'x'; 1]).await;
     assert_eq!(400, status, "{body}");
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_released_upload_frees_its_space_under_the_limit() {
+    let test = app_with_upload_limit(1000);
+    let id = create_deferred(&test).await;
+    let first = test.upload(&id, "aligned.fasta", vec![b'x'; 600]).await;
+
+    let released = test.release(&id, first.1["path"].as_str().unwrap()).await;
+    let replacement = test.upload(&id, "aligned.fasta", vec![b'x'; 600]).await;
+
+    assert_eq!((200, 200), (released.0, replacement.0), "{}", replacement.1);
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_upload_that_replaces_an_upload_needs_room_for_the_new_file_only() {
+    let test = app_with_upload_limit(1000);
+    let id = create_deferred(&test).await;
+    let first = test.upload(&id, "aligned.fasta", vec![b'x'; 600]).await;
+    let first_path = first.1["path"].as_str().unwrap();
+
+    let without = test.upload(&id, "aligned.fasta", vec![b'x'; 600]).await;
+    let with = test
+      .upload_replacing(&id, "aligned.fasta", &[first_path], vec![b'x'; 600])
+      .await;
+
+    assert_eq!((413, 200), (without.0, with.0), "{}", with.1);
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_upload_rejects_a_replaced_path_outside_the_uploads_of_the_run() {
+    let test = app();
+    let id = create_deferred(&test).await;
+    let outside = TestApp::examples_dir().join("zika/20/tree.nwk");
+
+    let (status, body) = test
+      .upload_replacing(&id, "tree.nwk", &[outside.to_str().unwrap()], b"(A,B);".to_vec())
+      .await;
+
+    assert_eq!(400, status, "{body}");
+  }
+
+  #[rstest]
+  #[case::other_folder("tree.nwk")]
+  #[case::parent_folder("../../etc/passwd")]
+  #[case::folder_itself("1")]
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_release_rejects_a_path_outside_the_uploads_of_the_run(#[case] relative: &str) {
+    let test = app();
+    let id = create_deferred(&test).await;
+    let uploaded = test.upload(&id, "tree.nwk", b"(A,B);".to_vec()).await;
+    let inputs = PathBuf::from(uploaded.1["path"].as_str().unwrap())
+      .parent()
+      .and_then(Path::parent)
+      .unwrap()
+      .to_path_buf();
+
+    let (status, body) = test.release(&id, inputs.join(relative).to_str().unwrap()).await;
+    let still_there = PathBuf::from(uploaded.1["path"].as_str().unwrap()).is_file();
+
+    assert_eq!((400, true), (status, still_there), "{body}");
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_routes_release_rejects_an_upload_of_a_started_run() {
+    let test = app();
+    let id = create_deferred(&test).await;
+    let data = TestApp::examples_dir();
+    let tree = test
+      .upload(&id, "tree.nwk", std::fs::read(data.join("zika/20/tree.nwk")).unwrap())
+      .await;
+    let (status, _) = request(
+      &test,
+      "POST",
+      &format!("/api/runs/{id}/start"),
+      Some(json!({ "config": { "tree": tree.1["path"] } })),
+    )
+    .await;
+    assert_eq!(200, status);
+
+    let (status, body) = test.release(&id, tree.1["path"].as_str().unwrap()).await;
+    let kept = PathBuf::from(tree.1["path"].as_str().unwrap()).is_file();
+
+    assert_eq!((409, true), (status, kept), "{body}");
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -601,6 +686,8 @@ pub(crate) mod tests {
     use axum::body::{Body, BodyDataStream};
     use axum::http::Request;
     use axum::response::Response;
+    use itertools::Itertools;
+    use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
     use serde_json::{Value, json};
     use std::path::PathBuf;
     use std::str;
@@ -631,10 +718,29 @@ pub(crate) mod tests {
         self.router.clone().oneshot(request).await.unwrap()
       }
 
+      pub(crate) async fn release(&self, id: &str, path: &str) -> (u16, Value) {
+        let query = utf8_percent_encode(path, NON_ALPHANUMERIC);
+        request(self, "DELETE", &format!("/api/runs/{id}/inputs?path={query}"), None).await
+      }
+
       pub(crate) async fn upload(&self, id: &str, name: &str, bytes: Vec<u8>) -> (u16, Value) {
+        self.upload_replacing(id, name, &[], bytes).await
+      }
+
+      pub(crate) async fn upload_replacing(
+        &self,
+        id: &str,
+        name: &str,
+        replaces: &[&str],
+        bytes: Vec<u8>,
+      ) -> (u16, Value) {
+        let query = replaces
+          .iter()
+          .map(|path| format!("replaces={}", utf8_percent_encode(path, NON_ALPHANUMERIC)))
+          .join("&");
         let response = self
           .send(
-            Request::put(format!("/api/runs/{id}/inputs/{name}"))
+            Request::put(format!("/api/runs/{id}/inputs/{name}?{query}"))
               .body(Body::from(bytes))
               .unwrap(),
           )
