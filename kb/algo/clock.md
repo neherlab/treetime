@@ -68,7 +68,7 @@ v0: [`packages/legacy/treetime/treetime/clock_filter_methods.py#L5-L40`](../../p
 
 Edge inversion along the path from the old root to the new root position, with cleanup of trivial (single-child) nodes. Rerooting changes which node is the root of the tree without altering the unrooted topology. All edges along the old-root-to-new-root path are inverted (parent becomes child and vice versa), and the old root is removed if it becomes a trivial single-child node. An old root with one child would become a leaf after the inversion. When it has no date, the reroot removes it first and its child becomes the root, which is exact because a branch to a node without data contributes a factor of 1 to the likelihood and root-to-tip distances add along a path. A dated one becomes a dated leaf. `--keep-root` leaves the tree unchanged. A reroot that turns an internal node without a date into a leaf fails with an error ([packages/treetime/src/reroot/placement.rs](../../packages/treetime/src/reroot/placement.rs)). After the move, the clock reruns the backward regression pass on the new tree.
 
-v1: `fn reroot_clock_tree()` [packages/treetime/src/clock/reroot.rs#L20](../../packages/treetime/src/clock/reroot.rs#L20), shared topology move `fn apply_root_at_edge()` [packages/treetime/src/reroot/orchestrate.rs#L100](../../packages/treetime/src/reroot/orchestrate.rs#L100). See [reroot.md](reroot.md).
+v1: `fn reroot_at_best_root()` [packages/treetime/src/clock/reroot.rs#L31](../../packages/treetime/src/clock/reroot.rs#L31), topology move `fn apply_root_at_edge()` [packages/treetime/src/reroot/orchestrate.rs#L19](../../packages/treetime/src/reroot/orchestrate.rs#L19). See [reroot.md](reroot.md).
 
 ---
 

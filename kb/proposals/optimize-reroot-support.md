@@ -49,7 +49,7 @@ New pipeline when `--reroot` is set and `--keep-root` is not:
 4. Apply initial guess
 5. Pre-reroot BL optimization pass (single `optimize_edge_lengths` with damping 0.75)
 6. Compute the regression sums on every edge (two-pass traversal over branch lengths)
-7. `reroot_min_dev` (`reroot/orchestrate.rs`): exact rate-zero root search and topology move
+7. `reroot_undated` (`clock/reroot.rs`): the clock reroot driver at rate zero with every tip at the same date
 8. Apply reroot changes to partitions (`PartitionRerootOps::apply_reroot`)
 9. Re-run `update_marginal` (root position changed, messages invalidated)
 10. `run_optimize_loop` (main convergence loop)

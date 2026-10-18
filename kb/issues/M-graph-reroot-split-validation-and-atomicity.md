@@ -4,7 +4,7 @@ Public reroot helpers accept raw split fractions and mutate the graph before val
 
 ## Evidence
 
-`fn split_edge()` [`packages/treetime-graph/src/reroot.rs#L55`](../../packages/treetime-graph/src/reroot.rs#L55) inserts a node at L61 before resolving the edge, and uses `expect` at L64. Its `f64` split accepts NaN and values outside $[0,1]$. The clock reroot [`packages/treetime/src/clock/reroot.rs#L146`](../../packages/treetime/src/clock/reroot.rs#L146) and the generic reroot orchestration [`packages/treetime/src/reroot/orchestrate.rs#L118`](../../packages/treetime/src/reroot/orchestrate.rs#L118) call it.
+`fn split_edge()` [`packages/treetime-graph/src/reroot.rs#L55`](../../packages/treetime-graph/src/reroot.rs#L55) inserts a node at L61 before resolving the edge, and uses `expect` at L64. Its `f64` split accepts NaN and values outside $[0,1]$. Every reroot calls it through `fn apply_root_at_edge()` [`packages/treetime/src/reroot/orchestrate.rs#L47`](../../packages/treetime/src/reroot/orchestrate.rs#L47).
 
 `fn remove_node_if_trivial()` [`packages/treetime-graph/src/reroot.rs#L111`](../../packages/treetime-graph/src/reroot.rs#L111) and `fn trivial_node_branch_lengths()` [`packages/treetime-graph/src/reroot.rs#L152`](../../packages/treetime-graph/src/reroot.rs#L152) also resolve keys with `expect`.
 
