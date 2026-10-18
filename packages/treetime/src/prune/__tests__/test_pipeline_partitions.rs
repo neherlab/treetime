@@ -3,7 +3,10 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::test_utils::{read_dataset_alignment, split_at_gap_free_column};
   use eyre::Report;
-  use helpers::{FILE_1, FILE_2, clades, dataset_tree, internal_node_names, run_prune, run_prune_empty};
+  use helpers::{
+    FILE_1, FILE_2, TIED_FILE_1, TIED_FILE_2, clades, dataset_tree, internal_node_names, records, run_prune,
+    run_prune_empty,
+  };
   use maplit::btreeset;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -49,6 +52,21 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_prune_merges_the_same_of_two_tied_sibling_groups_in_either_alignment_order() -> Result<(), Report> {
+    let tree = "(A:0.1,B:0.1,C:0.1,D:0.1)root;";
+    let forward = run_prune(tree, &[records(TIED_FILE_1)?, records(TIED_FILE_2)?])?;
+    let backward = run_prune(tree, &[records(TIED_FILE_2)?, records(TIED_FILE_1)?])?;
+    assert_eq!(
+      (
+        btreeset! {btreeset! {"A", "B"}, btreeset! {"A", "B", "C", "D"}},
+        clades(&forward)
+      ),
+      (clades(&forward), clades(&backward))
+    );
+    Ok(())
+  }
+
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::cancel::NoopCancel;
@@ -68,6 +86,22 @@ mod tests {
     pub(super) const FILE_1: &[(&str, &str)] = &[("A", "T"), ("B", "T"), ("C", "A"), ("D", "A"), ("E", "A")];
 
     pub(super) const FILE_2: &[(&str, &str)] = &[("A", "G"), ("B", "G"), ("C", "G"), ("D", "C"), ("E", "C")];
+
+    pub(super) const TIED_FILE_1: &[(&str, &str)] = &[("A", "T"), ("B", "T"), ("C", "A"), ("D", "A")];
+
+    pub(super) const TIED_FILE_2: &[(&str, &str)] = &[("A", "G"), ("B", "C"), ("C", "G"), ("D", "C")];
+
+    pub(super) fn records(file: &[(&str, &str)]) -> Result<Vec<AlignmentRecord>, Report> {
+      file
+        .iter()
+        .map(|(name, seq)| {
+          Ok(AlignmentRecord {
+            name: (*name).to_owned(),
+            seq: Seq::try_from_str(seq)?,
+          })
+        })
+        .collect()
+    }
 
     pub(super) fn dataset_tree(dataset: &str) -> Result<String, Report> {
       Ok(fs::read_to_string(dataset_dir(dataset).join("tree.nwk"))?)

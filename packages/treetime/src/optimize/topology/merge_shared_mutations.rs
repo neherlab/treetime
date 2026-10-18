@@ -165,6 +165,7 @@ fn greedy_disjoint_group_matching(mut groups: Vec<MergeGroup>) -> Vec<MergeGroup
     b.total_shared
       .cmp(&a.total_shared)
       .then(b.edges.len().cmp(&a.edges.len()))
+      .then_with(|| a.edges.cmp(&b.edges))
   });
   let mut used: BTreeSet<GraphEdgeKey> = BTreeSet::new();
   groups.retain(|g| {
