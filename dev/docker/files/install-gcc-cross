@@ -10,7 +10,7 @@ set -euxo pipefail
 triplet="${1:?triplet}"
 dest="${2:?prefix}"
 version="14.4.0"
-build_time="2026-10-17_22-58-35"
+build_time="2026-10-18_01-15-48"
 release="gcc-${version}-${build_time}"
 archive="/tmp/gcc-cross.tar.xz"
 mkdir -p "${dest}"

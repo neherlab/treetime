@@ -64,17 +64,10 @@ case "${target}" in
   rustflags="${RUSTFLAGS} ${static}"
   ;;
 esac
-# The cross images install the OpenBLAS archive into OPENBLAS_LIB_DIR. Only
-# this flag passes that directory to the linker: the openblas-src build script
-# names the library without a search path, and the cross linkers do not search
-# LIBRARY_PATH.
-rustflags="${rustflags} -L native=${OPENBLAS_LIB_DIR:?}"
-
 # OpenBLAS calls LAPACK routines written in Fortran, which need the Fortran
 # runtime; the openblas-src build script does not declare it. The static
-# archives of the Fortran compiler of the image are linked by path, so no
-# binary depends on a shared libgfortran, and libquadmath goes along where the
-# target has it.
+# archives of the Fortran compiler of the image are linked, so no binary depends
+# on a shared libgfortran, and libquadmath goes along where the target has it.
 fc_var="FC_${target_safe}"
 fc="${!fc_var:?the cross image sets ${fc_var}}"
 fortran_runtime=()
@@ -89,19 +82,33 @@ done
   exit 1
 }
 
-if [[ -n "${lib}" && "${target}" == *-windows-gnu ]]; then
-  # The runtime comes last on the link line, after the C runtime libraries that
-  # rustc lists, so it is linked in one group with them again.
+# The Fortran runtime goes to the end of the link line, after the libraries
+# that rustc lists. The C libraries it needs come after it again, because a
+# linker resolves an archive only against the libraries that follow it; on
+# glibc this also brings in the loader that provides __tls_get_addr, and
+# libgcc provides the integer and float128 helpers of libgfortran and
+# libquadmath, because rustc links with -nodefaultlibs.
+case "${target}" in
+*-linux-gnu) runtime_deps=(-lm -lpthread -lc -lgcc) ;;
+*-linux-musl) runtime_deps=(-lc -lgcc) ;;
+*-windows-gnu) runtime_deps=(-l:libpthread.a -lmingw32 -lmingwex -lmsvcrt -lkernel32 -lgcc) ;;
+*) runtime_deps=() ;;
+esac
+if [[ "${target}" == *-windows-gnu ]]; then
   rustflags="${rustflags} -C link-arg=-Wl,--start-group"
-  for arg in "${fortran_runtime[@]}" -l:libpthread.a -lmingw32 -lmingwex -lmsvcrt -lkernel32 -lgcc; do
-    rustflags="${rustflags} -C link-arg=${arg}"
-  done
-  rustflags="${rustflags} -C link-arg=-Wl,--end-group"
-else
-  for arg in "${fortran_runtime[@]}"; do
-    rustflags="${rustflags} -C link-arg=${arg}"
-  done
 fi
+for arg in "${fortran_runtime[@]}" "${runtime_deps[@]}"; do
+  rustflags="${rustflags} -C link-arg=${arg}"
+done
+if [[ "${target}" == *-windows-gnu ]]; then
+  rustflags="${rustflags} -C link-arg=-Wl,--end-group"
+fi
+
+# The cross images install the OpenBLAS archive into OPENBLAS_LIB_DIR. Only
+# this flag passes that directory to the linker: the openblas-src build script
+# names the library without a search path, and the cross linkers do not search
+# LIBRARY_PATH.
+rustflags="${rustflags} -L native=${OPENBLAS_LIB_DIR:?}"
 
 export RUSTFLAGS="${rustflags}"
 
