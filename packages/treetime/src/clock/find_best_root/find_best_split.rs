@@ -2,7 +2,7 @@ use crate::clock::clock_regression::RegressedClockTree;
 use crate::clock::clock_set::ClockSet;
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
-use crate::clock::find_best_root::{method_brent, method_golden_section, method_grid_search};
+use crate::clock::find_best_root::{method_brent, method_exact, method_golden_section, method_grid_search};
 use crate::node_label::node_label;
 use crate::progress::LogSink;
 use eyre::Report;
@@ -19,6 +19,9 @@ pub(crate) fn find_best_split(
   log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
   let cost_fn = BranchPointCostFunction::new(regressed, edge, objective)?;
+  if regressed.clock_params.is_ordinary_least_squares() {
+    return method_exact::optimize_exact(edge, &cost_fn);
+  }
   let branch = node_label(names, regressed.tree.graph.get_target_node_key(edge)?);
 
   match params {

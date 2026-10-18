@@ -4,12 +4,12 @@ use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootOb
 use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::progress_info;
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::collections::container::get_exactly_one;
 
 pub(crate) fn find_best_root(
   regressed: RegressedClockTree<'_>,
@@ -30,11 +30,10 @@ pub(crate) fn find_best_root(
     ..
   } = regressed;
   let root = graph.get_exactly_one_root()?;
-  let mut best_root_node = root;
 
   let root_clock_set = state.node(root.key()).clone();
   let root_acceptable = !force_positive || objective.has_positive_rate(&root_clock_set);
-  let mut best_chisq = if root_acceptable {
+  let best_chisq = if root_acceptable {
     objective.score(&root_clock_set)
   } else {
     f64::INFINITY
@@ -51,76 +50,29 @@ pub(crate) fn find_best_root(
     clock_set: root_clock_set,
   };
 
-  let mut node_count = 0;
-  let mut improvements = 0;
-  let mut rejected_negative_rate = 0;
-  let candidates = graph
-    .get_nodes()
-    .collect::<Vec<_>>()
+  let edges: Vec<GraphEdgeKey> = graph.get_edges().map(|edge| edge.key()).collect();
+  let candidates = edges
     .into_par_iter()
-    .map(|node| {
-      let clock_set = state.node(node.key());
-      let acceptable = !force_positive || objective.has_positive_rate(clock_set);
-      (node, acceptable.then(|| objective.score(clock_set)))
+    .map(|edge| {
+      find_best_split(regressed, edge, params, objective, names, log)
     })
-    .collect::<Vec<_>>();
-  for (n, score) in candidates {
-    let Some(tmp_chisq) = score else {
+    .collect::<Result<Vec<_>, Report>>()?;
+  let n_candidates = candidates.len();
+  let mut rejected_negative_rate = 0;
+  for res in candidates {
+    if force_positive && !objective.has_positive_rate(&res.clock_set) {
       rejected_negative_rate += 1;
-      node_count += 1;
       continue;
-    };
-    if tmp_chisq < best_chisq {
-      improvements += 1;
-      debug!("Found better node {improvements}: chi-squared improved from {best_chisq:.6e} to {tmp_chisq:.6e}");
-      best_chisq = tmp_chisq;
-      best_root_node = n;
     }
-    node_count += 1;
+    if res.chisq < best_res.chisq {
+      best_res = res;
+    }
   }
   debug!(
-    "Evaluated {node_count} nodes, found {improvements} improvements, \
-     rejected {rejected_negative_rate} with negative rate, best chi-squared: {best_chisq:.6e}"
+    "Evaluated the best root position on {n_candidates} edges, rejected {rejected_negative_rate} with negative rate, \
+     best chi-squared: {:.6e}",
+    best_res.chisq
   );
-
-  if !best_root_node.is_root() {
-    debug!("Optimizing position on parent branch");
-    let inbound = best_root_node.inbound();
-    let edge =
-      get_exactly_one(inbound).wrap_err("Root optimization on a node with multiple parents is not implemented")?;
-    let res = find_best_split(regressed, *edge, params, objective, names, log)?;
-    debug!(
-      "Parent branch optimization result: chi-squared = {:.6e}, split = {:.6}",
-      res.chisq, res.split
-    );
-    let split_acceptable = !force_positive || objective.has_positive_rate(&res.clock_set);
-    if res.chisq < best_chisq && split_acceptable {
-      debug!(
-        "Parent branch optimization improved chi-squared from {:.6e} to {:.6e}",
-        best_chisq, res.chisq
-      );
-      best_chisq = res.chisq;
-      best_res = res;
-    }
-  }
-
-  for (child_branch_count, e) in best_root_node.outbound().iter().enumerate() {
-    debug!("Optimizing position on child branch {child_branch_count}");
-    let res = find_best_split(regressed, *e, params, objective, names, log)?;
-    debug!(
-      "Child branch {} optimization result: chi-squared = {:.6e}, split = {:.6}",
-      child_branch_count, res.chisq, res.split
-    );
-    let split_acceptable = !force_positive || objective.has_positive_rate(&res.clock_set);
-    if res.chisq < best_chisq && split_acceptable {
-      debug!(
-        "Child branch {} optimization improved chi-squared from {:.6e} to {:.6e}",
-        child_branch_count, best_chisq, res.chisq
-      );
-      best_chisq = res.chisq;
-      best_res = res;
-    }
-  }
 
   if force_positive && !objective.has_positive_rate(&best_res.clock_set) {
     return Err(input_error(

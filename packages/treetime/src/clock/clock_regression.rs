@@ -335,7 +335,9 @@ fn clock_regression_backward_node(
       prev_clock_rate,
     );
     let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
-    edge.clock_from_child = if is_leaf {
+    edge.clock_from_child = if is_leaf && outliers.contains(&context.key) {
+      ClockSet::outlier_contribution()
+    } else if is_leaf {
       branch_variance += options.variance_offset_leaf;
       ClockSet::leaf_contribution_to_parent(date, edge_len, branch_variance)
     } else {
@@ -435,6 +437,13 @@ pub struct ClockVarianceParams {
 
   #[default = 1.0]
   pub variance_offset_leaf: f64,
+}
+
+impl ClockVarianceParams {
+  /// No variance on internal edges and the same weight for every tip: the regression is ordinary least squares
+  pub(crate) fn is_ordinary_least_squares(&self) -> bool {
+    self.variance_factor == 0.0 && self.variance_offset == 0.0
+  }
 }
 
 fn edge_divergence(branch_length: f64, time_length: Option<f64>, gamma: f64, prev_clock_rate: Option<f64>) -> f64 {
