@@ -8,6 +8,10 @@ appeared, so the pipeline now carries two representations of the lineage count $
 prior-free pass, a prior pass and two rebuilds, and special cases for the root. This proposal replaces them with one
 design:
 
+0. **Replace the clock regression.** The weighted-least-squares machinery with its variance model ("covariation"),
+   the node-then-local-split root search and its optimizer options give way to an ordinary-least-squares regression on
+   two-way sufficient statistics with an exact $O(N)$ root search, and to Gaussian message passing for everything the
+   variance model was for. This has long been the intended direction.
 1. **Initialize from the regression and Gaussian propagation.** The root-to-tip regression keeps the rate, the root
    and the outliers; a Gaussian approximation of the branch-time likelihood, propagated at that rate, gives every
    internal node a marginal in closed form. The marginals seed the expected lineage counts and the first $T_c$, so the
@@ -78,6 +82,56 @@ Incoherences:
   round's for $T_c$).
 
 ## Proposed design
+
+### 0. Replace the clock regression
+
+**Today** ([`clock/`](../../packages/treetime/src/clock/), about 5100 lines):
+
+- `ClockSet` carries weighted sums ($\sum t$, $\sum t^2$, $\sum d$, $\sum d^2$, $\sum td$, norm) and
+  `propagate_averages` integrates a branch of variance $v = f\,\ell + o$ (plus a tip offset). This is Gaussian
+  message passing on regression sums; with $v = 0$ it is OLS, the default everywhere except `--covariation`
+  (`clock` sets $f = 2/L$ and tip slack 3, `timetree` $1/L$ and 10, v0 differs from both).
+- The root search scores every node's `ClockSet`, then optimizes the split only on the edges next to the best node,
+  by an 11-point grid (or Brent, golden section; `--branch-split-*`). `reroot/` duplicates the search generically for
+  `optimize`.
+- Outliers still enter the fit through `clock_from_child`
+  ([H-clock-regression-includes-filtered-outliers.md](../issues/H-clock-regression-includes-filtered-outliers.md)).
+- The covariance is the unscaled $H^{-1}$; `determine_rate_std` uses it only with `--covariation`, while the augur
+  node data report $\sqrt{(H^{-1})_{00}}$ as `rate_std` regardless.
+
+**Replacement**, following `rtt_ols.py` and `gaussian_timetree.py` of
+[neherlab/gaussian-timetree](https://github.com/neherlab/gaussian-timetree):
+
+| part | new | covers |
+| --- | --- | --- |
+| regression | OLS of root-to-tip divergence on date from per-node sums $(n, \sum T, \sum T^2, \sum D, \sum D^2, \sum TD)$: a subtree message (post-order) and an outside message (pre-order) per node; an excluded tip contributes no sums | slope, intercept, $\chi^2$, $R^2$ at any root; outliers out of the fit by construction |
+| root search | combined sums at offset $a$ on every edge; RSS is a convex quadratic in $a$, so each edge's optimum is closed form; minimum over all nodes and edges in $O(N)$ | `LeastSquares` and `ClockFilter` rerooting; `MinDev` as the same search at fixed rate 0; `Oldest` and `Tips` unchanged |
+| outliers | residuals about the fitted line at the chosen root, IQR rule | `--clock-filter` |
+| rate and root uncertainty | Gaussian message passing at the regression rate ($\eta = \mu(D+M+N)/D$): rate and root covariance from the Hessian, converted to $\mu$ | `rate_std` for `--confidence` and the augur node data, in place of `--covariation` |
+| node marginals | the same Gaussian passes | the start of the timetree loop (section 1) |
+
+**Kept:** `divergence.rs`, `date_constraints.rs`, the clock CSV rows and date sources (`rtt.rs`), the fixed-rate
+intercept of the in-loop clock update, the topology moves of rerooting (`reroot/placement.rs`).
+
+**Retired:** `ClockVarianceParams`, the variance-carrying `propagate_averages`, `clock/find_best_root/` with its
+grid, Brent and golden-section split optimizers, the duplicate search in `reroot/` (the `optimize` min-dev search
+becomes the fixed-rate-0 case of the new one), and the flags `--variance-factor`, `--variance-offset`,
+`--variance-offset-leaf`, `--branch-split-*`; `--covariation` and `--tip-slack` are retired or remapped to the
+Gaussian rate uncertainty and its variance offset (decision).
+
+**Consequences:**
+
+- Outputs: the clock-model JSON changes its statistics (regression $\chi^2$, $R^2$ and the Gaussian covariance
+  instead of the WLS Hessian); the augur `rate_std` becomes a real standard error. The app (results, the
+  covariation switch, contracts, JSON schemas) follows; that part is the engineer's.
+- Tests: the frozen-value dengue/100 clock golden master and every clock and covariation snapshot in `dev/smoke.toml`
+  change; the v0 runner golden masters (`test_gm_runner/`) call `estimate_clock_model_with_reroot_policy` at a fixed
+  v0 rate and keep the root, so they move to the new API with unchanged expectations.
+- kb: resolves or obsoletes H-clock-regression-includes-filtered-outliers, M-clock-covariation-variance-diverges-from-v0,
+  M-clock-filter-regression-uses-covariation, M-timetree-covariation-tip-slack-default-differs-from-v0,
+  N-clock-regression-all-negative-rate, N-reroot-clock-search-duplicates-generic-module,
+  N-reroot-split-optimizer-default-diverges-from-v0, N-reroot-leaf-variance-offset-diverges-from-v0; needs decisions
+  for replacing covariation and for the exact per-edge root search (both v0 divergences).
 
 ### 1. Initialization: regression for the rate and root, Gaussian propagation for the internal nodes
 
@@ -194,18 +248,23 @@ The baseline for each phase is the previous one.
 
 | phase | content | gate |
 | --- | --- | --- |
-| 0 | merge `claude-hard-cell-interp` into the mean-field branch | tests; dengue/500 completes |
-| 1a | Gaussian propagation at the regression rate ($\eta = \mu(D+M+N)/D$): upward and outside messages, node marginals with the rate term in the widths | node RMSE, coverage and lineage-curve distance reproduce the evidence above |
-| 1b | seed the expectation and $T_c$ from the Gaussian marginals; one loop, initial round removed | calibration and accuracy equal or better than mean field + EM; one time pass fewer in run time |
-| 2 | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests rewritten against analytic expected statistics; outputs documented as a v0 divergence |
+| 0a | OLS regression on two-way sums, exact root search, outliers out of the fit, IQR filter; `clock` and `timetree` on it | identical rate, intercept and root wherever the old search found the optimum (OLS default); differences only where the local split search missed it or outliers leaked in; validation suite rate and root recovery |
+| 0b | Gaussian message passing at the regression rate: node marginals, rate and root covariance; replaces `--covariation` for `rate_std` | node RMSE, coverage and lineage-curve distance reproduce section 1; `--confidence` coverage on the validation data |
+| 0c | retire the old machinery and flags; outputs, contracts, app (with the engineer) | smoke snapshots re-baselined with the reason recorded; dengue/100 golden master rebuilt |
+| 1 | merge `claude-hard-cell-interp`; seed the expectation and $T_c$ from the Gaussian marginals; one loop, initial round removed | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
+| 2 | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests against analytic expected statistics; outputs documented as a v0 divergence |
 | 3 | root: median versus peak under the mean-field prior | `data/ebola/20` root stable over rounds |
 | 4 | rate: curvature-scaled probe window; optional log-normal rate prior | rounds to convergence; low-signal rate error with and without a prior |
-| 5 | kb: decisions for the mean-field prior, the EM fit, the clock-implied start; supersede the frozen-lineage-count and root-before-merger notes; close [M-timetree-initial-round-applies-coalescent-prior.md](../issues/M-timetree-initial-round-applies-coalescent-prior.md) | |
+| 5 | kb: decisions for the clock replacement, the mean-field prior, the EM fit, the regression-and-Gaussian start; supersede the frozen-lineage-count and root-before-merger notes; close [M-timetree-initial-round-applies-coalescent-prior.md](../issues/M-timetree-initial-round-applies-coalescent-prior.md) | |
 
 ## Open questions
 
 - The variance offset $o$ for the node widths (0 here), and whether the root survival should be anchored at the
   regression's root time instead of the Gaussian root marginal.
+- `--covariation` and `--tip-slack`: retire, or keep as names for the Gaussian rate uncertainty and its variance
+  offset.
+- The outlier rule: the current $\lvert\text{residual}\rvert > k \cdot \text{IQD}$, or Tukey fences about the
+  quartiles as in `rtt_ols.py`; and the default threshold (3 here, 4 in v0).
 - Expectation update: rebuild once and freeze, or a damped update every round.
 - Polytomy resolution: the sweep's merger rate is the only consumer that samples, not integrates; check that
   $\bar k$ in place of integer $k$ does not change its event model beyond the rate.
