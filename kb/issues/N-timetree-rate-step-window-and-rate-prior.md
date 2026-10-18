@@ -9,4 +9,8 @@ Phase 4 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposa
 - Without temporal signal the marginal likelihood cannot fix the rate. A log-normal prior on $\mu$ adds $\log p(\mu)$
   to each probe; it would also replace the hard stop on a non-positive regression rate when given.
 
+- The Gaussian `rate_std` of 0b undercovers where the rate is biased: $\lvert z\rvert < 1.645$ for 0.21 and 0.00 of
+  the runs at $L=10^3$, $\mu \le 10^{-3}$, against 0.77–0.83 with signal (proposal, phase 0b result). A rate prior
+  or a curvature-based width from $\log Z$ should be compared against it.
+
 Validation: rounds to convergence; low-signal rate error with and without a prior.
