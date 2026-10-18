@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::gaussian::{GaussianClock, gaussian_clock, gaussian_rate};
+  use crate::clock::gaussian::{GaussianClock, GaussianTree};
   use crate::pretty_assert_ulps_eq;
   use crate::timetree::inference::result::NodeTimes;
   use eyre::Report;
@@ -8,8 +8,9 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
+  use treetime_utils::cast::ToF64Exact;
 
-  const SEQUENCE_LENGTH: f64 = 1000.0;
+  const SEQUENCE_LENGTH: usize = 1000;
   const RATE: f64 = 1e-3;
 
   /// Gaussian clock of `nwk` with tips dated by `dates` and flagged by `excluded`, node times keyed by name
@@ -29,14 +30,14 @@ mod tests {
       tip_dates.insert(key_of[name], Some(*date));
     }
     let excluded = excluded.iter().map(|name| (key_of[name], true)).collect();
-    let clock = gaussian_clock(
+    let clock = GaussianTree::new(
       &parsed.graph,
       &parsed.branch_lengths,
       SEQUENCE_LENGTH,
       &tip_dates,
       &excluded,
-      RATE,
-    )?;
+    )?
+    .clock(RATE)?;
     let times = clock
       .node_times
       .iter()
@@ -57,7 +58,7 @@ mod tests {
   impl Tree3 {
     /// `nu` of the branches to A, B, V, C and the dates of A, B, C
     fn new() -> Self {
-      let nu = [0.010, 0.020, 0.015, 0.030].map(|d| d * SEQUENCE_LENGTH + 1.0);
+      let nu = [0.010, 0.020, 0.015, 0.030].map(|d| d * SEQUENCE_LENGTH.to_f64_exact() + 1.0);
       Self {
         nu,
         t: DATES_3.map(|(_, t)| t),
@@ -67,7 +68,7 @@ mod tests {
     /// `eta = mu L (D + M + N) / D` with all four branches dated
     fn eta(&self, rate: f64) -> f64 {
       let d: f64 = self.nu.iter().map(|nu| nu - 1.0).sum();
-      rate * SEQUENCE_LENGTH * (d + 4.0) / d
+      rate * SEQUENCE_LENGTH.to_f64_exact() * (d + 4.0) / d
     }
 
     /// Joint Gaussian of `(t_R, t_V)` from `sum_e eta^2 (tau_e - nu_e / eta)^2 / (2 nu_e)`, `tau_e` the elapsed time on
@@ -156,13 +157,14 @@ mod tests {
         (*key, date)
       })
       .collect();
-    let rate = gaussian_rate(
+    let rate = GaussianTree::new(
       &parsed.graph,
       &parsed.branch_lengths,
       SEQUENCE_LENGTH,
       &tip_dates,
       &BTreeMap::new(),
-    )?;
+    )?
+    .rate()?;
 
     let profile = |rate: f64| {
       let (q, h) = tree.joint(tree.eta(rate));

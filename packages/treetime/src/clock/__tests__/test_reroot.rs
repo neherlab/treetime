@@ -3,6 +3,7 @@ pub(crate) mod tests {
   use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use crate::clock::reroot::RerootParams;
   use crate::o;
+  use crate::reroot::orchestrate::RerootTopologyParams;
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use helpers::setup_reroot_test_graph;
@@ -76,8 +77,10 @@ pub(crate) mod tests {
     let node_count_before = fixture.tree.graph.get_nodes().count();
 
     let reroot_params = RerootParams {
-      split_edge: false,
-      remove_trivial_root: false,
+      topology: RerootTopologyParams {
+        split_edge: false,
+        remove_trivial_root: false,
+      },
       ..RerootParams::default()
     };
     let (tree, _) = helpers::reroot(fixture, &reroot_params)?;
@@ -97,8 +100,10 @@ pub(crate) mod tests {
     let old_root_key = fixture.tree.graph.get_exactly_one_root()?.key();
 
     let reroot_params = RerootParams {
-      split_edge: true,
-      remove_trivial_root: false,
+      topology: RerootTopologyParams {
+        split_edge: true,
+        remove_trivial_root: false,
+      },
       ..RerootParams::default()
     };
     let (tree, new_root_key) = helpers::reroot(fixture, &reroot_params)?;

@@ -72,26 +72,26 @@ mod tests {
   }
 
   #[test]
-  fn test_determine_rate_std_explicit_clock_std_dev_skips_estimate() {
-    let result = determine_rate_std(Some(0.001), || panic!("estimate evaluated")).unwrap();
+  fn test_determine_rate_std_explicit_clock_std_dev_overrides_estimate() {
+    let result = determine_rate_std(Some(0.001), Some(2e-4)).unwrap();
     assert_relative_eq!(result.unwrap(), 0.001);
   }
 
   #[test]
   fn test_determine_rate_std_rejects_negative() {
-    let result = determine_rate_std(Some(-0.001), || Ok(None));
+    let result = determine_rate_std(Some(-0.001), None);
     assert_error!(result, "--clock-std-dev must be positive, got -0.001");
   }
 
   #[test]
   fn test_determine_rate_std_rejects_zero() {
-    let result = determine_rate_std(Some(0.0), || Ok(None));
+    let result = determine_rate_std(Some(0.0), None);
     assert_error!(result, "--clock-std-dev must be positive, got 0");
   }
 
   #[test]
   fn test_determine_rate_std_falls_back_to_estimate() {
-    let result = determine_rate_std(None, || Ok(Some(2e-4))).unwrap();
+    let result = determine_rate_std(None, Some(2e-4)).unwrap();
     assert_relative_eq!(result.unwrap(), 2e-4);
   }
 
