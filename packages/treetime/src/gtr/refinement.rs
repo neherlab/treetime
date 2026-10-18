@@ -87,7 +87,15 @@ where
   for i in 0..=iterations {
     let counts = partition.count_transitions(&gtr, graph, branch_lengths, &nodes, &backward, &forward)?;
     gtr = infer_gtr(&counts, &options, gtr.pi().len(), log)?;
-    (gtr, nodes, backward) = optimize_gtr_rate(partition, gtr, &nodes, graph, branch_lengths, log)?;
+    (gtr, nodes, backward) = optimize_gtr_rate(
+      partition,
+      gtr,
+      &nodes,
+      graph,
+      branch_lengths,
+      RateRangeEdge::KeepStart,
+      log,
+    )?;
     debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu());
   }
 
@@ -134,21 +142,15 @@ fn log_final(gtr: &GTR, log_lh: LogLh, log: &dyn LogSink) {
   );
 }
 
-fn optimize_gtr_rate<P: MarginalPasses>(
+pub(crate) fn optimize_gtr_rate<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
   nodes: &BTreeMap<GraphNodeKey, P::Node>,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  range_edge: RateRangeEdge,
   log: &dyn LogSink,
-) -> Result<
-  (
-    GTR,
-    BTreeMap<GraphNodeKey, P::Node>,
-    BTreeMap<GraphEdgeKey, P::Backward>,
-  ),
-  Report,
->
+) -> Result<RateStepResult<P>, Report>
 where
   P::Node: Clone,
 {
@@ -203,7 +205,7 @@ where
     neg_log_lh: &neg_log_lh,
   };
 
-  let (cost_lo, _) = evaluate(lo);
+  let (cost_lo, at_lo) = evaluate(lo);
   let (cost_mid, _) = evaluate(sqrt_old_mu);
   let (cost_hi, at_hi) = evaluate(hi);
 
@@ -229,18 +231,59 @@ where
     );
     Ok((gtr, nodes, backward))
   } else {
-    let (mut restored_gtr, restored_nodes, restored_backward) =
-      if let Some(GtrRateCandidate { gtr, nodes, backward }) = at_hi {
-        (gtr, nodes, backward)
-      } else {
-        let MarginalBackward { node_states, backward } =
-          partition.marginal_backward(&gtr, graph, branch_lengths, P::backward_input(nodes))?;
-        (gtr, node_states, backward)
-      };
-    restored_gtr.set_mu(old_mu)?;
-    debug!("GTR rate optimization: skipped (no bracket), keeping mu = {old_mu:.6}");
-    Ok((restored_gtr, restored_nodes, restored_backward))
+    match range_edge {
+      RateRangeEdge::KeepStart => keep_start_rate(partition, gtr, at_hi, nodes, graph, branch_lengths),
+      RateRangeEdge::LowerCostEnd => {
+        let (cost_end, at_end) = if cost_lo <= cost_hi {
+          (cost_lo, at_lo)
+        } else {
+          (cost_hi, at_hi)
+        };
+        let GtrRateCandidate { gtr, nodes, backward } = at_end.ok_or_else(|| {
+          make_internal_report!("GTR rate optimization: both ends of the rate range failed to evaluate")
+        })?;
+        debug!(
+          "GTR rate optimization: no bracket, taking mu = {:.6e} (from {old_mu:.6}) at the range end with cost {cost_end:.6}",
+          gtr.mu()
+        );
+        Ok((gtr, nodes, backward))
+      },
+    }
   }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum RateRangeEdge {
+  KeepStart,
+  LowerCostEnd,
+}
+
+type RateStepResult<P> = (
+  GTR,
+  BTreeMap<GraphNodeKey, <P as MarginalPasses>::Node>,
+  BTreeMap<GraphEdgeKey, <P as MarginalPasses>::Backward>,
+);
+
+fn keep_start_rate<P: MarginalPasses>(
+  partition: &P,
+  gtr: GTR,
+  at_hi: Option<GtrRateCandidate<P>>,
+  nodes: &BTreeMap<GraphNodeKey, P::Node>,
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+) -> Result<RateStepResult<P>, Report> {
+  let old_mu = gtr.mu();
+  let (mut restored_gtr, restored_nodes, restored_backward) =
+    if let Some(GtrRateCandidate { gtr, nodes, backward }) = at_hi {
+      (gtr, nodes, backward)
+    } else {
+      let MarginalBackward { node_states, backward } =
+        partition.marginal_backward(&gtr, graph, branch_lengths, P::backward_input(nodes))?;
+      (gtr, node_states, backward)
+    };
+  restored_gtr.set_mu(old_mu)?;
+  debug!("GTR rate optimization: skipped (no bracket), keeping mu = {old_mu:.6}");
+  Ok((restored_gtr, restored_nodes, restored_backward))
 }
 
 struct GtrRateCandidate<P: MarginalPasses> {

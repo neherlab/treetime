@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::gtr::refinement::refine_gtr_model_and_rate;
+  use crate::gtr::refinement::{RateRangeEdge, optimize_gtr_rate, refine_gtr_model_and_rate};
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::progress::NoopProgress;
   use eyre::Report;
-  use treetime_utils::pretty_assert_abs_diff_eq;
+  use rstest::rstest;
+  use std::collections::BTreeMap;
+  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[test]
   fn test_refinement_sparse_rate_search_ends_at_log_lh_maximum_in_mu() -> Result<(), Report> {
@@ -86,6 +88,49 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::sparse(false)]
+  #[case::dense( true )]
+  #[trace]
+  fn test_refinement_rate_step_on_an_alignment_without_change_takes_the_lower_range_end_with_its_messages(
+    #[case] dense: bool,
+  ) -> Result<(), Report> {
+    let input = helpers::Input::without_change()?;
+    let (gtr, log_lh, fresh_log_lh) = if dense {
+      let partition = input.dense()?;
+      let (gtr, nodes, _) = optimize_gtr_rate(
+        &partition,
+        input.start_gtr.clone(),
+        &BTreeMap::new(),
+        &input.graph,
+        &input.branch_lengths,
+        RateRangeEdge::LowerCostEnd,
+        &NoopProgress,
+      )?;
+      let fresh = partition.marginal_update(&gtr, &input.graph, &input.branch_lengths, &())?;
+      let log_lh = partition.root_log_lh(&input.graph, &nodes)?;
+      (gtr, log_lh, fresh.log_lh)
+    } else {
+      let (partition, node_states) = input.sparse()?;
+      let (gtr, nodes, _) = optimize_gtr_rate(
+        &partition,
+        input.start_gtr.clone(),
+        &node_states,
+        &input.graph,
+        &input.branch_lengths,
+        RateRangeEdge::LowerCostEnd,
+        &NoopProgress,
+      )?;
+      let fresh = partition.marginal_update(&gtr, &input.graph, &input.branch_lengths, &node_states)?;
+      let log_lh = partition.root_log_lh(&input.graph, &nodes)?;
+      (gtr, log_lh, fresh.log_lh)
+    };
+    pretty_assert_ulps_eq!(1e-4 * input.start_gtr.mu(), gtr.mu(), max_ulps = 4);
+    pretty_assert_abs_diff_eq!(fresh_log_lh.value(), log_lh.value(), epsilon = 1e-10);
+    Ok(())
+  }
+
   mod helpers {
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::branch_lengths::branch_lengths_or_zero;
@@ -116,10 +161,7 @@ mod tests {
 
     impl Input {
       pub(super) fn new() -> Result<Self, Report> {
-        let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-        let names = nwk_parsed.names();
-        let aln: Vec<AlignmentRecord> = fasta_read(
-          indoc! {r#"
+        Self::from_fasta(indoc! {r#"
           >A
           ACGTACGTACGTACGT
           >B
@@ -128,13 +170,29 @@ mod tests {
           ACCTACGTTCGTACGG
           >D
           ACCTACGTTCGAACGC
-        "#}
-          .as_bytes(),
-          &Alphabet::new(AlphabetName::Nuc)?,
-        )?
-        .into_iter()
-        .map(AlignmentRecord::from)
-        .collect();
+        "#})
+      }
+
+      pub(super) fn without_change() -> Result<Self, Report> {
+        Self::from_fasta(indoc! {r#"
+          >A
+          ACGTACGTACGTACGT
+          >B
+          ACGTACGTACGTACGT
+          >C
+          ACGTACGTACGTACGT
+          >D
+          ACGTACGTACGTACGT
+        "#})
+      }
+
+      fn from_fasta(fasta: &str) -> Result<Self, Report> {
+        let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
+        let names = nwk_parsed.names();
+        let aln: Vec<AlignmentRecord> = fasta_read(fasta.as_bytes(), &Alphabet::new(AlphabetName::Nuc)?)?
+          .into_iter()
+          .map(AlignmentRecord::from)
+          .collect();
         Ok(Self {
           node_inputs: leaf_seq_inputs(&nwk_parsed.graph, &names, aln),
           branch_lengths: branch_lengths_or_zero(&nwk_parsed.branch_lengths),
