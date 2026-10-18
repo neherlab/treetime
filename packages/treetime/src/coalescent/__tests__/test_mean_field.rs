@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::mean_field::LineageExpectation;
+  use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
   use crate::test_utils::{find_node_key_by_name, point_coalescent_prior};
   use crate::timetree::inference::result::NodePosterior;
   use eyre::Report;
@@ -159,6 +159,80 @@ mod tests {
     let (_, mergers) = expectation.segment_statistics(&[1990.0, 2000.0, 2020.0]);
 
     pretty_assert_abs_diff_eq!(1.0, mergers[1], epsilon = 1e-4);
+    Ok(())
+  }
+
+  // The star (A, B, C) has its root at 2000 and its tips at 2010; kbar is built with the root's weight -2, and the root is
+  // evaluated as binary (weight -1, as after a polytomy resolution). Removing the root's own share at the weight it has
+  // in kbar gives kbar_{-v} = 3 on both sides of the root's time (1 + 2 before, 3 after), so the slope is
+  // (1 - 3) / Tc throughout, with no step at the node's own time.
+  #[test]
+  fn test_mean_field_own_share_is_removed_at_its_weight_in_the_expectation() -> Result<(), Report> {
+    let parsed = nwk_read(b"(A:1,B:1,C:1)root;".as_slice())?;
+    let names = parsed.names();
+    let graph = parsed.graph;
+    let tc = 2.0;
+    let prior = point_coalescent_prior(
+      &graph,
+      &names,
+      &[("A", 2010.0), ("B", 2010.0), ("C", 2010.0), ("root", 2000.0)],
+      tc,
+    )?;
+    let root = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
+    let slope = |x: f64| -> Result<f64, Report> {
+      let h = 1e-3;
+      Ok((prior.node_contribution(root, 2, x + h)? - prior.node_contribution(root, 2, x - h)?) / (2.0 * h))
+    };
+
+    pretty_assert_abs_diff_eq!(-2.0 / tc, slope(1995.0)?, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(-2.0 / tc, slope(2005.0)?, epsilon = 1e-9);
+    Ok(())
+  }
+
+  // An expectation that lacks a merger, extended by `with_topology` with the merger at its sampled time, equals one built
+  // with that merger from the start
+  #[test]
+  fn test_mean_field_with_topology_equals_a_fresh_expectation() -> Result<(), Report> {
+    let parsed = nwk_read(b"((A:1,B:1)N:1,C:1)root;".as_slice())?;
+    let names = parsed.names();
+    let graph = parsed.graph;
+    let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
+    let times = [
+      ("A", 2010.0),
+      ("B", 2009.0),
+      ("C", 2012.0),
+      ("root", 2000.0),
+      ("N", 2005.0),
+    ];
+    let point = |time: f64| NodePosterior {
+      distribution: None,
+      likely_time: Some(time),
+      time: Some(time),
+      contradicted: false,
+    };
+    let full: BTreeMap<GraphNodeKey, NodePosterior> = times.iter().map(|(n, t)| (key(n), point(*t))).collect();
+    let mut without_n = full.clone();
+    without_n.remove(&key("N"));
+    let bad_branches = BTreeMap::new();
+    let tc = Distribution::constant(3.0);
+
+    let extended = LineageExpectation::from_posterior(&graph, &without_n, &bad_branches)?
+      .with_topology(&graph, &BTreeMap::from([(key("N"), 2005.0)]))?;
+    let fresh = LineageExpectation::from_posterior(&graph, &full, &bad_branches)?;
+    let (extended, fresh) = (
+      CoalescentPrior::new(&extended, &tc)?,
+      CoalescentPrior::new(&fresh, &tc)?,
+    );
+
+    for (name, n_children) in [("root", 2), ("N", 2), ("A", 0)] {
+      for x in [1995.0, 2003.0, 2007.0] {
+        pretty_assert_abs_diff_eq!(
+          fresh.node_contribution(key(name), n_children, x)?,
+          extended.node_contribution(key(name), n_children, x)?,
+          epsilon = 1e-12
+        );
+      }
+    }
     Ok(())
   }
 
