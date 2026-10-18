@@ -215,15 +215,52 @@ mod tests {
     Ok(())
   }
 
+  // With input branch lengths there is no reconstruction to take the sequence length from; the relaxed clock uses the
+  // run's sequence length and moves the rates as with an alignment (it was skipped as "no sequence data")
+  #[test]
+  fn test_round_relaxes_the_clock_with_input_branch_lengths() -> Result<(), Report> {
+    let (state, context) = helpers::create_state(
+      "((A:0.01,B:0.08)X:0.02,(C:0.06,D:0.005)Y:0.01)root;",
+      indoc! {r#"
+        >A
+        ACGTACGTACGTACGTACGTACGT
+        >B
+        ACGTACGAACGTACGTACGTACGT
+        >C
+        ACGTACGTACGTACCTACGTACGT
+        >D
+        ACGTTCGTACGTACGTACGTACGA
+      "#},
+      &btreemap! {
+        "A".to_owned() => Some(DateConstraint::exact(2010.0)),
+        "B".to_owned() => Some(DateConstraint::exact(2012.0)),
+        "C".to_owned() => Some(DateConstraint::exact(2014.0)),
+        "D".to_owned() => Some(DateConstraint::exact(2016.0)),
+      },
+    )?;
+    let state = RoundState {
+      branch_model: BranchModel::Input,
+      ..state
+    };
+
+    let (state, _) = helpers::refine_with(&context, state, None, &helpers::round_params(false, RELAX.to_vec()))?;
+
+    assert!(
+      state.gammas.values().any(|gamma| (gamma - 1.0).abs() > 1e-3),
+      "the relaxed clock must move at least one rate away from 1: {:?}",
+      state.gammas
+    );
+    Ok(())
+  }
+
   #[test]
   fn test_round_unchanged_topology_keeps_the_relaxed_gammas() -> Result<(), Report> {
     let (state, context) = helpers::create_unary_state()?;
-    let total_length = state.branch_model.total_length();
     let expected = apply_relaxed_clock(
       &state.graph,
       &state.branch_lengths,
       &RELAX,
-      one_mutation(total_length),
+      one_mutation(context.sequence_length),
       state.clock_model.clock_rate(),
       &state.time_inference.branches,
     )?;
@@ -326,6 +363,7 @@ mod tests {
         edges: MarginalEdges::default(),
       }])
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+      let sequence_length = partition.total_length();
       let branch_model = BranchModel::Marginal(partition);
 
       let constraints = load_date_constraints(&dates_by_node(dates.clone(), &graph, &names), &graph, &NoopProgress)?;
@@ -387,7 +425,7 @@ mod tests {
         gammas,
         time_inference,
       };
-      Ok((state, context(constraints)))
+      Ok((state, context(constraints, sequence_length)))
     }
 
     pub(super) fn refine(
@@ -484,12 +522,12 @@ mod tests {
       );
     }
 
-    fn context(date_constraints: DateConstraints) -> TimetreeContext {
+    fn context(date_constraints: DateConstraints, sequence_length: usize) -> TimetreeContext {
       TimetreeContext {
         final_sequences: FinalSequences::Skip,
         time_marginal: TimeMarginalMode::Never,
         date_constraints,
-        sequence_length: 16,
+        sequence_length,
       }
     }
   }
