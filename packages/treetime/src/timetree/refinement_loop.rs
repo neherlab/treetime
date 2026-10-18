@@ -1,6 +1,6 @@
 use crate::cancel::Cancel;
 use crate::coalescent::coalescent::CoalescentModel;
-use crate::coalescent::mean_field::CoalescentPrior;
+use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
 use crate::timetree::coalescent_timescale::{CoalescentSetup, CoalescentTimescale, coalescent_timescale};
@@ -43,11 +43,18 @@ pub(crate) fn run_refinement_loop(
     );
 
     if coalescent.mode.is_optimized() {
+      let expectation = LineageExpectation::from_posterior(
+        &state.graph,
+        &state.time_inference.posterior,
+        &state.time_inference.bad_branches,
+      )
+      .wrap_err("Failed to compute the expected coalescent lineage counts")?;
       timescale = coalescent_timescale(
         coalescent.mode,
         &state.graph,
         &coalescent.skyline_params,
         &state.time_inference.coalescent_node_times(),
+        Some(&expectation),
         &state.names,
         log,
       )?;

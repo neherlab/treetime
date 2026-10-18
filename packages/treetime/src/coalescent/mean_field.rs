@@ -41,6 +41,7 @@ const SURVIVAL_TRIM: f64 = 1e-9;
 struct NodeSurvival {
   t: Vec<f64>,
   survival: Vec<f64>,
+  weight: f64,
 }
 
 impl NodeSurvival {
@@ -48,7 +49,11 @@ impl NodeSurvival {
   fn compact(t: Vec<f64>, survival: Vec<f64>) -> Self {
     let n = t.len();
     if n <= 2 {
-      return Self { t, survival };
+      return Self {
+        t,
+        survival,
+        weight: 0.0,
+      };
     }
     let first = survival
       .iter()
@@ -59,6 +64,7 @@ impl NodeSurvival {
     let full = Self {
       t: t[first..=last].to_vec(),
       survival: survival[first..=last].to_vec(),
+      weight: 0.0,
     };
     if full.t.len() <= SURVIVAL_POINTS {
       return full;
@@ -67,7 +73,11 @@ impl NodeSurvival {
     let step = (end - start) / (SURVIVAL_POINTS - 1).to_f64_exact();
     let t: Vec<f64> = (0..SURVIVAL_POINTS).map(|i| start + step * i.to_f64_exact()).collect();
     let survival = t.iter().map(|&x| full.at(x)).collect();
-    Self { t, survival }
+    Self {
+      t,
+      survival,
+      weight: 0.0,
+    }
   }
 
   fn at(&self, x: f64) -> f64 {
@@ -91,6 +101,8 @@ impl NodeSurvival {
 pub(crate) struct LineageExpectation {
   grid: Vec<f64>,
   expected: Vec<f64>,
+  /// `V(t) = sum_u w_u^2 S_u(t) (1 - S_u(t))`, the variance of the lineage count for independent node times
+  variance: Vec<f64>,
   /// `kbar` before the first grid time
   expected_before: f64,
   nodes: BTreeMap<GraphNodeKey, NodeSurvival>,
@@ -102,7 +114,6 @@ impl LineageExpectation {
     posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
     bad_branches: &BTreeMap<GraphNodeKey, bool>,
   ) -> Result<Arc<Self>, Report> {
-    let mut weights = BTreeMap::new();
     let mut always_surviving = 0.0;
     let mut nodes = BTreeMap::new();
     for node in graph.get_nodes() {
@@ -119,20 +130,23 @@ impl LineageExpectation {
         None => None,
       };
       let survival = match (survival, entry.and_then(|p| p.time)) {
-        (Some((t, survival)), _) => NodeSurvival::compact(t, survival),
+        (Some((t, survival)), _) => NodeSurvival {
+          weight,
+          ..NodeSurvival::compact(t, survival)
+        },
         (None, Some(time)) => NodeSurvival {
           t: vec![time],
           survival: vec![0.0],
+          weight,
         },
         (None, None) => {
           always_surviving += weight;
           continue;
         },
       };
-      weights.insert(key, weight);
       nodes.insert(key, survival);
     }
-    let weighted: Vec<(f64, &NodeSurvival)> = nodes.iter().map(|(key, survival)| (weights[key], survival)).collect();
+    let weighted: Vec<(f64, &NodeSurvival)> = nodes.values().map(|survival| (survival.weight, survival)).collect();
     if weighted.is_empty() {
       return make_error!("Cannot build the expected lineage count: no node has a time");
     }
@@ -149,13 +163,16 @@ impl LineageExpectation {
       .collect();
 
     let mut expected = vec![always_surviving; grid.len()];
+    let mut variance = vec![0.0; grid.len()];
     let mut surviving_from = vec![0.0; grid.len() + 1];
     for &(weight, survival) in &weighted {
       let first = grid.partition_point(|&g| g < survival.t[0]);
       let last = grid.partition_point(|&g| g < survival.t[survival.t.len() - 1]);
       surviving_from[first] += weight;
-      for (g, value) in grid.iter().zip(expected.iter_mut()).take(last).skip(first) {
-        *value += weight * survival.at(*g);
+      for i in first..last {
+        let s = survival.at(grid[i]);
+        expected[i] += weight * s;
+        variance[i] += weight * weight * s * (1.0 - s);
       }
     }
     let mut running = 0.0;
@@ -169,9 +186,42 @@ impl LineageExpectation {
     Ok(Arc::new(Self {
       grid,
       expected,
+      variance,
       expected_before,
       nodes,
     }))
+  }
+
+  /// Expected coalescent statistics of the segments between `boundaries` (the first and last segments extend to the
+  /// past and the future): the pair-rate integral `I_i = int_i E[k (k - 1) / 2] dt` with
+  /// `E[k (k - 1)] = kbar^2 - kbar + V` for independent node times, and the expected number of mergers
+  /// `M_i = sum_v m_v P(t_v in segment i)`. With point times they are the statistics of the lineage counts.
+  pub(crate) fn segment_statistics(&self, boundaries: &[f64]) -> (Vec<f64>, Vec<f64>) {
+    let n_seg = boundaries.len() - 1;
+    let segment_of = |t: f64| boundaries.partition_point(|&b| b <= t).saturating_sub(1).min(n_seg - 1);
+    let pair_rate = |i: usize| {
+      let k = self.expected[i];
+      0.5 * (k * k - k + self.variance[i]).max(0.0)
+    };
+    let mut pair_integral = vec![0.0; n_seg];
+    for i in 1..self.grid.len() {
+      let mid = f64::midpoint(self.grid[i - 1], self.grid[i]);
+      pair_integral[segment_of(mid)] +=
+        (self.grid[i] - self.grid[i - 1]) * f64::midpoint(pair_rate(i - 1), pair_rate(i));
+    }
+    let mut mergers = vec![0.0; n_seg];
+    for survival in self.nodes.values().filter(|survival| survival.weight < 0.0) {
+      for (i, merger) in mergers.iter_mut().enumerate() {
+        let before = if i == 0 { 1.0 } else { survival.at(boundaries[i]) };
+        let after = if i == n_seg - 1 {
+          0.0
+        } else {
+          survival.at(boundaries[i + 1])
+        };
+        *merger += -survival.weight * (before - after);
+      }
+    }
+    (pair_integral, mergers)
   }
 }
 

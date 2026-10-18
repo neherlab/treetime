@@ -34,6 +34,7 @@ pub(crate) fn coalescent_timescale(
   graph: &Graph,
   skyline_params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
+  expectation: Option<&LineageExpectation>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<CoalescentTimescale, Report> {
@@ -41,7 +42,7 @@ pub(crate) fn coalescent_timescale(
     CoalescentMode::Disabled => CoalescentMode::Constant,
     mode @ (CoalescentMode::Fixed(_) | CoalescentMode::Constant | CoalescentMode::Skyline) => mode,
   };
-  estimate_coalescent_tc(mode, graph, skyline_params, node_times, names, log)
+  estimate_coalescent_tc(mode, graph, skyline_params, node_times, expectation, names, log)
     .wrap_err("Failed to estimate the coalescent timescale")?
     .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
 }
@@ -51,6 +52,7 @@ pub(crate) fn estimate_coalescent_tc(
   graph: &Graph,
   skyline_params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
+  expectation: Option<&LineageExpectation>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<Option<CoalescentTimescale>, Report> {
@@ -67,6 +69,7 @@ pub(crate) fn estimate_coalescent_tc(
       ..skyline_params.clone()
     },
     node_times,
+    expectation,
     names,
     log,
   )?;
