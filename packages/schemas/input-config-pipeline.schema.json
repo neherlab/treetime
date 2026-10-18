@@ -360,7 +360,7 @@
         "confidence": {
           "anyOf": [
             {
-              "description": "Add rate-uncertainty to confidence intervals.\n\n`--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.\nThis flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined\nvia quadrature sum. Requires `--covariation` or `--clock-std-dev`.\nWhen set with `--time-marginal=never` (default), automatically promotes to `only-final`.",
+              "description": "Add rate-uncertainty to confidence intervals.\n\n`--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.\nThis flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined\nvia quadrature sum. The rate std. dev. is `--clock-std-dev` if given, else estimated by a Gaussian\napproximation of the timetree, which needs the alignment or `--sequence-length`.\nWhen set with `--time-marginal=never` (default), automatically promotes to `only-final`.",
               "type": "boolean",
               "default": false
             },

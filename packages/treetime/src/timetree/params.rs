@@ -5,8 +5,8 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::make_report;
 use crate::optimize::params::BranchLengthMode;
 use crate::progress::LogSink;
+use crate::progress_info;
 use crate::seq::alignment::{NodeSeqInput, get_common_length_of_node_inputs};
-use crate::{progress_info, progress_warn};
 use eyre::Report;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
@@ -18,26 +18,14 @@ use treetime_utils::cast::ToF64Exact;
 pub(crate) fn compute_effective_time_marginal(
   time_marginal: TimeMarginalMode,
   confidence: bool,
-  clock_std_dev: Option<f64>,
-  covariation: bool,
   log: &dyn LogSink,
 ) -> TimeMarginalMode {
   if confidence && time_marginal == TimeMarginalMode::Never {
-    if clock_std_dev.is_some() || covariation {
-      progress_info!(
-        log,
-        "--confidence: promoting time-marginal from never to only-final for CI estimation"
-      );
-      TimeMarginalMode::OnlyFinal
-    } else {
-      progress_warn!(
-        log,
-        "Cannot estimate confidence intervals without clock rate uncertainty. \
-         Specify --clock-std-dev or rerun with --covariation. \
-         Proceeding without confidence estimation."
-      );
-      TimeMarginalMode::Never
-    }
+    progress_info!(
+      log,
+      "--confidence: promoting time-marginal from never to only-final for CI estimation"
+    );
+    TimeMarginalMode::OnlyFinal
   } else {
     time_marginal
   }

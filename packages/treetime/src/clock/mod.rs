@@ -7,6 +7,7 @@ pub mod clock_state;
 pub mod date_constraints;
 pub mod divergence;
 pub mod find_best_root;
+pub(crate) mod gaussian;
 pub mod pipeline;
 pub mod reroot;
 pub mod rtt;

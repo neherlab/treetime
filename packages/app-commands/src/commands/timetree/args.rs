@@ -163,7 +163,8 @@ pub struct TreetimeTimetreeArgsRaw {
   ///
   /// `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.
   /// This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined
-  /// via quadrature sum. Requires `--covariation` or `--clock-std-dev`.
+  /// via quadrature sum. The rate std. dev. is `--clock-std-dev` if given, else estimated by a Gaussian
+  /// approximation of the timetree, which needs the alignment or `--sequence-length`.
   /// When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Dating"))]
   pub confidence: bool,

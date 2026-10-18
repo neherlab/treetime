@@ -158,7 +158,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
 * `--confidence` — Add rate-uncertainty to confidence intervals.
 
-   `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs. This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined via quadrature sum. Requires `--covariation` or `--clock-std-dev`. When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
+   `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs. This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined via quadrature sum. The rate std. dev. is `--clock-std-dev` if given, else estimated by a Gaussian approximation of the timetree, which needs the alignment or `--sequence-length`. When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
 * `--max-grid-points <MAX_GRID_POINTS>` — Largest number of points of one probability grid during time inference.
 
    A run stops with an error when a grid would need more points. The value bounds single grids, not the total memory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000.
