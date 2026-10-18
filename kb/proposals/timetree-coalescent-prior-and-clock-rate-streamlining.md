@@ -85,7 +85,9 @@ Incoherences:
 
 ### 0. Replace the clock regression
 
-**Today** ([`clock/`](../../packages/treetime/src/clock/), about 5100 lines):
+**Today** ([`clock/`](../../packages/treetime/src/clock/), about 5100 lines). The two-way sums already exist: the
+backward and forward `ClockSet` messages per edge are the subtree and outside sums of `rtt_ols.py`, and the default
+variance model (zero on internal edges, unit weight per tip) is OLS. What differs is below.
 
 - `ClockSet` carries weighted sums ($\sum t$, $\sum t^2$, $\sum d$, $\sum d^2$, $\sum td$, norm) and
   `propagate_averages` integrates a branch of variance $v = f\,\ell + o$ (plus a tip offset). This is Gaussian
@@ -116,8 +118,9 @@ intercept of the in-loop clock update, the topology moves of rerooting (`reroot/
 **Retired:** `ClockVarianceParams`, the variance-carrying `propagate_averages`, `clock/find_best_root/` with its
 grid, Brent and golden-section split optimizers, the duplicate search in `reroot/` (the `optimize` min-dev search
 becomes the fixed-rate-0 case of the new one), and the flags `--variance-factor`, `--variance-offset`,
-`--variance-offset-leaf`, `--branch-split-*`; `--covariation` and `--tip-slack` are retired or remapped to the
-Gaussian rate uncertainty and its variance offset (decision).
+`--variance-offset-leaf`, `--branch-split-*`, `--covariation` and `--tip-slack` (decided: retired, not remapped).
+The outlier rule ($\lvert\text{residual}\rvert > k \cdot \text{IQD}$) and its default $k = 3$ stay as they are;
+both are easy to adapt later, and keeping them limits the change surface.
 
 **Consequences:**
 
@@ -261,16 +264,19 @@ The baseline for each phase is the previous one.
 
 - The variance offset $o$ for the node widths (0 here), and whether the root survival should be anchored at the
   regression's root time instead of the Gaussian root marginal.
-- `--covariation` and `--tip-slack`: retire, or keep as names for the Gaussian rate uncertainty and its variance
-  offset.
-- The outlier rule: the current $\lvert\text{residual}\rvert > k \cdot \text{IQD}$, or Tukey fences about the
-  quartiles as in `rtt_ols.py`; and the default threshold (3 here, 4 in v0).
+- Decided: `--covariation` and `--tip-slack` are retired; the outlier rule and its default stay for now.
 - Expectation update: rebuild once and freeze, or a damped update every round.
 - Polytomy resolution: the sweep's merger rate is the only consumer that samples, not integrates; check that
   $\bar k$ in place of integer $k$ does not change its event model beyond the rate.
 - v0 parity: the reported coalescent likelihood, the initial round and the root handling all diverge from v0 and need
   decision files.
-- Actionable items here are to be extracted into issues once the plan is accepted.
+- Issues: [M-clock-root-search-exact-on-every-edge.md](../issues/M-clock-root-search-exact-on-every-edge.md) (0a),
+  [M-clock-gaussian-rate-uncertainty-and-node-marginals.md](../issues/M-clock-gaussian-rate-uncertainty-and-node-marginals.md) (0b),
+  [M-clock-retire-covariation-and-split-optimizers.md](../issues/M-clock-retire-covariation-and-split-optimizers.md) (0c),
+  [M-timetree-loop-starts-from-gaussian-marginals.md](../issues/M-timetree-loop-starts-from-gaussian-marginals.md) (1),
+  [M-coalescent-one-expected-lineage-statistics.md](../issues/M-coalescent-one-expected-lineage-statistics.md) (2),
+  [N-timetree-root-median-under-mean-field-prior.md](../issues/N-timetree-root-median-under-mean-field-prior.md) (3),
+  [N-timetree-rate-step-window-and-rate-prior.md](../issues/N-timetree-rate-step-window-and-rate-prior.md) (4).
 
 ## Related
 
