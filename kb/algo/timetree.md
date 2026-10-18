@@ -52,32 +52,15 @@ v1: [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../
 
 The Kingman coalescent (<a id="cite-2"></a>[Kingman 1982](<https://doi.org/10.1016/0304-4149(82)90011-4>) [[2](#ref-2)]) provides a prior on node times. With $k(t)$ lineages and coalescent time scale $T_c(t)$, the total merger rate is $\lambda(t)=k(t)(k(t)-1)/(2T_c(t))$ and the per-lineage rate is $\kappa(t)=(k(t)-1)/(2T_c(t))$.
 
-V1 expresses every quantity in decimal calendar years and stores the cumulative hazard $H(t)=\int_t^P\kappa(s)\,ds$, where $P$ is the most recent event. For a branch from parent $p$ to child $c$, the negative-log survival term is $H(t_p)-H(t_c)$. Grouping all branch terms by node gives:
+V1 expresses every quantity in decimal calendar years and works with the expected lineage count $\bar k(t)=\sum_u w_u S_u(t)$ instead of the lineage count at point times: $w_u = 1 - n_{\text{children}}(u)$ and $S_u(t)=P(t_u>t)$ from the node posteriors (`LineageExpectation`). The prior is the mean-field linearization of the Kingman density, local to each node: $-\log f_v(x)=\int^x [w_v(w_v-1)/2+w_v\bar k_{-v}(t)]/T_c(t)\,dt+m_v\ln T_c(x)$ with $\bar k_{-v}=\bar k-w_vS_v$ and $m_v$ the mergers at $v$ (`CoalescentPrior::node_contribution`). The same expectation gives the $T_c$ fit, the polytomy merger rates, the reported coalescent log-likelihood and the convergence trace.
 
-| Piece                           | Neg-log value         | Purpose                                               |
-| ------------------------------- | --------------------- | ----------------------------------------------------- |
-| Internal node (all, incl. root) | $H(t)-\ln\lambda(t)$  | Merger density and parent-side branch survival        |
-| Leaf                            | $-H(t_\mathrm{leaf})$ | Child-side survival credit                            |
-| Root correction                 | $+H(t_\mathrm{root})$ | Root has no parent to supply a child-side subtraction |
-
-These pieces sum to the edge-derived Kingman objective. An internal node with $m$ children receives multiplicity $m-1$, matching v0. Edge scoring distributes that merger-density term over the parent's $m$ outgoing edges, preserving the actual parent multiplicity correction.
-
-v1: [`packages/treetime/src/coalescent/`](../../packages/treetime/src/coalescent/).
+v1: [`packages/treetime/src/coalescent/mean_field.rs`](../../packages/treetime/src/coalescent/mean_field.rs).
 v0: [`packages/legacy/treetime/treetime/merger_models.py`](../../packages/legacy/treetime/treetime/merger_models.py).
 
-The shared pipeline is:
+The backward pass combines every child message before applying the node's prior term on the completed distribution's existing coordinates, in negative-log space. Leaf factors affect only outgoing messages, so observed date distributions are not overwritten or compounded by repeated passes.
 
-- `collect_tree_events()` [packages/treetime/src/coalescent/events.rs](../../packages/treetime/src/coalescent/events.rs) collects calendar-dated sample and merger events.
-- `compute_lineage_count_distribution()` [packages/treetime/src/coalescent/lineage_dynamics.rs](../../packages/treetime/src/coalescent/lineage_dynamics.rs) builds calendar-coordinate $k(t)$ with tested breakpoint sidedness.
-- `compute_integral_merger_rate()` [packages/treetime/src/coalescent/integration.rs](../../packages/treetime/src/coalescent/integration.rs) computes $H(t)$ using the existing midpoint quadrature.
-- `compute_lineage_counts()` [packages/treetime/src/coalescent/lineage_counts.rs](../../packages/treetime/src/coalescent/lineage_counts.rs) wraps the two steps above into the fixed input $k(t)$.
-- `CoalescentModel::new()` [packages/treetime/src/coalescent/coalescent.rs](../../packages/treetime/src/coalescent/coalescent.rs) assembles a model from $k(t)$ and $T_c$, materialising $H(t)$. The three quantities enter differently: $k(t)$ is fixed, $T_c$ is estimated, $H(t)$ is a compound of the two.
+The init phase seeds $\bar k(t)$ from the Gaussian node-time marginals at the regression rate, infers the node times once under that prior and rebuilds $\bar k(t)$ from their posteriors; it is then held fixed for the rest of the run, because deriving the prior from the times it is used to infer makes the loop chase a receding target. $T_c$ and the reported coalescent likelihood keep reading the current posteriors. See [kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md).
 
-The backward pass combines every child message before evaluating one leaf, internal, or root cost on the completed distribution's existing coordinates. It subtracts the minimum finite cost before exponentiation and normalizes the result. Leaf factors affect only outgoing messages, so observed date distributions are not overwritten or compounded by repeated passes.
-
-The first timetree pass runs without coalescent to establish node time distributions via backward+forward belief propagation. $k(t)$ is read from that tree and then held fixed for the rest of the run: it is the prior's input, and deriving it from the times it is used to infer makes the loop chase a receding target. $T_c$ and the reported coalescent likelihood keep reading the live tree. See [kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md).
-
-Refinement repeats the coalescent-free pass whenever a topology change invalidates the node-time state.
 Detailed ownership and objective identities are documented in [kb/algo/coalescent-contribution-refactor.md](coalescent-contribution-refactor.md).
 
 ---
@@ -86,7 +69,7 @@ Detailed ownership and objective identities are documented in [kb/algo/coalescen
 
 Optimizes the coalescent time scale Tc in log space over the bracket [-20, 2] using Brent's method (<a id="cite-4"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[4](#ref-4)]). Brent's method is a hybrid of parabolic interpolation and golden section search, achieving superlinear convergence without requiring derivatives.
 
-`estimate_coalescent_tc()` (`#estimate_coalescent_tc`) [packages/treetime/src/timetree/coalescent_timescale.rs#L46-L57](../../packages/treetime/src/timetree/coalescent_timescale.rs#L46-L57) estimates a constant $T_c$ as the one-segment skyline: it calls `optimize_skyline()` with `n_points = 1`, whose optimum is the closed form $T_c^{*}=I/M$. Nodes without inferred dates are skipped; a child older than its parent is an error.
+`estimate_coalescent_tc()` (`#estimate_coalescent_tc`) [packages/treetime/src/timetree/coalescent_timescale.rs#L42](../../packages/treetime/src/timetree/coalescent_timescale.rs#L42) estimates a constant $T_c$ as the one-segment skyline: it calls `optimize_skyline()` with `n_points = 1`, whose optimum is the closed form $T_c^{*}=I/M$ from the expected pair-rate integral $I$ and expected merger count $M$ of the posteriors (`LineageExpectation::segment_statistics`).
 
 Tc is re-optimized each iteration (from iteration 2 onward) using constant Tc. In skyline mode, constant Tc is used during loop iterations; full skyline fit is deferred to post-convergence.
 
@@ -100,15 +83,15 @@ The classic skyline plot (<a id="cite-5"></a>[Pybus, Rambaut, and Harvey 2000](h
 
 The Bayesian skyline plot (<a id="cite-6"></a>[Drummond et al. 2005](https://doi.org/10.1093/molbev/msi103) [[6](#ref-6)]) reduces noise by grouping neighboring coalescent events into segments with shared N*e parameters, using an autocorrelated exponential prior linking adjacent population sizes. The skyride (<a id="cite-7"></a>[Minin, Bloomquist, and Suchard 2008](https://doi.org/10.1093/molbev/msn090) [[7](#ref-7)]) replaces grouping with a Gaussian Markov Random Field (GMRF) prior that penalizes changes per unit time: `pi(gamma|tau) ~ tau^((m-1)/2) * exp(-tau/2 _ sum((gamma_{k+1} - gamma_k)^2 / delta_k))` where tau is a global precision parameter and delta_k are time-aware weights.
 
-TreeTime's skyline implementation uses a smoothness penalty similar to the GMRF but optimizes via Nelder-Mead rather than MCMC:
+TreeTime's skyline implementation uses a smoothness penalty similar to the GMRF but finds the optimum by Newton steps rather than MCMC:
 
-`optimize_skyline()` (`#optimize_skyline`) [packages/treetime/src/coalescent/skyline.rs#L68-L157](../../packages/treetime/src/coalescent/skyline.rs#L68-L157) minimizes:
+`optimize_skyline()` (`#optimize_skyline`) [packages/treetime/src/coalescent/skyline.rs#L17](../../packages/treetime/src/coalescent/skyline.rs#L17) minimizes, over $z_i=\ln T_{c,i}$ on equal segments of the span of the expected lineage counts,
 
 ```
-cost = -log_likelihood + stiffness * sum(diff(log_Tc)^2) + regularization * boundary_penalty
+cost = sum_i (I_i exp(-z_i) + M_i z_i) + stiffness / 2 * sum_i (z_{i+1} - z_i)^2
 ```
 
-The stiffness term penalizes rapid changes in log(Tc) between adjacent grid points (analogous to the GMRF precision). The boundary penalty discourages log(Tc) values outside [-100, 0].
+with $I_i$, $M_i$ the expected pair-rate integral and merger count of segment $i$ (`LineageExpectation::segment_statistics`). The data term is the negative expected complete-data log-likelihood; the stiffness term penalizes rapid changes in log(Tc) between adjacent segments (analogous to the GMRF precision).
 
 `build_tc_distribution()` (`#build_tc_distribution`) [packages/treetime/src/coalescent/skyline.rs](../../packages/treetime/src/coalescent/skyline.rs) creates a piecewise-constant `Distribution::Formula` for coalescent scoring. `SkylineResult::tc_schedule` preserves the same step boundaries for consumers that integrate hazards.
 
@@ -166,7 +149,7 @@ For live lineages, let $M$ be the remaining substitution count and let $R$ be th
 
 $$R_{\mathrm{mut}}=\mu M, \qquad R_{\mathrm{coal}}=\max(0, |R|-1)\kappa(t),$$
 
-where $\mu$ is the whole-alignment mutation rate and $\kappa(t)$ is the per-branch merger-rate schedule from the active coalescent model. One unit-exponential hazard threshold is integrated across lineage arrivals, merger-rate breakpoints, and the parent bound. A mutation event selects a lineage in exact proportion to its integer remaining count. A coalescent event selects two mutation-free lineages uniformly.
+where $\mu$ is the whole-alignment mutation rate and $\kappa(t)=\max(1/2,\bar k(t)-1)/(2T_c(t))$ is the per-branch merger-rate schedule of the frozen expected lineage counts (`LineageExpectation::merger_rate_schedule`). One unit-exponential hazard threshold is integrated across lineage arrivals, merger-rate breakpoints, and the parent bound. A mutation event selects a lineage in exact proportion to its integer remaining count. A coalescent event selects two mutation-free lineages uniformly.
 
 - `simulate_subtree()` in [packages/treetime/src/timetree/optimization/polytomy/sweep.rs](../../packages/treetime/src/timetree/optimization/polytomy/sweep.rs) performs pure seeded simulation and returns a validated merger plan. It rejects non-finite times and rates, rejects rate overflow, and leaves residual polytomies when the parent bound stops the sweep.
 - `apply_plan()` in [packages/treetime/src/timetree/optimization/polytomy/apply.rs](../../packages/treetime/src/timetree/optimization/polytomy/apply.rs) validates the complete plan before graph mutation, then creates internal nodes and reparents children.
@@ -205,10 +188,7 @@ Components use `LogLh`, while distribution grids and probability arrays remain n
 
 - `compute_sequence_log_lh()` (`#compute_sequence_log_lh`) [packages/treetime/src/timetree/convergence/likelihood.rs#L13-L24](../../packages/treetime/src/timetree/convergence/likelihood.rs#L13-L24): sum of per-partition root log-likelihoods from marginal reconstruction
 - `log_lh_time`: `TimeBackward::log_marginal_likelihood()` (`#log_marginal_likelihood`) [packages/treetime/src/timetree/inference/result.rs#L21](../../packages/treetime/src/timetree/inference/result.rs#L21), stored in `TimeInference` by `run_timetree` [packages/treetime/src/timetree/inference/runner.rs#L103](../../packages/treetime/src/timetree/inference/runner.rs#L103): log mass of the root's subtree distribution, whose amplitude carries the levels of all messages and factors (see [distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md#amplitude-re-peaking-and-normalization)). Branch-length likelihoods enter normalized to their peaks, so the value is the log marginal likelihood relative to each branch's sequence optimum, coalescent prior included.
-- `compute_coalescent_log_lh()` (`#compute_coalescent_log_lh`) [packages/treetime/src/timetree/convergence/likelihood.rs#L26-L41](../../packages/treetime/src/timetree/convergence/likelihood.rs#L26-L41): total coalescent log-likelihood via `compute_coalescent_total_lh()`. Sums per-edge Kingman coalescent costs under the active Tc distribution.
-- `compute_coalescent_total_lh()` (`#compute_coalescent_total_lh`) [packages/treetime/src/coalescent/total_lh.rs](../../packages/treetime/src/coalescent/total_lh.rs): constructs `CoalescentModel`, collects inferred endpoint data, and calls `sum_coalescent_cost()`.
-- `collect_coalescent_edges()` (`#collect_coalescent_edges`) [packages/treetime/src/coalescent/edge_data.rs](../../packages/treetime/src/coalescent/edge_data.rs): collects inferred child and parent calendar dates plus actual parent multiplicity. Missing dates are skipped with a warning; reversed endpoints are rejected.
-- `sum_coalescent_cost()` (`#sum_coalescent_cost`) [packages/treetime/src/coalescent/edge_data.rs](../../packages/treetime/src/coalescent/edge_data.rs): sums the model's endpoint-derived edge costs. The grouped merger-density share across all child edges equals the corresponding node contribution.
+- `log_lh_coal`: `CoalescentTimescale::expected_log_likelihood()` (`#expected_log_likelihood`) [packages/treetime/src/timetree/coalescent_timescale.rs#L146](../../packages/treetime/src/timetree/coalescent_timescale.rs#L146): expected complete-data coalescent log-likelihood $-\sum_i I_i/T_{c,i}-\sum_i M_i\ln T_{c,i}$ of the round's posteriors under the round's $T_c$, the objective the $T_c$ fit maximizes
 
 ---
 

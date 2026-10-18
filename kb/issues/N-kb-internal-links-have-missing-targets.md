@@ -45,7 +45,6 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 - `kb/issues/H-graph-capability-contracts-silently-discard-state.md`: `packages/treetime/src/clock/clock_graph.rs`
 - `kb/issues/M-payloads-own-format-adapters.md`, `kb/reports/sparse-subs-accessors.md`: `packages/treetime/src/payload/` (`ancestral.rs`, `timetree.rs`)
 - `kb/issues/N-ancestral-auspice-json-not-produced.md`: `packages/treetime-io/src/graph.rs`
-- `kb/issues/N-coalescent-api-unused-state-and-inconsistent-types.md`: `packages/treetime/src/coalescent/precomputed.rs`
 - `kb/issues/N-io-auspice-trait-reader-contract-unverified.md`: `packages/treetime-io/src/auspice.rs`
 - `kb/reports/auto-partitioning.md`: `packages/treetime/src/gtr/gtr_site_specific.rs`, `packages/treetime/src/gtr/infer_gtr/site_specific.rs`
 - `kb/reports/dense-openblas-profiling.md`: `dev/dev`. The script no longer exists, so the report's `./dev/dev bp`, `br`, and `t` commands are stale as well

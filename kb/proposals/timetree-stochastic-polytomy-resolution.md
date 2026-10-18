@@ -97,9 +97,11 @@ as `zero_branch_slope` at
 [packages/treetime/src/timetree/round.rs#L194](../../packages/treetime/src/timetree/round.rs#L194).
 Rename the parameter `mutation_rate`; no new plumbing.
 
-$\kappa(t)$ is `CoalescentModel::branch_merger_rate` on the same model the round's node times are
-inferred under: lineage counts frozen before the optimization loop, $T_c$ as re-estimated for that
-round. Assembled in
+$\kappa(t)$ is the per-lineage merger rate of the expected lineage counts the round's prior is built from
+(`LineageExpectation::merger_rate_schedule`, $\max(1/2, \bar k - 1)/(2T_c)$; it replaced
+`CoalescentModel::branch_merger_rate` in phase 2 of
+[timetree-coalescent-prior-and-clock-rate-streamlining.md](timetree-coalescent-prior-and-clock-rate-streamlining.md)):
+expected lineage counts frozen before the optimization loop, $T_c$ as re-estimated for that round. Assembled in
 [packages/treetime/src/timetree/pipeline.rs](../../packages/treetime/src/timetree/pipeline.rs);
 see
 [kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md).
@@ -214,11 +216,11 @@ polytomy.
 New edges get `time_length = child_time - parent_time`, `branch_length = Some(0.0)`,
 `gamma = 1.0`.
 
-**`CoalescentModel::branch_merger_rate(t)`** -- `compute_merger_rate_per_lineage_scalar`
-([packages/treetime/src/coalescent/integration.rs#L12](../../packages/treetime/src/coalescent/integration.rs#L12))
-is `pub(super)`. Expose it as a method mirroring the existing private `total_merger_rate`,
-with the same finiteness and positivity guards
-([packages/treetime/src/coalescent/coalescent.rs#L82-L95](../../packages/treetime/src/coalescent/coalescent.rs#L82-L95)).
+**`CoalescentModel::branch_merger_rate(t)`** -- `compute_merger_rate_per_lineage_scalar` (in the
+removed `coalescent/integration.rs`) was `pub(super)`. Expose it as a method mirroring the existing private
+`total_merger_rate`, with the same finiteness and positivity guards (in the removed `coalescent/coalescent.rs`;
+now `LineageExpectation::merger_rate_schedule` in
+[packages/treetime/src/coalescent/mean_field.rs](../../packages/treetime/src/coalescent/mean_field.rs)).
 Build the model once per refinement pass from `coalescent_tc` via `compute_coalescent_model`.
 
 **RNG threading.** `fn refinement_round` runs once per iteration

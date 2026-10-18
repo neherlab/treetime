@@ -19,7 +19,7 @@ All physical quantities are `f64` with no type-level or documentation-level dist
 
 - `INITIAL_COALESCENT_TC` was `0.001` subs/site when it should have been approximately 5 years (fixed by PR#851)
 - Coalescent Tc coordinate convention (calendar years) not type-enforced ([N-coalescent-time-scale-coordinate-not-type-enforced.md](N-coalescent-time-scale-coordinate-not-type-enforced.md))
-- `CalendarTime` newtype exists in coalescent but is not used elsewhere -- node times, date constraints, and confidence intervals pass raw `f64`
+- Node times, date constraints, and confidence intervals pass raw `f64` calendar dates (the coalescent's `CalendarTime` newtype, used nowhere else, was removed in phase 2)
 - Branch lengths transition from subs/site to years during clock model application with no type change at the boundary
 - Optimize command works in subs/site, timetree command works in both subs/site and years depending on pipeline stage -- the transition point is implicit
 - `fn ClockModel::clock_deviation(date: f64, div: f64)` accepts interchangeable primitives for calendar date and divergence [`packages/treetime/src/clock/clock_model.rs#L11`](../../packages/treetime/src/clock/clock_model.rs#L11).
@@ -31,7 +31,6 @@ All physical quantities are `f64` with no type-level or documentation-level dist
 - Audit all command pipelines (`ancestral`, `clock`, `timetree`, `mugration`, `optimize`, `prune`) for implicit unit transitions
 - Identify function boundaries where units change without type change
 - Evaluate introducing newtype wrappers (`SubsPerSite(f64)`, `CalendarYears(f64)`, `SubsPerSitePerYear(f64)`) at high-risk boundaries
-- Assess whether `CalendarTime` from coalescent should be promoted to a shared type
 - Document unit conventions per command if type enforcement is deferred
 
 ## Related issues

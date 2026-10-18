@@ -1,7 +1,7 @@
 # Timetree convergence metric deficiencies
 
 > [!IMPORTANT]
-> **Decision required.** Role of likelihood in `has_converged`: test `log_lh_time`, the log marginal likelihood of the node times; use it as a plateau guard rather than a criterion; or keep the criterion on node times and treat likelihood as reporting only. `log_lh_time` includes the coalescent prior, which is not normalized over node times and changes whenever the coalescent timescale or the lineage counts change, so it is comparable between rounds only while both are unchanged. `log_lh_coal` is evaluated against live lineage counts while the times are inferred under frozen ones (see below), so it is not the maximized objective either
+> **Decision required.** Role of likelihood in `has_converged`: test `log_lh_time`, the log marginal likelihood of the node times; use it as a plateau guard rather than a criterion; or keep the criterion on node times and treat likelihood as reporting only. `log_lh_time` includes the coalescent prior, which is not normalized over node times and changes whenever the coalescent timescale or the lineage counts change, so it is comparable between rounds only while both are unchanged. `log_lh_coal` is the expected complete-data log-likelihood of the current posteriors while the times are inferred under a prior from frozen expected lineage counts (see below), so it is not the maximized objective either
 
 Remaining defects in the timetree convergence tracking system: likelihood plays no part in the
 convergence decision, the reported likelihoods are not comparable across all iterations, and
@@ -28,9 +28,11 @@ decision block above), and `log_lh_coal` is a diagnostic (below).
 
 ### The coalescent term is not the objective the times were inferred under
 
-[`likelihood.rs`](../../packages/treetime/src/timetree/convergence/likelihood.rs) evaluates
-`compute_coalescent_total_lh` against live lineage counts, while node times are inferred under a
-prior built from counts frozen before the loop
+`log_lh_coal` is `CoalescentTimescale::expected_log_likelihood`
+([`coalescent_timescale.rs`](../../packages/treetime/src/timetree/coalescent_timescale.rs)): the expected
+complete-data log-likelihood $-\sum_i I_i/T_{c,i} - \sum_i M_i \ln T_{c,i}$ of the expected lineage counts of the
+round's posteriors, under the round's $T_c$. The node times are inferred under a prior built from expected lineage
+counts frozen before the loop
 ([timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md)).
 This is deliberate — the statistic should describe the tree you actually have — but it means
 `log_lh_coal` is a diagnostic rather than a term of the maximized objective, and is not guaranteed

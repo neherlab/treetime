@@ -11,9 +11,17 @@ loop does not converge.
 the feedback to matter.
 
 **v1 location**:
-[`compute_lineage_counts`](../../packages/treetime/src/coalescent/lineage_counts.rs),
-[`CoalescentModel`](../../packages/treetime/src/coalescent/coalescent.rs), assembled per round in
-[`pipeline.rs`](../../packages/treetime/src/timetree/pipeline.rs).
+[`LineageExpectation` and `CoalescentPrior`](../../packages/treetime/src/coalescent/mean_field.rs), seeded in
+[`init.rs`](../../packages/treetime/src/timetree/init.rs) and used per round in
+[`refinement_loop.rs`](../../packages/treetime/src/timetree/refinement_loop.rs).
+
+> [!WARNING]
+> **Needs review.** The frozen-prior, live-statistic split still holds, but the code below describes the point-time
+> lineage counts and `CoalescentModel`, both removed in phase 2 of
+> [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md).
+> The prior is now the mean-field prior of the expected lineage counts `LineageExpectation`, seeded in the init phase
+> from the Gaussian node marginals and rebuilt once from the posteriors of its time pass; the statistic ($T_c$ fit,
+> reported likelihood, convergence metric) is the expectation of the current posteriors. Phase 5 supersedes this file.
 
 ## The two roles
 
@@ -25,7 +33,7 @@ the feedback to matter.
 - **Statistic.** $k(t)$ is what $T_c$ is estimated from, in
   [`optimize_skyline`](../../packages/treetime/src/coalescent/skyline.rs), and what the reported
   coalescent likelihood is evaluated against, in
-  [`compute_coalescent_total_lh`](../../packages/treetime/src/coalescent/total_lh.rs).
+  `compute_coalescent_total_lh` (removed in phase 2).
 
 Before this change `compute_coalescent_model` derived both from the current times. Each pass moved
 the times, which moved $k(t)$, which moved the prior the next pass was inferred under: the loop
@@ -134,5 +142,3 @@ being measured with the prior's reaction to it.
   -- the feedback that made this instability observable
 - [coalescent-analytic-tc-optimization.md](coalescent-analytic-tc-optimization.md) -- the solve
   behind the estimated $T_c$
-- [N-coalescent-smoothing-frozen-lineage-counts.md](../issues/N-coalescent-smoothing-frozen-lineage-counts.md)
-  -- $k_0$ is a step function and is not smoothed

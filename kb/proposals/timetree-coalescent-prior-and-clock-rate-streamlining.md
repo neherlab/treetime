@@ -256,8 +256,8 @@ coverage, so the rate step comes before the coalescent statistics and the root.
 | 0b (done) | Gaussian message passing at the final rate: node marginals, rate and root covariance; replaces `--covariation` for `rate_std` | analytic tests (joint Gaussian, finite-difference Hessian); `--confidence` coverage on the validation data, see below |
 | 0c (done) | retire the old machinery and flags; outputs, contracts, app (with the engineer) | tests and dengue/100 golden master unchanged; smoke snapshots re-baselined by the engineer ([M-smoke-clock-ols-retired-flags-and-snapshots.md](../issues/M-smoke-clock-ols-retired-flags-and-snapshots.md)) |
 | 1 (done) | merge `claude-hard-cell-interp`; init phase: seed the expectation and $T_c$ from the Gaussian marginals, one time pass under that prior, no prior-free pass; Gaussian rate as the start when the regression rate is not positive | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
-| 2 | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests against analytic expected statistics; outputs documented as a v0 divergence |
-| 3 | root: median versus peak under the mean-field prior | `data/ebola/20` root stable over rounds |
+| 2 (done) | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests against analytic expected statistics; outputs documented as a v0 divergence |
+| 3 (done: median kept) | root: median versus peak under the mean-field prior | `data/ebola/20` root stable over rounds |
 | 4 | rate: curvature-scaled probe window; optional log-normal rate prior; one source for `rate_std` | rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date coverage |
 | 5 | kb: decisions for the mean-field prior, the EM fit, the regression-and-Gaussian start; supersede the frozen-lineage-count and root-before-merger notes; close [M-timetree-initial-round-applies-coalescent-prior.md](../issues/M-timetree-initial-round-applies-coalescent-prior.md) | |
 
@@ -334,6 +334,31 @@ step does not change that. Rebuilding every round recovers it and, at three roun
 low-signal rate (0.99). Every variant's low-signal rate degrades from two to three rounds, so the choice between
 frozen and rebuilt expectation waits for a stable rate step (phase 4).
 
+## Phase 2 result
+
+Every coalescent statistic now comes from `LineageExpectation`
+([`mean_field.rs`](../../packages/treetime/src/coalescent/mean_field.rs)): the polytomy merger rate of a lineage
+$\max(1/2, \bar k - 1)/(2T_c)$ (`merger_rate_schedule`), the skyline segment range from where $\bar k$ rises half a
+lineage above its value before every node to the latest tip (`span`), and for the report and the convergence trace the
+expected complete-data log-likelihood $-\sum_i I_i/T_{c,i} - \sum_i M_i \ln T_{c,i}$, the objective of the $T_c$ fit.
+`CoalescentModel` and the point-count modules (lineage counts with `LINEAGES_BEFORE_ROOT`, events, edge data, the
+edge-based total likelihood) are removed: core 705 lines fewer. On the 240 validation sets coverage, node RMSE, rate
+error and run time are unchanged, and a `flu/h3n2/200` skyline keeps its segments and $T_c$ to within 0.1%. The
+reported coalescent log-likelihood changes definition (v0 reports the edge-based likelihood with its merger credit);
+its decision file belongs to phase 5.
+
+## Phase 3 result
+
+Under the mean-field prior the root's peak no longer flips between modes: on `data/ebola/20` a run committing the root
+at its peak converges after two passes at 2013.76, and on `data/ebola/{100,362}` peak and median agree within 0.02
+years. The median stays nonetheless, for accuracy: at low signal the root posterior is skewed into the past and its
+peak sits on the young side. On the 240 validation sets the root error at $L=10^3$ is, median against peak, bias +3.2
+against +4.2 and RMSE 6.1 against 8.9 years at $\mu=3\cdot10^{-4}$, bias +0.26 against +0.52 at $\mu=10^{-3}$; at
+$L=10^4$ and $\mu \ge 3\cdot10^{-3}$ the two agree within 0.05 years, and the other node times are unchanged. The
+decision [timetree-root-time-at-posterior-median.md](../decisions/timetree-root-time-at-posterior-median.md) holds with
+this rationale in place of the flip (phase 5). The median-root run on `data/ebola/20` drifts slowly (2013.73 to 2013.99
+over seven passes) where the peak run converged, the same slow rate drift as in phase 4.
+
 ## Open questions
 
 - The variance offset $o$ for the node widths (0 here), and whether the root survival should be anchored at the
@@ -344,10 +369,8 @@ frozen and rebuilt expectation waits for a stable rate step (phase 4).
   $\bar k$ in place of integer $k$ does not change its event model beyond the rate.
 - v0 parity: the reported coalescent likelihood, the initial round and the root handling all diverge from v0 and need
   decision files.
-- Issues: 0a to 1 done (branch `claude-clock-exact-root`, decision
+- Issues: 0a to 3 done (branch `claude-clock-exact-root`, decision
   [clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)),
-  [M-coalescent-one-expected-lineage-statistics.md](../issues/M-coalescent-one-expected-lineage-statistics.md) (2),
-  [N-timetree-root-median-under-mean-field-prior.md](../issues/N-timetree-root-median-under-mean-field-prior.md) (3),
   [M-timetree-rate-step-window-and-rate-prior.md](../issues/M-timetree-rate-step-window-and-rate-prior.md) (4).
 
 ## Related
@@ -358,4 +381,3 @@ frozen and rebuilt expectation waits for a stable rate step (phase 4).
 - [timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md)
 - [timetree-root-time-at-posterior-median.md](../decisions/timetree-root-time-at-posterior-median.md)
 - [coalescent-analytic-tc-optimization.md](../decisions/coalescent-analytic-tc-optimization.md)
-- [N-coalescent-smoothing-frozen-lineage-counts.md](../issues/N-coalescent-smoothing-frozen-lineage-counts.md)
