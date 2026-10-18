@@ -95,10 +95,9 @@ pub fn run(
     leaf_bad_branches: &initial.leaf_bad_branches,
     outliers: &initial.outliers,
   };
-  let coalescent = &initial.coalescent;
-  let (state, timescale) = run_refinement_loop(
+  let (state, coalescent, timescale) = run_refinement_loop(
     &round_inputs,
-    coalescent,
+    initial.coalescent,
     initial.timescale,
     initial.state,
     trace_sink,
@@ -113,9 +112,9 @@ pub fn run(
   stages.report("Postprocessing", 0.85, "");
   progress_info!(log, "### TreeTime: postprocessing");
   let final_times =
-    refine_final_times(&round_inputs, coalescent, &timescale, state, log).map_err(OperationError::classify)?;
+    refine_final_times(&round_inputs, &coalescent, &timescale, state, log).map_err(OperationError::classify)?;
   let results =
-    gather_results(params, &context, coalescent, &timescale, final_times).map_err(OperationError::classify)?;
+    gather_results(params, &context, &coalescent, &timescale, final_times).map_err(OperationError::classify)?;
   assemble_output(params, &context, seq_sink, initial.outliers, dates, results, log)
 }
 

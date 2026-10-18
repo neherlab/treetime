@@ -49,8 +49,13 @@ pub(crate) fn refinement_round(
 
   let previous_times = capture_node_times(&state.graph, &state.time_inference);
   let previous_states = capture_ancestral_states(&state.graph, &state.branch_model);
-  let (state, topology) = refine_topology(inputs, state, total_length, merger_rate, rng, log)?;
-  let state = refresh_times(inputs, prior, topology.changed(), state, log)?;
+  let (state, topology, merger_times) = refine_topology(inputs, state, total_length, merger_rate, rng, log)?;
+  // the prior follows a topology change: the new mergers enter the expected lineage counts at their sampled times
+  let rebuilt = match prior {
+    Some(prior) if topology.changed() => Some(prior.with_topology(&state.graph, &merger_times)?),
+    _ => None,
+  };
+  let state = refresh_times(inputs, rebuilt.as_ref().or(prior), topology.changed(), state, log)?;
 
   let current_states = capture_ancestral_states(&state.graph, &state.branch_model);
   let current_times = capture_node_times(&state.graph, &state.time_inference);
@@ -124,9 +129,9 @@ fn refine_topology(
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn RngCore,
   log: &dyn LogSink,
-) -> Result<(RoundState, TopologyOutcome), Report> {
+) -> Result<(RoundState, TopologyOutcome, BTreeMap<GraphNodeKey, f64>), Report> {
   if !inputs.params.resolve_polytomies {
-    return Ok((state, TopologyOutcome::Unchanged));
+    return Ok((state, TopologyOutcome::Unchanged, BTreeMap::new()));
   }
 
   let total_mutation_rate = state.clock_model.clock_rate() * total_length.to_f64_exact();
@@ -153,7 +158,7 @@ fn refine_topology(
       branch_lengths,
       ..state
     };
-    return Ok((state, TopologyOutcome::Unchanged));
+    return Ok((state, TopologyOutcome::Unchanged, BTreeMap::new()));
   }
 
   let resolved_nodes = merger_times.len();
@@ -161,7 +166,7 @@ fn refine_topology(
     progress_info!(log, "Resolved polytomies, introduced {resolved_nodes} new nodes");
   }
   let names = assign_node_names(state.names, &graph)?.names;
-  node_times.extend(merger_times.into_iter().map(|(key, time)| (key, Some(time))));
+  node_times.extend(merger_times.iter().map(|(&key, &time)| (key, Some(time))));
   require_internal_node_times(&graph, &node_times)
     .wrap_err("Polytomy resolution left an internal node without an inferred time")?;
   let gammas = unit_gammas(&graph);
@@ -185,7 +190,7 @@ fn refine_topology(
     gammas,
     ..state
   };
-  Ok((state, TopologyOutcome::Changed { resolved_nodes }))
+  Ok((state, TopologyOutcome::Changed { resolved_nodes }, merger_times))
 }
 
 #[derive(Clone, Copy)]
@@ -195,7 +200,7 @@ pub(crate) enum TopologyOutcome {
 }
 
 impl TopologyOutcome {
-  fn changed(self) -> bool {
+  pub(crate) fn changed(self) -> bool {
     matches!(self, Self::Changed { .. })
   }
 
