@@ -63,6 +63,7 @@ pub fn run_optimize(
       opt_method: args.opt_method,
       indel_policy: args.indel_policy,
       topology_ops: args.topology_ops,
+      partition_rates: args.partition_rates_args.partition_rates(),
     },
   };
 

@@ -1305,6 +1305,11 @@ export const zGtrModelName = z.union([
   z.literal('infer')
 ]);
 
+export const zPartitionRates = z.union([
+  z.literal('estimate'),
+  z.literal('equal')
+]);
+
 export const zMethodAncestral = z.enum(['marginal', 'parsimony']);
 
 export const zAlphabetName = z.enum([
@@ -1441,6 +1446,7 @@ export const zTimetreeConfig = z.strictObject({
   covariation: z.boolean().optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
+  partition_rates: zPartitionRates.optional(),
   method_anc: zMethodAncestral.optional(),
   alphabet: zAlphabetName.optional(),
   dense: z.boolean().optional(),
@@ -1917,6 +1923,7 @@ export const zOptimizeConfig = z.strictObject({
   alphabet: zAlphabetName.optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
+  partition_rates: zPartitionRates.optional(),
   dense: z.boolean().optional(),
   output_all: z.string().optional(),
   output_nwk_style: z.array(zNwkStyleArg).optional(),

@@ -332,6 +332,12 @@
       "default": [],
       "x-cli-flag": "--model-params"
     },
+    "partition_rates": {
+      "description": "Relative substitution rates of the alignment files\n\nWith two or more `--alignment` files, all files share the branch lengths, and each file has\none relative rate that scales them for the sites of that file. `estimate` fits the rate of\neach file with the rest of its substitution model fixed (a file with `--model infer` starts\nfrom its fitted rate), then divides all rates by their mean weighted by the number of sites\nof each file, so that this mean is 1. The branch lengths are then expected substitutions per\nsite, averaged over all sites of all files. `equal` fixes the rate of every file at 1.\n\nWith one alignment file, this setting has no effect: the run estimates no relative rate.",
+      "$ref": "#/$defs/PartitionRates",
+      "default": "estimate",
+      "x-cli-flag": "--partition-rates"
+    },
     "method_anc": {
       "description": "Method used for reconstructing ancestral sequences",
       "$ref": "#/$defs/MethodAncestral",
@@ -662,6 +668,20 @@
           "description": "Infer GTR parameters from data via Fitch parsimony substitution counts.",
           "type": "string",
           "const": "infer"
+        }
+      ]
+    },
+    "PartitionRates": {
+      "oneOf": [
+        {
+          "description": "Estimate one relative rate per alignment file, normalized to a site-weighted mean of 1.",
+          "type": "string",
+          "const": "estimate"
+        },
+        {
+          "description": "Fix the relative rate of every alignment file at 1.",
+          "type": "string",
+          "const": "equal"
         }
       ]
     },

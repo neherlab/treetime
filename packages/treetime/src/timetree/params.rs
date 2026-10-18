@@ -5,6 +5,7 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::make_report;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
+use crate::optimize::partition_rates::PartitionRates;
 use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
@@ -76,6 +77,7 @@ pub struct TimetreeParams {
   pub dense: Option<bool>,
   pub branch_length_mode: BranchLengthMode,
   pub indel_policy: IndelPolicy,
+  pub partition_rates: PartitionRates,
   pub sequence_length: Option<usize>,
   pub clock_rate: Option<f64>,
   pub clock_std_dev: Option<f64>,

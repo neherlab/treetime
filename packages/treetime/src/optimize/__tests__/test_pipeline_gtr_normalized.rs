@@ -6,6 +6,7 @@ mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
+  use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
   use crate::progress::NoopProgress;
   use crate::test_utils::{leaf_seq_inputs, sequence_source};
@@ -50,6 +51,7 @@ mod tests {
         opt_method: BranchOptMethod::default(),
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
     };
     let input = OptimizeInput {

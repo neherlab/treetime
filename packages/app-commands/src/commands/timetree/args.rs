@@ -6,7 +6,7 @@ use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::method_anc::MethodAncestralCli;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
-use crate::commands::shared::model::ModelArgs;
+use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
 use crate::commands::shared::output_args::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::RerootArgs;
@@ -337,6 +337,11 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub model_args: ModelArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub partition_rates_args: PartitionRatesArgs,
 
   /// Method used for reconstructing ancestral sequences
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default(), help_heading = "Ancestral reconstruction"))]

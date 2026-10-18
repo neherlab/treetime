@@ -9,7 +9,8 @@ use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::OptimizeLoopSettings;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
-use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_rates, run_optimize_loop};
+use crate::optimize::partition_rates::{fix_equal_rates, normalize_partition_rates};
+use crate::optimize::run_loop::{apply_initial_guess_mode, run_optimize_loop};
 use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::partition::create::Representation;
 use crate::partition::marginal::reconstruction::ReconstructionRef;
@@ -94,9 +95,15 @@ pub fn run(
     .map_err(OperationError::classify)?;
 
   if params.model == GtrModelName::Infer {
-    normalize_partition_rates(&mut partitions.lengths_and_gtrs_mut(), &mut branch_lengths)
-      .map_err(OperationError::classify)?;
+    normalize_partition_rates(&mut partitions, &mut branch_lengths, None).map_err(OperationError::classify)?;
   }
+  let mut partitions = fix_equal_rates(
+    &input.graph,
+    partitions,
+    params.loop_settings.partition_rates,
+    &branch_lengths,
+  )
+  .map_err(OperationError::classify)?;
 
   {
     let indels = params
@@ -144,6 +151,7 @@ pub fn run(
     &params.loop_settings,
     branch_lengths,
     &loop_names,
+    log,
   )
   .map_err(OperationError::classify)?;
   convergence.merge(loop_result.convergence);

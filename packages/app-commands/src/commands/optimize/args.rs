@@ -3,7 +3,7 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
-use crate::commands::shared::model::ModelArgs;
+use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
 use crate::commands::shared::output_args::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::resolve_reroot_tips;
@@ -134,6 +134,11 @@ pub struct TreetimeOptimizeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub model_args: ModelArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub partition_rates_args: PartitionRatesArgs,
 
   /// Use dense representation of sequences on the tree
   ///

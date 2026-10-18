@@ -12,6 +12,7 @@ use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::population_size::effective_population_size;
 use crate::error::OperationError;
 use crate::optimize::params::BranchLengthMode;
+use crate::optimize::partition_rates::fix_equal_rates;
 use crate::partition::create::Representation;
 use crate::partition::marginal::reconstruction::ReconstructionRef;
 use crate::partition::result::{PartitionResult, PartitionSequences, PartitionSource};
@@ -335,6 +336,8 @@ fn initialize_branch_model(
         log,
       )
       .map_err(OperationError::classify)?;
+      let partitions =
+        fix_equal_rates(graph, partitions, params.partition_rates, branch_lengths).map_err(OperationError::classify)?;
       Ok((sources, BranchModel::Marginal(partitions)))
     },
   }

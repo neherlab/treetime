@@ -8,7 +8,9 @@ mod tests {
   use crate::optimize::iteration::{DAMPING_FLOOR, apply_damping};
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
+  use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
+  use crate::progress::NoopProgress;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use num_traits::pow::pow;
@@ -87,9 +89,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_6,
+      &NoopProgress,
     )?;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
@@ -120,9 +124,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_5,
+      &NoopProgress,
     )?;
 
     match result.stopped_at {
@@ -164,9 +170,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Exclude,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_4,
+      &NoopProgress,
     )?;
 
     let (_iter, reason) = result.stopped_at.expect("loop should stop");
@@ -204,9 +212,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_3,
+      &NoopProgress,
     )?;
 
     let (iter, reason) = result.stopped_at.expect("loop should have stopped");
@@ -239,9 +249,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_2,
+      &NoopProgress,
     )?;
 
     assert_eq!(max_iter + 1, result.lh_history.len());
@@ -273,9 +285,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_1,
+      &NoopProgress,
     )?;
 
     assert!(

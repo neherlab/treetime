@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::optimize::partition_rates::PartitionRates;
   use crate::test_utils::{TestDataset, split_at_gap_free_column};
   use eyre::Report;
   use helpers::timetree;
@@ -24,8 +25,8 @@ mod tests {
   ) -> Result<(), Report> {
     let records = dataset.leading_columns(BLOCK_COLUMNS)?;
     let [first, second] = split_at_gap_free_column(&records)?;
-    let whole = timetree(dataset, vec![records], dense)?;
-    let split = timetree(dataset, vec![first, second], dense)?;
+    let whole = timetree(dataset, vec![records], dense, PartitionRates::Equal)?;
+    let split = timetree(dataset, vec![first, second], dense, PartitionRates::Equal)?;
 
     assert_eq!(
       (whole.edges, whole.total_length, vec![1, 2]),
@@ -40,6 +41,7 @@ mod tests {
     use crate::alphabet::alphabet::Alphabet;
     use crate::cancel::NoopCancel;
     use crate::error::OperationError;
+    use crate::optimize::partition_rates::PartitionRates;
     use crate::progress::NoopProgress;
     use crate::test_utils::{TestDataset, dates_by_node, leaf_seq_inputs, marginal_timetree_params, sequence_source};
     use crate::timetree::params::TimetreeParams;
@@ -62,6 +64,7 @@ mod tests {
       dataset: TestDataset,
       files: Vec<Vec<AlignmentRecord>>,
       dense: bool,
+      partition_rates: PartitionRates,
     ) -> Result<Timetree, Report> {
       let parse = nwk_read(dataset.tree().as_bytes())?;
       let names = parse.names();
@@ -72,6 +75,7 @@ mod tests {
       let dates = dates_by_node(dataset.dates()?, &parse.graph, &names);
       let params = TimetreeParams {
         dense: Some(dense),
+        partition_rates,
         keep_root: false,
         max_iter: 1,
         ..marginal_timetree_params()

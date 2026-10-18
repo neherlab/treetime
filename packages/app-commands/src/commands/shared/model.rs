@@ -3,6 +3,7 @@ use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use treetime::gtr::get_gtr::GtrModelName;
+use treetime::optimize::partition_rates::PartitionRates;
 use treetime_schema::schema_defaults;
 
 /// Substitution model selection shared by every command that infers or applies a rate matrix.
@@ -73,3 +74,49 @@ pub enum GtrModelNameCli {
 }
 
 impl_from_mirror!(GtrModelNameCli => GtrModelName { Infer, JC69, K80, F81, HKY85, T92, TN93, Jtt92 });
+
+/// Relative rates of the alignment files, shared by the commands that optimize branch lengths.
+#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
+#[deser(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+pub struct PartitionRatesArgs {
+  /// Relative substitution rates of the alignment files
+  ///
+  /// With two or more `--alignment` files, all files share the branch lengths, and each file has
+  /// one relative rate that scales them for the sites of that file. `estimate` fits the rate of
+  /// each file with the rest of its substitution model fixed (a file with `--model infer` starts
+  /// from its fitted rate), then divides all rates by their mean weighted by the number of sites
+  /// of each file, so that this mean is 1. The branch lengths are then expected substitutions per
+  /// site, averaged over all sites of all files. `equal` fixes the rate of every file at 1.
+  ///
+  /// With one alignment file, this setting has no effect: the run estimates no relative rate.
+  #[default(PartitionRatesCli::Estimate)]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_enum, default_value_t = PartitionRatesCli::Estimate, help_heading = "Substitution model")
+  )]
+  pub partition_rates: PartitionRatesCli,
+}
+
+impl PartitionRatesArgs {
+  pub fn partition_rates(&self) -> PartitionRates {
+    self.partition_rates.into()
+  }
+}
+
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+#[schemars(rename = "PartitionRates")]
+pub enum PartitionRatesCli {
+  /// Estimate one relative rate per alignment file, normalized to a site-weighted mean of 1.
+  #[default]
+  Estimate,
+  /// Fix the relative rate of every alignment file at 1.
+  Equal,
+}
+
+impl_from_mirror!(PartitionRatesCli => PartitionRates { Estimate, Equal });

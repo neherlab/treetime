@@ -5,6 +5,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use std::path::PathBuf;
+  use treetime::optimize::partition_rates::PartitionRates;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::io::json::{json_read_str, json_value_read_str, to_json_value};
@@ -149,6 +150,7 @@ mod tests {
         opt_method: BranchOptMethod::default(),
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
     };
     let sequences = pair_leaf_sequences(&graph, &names, sequences).sequences;

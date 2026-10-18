@@ -152,6 +152,8 @@ mod tests {
   }
 
   mod helpers {
+    use crate::optimize::partition_rates::PartitionRates;
+    use crate::progress::NoopProgress;
 
     use crate::alphabet::alphabet::Alphabet;
     use crate::branch_lengths::branch_lengths_or_zero;
@@ -268,9 +270,11 @@ mod tests {
           opt_method: method,
           indel_policy,
           topology_ops: TopologyOps::default(),
+          partition_rates: PartitionRates::Estimate,
         },
         branch_lengths,
         &names_tt_1,
+        &NoopProgress,
       )?;
       let branch_lengths = result.branch_lengths;
 

@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::error::OperationError;
 use crate::gtr::gtr::GTR;
+use crate::gtr::refinement::{RateRangeEdge, optimize_gtr_rate};
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
 use crate::partition::marginal::sample::SampleMode;
 use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
@@ -11,6 +12,7 @@ use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
+use crate::progress::LogSink;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{
   Mutation, MutationTrack, SequenceMutations, Sub, combine_edge_mutations, emit_sequences, stream_sequence_mutations,
@@ -369,6 +371,24 @@ impl SparseReconstruction {
     }
   }
 
+  pub(crate) fn with_estimated_rate(
+    self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    log: &dyn LogSink,
+  ) -> Result<Self, Report> {
+    let (gtr, _, _) = optimize_gtr_rate(
+      &self.partition,
+      self.gtr,
+      &self.node_states,
+      graph,
+      branch_lengths,
+      RateRangeEdge::LowerCostEnd,
+      log,
+    )?;
+    Ok(Self::seeded(self.partition, gtr, self.node_states))
+  }
+
   pub(crate) fn apply_reroot(self, changes: &RerootResult) -> Result<Self, Report> {
     reroot_sparse(self.partition, self.gtr, self.node_states, changes)
   }
@@ -424,6 +444,24 @@ impl DenseReconstruction {
   #[must_use]
   pub(crate) fn reseeded(self) -> Self {
     Self::seeded(self.partition, self.gtr)
+  }
+
+  pub(crate) fn with_estimated_rate(
+    self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    log: &dyn LogSink,
+  ) -> Result<Self, Report> {
+    let (gtr, _, _) = optimize_gtr_rate(
+      &self.partition,
+      self.gtr,
+      &self.node_states,
+      graph,
+      branch_lengths,
+      RateRangeEdge::LowerCostEnd,
+      log,
+    )?;
+    Ok(Self::seeded(self.partition, gtr))
   }
 
   pub(crate) fn marginal_update(

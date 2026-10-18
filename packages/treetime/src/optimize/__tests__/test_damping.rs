@@ -7,7 +7,9 @@ mod tests {
   use crate::optimize::iteration::apply_damping;
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
+  use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
+  use crate::progress::NoopProgress;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
@@ -153,9 +155,11 @@ mod tests {
         opt_method: method,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_2,
+      &NoopProgress,
     )?;
     let reconstruction = result.partitions;
 
@@ -204,9 +208,11 @@ mod tests {
         opt_method: method,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_1,
+      &NoopProgress,
     )?;
     let reconstruction = result.partitions;
 

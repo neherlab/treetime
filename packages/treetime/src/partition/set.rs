@@ -8,13 +8,13 @@ use crate::partition::result::{PartitionSource, SplitSource, split_sources};
 use crate::progress::LogSink;
 use crate::seq::alignment::SequenceSource;
 use eyre::Report;
-use itertools::{Either, Itertools};
+use itertools::{Either, Itertools, izip};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::reroot::RerootResult;
 use treetime_primitives::LogLh;
-use treetime_utils::make_internal_report;
+use treetime_utils::{make_internal_error, make_internal_report};
 
 pub(crate) fn build_partition_set(
   representation: Representation,
@@ -153,6 +153,44 @@ impl PartitionSet {
           .collect(),
       ),
     }
+  }
+
+  pub(crate) fn estimate_rates(
+    self,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    log: &dyn LogSink,
+  ) -> Result<Self, Report> {
+    Ok(match self {
+      Self::Dense(partitions) => Self::Dense(
+        partitions
+          .into_iter()
+          .map(|partition| partition.with_estimated_rate(graph, branch_lengths, log))
+          .try_collect()?,
+      ),
+      Self::Sparse(partitions) => Self::Sparse(
+        partitions
+          .into_iter()
+          .map(|partition| partition.with_estimated_rate(graph, branch_lengths, log))
+          .try_collect()?,
+      ),
+    })
+  }
+
+  pub(crate) fn rates(&self) -> Vec<f64> {
+    self.iter().map(|partition| partition.gtr().mu()).collect()
+  }
+
+  pub(crate) fn set_rates(&mut self, rates: &[f64]) -> Result<(), Report> {
+    let mut gtrs = self.lengths_and_gtrs_mut();
+    if gtrs.len() != rates.len() {
+      return make_internal_error!(
+        "Cannot set {} relative rates on a partition set with {} partitions",
+        rates.len(),
+        gtrs.len()
+      );
+    }
+    izip!(&mut gtrs, rates).try_for_each(|((_, gtr), &rate)| gtr.set_mu(rate))
   }
 
   pub(crate) fn sparse_mut(&mut self) -> &mut [SparseReconstruction] {

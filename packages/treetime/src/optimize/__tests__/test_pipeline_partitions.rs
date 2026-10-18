@@ -1,13 +1,22 @@
 #[cfg(test)]
 mod tests {
+  use crate::branch_lengths::branch_lengths_or_zero;
+  use crate::gtr::get_gtr::GtrModelName;
   use crate::optimize::indel::IndelPolicy;
+  use crate::optimize::partition_rates::PartitionRates;
+  use crate::optimize::partition_rates::{fix_equal_rates, normalize_partition_rates, update_partition_rates};
+  use crate::optimize::run_loop::record_if_best;
+  use crate::progress::NoopProgress;
   use crate::test_utils::TestDataset;
   use eyre::Report;
   use helpers::{
-    Dataset, SmallSet, blocks_from_strings, build_set, column_blocks, internal_edge_above, optimize, reversed,
+    Dataset, SmallSet, blocks_from_strings, build_set, build_set_with_model, column_blocks, internal_edge_above,
+    objective, optimize, rate_blocks, rate_step_from_rates, reversed,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_primitives::LogLh;
+  use treetime_utils::pretty_assert_abs_diff_eq;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
   use treetime_utils::pretty_assert_ulps_eq;
 
@@ -25,8 +34,8 @@ mod tests {
     #[case] dense: bool,
   ) -> Result<(), Report> {
     let dataset = Dataset::block_of(dataset)?;
-    let whole = optimize(&dataset, &[dataset.whole()], dense)?;
-    let split = optimize(&dataset, &column_blocks(&dataset)?, dense)?;
+    let whole = optimize(&dataset, &[dataset.whole()], dense, PartitionRates::Equal)?;
+    let split = optimize(&dataset, &column_blocks(&dataset)?, dense, PartitionRates::Equal)?;
     assert_eq!(whole.edges, split.edges);
     pretty_assert_map_abs_diff_eq!(whole.branch_lengths, split.branch_lengths, epsilon = 1e-8);
     Ok(())
@@ -43,8 +52,8 @@ mod tests {
   ) -> Result<(), Report> {
     let dataset = Dataset::block_of(dataset)?;
     let blocks = column_blocks(&dataset)?;
-    let forward = optimize(&dataset, &blocks, dense)?;
-    let backward = optimize(&dataset, &reversed(&blocks), dense)?;
+    let forward = optimize(&dataset, &blocks, dense, PartitionRates::Estimate)?;
+    let backward = optimize(&dataset, &reversed(&blocks), dense, PartitionRates::Estimate)?;
     assert_eq!(forward.edges, backward.edges);
     pretty_assert_map_abs_diff_eq!(forward.branch_lengths, backward.branch_lengths, epsilon = 1e-10);
     assert_eq!(
@@ -82,13 +91,144 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::dense( true )]
+  #[case::sparse(false)]
+  #[trace]
+  fn test_optimize_rate_normalization_keeps_the_objective_on_branches_above_the_floor(
+    #[case] dense: bool,
+  ) -> Result<(), Report> {
+    let SmallSet {
+      graph,
+      branch_lengths,
+      mut partitions,
+      ..
+    } = build_set(&rate_blocks()?, dense)?;
+    partitions.set_rates(&[0.5, 3.0])?;
+    let mut indels = IndelPolicy::Include.edge_indels(&graph, &partitions, &branch_lengths);
+    let indel_rate = indels.rate();
+    let before = objective(&graph, &partitions, &branch_lengths, &indels)?;
+
+    let mut normalized_branch_lengths = branch_lengths;
+    normalize_partition_rates(&mut partitions, &mut normalized_branch_lengths, Some(&mut indels))?;
+
+    let mean = (8.0 * 0.5 + 6.0 * 3.0) / 14.0;
+    let rates = partitions.rates();
+    pretty_assert_ulps_eq!(0.5 / mean, rates[0], max_ulps = 4);
+    pretty_assert_ulps_eq!(3.0 / mean, rates[1], max_ulps = 4);
+    pretty_assert_ulps_eq!(indel_rate / mean, indels.rate(), max_ulps = 4);
+    let after = objective(&graph, &partitions, &normalized_branch_lengths, &indels)?;
+    pretty_assert_abs_diff_eq!(before, after, epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zika_sparse_double(TestDataset::Zika20, false, 2.0)]
+  #[case::zika_sparse_half(  TestDataset::Zika20, false, 0.5)]
+  #[case::flu_dense_double(  TestDataset::Flu20,  true,  2.0)]
+  #[case::flu_dense_half(    TestDataset::Flu20,  true,  0.5)]
+  #[trace]
+  fn test_optimize_rate_step_does_not_depend_on_the_scale_of_the_starting_rates(
+    #[case] dataset: TestDataset,
+    #[case] dense: bool,
+    #[case] factor: f64,
+  ) -> Result<(), Report> {
+    let dataset = Dataset::block_of(dataset)?;
+    let blocks = column_blocks(&dataset)?;
+    let reference = rate_step_from_rates(&dataset, &blocks, dense, 1.0)?;
+    let scaled = rate_step_from_rates(&dataset, &blocks, dense, factor)?;
+    pretty_assert_abs_diff_eq!(reference.rates[0], scaled.rates[0], epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(reference.rates[1], scaled.rates[1], epsilon = 1e-7);
+    pretty_assert_map_abs_diff_eq!(reference.branch_lengths, scaled.branch_lengths, epsilon = 1e-8);
+    Ok(())
+  }
+
+  #[test]
+  fn test_optimize_restore_of_the_best_iteration_returns_its_rates_branch_lengths_and_indel_rates() -> Result<(), Report>
+  {
+    let SmallSet {
+      graph,
+      branch_lengths,
+      partitions,
+      ..
+    } = build_set(&rate_blocks()?, false)?;
+    let mut indels = IndelPolicy::Include.edge_indels(&graph, &partitions, &branch_lengths);
+    let log_lh = LogLh::new(objective(&graph, &partitions, &branch_lengths, &indels)?);
+    let mut best = None;
+    record_if_best(&mut best, 0, log_lh, &branch_lengths, &partitions, &indels);
+    let recorded = (partitions.rates(), branch_lengths.clone(), indels.partition_rates(2));
+
+    let mut current_branch_lengths = branch_lengths;
+    let partitions = update_partition_rates(
+      &graph,
+      partitions,
+      PartitionRates::Estimate,
+      &mut current_branch_lengths,
+      Some(&mut indels),
+      &NoopProgress,
+    )?;
+    assert_ne!(recorded.0, partitions.rates());
+
+    let best = best.expect("the first iteration is recorded");
+    let partitions = best.restore(&graph, partitions, &mut current_branch_lengths, &mut indels)?;
+    assert_eq!(
+      recorded,
+      (
+        partitions.rates(),
+        current_branch_lengths.clone(),
+        indels.partition_rates(2)
+      )
+    );
+    let restored_log_lh = partitions.graph_log_lh(&graph)?
+      + indels
+        .recount(&graph, &partitions)
+        .total_log_lh(&graph, &current_branch_lengths)?;
+    pretty_assert_abs_diff_eq!(log_lh.value(), restored_log_lh.value(), epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::dense( true )]
+  #[case::sparse(false)]
+  #[trace]
+  fn test_optimize_equal_rates_after_a_fitted_model_keep_the_messages_of_the_current_rates(
+    #[case] dense: bool,
+  ) -> Result<(), Report> {
+    let SmallSet {
+      graph,
+      mut branch_lengths,
+      mut partitions,
+      ..
+    } = build_set_with_model(&rate_blocks()?, dense, GtrModelName::Infer)?;
+    normalize_partition_rates(&mut partitions, &mut branch_lengths, None)?;
+    assert_ne!(vec![1.0, 1.0], partitions.rates());
+
+    let partitions = fix_equal_rates(&graph, partitions, PartitionRates::Equal, &branch_lengths)?;
+
+    let (fresh, fresh_log_lh) = partitions
+      .clone()
+      .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    assert_eq!(vec![1.0, 1.0], fresh.rates());
+    pretty_assert_abs_diff_eq!(
+      fresh_log_lh.value(),
+      partitions.graph_log_lh(&graph)?.value(),
+      epsilon = 1e-10
+    );
+    Ok(())
+  }
+
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::branch_lengths::branch_lengths_or_zero;
     use crate::cancel::NoopCancel;
     use crate::gtr::get_gtr::GtrModelName;
-    use crate::optimize::indel::IndelPolicy;
+    use crate::optimize::indel::{EdgeIndels, IndelPolicy};
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, OptimizeLoopSettings, TopologyOps};
+    use crate::optimize::partition_rates::PartitionRates;
+    use crate::optimize::partition_rates::update_partition_rates;
     use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
     use crate::partition::create::Representation;
     use crate::partition::set::{PartitionSet, build_partition_set};
@@ -186,7 +326,12 @@ mod tests {
       pub(super) paths: Vec<PathBuf>,
     }
 
-    pub(super) fn optimize(dataset: &Dataset, blocks: &[Block], dense: bool) -> Result<Optimized, Report> {
+    pub(super) fn optimize(
+      dataset: &Dataset,
+      blocks: &[Block],
+      dense: bool,
+      partition_rates: PartitionRates,
+    ) -> Result<Optimized, Report> {
       let parse = dataset.tree()?;
       let names = parse.names();
       let sources = sources(&parse.graph, &names, blocks)?;
@@ -202,6 +347,7 @@ mod tests {
           opt_method: BranchOptMethod::Brent,
           indel_policy: IndelPolicy::Include,
           topology_ops: TopologyOps::default(),
+          partition_rates,
         },
       };
       let input = OptimizeInput {
@@ -235,6 +381,10 @@ mod tests {
     }
 
     pub(super) fn build_set(blocks: &[Block], dense: bool) -> Result<SmallSet, Report> {
+      build_set_with_model(blocks, dense, GtrModelName::JC69)
+    }
+
+    pub(super) fn build_set_with_model(blocks: &[Block], dense: bool, model: GtrModelName) -> Result<SmallSet, Report> {
       let parse = nwk_read(b"((A:0.1,B:0.1)AB:0.1,C:0.1,D:0.1)root;".as_slice())?;
       let names = parse.names();
       let sources = sources(&parse.graph, &names, blocks)?;
@@ -246,7 +396,7 @@ mod tests {
       let branch_lengths = branch_lengths_or_zero(&parse.branch_lengths);
       let (_, partitions) = build_partition_set(
         representation,
-        GtrModelName::JC69,
+        model,
         &parse.graph,
         sources,
         &branch_lengths,
@@ -258,6 +408,71 @@ mod tests {
         names,
         branch_lengths: parse.branch_lengths,
         partitions,
+      })
+    }
+
+    pub(super) fn rate_blocks() -> Result<Vec<Block>, Report> {
+      blocks_from_strings(&[
+        &[
+          ("A", "ACGTA-GT"),
+          ("B", "ACGTA-GA"),
+          ("C", "ACCTACGT"),
+          ("D", "TCCTACGT"),
+        ],
+        &[("A", "GGT--A"), ("B", "GGTTCA"), ("C", "GATTCA"), ("D", "CATTCA")],
+      ])
+    }
+
+    pub(super) fn objective(
+      graph: &Graph,
+      partitions: &PartitionSet,
+      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+      indels: &EdgeIndels,
+    ) -> Result<f64, Report> {
+      let (partitions, log_lh) = partitions
+        .clone()
+        .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+      let indel_log_lh = indels.recount(graph, &partitions).total_log_lh(graph, branch_lengths)?;
+      Ok((log_lh + indel_log_lh).value())
+    }
+
+    pub(super) struct RateStep {
+      pub(super) rates: Vec<f64>,
+      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+    }
+
+    pub(super) fn rate_step_from_rates(
+      dataset: &Dataset,
+      blocks: &[Block],
+      dense: bool,
+      start_rate: f64,
+    ) -> Result<RateStep, Report> {
+      let parse = dataset.tree()?;
+      let names = parse.names();
+      let sources = sources(&parse.graph, &names, blocks)?;
+      let input_branch_lengths = branch_lengths_or_zero(&parse.branch_lengths);
+      let (_, mut partitions) = build_partition_set(
+        Representation::resolve(Some(dense)),
+        GtrModelName::JC69,
+        &parse.graph,
+        sources,
+        &input_branch_lengths,
+        &NoopProgress,
+      )?;
+      partitions.set_rates(&[start_rate, start_rate])?;
+      let (partitions, _) = partitions.marginal_update(&parse.graph, &input_branch_lengths)?;
+      let mut branch_lengths = parse.branch_lengths;
+      let partitions = update_partition_rates(
+        &parse.graph,
+        partitions,
+        PartitionRates::Estimate,
+        &mut branch_lengths,
+        None,
+        &NoopProgress,
+      )?;
+      Ok(RateStep {
+        rates: partitions.rates(),
+        branch_lengths: branch_lengths_or_zero(&branch_lengths),
       })
     }
 

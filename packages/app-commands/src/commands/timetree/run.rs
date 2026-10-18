@@ -138,6 +138,7 @@ fn timetree_params(
     dense: args.dense,
     branch_length_mode: args.branch_length_mode,
     indel_policy: args.indel_policy,
+    partition_rates: args.partition_rates_args.partition_rates(),
     sequence_length: args.sequence_length,
     clock_rate: args.clock_rate,
     clock_std_dev: args.clock_std_dev,

@@ -9,10 +9,12 @@ mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
+  use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::set::PartitionSet;
+  use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use std::path::Path;
@@ -70,9 +72,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_2,
+      &NoopProgress,
     )?;
 
     assert!(
@@ -133,9 +137,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_1,
+      &NoopProgress,
     )?;
 
     assert!(

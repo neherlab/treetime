@@ -2644,6 +2644,8 @@ export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest' | 'clock-filte
 
 export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | 'jtt92' | 'infer';
 
+export type PartitionRates = 'estimate' | 'equal';
+
 export type MethodAncestral = 'marginal' | 'parsimony';
 
 export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
@@ -2908,6 +2910,19 @@ export type TimetreeConfig = {
    * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
+  /**
+   * Relative substitution rates of the alignment files
+   *
+   * With two or more `--alignment` files, all files share the branch lengths, and each file has
+   * one relative rate that scales them for the sites of that file. `estimate` fits the rate of
+   * each file with the rest of its substitution model fixed (a file with `--model infer` starts
+   * from its fitted rate), then divides all rates by their mean weighted by the number of sites
+   * of each file, so that this mean is 1. The branch lengths are then expected substitutions per
+   * site, averaged over all sites of all files. `equal` fixes the rate of every file at 1.
+   *
+   * With one alignment file, this setting has no effect: the run estimates no relative rate.
+   */
+  partition_rates?: PartitionRates;
   /**
    * Method used for reconstructing ancestral sequences
    */
@@ -4698,6 +4713,19 @@ export type OptimizeConfig = {
    * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
+  /**
+   * Relative substitution rates of the alignment files
+   *
+   * With two or more `--alignment` files, all files share the branch lengths, and each file has
+   * one relative rate that scales them for the sites of that file. `estimate` fits the rate of
+   * each file with the rest of its substitution model fixed (a file with `--model infer` starts
+   * from its fitted rate), then divides all rates by their mean weighted by the number of sites
+   * of each file, so that this mean is 1. The branch lengths are then expected substitutions per
+   * site, averaged over all sites of all files. `equal` fixes the rate of every file at 1.
+   *
+   * With one alignment file, this setting has no effect: the run estimates no relative rate.
+   */
+  partition_rates?: PartitionRates;
   /**
    * Use dense representation of sequences on the tree
    *

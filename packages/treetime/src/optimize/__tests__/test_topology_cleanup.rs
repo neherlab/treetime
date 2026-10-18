@@ -10,6 +10,7 @@ pub(super) mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
+  use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::run_loop::{find_zero_optimal_internal_edges, prune_and_merge_in_loop, run_optimize_loop};
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::fitch::passes::create_fitch_partition;
@@ -19,6 +20,7 @@ pub(super) mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::set::PartitionSet;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
+  use crate::progress::NoopProgress;
   use crate::seq::mutation::Sub;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -482,9 +484,11 @@ pub(super) mod tests {
         opt_method: method,
         indel_policy: IndelPolicy::Include,
         topology_ops: ops,
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_2,
+      &NoopProgress,
     )?;
 
     assert_eq!(
@@ -553,9 +557,11 @@ pub(super) mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
       &names_tt_1,
+      &NoopProgress,
     )?;
 
     assert!(

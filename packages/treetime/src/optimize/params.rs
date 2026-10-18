@@ -1,4 +1,5 @@
 use crate::optimize::indel::IndelPolicy;
+use crate::optimize::partition_rates::PartitionRates;
 use smart_default::SmartDefault;
 use strum_macros::Display;
 
@@ -49,4 +50,5 @@ pub struct OptimizeLoopSettings {
   pub opt_method: BranchOptMethod,
   pub indel_policy: IndelPolicy,
   pub topology_ops: TopologyOps,
+  pub partition_rates: PartitionRates,
 }

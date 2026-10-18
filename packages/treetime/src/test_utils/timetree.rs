@@ -4,6 +4,7 @@ use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
+use crate::optimize::partition_rates::PartitionRates;
 use crate::progress::{LogEvent, LogLevel, LogSink, RunWarning};
 use crate::test_utils::find_node_key_by_name;
 use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
@@ -56,6 +57,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     dense: None,
     branch_length_mode: BranchLengthMode::Marginal,
     indel_policy: IndelPolicy::Include,
+    partition_rates: PartitionRates::Estimate,
     sequence_length: None,
     clock_rate: None,
     clock_std_dev: None,

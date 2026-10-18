@@ -164,6 +164,7 @@ mod tests {
     use crate::optimize::indel::IndelPolicy;
     use crate::optimize::params::OptimizeLoopSettings;
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
+    use crate::optimize::partition_rates::PartitionRates;
     use crate::optimize::pipeline::OptimizeParams;
     use crate::seq::alignment::NodeSeqInput;
     use crate::test_utils::leaf_seq_inputs;
@@ -209,6 +210,7 @@ mod tests {
           opt_method: BranchOptMethod::default(),
           indel_policy: IndelPolicy::Include,
           topology_ops: TopologyOps::default(),
+          partition_rates: PartitionRates::Estimate,
         },
       }
     }

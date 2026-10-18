@@ -63,6 +63,14 @@ impl EdgeIndels {
     }
   }
 
+  pub(crate) fn divide_rates(&mut self, divisor: f64) {
+    if let Self::Included { partition_rates, .. } = self {
+      for rate in partition_rates {
+        *rate /= divisor;
+      }
+    }
+  }
+
   pub(crate) fn partition_rates(&self, partition_count: usize) -> Vec<Option<f64>> {
     match self {
       Self::Included { partition_rates, .. } => partition_rates.iter().copied().map(Some).collect(),

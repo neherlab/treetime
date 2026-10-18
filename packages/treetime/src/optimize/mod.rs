@@ -13,6 +13,7 @@ pub(super) mod method_brent;
 pub(super) mod method_newton;
 pub mod observer;
 pub mod params;
+pub mod partition_rates;
 pub mod pipeline;
 pub(super) mod run_loop;
 pub(crate) mod solver_outcome;

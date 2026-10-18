@@ -229,6 +229,20 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as a `key=value` list
 
    Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+* `--partition-rates <PARTITION_RATES>` — Relative substitution rates of the alignment files
+
+   With two or more `--alignment` files, all files share the branch lengths, and each file has one relative rate that scales them for the sites of that file. `estimate` fits the rate of each file with the rest of its substitution model fixed (a file with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each file, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all files. `equal` fixes the rate of every file at 1.
+
+   With one alignment file, this setting has no effect: the run estimates no relative rate.
+
+  Default value: `estimate`
+
+  Possible values:
+  - `estimate`:
+    Estimate one relative rate per alignment file, normalized to a site-weighted mean of 1
+  - `equal`:
+    Fix the relative rate of every alignment file at 1
+
 * `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences
 
   Default value: `marginal`
@@ -464,6 +478,20 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as a `key=value` list
 
    Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+* `--partition-rates <PARTITION_RATES>` — Relative substitution rates of the alignment files
+
+   With two or more `--alignment` files, all files share the branch lengths, and each file has one relative rate that scales them for the sites of that file. `estimate` fits the rate of each file with the rest of its substitution model fixed (a file with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each file, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all files. `equal` fixes the rate of every file at 1.
+
+   With one alignment file, this setting has no effect: the run estimates no relative rate.
+
+  Default value: `estimate`
+
+  Possible values:
+  - `estimate`:
+    Estimate one relative rate per alignment file, normalized to a site-weighted mean of 1
+  - `equal`:
+    Fix the relative rate of every alignment file at 1
+
 * `--dense <DENSE>` — Use dense representation of sequences on the tree
 
    Dense mode stores full probability vectors at every alignment position for each node. Sparse mode stores only variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory.

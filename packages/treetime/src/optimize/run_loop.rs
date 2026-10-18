@@ -1,5 +1,4 @@
 use crate::branch_lengths::branch_lengths_or_zero;
-use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
 use crate::optimize::gather::InitialGuessEvidence;
@@ -7,6 +6,7 @@ use crate::optimize::indel::EdgeIndels;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::ExistingBranchLengths;
 use crate::optimize::params::{InitialGuessMode, OptimizeLoopSettings, TopologyOps};
+use crate::optimize::partition_rates::update_partition_rates;
 use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
@@ -22,7 +22,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
-use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
 
@@ -32,6 +31,7 @@ pub(crate) fn run_optimize_loop(
   settings: &OptimizeLoopSettings,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
 ) -> Result<OptimizeLoopResult, Report> {
   let OptimizeLoopSettings {
     max_iter,
@@ -44,7 +44,7 @@ pub(crate) fn run_optimize_loop(
     names: names.clone(),
     convergence: ConvergenceSummary::default(),
   };
-  let indels = indel_policy.edge_indels(graph, &partitions, &state.branch_lengths);
+  let mut indels = indel_policy.edge_indels(graph, &partitions, &state.branch_lengths);
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter + 1);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
@@ -62,7 +62,7 @@ pub(crate) fn run_optimize_loop(
       break;
     }
 
-    record_if_best(&mut best, i, lh, &state.branch_lengths);
+    record_if_best(&mut best, i, lh, &state.branch_lengths, &partitions, &indels);
     let best_lh = best.as_ref().map_or(lh, |best| best.log_lh);
     if let Some(reason) = stop_reason(&lh_history, best_lh, dp) {
       stopped_at = Some((i, reason));
@@ -70,10 +70,17 @@ pub(crate) fn run_optimize_loop(
     }
 
     let cleanup = update_branch_lengths(graph, partitions, i, settings, &indels, &mut state)?;
-    partitions = cleanup.partitions;
     if cleanup.topology_changed {
       best = None;
     }
+    partitions = update_partition_rates(
+      graph,
+      cleanup.partitions,
+      settings.partition_rates,
+      &mut state.branch_lengths,
+      Some(&mut indels),
+      log,
+    )?;
   }
 
   if stopped_at.is_none() && max_iter > 0 {
@@ -83,22 +90,14 @@ pub(crate) fn run_optimize_loop(
     lh_history.push(lh);
     log_iteration_likelihood(max_iter + 1, &iteration.likelihood);
     if lh.value().is_finite() {
-      record_if_best(&mut best, max_iter, lh, &state.branch_lengths);
+      record_if_best(&mut best, max_iter, lh, &state.branch_lengths, &partitions, &indels);
     }
   }
 
   if let Some(best) = best
     && best.iteration + 1 != lh_history.len()
   {
-    debug!(
-      "Returning the branch lengths of iteration {} with the highest likelihood {}",
-      best.iteration + 1,
-      float_to_significant_digits(best.log_lh.value(), 7)
-    );
-    state.branch_lengths = best.branch_lengths;
-    partitions = partitions
-      .marginal_update(graph, &branch_lengths_or_zero(&state.branch_lengths))?
-      .0;
+    partitions = best.restore(graph, partitions, &mut state.branch_lengths, &mut indels)?;
   }
 
   Ok(OptimizeLoopResult {
@@ -137,25 +136,55 @@ pub(crate) struct OptimizeLoopResult {
   pub convergence: ConvergenceSummary,
 }
 
-fn record_if_best(
+pub(super) fn record_if_best(
   best: &mut Option<BestIteration>,
   iteration: usize,
   log_lh: LogLh,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  partitions: &PartitionSet,
+  indels: &EdgeIndels,
 ) {
   if best.as_ref().is_none_or(|best| log_lh > best.log_lh) {
     *best = Some(BestIteration {
       iteration,
       log_lh,
       branch_lengths: branch_lengths.clone(),
+      rates: partitions.rates(),
+      indels: indels.clone(),
     });
   }
 }
 
-struct BestIteration {
+pub(super) struct BestIteration {
   iteration: usize,
   log_lh: LogLh,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  rates: Vec<f64>,
+  indels: EdgeIndels,
+}
+
+impl BestIteration {
+  pub(super) fn restore(
+    self,
+    graph: &Graph,
+    mut partitions: PartitionSet,
+    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+    indels: &mut EdgeIndels,
+  ) -> Result<PartitionSet, Report> {
+    debug!(
+      "Returning the branch lengths and rates of iteration {} with the highest likelihood {}",
+      self.iteration + 1,
+      float_to_significant_digits(self.log_lh.value(), 7)
+    );
+    *branch_lengths = self.branch_lengths;
+    partitions.set_rates(&self.rates)?;
+    *indels = self.indels;
+    Ok(
+      partitions
+        .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?
+        .0,
+    )
+  }
 }
 
 fn stop_reason(lh_history: &[LogLh], best_lh: LogLh, dp: f64) -> Option<ConvergenceReason> {
@@ -416,35 +445,4 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
       invalid_branch_lengths.join("\n  ")
     )
   })
-}
-
-pub(crate) fn normalize_partition_rates(
-  partitions: &mut [(usize, &mut GTR)],
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<(), Report> {
-  let total_length: usize = partitions.iter().map(|(length, _)| *length).sum();
-
-  if total_length == 0 {
-    return Ok(());
-  }
-
-  let weighted_rate: f64 = partitions
-    .iter()
-    .map(|(length, gtr)| length.to_f64_exact() * gtr.mu())
-    .sum();
-
-  let total_average = weighted_rate / total_length.to_f64_exact();
-
-  if total_average == 0.0 {
-    return Ok(());
-  }
-
-  for (_, gtr) in partitions.iter_mut() {
-    gtr.set_mu(gtr.mu() / total_average)?;
-  }
-
-  for value in branch_lengths.values_mut().flatten() {
-    *value *= total_average;
-  }
-  Ok(())
 }

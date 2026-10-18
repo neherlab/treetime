@@ -16,6 +16,7 @@ mod tests {
   use crate::optimize::indel::{EdgeIndels, IndelPolicy};
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
+  use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::run_loop::{apply_initial_guess_mode, run_optimize_loop};
   use crate::progress::NoopProgress;
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
@@ -70,9 +71,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths_with,
       &names_tt_4,
+      &NoopProgress,
     )?;
 
     let names_tt_3 = graph_without_names.clone();
@@ -86,9 +89,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Exclude,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths_without,
       &names_tt_3,
+      &NoopProgress,
     )?;
 
     assert!(
@@ -163,9 +168,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Include,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths_nf,
       &names_tt_2,
+      &NoopProgress,
     )?;
 
     let names_tt_1 = graph_flag_names.clone();
@@ -179,9 +186,11 @@ mod tests {
         opt_method: BranchOptMethod::Brent,
         indel_policy: IndelPolicy::Exclude,
         topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
       },
       branch_lengths_f,
       &names_tt_1,
+      &NoopProgress,
     )?;
 
     assert_eq!(
