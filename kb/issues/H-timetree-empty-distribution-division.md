@@ -41,6 +41,25 @@ pass leaves 46 internal nodes with an empty posterior ("has an empty time distri
 exits 0 and writes those nodes without a date. No node is flagged as a bad branch. With the frozen lineage counts the
 rate stays at $1.65 \cdot 10^{-5}$ and every node gets a date.
 
+## Root cause in the simulated reproducer
+
+Traced with temporary diagnostics in the reproducer above; the first of the 46 undated nodes is the only one with a
+non-empty parent posterior, the other 45 inherit an empty parent:
+
+1. The parent's posterior has zero probability (negative log `+inf`) at its last two grid points, at the hard upper
+   bound from its children; the cavity, the posterior divided by the node's upward message, keeps them.
+2. `convolve_across_edge` calls `distribution_convolution_fine`, which resamples both operands to a common `dx`
+   (`resample_dx`, here 2.3236 against the branch's 2.4635). `GridFn::interpolate_at`
+   ([`grid_fn.rs#L237-L250`](../../packages/treetime-grid/src/grid_fn.rs#L237-L250)) computes `y0 + t * (y1 - y0)` on
+   negative log values, which is NaN whenever `y0 = +inf`: 3 of the 416 resampled cavity values are NaN.
+3. `to_peak_normalized_plain` takes the peak with `min_or`, whose ndarray-stats `min()` fails on any NaN; the default
+   `+inf` makes the operand look massless, and the convolution returns `Empty` through `guarded_empty_result`.
+4. The node's posterior is `Empty`, so its children have no parent posterior: all 45 are left undated in turn.
+
+Fix direction: interpolation in negative log space treats a cell with an infinite end as having zero probability
+(`+inf`) instead of producing NaN; whether `min_or` should also ignore NaN is a separate choice. Whether the aborts on
+`data/dengue/500` and `data/lassa/L/200` share this cause is not verified.
+
 ## Related issues
 
 - [H-timetree-backward-pass-nan-time-distribution.md](H-timetree-backward-pass-nan-time-distribution.md)
