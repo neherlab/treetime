@@ -36,6 +36,13 @@ Phase 4 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposa
   $10^{-2}$). The rate step therefore depends on how the prior follows a probe; settle it after the coalescent
   statistics (phase 2) and the root (phase 3). Candidates: profile $T_c$ within each probe, an explicit log-normal
   rate prior, or the Gaussian rate at low signal.
+- After phase 2, $T_c$ profiled within each probe (expectation stretched about each node's mean tip date, $T_c$
+  refitted to it) fails everywhere: the probe differences become +250 to +450 below and -560 to -820 above, and the
+  rate collapses even at $L=10^3$, $\mu=10^{-2}$ (from $9\cdot10^{-3}$ to $3.9\cdot10^{-3}$ in six rounds). The
+  stretch moves parent and child about different anchors and puts prior mass past their children and tips, which
+  the backward pass punishes; profiling $T_c$ cannot repair that geometry. A consistent profile would need the probe's
+  own posteriors, two extra time passes per round. Not pursued; next is a log-normal rate prior in the step, centred
+  on `--clock-std-dev` or the Gaussian rate and its standard deviation.
 
 Validation: rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date
 coverage on the calibration subset.
