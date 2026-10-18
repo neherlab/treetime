@@ -188,8 +188,8 @@ mod tests {
     let (state, outcome) = helpers::refine(&context, state, None)?;
 
     assert!(matches!(
-      outcome.topology,
-      TopologyOutcome::Changed { resolved_nodes: 0 }
+      &outcome.topology,
+      TopologyOutcome::Changed { merger_times } if merger_times.is_empty()
     ));
     let node_names: BTreeSet<String> = state.names.values().flatten().cloned().collect();
     let expected_names: BTreeSet<String> = ["A", "B", "C", "D", "P", "root"].map(str::to_owned).into();
@@ -209,7 +209,7 @@ mod tests {
 
     let (state, outcome) = helpers::refine_with(&context, state, None, &helpers::round_params(true, RELAX.to_vec()))?;
 
-    assert!(outcome.topology.resolved_nodes() == 0 && helpers::changed(outcome.topology));
+    assert!(outcome.topology.resolved_nodes() == 0 && outcome.topology.changed());
     let expected: BTreeMap<GraphEdgeKey, f64> = state.graph.get_edges().map(|edge| (edge.key(), 1.0)).collect();
     assert_eq!(expected, state.gammas);
     Ok(())
@@ -267,7 +267,7 @@ mod tests {
 
     let (state, outcome) = helpers::refine_with(&context, state, None, &helpers::round_params(false, RELAX.to_vec()))?;
 
-    assert!(!helpers::changed(outcome.topology));
+    assert!(!outcome.topology.changed());
     assert_eq!(expected, state.gammas);
     assert!(
       state.gammas.values().any(|gamma| (gamma - 1.0).abs() > 1e-3),
@@ -477,10 +477,6 @@ mod tests {
         &mut get_random_number_generator(ROUND_TEST_SEED),
         &NoopProgress,
       )
-    }
-
-    pub(super) fn changed(topology: TopologyOutcome) -> bool {
-      matches!(topology, TopologyOutcome::Changed { .. })
     }
 
     pub(super) fn without_room_above_the_polytomy(mut state: RoundState) -> RoundState {

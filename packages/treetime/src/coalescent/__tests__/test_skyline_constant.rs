@@ -7,7 +7,7 @@ mod tests {
 
   #[test]
   fn test_skyline_constant_returns_positive_finite_optimum() -> Result<(), Report> {
-    let (graph, names, constraints) = setup_graph()?;
+    let (graph, constraints) = setup_graph()?;
     let result = constant_skyline(&expectation(&graph, &constraints))?;
 
     assert!(tc(&result) > 0.0, "Optimized Tc should be positive");
@@ -20,7 +20,7 @@ mod tests {
   #[test]
   #[expect(clippy::float_cmp, reason = "determinism requires bit-identical results")]
   fn test_skyline_constant_is_deterministic() -> Result<(), Report> {
-    let (graph, names, constraints) = setup_graph()?;
+    let (graph, constraints) = setup_graph()?;
     let node_times = expectation(&graph, &constraints);
 
     let a = constant_skyline(&node_times)?;

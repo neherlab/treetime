@@ -11,7 +11,7 @@ mod tests {
   };
   use crate::timetree::coalescent_timescale::{
     CoalescentMode, CoalescentReportBand, CoalescentTcReport, CoalescentTimescale, build_coalescent_output,
-    coalescent_mode, estimate_coalescent_tc,
+    coalescent_mode, coalescent_timescale,
   };
   use eyre::Report;
   use maplit::btreemap;
@@ -71,8 +71,7 @@ mod tests {
       ..SkylineParams::default()
     };
     let expectation = constraint_expectation(&graph, &constraints)?;
-    let timescale = estimate_coalescent_tc(CoalescentMode::Fixed(2.5), &params, &expectation, &NoopProgress)?
-      .expect("a fixed Tc yields a coalescent timescale");
+    let timescale = coalescent_timescale(CoalescentMode::Fixed(2.5), &params, &expectation, &NoopProgress)?;
 
     let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, &params)?
       .expect("a fixed Tc writes a coalescent output");
@@ -198,7 +197,7 @@ mod tests {
   }
 
   #[test]
-  fn test_pipeline_estimate_coalescent_tc_report_carries_the_skyline_solve() -> Result<(), Report> {
+  fn test_pipeline_coalescent_timescale_report_carries_the_skyline_solve() -> Result<(), Report> {
     let (graph, constraints) = dated_tree()?;
     let params = SkylineParams {
       n_points: 3,
@@ -207,8 +206,7 @@ mod tests {
 
     let expectation = constraint_expectation(&graph, &constraints)?;
     let solve = optimize_skyline(&params, &expectation, &NoopProgress)?;
-    let timescale = estimate_coalescent_tc(CoalescentMode::Skyline, &params, &expectation, &NoopProgress)?
-      .expect("skyline mode yields a coalescent timescale");
+    let timescale = coalescent_timescale(CoalescentMode::Skyline, &params, &expectation, &NoopProgress)?;
     let metric = timescale.expected_log_likelihood(&expectation).value();
     let report = timescale
       .report

@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+  use crate::branch_lengths::branch_length_or_zero;
+  use crate::clock::divergence::root_to_node_divergences;
   use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use crate::clock::reroot::reroot_undated;
   use crate::progress::NoopProgress;
@@ -12,30 +14,10 @@ mod tests {
   use treetime_io::nwk::nwk_read;
 
   fn root_to_tip_distances(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
-    let root_key = graph.get_exactly_one_root().unwrap().key();
-    let mut distances = Vec::new();
-    collect_distances(graph, root_key, 0.0, &mut distances, branch_lengths);
-    distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let divergences = root_to_node_divergences(graph, |key| branch_length_or_zero(branch_lengths, key)).unwrap();
+    let mut distances: Vec<f64> = graph.get_leaves().map(|leaf| divergences[&leaf.key()]).collect();
+    distances.sort_by(f64::total_cmp);
     distances
-  }
-
-  fn collect_distances(
-    graph: &Graph,
-    node_key: treetime_graph::node::GraphNodeKey,
-    dist: f64,
-    out: &mut Vec<f64>,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) {
-    let node = graph.get_node(node_key).unwrap();
-    if node.is_leaf() {
-      out.push(dist);
-      return;
-    }
-    for &edge_key in node.outbound() {
-      let edge = graph.get_edge(edge_key).unwrap();
-      let bl = branch_lengths[&edge.key()].unwrap_or(0.0);
-      collect_distances(graph, edge.target(), dist + bl, out, branch_lengths);
-    }
   }
 
   #[test]

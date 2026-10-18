@@ -11,14 +11,13 @@ pub(crate) mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::o;
 
   const TREE_NWK: &str = "((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;";
 
-  pub(crate) fn setup_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, DateConstraints), Report> {
+  pub(crate) fn setup_graph() -> Result<(Graph, DateConstraints), Report> {
     let dates = btreemap! {
       o!("root") => Some(DateConstraint::exact(2000.0)),
       o!("internal1") => Some(DateConstraint::exact(2005.0)),
@@ -26,12 +25,7 @@ pub(crate) mod tests {
       o!("leaf2") => Some(DateConstraint::exact(2010.0)),
       o!("leaf3") => Some(DateConstraint::exact(2012.0)),
     };
-    let nwk_parsed = nwk_read(TREE_NWK.as_bytes())?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let graph: Graph = graph;
-    let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
-    Ok((graph, names, constraints))
+    graph_with_dates(TREE_NWK, &dates)
   }
 
   pub(crate) fn expectation(graph: &Graph, constraints: &DateConstraints) -> Arc<LineageExpectation> {
