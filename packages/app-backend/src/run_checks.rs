@@ -124,17 +124,19 @@ fn duplicate_names(context: &CheckContext<'_>) -> Vec<RunCheck> {
       )
       .concerning(&[InputKind::Tree.setting()])
     });
-  let alignments = sequence_files(context).filter(|alignment| !alignment.duplicate_names.is_empty()).map(|alignment| {
-    warn(
-      alignment_id(context, "duplicate-sequence-names", alignment),
-      format!(
-        "The {} has more than one sequence named {}. TreeTime uses the first sequence of each name.",
-        alignment_noun(context, alignment),
-        name_list(&alignment.duplicate_names)
-      ),
-    )
-    .concerning(&[InputKind::Alignment.setting()])
-  });
+  let alignments = sequence_files(context)
+    .filter(|alignment| !alignment.duplicate_names.is_empty())
+    .map(|alignment| {
+      warn(
+        alignment_id(context, "duplicate-sequence-names", alignment),
+        format!(
+          "The {} has more than one sequence named {}. TreeTime uses the first sequence of each name.",
+          alignment_noun(context, alignment),
+          name_list(&alignment.duplicate_names)
+        ),
+      )
+      .concerning(&[InputKind::Alignment.setting()])
+    });
   tree.into_iter().chain(alignments).collect()
 }
 

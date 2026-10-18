@@ -1,16 +1,9 @@
-import type {
-  RunRecord,
-  RunResults,
-  CoalescentPrior,
-  TimetreeResults,
-  TimetreeEstimates,
-} from "@neherlab/app-contracts";
+import type { RunRecord, CoalescentPrior, TimetreeResults, TimetreeEstimates } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
 import { Panel, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { formatDuration, formatLevel, formatRate, rSquaredText } from "../format";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
-import { OutputFiles } from "./OutputFiles";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
 import { SelectionPanel } from "./SelectionPanel";
@@ -22,12 +15,10 @@ const TIMETREE_COLORINGS = ["num_date"];
 
 export function TimetreeResultsView({
   record,
-  results,
   data,
   tree,
 }: {
   record: RunRecord;
-  results: RunResults;
   data: TimetreeResults;
   tree: TreeData | undefined;
 }) {
@@ -37,18 +28,16 @@ export function TimetreeResultsView({
     return <MissingTree />;
   }
 
-  return <TimetreeView record={record} results={results} data={data} estimates={estimates} tree={tree} />;
+  return <TimetreeView record={record} data={data} estimates={estimates} tree={tree} />;
 }
 
 function TimetreeView({
   record,
-  results,
   data,
   estimates,
   tree,
 }: {
   record: RunRecord;
-  results: RunResults;
   data: TimetreeResults;
   estimates: TimetreeEstimates;
   tree: TreeData;
@@ -64,7 +53,6 @@ function TimetreeView({
     <div className="grid gap-4">
       <SummaryStrip entries={summary} />
       <TreeView data={tree} colorBy={initialColorBy(tree.tree, TIMETREE_COLORINGS)} aside={aside} />
-      <OutputFiles record={record} citation={results.citation} />
     </div>
   );
 }

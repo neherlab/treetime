@@ -1,10 +1,9 @@
-import type { RunRecord, RunResults, ClockResults, YearDate } from "@neherlab/app-contracts";
+import type { RunRecord, ClockResults, YearDate } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 
 import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { formatRate, formatSignedDays, rSquaredText } from "../format";
-import { OutputFiles } from "./OutputFiles";
 import { useRootToTip } from "./rootToTip";
 import { RootToTipPlot } from "./RootToTipPlot";
 import { initialColorBy, MissingTree, TreeView, type TreeData } from "./TreeView";
@@ -58,12 +57,10 @@ const SAMPLE_COLUMNS = sampleColumn.columns([
 
 export function ClockResultsView({
   record,
-  results,
   data,
   tree,
 }: {
   record: RunRecord;
-  results: RunResults;
   data: ClockResults;
   tree: TreeData | undefined;
 }) {
@@ -110,7 +107,6 @@ export function ClockResultsView({
           rowClassName={sampleTone}
         />
       </Panel>
-      <OutputFiles record={record} citation={results.citation} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ pub mod clades;
 pub mod clock;
 pub mod compare;
 pub mod homoplasy;
+pub mod models;
 pub mod mugration;
 pub mod mutations;
 pub mod outputs;

@@ -1,10 +1,12 @@
+use crate::command::{OutputFile, OutputPartition};
 use crate::job::JobId;
 use crate::results::citation::{Citation, citation};
 use crate::results::clock::{ClockResults, clock_results};
 use crate::results::homoplasy::{HomoplasyResults, homoplasy_results};
+use crate::results::models::{RunModel, run_models};
 use crate::results::mugration::{MugrationResults, mugration_results};
 use crate::results::mutations::{AncestralResults, ancestral_results};
-use crate::results::outputs::{OutputProblem, RunOutputs};
+use crate::results::outputs::{OutputProblem, RunOutputs, shown_auspice};
 use crate::results::timetree::{TimetreeOutputs, TimetreeResults, timetree_results};
 use crate::results::tree::ResultTree;
 use crate::runs::errors::conflict;
@@ -15,9 +17,7 @@ use deser::Serialize;
 use eyre::Report;
 use schemars::JsonSchema;
 use std::path::Path;
-use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::gtr::get_gtr::{ModelEntry, ModelOutput};
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
 use util_augur_node_data_json::AugurNodeDataJsonRefine;
@@ -81,13 +81,13 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
         .ok_or_else(|| make_report!("mugration run `{}` names no attribute", record.id.as_str()))?;
       CommandResults::Mugration(mugration_results(auspice.as_ref(), tree.as_ref(), &attribute)?)
     },
-    CommandConfig::Optimize { .. } => {
-      CommandResults::Optimize(tree_summary(tree.as_ref(), node_data.as_ref(), gtr.as_ref()))
-    },
-    CommandConfig::Prune { .. } => CommandResults::Prune(tree_summary(tree.as_ref(), None, None)),
+    CommandConfig::Optimize { .. } => CommandResults::Optimize(tree_summary(tree.as_ref(), node_data.as_ref())),
+    CommandConfig::Prune { .. } => CommandResults::Prune(tree_summary(tree.as_ref(), None)),
   };
   Ok(RunResults {
     tree,
+    tree_partition: tree_partition(&record.output_files),
+    models: run_models(gtr.as_ref()),
     results,
     citation: citation(),
     problems,
@@ -101,6 +101,10 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
 pub struct RunResults {
   /// Tree of the run's Auspice file; absent when the run wrote none.
   pub tree: Option<ResultTree>,
+  /// Alignment file whose Auspice file gives the tree, when the run has several alignment files.
+  pub tree_partition: Option<OutputPartition>,
+  /// Substitution models of the run's model document, in its order; empty when the run wrote none.
+  pub models: Vec<RunModel>,
   /// Results specific to the command of the run.
   pub results: CommandResults,
   /// The publication to cite.
@@ -123,11 +127,16 @@ pub enum CommandResults {
   Prune(TreeSummary),
 }
 
-fn tree_summary(
-  tree: Option<&ResultTree>,
-  node_data: Option<&AugurNodeDataJsonRefine>,
-  gtr: Option<&ModelOutput>,
-) -> TreeSummary {
+fn tree_partition(output_files: &[OutputFile]) -> Option<OutputPartition> {
+  let several = output_files
+    .iter()
+    .any(|file| file.partition.as_ref().is_some_and(|partition| partition.number > 1));
+  shown_auspice(output_files)
+    .filter(|_| several)
+    .and_then(|file| file.partition.clone())
+}
+
+fn tree_summary(tree: Option<&ResultTree>, node_data: Option<&AugurNodeDataJsonRefine>) -> TreeSummary {
   let samples = tree.map_or(0, |tree| tree.tips().count());
   TreeSummary {
     samples,
@@ -136,24 +145,7 @@ fn tree_summary(
     total_branch_length: node_data
       .filter(|data| !data.nodes.is_empty())
       .map(|data| data.nodes.values().map(|node| node.branch_length).sum()),
-    substitution_models: gtr.map_or_else(Vec::new, substitution_models),
   }
-}
-
-fn substitution_models(gtr: &ModelOutput) -> Vec<SubstitutionModel> {
-  gtr
-    .models
-    .iter()
-    .filter_map(|entry| match entry {
-      ModelEntry::Sequence(model) => Some(SubstitutionModel {
-        partition: model.partition,
-        alignment: model.alignment.clone(),
-        name: model.model.model_name().to_string(),
-        mu: model.model.mu(),
-      }),
-      ModelEntry::Trait(_) => None,
-    })
-    .collect()
 }
 
 /// Summary of a tree an `optimize` or `prune` run wrote.
@@ -169,19 +161,4 @@ pub struct TreeSummary {
   pub mutations: usize,
   /// Sum of the branch lengths in the node data file.
   pub total_branch_length: Option<f64>,
-  /// Substitution models the run fitted, one per alignment file, in partition order.
-  pub substitution_models: Vec<SubstitutionModel>,
-}
-
-/// The substitution model fitted to one alignment file.
-#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
-pub struct SubstitutionModel {
-  /// Partition number: the position of the file in the `--alignment` list, starting at 1.
-  pub partition: usize,
-  /// Path of the alignment file.
-  pub alignment: PathBuf,
-  /// Name of the model.
-  pub name: String,
-  /// Overall substitution rate.
-  pub mu: f64,
 }

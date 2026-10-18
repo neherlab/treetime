@@ -25,10 +25,12 @@ import { ClockResultsView } from "./ClockResultsView";
 import { HomoplasyResultsView } from "./HomoplasyResultsView";
 import { LogTab } from "./LogTab";
 import { MugrationResultsView } from "./MugrationResultsView";
+import { OutputFiles } from "./OutputFiles";
 import { RunningView } from "./RunningView";
 import { RunTitle } from "./RunTitle";
 import { RunWarnings } from "./RunWarnings";
 import { SettingsTab } from "./SettingsTab";
+import { SubstitutionModels } from "./SubstitutionModels";
 import { TimetreeResultsView } from "./TimetreeResultsView";
 import { TreeOnlyResults } from "./TreeOnlyResults";
 import type { TreeData } from "./TreeView";
@@ -196,7 +198,18 @@ function FinishedResults({ record }: { record: RunRecord }) {
           </AlertDescription>
         </Alert>
       )}
+      {results.tree_partition !== undefined && (
+        <Alert>
+          <AlertDescription>
+            The tree shows the Auspice file of alignment {results.tree_partition.number} (
+            <code className="font-mono text-xs">{results.tree_partition.alignment}</code>). The output files hold one
+            Auspice file per alignment file.
+          </AlertDescription>
+        </Alert>
+      )}
       <CommandResults record={record} results={results} tree={tree} />
+      {results.models.length > 0 && <SubstitutionModels models={results.models} />}
+      <OutputFiles record={record} citation={results.citation} />
     </div>
   );
 }
@@ -213,26 +226,26 @@ function CommandResults({
   const view = results.results;
 
   if (view.command === "timetree") {
-    return <TimetreeResultsView record={record} results={results} data={view.data} tree={tree} />;
+    return <TimetreeResultsView record={record} data={view.data} tree={tree} />;
   }
 
   if (view.command === "clock") {
-    return <ClockResultsView record={record} results={results} data={view.data} tree={tree} />;
+    return <ClockResultsView record={record} data={view.data} tree={tree} />;
   }
 
   if (view.command === "ancestral") {
-    return <AncestralResultsView record={record} results={results} data={view.data} tree={tree} />;
+    return <AncestralResultsView record={record} data={view.data} tree={tree} />;
   }
 
   if (view.command === "homoplasy") {
-    return <HomoplasyResultsView record={record} results={results} data={view.data} tree={tree} />;
+    return <HomoplasyResultsView record={record} data={view.data} tree={tree} />;
   }
 
   if (view.command === "mugration") {
-    return <MugrationResultsView record={record} results={results} data={view.data} tree={tree} />;
+    return <MugrationResultsView record={record} data={view.data} tree={tree} />;
   }
 
-  return <TreeOnlyResults record={record} results={results} data={view.data} tree={tree} />;
+  return <TreeOnlyResults record={record} data={view.data} tree={tree} />;
 }
 
 function EndedRun({ record, progress }: { record: RunRecord; progress: RunProgress }) {

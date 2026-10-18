@@ -1,12 +1,15 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_support::tests::sparse;
+  use crate::command::OutputPartition;
   use crate::json_float::JsonFloat;
   use crate::results::auspice::run_auspice;
   use crate::results::clades::{CladeRequest, clade_in_runs};
   use crate::results::clock::{ClockLine, RootToTip};
   use crate::results::compare::compare_runs;
+  use crate::results::models::RunModel;
   use crate::results::run_results::{CommandResults, RunResults, run_results};
+  use crate::results::tree::ResultTree;
   use crate::runs::headline::RunHeadline;
   use crate::runs::manager::RunManager;
   use crate::runs::record::CreateRunRequest;
@@ -27,7 +30,84 @@ mod tests {
   use treetime::clock::rtt::ClockDateSource;
   use treetime::o;
   use treetime_utils::assert_error;
-  use treetime_utils::io::json::to_json_value;
+  use treetime_utils::io::json::{json_read_file, to_json_value};
+
+  #[test]
+  fn test_run_results_show_the_tree_of_the_first_alignment_file() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let inputs = tempdir()?;
+    let tree = inputs.path().join("tree.nwk");
+    let first = inputs.path().join("ha.fasta");
+    let second = inputs.path().join("na.fasta");
+    fs::write(&tree, "((A:0.1,B:0.1):0.1,C:0.1);\n")?;
+    fs::write(&first, ">A\nACGT\n>B\nACGT\n>C\nGCGT\n")?;
+    fs::write(&second, ">A\nTTAA\n>B\nTAAA\n>C\nTTAA\n")?;
+    let id = finished_run(
+      &runs,
+      AppCommand::Ancestral,
+      json!({ "tree": tree, "alignment": [&second, &first] }),
+    );
+
+    let record = runs.get(&id)?;
+    let out_dir = runs.store().out_dir(&id);
+    let auspice_of = |number: usize| -> Result<ResultTree, Report> {
+      let file = record
+        .output_files
+        .iter()
+        .find(|file| {
+          file.kind == OutputSelection::Auspice && file.partition.as_ref().is_some_and(|p| p.number == number)
+        })
+        .expect("the run wrote one Auspice file per alignment file");
+      ResultTree::from_auspice(&json_read_file(out_dir.join(&file.path))?)
+    };
+    let results = run_results(&runs, &id)?;
+    let shown = ResultTree::from_auspice(&run_auspice(&runs, &id)?.0)?;
+    let listed_auspice = runs
+      .files(&id)?
+      .into_iter()
+      .filter(|file| file.kind == Some(OutputSelection::Auspice))
+      .map(|file| (file.path, file.partition))
+      .collect::<Vec<_>>();
+
+    assert_eq!(
+      vec![
+        (
+          o!("ancestral.1.auspice.json"),
+          Some(OutputPartition {
+            number: 1,
+            alignment: second.clone()
+          })
+        ),
+        (
+          o!("ancestral.2.auspice.json"),
+          Some(OutputPartition {
+            number: 2,
+            alignment: first
+          })
+        ),
+      ],
+      listed_auspice
+    );
+    assert_eq!(
+      (
+        true,
+        Some(auspice_of(1)?),
+        auspice_of(1)?,
+        Some(OutputPartition {
+          number: 1,
+          alignment: second
+        }),
+      ),
+      (
+        auspice_of(1)? != auspice_of(2)?,
+        results.tree,
+        shown,
+        results.tree_partition,
+      )
+    );
+    Ok(())
+  }
 
   #[test]
   fn test_run_results_of_a_timetree_run_hold_estimates_and_regression() -> Result<(), Report> {
@@ -295,17 +375,82 @@ mod tests {
     )?;
 
     let results = run_results(&runs, &id)?;
-    let CommandResults::Optimize(summary) = &results.results else {
-      panic!("an optimize run has a tree summary");
-    };
 
     assert_eq!(
       json!([
-        { "partition": 1, "alignment": "ha/aligned.fasta", "name": "Infer", "mu": 0.75 },
-        { "partition": 2, "alignment": "na/aligned.fasta", "name": "Infer", "mu": 1.25 },
+        { "kind": "sequence", "partition": 1, "alignment": "ha/aligned.fasta", "name": "Infer", "mu": 0.75 },
+        { "kind": "sequence", "partition": 2, "alignment": "na/aligned.fasta", "name": "Infer", "mu": 1.25 },
       ]),
-      to_json_value(&summary.substitution_models)?
+      to_json_value(&results.models)?
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::ancestral_marginal(AppCommand::Ancestral, json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")], "method_anc": "marginal" }))]
+  #[case::prune_empty(AppCommand::Prune, json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")], "prune_empty": true }))]
+  fn test_run_results_list_the_sequence_model_the_run_fitted(
+    #[case] command: AppCommand,
+    #[case] config: Value,
+  ) -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(&runs, command, config);
+
+    let models = run_results(&runs, &id)?.models;
+
+    let [RunModel::Sequence(model)] = models.as_slice() else {
+      panic!("the run lists one sequence model, got {models:?}");
+    };
+    assert_eq!(
+      (1, zika("aln.fasta.xz"), true),
+      (model.partition, model.alignment.clone(), model.mu > 0.0)
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_results_of_a_mugration_run_list_the_trait_model_with_its_states() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(
+      &runs,
+      AppCommand::Mugration,
+      json!({ "tree": zika("tree.nwk"), "metadata": zika("metadata.tsv"), "attribute": "country" }),
+    );
+
+    let results = run_results(&runs, &id)?;
+
+    let CommandResults::Mugration(mugration) = &results.results else {
+      panic!("a mugration run has mugration results");
+    };
+    let [RunModel::Trait(model)] = results.models.as_slice() else {
+      panic!("a mugration run lists one trait model, got {:?}", results.models);
+    };
+    assert_eq!(
+      ("country", true, true),
+      (
+        model.attribute.as_str(),
+        model.states.len() >= mugration.states,
+        model.mu > 0.0
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_results_of_a_fitch_ancestral_run_list_no_model() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(
+      &runs,
+      AppCommand::Ancestral,
+      json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")], "method_anc": "parsimony" }),
+    );
+
+    let results = run_results(&runs, &id)?;
+
+    assert_eq!((vec![], vec![]), (results.models, results.problems));
     Ok(())
   }
 

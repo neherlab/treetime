@@ -218,7 +218,10 @@ mod tests {
 
   #[test]
   fn test_run_checks_ancestral_offers_to_treat_missing_sequences_as_unknown() {
-    let config = config(AppCommand::Ancestral, &json!({ "tree": "t.nwk", "alignment": ["a.fasta"] }));
+    let config = config(
+      AppCommand::Ancestral,
+      &json!({ "tree": "t.nwk", "alignment": ["a.fasta"] }),
+    );
     let facts = InputFacts {
       alignments: vec![AlignmentFacts {
         tips_without_sequence: Some(vec_of_owned!["A", "B"]),
@@ -238,7 +241,10 @@ mod tests {
           }],
         })
       )],
-      found.into_iter().map(|check| (check.settings, check.fix)).collect::<Vec<_>>()
+      found
+        .into_iter()
+        .map(|check| (check.settings, check.fix))
+        .collect::<Vec<_>>()
     );
   }
 
@@ -270,11 +276,17 @@ mod tests {
     };
     assert_eq!(
       vec![
-        (o!("unreadable-alignment-3"), CheckLevel::Block, o!("The alignment cannot be read: bad")),
+        (
+          o!("unreadable-alignment-3"),
+          CheckLevel::Block,
+          o!("The alignment cannot be read: bad")
+        ),
         (
           o!("duplicate-sequence-names-1"),
           CheckLevel::Warn,
-          o!("The alignment 1 'ha/aligned.fasta' has more than one sequence named A. TreeTime uses the first sequence of each name.")
+          o!(
+            "The alignment 1 'ha/aligned.fasta' has more than one sequence named A. TreeTime uses the first sequence of each name."
+          )
         ),
         (
           o!("unaligned-sequences-2"),
@@ -284,7 +296,9 @@ mod tests {
         (
           o!("tips-without-sequence-2"),
           CheckLevel::Block,
-          o!("2 of 3 tree tips have no sequence in the alignment 2 'na/aligned.fasta': A, B. More than a third of the tips are missing, so the alignment may not belong to the tree.")
+          o!(
+            "2 of 3 tree tips have no sequence in the alignment 2 'na/aligned.fasta': A, B. More than a third of the tips are missing, so the alignment may not belong to the tree."
+          )
         ),
       ],
       checks(AppCommand::Optimize, Some(&config), None, Some(&facts))
@@ -483,8 +497,8 @@ mod tests {
   }
 
   mod helpers {
-    use crate::check_inputs::{DateFacts, MetadataFacts};
     use crate::check_inputs::{AlignmentFacts, InputFacts, TreeFacts};
+    use crate::check_inputs::{DateFacts, MetadataFacts};
     use crate::command::AppCommandExt;
     use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, run_checks};
     use app_commands::command::AppCommand;

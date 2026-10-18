@@ -444,11 +444,20 @@ export const zOutputSelection = z.enum([
 ]);
 
 /**
+ * The alignment file of an output written once per alignment file.
+ */
+export const zOutputPartition = z.object({
+  number: z.int().gte(0),
+  alignment: z.string()
+});
+
+/**
  * One file a command wrote.
  */
 export const zOutputFile = z.object({
   path: z.string(),
-  kind: zOutputSelection
+  kind: zOutputSelection,
+  partition: zOutputPartition.optional()
 });
 
 /**
@@ -508,7 +517,8 @@ export const zRunFile = z.object({
   path: z.string(),
   size: z.int().gte(0),
   kind: zOutputSelection.optional(),
-  description: z.string()
+  description: z.string(),
+  partition: zOutputPartition.optional()
 });
 
 /**
@@ -562,6 +572,26 @@ export const zResultTree = z.object({
   nodes: z.array(zResultNode),
   colorings: z.array(zResultColoring),
   default_color_by: z.string().optional()
+});
+
+/**
+ * The substitution model fitted to one alignment file.
+ */
+export const zSequenceModelSummary = z.object({
+  partition: z.int().gte(0),
+  alignment: z.string(),
+  name: z.string(),
+  mu: z.number()
+});
+
+/**
+ * The substitution model fitted to the states of one discrete trait.
+ */
+export const zTraitModelSummary = z.object({
+  attribute: z.string(),
+  name: z.string(),
+  mu: z.number(),
+  states: z.array(z.string())
 });
 
 /**
@@ -835,24 +865,13 @@ export const zMugrationResults = z.object({
 });
 
 /**
- * The substitution model fitted to one alignment file.
- */
-export const zSubstitutionModel = z.object({
-  partition: z.int().gte(0),
-  alignment: z.string(),
-  name: z.string(),
-  mu: z.number()
-});
-
-/**
  * Summary of a tree an `optimize` or `prune` run wrote.
  */
 export const zTreeSummary = z.object({
   samples: z.int().gte(0),
   internal_nodes: z.int().gte(0),
   mutations: z.int().gte(0),
-  total_branch_length: z.number().optional(),
-  substitution_models: z.array(zSubstitutionModel)
+  total_branch_length: z.number().optional()
 });
 
 /**
@@ -2219,6 +2238,24 @@ export const zRunRecord = z.discriminatedUnion('command', [
   zRunRecordMugration
 ]);
 
+/**
+ * Model of the sites of one alignment file.
+ */
+export const zRunModelSequence = zSequenceModelSummary;
+
+/**
+ * Model of the states of one discrete trait.
+ */
+export const zRunModelTrait = zTraitModelSummary;
+
+/**
+ * A substitution model of a run, from its model document.
+ */
+export const zRunModel = z.discriminatedUnion('kind', [
+  zRunModelSequence.extend({ kind: z.literal('sequence') }),
+  zRunModelTrait.extend({ kind: z.literal('trait') })
+]);
+
 export const zCommandResultsClock = z.object({
   command: z.literal('clock'),
   data: zClockResults
@@ -2356,6 +2393,8 @@ export const zCommandResults = z.discriminatedUnion('command', [
  */
 export const zRunResults = z.object({
   tree: zResultTree.optional(),
+  tree_partition: zOutputPartition.optional(),
+  models: z.array(zRunModel),
   results: zCommandResults,
   citation: zCitation,
   problems: z.array(zOutputProblem)

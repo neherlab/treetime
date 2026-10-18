@@ -1,4 +1,4 @@
-use crate::command::OutputFile;
+use crate::command::{OutputFile, OutputPartition};
 use crate::runs::errors::{invalid, not_found};
 use app_output::output_plan::OutputSelection;
 use deser::Serialize;
@@ -20,9 +20,9 @@ use zip::write::{SimpleFileOptions, StreamWriter};
 pub const RUN_DOWNLOAD_CHUNK_SIZE: usize = 1024 * 1024;
 
 pub fn list_run_files(out_dir: &Path, output_files: &[OutputFile]) -> Result<Vec<RunFile>, Report> {
-  let kinds: BTreeMap<String, OutputSelection> = output_files
+  let planned: BTreeMap<String, &OutputFile> = output_files
     .iter()
-    .map(|file| (relative_name(&file.path), file.kind))
+    .map(|file| (relative_name(&file.path), file))
     .collect();
   let mut files = vec![];
   for path in walk_files(out_dir)? {
@@ -33,10 +33,12 @@ pub fn list_run_files(out_dir: &Path, output_files: &[OutputFile]) -> Result<Vec
         .wrap_err_with(|| format!("When reading the size of '{}'", path.display()))?
         .len(),
     )?;
-    let kind = kinds.get(&name).copied();
+    let file = planned.get(&name);
+    let kind = file.map(|file| file.kind);
     files.push(RunFile {
       description: kind.map(OutputSelection::description).unwrap_or_default().to_owned(),
       kind,
+      partition: file.and_then(|file| file.partition.clone()),
       path: name,
       size,
     });
@@ -57,6 +59,8 @@ pub struct RunFile {
   pub kind: Option<OutputSelection>,
   /// What the file holds; empty for files the output plan does not name.
   pub description: String,
+  /// Alignment file the output belongs to, for an output written once per alignment file.
+  pub partition: Option<OutputPartition>,
 }
 
 pub fn resolve_run_file(out_dir: &Path, relative: &str) -> Result<PathBuf, Report> {

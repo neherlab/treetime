@@ -2487,6 +2487,11 @@
           "kind": {
             "description": "Output selection that produced the file.",
             "$ref": "#/components/schemas/OutputSelection"
+          },
+          "partition": {
+            "description": "Alignment file the output belongs to, for an output written once per alignment file.",
+            "$ref": "#/components/schemas/OutputPartition",
+            "x-unset": true
           }
         },
         "required": [
@@ -2523,6 +2528,26 @@
           "clock-chart-png",
           "homoplasy-stats",
           "homoplasy-report"
+        ]
+      },
+      "OutputPartition": {
+        "description": "The alignment file of an output written once per alignment file.",
+        "type": "object",
+        "properties": {
+          "number": {
+            "description": "Partition number: the position of the file in the alignment setting, starting at 1.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "alignment": {
+            "description": "Path of the alignment file.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "alignment"
         ]
       },
       "RunWarning": {
@@ -2666,6 +2691,11 @@
           "description": {
             "description": "What the file holds; empty for files the output plan does not name.",
             "type": "string"
+          },
+          "partition": {
+            "description": "Alignment file the output belongs to, for an output written once per alignment file.",
+            "$ref": "#/components/schemas/OutputPartition",
+            "x-unset": true
           }
         },
         "required": [
@@ -2682,6 +2712,18 @@
             "description": "Tree of the run's Auspice file; absent when the run wrote none.",
             "$ref": "#/components/schemas/ResultTree",
             "x-unset": true
+          },
+          "tree_partition": {
+            "description": "Alignment file whose Auspice file gives the tree, when the run has several alignment files.",
+            "$ref": "#/components/schemas/OutputPartition",
+            "x-unset": true
+          },
+          "models": {
+            "description": "Substitution models of the run's model document, in its order; empty when the run wrote none.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunModel"
+            }
           },
           "results": {
             "description": "Results specific to the command of the run.",
@@ -2700,6 +2742,7 @@
           }
         },
         "required": [
+          "models",
           "results",
           "citation",
           "problems"
@@ -2885,6 +2928,87 @@
         "required": [
           "state",
           "color"
+        ]
+      },
+      "RunModel": {
+        "description": "A substitution model of a run, from its model document.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RunModelSequence"
+          },
+          {
+            "$ref": "#/components/schemas/RunModelTrait"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "sequence": "#/components/schemas/RunModelSequence",
+            "trait": "#/components/schemas/RunModelTrait"
+          }
+        }
+      },
+      "SequenceModelSummary": {
+        "description": "The substitution model fitted to one alignment file.",
+        "type": "object",
+        "properties": {
+          "partition": {
+            "description": "Partition number: the position of the file in the `--alignment` list, starting at 1.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "alignment": {
+            "description": "Path of the alignment file.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name of the model.",
+            "type": "string"
+          },
+          "mu": {
+            "description": "Overall substitution rate.",
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "partition",
+          "alignment",
+          "name",
+          "mu"
+        ]
+      },
+      "TraitModelSummary": {
+        "description": "The substitution model fitted to the states of one discrete trait.",
+        "type": "object",
+        "properties": {
+          "attribute": {
+            "description": "Metadata column of the trait.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name of the model.",
+            "type": "string"
+          },
+          "mu": {
+            "description": "Overall substitution rate.",
+            "type": "number",
+            "format": "double"
+          },
+          "states": {
+            "description": "Trait states in the order of the rows and columns of `W` and the entries of `pi` in the model document.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "attribute",
+          "name",
+          "mu",
+          "states"
         ]
       },
       "CommandResults": {
@@ -4022,51 +4146,12 @@
             "type": "number",
             "format": "double",
             "x-unset": true
-          },
-          "substitution_models": {
-            "description": "Substitution models the run fitted, one per alignment file, in partition order.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SubstitutionModel"
-            }
           }
         },
         "required": [
           "samples",
           "internal_nodes",
-          "mutations",
-          "substitution_models"
-        ]
-      },
-      "SubstitutionModel": {
-        "description": "The substitution model fitted to one alignment file.",
-        "type": "object",
-        "properties": {
-          "partition": {
-            "description": "Partition number: the position of the file in the `--alignment` list, starting at 1.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0
-          },
-          "alignment": {
-            "description": "Path of the alignment file.",
-            "type": "string"
-          },
-          "name": {
-            "description": "Name of the model.",
-            "type": "string"
-          },
-          "mu": {
-            "description": "Overall substitution rate.",
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "required": [
-          "partition",
-          "alignment",
-          "name",
-          "mu"
+          "mutations"
         ]
       },
       "Citation": {
@@ -8969,6 +9054,34 @@
           "warnings",
           "command",
           "config"
+        ]
+      },
+      "RunModelSequence": {
+        "description": "Model of the sites of one alignment file.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "sequence"
+          }
+        },
+        "$ref": "#/components/schemas/SequenceModelSummary",
+        "required": [
+          "kind"
+        ]
+      },
+      "RunModelTrait": {
+        "description": "Model of the states of one discrete trait.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "trait"
+          }
+        },
+        "$ref": "#/components/schemas/TraitModelSummary",
+        "required": [
+          "kind"
         ]
       },
       "CommandResultsTimetree": {

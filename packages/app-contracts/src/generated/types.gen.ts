@@ -721,6 +721,10 @@ export type OutputFile = {
    * Output selection that produced the file.
    */
   kind: OutputSelection;
+  /**
+   * Alignment file the output belongs to, for an output written once per alignment file.
+   */
+  partition?: OutputPartition;
 };
 
 /**
@@ -729,6 +733,20 @@ export type OutputFile = {
  * Tree variants do not encode the separately selected Newick style.
  */
 export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json' | 'clock-chart-svg' | 'clock-chart-png' | 'homoplasy-stats' | 'homoplasy-report';
+
+/**
+ * The alignment file of an output written once per alignment file.
+ */
+export type OutputPartition = {
+  /**
+   * Partition number: the position of the file in the alignment setting, starting at 1.
+   */
+  number: number;
+  /**
+   * Path of the alignment file.
+   */
+  alignment: string;
+};
 
 /**
  * A problem that the run found and continued past, which makes its results less reliable.
@@ -826,6 +844,10 @@ export type RunFile = {
    * What the file holds; empty for files the output plan does not name.
    */
   description: string;
+  /**
+   * Alignment file the output belongs to, for an output written once per alignment file.
+   */
+  partition?: OutputPartition;
 };
 
 /**
@@ -836,6 +858,14 @@ export type RunResults = {
    * Tree of the run's Auspice file; absent when the run wrote none.
    */
   tree?: ResultTree;
+  /**
+   * Alignment file whose Auspice file gives the tree, when the run has several alignment files.
+   */
+  tree_partition?: OutputPartition;
+  /**
+   * Substitution models of the run's model document, in its order; empty when the run wrote none.
+   */
+  models: Array<RunModel>;
   /**
    * Results specific to the command of the run.
    */
@@ -970,6 +1000,59 @@ export type StateColor = {
    * CSS hex color.
    */
   color: string;
+};
+
+/**
+ * A substitution model of a run, from its model document.
+ */
+export type RunModel = ({
+  kind: 'sequence';
+} & RunModelSequence) | ({
+  kind: 'trait';
+} & RunModelTrait);
+
+/**
+ * The substitution model fitted to one alignment file.
+ */
+export type SequenceModelSummary = {
+  /**
+   * Partition number: the position of the file in the `--alignment` list, starting at 1.
+   */
+  partition: number;
+  /**
+   * Path of the alignment file.
+   */
+  alignment: string;
+  /**
+   * Name of the model.
+   */
+  name: string;
+  /**
+   * Overall substitution rate.
+   */
+  mu: number;
+};
+
+/**
+ * The substitution model fitted to the states of one discrete trait.
+ */
+export type TraitModelSummary = {
+  /**
+   * Metadata column of the trait.
+   */
+  attribute: string;
+  /**
+   * Name of the model.
+   */
+  name: string;
+  /**
+   * Overall substitution rate.
+   */
+  mu: number;
+  /**
+   * Trait states in the order of the rows and columns of `W` and the entries of `pi` in the model document.
+   */
+  states: Array<string>;
 };
 
 /**
@@ -1713,32 +1796,6 @@ export type TreeSummary = {
    * Sum of the branch lengths in the node data file.
    */
   total_branch_length?: number;
-  /**
-   * Substitution models the run fitted, one per alignment file, in partition order.
-   */
-  substitution_models: Array<SubstitutionModel>;
-};
-
-/**
- * The substitution model fitted to one alignment file.
- */
-export type SubstitutionModel = {
-  /**
-   * Partition number: the position of the file in the `--alignment` list, starting at 1.
-   */
-  partition: number;
-  /**
-   * Path of the alignment file.
-   */
-  alignment: string;
-  /**
-   * Name of the model.
-   */
-  name: string;
-  /**
-   * Overall substitution rate.
-   */
-  mu: number;
 };
 
 /**
@@ -5784,6 +5841,16 @@ export type RunRecordMugration = {
   config: MugrationConfig;
   command: 'mugration';
 };
+
+/**
+ * Model of the sites of one alignment file.
+ */
+export type RunModelSequence = SequenceModelSummary;
+
+/**
+ * Model of the states of one discrete trait.
+ */
+export type RunModelTrait = TraitModelSummary;
 
 export type CommandResultsTimetree = {
   command: 'timetree';

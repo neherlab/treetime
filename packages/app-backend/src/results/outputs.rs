@@ -18,11 +18,16 @@ use treetime_utils::io::json::json_read_file;
 use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
 pub fn read_auspice(out_dir: &Path, output_files: &[OutputFile]) -> Result<Option<AuspiceTree>, Report> {
-  output_files
-    .iter()
-    .find(|file| file.kind == OutputSelection::Auspice)
+  shown_auspice(output_files)
     .map(|file| json_read_file(out_dir.join(&file.path)))
     .transpose()
+}
+
+pub fn shown_auspice(output_files: &[OutputFile]) -> Option<&OutputFile> {
+  output_files
+    .iter()
+    .filter(|file| file.kind == OutputSelection::Auspice)
+    .min_by_key(|file| file.partition.as_ref().map_or(0, |partition| partition.number))
 }
 
 #[derive(Default)]
@@ -43,7 +48,11 @@ impl RunOutputs {
   pub fn read(command: AppCommand, out_dir: &Path, output_files: &[OutputFile]) -> Self {
     let mut outputs = Self::default();
     let wanted = result_outputs(command);
-    for file in output_files.iter().filter(|file| wanted.contains(&file.kind)) {
+    let auspice = shown_auspice(output_files);
+    let read = output_files
+      .iter()
+      .filter(|file| wanted.contains(&file.kind) && (file.kind != OutputSelection::Auspice || Some(*file) == auspice));
+    for file in read {
       let path = out_dir.join(&file.path);
       if let Err(err) = outputs.read_file(file.kind, &path) {
         outputs.problems.push(OutputProblem {
@@ -93,6 +102,7 @@ fn result_outputs(command: AppCommand) -> &'static [OutputSelection] {
       OutputSelection::AugurNodeData,
       OutputSelection::Tracelog,
       OutputSelection::CoalescentTsv,
+      OutputSelection::Gtr,
     ],
     AppCommand::Clock => &[
       OutputSelection::Auspice,
@@ -105,6 +115,8 @@ fn result_outputs(command: AppCommand) -> &'static [OutputSelection] {
       OutputSelection::Gtr,
     ],
     AppCommand::Homoplasy => &[OutputSelection::Auspice, OutputSelection::HomoplasyStats],
-    AppCommand::Ancestral | AppCommand::Mugration | AppCommand::Prune => &[OutputSelection::Auspice],
+    AppCommand::Ancestral | AppCommand::Mugration | AppCommand::Prune => {
+      &[OutputSelection::Auspice, OutputSelection::Gtr]
+    },
   }
 }

@@ -1,10 +1,9 @@
-import type { RunRecord, RunResults, AncestorState, MugrationResults, StateChange } from "@neherlab/app-contracts";
+import type { RunRecord, AncestorState, MugrationResults, StateChange } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 
 import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { Empty, EmptyDescription } from "../ui/empty";
-import { OutputFiles } from "./OutputFiles";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
 
 const BRANCHES_SORT = [{ id: "branches", desc: true }];
@@ -64,12 +63,10 @@ function ancestorColumns(colors: StateColors) {
 
 export function MugrationResultsView({
   record,
-  results,
   data,
   tree,
 }: {
   record: RunRecord;
-  results: RunResults;
   data: MugrationResults;
   tree: TreeData | undefined;
 }) {
@@ -142,7 +139,6 @@ export function MugrationResultsView({
           )}
         </Panel>
       </div>
-      <OutputFiles record={record} citation={results.citation} />
     </div>
   );
 }

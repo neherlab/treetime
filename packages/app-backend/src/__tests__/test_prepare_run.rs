@@ -17,9 +17,9 @@ mod tests {
   #[case::mugration_defaults(AppCommand::Mugration, json!(null),             json!(["nwk", "nexus", "augur-node-data", "gtr", "traits-csv", "auspice"]))]
   #[case::optimize_defaults( AppCommand::Optimize,  json!(null),             json!(["nwk", "nexus", "augur-node-data", "gtr", "auspice"]))]
   #[case::prune_defaults(    AppCommand::Prune,     json!(null),             json!(["nwk", "nexus", "gtr", "auspice"]))]
-  #[case::prune_chosen(      AppCommand::Prune,     json!(["mat-pb"]),        json!(["mat-pb", "auspice"]))]
-  #[case::timetree_chosen(   AppCommand::Timetree,  json!(["nwk"]),          json!(["nwk", "auspice", "tracelog", "clock-csv"]))]
-  #[case::timetree_has_one(  AppCommand::Timetree,  json!(["tracelog"]),     json!(["tracelog", "auspice", "clock-csv"]))]
+  #[case::prune_chosen(      AppCommand::Prune,     json!(["mat-pb"]),        json!(["mat-pb", "auspice", "gtr"]))]
+  #[case::timetree_chosen(   AppCommand::Timetree,  json!(["nwk"]),          json!(["nwk", "auspice", "tracelog", "clock-csv", "gtr"]))]
+  #[case::timetree_has_one(  AppCommand::Timetree,  json!(["tracelog"]),     json!(["tracelog", "auspice", "clock-csv", "gtr"]))]
   #[case::clock_all(         AppCommand::Clock,     json!(["all"]),          json!(["all"]))]
   #[trace]
   fn test_prepare_run_adds_the_outputs_the_views_need(

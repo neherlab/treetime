@@ -29,11 +29,13 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use strum::IntoEnumIterator;
 use treetime::cancel::Cancel;
 use treetime::progress::{LogSink, StageSink};
+use treetime_schema::skip_serializing_optionals;
 use treetime_utils::error::report_to_string;
 use treetime_utils::io::json::{JsonPretty, from_json_value, json_write_str};
 use treetime_utils::make_error;
@@ -199,7 +201,7 @@ pub fn run_command(
   args.execute(cancel, stages, log)?;
   Ok(CommandOutcome {
     command: args.command(),
-    output_files: written_files(&args.resolve_outputs()?)?,
+    output_files: written_files(&args.resolve_outputs()?, alignment_paths(args))?,
   })
 }
 
@@ -287,11 +289,24 @@ impl_run_config!(
     TimetreeOutputSelection::Auspice,
     TimetreeOutputSelection::Tracelog,
     TimetreeOutputSelection::ClockCsv,
+    TimetreeOutputSelection::Gtr,
   ]
 );
-impl_run_config!(TreetimeOptimizeArgsRaw, Optimize, [OptimizeOutputSelection::Auspice]);
-impl_run_config!(TreetimePruneArgsRaw, Prune, [PruneOutputSelection::Auspice]);
-impl_run_config!(TreetimeAncestralArgsRaw, Ancestral, [AncestralOutputSelection::Auspice]);
+impl_run_config!(
+  TreetimeOptimizeArgsRaw,
+  Optimize,
+  [OptimizeOutputSelection::Auspice, OptimizeOutputSelection::Gtr]
+);
+impl_run_config!(
+  TreetimePruneArgsRaw,
+  Prune,
+  [PruneOutputSelection::Auspice, PruneOutputSelection::Gtr]
+);
+impl_run_config!(
+  TreetimeAncestralArgsRaw,
+  Ancestral,
+  [AncestralOutputSelection::Auspice, AncestralOutputSelection::Gtr]
+);
 impl_run_config!(
   TreetimeHomoplasyArgsRaw,
   Homoplasy,
@@ -301,7 +316,11 @@ impl_run_config!(
   ]
 );
 impl_run_config!(TreetimeClockArgsRaw, Clock, [ClockOutputSelection::Auspice]);
-impl_run_config!(TreetimeMugrationArgsRaw, Mugration, [MugrationOutputSelection::Auspice]);
+impl_run_config!(
+  TreetimeMugrationArgsRaw,
+  Mugration,
+  [MugrationOutputSelection::Auspice, MugrationOutputSelection::Gtr]
+);
 
 trait RunConfig: RawConfig {
   fn set_run_outputs(&mut self, out_dir: &Path);
@@ -349,14 +368,49 @@ fn run_output_selection<S: Copy + PartialEq + Into<OutputSelection> + IntoEnumIt
   [chosen, missing].concat()
 }
 
-pub(crate) fn written_files(outputs: &ResolvedOutputs) -> Result<Vec<OutputFile>, Report> {
+pub(crate) fn written_files(outputs: &ResolvedOutputs, alignments: &[PathBuf]) -> Result<Vec<OutputFile>, Report> {
+  let partitions = partitions_by_path(outputs, alignments);
   let mut files = vec![];
   for (kind, paths) in outputs.paths_by_selection() {
-    for path in paths {
-      files.extend(existing_files(&path)?.into_iter().map(|path| OutputFile { path, kind }));
+    for planned in paths {
+      let partition = partitions.get(&planned);
+      files.extend(existing_files(&planned)?.into_iter().map(|path| OutputFile {
+        path,
+        kind,
+        partition: partition.cloned(),
+      }));
     }
   }
   Ok(files.into_iter().sorted().dedup_by(|a, b| a.path == b.path).collect())
+}
+
+fn partitions_by_path(outputs: &ResolvedOutputs, alignments: &[PathBuf]) -> BTreeMap<PathBuf, OutputPartition> {
+  alignments
+    .iter()
+    .zip(outputs.partitions())
+    .flat_map(|(alignment, number)| {
+      let partition = OutputPartition {
+        number,
+        alignment: alignment.clone(),
+      };
+      let trees = outputs.partition_tree_outputs(number).into_values();
+      let files = OutputSelection::iter()
+        .filter_map(move |selection| outputs.partition_path(selection, number).map(Path::to_path_buf));
+      trees.chain(files).map(move |path| (path, partition.clone()))
+    })
+    .collect()
+}
+
+fn alignment_paths(args: &CommandArgs) -> &[PathBuf] {
+  match args {
+    CommandArgs::Timetree(args) => &args.alignment.alignment,
+    CommandArgs::Optimize(args) => &args.alignment.alignment,
+    CommandArgs::Prune(args) => &args.alignment.alignment,
+    CommandArgs::Ancestral(args) => &args.alignment.alignment,
+    CommandArgs::Homoplasy(args) => &args.alignment.alignment,
+    CommandArgs::Clock(args) => &args.alignment.alignment,
+    CommandArgs::Mugration(_) => &[],
+  }
 }
 
 fn existing_files(planned: &Path) -> Result<Vec<PathBuf>, Report> {
@@ -412,9 +466,22 @@ pub struct CommandOutcome {
 
 /// One file a command wrote.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct OutputFile {
   /// Path of the file.
   pub path: PathBuf,
   /// Output selection that produced the file.
   pub kind: OutputSelection,
+  /// Alignment file the output belongs to, for an output written once per alignment file.
+  pub partition: Option<OutputPartition>,
+}
+
+/// The alignment file of an output written once per alignment file.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]
+pub struct OutputPartition {
+  /// Partition number: the position of the file in the alignment setting, starting at 1.
+  pub number: usize,
+  /// Path of the alignment file.
+  pub alignment: PathBuf,
 }

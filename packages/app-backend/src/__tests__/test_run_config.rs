@@ -15,7 +15,7 @@ mod tests {
     assert_eq!(
       (
         json!("valid"),
-        json!(["nwk", "auspice", "tracelog", "clock-csv"]),
+        json!(["nwk", "auspice", "tracelog", "clock-csv", "gtr"]),
         json!("out")
       ),
       (
@@ -93,7 +93,7 @@ mod tests {
     );
     assert_eq!(
       json!(
-        "treetime timetree \\\n  --tree t.nwk \\\n  --metadata m.tsv \\\n  --output-selection 'nwk,auspice,tracelog,clock-csv' \\\n  --output-all out"
+        "treetime timetree \\\n  --tree t.nwk \\\n  --metadata m.tsv \\\n  --output-selection 'nwk,auspice,tracelog,clock-csv,gtr' \\\n  --output-all out"
       ),
       response["code"]["command_line_text"]
     );

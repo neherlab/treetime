@@ -1,11 +1,10 @@
-import type { RunRecord, RunResults, AncestralResults, BranchMutations, RecurrentSite } from "@neherlab/app-contracts";
+import type { RunRecord, AncestralResults, BranchMutations, RecurrentSite } from "@neherlab/app-contracts";
 import { useMemo } from "react";
 import ChartColumn from "~icons/lucide/chart-column";
 
 import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
 import { Button } from "../ui/button";
-import { OutputFiles } from "./OutputFiles";
 import { settingText } from "./settingText";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
 import { useRerun } from "./useRerun";
@@ -57,12 +56,10 @@ const BRANCHES_SORT = [{ id: "branches", desc: true }];
 
 export function AncestralResultsView({
   record,
-  results,
   data,
   tree,
 }: {
   record: RunRecord;
-  results: RunResults;
   data: AncestralResults;
   tree: TreeData | undefined;
 }) {
@@ -117,7 +114,6 @@ export function AncestralResultsView({
           />
         </Panel>
       </div>
-      <OutputFiles record={record} citation={results.citation} />
     </div>
   );
 }

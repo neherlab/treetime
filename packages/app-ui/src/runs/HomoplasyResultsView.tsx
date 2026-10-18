@@ -1,11 +1,4 @@
-import type {
-  GapFill,
-  HomoplasyResults,
-  HomoplasySite,
-  HomoplasyStatistics,
-  RunRecord,
-  RunResults,
-} from "@neherlab/app-contracts";
+import type { GapFill, HomoplasyResults, HomoplasySite, HomoplasyStatistics, RunRecord } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import TriangleAlert from "~icons/lucide/triangle-alert";
 
@@ -17,7 +10,6 @@ import { Empty, EmptyDescription } from "../ui/empty";
 import { GenomeSitesChart } from "./GenomeSitesChart";
 import { drmText, homoplasySummary, initialHomoplasyColorBy, pressedMutations, siteAt } from "./homoplasy";
 import { HomoplasyTables } from "./HomoplasyTables";
-import { OutputFiles } from "./OutputFiles";
 import { RecurrentTable } from "./RecurrentTable";
 import { MultiplicityChart, SiteHitsChart } from "./SiteHitsChart";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
@@ -25,12 +17,10 @@ import type { TreeLink } from "./TreeWorkspace";
 
 export function HomoplasyResultsView({
   record,
-  results,
   data,
   tree,
 }: {
   record: RunRecord;
-  results: RunResults;
   data: HomoplasyResults;
   tree: TreeData | undefined;
 }) {
@@ -72,7 +62,6 @@ export function HomoplasyResultsView({
       ) : (
         <TreeView data={tree} colorBy={colorBy} entropy={false} aside={aside} below={below} />
       )}
-      <OutputFiles record={record} citation={results.citation} />
     </div>
   );
 }

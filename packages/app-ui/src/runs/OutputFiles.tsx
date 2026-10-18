@@ -33,6 +33,8 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
 
   const onArchive = useCallback(() => void downloadArchive(), [downloadArchive]);
 
+  const perAlignment = files?.some((file) => (file.partition?.number ?? 0) > 1) ?? false;
+
   return (
     <Panel
       title="Output files"
@@ -54,6 +56,7 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
           <TableHeader>
             <TableRow>
               <TableHead>File</TableHead>
+              {perAlignment && <TableHead>Alignment</TableHead>}
               <TableHead>Contents</TableHead>
               <TableHead className="text-right">Size</TableHead>
               <TableHead>
@@ -63,7 +66,7 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
           </TableHeader>
           <TableBody>
             {files.map((file) => (
-              <FileRow key={file.path} runId={record.id} file={file} />
+              <FileRow key={file.path} runId={record.id} file={file} perAlignment={perAlignment} />
             ))}
           </TableBody>
         </Table>
@@ -83,7 +86,7 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
   );
 }
 
-function FileRow({ runId, file }: { runId: string; file: RunFile }) {
+function FileRow({ runId, file, perAlignment }: { runId: string; file: RunFile; perAlignment: boolean }) {
   const save = useSaveRunOutput();
 
   const download = useCallback(async () => {
@@ -100,6 +103,16 @@ function FileRow({ runId, file }: { runId: string; file: RunFile }) {
       <TableCell>
         <code className="font-mono text-xs">{file.path}</code>
       </TableCell>
+      {perAlignment && (
+        <TableCell className="text-xs">
+          {file.partition !== undefined && (
+            <>
+              {file.partition.number}{" "}
+              <code className="text-muted-foreground font-mono">{file.partition.alignment}</code>
+            </>
+          )}
+        </TableCell>
+      )}
       <TableCell className="text-muted-foreground text-xs whitespace-normal">{file.description}</TableCell>
       <TableCell className="text-right text-xs">{formatBytes(file.size)}</TableCell>
       <TableCell className="text-right">

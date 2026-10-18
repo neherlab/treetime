@@ -29,6 +29,7 @@ mod tests {
         ("ExamplesDownload", "state"),
         ("RunConfigResponse", "status"),
         ("RunEvent", "type"),
+        ("RunModel", "kind"),
         ("RunRecord", "command"),
         ("SettingDifference", "kind"),
         ("TerminalEvent", "status"),
