@@ -125,6 +125,18 @@ target_dir="${root}/.build/cross/${target}"
 out_dir="${target_dir}/${target}/dist"
 mkdir -p .out
 
+# Cargo tracks neither the C compilers nor the native libraries of the image,
+# so a target directory left by another image would keep objects and links of
+# the old toolchain and OpenBLAS. The directory records the image that built it
+# and starts over when the image changes or is unknown.
+image_record="${target_dir}/.image"
+if [[ -d "${target_dir}" && "$(cat "${image_record}" 2>/dev/null)" != "${TREETIME_IMAGE:?dev/docker/run sets TREETIME_IMAGE}" ]]; then
+  printf 'Removing %s, which another image built\n' "${target_dir}" >&2
+  rm -rf "${target_dir}"
+fi
+mkdir -p "${target_dir}"
+printf '%s\n' "${TREETIME_IMAGE}" >"${image_record}"
+
 if [[ -n "${lib}" && "${target}" == *-windows-gnu ]]; then
   # napi-build assumes that a Windows GNU target means the MSYS2 build of Node,
   # which keeps Node-API in libnode.dll: the build scripts of the napi crate and

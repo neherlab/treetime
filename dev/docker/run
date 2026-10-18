@@ -217,6 +217,7 @@ jupyter)
     --env="CARGO_HOME=/cargo-home"
     --env="DYLINT_DRIVER_PATH=${cargo_home}/dylint_drivers"
     --env="TREETIME_BUILD_DIR=${root}/.build/container"
+    --env="TREETIME_IMAGE=${image}"
     --env="BUN_INSTALL_CACHE_DIR=${root}/.cache/bun"
     --env="electron_config_cache=${root}/.cache/electron"
   )
