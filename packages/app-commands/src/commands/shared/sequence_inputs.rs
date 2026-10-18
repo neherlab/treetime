@@ -6,7 +6,7 @@ use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::ancestral::attach::complete_alignment_for_leaves;
+use treetime::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use treetime::cancel::Cancel;
 use treetime::make_error;
 use treetime::progress::{LogSink, StageSink};
@@ -50,7 +50,9 @@ pub(crate) fn read_nwk_fasta(
     &mut sequences.nodes,
     alignment_length,
     &alphabet,
-    args.ignore_missing_alns,
+    MissingLeafLimit::Overridable {
+      ignored: args.ignore_missing_alns,
+    },
     log,
   )?;
   let mask = sequences.mask(alignment_length, &alphabet);

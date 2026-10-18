@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::ancestral::attach::complete_alignment_for_leaves;
+use crate::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use crate::ancestral::plan::{ReconstructionOptions, ReconstructionPlan, reconstruct_partition};
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
@@ -54,7 +54,9 @@ pub fn reconstruct_aa(
       &mut nodes,
       alignment_length,
       &alphabet,
-      params.ignore_missing_alns,
+      MissingLeafLimit::Overridable {
+        ignored: params.ignore_missing_alns,
+      },
       log,
     )?;
     validate_cds_length(&name, annotation.as_ref(), alignment_length)?;

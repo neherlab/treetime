@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-use crate::ancestral::attach::complete_alignment_for_leaves;
+use crate::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::gtr::GTR;
 use crate::partition::fitch::passes::create_fitch_partition;
@@ -161,7 +161,14 @@ pub(crate) fn complete_leaf_sequences(
 ) -> Result<CompletedSequences, Report> {
   let mut sequences = pair_leaf_sequences(graph, names, aln).sequences;
   let length = sequences.common_length()?;
-  complete_alignment_for_leaves(graph, &mut sequences.nodes, length, alphabet, false, &NoopProgress)?;
+  complete_alignment_for_leaves(
+    graph,
+    &mut sequences.nodes,
+    length,
+    alphabet,
+    MissingLeafLimit::Enforced,
+    &NoopProgress,
+  )?;
   let mask = sequences.mask(length, alphabet);
   Ok(CompletedSequences {
     nodes: sequences.nodes,

@@ -17,7 +17,7 @@ pub fn complete_alignment_for_leaves(
   nodes: &mut BTreeMap<GraphNodeKey, NodeSeqInput>,
   alignment_length: usize,
   alphabet: &Alphabet,
-  ignore_missing_alns: bool,
+  limit: MissingLeafLimit,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   let n_leaves = graph.num_leaves();
@@ -42,12 +42,17 @@ pub fn complete_alignment_for_leaves(
     );
   }
 
-  if !ignore_missing_alns && n_missing.to_f64_exact() > n_leaves.to_f64_exact() / 3.0 {
-    return make_error!(
-      "At least one third of terminal nodes ({n_missing} of {n_leaves}) cannot be assigned a sequence. \
-       Are you sure the alignment belongs to the tree? \
-       Pass --ignore-missing-alns to proceed, treating missing tips as fully ambiguous."
+  if limit.applies() && n_missing.to_f64_exact() > n_leaves.to_f64_exact() / 3.0 {
+    let message = format!(
+      "More than one third of terminal nodes ({n_missing} of {n_leaves}) cannot be assigned a sequence. \
+       Are you sure the alignment belongs to the tree?"
     );
+    return match limit {
+      MissingLeafLimit::Enforced => make_error!("{message}"),
+      MissingLeafLimit::Overridable { .. } => {
+        make_error!("{message} Pass --ignore-missing-alns to proceed, treating missing tips as fully ambiguous.")
+      },
+    };
   }
 
   let unknown = alphabet.unknown();
@@ -76,4 +81,16 @@ pub fn sanitize_to_alphabet(seq: &Seq, alphabet: &Alphabet) -> (Seq, usize) {
     })
     .collect();
   (sanitized, changed)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MissingLeafLimit {
+  Enforced,
+  Overridable { ignored: bool },
+}
+
+impl MissingLeafLimit {
+  fn applies(self) -> bool {
+    !matches!(self, Self::Overridable { ignored: true })
+  }
 }
