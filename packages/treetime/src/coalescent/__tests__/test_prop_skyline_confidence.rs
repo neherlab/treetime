@@ -25,7 +25,7 @@ mod tests {
         max_iter: 1000,
       };
 
-      let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints), &BTreeMap::new(), &NoopProgress).unwrap();
+      let result = optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints), None, &BTreeMap::new(), &NoopProgress).unwrap();
 
       prop_assert_array_finite!(result.tc_lower_bounds);
       prop_assert_array_finite!(result.tc_upper_bounds);

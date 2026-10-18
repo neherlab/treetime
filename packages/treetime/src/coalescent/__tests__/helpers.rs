@@ -45,6 +45,7 @@ pub(crate) mod tests {
         ..SkylineParams::default()
       },
       node_times,
+      None,
       &BTreeMap::new(),
       &NoopProgress,
     )
