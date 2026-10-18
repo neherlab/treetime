@@ -3,12 +3,10 @@ use crate::cancel::Cancel;
 use crate::clock::assign_dates::assign_dates;
 use crate::clock::clock_filter::clock_filter;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{
-  ClockFitParams, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
-};
+use crate::clock::clock_regression::{ClockFitParams, ClockTree, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::divergence::root_to_node_divergences;
-use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
+use crate::clock::find_best_root::params::RerootSpec;
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::error::OperationError;
@@ -74,11 +72,9 @@ pub fn run(
 }
 
 pub struct ClockParams {
-  pub clock_params: ClockVarianceParams,
   pub clock_filter: f64,
   pub keep_root: bool,
   pub allow_negative_rate: bool,
-  pub branch_params: BranchPointOptimizationParams,
   pub reroot_spec: RerootSpec,
 }
 
@@ -106,8 +102,6 @@ fn estimate_clock_model_with_prefilter(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockModel, Option<BTreeSet<GraphNodeKey>>), Report> {
-  let options = &params.clock_params;
-  let branch_params = &params.branch_params;
   let reroot_spec = &params.reroot_spec;
   let (keep_root, clock_filter_threshold, allow_negative_rate) =
     (params.keep_root, params.clock_filter, params.allow_negative_rate);
@@ -117,10 +111,8 @@ fn estimate_clock_model_with_prefilter(
       tree,
       &ClockFitParams {
         outliers: &BTreeSet::new(),
-        clock_params: options,
         clock_rate: None,
         keep_root,
-        branch_params,
         reroot_params: &reroot_params,
         prev_clock_rate: None,
       },
@@ -164,10 +156,8 @@ fn estimate_clock_model_with_prefilter(
     tree,
     &ClockFitParams {
       outliers,
-      clock_params: options,
       clock_rate: None,
       keep_root,
-      branch_params,
       reroot_params: &reroot_params,
       prev_clock_rate: None,
     },

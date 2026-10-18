@@ -146,8 +146,6 @@ fn timetree_params(
     reroot_spec,
     allow_negative_rate: args.allow_negative_rate,
     clock_filter: args.clock_filter,
-    covariation: args.covariation,
-    tip_slack: args.tip_slack,
     max_iter: args.max_iter,
     resolve_polytomies: args.resolve_polytomies,
     relax: args.relax.clone(),

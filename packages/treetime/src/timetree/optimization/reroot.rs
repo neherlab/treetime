@@ -1,10 +1,8 @@
-use crate::clock::clock_regression::ClockVarianceParams;
 use crate::clock::clock_regression::{
   ClockFit, ClockFitParams, ClockRerootResult, ClockTree, estimate_clock_model_with_reroot_policy,
 };
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::date_constraints::DateConstraints;
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::progress::LogSink;
 use crate::progress_info;
@@ -57,9 +55,7 @@ pub(crate) fn reroot_tree(
 #[derive(Clone, Copy)]
 pub(crate) struct RerootFitParams<'a> {
   pub outliers: &'a BTreeSet<GraphNodeKey>,
-  pub clock_params: &'a ClockVarianceParams,
   pub clock_rate: Option<f64>,
-  pub branch_params: &'a BranchPointOptimizationParams,
   pub reroot_params: &'a RerootParams,
   pub prev_clock_rate: Option<f64>,
 }
@@ -68,10 +64,8 @@ impl<'a> RerootFitParams<'a> {
   fn fit_params(&self) -> ClockFitParams<'a> {
     ClockFitParams {
       outliers: self.outliers,
-      clock_params: self.clock_params,
       clock_rate: self.clock_rate,
       keep_root: false,
-      branch_params: self.branch_params,
       reroot_params: self.reroot_params,
       prev_clock_rate: self.prev_clock_rate,
     }

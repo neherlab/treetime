@@ -376,10 +376,8 @@ fn update_clock_model(
     },
     &ClockFitParams {
       outliers: inputs.outliers,
-      clock_params: &inputs.context.covariation_clock_params,
       clock_rate,
       keep_root,
-      branch_params: &inputs.context.branch_params,
       reroot_params: &RerootParams::default(),
       prev_clock_rate: Some(previous_clock_rate),
     },

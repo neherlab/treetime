@@ -1,7 +1,7 @@
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::clock_filter::{ClockFilterResult, clock_filter};
-use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
+use crate::clock::clock_regression::ClockFit;
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::reroot::RerootParams;
 use crate::optimize::dispatch::optimize_edge_lengths;
@@ -44,14 +44,7 @@ pub(crate) fn run_pre_loop(
     state
   } else {
     progress_info!(log, "First reroot (pre-ancestral)");
-    reroot(
-      inputs,
-      state,
-      RerootOutliers::None,
-      &ClockVarianceParams::default(),
-      log,
-    )
-    .wrap_err("Failed to reroot tree (pre-ancestral)")?
+    reroot(inputs, state, RerootOutliers::None, log).wrap_err("Failed to reroot tree (pre-ancestral)")?
   };
   let state = if params.clock_filter > 0.0 {
     filter_clock_outliers(inputs, state, log)?
@@ -74,14 +67,7 @@ pub(crate) fn run_pre_loop(
     return Ok(state);
   }
   progress_info!(log, "Reroot (post-ancestral)");
-  reroot(
-    inputs,
-    state,
-    RerootOutliers::Filtered,
-    &inputs.context.covariation_clock_params,
-    log,
-  )
-  .wrap_err("Failed to reroot tree (post-ancestral)")
+  reroot(inputs, state, RerootOutliers::Filtered, log).wrap_err("Failed to reroot tree (post-ancestral)")
 }
 
 fn ml_optimize(
@@ -127,7 +113,6 @@ fn reroot(
   inputs: &PreLoopInputs<'_>,
   state: PreLoopState,
   outliers: RerootOutliers,
-  clock_params: &ClockVarianceParams,
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
@@ -148,9 +133,7 @@ fn reroot(
     &inputs.context.date_constraints,
     &RerootFitParams {
       outliers,
-      clock_params,
       clock_rate: params.clock_rate,
-      branch_params: &inputs.context.branch_params,
       reroot_params: &RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate),
       prev_clock_rate: None,
     },

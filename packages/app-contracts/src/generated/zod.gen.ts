@@ -1441,8 +1441,6 @@ export const zTimetreeConfig = z.strictObject({
   reroot_tips: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
   allow_negative_rate: z.boolean().optional(),
-  tip_slack: z.number().optional(),
-  covariation: z.boolean().optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
@@ -1506,36 +1504,6 @@ export const zClockOutputSelection = z.enum([
 ]);
 
 /**
- * Optimization method selection
- */
-export const zOptimizationMethod = z.union([
-  z.literal('grid'),
-  z.literal('brent'),
-  z.literal('golden-section')
-]);
-
-/**
- * Branch split optimization parameters
- */
-export const zBranchSplitArgs = z.strictObject({
-  method: zOptimizationMethod.optional(),
-  n_points: z.int().gte(0).optional(),
-  brent_max_iters: z.int().gte(0).optional(),
-  brent_tolerance: z.number().optional(),
-  golden_max_iters: z.int().gte(0).optional(),
-  golden_tolerance: z.number().optional()
-});
-
-/**
- * Clock regression model parameters
- */
-export const zClockRegressionArgs = z.strictObject({
-  variance_factor: z.number().optional(),
-  variance_offset: z.number().optional(),
-  variance_offset_leaf: z.number().optional()
-});
-
-/**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
  * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
@@ -1566,7 +1534,6 @@ export const zClockConfig = z.strictObject({
   metadata_delimiters: z.array(z.string().length(1)).optional(),
   date_column: z.string().optional(),
   date_format: z.string().optional(),
-  sequence_length: z.int().gte(0).optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   branch_length_mode: zBranchLengthMode.optional(),
@@ -1576,8 +1543,6 @@ export const zClockConfig = z.strictObject({
   reroot_tips: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
   prune_short: z.boolean().optional(),
-  tip_slack: z.number().optional(),
-  covariation: z.boolean().optional(),
   allow_negative_rate: z.boolean().optional(),
   output_all: z.string().optional(),
   output_nwk_style: z.array(zNwkStyleArg).optional(),
@@ -1600,9 +1565,7 @@ export const zClockConfig = z.strictObject({
   topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
   clock_filter_method: z.string().optional(),
   plot_rtt: z.string().optional(),
-  prune_outliers: z.boolean().optional(),
-  branch_split: zBranchSplitArgs.optional(),
-  clock_regression: zClockRegressionArgs.optional()
+  prune_outliers: z.boolean().optional()
 });
 
 /**

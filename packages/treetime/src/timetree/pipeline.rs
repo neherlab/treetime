@@ -2,10 +2,9 @@ use crate::branch_lengths::branch_length_or_zero;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree, ClockVarianceParams};
+use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree};
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::divergence::root_to_node_divergences;
-use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::gaussian::gaussian_clock;
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
@@ -35,8 +34,7 @@ use crate::timetree::inference::result::given_times;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::optimization::reroot::fit_clock_to_dates;
 use crate::timetree::params::{
-  FinalSequences, TimeMarginalMode, TimetreeContext, TimetreeParams, build_covariation_clock_params,
-  compute_effective_time_marginal,
+  FinalSequences, TimeMarginalMode, TimetreeContext, TimetreeParams, compute_effective_time_marginal,
 };
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
 use crate::timetree::refinement_loop::run_refinement_loop;
@@ -240,15 +238,6 @@ fn prepare_inputs(
 
   let time_marginal = compute_effective_time_marginal(params.time_marginal, params.confidence, log);
 
-  let covariation_clock_params = build_covariation_clock_params(
-    params.covariation,
-    params.sequence_length,
-    params.tip_slack,
-    alignment_length,
-    log,
-  )
-  .map_err(OperationError::InvalidParams)?;
-
   let date_constraints = if let Some(dates) = dates {
     load_date_constraints(dates, graph, log)
       .wrap_err("Failed to load date constraints")
@@ -269,8 +258,6 @@ fn prepare_inputs(
     final_sequences,
     time_marginal,
     date_constraints,
-    covariation_clock_params: covariation_clock_params.unwrap_or_default(),
-    branch_params: BranchPointOptimizationParams::default(),
   })
 }
 
@@ -285,10 +272,8 @@ fn estimate_initial_clock(
   let reroot_params = RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate);
   let fit = ClockFitParams {
     outliers: &BTreeSet::new(),
-    clock_params: &ClockVarianceParams::default(),
     clock_rate: params.clock_rate,
     keep_root: params.keep_root,
-    branch_params: &context.branch_params,
     reroot_params: &reroot_params,
     prev_clock_rate: None,
   };

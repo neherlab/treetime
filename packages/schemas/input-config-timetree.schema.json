@@ -304,19 +304,6 @@
       "default": false,
       "x-cli-flag": "--allow-negative-rate"
     },
-    "tip_slack": {
-      "description": "excess variance associated with terminal nodes accounting for overdispersion of the molecular\nclock",
-      "type": "number",
-      "format": "double",
-      "x-unset": true,
-      "x-cli-flag": "--tip-slack"
-    },
-    "covariation": {
-      "description": "Account for covariation when estimating rates or rerooting using root-to-tip regression",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--covariation"
-    },
     "model": {
       "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
       "$ref": "#/$defs/GtrModelName",

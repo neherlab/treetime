@@ -2752,7 +2752,8 @@ export type TimetreeConfig = {
    *
    * `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.
    * This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined
-   * via quadrature sum. Requires `--covariation` or `--clock-std-dev`.
+   * via quadrature sum. The rate std. dev. is `--clock-std-dev` if given, else estimated by a Gaussian
+   * approximation of the timetree, which needs the alignment or `--sequence-length`.
    * When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
    */
   confidence?: boolean;
@@ -2882,15 +2883,6 @@ export type TimetreeConfig = {
    * By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
    */
   allow_negative_rate?: boolean;
-  /**
-   * excess variance associated with terminal nodes accounting for overdispersion of the molecular
-   * clock
-   */
-  tip_slack?: number;
-  /**
-   * Account for covariation when estimating rates or rerooting using root-to-tip regression
-   */
-  covariation?: boolean;
   /**
    * Substitution model to use
    *
@@ -3254,59 +3246,6 @@ export type TimetreeConfig = {
 export type ClockOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'clock-model' | 'clock-csv' | 'clock-chart-svg' | 'clock-chart-png';
 
 /**
- * Branch split optimization parameters
- */
-export type BranchSplitArgs = {
-  /**
-   * Optimization method to use for finding the best root position
-   */
-  method?: OptimizationMethod;
-  /**
-   * Number of equally-spaced points to evaluate (grid method only)
-   */
-  n_points?: number;
-  /**
-   * Maximum number of iterations for Brent's method
-   */
-  brent_max_iters?: number;
-  /**
-   * Convergence tolerance for Brent's method
-   */
-  brent_tolerance?: number;
-  /**
-   * Maximum number of iterations for golden section search
-   */
-  golden_max_iters?: number;
-  /**
-   * Convergence tolerance for golden section search
-   */
-  golden_tolerance?: number;
-};
-
-/**
- * Optimization method selection
- */
-export type OptimizationMethod = 'grid' | 'brent' | 'golden-section';
-
-/**
- * Clock regression model parameters
- */
-export type ClockRegressionArgs = {
-  /**
-   * Variance scaling factor proportional to branch length
-   */
-  variance_factor?: number;
-  /**
-   * Constant variance offset for all branches
-   */
-  variance_offset?: number;
-  /**
-   * Additional variance offset for leaf (terminal) nodes
-   */
-  variance_offset_leaf?: number;
-};
-
-/**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
  * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
@@ -3366,10 +3305,6 @@ export type ClockConfig = {
    */
   date_format?: string;
   /**
-   * Length of the sequence, used to calculate expected variation in branch length. Required with `--covariation`.
-   */
-  sequence_length?: number;
-  /**
    * Substitution model to use
    *
    * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
@@ -3410,15 +3345,6 @@ export type ClockConfig = {
    */
   keep_root?: boolean;
   prune_short?: boolean;
-  /**
-   * excess variance associated with terminal nodes accounting for overdispersion of the molecular
-   * clock
-   */
-  tip_slack?: number;
-  /**
-   * Account for covariation when estimating rates or rerooting using root-to-tip regression
-   */
-  covariation?: boolean;
   /**
    * By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
    */
@@ -3615,14 +3541,6 @@ export type ClockConfig = {
    * Prune clock outlier tips from the tree (not yet implemented)
    */
   prune_outliers?: boolean;
-  /**
-   * Branch split optimization parameters
-   */
-  branch_split?: BranchSplitArgs;
-  /**
-   * Clock regression model parameters
-   */
-  clock_regression?: ClockRegressionArgs;
 };
 
 /**

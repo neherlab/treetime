@@ -1,6 +1,8 @@
-use crate::clock::clock_regression::{ClockTree, RegressedClockTree};
-use crate::clock::find_best_root::find_best_split::{FindRootResult, find_best_split};
-use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
+use crate::clock::clock_set::ClockSet;
+use crate::clock::clock_state::ClockState;
+use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
+use crate::clock::find_best_root::method_exact::optimize_exact;
+use crate::clock::find_best_root::params::RootObjective;
 use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::progress_info;
@@ -9,26 +11,18 @@ use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::graph::Graph;
 
 pub(crate) fn find_best_root(
-  regressed: RegressedClockTree<'_>,
-  params: &BranchPointOptimizationParams,
+  graph: &Graph,
+  state: &ClockState,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   force_positive: bool,
   objective: RootObjective,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
-  progress_info!(
-    log,
-    "Starting root optimization with method: {params:?}, force_positive={force_positive}"
-  );
+  progress_info!(log, "Starting root optimization, force_positive={force_positive}");
 
-  let RegressedClockTree {
-    tree: ClockTree { graph, .. },
-    state,
-    ..
-  } = regressed;
   let root = graph.get_exactly_one_root()?;
 
   let root_clock_set = state.node(root.key()).clone();
@@ -54,9 +48,12 @@ pub(crate) fn find_best_root(
   let candidates = edges
     .into_par_iter()
     .map(|edge| {
-      find_best_split(regressed, edge, params, objective, names, log)
+      optimize_exact(
+        edge,
+        &BranchPointCostFunction::new(state, edge, branch_lengths, objective),
+      )
     })
-    .collect::<Result<Vec<_>, Report>>()?;
+    .collect::<Vec<_>>();
   let n_candidates = candidates.len();
   let mut rejected_negative_rate = 0;
   for res in candidates {
@@ -89,4 +86,15 @@ pub(crate) fn find_best_root(
   );
 
   Ok(best_res)
+}
+
+#[derive(Debug)]
+pub(crate) struct FindRootResult {
+  pub(crate) edge: Option<GraphEdgeKey>,
+
+  pub(crate) split: f64,
+
+  pub(crate) clock_set: ClockSet,
+
+  pub(crate) chisq: f64,
 }

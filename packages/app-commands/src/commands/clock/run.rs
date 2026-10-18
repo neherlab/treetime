@@ -1,4 +1,4 @@
-use crate::commands::clock::args::{BranchSplitArgs, OptimizationMethodCli, TreetimeClockArgs};
+use crate::commands::clock::args::TreetimeClockArgs;
 use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::output_args::ResolveOutputs;
@@ -12,17 +12,13 @@ use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime::cancel::Cancel;
 use treetime::clock::clock_model::ClockModel;
-use treetime::clock::clock_regression::ClockVarianceParams;
 use treetime::clock::clock_state::ClockInputs;
-use treetime::clock::find_best_root::params::BranchPointOptimizationParams;
 use treetime::clock::pipeline::{self, ClockInput, ClockParams};
 use treetime::clock::rtt::ClockRegressionResult;
-use treetime::make_report;
 use treetime::progress::{LogSink, StageSink};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::cast::ToF64Exact;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_clock(
@@ -51,28 +47,10 @@ pub fn run_clock(
 
   let resolved = clock_args.resolve_outputs()?;
 
-  let clock_params = if clock_args.covariation {
-    let seq_len = (clock_args
-      .sequence_length
-      .ok_or_else(|| make_report!("--sequence-length is required when --covariation is enabled"))?)
-    .to_f64_exact();
-    let tip_slack = clock_args.tip_slack.unwrap_or(3.0);
-    let overdispersion = 2.0;
-    ClockVarianceParams {
-      variance_factor: overdispersion / seq_len,
-      variance_offset: 0.0,
-      variance_offset_leaf: tip_slack * tip_slack / seq_len / seq_len,
-    }
-  } else {
-    clock_args.clock_regression.clock_params.clone().into()
-  };
-
   let params = ClockParams {
-    clock_params,
     clock_filter: clock_args.clock_filter,
     keep_root: clock_args.keep_root,
     allow_negative_rate: clock_args.allow_negative_rate,
-    branch_params: branch_split_to_params(&clock_args.branch_split),
     reroot_spec: clock_args.reroot.spec(&graph, &names)?,
   };
 
@@ -188,15 +166,5 @@ impl ClockDates {
       .filter(|key| outliers.contains(key) || inputs.node(*key).bad_branch)
       .collect();
     Self { num_date, excluded }
-  }
-}
-
-fn branch_split_to_params(args: &BranchSplitArgs) -> BranchPointOptimizationParams {
-  match args.method {
-    OptimizationMethodCli::Grid => BranchPointOptimizationParams::grid_with(args.grid_params.clone().into()),
-    OptimizationMethodCli::Brent => BranchPointOptimizationParams::brent_with(args.brent_params.clone().into()),
-    OptimizationMethodCli::GoldenSection => {
-      BranchPointOptimizationParams::golden_section_with(args.golden_params.clone().into())
-    },
   }
 }

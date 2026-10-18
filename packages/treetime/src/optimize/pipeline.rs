@@ -18,8 +18,6 @@ use crate::partition::result::{PartitionResult, PartitionSequences, PartitionSou
 use crate::partition::set::{PartitionSet, build_partition_set};
 use crate::progress::{LogSink, StageSink};
 use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_min_dev};
-use crate::reroot::params::BrentParams;
-use crate::reroot::variance::VarianceModel;
 use crate::seq::alignment::SequenceSource;
 use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use crate::{progress_info, progress_warn};
@@ -137,7 +135,7 @@ pub fn run(
       &mut convergence,
     )
     .map_err(OperationError::classify)?;
-    partitions = reroot_optimize(&mut input.graph, spec, partitions, &mut branch_lengths, names)
+    partitions = reroot_optimize(&mut input.graph, spec, partitions, &mut branch_lengths, names, log)
       .map_err(OperationError::classify)?;
   }
 
@@ -271,15 +269,12 @@ fn reroot_optimize(
   partitions: PartitionSet,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
-  let variance = VarianceModel::default();
   let topo = RerootTopologyParams::default();
-  let opt_params = BrentParams::default();
 
   let reroot_result = match spec {
-    RerootSpec::Method(RerootMethod::MinDev) => {
-      reroot_min_dev(graph, &variance, &opt_params, topo, branch_lengths, names)?
-    },
+    RerootSpec::Method(RerootMethod::MinDev) => reroot_min_dev(graph, topo, branch_lengths, names, log)?,
     RerootSpec::Tips(tips) => {
       let mrca = common_ancestor(graph, tips)?;
       reroot_at_node(graph, mrca, topo, branch_lengths, names)?
