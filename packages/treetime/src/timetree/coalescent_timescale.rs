@@ -1,20 +1,15 @@
-use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::mean_field::LineageExpectation;
-use crate::coalescent::node_time::CoalescentNodeTimes;
-use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-use crate::make_error;
+use crate::coalescent::skyline::{SkylineParams, expected_log_likelihood, optimize_skyline};
 use crate::progress::LogSink;
 use crate::timetree::coalescent::{
   CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
 };
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, array};
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+use treetime_primitives::LogLh;
 use treetime_utils::make_report;
 
 pub fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_skyline: bool) -> CoalescentMode {
@@ -31,46 +26,37 @@ pub fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent
 
 pub(crate) fn coalescent_timescale(
   mode: CoalescentMode,
-  graph: &Graph,
   skyline_params: &SkylineParams,
-  node_times: &CoalescentNodeTimes,
-  expectation: Option<&LineageExpectation>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  expectation: &LineageExpectation,
   log: &dyn LogSink,
 ) -> Result<CoalescentTimescale, Report> {
   let mode = match mode {
     CoalescentMode::Disabled => CoalescentMode::Constant,
     mode @ (CoalescentMode::Fixed(_) | CoalescentMode::Constant | CoalescentMode::Skyline) => mode,
   };
-  estimate_coalescent_tc(mode, graph, skyline_params, node_times, expectation, names, log)
+  estimate_coalescent_tc(mode, skyline_params, expectation, log)
     .wrap_err("Failed to estimate the coalescent timescale")?
     .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
 }
 
 pub(crate) fn estimate_coalescent_tc(
   mode: CoalescentMode,
-  graph: &Graph,
   skyline_params: &SkylineParams,
-  node_times: &CoalescentNodeTimes,
-  expectation: Option<&LineageExpectation>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  expectation: &LineageExpectation,
   log: &dyn LogSink,
 ) -> Result<Option<CoalescentTimescale>, Report> {
   let n_points = match mode {
     CoalescentMode::Disabled => return Ok(None),
-    CoalescentMode::Fixed(tc) => return fixed_timescale(tc, graph, node_times).map(Some),
+    CoalescentMode::Fixed(tc) => return Ok(Some(fixed_timescale(tc, expectation))),
     CoalescentMode::Constant => 1,
     CoalescentMode::Skyline => skyline_params.n_points,
   };
   let result = optimize_skyline(
-    graph,
     &SkylineParams {
       n_points,
       ..skyline_params.clone()
     },
-    node_times,
     expectation,
-    names,
     log,
   )?;
   Ok(Some(CoalescentTimescale {
@@ -87,23 +73,16 @@ pub(crate) fn estimate_coalescent_tc(
   }))
 }
 
-fn fixed_timescale(tc: f64, graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<CoalescentTimescale, Report> {
-  let lineage_counts =
-    compute_lineage_counts(graph, node_times).wrap_err("Failed to compute coalescent lineage counts")?;
-  let breakpoints = lineage_counts.breakpoints();
-  if breakpoints.is_empty() {
-    return make_error!("Cannot report a fixed coalescent Tc: the tree has no node times to span");
-  }
-  let t_min = breakpoints[0];
-  let t_max = breakpoints[breakpoints.len() - 1];
-  Ok(CoalescentTimescale {
+fn fixed_timescale(tc: f64, expectation: &LineageExpectation) -> CoalescentTimescale {
+  let (t_min, t_max) = expectation.span();
+  CoalescentTimescale {
     report: Some(CoalescentTcReport {
       segment_boundaries: array![t_min, t_max],
       band: None,
       log_likelihood: None,
     }),
     ..CoalescentTimescale::constant(tc)
-  })
+  }
 }
 
 pub(crate) fn build_coalescent_output(
@@ -162,6 +141,20 @@ pub(crate) struct CoalescentTimescale {
 }
 
 impl CoalescentTimescale {
+  /// Expected complete-data log-likelihood of the node times behind `expectation` under this time scale (see
+  /// `fn expected_log_likelihood`), on the segments of the report or, without one, the span of the expectation
+  pub(crate) fn expected_log_likelihood(&self, expectation: &LineageExpectation) -> LogLh {
+    let boundaries = self.report.as_ref().map_or_else(
+      || {
+        let (t_min, t_max) = expectation.span();
+        vec![t_min, t_max]
+      },
+      |report| report.segment_boundaries.to_vec(),
+    );
+    let (i_seg, m_seg) = expectation.segment_statistics(&boundaries);
+    expected_log_likelihood(&i_seg, &m_seg, self.schedule.values().as_slice().unwrap_or_default())
+  }
+
   pub(crate) fn constant(tc: f64) -> Self {
     Self {
       distribution: Distribution::constant(tc),
@@ -185,9 +178,8 @@ pub(crate) struct CoalescentReportBand {
 pub(crate) struct CoalescentSetup {
   pub mode: CoalescentMode,
   pub skyline_params: SkylineParams,
-  /// Lineage counts at point times, for the merger rates of polytomy resolution
-  pub lineage_counts: PiecewiseConstantFn,
-  /// Expected lineage counts from node posteriors, for the mean-field prior on node times
+  /// Expected lineage counts from node posteriors, for the mean-field prior on node times and the merger rates of
+  /// polytomy resolution
   pub lineage_expectation: Arc<LineageExpectation>,
 }
 

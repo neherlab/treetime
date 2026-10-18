@@ -1,8 +1,4 @@
-use crate::coalescent::coalescent::CoalescentModel;
-use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
-use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::mean_field::LineageExpectation;
-use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::make_error;
 use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
@@ -10,24 +6,17 @@ use eyre::{Report, WrapErr};
 use ndarray::{Array1, Array2, array};
 use ndarray_linalg::layout::MatrixLayout;
 use ndarray_linalg::{SolveTridiagonal, Tridiagonal};
-use std::collections::BTreeMap;
 use treetime_distribution::{Distribution, DistributionFormula};
-use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::exp;
 use treetime_utils::cast::ToF64Exact;
 
-/// Fits Tc(t) to the coalescent statistics of the node times: those of `expectation` when given (the expected
-/// statistics under the node posteriors), else those of the lineage counts at `node_times`. The segments come from
-/// the lineage counts at `node_times` either way.
+/// Fits Tc(t) to the expected coalescent statistics of `expectation` on `params.n_points` equal segments over its span
+/// (see `LineageExpectation::span`)
 pub(crate) fn optimize_skyline(
-  graph: &Graph,
   params: &SkylineParams,
-  node_times: &CoalescentNodeTimes,
-  expectation: Option<&LineageExpectation>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  expectation: &LineageExpectation,
   log: &dyn LogSink,
 ) -> Result<SkylineResult, Report> {
   if params.n_points < 1 {
@@ -50,25 +39,9 @@ pub(crate) fn optimize_skyline(
     params.stiffness
   );
 
-  let lineage_counts = compute_lineage_counts(graph, node_times)?;
-  let edges = collect_coalescent_edges(graph, node_times, names, log)?;
-
-  let breakpoints = lineage_counts.breakpoints();
-  if breakpoints.len() < 2 {
-    return make_error!(
-      "Skyline optimization requires at least 2 breakpoints, got {}",
-      breakpoints.len()
-    );
-  }
-  let t_min = breakpoints[0];
-  let t_max = breakpoints[breakpoints.len() - 1];
-
+  let (t_min, t_max) = expectation.span();
   let boundaries = equal_width_boundaries(t_min, t_max, params.n_points);
-
-  let (i_seg, m_seg) = match expectation {
-    Some(expectation) => expectation.segment_statistics(&boundaries),
-    None => accumulate_segment_terms(&lineage_counts, &edges, &boundaries, log),
-  };
+  let (i_seg, m_seg) = expectation.segment_statistics(&boundaries);
 
   let i_tot: f64 = i_seg.iter().sum();
   let m_tot: f64 = m_seg.iter().sum();
@@ -90,9 +63,7 @@ pub(crate) fn optimize_skyline(
     Array1::from(boundaries[1..boundaries.len() - 1].to_vec()),
     tc_values.clone(),
   );
-
-  let model = CoalescentModel::new(&lineage_counts, &tc_distribution)?;
-  let log_likelihood = coalescent_log_likelihood(&edges, &model)?;
+  let log_likelihood = expected_log_likelihood(&i_seg, &m_seg, tc_values.as_slice().unwrap_or_default());
 
   progress_info!(
     log,
@@ -119,6 +90,19 @@ pub(crate) fn optimize_skyline(
     tc_upper_bounds: confidence.tc_upper_bounds,
     log_likelihood,
   })
+}
+
+/// Expected complete-data log-likelihood of the coalescent with `tc_values` on the segments of `i_seg` and `m_seg`
+/// (see `LineageExpectation::segment_statistics`): `-sum_i I_i / Tc_i - sum_i M_i ln Tc_i`
+pub(crate) fn expected_log_likelihood(i_seg: &[f64], m_seg: &[f64], tc_values: &[f64]) -> LogLh {
+  LogLh::new(
+    -i_seg
+      .iter()
+      .zip(m_seg)
+      .zip(tc_values)
+      .map(|((&i, &m), &tc)| i / tc + m * tc.ln())
+      .sum::<f64>(),
+  )
 }
 
 #[derive(Debug, Clone)]
@@ -160,56 +144,6 @@ fn equal_width_boundaries(t_min: f64, t_max: f64, n_seg: usize) -> Vec<f64> {
   boundaries[0] = t_min;
   boundaries[n_seg] = t_max;
   boundaries
-}
-
-fn accumulate_segment_terms(
-  lineage_counts: &PiecewiseConstantFn,
-  edges: &[CoalescentEdgeData],
-  boundaries: &[f64],
-  log: &dyn LogSink,
-) -> (Vec<f64>, Vec<f64>) {
-  let n_seg = boundaries.len() - 1;
-  let breakpoints = lineage_counts.breakpoints();
-  let n_int = breakpoints.len() - 1;
-
-  let mids: Vec<f64> = (0..n_int)
-    .map(|j| f64::midpoint(breakpoints[j], breakpoints[j + 1]))
-    .collect();
-  let rate: Vec<f64> = (0..n_int)
-    .map(|j| {
-      let dt = breakpoints[j + 1] - breakpoints[j];
-      let k = lineage_counts.eval(mids[j]);
-      dt * 0.5 * f64::max(0.5, k - 1.0)
-    })
-    .collect();
-
-  let mut coverage = vec![0_i64; n_int + 1];
-  for edge in edges {
-    let parent_time = edge.parent_time().value();
-    let child_time = edge.child_time().value();
-    let lo = mids.partition_point(|&m| m < parent_time);
-    let hi = mids.partition_point(|&m| m < child_time);
-    coverage[lo] += 1;
-    coverage[hi] -= 1;
-  }
-  let mut running = 0_i64;
-  let mut i_seg = vec![0.0; n_seg];
-  for j in 0..n_int {
-    running += coverage[j];
-    i_seg[segment_index(boundaries, mids[j])] += running.to_f64_exact() * rate[j];
-  }
-
-  let mut m_seg = vec![0.0; n_seg];
-  for edge in edges {
-    let n_siblings = edge.n_siblings();
-    m_seg[segment_index(boundaries, edge.parent_time().value())] += (n_siblings - 1.0) / n_siblings;
-  }
-
-  for i in 0..n_seg {
-    progress_info!(log, "Skyline segment {i}: I = {:.6e}, M = {:.6e}", i_seg[i], m_seg[i]);
-  }
-
-  (i_seg, m_seg)
 }
 
 fn solve_log_tc(
