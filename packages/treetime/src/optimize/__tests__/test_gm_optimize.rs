@@ -257,7 +257,7 @@ mod tests {
       let names_tt_1 = names.clone();
       let result = run_optimize_loop(
         &mut graph,
-        reconstruction,
+        reconstruction.into(),
         &OptimizeLoopSettings {
           max_iter: case.max_iter,
           dp,
@@ -273,7 +273,8 @@ mod tests {
 
       let mut lh_history = result.lh_history.into_iter().map(LogLh::value).collect_vec();
       let (_, final_lh) = result
-        .reconstruction
+        .partitions
+        .into_single_reconstruction()
         .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       lh_history.push(final_lh.value());
 

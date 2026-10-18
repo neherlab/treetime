@@ -70,7 +70,7 @@ mod tests {
       &BTreeMap::new(),
       &EdgeIndels::Included {
         counts: BTreeMap::new(),
-        rate: 1.0,
+        partition_rates: vec![1.0],
       },
       BranchOptMethod::Newton,
       &mut branch_lengths,

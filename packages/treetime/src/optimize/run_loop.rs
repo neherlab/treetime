@@ -2,7 +2,7 @@ use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
-use crate::optimize::gather::InitialGuessEvidence;
+use crate::optimize::gather::{InitialGuessEvidence, SequencePartitions};
 use crate::optimize::indel::EdgeIndels;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::ExistingBranchLengths;
@@ -10,17 +10,13 @@ use crate::optimize::params::{InitialGuessMode, OptimizeLoopSettings, TopologyOp
 use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
-use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
-use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::storage::sparse::SparseNodeState;
+use crate::partition::set::PartitionSet;
 use crate::progress::LogSink;
 use crate::progress_warn;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
 use std::collections::BTreeMap;
-use std::slice;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -32,7 +28,7 @@ use treetime_utils::make_error;
 
 pub(crate) fn run_optimize_loop(
   graph: &mut Graph,
-  reconstruction: MarginalReconstruction,
+  mut partitions: PartitionSet,
   settings: &OptimizeLoopSettings,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -48,17 +44,15 @@ pub(crate) fn run_optimize_loop(
     names: names.clone(),
     convergence: ConvergenceSummary::default(),
   };
-  let mut reconstruction = reconstruction;
-
-  let indels = indel_policy.edge_indels(graph, &reconstruction, &state.branch_lengths);
+  let indels = indel_policy.edge_indels(graph, &partitions, &state.branch_lengths);
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter + 1);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
   let mut best: Option<BestIteration> = None;
 
   for i in 0..max_iter {
-    let iteration = compute_iteration(graph, &state.branch_lengths, reconstruction, &indels)?;
-    reconstruction = iteration.reconstruction;
+    let iteration = compute_iteration(graph, &state.branch_lengths, partitions, &indels)?;
+    partitions = iteration.partitions;
     let lh = iteration.likelihood.total_lh;
     lh_history.push(lh);
     log_iteration_likelihood(i + 1, &iteration.likelihood);
@@ -75,16 +69,16 @@ pub(crate) fn run_optimize_loop(
       break;
     }
 
-    let cleanup = update_branch_lengths(graph, reconstruction, i, settings, &indels, &mut state)?;
-    reconstruction = cleanup.reconstruction;
+    let cleanup = update_branch_lengths(graph, partitions, i, settings, &indels, &mut state)?;
+    partitions = cleanup.partitions;
     if cleanup.topology_changed {
       best = None;
     }
   }
 
   if stopped_at.is_none() && max_iter > 0 {
-    let iteration = compute_iteration(graph, &state.branch_lengths, reconstruction, &indels)?;
-    reconstruction = iteration.reconstruction;
+    let iteration = compute_iteration(graph, &state.branch_lengths, partitions, &indels)?;
+    partitions = iteration.partitions;
     let lh = iteration.likelihood.total_lh;
     lh_history.push(lh);
     log_iteration_likelihood(max_iter + 1, &iteration.likelihood);
@@ -102,14 +96,14 @@ pub(crate) fn run_optimize_loop(
       float_to_significant_digits(best.log_lh.value(), 7)
     );
     state.branch_lengths = best.branch_lengths;
-    reconstruction = reconstruction
+    partitions = partitions
       .marginal_update(graph, &branch_lengths_or_zero(&state.branch_lengths))?
       .0;
   }
 
   Ok(OptimizeLoopResult {
-    reconstruction,
-    indel_rate: indels.included_rate(),
+    indel_rates: indels.partition_rates(partitions.len()),
+    partitions,
     branch_lengths: state.branch_lengths,
     names: state.names,
     lh_history,
@@ -126,9 +120,9 @@ struct LoopState {
 
 #[derive(Clone, Debug)]
 pub(crate) struct OptimizeLoopResult {
-  pub reconstruction: MarginalReconstruction,
+  pub partitions: PartitionSet,
 
-  pub indel_rate: Option<f64>,
+  pub indel_rates: Vec<Option<f64>>,
 
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 
@@ -195,7 +189,7 @@ pub(crate) enum ConvergenceReason {
 
 fn update_branch_lengths(
   graph: &mut Graph,
-  reconstruction: MarginalReconstruction,
+  partitions: PartitionSet,
   iteration: usize,
   settings: &OptimizeLoopSettings,
   indels: &EdgeIndels,
@@ -209,16 +203,16 @@ fn update_branch_lengths(
   let old_branch_lengths = branch_lengths.clone();
   let unconverged = optimize_edge_lengths(
     graph,
-    reconstruction.sequence_length(),
-    &reconstruction,
-    &indels.recount(graph, &reconstruction),
+    partitions.total_length(),
+    &partitions,
+    &indels.recount(graph, &partitions),
     settings.opt_method,
     branch_lengths,
   )?;
   convergence.record(&unconverged, graph, names);
 
   let zero_optimal_edges = if settings.topology_ops.collapse_short_branches {
-    find_zero_optimal_internal_edges(graph, &reconstruction, branch_lengths)
+    find_zero_optimal_internal_edges(graph, &partitions, branch_lengths)
   } else {
     vec![]
   };
@@ -227,7 +221,7 @@ fn update_branch_lengths(
 
   prune_and_merge_in_loop(
     graph,
-    reconstruction,
+    partitions,
     &zero_optimal_edges,
     settings.topology_ops,
     branch_lengths,
@@ -249,21 +243,19 @@ fn log_iteration_likelihood(iteration_number: usize, likelihood: &OptimizeIterat
 fn compute_iteration(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  reconstruction: MarginalReconstruction,
+  partitions: PartitionSet,
   indels: &EdgeIndels,
 ) -> Result<OptimizeIteration, Report> {
-  let (reconstruction, marginal_lh) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
-  let (sparse_lh, dense_lh) = match reconstruction {
-    MarginalReconstruction::Sparse(_) => (marginal_lh, LogLh::ZERO),
-    MarginalReconstruction::Dense(_) => (LogLh::ZERO, marginal_lh),
+  let (partitions, marginal_lh) = partitions.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+  let (sparse_lh, dense_lh) = match partitions {
+    PartitionSet::Sparse(_) => (marginal_lh, LogLh::ZERO),
+    PartitionSet::Dense(_) => (LogLh::ZERO, marginal_lh),
   };
-  let indel_lh = indels
-    .recount(graph, &reconstruction)
-    .total_log_lh(graph, branch_lengths)?;
+  let indel_lh = indels.recount(graph, &partitions).total_log_lh(graph, branch_lengths)?;
   let total_lh = sparse_lh + dense_lh + indel_lh;
 
   Ok(OptimizeIteration {
-    reconstruction,
+    partitions,
     likelihood: OptimizeIterationLikelihood {
       sparse_lh,
       dense_lh,
@@ -275,7 +267,7 @@ fn compute_iteration(
 }
 
 struct OptimizeIteration {
-  reconstruction: MarginalReconstruction,
+  partitions: PartitionSet,
   likelihood: OptimizeIterationLikelihood,
 }
 
@@ -290,7 +282,7 @@ struct OptimizeIterationLikelihood {
 
 pub(crate) fn find_zero_optimal_internal_edges(
   graph: &Graph,
-  reconstruction: &MarginalReconstruction,
+  partitions: &impl SequencePartitions,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Vec<GraphEdgeKey> {
   graph
@@ -301,14 +293,9 @@ pub(crate) fn find_zero_optimal_internal_edges(
         return None;
       }
       let edge_key = edge.key();
-      let has_mutations = match reconstruction {
-        MarginalReconstruction::Sparse(sparse) => sparse
-          .partition
-          .obs_edges
-          .get(&edge_key)
-          .is_some_and(|e| !e.fitch_subs().is_empty() || !e.indels.is_empty()),
-        MarginalReconstruction::Dense(_) => false,
-      };
+      let has_mutations = partitions
+        .partitions()
+        .any(|partition| partition.edge_has_fitch_mutations(edge_key));
       (!has_mutations).then_some(edge_key)
     })
     .collect_vec()
@@ -316,23 +303,13 @@ pub(crate) fn find_zero_optimal_internal_edges(
 
 pub(crate) fn prune_and_merge_in_loop(
   graph: &mut Graph,
-  reconstruction: MarginalReconstruction,
+  mut partitions: PartitionSet,
   zero_optimal_edges: &[GraphEdgeKey],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &mut BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<TopologyCleanup, Report> {
-  let mut reconstruction = reconstruction;
-  let (sparse, sparse_node_states): (
-    &mut [PartitionMarginalSparse],
-    &mut [BTreeMap<GraphNodeKey, SparseNodeState>],
-  ) = match &mut reconstruction {
-    MarginalReconstruction::Sparse(sparse) => (
-      slice::from_mut(&mut sparse.partition),
-      slice::from_mut(&mut sparse.node_states),
-    ),
-    MarginalReconstruction::Dense(_) => (&mut [], &mut []),
-  };
+  let sparse = partitions.sparse_mut();
 
   let mut topology_changed = false;
 
@@ -358,38 +335,28 @@ pub(crate) fn prune_and_merge_in_loop(
     }
   }
 
-  if resolve_polytomies(graph, sparse, sparse_node_states, topology_ops, branch_lengths)? > 0 {
+  if resolve_polytomies(graph, sparse, topology_ops, branch_lengths)? > 0 {
     topology_changed = true;
   }
 
   if !topology_changed {
     return Ok(TopologyCleanup {
-      reconstruction,
+      partitions,
       topology_changed,
     });
   }
 
   graph.build()?;
   *names = assign_node_names(std::mem::take(names), graph)?.names;
-  let reconstruction = match reconstruction {
-    MarginalReconstruction::Sparse(sparse) => MarginalReconstruction::Sparse(SparseReconstruction::seeded(
-      sparse.partition,
-      sparse.gtr,
-      reconcile_node_states(sparse.node_states, &live_node_keys(graph), SparseNodeState::empty),
-    )),
-    MarginalReconstruction::Dense(dense) => {
-      MarginalReconstruction::Dense(DenseReconstruction::seeded(dense.partition, dense.gtr))
-    },
-  };
 
   Ok(TopologyCleanup {
-    reconstruction,
+    partitions: partitions.reconcile_node_states(graph),
     topology_changed,
   })
 }
 
 pub(crate) struct TopologyCleanup {
-  pub reconstruction: MarginalReconstruction,
+  pub partitions: PartitionSet,
   pub topology_changed: bool,
 }
 

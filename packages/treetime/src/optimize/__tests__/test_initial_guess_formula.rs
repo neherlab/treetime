@@ -52,8 +52,8 @@ mod tests {
     let p = &reconstruction;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let sub_count = p.edge_subs(&graph, edge_key)?.len();
-      let effective_length = p.edge_effective_length(&graph, edge_key)?;
+      let sub_count = p.view().edge_subs(&graph, edge_key)?.len();
+      let effective_length = p.view().edge_effective_length(&graph, edge_key)?;
       let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
 
       let expected_bl = if effective_length > 0 {
@@ -91,8 +91,8 @@ mod tests {
     let p = &reconstruction;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let sub_count = p.edge_subs(&graph, edge_key)?.len();
-      let effective_length = p.edge_effective_length(&graph, edge_key)?;
+      let sub_count = p.view().edge_subs(&graph, edge_key)?.len();
+      let effective_length = p.view().edge_effective_length(&graph, edge_key)?;
       let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
 
       let expected_bl = if effective_length > 0 {

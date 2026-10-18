@@ -28,12 +28,18 @@ use treetime_utils::interval::range_union::range_union;
 pub struct PartitionMarginalSparse {
   pub alphabet: Alphabet,
   pub length: usize,
+  pub total_length: usize,
   pub root_sequence: Seq,
   pub obs_nodes: BTreeMap<GraphNodeKey, SparseNodeObs>,
   pub obs_edges: BTreeMap<GraphEdgeKey, SparseEdgeObs>,
 }
 
 impl PartitionMarginalSparse {
+  #[must_use]
+  pub(crate) fn with_total_length(self, total_length: usize) -> Self {
+    Self { total_length, ..self }
+  }
+
   pub(crate) fn edge_subs(
     &self,
     estimates: &BTreeMap<GraphEdgeKey, Vec<Sub>>,
@@ -226,7 +232,15 @@ impl MarginalPasses for PartitionMarginalSparse {
     backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
     forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
   ) -> Result<MutationCounts, Report> {
-    count_transitions_sparse(gtr, self.length, graph, branch_lengths, node_states, backward, forward)
+    count_transitions_sparse(
+      gtr,
+      self.total_length,
+      graph,
+      branch_lengths,
+      node_states,
+      backward,
+      forward,
+    )
   }
 }
 

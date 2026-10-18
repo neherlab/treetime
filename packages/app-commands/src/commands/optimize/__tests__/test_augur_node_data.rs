@@ -156,13 +156,13 @@ mod tests {
     let mask = sequences.mask(length, &alphabet);
     let input = OptimizeInput {
       graph,
-      source: SequenceSource {
+      sources: vec![SequenceSource {
         path: root.join("data/flu/h3n2/20/aln.fasta.xz"),
         alphabet,
         length,
         nodes: sequences.nodes,
         mask,
-      },
+      }],
       branch_lengths,
     };
 

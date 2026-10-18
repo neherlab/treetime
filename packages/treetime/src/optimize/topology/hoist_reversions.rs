@@ -1,9 +1,8 @@
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
+use crate::partition::marginal::reconstruction::SparseReconstruction;
+use crate::partition::storage::sparse::SparseNodeObs;
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use itertools::izip;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -14,14 +13,14 @@ use treetime_primitives::AsciiChar;
 use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn count_child_reversions(
-  sparse: &[PartitionMarginalSparse],
+  sparse: &[SparseReconstruction],
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: Option<GraphEdgeKey>,
   child_edge_key: GraphEdgeKey,
 ) -> usize {
   sparse
     .iter()
-    .map(|partition| {
+    .map(|SparseReconstruction { partition, .. }| {
       let parent_subs: &[Sub] = partition
         .obs_edges
         .get(&parent_edge_key)
@@ -60,14 +59,16 @@ fn augment_parent_with_sibling(parent_subs: &[Sub], sibling_subs: &[Sub]) -> (Ve
 }
 
 pub(crate) fn slide_bifurcating_root_for_child(
-  sparse: &mut [PartitionMarginalSparse],
-  node_states: &mut [BTreeMap<GraphNodeKey, SparseNodeState>],
+  sparse: &mut [SparseReconstruction],
   root_key: GraphNodeKey,
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: GraphEdgeKey,
   child_edge_key: GraphEdgeKey,
 ) -> Result<(), Report> {
-  for (partition, node_states) in izip!(sparse.iter_mut(), node_states.iter_mut()) {
+  for SparseReconstruction {
+    partition, node_states, ..
+  } in sparse.iter_mut()
+  {
     let parent_subs = partition
       .obs_edges
       .get(&parent_edge_key)
@@ -128,7 +129,7 @@ pub(crate) fn slide_bifurcating_root_for_child(
 
 pub(crate) fn hoist_reverting_child(
   graph: &mut Graph,
-  sparse: &mut [PartitionMarginalSparse],
+  sparse: &mut [SparseReconstruction],
   parent_edge_key: GraphEdgeKey,
   child_edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -138,7 +139,7 @@ pub(crate) fn hoist_reverting_child(
   let mut splits = Vec::with_capacity(sparse.len());
   let mut total_parent_subs = 0_usize;
   let mut total_hoisted_subs = 0_usize;
-  for partition in sparse.iter() {
+  for SparseReconstruction { partition, .. } in sparse.iter() {
     let obs_edges = &partition.obs_edges;
     let parent_subs = obs_edges
       .get(&parent_edge_key)
@@ -181,7 +182,7 @@ pub(crate) fn hoist_reverting_child(
   branch_lengths.insert(parent_edge_key, Some(bl_nv));
   branch_lengths.insert(child_edge_key, Some(bl_nc));
 
-  for (partition, split) in sparse.iter_mut().zip(splits) {
+  for (SparseReconstruction { partition, .. }, split) in sparse.iter_mut().zip(splits) {
     let mut node_n = SparseNodeObs::empty(&partition.alphabet);
     node_n.composition = partition.obs_nodes[&u_key].composition.clone();
     partition.obs_nodes.entry(n_key).or_insert(node_n);

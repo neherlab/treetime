@@ -76,7 +76,7 @@ mod tests {
       let parent = node_name(&names, edge.source());
       let child = node_name(&names, edge.target());
       let mut expected = seqs[&parent].clone();
-      for sub in recon.edge_subs(&graph, edge.key())? {
+      for sub in recon.view().edge_subs(&graph, edge.key())? {
         expected[sub.pos()] = sub.qry();
       }
       assert_eq!(

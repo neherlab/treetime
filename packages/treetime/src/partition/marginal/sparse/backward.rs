@@ -48,7 +48,7 @@ fn process_node_backward_indexed(
   context: &GraphPassBackwardContext<'_, &SparseNodeState, SparseEdgeObs, SparseNodeState, SparseEdgeBackward>,
 ) -> Result<GraphPassNodeOutput<SparseNodeState, SparseEdgeBackward>, Report> {
   let alphabet = &partition.alphabet;
-  let length = partition.length;
+  let total_length = partition.total_length;
   let obs = &partition.obs_nodes[&context.key];
 
   let msg_to_parent = if context.is_leaf {
@@ -59,7 +59,7 @@ fn process_node_backward_indexed(
 
   let sequence = Arc::clone(&context.input.sequence);
   let (profile, parent_message) = if let Some((edge_key, edge_obs)) = context.parent_edge {
-    let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
+    let branch_length = fix_branch_length(total_length, branch_lengths[&edge_key]);
     let msg_from_child = if let Some(site_rates) = gtr.site_rates() {
       propagate_raw_per_site(
         gtr,

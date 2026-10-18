@@ -32,7 +32,7 @@ mod tests {
     let names_tt_6 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter,
         dp: 0.0,
@@ -77,7 +77,7 @@ mod tests {
     let names_tt_5 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter: 1,
         dp: 0.0,
@@ -110,7 +110,7 @@ mod tests {
     let names_tt_4 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter,
         dp,
@@ -140,7 +140,7 @@ mod tests {
     let names_tt_3 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter: 0,
         dp: 1e-2,
@@ -170,7 +170,7 @@ mod tests {
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter: 10,
         dp: 0.0,
@@ -213,7 +213,7 @@ mod tests {
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter: 10,
         dp: 0.0,
@@ -228,7 +228,8 @@ mod tests {
     let branch_lengths = result.branch_lengths;
 
     let (reconstruction, final_sparse_lh) = result
-      .reconstruction
+      .partitions
+      .into_single_reconstruction()
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let final_lh = final_sparse_lh.value() + manual_total_indel_log_lh(&graph, &reconstruction, &branch_lengths);
 
@@ -268,7 +269,7 @@ mod tests {
 
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter,
         dp,

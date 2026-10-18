@@ -11,9 +11,10 @@ use crate::optimize::params::OptimizeLoopSettings;
 use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_rates, run_optimize_loop};
 use crate::optimize::solver_outcome::ConvergenceSummary;
-use crate::partition::create::{Representation, build_marginal_partition};
-use crate::partition::marginal::reconstruction::MarginalReconstruction;
-use crate::partition::result::{PartitionResult, PartitionSequences, PartitionSource, SplitSource, split_source};
+use crate::partition::create::Representation;
+use crate::partition::marginal::reconstruction::ReconstructionRef;
+use crate::partition::result::{PartitionResult, PartitionSequences, PartitionSource};
+use crate::partition::set::{PartitionSet, build_partition_set};
 use crate::progress::{LogSink, StageSink};
 use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_min_dev};
 use crate::reroot::params::BrentParams;
@@ -22,6 +23,7 @@ use crate::seq::alignment::SequenceSource;
 use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use crate::{progress_info, progress_warn};
 use eyre::Report;
+use itertools::izip;
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::restrict_node_names;
 use treetime_graph::common_ancestor::common_ancestor;
@@ -55,25 +57,24 @@ pub fn run(
     )));
   }
 
-  let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
-  let SplitSource {
-    source,
-    alphabet,
-    nodes,
-  } = split_source(1, input.source);
+  if input.sources.is_empty() {
+    return Err(OperationError::InvalidInput(make_report!(
+      "Branch length optimization requires at least one alignment"
+    )));
+  }
 
-  let reconstruction = build_marginal_partition(
+  let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
+  let (sources, partitions) = build_partition_set(
     Representation::resolve(params.dense),
     params.model,
     &input.graph,
-    alphabet,
-    nodes,
+    std::mem::take(&mut input.sources),
     &branch_lengths_or_zero(&branch_lengths),
     log,
   )
   .map_err(OperationError::classify)?;
 
-  if matches!(reconstruction, MarginalReconstruction::Dense(_)) {
+  if matches!(partitions, PartitionSet::Dense(_)) {
     if !params.loop_settings.topology_ops.merge_siblings {
       progress_warn!(
         log,
@@ -88,13 +89,12 @@ pub fn run(
     }
   }
 
-  let (mut reconstruction, _) = reconstruction
+  let (mut partitions, _) = partitions
     .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))
     .map_err(OperationError::classify)?;
 
   if params.model == GtrModelName::Infer {
-    let length = reconstruction.sequence_length();
-    normalize_partition_rates(&mut [(length, reconstruction.gtr_mut())], &mut branch_lengths)
+    normalize_partition_rates(&mut partitions.lengths_and_gtrs_mut(), &mut branch_lengths)
       .map_err(OperationError::classify)?;
   }
 
@@ -102,8 +102,8 @@ pub fn run(
     let indels = params
       .loop_settings
       .indel_policy
-      .edge_indels(&input.graph, &reconstruction, &branch_lengths);
-    let evidence = InitialGuessEvidence::gather(&input.graph, &reconstruction).map_err(OperationError::classify)?;
+      .edge_indels(&input.graph, &partitions, &branch_lengths);
+    let evidence = InitialGuessEvidence::gather(&input.graph, &partitions).map_err(OperationError::classify)?;
     apply_initial_guess_mode(
       &input.graph,
       &indels,
@@ -120,9 +120,9 @@ pub fn run(
   if let Some(spec) = &params.reroot_spec {
     progress_info!(log, "Rerooting before optimization: {spec:?}");
     stages.report("Rerooting", 0.2, "");
-    reconstruction = pre_reroot_optimize(
+    partitions = pre_reroot_optimize(
       &input.graph,
-      reconstruction,
+      partitions,
       params.loop_settings.opt_method,
       params.loop_settings.indel_policy,
       &mut branch_lengths,
@@ -130,7 +130,7 @@ pub fn run(
       &mut convergence,
     )
     .map_err(OperationError::classify)?;
-    reconstruction = reroot_optimize(&mut input.graph, spec, reconstruction, &mut branch_lengths, names)
+    partitions = reroot_optimize(&mut input.graph, spec, partitions, &mut branch_lengths, names)
       .map_err(OperationError::classify)?;
   }
 
@@ -140,7 +140,7 @@ pub fn run(
   stages.report("Optimizing branch lengths", 0.3, "");
   let loop_result = run_optimize_loop(
     &mut input.graph,
-    reconstruction,
+    partitions,
     &params.loop_settings,
     branch_lengths,
     &loop_names,
@@ -151,23 +151,19 @@ pub fn run(
   let branch_lengths = loop_result.branch_lengths;
 
   progress_info!(log, "Re-running marginal to populate subs_ml after optimization loop");
-  let (reconstruction, _) = loop_result
-    .reconstruction
+  let (partitions, _) = loop_result
+    .partitions
     .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))
     .map_err(OperationError::classify)?;
 
-  let result = optimize_result(
-    &input.graph,
-    source,
-    &reconstruction,
-    params.model,
-    loop_result.indel_rate,
-  )
-  .map_err(OperationError::InferenceFailed)?;
+  let results = izip!(sources, partitions.iter(), loop_result.indel_rates)
+    .map(|(source, partition, indel_rate)| optimize_result(&input.graph, source, partition, params.model, indel_rate))
+    .collect::<Result<Vec<_>, Report>>()
+    .map_err(OperationError::InferenceFailed)?;
 
   Ok(OptimizeOutput {
     graph: input.graph,
-    results: vec![result],
+    results,
     branch_lengths,
     names: loop_result.names,
   })
@@ -183,7 +179,7 @@ pub struct OptimizeParams {
 
 pub struct OptimizeInput {
   pub graph: Graph,
-  pub source: SequenceSource,
+  pub sources: Vec<SequenceSource>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
@@ -198,7 +194,7 @@ pub struct OptimizeOutput {
 fn optimize_result(
   graph: &Graph,
   source: PartitionSource,
-  reconstruction: &MarginalReconstruction,
+  reconstruction: ReconstructionRef<'_>,
   model_name: GtrModelName,
   indel_rate: Option<f64>,
 ) -> Result<PartitionResult, Report> {
@@ -220,7 +216,7 @@ fn optimize_result(
   Ok(PartitionResult {
     number: source.number,
     path: source.path,
-    length: source.length,
+    length: reconstruction.length(),
     mask: source.mask,
     model_name,
     gtr: Some(reconstruction.gtr().clone()),
@@ -233,20 +229,20 @@ fn optimize_result(
 
 fn pre_reroot_optimize(
   graph: &Graph,
-  reconstruction: MarginalReconstruction,
+  partitions: PartitionSet,
   opt_method: BranchOptMethod,
   indel_policy: IndelPolicy,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   convergence: &mut ConvergenceSummary,
-) -> Result<MarginalReconstruction, Report> {
+) -> Result<PartitionSet, Report> {
   let old_branch_lengths = branch_lengths.clone();
 
-  let indels = indel_policy.edge_indels(graph, &reconstruction, branch_lengths);
+  let indels = indel_policy.edge_indels(graph, &partitions, branch_lengths);
   let unconverged = optimize_edge_lengths(
     graph,
-    reconstruction.sequence_length(),
-    &reconstruction,
+    partitions.total_length(),
+    &partitions,
     &indels,
     opt_method,
     branch_lengths,
@@ -255,7 +251,7 @@ fn pre_reroot_optimize(
 
   apply_damping(branch_lengths, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
   Ok(
-    reconstruction
+    partitions
       .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?
       .0,
   )
@@ -264,10 +260,10 @@ fn pre_reroot_optimize(
 fn reroot_optimize(
   graph: &mut Graph,
   spec: &RerootSpec,
-  reconstruction: MarginalReconstruction,
+  partitions: PartitionSet,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<MarginalReconstruction, Report> {
+) -> Result<PartitionSet, Report> {
   let variance = VarianceModel::default();
   let topo = RerootTopologyParams::default();
   let opt_params = BrentParams::default();
@@ -285,9 +281,9 @@ fn reroot_optimize(
     },
   };
 
-  let reconstruction = reconstruction.apply_reroot(&reroot_result)?;
+  let partitions = partitions.apply_reroot(&reroot_result)?;
   Ok(
-    reconstruction
+    partitions
       .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?
       .0,
   )

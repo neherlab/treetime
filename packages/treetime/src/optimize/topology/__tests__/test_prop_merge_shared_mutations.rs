@@ -10,6 +10,7 @@ mod tests {
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
   use crate::seq::mutation::Sub;
+  use crate::test_utils::sparse_topology_partitions;
   use crate::test_utils::{deletion, find_edge_key, fitch_edge_obs};
   use eyre::Report;
   use itertools::Itertools;
@@ -50,12 +51,12 @@ mod tests {
 
       let original_total: usize = edge_mutations.iter().map(|(_, _, subs)| subs.len()).sum();
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
-      let mut partitions = vec![partition];
+      let mut partitions = sparse_topology_partitions(vec![partition]);
 
       merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
       graph.build().unwrap();
 
-      let p = &partitions[0];
+      let p = &partitions[0].partition;
       let total_after: usize = graph
         .get_edges()
         .filter_map(|e| p.obs_edges.get(&e.key()))
@@ -82,7 +83,7 @@ mod tests {
       let (mut graph, names, edge_mutations, length, mut branch_lengths) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
-      let mut partitions = vec![partition];
+      let mut partitions = sparse_topology_partitions(vec![partition]);
 
       merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
       graph.build().unwrap();
@@ -108,7 +109,7 @@ mod tests {
       let (mut graph, names, edge_mutations, length, mut branch_lengths) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
-      let mut partitions = vec![partition];
+      let mut partitions = sparse_topology_partitions(vec![partition]);
 
       let merged_first = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
       graph.build().unwrap();
@@ -137,7 +138,7 @@ mod tests {
         .collect();
 
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
-      let mut partitions = vec![partition];
+      let mut partitions = sparse_topology_partitions(vec![partition]);
 
       merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
       graph.build().unwrap();
@@ -164,12 +165,12 @@ mod tests {
       let (mut graph, names, edge_mutations, length, mut branch_lengths) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
-      let mut partitions = vec![partition];
+      let mut partitions = sparse_topology_partitions(vec![partition]);
 
       merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
       graph.build().unwrap();
 
-      let p = &partitions[0];
+      let p = &partitions[0].partition;
       for node_ref in graph.get_nodes() {
         let node = node_ref;
         let outbound = node.outbound();
@@ -214,7 +215,7 @@ mod tests {
         ("root", "E", vec![sub_at(0)]),
       ],
     )?;
-    let mut partitions = vec![partition];
+    let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
@@ -249,7 +250,7 @@ mod tests {
         ("root", "D", vec![sub_at(2)]),
       ],
     )?;
-    let mut partitions = vec![partition];
+    let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
@@ -274,7 +275,7 @@ mod tests {
         ("root", "C", vec![sub_at(1)]),
       ],
     )?;
-    let mut partitions = vec![partition];
+    let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
@@ -307,7 +308,7 @@ mod tests {
         ("root", "F", vec![sub_at(6)]),
       ],
     )?;
-    let mut partitions = vec![partition];
+    let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
@@ -344,7 +345,7 @@ mod tests {
       p.obs_edges.get_mut(&edge_d).expect("partition edge D").indels = vec![shared_indel];
     }
 
-    let mut partitions = vec![partition];
+    let mut partitions = sparse_topology_partitions(vec![partition]);
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 2);
@@ -383,7 +384,7 @@ mod tests {
       ],
     )?;
 
-    let mut partitions = vec![p1, p2];
+    let mut partitions = sparse_topology_partitions(vec![p1, p2]);
     let mut branch_lengths = branch_lengths;
     let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
     assert!(merged >= 1);
@@ -491,6 +492,7 @@ mod tests {
       let partition = PartitionMarginalSparse {
         alphabet,
         length,
+        total_length: length,
         root_sequence: ref_seq,
         obs_nodes,
         obs_edges,

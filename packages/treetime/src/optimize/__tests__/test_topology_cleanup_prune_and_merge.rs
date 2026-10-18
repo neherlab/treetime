@@ -22,13 +22,13 @@ mod tests {
     let mut names_tt_13 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &[],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_13,
     )?;
-    let reconstruction = cleanup.reconstruction;
+    let reconstruction = cleanup.partitions.into_single_reconstruction();
     let changed = cleanup.topology_changed;
     assert!(!changed);
     assert_eq!(graph.get_nodes().count(), 4);
@@ -79,13 +79,13 @@ mod tests {
     let mut names_tt_12 = names.clone();
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &[ri_key],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_12,
     )?;
-    let reconstruction = cleanup.reconstruction;
+    let reconstruction = cleanup.partitions.into_single_reconstruction();
     let changed = cleanup.topology_changed;
     assert!(changed);
 
@@ -133,13 +133,13 @@ mod tests {
     let mut names_tt_9 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &[],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_9,
     )?;
-    let reconstruction = cleanup.reconstruction;
+    let reconstruction = cleanup.partitions.into_single_reconstruction();
     let changed = cleanup.topology_changed;
     assert!(changed, "reversion polytomy must be resolved even without a collapse");
 
@@ -204,13 +204,13 @@ mod tests {
     let mut names_tt_6 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &[ri_key],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_6,
     )?;
-    let reconstruction = cleanup.reconstruction;
+    let reconstruction = cleanup.partitions.into_single_reconstruction();
     let changed = cleanup.topology_changed;
     assert!(changed);
 
@@ -270,13 +270,13 @@ mod tests {
     let mut names_tt_5 = names.clone();
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &[ri_key],
       ops,
       &mut branch_lengths,
       &mut names_tt_5,
     )?;
-    let reconstruction = cleanup.reconstruction;
+    let reconstruction = cleanup.partitions.into_single_reconstruction();
     let changed = cleanup.topology_changed;
     assert!(changed, "collapse still fires even with merge disabled");
 
@@ -326,13 +326,13 @@ mod tests {
     let mut names_tt_4 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &[],
       ops,
       &mut branch_lengths,
       &mut names_tt_4,
     )?;
-    let reconstruction = cleanup.reconstruction;
+    let reconstruction = cleanup.partitions.into_single_reconstruction();
     let changed = cleanup.topology_changed;
     assert!(changed, "merge still groups the reverting siblings");
 
@@ -388,13 +388,13 @@ mod tests {
     let mut names_tt_3 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &[],
       ops,
       &mut branch_lengths,
       &mut names_tt_3,
     )?;
-    let reconstruction = cleanup.reconstruction;
+    let reconstruction = cleanup.partitions.into_single_reconstruction();
     let changed = cleanup.topology_changed;
     assert!(!changed, "no topology step runs when all are disabled");
     assert_eq!(graph.get_nodes().count(), node_count_before);

@@ -6,8 +6,7 @@ use crate::optimize::topology::hoist_reversions::{
 };
 use crate::optimize::topology::merge_shared_mutations::merge_single_polytomy;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::storage::sparse::SparseNodeState;
+use crate::partition::marginal::reconstruction::SparseReconstruction;
 use eyre::Report;
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
@@ -17,8 +16,7 @@ use treetime_graph::node::GraphNodeKey;
 
 pub(crate) fn resolve_polytomies(
   graph: &mut Graph,
-  sparse: &mut [PartitionMarginalSparse],
-  node_states: &mut [BTreeMap<GraphNodeKey, SparseNodeState>],
+  sparse: &mut [SparseReconstruction],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
@@ -31,7 +29,7 @@ pub(crate) fn resolve_polytomies(
     let polytomy_keys = find_polytomy_nodes(graph);
     let mut round_changed = 0;
     for node_key in polytomy_keys {
-      if resolve_one(graph, sparse, node_states, node_key, topology_ops, branch_lengths)? {
+      if resolve_one(graph, sparse, node_key, topology_ops, branch_lengths)? {
         round_changed += 1;
       }
     }
@@ -50,8 +48,7 @@ pub(crate) fn resolve_polytomies(
 
 fn resolve_one(
   graph: &mut Graph,
-  sparse: &mut [PartitionMarginalSparse],
-  node_states: &mut [BTreeMap<GraphNodeKey, SparseNodeState>],
+  sparse: &mut [SparseReconstruction],
   node_key: GraphNodeKey,
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -61,8 +58,7 @@ fn resolve_one(
   let mut any_changed = false;
   loop {
     let merged = topology_ops.merge_siblings && merge_single_polytomy(graph, sparse, node_key, branch_lengths)? > 0;
-    let hoisted = topology_ops.flip_parent_child
-      && try_hoist_reverting_child(graph, sparse, node_states, node_key, branch_lengths)?;
+    let hoisted = topology_ops.flip_parent_child && try_hoist_reverting_child(graph, sparse, node_key, branch_lengths)?;
     let retired = retire_created_helpers(graph, sparse, &preexisting, branch_lengths)?;
 
     if !(merged || hoisted || retired) {
@@ -76,8 +72,7 @@ fn resolve_one(
 
 fn try_hoist_reverting_child(
   graph: &mut Graph,
-  sparse: &mut [PartitionMarginalSparse],
-  node_states: &mut [BTreeMap<GraphNodeKey, SparseNodeState>],
+  sparse: &mut [SparseReconstruction],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
@@ -94,14 +89,7 @@ fn try_hoist_reverting_child(
     return Ok(false);
   };
   if let Some((root_key, sibling_edge_key)) = root_and_sibling {
-    slide_bifurcating_root_for_child(
-      sparse,
-      node_states,
-      root_key,
-      parent_edge_key,
-      sibling_edge_key,
-      child_edge_key,
-    )?;
+    slide_bifurcating_root_for_child(sparse, root_key, parent_edge_key, sibling_edge_key, child_edge_key)?;
   }
   hoist_reverting_child(graph, sparse, parent_edge_key, child_edge_key, branch_lengths)?;
   Ok(true)
@@ -128,7 +116,7 @@ fn bifurcating_root_sibling_edge(
 
 fn best_reverting_child(
   graph: &Graph,
-  sparse: &[PartitionMarginalSparse],
+  sparse: &[SparseReconstruction],
   node_key: GraphNodeKey,
   parent_edge_key: GraphEdgeKey,
   sibling_edge_key: Option<GraphEdgeKey>,
@@ -157,7 +145,7 @@ fn best_reverting_child(
 
 fn retire_created_helpers(
   graph: &mut Graph,
-  sparse: &mut [PartitionMarginalSparse],
+  sparse: &mut [SparseReconstruction],
   preexisting: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
@@ -173,10 +161,12 @@ fn retire_created_helpers(
         return None;
       }
       let edge_key = edge.key();
-      let mutation_free = sparse.iter().all(|partition| match partition.obs_edges.get(&edge_key) {
-        Some(edge_data) => edge_data.fitch_subs().is_empty() && edge_data.indels.is_empty(),
-        None => true,
-      });
+      let mutation_free = sparse.iter().all(
+        |reconstruction| match reconstruction.partition.obs_edges.get(&edge_key) {
+          Some(edge_data) => edge_data.fitch_subs().is_empty() && edge_data.indels.is_empty(),
+          None => true,
+        },
+      );
       mutation_free.then_some(edge_key)
     });
 

@@ -196,7 +196,9 @@ mod tests {
         .map(|edge| {
           let subs = match &partition {
             AncestralPartition::Fitch(fitch) => fitch.edges[&edge.key()].fitch_subs().to_vec(),
-            AncestralPartition::Marginal { reconstruction, .. } => reconstruction.edge_subs(graph, edge.key())?,
+            AncestralPartition::Marginal { reconstruction, .. } => {
+              reconstruction.view().edge_subs(graph, edge.key())?
+            },
           };
           Ok((edge.key(), subs.into_iter().sorted_by_key(Sub::pos).collect()))
         })

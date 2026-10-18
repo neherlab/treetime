@@ -66,6 +66,17 @@ impl PartitionMarginalDense {
     })
   }
 
+  #[must_use]
+  pub(crate) fn with_total_length(self, total_length: usize) -> Self {
+    Self {
+      inputs: DenseInputs {
+        min_branch_length: MIN_BRANCH_LENGTH_FRACTION / total_length.to_f64_exact(),
+        ..self.inputs
+      },
+      ..self
+    }
+  }
+
   pub(crate) fn edge_subs(
     &self,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,

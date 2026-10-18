@@ -204,6 +204,7 @@ mod tests {
     let partition = PartitionMarginalSparse {
       alphabet: alphabet.clone(),
       length: 16,
+      total_length: 16,
       root_sequence: seq![AsciiChar::from_byte_unchecked(b'A'); 16],
       obs_nodes: btreemap! {
         root_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet),
@@ -270,6 +271,7 @@ mod tests {
     let partition = PartitionMarginalSparse {
       alphabet: alphabet.clone(),
       length: 8,
+      total_length: 8,
       root_sequence: root_seq.clone(),
       obs_nodes: btreemap! {
         root_key => SparseNodeObs::new(&root_seq, &alphabet),
@@ -341,6 +343,7 @@ mod tests {
     let partition = PartitionMarginalSparse {
       alphabet: alphabet.clone(),
       length: 8,
+      total_length: 8,
       root_sequence: root_seq.clone(),
       obs_nodes: btreemap! {
         root_key => SparseNodeObs::new(&root_seq, &alphabet),
@@ -404,6 +407,7 @@ mod tests {
     let partition = PartitionMarginalSparse {
       alphabet: alphabet.clone(),
       length: 8,
+      total_length: 8,
       root_sequence: root_seq.clone(),
       obs_nodes: btreemap! {
         root_key => SparseNodeObs::new(&root_seq, &alphabet),

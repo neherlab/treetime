@@ -68,7 +68,7 @@ pub fn run_optimize(
 
   let input = OptimizeInput {
     graph,
-    source,
+    sources: vec![source],
     branch_lengths,
   };
 

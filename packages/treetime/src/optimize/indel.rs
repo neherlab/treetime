@@ -1,8 +1,8 @@
 use crate::optimize::branch_length::validate_branch_length_value;
-use crate::optimize::gather::gather_edge_indel_counts;
+use crate::optimize::gather::{SequencePartitions, gather_edge_indel_counts, gather_partition_edge_indel_counts};
 use crate::optimize::likelihood::OptimizationMetrics;
-use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use eyre::Report;
+use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use statrs::function::factorial::ln_factorial;
 use std::collections::BTreeMap;
@@ -23,14 +23,19 @@ impl IndelPolicy {
   pub(crate) fn edge_indels(
     self,
     graph: &Graph,
-    reconstruction: &MarginalReconstruction,
+    partitions: &impl SequencePartitions,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> EdgeIndels {
     match self {
       Self::Include => {
-        let counts = gather_edge_indel_counts(graph, reconstruction);
-        let rate = estimate_indel_rate(graph, &counts, branch_lengths);
-        EdgeIndels::Included { counts, rate }
+        let partition_rates = gather_partition_edge_indel_counts(graph, partitions)
+          .iter()
+          .map(|counts| estimate_indel_rate(graph, counts, branch_lengths))
+          .collect_vec();
+        EdgeIndels::Included {
+          counts: gather_edge_indel_counts(graph, partitions),
+          partition_rates,
+        }
       },
       Self::Exclude => EdgeIndels::Excluded,
     }
@@ -41,17 +46,17 @@ impl IndelPolicy {
 pub(crate) enum EdgeIndels {
   Included {
     counts: BTreeMap<GraphEdgeKey, usize>,
-    rate: f64,
+    partition_rates: Vec<f64>,
   },
   Excluded,
 }
 
 impl EdgeIndels {
-  pub(crate) fn recount(&self, graph: &Graph, reconstruction: &MarginalReconstruction) -> Self {
+  pub(crate) fn recount(&self, graph: &Graph, partitions: &impl SequencePartitions) -> Self {
     match self {
-      Self::Included { rate, .. } => Self::Included {
-        counts: gather_edge_indel_counts(graph, reconstruction),
-        rate: *rate,
+      Self::Included { partition_rates, .. } => Self::Included {
+        counts: gather_edge_indel_counts(graph, partitions),
+        partition_rates: partition_rates.clone(),
       },
       Self::Excluded => Self::Excluded,
     }
@@ -59,21 +64,28 @@ impl EdgeIndels {
 
   pub(crate) fn included_rate(&self) -> Option<f64> {
     match self {
-      Self::Included { rate, .. } => Some(*rate),
+      Self::Included { partition_rates, .. } => Some(partition_rates.iter().sum()),
       Self::Excluded => None,
+    }
+  }
+
+  pub(crate) fn partition_rates(&self, partition_count: usize) -> Vec<Option<f64>> {
+    match self {
+      Self::Included { partition_rates, .. } => partition_rates.iter().copied().map(Some).collect(),
+      Self::Excluded => vec![None; partition_count],
     }
   }
 
   pub(crate) fn rate(&self) -> f64 {
     match self {
-      Self::Included { rate, .. } => *rate,
+      Self::Included { partition_rates, .. } => partition_rates.iter().sum(),
       Self::Excluded => 0.0,
     }
   }
 
   pub(crate) fn term(&self, edge_key: GraphEdgeKey) -> IndelTerm {
     match self {
-      Self::Included { counts, rate } => IndelTerm::new(counts[&edge_key], *rate),
+      Self::Included { counts, .. } => IndelTerm::new(counts[&edge_key], self.rate()),
       Self::Excluded => IndelTerm::new(0, 0.0),
     }
   }
@@ -92,7 +104,7 @@ impl EdgeIndels {
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<LogLh, Report> {
     match self {
-      Self::Included { counts, rate } => total_indel_log_lh(graph, counts, branch_lengths, *rate),
+      Self::Included { counts, .. } => total_indel_log_lh(graph, counts, branch_lengths, self.rate()),
       Self::Excluded => Ok(LogLh::ZERO),
     }
   }

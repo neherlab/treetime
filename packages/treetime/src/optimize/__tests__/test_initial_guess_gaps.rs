@@ -132,7 +132,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = reconstruction.edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.view().edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
 
@@ -150,7 +150,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = reconstruction.edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.view().edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
 
@@ -171,7 +171,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = reconstruction.edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.view().edge_effective_length(&graph, edge_key)?;
       assert_eq!(12, effective);
     }
 
@@ -192,7 +192,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = reconstruction.edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.view().edge_effective_length(&graph, edge_key)?;
       assert_eq!(12, effective);
     }
 
@@ -214,7 +214,7 @@ mod tests {
     let mut found_reduced = false;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = reconstruction.edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.view().edge_effective_length(&graph, edge_key)?;
       if effective < 16 {
         found_reduced = true;
       }
@@ -238,7 +238,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let subs = reconstruction.edge_subs(&graph, edge_key)?;
+      let subs = reconstruction.view().edge_subs(&graph, edge_key)?;
       for sub in &subs {
         assert!(sub.pos() < 4 || sub.pos() >= 8);
       }

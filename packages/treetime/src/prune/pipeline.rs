@@ -13,7 +13,6 @@ use crate::prune::prune::prune_nodes;
 use crate::seq::alignment::SequenceSource;
 use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use eyre::Report;
-use itertools::{Itertools, izip};
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem::take;
 use treetime_graph::assign_node_names::assign_node_names;
@@ -46,7 +45,7 @@ pub fn run(
     vec![]
   };
   let fitch_branch_lengths = branch_lengths_or_zero(&branch_lengths);
-  let (sources, mut partitions, gtrs): (Vec<_>, Vec<_>, Vec<_>) = sources
+  let (sources, mut partitions): (Vec<_>, Vec<_>) = sources
     .into_iter()
     .map(
       |SplitSource {
@@ -54,7 +53,7 @@ pub fn run(
          alphabet,
          nodes,
        }| {
-        let SparseReconstruction { partition, gtr, .. } = build_sparse_reconstruction(
+        let reconstruction = build_sparse_reconstruction(
           GtrModelName::JC69,
           &input.graph,
           alphabet,
@@ -62,13 +61,13 @@ pub fn run(
           &fitch_branch_lengths,
           log,
         )?;
-        Ok((source, partition, gtr))
+        Ok((source, reconstruction))
       },
     )
     .collect::<Result<Vec<_>, Report>>()
     .map_err(OperationError::classify)?
     .into_iter()
-    .multiunzip();
+    .unzip();
 
   prune_nodes(
     &mut input.graph,
@@ -89,8 +88,10 @@ pub fn run(
       .names;
   }
 
-  let results = izip!(sources, partitions, gtrs)
-    .map(|(source, partition, gtr)| prune_result(&input.graph, source, &partition, gtr))
+  let results = sources
+    .into_iter()
+    .zip(partitions)
+    .map(|(source, SparseReconstruction { partition, gtr, .. })| prune_result(&input.graph, source, &partition, gtr))
     .collect::<Result<Vec<_>, Report>>()
     .map_err(OperationError::InferenceFailed)?;
 

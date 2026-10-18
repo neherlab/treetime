@@ -6,4 +6,5 @@ pub mod fitch;
 pub mod marginal;
 pub mod optimize;
 pub mod result;
+pub mod set;
 pub mod storage;

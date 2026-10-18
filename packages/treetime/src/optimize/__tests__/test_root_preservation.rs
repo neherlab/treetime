@@ -346,7 +346,7 @@ mod tests {
         &contributions,
         &EdgeIndels::Included {
           counts: indel_counts.clone(),
-          rate: indel_rate,
+          partition_rates: vec![indel_rate],
         },
         BranchOptMethod::Brent,
         &mut setup.branch_lengths,

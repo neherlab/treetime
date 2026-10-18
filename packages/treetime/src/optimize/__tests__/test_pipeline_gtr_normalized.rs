@@ -54,7 +54,7 @@ mod tests {
     };
     let input = OptimizeInput {
       graph,
-      source: sequence_source(alphabet, sequences)?,
+      sources: vec![sequence_source(alphabet, sequences)?],
       branch_lengths,
     };
 

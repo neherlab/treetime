@@ -474,7 +474,7 @@ mod tests {
         .get_edges()
         .map(|edge| {
           let edge_key = edge.key();
-          let actual = recon.edge_subs(&graph, edge_key)?;
+          let actual = recon.view().edge_subs(&graph, edge_key)?;
           Ok((edge_key, actual))
         })
         .collect::<Result<BTreeMap<_, _>, Report>>()?

@@ -40,7 +40,7 @@ mod tests {
     let (updated, _) = seeded.marginal_update(&graph, &branch_lengths_or_zero(&helpers::branch_lengths()?))?;
     let partition = MarginalReconstruction::Sparse(updated);
     for edge in graph.get_edges() {
-      let expected = partition.edge_subs(&graph, edge.key())?.len();
+      let expected = partition.view().edge_subs(&graph, edge.key())?.len();
       assert_eq!(Some(expected), partition.edge_sub_count(&graph, edge.key())?);
     }
     Ok(())

@@ -4,6 +4,7 @@ mod tests {
   use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::seq::mutation::Sub;
+  use crate::test_utils::sparse_topology_partition;
   use proptest::prelude::*;
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
@@ -19,11 +20,10 @@ mod tests {
       own_counts in prop::collection::vec(0_usize..3, 3..7),
     ) {
       let (mut graph, names, partition, node_states, before, mut branch_lengths) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
-      let mut sparse = vec![partition];
-    let mut node_states = vec![node_states];
+      let mut sparse = vec![sparse_topology_partition(partition, node_states)];
 
-      let changed = resolve_polytomies(&mut graph, &mut sparse, &mut node_states, TopologyOps::default(), &mut branch_lengths).unwrap();
-      let after = helpers::total_subs(&graph, &sparse[0]);
+      let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
+      let after = helpers::total_subs(&graph, &sparse[0].partition);
 
       prop_assert!(after <= before, "mutation count increased: before={before} after={after}");
       if changed > 0 {
@@ -40,10 +40,9 @@ mod tests {
     ) {
       let (mut graph, names, partition, node_states, _before, mut branch_lengths) = helpers::build_case(n_children, k, &revert_masks, &own_counts);
       let leaves_before = helpers::leaf_names(&names, &graph);
-      let mut sparse = vec![partition];
-    let mut node_states = vec![node_states];
+      let mut sparse = vec![sparse_topology_partition(partition, node_states)];
 
-      resolve_polytomies(&mut graph, &mut sparse, &mut node_states, TopologyOps::default(), &mut branch_lengths).unwrap();
+      resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
 
       prop_assert_eq!(helpers::leaf_names(&names, &graph), leaves_before);
 
@@ -71,11 +70,10 @@ mod tests {
     ) {
       let (mut graph, partition, node_states, before, expected_after, mut branch_lengths) =
         helpers::build_bifurcating_case(g, a, &own_counts);
-      let mut sparse = vec![partition];
-    let mut node_states = vec![node_states];
+      let mut sparse = vec![sparse_topology_partition(partition, node_states)];
 
-      let changed = resolve_polytomies(&mut graph, &mut sparse, &mut node_states, TopologyOps::default(), &mut branch_lengths).unwrap();
-      let after = helpers::total_subs(&graph, &sparse[0]);
+      let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths).unwrap();
+      let after = helpers::total_subs(&graph, &sparse[0].partition);
 
       prop_assert_eq!(after, expected_after, "did not reach the bipartition cost");
       prop_assert!(after <= before);
@@ -248,6 +246,7 @@ mod tests {
       let partition = PartitionMarginalSparse {
         alphabet,
         length,
+        total_length: length,
         root_sequence: ref_seq,
         obs_nodes,
         obs_edges,

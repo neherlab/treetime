@@ -61,7 +61,7 @@ mod tests {
     let names_tt_2 = names;
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter,
         dp: 0.1,
@@ -124,7 +124,7 @@ mod tests {
     let names_tt_1 = names;
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter: 10,
         dp: 0.1,

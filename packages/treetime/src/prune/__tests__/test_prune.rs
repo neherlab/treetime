@@ -1,11 +1,13 @@
 #[cfg(test)]
 pub(super) mod tests {
   use crate::alphabet::alphabet::Alphabet;
+  use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs};
   use crate::prune::prune::prune_nodes;
   use crate::seq::mutation::Sub;
   use crate::test_utils::node_keys_named;
+  use crate::test_utils::sparse_topology_partitions;
   use crate::test_utils::{find_edge_key, fitch_edge_obs};
   use eyre::Report;
   use helpers::*;
@@ -597,7 +599,7 @@ pub(super) mod tests {
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
-        Vec<PartitionMarginalSparse>,
+        Vec<SparseReconstruction>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
       Report,
@@ -614,6 +616,7 @@ pub(super) mod tests {
         let mut partition = PartitionMarginalSparse {
           alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
           length: 100,
+          total_length: 100,
           root_sequence: seq![],
           obs_nodes: btreemap! {},
           obs_edges: btreemap! {},
@@ -637,7 +640,7 @@ pub(super) mod tests {
           }
         }
 
-        vec![partition]
+        sparse_topology_partitions(vec![partition])
       };
 
       Ok((graph, names, partitions, branch_lengths))
@@ -650,7 +653,7 @@ pub(super) mod tests {
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
-        Vec<PartitionMarginalSparse>,
+        Vec<SparseReconstruction>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
       Report,
@@ -667,6 +670,7 @@ pub(super) mod tests {
         let mut partition = PartitionMarginalSparse {
           alphabet: Alphabet::new(crate::alphabet::alphabet::AlphabetName::Nuc)?,
           length: 100,
+          total_length: 100,
           root_sequence: seq![],
           obs_nodes: btreemap! {},
           obs_edges: btreemap! {},
@@ -690,7 +694,7 @@ pub(super) mod tests {
           }
         }
 
-        vec![partition]
+        sparse_topology_partitions(vec![partition])
       };
 
       Ok((graph, names, partitions, branch_lengths))

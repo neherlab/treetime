@@ -225,7 +225,7 @@ pub(super) mod tests {
       &contributions_low,
       &EdgeIndels::Included {
         counts: indel_counts_low,
-        rate: 1.0,
+        partition_rates: vec![1.0],
       },
       BranchOptMethod::Newton,
       &mut branch_lengths_low,
@@ -239,7 +239,7 @@ pub(super) mod tests {
       &contributions_high,
       &EdgeIndels::Included {
         counts: indel_counts_high,
-        rate: 8.0,
+        partition_rates: vec![8.0],
       },
       BranchOptMethod::Newton,
       &mut branch_lengths_high,

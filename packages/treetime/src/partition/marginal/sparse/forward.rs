@@ -71,7 +71,7 @@ fn process_node_forward_indexed(
   context: GraphPassForwardContext<'_, SparseNodeState, SparseEdgeBackward, SparseNodeState>,
 ) -> Result<GraphPassNodeOutput<SparseNodeState, SparseEdgeForwardOut>, Report> {
   let alphabet = &partition.alphabet;
-  let length = partition.length;
+  let total_length = partition.total_length;
   let obs = &partition.obs_nodes[&context.key];
   let mut node = context.input;
 
@@ -104,7 +104,7 @@ fn process_node_forward_indexed(
     }
     let sites = events.finish();
 
-    let branch_length = fix_branch_length(length, branch_lengths[&edge_key]);
+    let branch_length = fix_branch_length(total_length, branch_lengths[&edge_key]);
     let msg_from_parent = if let Some(site_rates) = gtr.site_rates() {
       propagate_raw_per_site(
         gtr,

@@ -22,7 +22,7 @@ mod tests {
       &params_with(Some(RerootSpec::Method(RerootMethod::MinDev))),
       OptimizeInput {
         graph,
-        source: sequence_source(alphabet, sequences)?,
+        sources: vec![sequence_source(alphabet, sequences)?],
         branch_lengths,
       },
       &names,
@@ -51,7 +51,7 @@ mod tests {
       &params_with(Some(RerootSpec::Tips(tips))),
       OptimizeInput {
         graph,
-        source: sequence_source(alphabet, sequences)?,
+        sources: vec![sequence_source(alphabet, sequences)?],
         branch_lengths,
       },
       &names,
@@ -78,7 +78,7 @@ mod tests {
       &params,
       OptimizeInput {
         graph,
-        source: sequence_source(alphabet, sequences)?,
+        sources: vec![sequence_source(alphabet, sequences)?],
         branch_lengths,
       },
       &names,
@@ -112,7 +112,7 @@ mod tests {
       &params,
       OptimizeInput {
         graph,
-        source: sequence_source(alphabet, sequences)?,
+        sources: vec![sequence_source(alphabet, sequences)?],
         branch_lengths,
       },
       &names,
@@ -143,7 +143,7 @@ mod tests {
       &params_with(None),
       OptimizeInput {
         graph,
-        source: sequence_source(alphabet, sequences)?,
+        sources: vec![sequence_source(alphabet, sequences)?],
         branch_lengths,
       },
       &names,

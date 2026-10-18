@@ -145,7 +145,7 @@ mod tests {
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter,
         dp,
@@ -157,7 +157,7 @@ mod tests {
       branch_lengths,
       &names_tt_2,
     )?;
-    let reconstruction = result.reconstruction;
+    let reconstruction = result.partitions.into_single_reconstruction();
 
     assert!(
       matches!(
@@ -196,7 +196,7 @@ mod tests {
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter: 10,
         dp,
@@ -208,7 +208,7 @@ mod tests {
       branch_lengths,
       &names_tt_1,
     )?;
-    let reconstruction = result.reconstruction;
+    let reconstruction = result.partitions.into_single_reconstruction();
 
     let (_, final_lh) = compute_total_lh(&graph, reconstruction, &result.branch_lengths)?;
     assert!(

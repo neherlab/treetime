@@ -42,27 +42,27 @@ macro_rules! each_kind {
 }
 
 impl MarginalReconstruction {
-  pub(crate) fn gtr(&self) -> &GTR {
-    each_kind!(self, |reconstruction| &reconstruction.gtr)
+  pub(crate) fn view(&self) -> ReconstructionRef<'_> {
+    match self {
+      Self::Dense(reconstruction) => ReconstructionRef::Dense(reconstruction),
+      Self::Sparse(reconstruction) => ReconstructionRef::Sparse(reconstruction),
+    }
   }
 
-  pub(crate) fn gtr_mut(&mut self) -> &mut GTR {
-    each_kind!(self, |reconstruction| &mut reconstruction.gtr)
+  pub(crate) fn gtr(&self) -> &GTR {
+    self.view().gtr()
   }
 
   pub(crate) fn sequence_length(&self) -> usize {
-    each_kind!(self, |reconstruction| reconstruction.partition.length)
+    self.view().length()
   }
 
   pub fn alphabet(&self) -> &Alphabet {
-    each_kind!(self, |reconstruction| &reconstruction.partition.alphabet)
+    self.view().alphabet()
   }
 
   pub(crate) fn graph_log_lh(&self, graph: &Graph) -> Result<LogLh, Report> {
-    let root_key = graph.root_key()?;
-    Ok(each_kind!(self, |reconstruction| reconstruction
-      .partition
-      .get_log_lh(&reconstruction.node_states, root_key)))
+    self.view().graph_log_lh(graph)
   }
 
   pub(crate) fn marginal_update(
@@ -97,6 +97,97 @@ impl MarginalReconstruction {
   }
 
   pub(crate) fn node_sequence(&self, graph: &Graph, impute: bool, node_key: GraphNodeKey) -> Result<Seq, Report> {
+    self.view().node_sequence(graph, impute, node_key)
+  }
+
+  pub(crate) fn stream_sequences(
+    &self,
+    graph: &Graph,
+    impute: bool,
+    track: SeqTrack<'_>,
+    include_leaves: bool,
+    report_unknown: bool,
+    sink: Option<&mut (dyn SeqSink + '_)>,
+  ) -> Result<SequenceMutations, OperationError> {
+    self
+      .view()
+      .stream_sequences(graph, impute, track, include_leaves, report_unknown, sink)
+  }
+
+  pub(crate) fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> SeqOverlay {
+    each_kind!(self, |reconstruction| reconstruction
+      .partition
+      .extract_ancestral_sequence(&reconstruction.node_states, node_key))
+  }
+
+  pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
+    self.view().root_sequence(graph)
+  }
+
+  pub(crate) fn edge_sub_count(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Option<usize>, Report> {
+    self.view().edge_sub_count(graph, edge_key)
+  }
+
+  pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+    self.view().edge_indels(edge_key)
+  }
+
+  pub fn edge_mutations(
+    &self,
+    graph: &Graph,
+    edge_key: GraphEdgeKey,
+    track: &MutationTrack,
+  ) -> Result<Vec<Mutation>, Report> {
+    self.view().edge_mutations(graph, edge_key, track)
+  }
+
+  pub(crate) fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
+    self.view().create_edge_contribution(edge_key)
+  }
+
+  pub(crate) fn apply_reroot(self, changes: &RerootResult) -> Result<Self, Report> {
+    Ok(match self {
+      Self::Dense(reconstruction) => Self::Dense(reconstruction.reseeded()),
+      Self::Sparse(reconstruction) => Self::Sparse(reconstruction.apply_reroot(changes)?),
+    })
+  }
+
+  #[must_use]
+  pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
+    match self {
+      Self::Dense(reconstruction) => Self::Dense(reconstruction.reseeded()),
+      Self::Sparse(reconstruction) => Self::Sparse(reconstruction.reconcile_topology(graph)),
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ReconstructionRef<'a> {
+  Dense(&'a DenseReconstruction),
+  Sparse(&'a SparseReconstruction),
+}
+
+impl<'a> ReconstructionRef<'a> {
+  pub(crate) fn gtr(self) -> &'a GTR {
+    each_kind!(self, |reconstruction| &reconstruction.gtr)
+  }
+
+  pub(crate) fn length(self) -> usize {
+    each_kind!(self, |reconstruction| reconstruction.partition.length)
+  }
+
+  pub(crate) fn alphabet(self) -> &'a Alphabet {
+    each_kind!(self, |reconstruction| &reconstruction.partition.alphabet)
+  }
+
+  pub(crate) fn graph_log_lh(self, graph: &Graph) -> Result<LogLh, Report> {
+    let root_key = graph.root_key()?;
+    Ok(each_kind!(self, |reconstruction| reconstruction
+      .partition
+      .get_log_lh(&reconstruction.node_states, root_key)))
+  }
+
+  pub(crate) fn node_sequence(self, graph: &Graph, impute: bool, node_key: GraphNodeKey) -> Result<Seq, Report> {
     match self {
       Self::Dense(reconstruction) => {
         reconstruction
@@ -114,7 +205,7 @@ impl MarginalReconstruction {
   }
 
   pub(crate) fn stream_sequences(
-    &self,
+    self,
     graph: &Graph,
     impute: bool,
     track: SeqTrack<'_>,
@@ -156,19 +247,13 @@ impl MarginalReconstruction {
     })
   }
 
-  pub(crate) fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> SeqOverlay {
-    each_kind!(self, |reconstruction| reconstruction
-      .partition
-      .extract_ancestral_sequence(&reconstruction.node_states, node_key))
-  }
-
-  pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
+  pub(crate) fn root_sequence(self, graph: &Graph) -> Result<Seq, Report> {
     each_kind!(self, |reconstruction| reconstruction
       .partition
       .root_sequence(&reconstruction.node_states, graph))
   }
 
-  pub(crate) fn edge_subs(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+  pub(crate) fn edge_subs(self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
     match self {
       Self::Dense(reconstruction) => reconstruction
         .partition
@@ -179,14 +264,14 @@ impl MarginalReconstruction {
     }
   }
 
-  pub(crate) fn edge_sub_count(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Option<usize>, Report> {
+  pub(crate) fn edge_sub_count(self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Option<usize>, Report> {
     match self {
       Self::Dense(_) => Ok(Some(self.edge_subs(graph, edge_key)?.len())),
       Self::Sparse(reconstruction) => Ok(reconstruction.edges.estimates.get(&edge_key).map(Vec::len)),
     }
   }
 
-  pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
+  pub(crate) fn edge_indels(self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     match self {
       Self::Dense(reconstruction) => reconstruction
         .partition
@@ -195,8 +280,8 @@ impl MarginalReconstruction {
     }
   }
 
-  pub fn edge_mutations(
-    &self,
+  pub(crate) fn edge_mutations(
+    self,
     graph: &Graph,
     edge_key: GraphEdgeKey,
     track: &MutationTrack,
@@ -204,7 +289,7 @@ impl MarginalReconstruction {
     combine_edge_mutations(self.edge_subs(graph, edge_key)?, &self.edge_indels(edge_key), track)
   }
 
-  pub(crate) fn edge_effective_length(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
+  pub(crate) fn edge_effective_length(self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<usize, Report> {
     match self {
       Self::Dense(reconstruction) => {
         reconstruction
@@ -215,7 +300,7 @@ impl MarginalReconstruction {
     }
   }
 
-  pub(crate) fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
+  pub(crate) fn create_edge_contribution(self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
     match self {
       Self::Dense(reconstruction) => reconstruction.partition.create_edge_contribution(
         &reconstruction.gtr,
@@ -232,47 +317,23 @@ impl MarginalReconstruction {
     }
   }
 
-  pub(crate) fn edge_indel_count(&self, edge_key: GraphEdgeKey) -> usize {
+  pub(crate) fn edge_has_fitch_mutations(self, edge_key: GraphEdgeKey) -> bool {
+    match self {
+      Self::Dense(_) => false,
+      Self::Sparse(reconstruction) => reconstruction
+        .partition
+        .obs_edges
+        .get(&edge_key)
+        .is_some_and(|edge| !edge.fitch_subs().is_empty() || !edge.indels.is_empty()),
+    }
+  }
+
+  pub(crate) fn edge_indel_count(self, edge_key: GraphEdgeKey) -> usize {
     match self {
       Self::Dense(reconstruction) => reconstruction
         .partition
         .edge_indel_count(&reconstruction.edges.estimates, edge_key),
       Self::Sparse(reconstruction) => reconstruction.partition.edge_indel_count(edge_key),
-    }
-  }
-
-  pub(crate) fn apply_reroot(self, changes: &RerootResult) -> Result<Self, Report> {
-    Ok(match self {
-      Self::Dense(reconstruction) => Self::Dense(DenseReconstruction::seeded(
-        reconstruction.partition,
-        reconstruction.gtr,
-      )),
-      Self::Sparse(reconstruction) => Self::Sparse(reroot_sparse(
-        reconstruction.partition,
-        reconstruction.gtr,
-        reconstruction.node_states,
-        changes,
-      )?),
-    })
-  }
-
-  #[must_use]
-  pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
-    match self {
-      Self::Dense(reconstruction) => Self::Dense(DenseReconstruction::seeded(
-        reconstruction.partition,
-        reconstruction.gtr,
-      )),
-      Self::Sparse(reconstruction) => {
-        let live_nodes = live_node_keys(graph);
-        let mut partition = reconstruction.partition;
-        partition.reconcile_topology(graph);
-        Self::Sparse(SparseReconstruction::seeded(
-          partition,
-          reconstruction.gtr,
-          reconcile_node_states(reconstruction.node_states, &live_nodes, SparseNodeState::empty),
-        ))
-      },
     }
   }
 }
@@ -326,6 +387,39 @@ impl SparseReconstruction {
       log_lh,
     ))
   }
+
+  #[must_use]
+  pub(crate) fn with_total_length(self, total_length: usize) -> Self {
+    Self {
+      partition: self.partition.with_total_length(total_length),
+      ..self
+    }
+  }
+
+  pub(crate) fn apply_reroot(self, changes: &RerootResult) -> Result<Self, Report> {
+    reroot_sparse(self.partition, self.gtr, self.node_states, changes)
+  }
+
+  #[must_use]
+  pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
+    let live_nodes = live_node_keys(graph);
+    let mut partition = self.partition;
+    partition.reconcile_topology(graph);
+    Self::seeded(
+      partition,
+      self.gtr,
+      reconcile_node_states(self.node_states, &live_nodes, SparseNodeState::empty),
+    )
+  }
+
+  #[must_use]
+  pub(crate) fn reconcile_node_states(self, graph: &Graph) -> Self {
+    Self::seeded(
+      self.partition,
+      self.gtr,
+      reconcile_node_states(self.node_states, &live_node_keys(graph), SparseNodeState::empty),
+    )
+  }
 }
 
 #[derive(Clone, Debug)]
@@ -344,6 +438,19 @@ impl DenseReconstruction {
       node_states: BTreeMap::new(),
       edges: DenseMarginalEdges::default(),
     }
+  }
+
+  #[must_use]
+  pub(crate) fn with_total_length(self, total_length: usize) -> Self {
+    Self {
+      partition: self.partition.with_total_length(total_length),
+      ..self
+    }
+  }
+
+  #[must_use]
+  pub(crate) fn reseeded(self) -> Self {
+    Self::seeded(self.partition, self.gtr)
   }
 
   pub(crate) fn marginal_update(

@@ -15,7 +15,6 @@ pub(super) mod tests {
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
-  use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
@@ -160,8 +159,8 @@ pub(super) mod tests {
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_11 = names.clone();
-      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
-      reconstruction = cleanup.reconstruction;
+      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction.into(), &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_11)?;
+      reconstruction = cleanup.partitions.into_single_reconstruction();
 
       lh_prev = total_lh;
     }
@@ -239,8 +238,8 @@ pub(super) mod tests {
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_10 = names.clone();
-      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
-      reconstruction = cleanup.reconstruction;
+      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction.into(), &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_10)?;
+      reconstruction = cleanup.partitions.into_single_reconstruction();
 
       lh_prev = total_lh;
     }
@@ -285,13 +284,7 @@ pub(super) mod tests {
 
     let initial_node_count = graph.get_nodes().count();
 
-    let SparseReconstruction {
-      partition,
-      gtr,
-      node_states,
-      ..
-    } = sparse;
-    let mut sparse_obs = [partition];
+    let mut sparse_obs = [sparse];
     let merged = merge_shared_mutation_branches(&mut graph, &mut sparse_obs, &mut branch_lengths)?;
     assert!(merged > 0, "A and B should share mutation A->T, triggering merge");
     graph.build()?;
@@ -301,12 +294,8 @@ pub(super) mod tests {
       "merge should have created new internal nodes"
     );
 
-    let [partition] = sparse_obs;
-    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
-      partition,
-      gtr,
-      reconcile_node_states(node_states, &live_node_keys(&graph), SparseNodeState::empty),
-    ));
+    let [sparse] = sparse_obs;
+    let reconstruction = MarginalReconstruction::Sparse(sparse.reconcile_node_states(&graph));
 
     let (_, lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let lh = lh.value();
@@ -339,7 +328,7 @@ pub(super) mod tests {
     let mut names_tt_8 = names.clone();
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &[ri1_key, i1i2_key],
       TopologyOps::default(),
       &mut branch_lengths,
@@ -417,8 +406,8 @@ pub(super) mod tests {
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
       let mut names_tt_7 = names.clone();
-      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction, &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
-      reconstruction = cleanup.reconstruction;
+      let cleanup = prune_and_merge_in_loop(&mut graph, reconstruction.into(), &zero_optimal_edges, TopologyOps::default(), &mut branch_lengths, &mut names_tt_7)?;
+      reconstruction = cleanup.partitions.into_single_reconstruction();
 
       lh_prev = dense_lh;
     }
@@ -484,7 +473,7 @@ pub(super) mod tests {
     let names_tt_2 = names;
     run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter: 10,
         dp: 1e-2,
@@ -555,7 +544,7 @@ pub(super) mod tests {
     let names_tt_1 = names;
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction,
+      reconstruction.into(),
       &OptimizeLoopSettings {
         max_iter: 10,
         dp: 1e-2,
@@ -603,6 +592,7 @@ pub(super) mod tests {
         partition: PartitionMarginalSparse {
           alphabet: Alphabet::new(AlphabetName::Nuc)?,
           length: 100,
+          total_length: 100,
           root_sequence: seq![],
           obs_nodes: btreemap! {},
           obs_edges: btreemap! {},

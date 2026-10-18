@@ -1,5 +1,5 @@
 use crate::optimize::topology::collapse::collapse_edge;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::marginal::reconstruction::SparseReconstruction;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
@@ -10,7 +10,7 @@ use treetime_graph::node::GraphNodeKey;
 
 pub(crate) fn prune_nodes(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_keys: &BTreeSet<GraphNodeKey>,
@@ -25,7 +25,7 @@ pub(crate) fn prune_nodes(
 
 fn prune_internal_nodes(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_keys: &BTreeSet<GraphNodeKey>,
@@ -66,14 +66,14 @@ fn prune_internal_nodes(
 }
 
 pub(crate) fn get_edge_num_muts(
-  partitions: &[PartitionMarginalSparse],
+  partitions: &[SparseReconstruction],
   edge_key: GraphEdgeKey,
 ) -> Result<Option<usize>, Report> {
   let mut total_muts = 0;
   let mut found_any = false;
 
-  for partition in partitions {
-    if let Some(edge) = partition.obs_edges.get(&edge_key) {
+  for reconstruction in partitions {
+    if let Some(edge) = reconstruction.partition.obs_edges.get(&edge_key) {
       total_muts += edge.fitch_subs().len();
       found_any = true;
     }
@@ -84,7 +84,7 @@ pub(crate) fn get_edge_num_muts(
 
 fn prune_leaves(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   node_keys: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
@@ -109,7 +109,7 @@ fn prune_leaves(
 
 pub(crate) fn collapse_sparse_edges_from_leaf_recursive(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {

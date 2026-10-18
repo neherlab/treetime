@@ -15,7 +15,7 @@ use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn count_transitions_sparse(
   gtr: &GTR,
-  length: usize,
+  total_length: usize,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
@@ -23,7 +23,7 @@ pub(crate) fn count_transitions_sparse(
   forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
 ) -> Result<MutationCounts, Report> {
   let n_states = gtr.pi().len();
-  let min_bl = MIN_BRANCH_LENGTH_FRACTION / length.to_f64_exact();
+  let min_bl = MIN_BRANCH_LENGTH_FRACTION / total_length.to_f64_exact();
   let mut nij = Array2::zeros((n_states, n_states));
   let mut Ti = Array1::zeros(n_states);
 

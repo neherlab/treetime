@@ -6,6 +6,7 @@ mod tests {
   use crate::seq::indel::InDelKind;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion};
+  use crate::test_utils::{sparse_topology_partition, sparse_topology_partitions};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, sub};
@@ -40,13 +41,13 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'A')]),
       ],
     );
-    let mut sparse = vec![partition];
+    let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
     hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = &sparse[0];
+    let p = &sparse[0].partition;
     assert_eq!(edge_subs(p, h.un), vec![sub(b'C', 5, b'G'), sub(b'G', 10, b'A')]);
     assert_eq!(edge_subs(p, h.nv), vec![sub(b'A', 0, b'T')]);
     assert_eq!(edge_subs(p, h.nc), Vec::<Sub>::new());
@@ -73,13 +74,13 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'G')]),
       ],
     );
-    let mut sparse = vec![partition];
+    let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
     hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = &sparse[0];
+    let p = &sparse[0].partition;
     assert_eq!(edge_subs(p, h.un), Vec::<Sub>::new());
     assert_eq!(edge_subs(p, h.nv), vec![sub(b'A', 0, b'T')]);
     assert_eq!(edge_subs(p, h.nc), vec![sub(b'A', 0, b'G')]);
@@ -104,18 +105,18 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'A')]),
       ],
     );
-    let mut sparse = vec![partition];
+    let mut sparse = sparse_topology_partitions(vec![partition]);
 
-    let before = helpers::total_subs(&graph, &sparse[0]);
+    let before = helpers::total_subs(&graph, &sparse[0].partition);
     let mut branch_lengths = branch_lengths;
     hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
-    let after = helpers::total_subs(&graph, &sparse[0]);
+    let after = helpers::total_subs(&graph, &sparse[0].partition);
 
     assert_eq!(before, 2);
     assert_eq!(after, 1);
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = &sparse[0];
+    let p = &sparse[0].partition;
     assert_eq!(edge_subs(p, h.nv), vec![sub(b'A', 0, b'T')]);
     assert_eq!(edge_subs(p, h.nc), Vec::<Sub>::new());
     Ok(())
@@ -144,7 +145,7 @@ mod tests {
         ("V", "A", vec![sub(b'T', 0, b'A')]),
       ],
     );
-    let mut sparse = vec![partition];
+    let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
     hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
@@ -186,18 +187,18 @@ mod tests {
         ("V", "A", vec![sub(b'G', 5, b'C')]),
       ],
     );
-    let mut sparse = vec![p0, p1];
+    let mut sparse = sparse_topology_partitions(vec![p0, p1]);
 
     let mut branch_lengths = branch_lengths;
     hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let g0 = &sparse[0];
+    let g0 = &sparse[0].partition;
     assert_eq!(edge_subs(g0, h.un), vec![sub(b'G', 10, b'C')]);
     assert_eq!(edge_subs(g0, h.nv), vec![sub(b'A', 0, b'T')]);
     assert_eq!(edge_subs(g0, h.nc), Vec::<Sub>::new());
 
-    let g1 = &sparse[1];
+    let g1 = &sparse[1].partition;
     assert_eq!(edge_subs(g1, h.un), Vec::<Sub>::new());
     assert_eq!(edge_subs(g1, h.nv), vec![sub(b'C', 5, b'G')]);
     assert_eq!(edge_subs(g1, h.nc), Vec::<Sub>::new());
@@ -229,13 +230,13 @@ mod tests {
       p.obs_edges.get_mut(&uv).unwrap().indels = vec![del.clone()];
       p.obs_edges.get_mut(&va).unwrap().indels = vec![ins];
     }
-    let mut sparse = vec![partition];
+    let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
     hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = &sparse[0];
+    let p = &sparse[0].partition;
     assert_eq!(edge_indels(p, h.un), Vec::<InDel>::new());
     assert_eq!(edge_indels(p, h.nv), vec![del]);
     assert_eq!(edge_indels(p, h.nc), Vec::<InDel>::new());
@@ -267,13 +268,13 @@ mod tests {
       p.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
       p.obs_edges.get_mut(&va).unwrap().indels = vec![child_del];
     }
-    let mut sparse = vec![partition];
+    let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
     hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = &sparse[0];
+    let p = &sparse[0].partition;
     assert_eq!(edge_indels(p, h.un), Vec::<InDel>::new());
     assert_eq!(edge_indels(p, h.nv), vec![parent_del]);
 
@@ -309,13 +310,13 @@ mod tests {
       p.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
       p.obs_edges.get_mut(&va).unwrap().indels = vec![child_del.clone()];
     }
-    let mut sparse = vec![partition];
+    let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
     hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
-    let p = &sparse[0];
+    let p = &sparse[0].partition;
     assert_eq!(edge_indels(p, h.un), vec![parent_del]);
     assert_eq!(edge_indels(p, h.nv), Vec::<InDel>::new());
     assert_eq!(edge_indels(p, h.nc), vec![child_del]);
@@ -344,14 +345,13 @@ mod tests {
         ("V", "C1", vec![sub(b'A', 3, b'G')]),
       ],
     );
-    let mut sparse = vec![partition];
-    let mut node_states = vec![node_states];
+    let mut sparse = vec![sparse_topology_partition(partition, node_states)];
 
-    slide_bifurcating_root_for_child(&mut sparse, &mut node_states, root_key, root_v, root_s, v_c1)?;
+    slide_bifurcating_root_for_child(&mut sparse, root_key, root_v, root_s, v_c1)?;
 
-    let p = &sparse[0];
+    let p = &sparse[0].partition;
     assert_eq!(p.root_sequence[3], c(b'G'));
-    assert_eq!(node_states[0][&root_key].sequence[3], c(b'G'));
+    assert_eq!(sparse[0].node_states[&root_key].sequence[3], c(b'G'));
     assert_eq!(edge_subs(p, root_s), Vec::<Sub>::new());
     assert_eq!(edge_subs(p, root_v), vec![sub(b'G', 3, b'A')]);
     Ok(())
@@ -377,15 +377,14 @@ mod tests {
         ("V", "C1", vec![sub(b'A', 3, b'G')]),
       ],
     );
-    let mut sparse = vec![partition];
-    let mut node_states = vec![node_states];
+    let mut sparse = vec![sparse_topology_partition(partition, node_states)];
 
-    let before = helpers::total_subs(&graph, &sparse[0]);
-    slide_bifurcating_root_for_child(&mut sparse, &mut node_states, root_key, root_v, root_s, v_c1)?;
-    let after_slide = helpers::total_subs(&graph, &sparse[0]);
+    let before = helpers::total_subs(&graph, &sparse[0].partition);
+    slide_bifurcating_root_for_child(&mut sparse, root_key, root_v, root_s, v_c1)?;
+    let after_slide = helpers::total_subs(&graph, &sparse[0].partition);
     let mut branch_lengths = branch_lengths;
     hoist_reverting_child(&mut graph, &mut sparse, root_v, v_c1, &mut branch_lengths)?;
-    let after_hoist = helpers::total_subs(&graph, &sparse[0]);
+    let after_hoist = helpers::total_subs(&graph, &sparse[0].partition);
 
     assert_eq!(before, 2);
     assert_eq!(after_slide, 2);
@@ -491,6 +490,7 @@ mod tests {
       let partition = PartitionMarginalSparse {
         alphabet,
         length,
+        total_length: length,
         root_sequence: ref_seq,
         obs_nodes,
         obs_edges,

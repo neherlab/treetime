@@ -1,6 +1,6 @@
 use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
-use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::storage::sparse::SparseNodeObs;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
@@ -16,7 +16,7 @@ use treetime_utils::iterator::difference::iterator_difference;
 
 pub(crate) fn merge_shared_mutation_branches(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
   let mut total_merged = 0;
@@ -39,7 +39,7 @@ pub(crate) fn merge_shared_mutation_branches(
 
 pub(crate) fn merge_single_polytomy(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
@@ -81,10 +81,10 @@ fn collect_child_edge_keys(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEd
   node.outbound().to_vec()
 }
 
-fn build_mutation_index(partitions: &[PartitionMarginalSparse], child_edges: &[GraphEdgeKey]) -> MutationIndex {
+fn build_mutation_index(partitions: &[SparseReconstruction], child_edges: &[GraphEdgeKey]) -> MutationIndex {
   let mut index: MutationIndex = BTreeMap::new();
   for &edge_key in child_edges {
-    for (pi, partition) in partitions.iter().enumerate() {
+    for (pi, SparseReconstruction { partition, .. }) in partitions.iter().enumerate() {
       let empty_subs: &[Sub] = &[];
       let edge = partition.obs_edges.get(&edge_key);
       for sub in edge.map_or(empty_subs, |e| e.fitch_subs()) {
@@ -180,7 +180,7 @@ fn greedy_disjoint_group_matching(mut groups: Vec<MergeGroup>) -> Vec<MergeGroup
 
 fn merge_sibling_group(
   graph: &mut Graph,
-  partitions: &mut [PartitionMarginalSparse],
+  partitions: &mut [SparseReconstruction],
   parent_key: GraphNodeKey,
   group: &MergeGroup,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -194,7 +194,7 @@ fn merge_sibling_group(
   let per_edge_data: Vec<Vec<ChildEdgeData>> = partitions
     .iter()
     .enumerate()
-    .map(|(pi, partition)| {
+    .map(|(pi, SparseReconstruction { partition, .. })| {
       let empty_subs: &[Sub] = &[];
       let empty_indels: &[InDel] = &[];
       group
@@ -219,8 +219,8 @@ fn merge_sibling_group(
     })
     .collect();
 
-  let total_alignment_length: usize = partitions.iter().map(|p| p.length).sum();
-  let n_states = partitions[0].alphabet.n_canonical();
+  let total_alignment_length: usize = partitions.iter().map(|p| p.partition.length).sum();
+  let n_states = partitions[0].partition.alphabet.n_canonical();
   let jc_bl = |count: usize| -> f64 {
     if total_alignment_length > 0 {
       jukes_cantor_distance(count.to_f64_exact() / total_alignment_length.to_f64_exact(), n_states)
@@ -257,7 +257,7 @@ fn merge_sibling_group(
     new_child_edge_keys.push(new_ek);
   }
 
-  for (pi, partition) in partitions.iter_mut().enumerate() {
+  for (pi, SparseReconstruction { partition, .. }) in partitions.iter_mut().enumerate() {
     let mut new_node = SparseNodeObs::empty(&partition.alphabet);
     new_node.composition = partition.obs_nodes[&parent_key].composition.clone();
     partition.obs_nodes.entry(new_node_key).or_insert(new_node);

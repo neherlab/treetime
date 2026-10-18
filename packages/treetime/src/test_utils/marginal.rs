@@ -2,17 +2,22 @@ use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use crate::ancestral::mask::create_mask;
 use crate::branch_lengths::branch_lengths_or_zero;
+use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::gtr::gtr::GTR;
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
+use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use crate::partition::set::PartitionSet;
+use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::NoopProgress;
 use crate::seq::alignment::{
   AncestralInput, EdgeSeqInput, NodeSeqInput, SequenceSource, get_common_length_of_node_inputs, pair_leaf_sequences,
 };
 use crate::seq::sink::{SeqItem, SeqSink};
 use eyre::Report;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::LazyLock;
@@ -223,4 +228,54 @@ pub(crate) fn complete_leaf_sequences(
     nodes: sequences.nodes,
     mask,
   })
+}
+
+impl From<MarginalReconstruction> for PartitionSet {
+  fn from(reconstruction: MarginalReconstruction) -> Self {
+    match reconstruction {
+      MarginalReconstruction::Dense(dense) => Self::Dense(vec![dense]),
+      MarginalReconstruction::Sparse(sparse) => Self::Sparse(vec![sparse]),
+    }
+  }
+}
+
+impl MarginalReconstruction {
+  pub(crate) fn gtr_mut(&mut self) -> &mut GTR {
+    match self {
+      Self::Dense(dense) => &mut dense.gtr,
+      Self::Sparse(sparse) => &mut sparse.gtr,
+    }
+  }
+}
+
+impl PartitionSet {
+  pub(crate) fn into_single_reconstruction(self) -> MarginalReconstruction {
+    let single = match self {
+      Self::Dense(dense) => dense.into_iter().exactly_one().ok().map(MarginalReconstruction::Dense),
+      Self::Sparse(sparse) => sparse
+        .into_iter()
+        .exactly_one()
+        .ok()
+        .map(MarginalReconstruction::Sparse),
+    };
+    single.expect("expected a partition set with exactly one partition")
+  }
+}
+
+pub(crate) fn sparse_topology_partitions(partitions: Vec<PartitionMarginalSparse>) -> Vec<SparseReconstruction> {
+  partitions
+    .into_iter()
+    .map(|partition| sparse_topology_partition(partition, BTreeMap::new()))
+    .collect()
+}
+
+pub(crate) fn sparse_topology_partition(
+  partition: PartitionMarginalSparse,
+  node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
+) -> SparseReconstruction {
+  SparseReconstruction::seeded(
+    partition,
+    jc69(JC69Params::default()).expect("JC69 builds"),
+    node_states,
+  )
 }

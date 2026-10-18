@@ -31,6 +31,7 @@ mod tests {
     let partition = PartitionMarginalSparse {
       alphabet: alphabet.clone(),
       length: 8,
+      total_length: 8,
       root_sequence: stem_seq.clone(),
       obs_nodes: btreemap! {
         stem_key => SparseNodeObs::new(&stem_seq, &alphabet),

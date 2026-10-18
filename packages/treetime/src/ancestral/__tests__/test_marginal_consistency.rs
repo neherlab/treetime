@@ -287,8 +287,10 @@ mod tests {
     let sparse_sequences = reconstruct_named_sequences(&graph, &names, &sparse_partition)?;
     assert_eq!(dense_sequences, sparse_sequences);
 
-    let dense_branch_subs = edge_subs_by_edge_name(&graph, &names, |key| dense_partition.edge_subs(&graph, key))?;
-    let sparse_branch_subs = edge_subs_by_edge_name(&graph, &names, |key| sparse_partition.edge_subs(&graph, key))?;
+    let dense_branch_subs =
+      edge_subs_by_edge_name(&graph, &names, |key| dense_partition.view().edge_subs(&graph, key))?;
+    let sparse_branch_subs =
+      edge_subs_by_edge_name(&graph, &names, |key| sparse_partition.view().edge_subs(&graph, key))?;
     assert_eq!(dense_branch_subs, sparse_branch_subs);
 
     Ok(())

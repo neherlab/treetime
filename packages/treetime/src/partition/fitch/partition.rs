@@ -56,6 +56,7 @@ impl PartitionFitch {
     let partition = PartitionMarginalSparse {
       alphabet: self.alphabet,
       length: self.length,
+      total_length: self.length,
       root_sequence,
       obs_nodes,
       obs_edges: self.edges,
