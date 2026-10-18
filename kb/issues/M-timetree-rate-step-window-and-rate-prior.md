@@ -41,8 +41,20 @@ Phase 4 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposa
   rate collapses even at $L=10^3$, $\mu=10^{-2}$ (from $9\cdot10^{-3}$ to $3.9\cdot10^{-3}$ in six rounds). The
   stretch moves parent and child about different anchors and puts prior mass past their children and tips, which
   the backward pass punishes; profiling $T_c$ cannot repair that geometry. A consistent profile would need the probe's
-  own posteriors, two extra time passes per round. Not pursued; next is a log-normal rate prior in the step, centred
-  on `--clock-std-dev` or the Gaussian rate and its standard deviation.
+  own posteriors, two extra time passes per round. Not pursued.
+- A log-normal rate prior in the step, centred at the Gaussian rate (240 validation sets, `--coalescent-opt`):
+  - at the Gaussian rate standard deviation (log std about 0.03) it replaces the likelihood: the rate sticks to the
+    Gaussian centre, 13-50% high, even at $L=10^3$, $\mu=10^{-2}$;
+  - a weak prior (log std 1 or 2) changes nothing at 2 rounds and does not stop the drift at 6 rounds (median
+    $\lvert\ln\rvert$ rate error 1.26 without, 1.36 with, at $L=10^3$, $\mu=3\cdot10^{-4}$): the low-signal marginal
+    likelihood is not flat but slopes toward low rates at about 77 per log unit, against a prior slope of order 1;
+  - only a log std near 0.1 moves the rate (0.51 to 0.33), which overrides the likelihood rather than regularizing it.
+  Dropped for now; `--clock-std-dev` is the user's rate uncertainty for the intervals and does not double as the prior's
+  width.
+- With six rounds instead of two, the low-signal error grows for every start: rate error 0.51 to 1.26 and node RMSE
+  0.49 to 1.1 years at $L=10^3$, $\mu=3\cdot10^{-4}$, coverage 0.897 to 0.867 at $L=10^4$, $\mu=3\cdot10^{-4}$. The bias
+  sits in the probes (the frozen prior), so the remaining lever is the step itself, e.g. accepting a rate move only
+  when both probes fall below the centre (an interior maximum).
 
 Validation: rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date
 coverage on the calibration subset.
