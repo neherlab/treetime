@@ -1,5 +1,5 @@
 use crate::clock::clock_regression::ClockFit;
-use crate::clock::gaussian::{GaussianClock, gaussian_clock};
+use crate::clock::gaussian::{GaussianClock, gaussian_clock, gaussian_rate};
 use crate::coalescent::lineage_counts::compute_lineage_counts;
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
@@ -20,6 +20,7 @@ use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_graph::assign_node_names::restrict_node_names;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::cast::ToF64Exact;
@@ -245,4 +246,30 @@ fn point_times(
       })
       .collect(),
   )
+}
+
+/// Rate of the Gaussian timetree with the root time free, to start from when the root-to-tip regression gives no
+/// positive rate; the tips without a date and the `outliers` are left out
+pub(crate) fn gaussian_start_rate(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  context: &TimetreeContext,
+  outliers: &BTreeSet<GraphNodeKey>,
+  log: &dyn LogSink,
+) -> Result<f64, Report> {
+  let excluded = bad_leaves(graph, &context.date_constraints, outliers);
+  let tip_dates = given_times(graph, &context.date_constraints)?;
+  let rate = gaussian_rate(
+    graph,
+    branch_lengths,
+    context.sequence_length.to_f64_exact(),
+    &tip_dates,
+    &excluded,
+  )
+  .wrap_err("The root-to-tip regression gives no positive clock rate, and the Gaussian timetree none either")?;
+  progress_warn!(
+    log,
+    "The root-to-tip regression gives no positive clock rate; starting from the rate of the Gaussian timetree, {rate:.6e}"
+  );
+  Ok(rate)
 }
