@@ -27,6 +27,26 @@ These are the `timetree/dengue/500/basic` and `timetree/lassa/L/200/basic` cases
 - The command produces no output for these datasets.
 - Both cases are declared expected failures in `dev/smoke.toml`, so a fix shows up as an unexpected pass until the declaration is removed.
 
+## Status
+
+`fix(grid): follow the hard-approach law in a cell that ends at zero probability` on branch `claude-hard-cell-interp`
+removes the cause traced below for a simulated reproducer (branch `claude-meanfield-prior`): `data/dengue/500` now
+completes. `data/lassa/L/200` gets past this point already on `claude-work` and panics later converting a negative
+date ([H-timetree-negative-numdate-panics-in-date-string-conversion.md](H-timetree-negative-numdate-panics-in-date-string-conversion.md)),
+with or without the fix. The `dev/smoke.toml` declaration of the dengue case as an expected failure is not updated.
+
+## Root cause
+
+In a run whose rate had collapsed to $1.67 \cdot 10^{-5}$ (validation suite, `piecewise` rep09, $L = 10^3$,
+$\mu = 3 \cdot 10^{-4}$, `--reroot least-squares --coalescent-opt --clock-filter 0`, mean-field coalescent prior), one
+grid cell was 2.32 years. The parent's posterior stored negative log `+inf` only at its last grid point, the hard
+boundary, and its peak in the point before. `GridFn::interpolate_at` interpolated negative logs linearly, so the whole
+cell next to the boundary read as `+inf`, and a cell starting at `+inf` gave NaN. The cavity built on the same points
+read the peak, a rounding error inside that cell, as `+inf`; resampling it for the convolution produced NaN;
+`min_or` (ndarray-stats `min()` fails on NaN) made the operand look massless, and `distribution_convolution_fine`
+returned `Empty`. The node's posterior was empty and its 45 descendants inherited an empty parent. A cell with an
+infinite end now follows the hard-approach law of that boundary, anchored at its finite end.
+
 ## Mechanism
 
 The division fails when one operand of a message division has empty support. An empty posterior arises when the message from the rest of the tree and a node's date constraint have disjoint support, the condition described in [H-timetree-backward-pass-nan-time-distribution.md](H-timetree-backward-pass-nan-time-distribution.md). The source of the empty operand has not been traced.
