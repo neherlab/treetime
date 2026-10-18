@@ -11,7 +11,8 @@ pub(super) mod tests {
   use crate::optimize::params::InitialGuessMode;
   use crate::optimize::run_loop::{apply_initial_guess_mode, invalid_branch_length_warning};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
+  use crate::partition::marginal::reconstruction::DenseReconstruction;
+  use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{deletion, dense_reconstruction_mut};
@@ -416,10 +417,7 @@ pub(super) mod tests {
       branch_lengths.insert(edge_key, Some(branch_length));
     }
 
-    pub(crate) fn inject_indel_on_first_edge(
-      graph: &Graph,
-      reconstruction: &mut MarginalReconstruction,
-    ) -> Result<(), Report> {
+    pub(crate) fn inject_indel_on_first_edge(graph: &Graph, reconstruction: &mut PartitionSet) -> Result<(), Report> {
       let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       dense_reconstruction_mut(reconstruction)
         .edges
@@ -436,7 +434,7 @@ pub(super) mod tests {
       (
         Graph,
         BTreeMap<GraphNodeKey, Option<String>>,
-        MarginalReconstruction,
+        PartitionSet,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
       Report,
@@ -449,8 +447,10 @@ pub(super) mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
 
       let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
-      let reconstruction =
-        MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
+      let reconstruction = PartitionSet::Dense(vec![DenseReconstruction::seeded(
+        partition,
+        jc69(JC69Params::default())?,
+      )]);
 
       let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 

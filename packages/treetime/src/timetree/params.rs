@@ -6,13 +6,10 @@ use crate::make_report;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
 use crate::progress::LogSink;
-use crate::seq::alignment::{NodeSeqInput, get_common_length_of_node_inputs};
 use crate::{progress_info, progress_warn};
 use eyre::Report;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
 use std::fmt::Debug;
-use treetime_graph::node::GraphNodeKey;
 use treetime_grid::MaxGridPoints;
 use treetime_utils::cast::ToF64Exact;
 
@@ -48,19 +45,17 @@ pub(crate) fn build_covariation_clock_params(
   covariation: bool,
   sequence_length: Option<usize>,
   tip_slack: Option<f64>,
-  aln: Option<&BTreeMap<GraphNodeKey, NodeSeqInput>>,
+  alignment_length: Option<usize>,
   log: &dyn LogSink,
 ) -> Result<Option<ClockVarianceParams>, Report> {
   if !covariation {
     return Ok(None);
   }
 
-  let seq_len = if let Some(aln_data) = aln {
-    (get_common_length_of_node_inputs(aln_data)?).to_f64_exact()
-  } else {
-    (sequence_length.ok_or_else(|| make_report!("--sequence-length required for --covariation without alignment"))?)
-      .to_f64_exact()
-  };
+  let seq_len = alignment_length
+    .or(sequence_length)
+    .ok_or_else(|| make_report!("--sequence-length required for --covariation without alignment"))?
+    .to_f64_exact();
 
   let tip_slack = tip_slack.unwrap_or(10.0);
 

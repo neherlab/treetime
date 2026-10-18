@@ -5,7 +5,8 @@ pub(super) mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
+  use crate::partition::set::PartitionSet;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
@@ -48,11 +49,13 @@ pub(super) mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
+  ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
-    let reconstruction =
-      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
+    let reconstruction = PartitionSet::Dense(vec![DenseReconstruction::seeded(
+      partition,
+      jc69(JC69Params::default())?,
+    )]);
 
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
@@ -64,15 +67,15 @@ pub(super) mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
+  ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
-    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+    let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,
       node_states,
-    ));
+    )]);
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
     Ok(reconstruction)

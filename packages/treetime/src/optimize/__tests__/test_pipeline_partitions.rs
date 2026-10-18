@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::gather::{SequencePartitions, total_length};
   use crate::optimize::indel::IndelPolicy;
   use eyre::Report;
   use helpers::{
@@ -76,7 +75,7 @@ mod tests {
     let term = indels.term(internal_edge_above(&graph, &names, "AB"));
     assert_eq!(
       (6, 2, vec![Some(2.0), Some(2.0)]),
-      (total_length(&partitions), term.count, indels.partition_rates(partitions.partitions().count()))
+      (partitions.total_length(), term.count, indels.partition_rates(partitions.len()))
     );
     pretty_assert_ulps_eq!(4.0, term.rate, max_ulps = 4);
     Ok(())

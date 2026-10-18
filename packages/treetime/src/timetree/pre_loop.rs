@@ -9,7 +9,7 @@ use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::BranchOptMethod;
 use crate::optimize::solver_outcome::ConvergenceSummary;
-use crate::partition::marginal::reconstruction::MarginalReconstruction;
+use crate::partition::set::PartitionSet;
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
@@ -105,14 +105,14 @@ fn ml_optimize(
   convergence: &mut ConvergenceSummary,
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
-  let BranchModel::Marginal(partition) = state.branch_model else {
+  let BranchModel::Marginal(partitions) = state.branch_model else {
     return Ok(state);
   };
   progress_info!(log, "### ML branch-length optimization ({label})");
-  let (partition, _) = partition.marginal_update(&state.graph, &branch_lengths_or_zero(&state.branch_lengths))?;
-  let (partition, branch_lengths) = optimize_branch_lengths(
+  let (partitions, _) = partitions.marginal_update(&state.graph, &branch_lengths_or_zero(&state.branch_lengths))?;
+  let (partitions, branch_lengths) = optimize_branch_lengths(
     &state.graph,
-    partition,
+    partitions,
     state.branch_lengths,
     indel_policy,
     names,
@@ -120,7 +120,7 @@ fn ml_optimize(
   )
   .wrap_err_with(|| format!("ML branch-length optimization ({label}) failed"))?;
   Ok(PreLoopState {
-    branch_model: BranchModel::Marginal(partition),
+    branch_model: BranchModel::Marginal(partitions),
     branch_lengths,
     ..state
   })
@@ -242,20 +242,20 @@ impl PreLoopState {
 
 fn optimize_branch_lengths(
   graph: &Graph,
-  partition: MarginalReconstruction,
+  partitions: PartitionSet,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   indel_policy: IndelPolicy,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   convergence: &mut ConvergenceSummary,
-) -> Result<(MarginalReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+) -> Result<(PartitionSet, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
   let old_branch_lengths = branch_lengths;
   let mut branch_lengths = old_branch_lengths.clone();
 
-  let indels = indel_policy.edge_indels(graph, &partition, &branch_lengths);
+  let indels = indel_policy.edge_indels(graph, &partitions, &branch_lengths);
   let unconverged = optimize_edge_lengths(
     graph,
-    partition.sequence_length(),
-    &partition,
+    partitions.total_length(),
+    &partitions,
     &indels,
     BranchOptMethod::Brent,
     &mut branch_lengths,
@@ -263,6 +263,6 @@ fn optimize_branch_lengths(
   convergence.record(&unconverged, graph, names);
 
   apply_damping(&mut branch_lengths, &old_branch_lengths, TIMETREE_PRE_STEP_DAMPING, 0);
-  let (partition, _) = partition.marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?;
-  Ok((partition, branch_lengths))
+  let (partitions, _) = partitions.marginal_update(graph, &branch_lengths_or_zero(&branch_lengths))?;
+  Ok((partitions, branch_lengths))
 }

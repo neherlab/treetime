@@ -2,7 +2,7 @@ use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::gtr::GTR;
 use crate::optimize::branch_length::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
-use crate::optimize::gather::{InitialGuessEvidence, SequencePartitions};
+use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::indel::EdgeIndels;
 use crate::optimize::iteration::apply_damping;
 use crate::optimize::params::ExistingBranchLengths;
@@ -282,7 +282,7 @@ struct OptimizeIterationLikelihood {
 
 pub(crate) fn find_zero_optimal_internal_edges(
   graph: &Graph,
-  partitions: &impl SequencePartitions,
+  partitions: &PartitionSet,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Vec<GraphEdgeKey> {
   graph
@@ -294,7 +294,7 @@ pub(crate) fn find_zero_optimal_internal_edges(
       }
       let edge_key = edge.key();
       let has_mutations = partitions
-        .partitions()
+        .iter()
         .any(|partition| partition.edge_has_fitch_mutations(edge_key));
       (!has_mutations).then_some(edge_key)
     })

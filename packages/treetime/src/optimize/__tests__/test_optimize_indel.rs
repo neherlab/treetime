@@ -13,12 +13,12 @@ pub(super) mod tests {
   use crate::optimize::params::BranchOptMethod;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::optimize::zero_boundary::{ZeroLength, is_zero_better_than, is_zero_branch_optimal};
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::partition::set::PartitionSet;
   use crate::pretty_assert_neg_inf;
   use crate::seq::indel::InDel;
-  use crate::test_utils::{deletion, sparse_reconstruction_mut};
+  use crate::test_utils::{ReconstructionMut, SingleReconstruction, deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::array;
@@ -35,15 +35,15 @@ pub(super) mod tests {
 
   pub(crate) fn inject_indels_on_first_edge(
     graph: &Graph,
-    reconstruction: &mut MarginalReconstruction,
+    reconstruction: &mut PartitionSet,
     indels: &[InDel],
   ) -> GraphEdgeKey {
     let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
-    match reconstruction {
-      MarginalReconstruction::Dense(dense) => {
+    match reconstruction.single_mut() {
+      ReconstructionMut::Dense(dense) => {
         dense.edges.estimates.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
       },
-      MarginalReconstruction::Sparse(sparse) => {
+      ReconstructionMut::Sparse(sparse) => {
         sparse.partition.obs_edges.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
       },
     }
@@ -62,7 +62,7 @@ pub(super) mod tests {
     graph: &Graph,
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
+  ) -> Result<PartitionSet, Report> {
     let aln: Vec<AlignmentRecord> = identical_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     setup_reconstruction(graph, names, &aln, branch_lengths)
   }
@@ -216,7 +216,7 @@ pub(super) mod tests {
       branch_lengths_high.insert(edge_ref.key(), Some(0.0));
     }
 
-    let total_length_low = reconstruction_low.sequence_length();
+    let total_length_low = reconstruction_low.total_length();
     let contributions_low = gather_edge_contributions(&graph_low, &reconstruction_low)?;
     let indel_counts_low = gather_edge_indel_counts(&graph_low, &reconstruction_low);
     optimize_edge_lengths(
@@ -230,7 +230,7 @@ pub(super) mod tests {
       BranchOptMethod::Newton,
       &mut branch_lengths_low,
     )?;
-    let total_length_high = reconstruction_high.sequence_length();
+    let total_length_high = reconstruction_high.total_length();
     let contributions_high = gather_edge_contributions(&graph_high, &reconstruction_high)?;
     let indel_counts_high = gather_edge_indel_counts(&graph_high, &reconstruction_high);
     optimize_edge_lengths(
@@ -336,7 +336,7 @@ pub(super) mod tests {
     ];
     inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
@@ -369,7 +369,7 @@ pub(super) mod tests {
       inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
     }
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let error = optimize_edge_lengths(&graph, total_length, &contributions, &indels, BranchOptMethod::Brent, &mut branch_lengths)
@@ -403,7 +403,7 @@ pub(super) mod tests {
       .unwrap()
       .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
@@ -421,7 +421,7 @@ pub(super) mod tests {
     );
 
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
@@ -649,7 +649,7 @@ pub(super) mod tests {
     branch_lengths.insert(edge_ref.key(), Some(1e-15));
 
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;

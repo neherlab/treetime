@@ -23,7 +23,7 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
@@ -61,7 +61,7 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
@@ -99,7 +99,7 @@ mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 

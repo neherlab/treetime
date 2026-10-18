@@ -6,6 +6,7 @@ mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::{Representation, build_marginal_partition};
+  use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{find_node_key_by_name, point_date_constraints};
@@ -205,7 +206,7 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-        let reconstruction = build_marginal_partition(
+        let reconstruction = PartitionSet::from(build_marginal_partition(
           Representation::Dense,
           GtrModelName::JC69,
           &graph,
@@ -213,7 +214,7 @@ mod tests {
           leaf_seq_inputs(&graph, &names, aln),
           &branch_lengths_or_zero(&branch_lengths),
           &NoopProgress,
-        )?
+        )?)
         .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?
         .0;
         let constraints = point_date_constraints(&graph, &names, &FIXTURE_DATES);

@@ -31,7 +31,7 @@ mod tests {
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      let total_length = reconstruction.sequence_length();
+      let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
@@ -85,7 +85,7 @@ mod tests {
     let mut lh_history = vec![initial_lh];
 
     for _ in 0..50 {
-      let total_length = reconstruction.sequence_length();
+      let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;

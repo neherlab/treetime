@@ -10,8 +10,10 @@ mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
   use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::partition::set::PartitionSet;
+  use crate::test_utils::SingleReconstruction;
   use crate::test_utils::leaf_seq_inputs;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -52,8 +54,8 @@ mod tests {
     let p = &reconstruction;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let sub_count = p.view().edge_subs(&graph, edge_key)?.len();
-      let effective_length = p.view().edge_effective_length(&graph, edge_key)?;
+      let sub_count = p.single().edge_subs(&graph, edge_key)?.len();
+      let effective_length = p.single().edge_effective_length(&graph, edge_key)?;
       let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
 
       let expected_bl = if effective_length > 0 {
@@ -91,8 +93,8 @@ mod tests {
     let p = &reconstruction;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let sub_count = p.view().edge_subs(&graph, edge_key)?.len();
-      let effective_length = p.view().edge_effective_length(&graph, edge_key)?;
+      let sub_count = p.single().edge_subs(&graph, edge_key)?.len();
+      let effective_length = p.single().edge_effective_length(&graph, edge_key)?;
       let actual_bl = branch_lengths[&edge_key].unwrap_or(0.0);
 
       let expected_bl = if effective_length > 0 {
@@ -126,7 +128,7 @@ mod tests {
     let reconstruction_sparse = setup_sparse(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
 
     {
-      let total_length = reconstruction_dense.sequence_length();
+      let total_length = reconstruction_dense.total_length();
       let indels = IndelPolicy::Include.edge_indels(&graph_dense, &reconstruction_dense, &branch_lengths_dense);
       let evidence = InitialGuessEvidence::gather(&graph_dense, &reconstruction_dense)?;
       guess_initial_branch_lengths(
@@ -179,13 +181,13 @@ mod tests {
     let dense_metrics = optimization_metrics_by_child_name(
       &graph_dense,
       &graph_dense_names,
-      |key| reconstruction_dense.create_edge_contribution(key),
+      |key| reconstruction_dense.single().create_edge_contribution(key),
       0.1,
     )?;
     let sparse_metrics = optimization_metrics_by_child_name(
       &graph_sparse,
       &graph_sparse_names,
-      |key| reconstruction_sparse.create_edge_contribution(key),
+      |key| reconstruction_sparse.single().create_edge_contribution(key),
       0.1,
     )?;
 
@@ -242,15 +244,15 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
+  ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
-    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+    let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,
       node_states,
-    ));
+    )]);
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
     Ok(reconstruction)
@@ -261,11 +263,13 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
+  ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
-    let reconstruction =
-      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
+    let reconstruction = PartitionSet::Dense(vec![DenseReconstruction::seeded(
+      partition,
+      jc69(JC69Params::default())?,
+    )]);
 
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 

@@ -4,7 +4,8 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
+  use crate::partition::marginal::reconstruction::DenseReconstruction;
+  use crate::partition::set::PartitionSet;
   use crate::pretty_assert_abs_diff_eq;
   use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node};
   use crate::test_utils::leaf_seq_inputs;
@@ -42,7 +43,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition =
       PartitionMarginalDense::new(alphabet.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln.clone()))?;
-    let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr.clone()));
+    let reconstruction = PartitionSet::Dense(vec![DenseReconstruction::seeded(partition, gtr.clone())]);
     let (reconstruction, log_lh_before) =
       reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB exists");

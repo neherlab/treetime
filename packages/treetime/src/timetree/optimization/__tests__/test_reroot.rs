@@ -9,10 +9,10 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::partition::fitch::passes::create_fitch_partition;
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
+  use crate::partition::set::PartitionSet;
   use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
   use crate::progress::NoopProgress;
   use crate::seq::mutation::Sub;
@@ -106,7 +106,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
+    let sparse_partition = PartitionSet::Sparse(vec![SparseReconstruction::seeded(partition, gtr, node_states)]);
 
     let clock_params = ClockVarianceParams::default();
     let branch_model = BranchModel::Marginal(sparse_partition);
@@ -460,7 +460,7 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
+    let sparse_partition = PartitionSet::Sparse(vec![SparseReconstruction::seeded(partition, gtr, node_states)]);
 
     let clock_params = ClockVarianceParams::default();
     let branch_model = BranchModel::Marginal(sparse_partition);

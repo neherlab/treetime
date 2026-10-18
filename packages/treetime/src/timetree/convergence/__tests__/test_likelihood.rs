@@ -6,8 +6,8 @@ mod tests {
   use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::reconstruction::DenseReconstruction;
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::shared::update::MarginalEdges;
+  use crate::partition::set::PartitionSet;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
@@ -156,7 +156,7 @@ mod tests {
       graph: &Graph,
       root_key: GraphNodeKey,
       log_lh: f64,
-    ) -> Result<MarginalReconstruction, Report> {
+    ) -> Result<PartitionSet, Report> {
       let partition = dense_partition_with_constant_leaves(graph, Alphabet::default(), 1)?;
       let node_states = btreemap! {
         root_key => DenseNodeState {
@@ -164,12 +164,12 @@ mod tests {
           profile: DenseSeqDistribution::new(array![[1.0, 0.0, 0.0, 0.0]], LogLh::new(log_lh)),
         },
       };
-      Ok(MarginalReconstruction::Dense(DenseReconstruction {
+      Ok(PartitionSet::Dense(vec![DenseReconstruction {
         partition,
         gtr: jc69(JC69Params::default())?,
         node_states,
         edges: MarginalEdges::default(),
-      }))
+      }]))
     }
 
     pub(super) fn positional_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {

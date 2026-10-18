@@ -79,7 +79,7 @@ mod tests {
     let names_tt_6 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter: 20,
         dp: 0.1,
@@ -112,7 +112,7 @@ mod tests {
     let names_tt_5 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter: 50,
         dp: 0.0,
@@ -156,7 +156,7 @@ mod tests {
     let names_tt_4 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter: 50,
         dp: 0.0,
@@ -179,10 +179,7 @@ mod tests {
       .fold(f64::NEG_INFINITY, f64::max);
 
     let marginal_bl = branch_lengths_or_zero(&result.branch_lengths);
-    let (_, log_lh) = result
-      .partitions
-      .into_single_reconstruction()
-      .marginal_update(&graph, &marginal_bl)?;
+    let (_, log_lh) = result.partitions.marginal_update(&graph, &marginal_bl)?;
     assert_abs_diff_eq!(log_lh.value(), best_lh, epsilon = 1e-9);
     Ok(())
   }
@@ -199,7 +196,7 @@ mod tests {
     let names_tt_3 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter: 50,
         dp: 1.0,
@@ -234,7 +231,7 @@ mod tests {
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter,
         dp: 0.0,
@@ -268,7 +265,7 @@ mod tests {
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter: 10,
         dp: 0.1,

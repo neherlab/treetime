@@ -8,7 +8,9 @@ mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
+  use crate::partition::marginal::reconstruction::DenseReconstruction;
+  use crate::partition::set::PartitionSet;
+  use crate::test_utils::SingleReconstruction;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
@@ -46,11 +48,13 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
+  ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::default();
     let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
-    let reconstruction =
-      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
+    let reconstruction = PartitionSet::Dense(vec![DenseReconstruction::seeded(
+      partition,
+      jc69(JC69Params::default())?,
+    )]);
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     Ok(reconstruction)
   }
@@ -79,7 +83,7 @@ mod tests {
       reconstruction_stale.marginal_update(&graph_stale, &branch_lengths_or_zero(&branch_lengths_stale))?;
     *reconstruction_stale.gtr_mut() = f81_gtr.clone();
     {
-      let total_length = reconstruction_stale.sequence_length();
+      let total_length = reconstruction_stale.total_length();
       let indels = IndelPolicy::Include.edge_indels(&graph_stale, &reconstruction_stale, &branch_lengths_stale);
       let evidence = InitialGuessEvidence::gather(&graph_stale, &reconstruction_stale)?;
       guess_initial_branch_lengths(
@@ -140,7 +144,7 @@ mod tests {
     *reconstruction.gtr_mut() = f81_gtr.clone();
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     {
-      let total_length = reconstruction.sequence_length();
+      let total_length = reconstruction.total_length();
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
       let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
       guess_initial_branch_lengths(

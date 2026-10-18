@@ -2,8 +2,9 @@ use crate::branch_lengths::one_mutation;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::coalescent::CoalescentModel;
+use crate::optimize::gather::EdgeContributions;
 use crate::optimize::indel::IndelPolicy;
-use crate::partition::marginal::reconstruction::MarginalReconstruction;
+use crate::partition::set::PartitionSet;
 use crate::progress::LogSink;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
@@ -73,11 +74,11 @@ fn infer_times(
       progress_info!(log, "## Creating branch distributions from input lengths");
       create_branch_distributions_input_mode(graph, branch_lengths, gammas, clock_rate)
     },
-    BranchModel::Marginal(partition) => {
+    BranchModel::Marginal(partitions) => {
       progress_info!(log, "## Computing branch distributions from partitions");
       compute_branch_distributions_marginal_mode(
         graph,
-        partition,
+        partitions,
         branch_lengths,
         gammas,
         clock_rate,
@@ -229,7 +230,7 @@ pub(crate) fn blended_clock_branch_lengths(
 )]
 fn compute_branch_distributions_marginal_mode(
   graph: &Graph,
-  partition: &MarginalReconstruction,
+  partitions: &PartitionSet,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   gammas: &BTreeMap<GraphEdgeKey, f64>,
   clock_rate: f64,
@@ -237,14 +238,15 @@ fn compute_branch_distributions_marginal_mode(
   max_grid_points: MaxGridPoints,
   log: &dyn LogSink,
 ) -> Result<BTreeMap<GraphEdgeKey, BranchLikelihood>, Report> {
-  let total_sites = partition.sequence_length();
+  let total_sites = partitions.total_length();
   let one_mutation = one_mutation(total_sites);
 
-  let indels = indel_policy.edge_indels(graph, partition, branch_lengths);
+  let indels = indel_policy.edge_indels(graph, partitions, branch_lengths);
 
+  let partition_count = partitions.len();
   progress_info!(
     log,
-    "Computing branch distributions from 1 partition(s) with {total_sites} total sites"
+    "Computing branch distributions from {partition_count} partition(s) with {total_sites} total sites"
   );
   debug!("One mutation = {one_mutation:.6e} substitutions/site");
   let indel_rate = indels.rate();
@@ -261,16 +263,17 @@ fn compute_branch_distributions_marginal_mode(
 
       debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
-      let contributions = [partition.create_edge_contribution(edge_key)?];
-      let distribution = compute_branch_length_distribution(
-        &contributions,
-        indels.term(edge_key),
-        branch_length,
-        one_mutation,
-        GRID_POINTS,
-        clock_rate * gamma,
-        max_grid_points,
-      )?;
+      let distribution = partitions.with_edge(edge_key, |contributions| {
+        compute_branch_length_distribution(
+          contributions,
+          indels.term(edge_key),
+          branch_length,
+          one_mutation,
+          GRID_POINTS,
+          clock_rate * gamma,
+          max_grid_points,
+        )
+      })?;
 
       let time_length = distribution.likely_time()?;
       if let Some(likely_time) = time_length {

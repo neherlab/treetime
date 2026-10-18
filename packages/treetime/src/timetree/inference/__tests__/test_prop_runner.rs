@@ -7,8 +7,8 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::shared::update::MarginalEdges;
+  use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
   use crate::test_utils::find_node_key_by_name;
@@ -140,12 +140,12 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-      let partition = MarginalReconstruction::Dense(DenseReconstruction {
+      let partition = PartitionSet::Dense(vec![DenseReconstruction {
         partition: PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),
-      });
+      }]);
       let branch_model = BranchModel::Marginal(
         partition
           .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?

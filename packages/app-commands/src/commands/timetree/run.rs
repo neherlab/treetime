@@ -12,7 +12,6 @@ use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, Tre
 use app_output::table_output::table_write_file;
 use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
 use eyre::{Report, WrapErr};
-use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::Alphabet;
@@ -70,14 +69,16 @@ pub fn run_timetree_estimation(
   let reroot_spec = args.reroot.spec(&input_data.graph, &parse_names)?;
   let params = timetree_params(args, reroot_spec, sequence_outputs_requested, seed);
 
-  let (source, aln_descs) = input_data
+  let (sources, aln_descs): (Vec<_>, BTreeMap<_, _>) = input_data
     .sequences
-    .map(|aligned| (aligned.source, btreemap! { 1 => aligned.descs }))
+    .into_iter()
+    .enumerate()
+    .map(|(index, aligned)| (aligned.source, (index + 1, aligned.descs)))
     .unzip();
   let input = TimetreeInput {
     graph: input_data.graph,
     names: parse_names.clone(),
-    source,
+    sources,
     dates: input_data.dates,
     branch_lengths: input_data.branch_lengths,
   };
@@ -85,7 +86,7 @@ pub fn run_timetree_estimation(
   let mut recon_sink = (!reconstructed_nuc_fasta.is_empty())
     .then(|| {
       Ok::<_, Report>(ReconstructedNucSink::new(
-        NucFastaWriters::create(reconstructed_nuc_fasta, aln_descs.unwrap_or_default())?,
+        NucFastaWriters::create(reconstructed_nuc_fasta, aln_descs)?,
         parse_names,
       ))
     })

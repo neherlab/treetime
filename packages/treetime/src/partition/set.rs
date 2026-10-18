@@ -87,18 +87,10 @@ impl PartitionSet {
     self.iter().map(ReconstructionRef::length).sum()
   }
 
-  #[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "the timetree pipeline does not hold a partition set yet")
-  )]
   pub(crate) fn graph_log_lh(&self, graph: &Graph) -> Result<LogLh, Report> {
     self.iter().map(|partition| partition.graph_log_lh(graph)).sum()
   }
 
-  #[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "the timetree pipeline does not hold a partition set yet")
-  )]
   pub(crate) fn edge_sub_count(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Option<usize>, Report> {
     self
       .iter()
@@ -137,7 +129,6 @@ impl PartitionSet {
     })
   }
 
-  #[expect(dead_code, reason = "the timetree pipeline does not hold a partition set yet")]
   #[must_use]
   pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
     match self {

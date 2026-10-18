@@ -4,6 +4,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::{Representation, build_marginal_partition};
+  use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::seq::overlay::SeqOverlay;
   use crate::test_utils::leaf_seq_inputs;
@@ -13,6 +14,7 @@ mod tests {
   };
   use eyre::Report;
   use indoc::indoc;
+  use itertools::Itertools;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::{BTreeMap, BTreeSet};
@@ -37,7 +39,22 @@ mod tests {
       GraphNodeKey(3) => SeqOverlay::from(Seq::try_from_str("GG")?),
     };
 
-    assert_eq!(4, count_sequence_changes(&previous, &current));
+    assert_eq!(4, count_sequence_changes(&[previous], &[current]));
+    Ok(())
+  }
+
+  #[test]
+  fn test_count_sequence_changes_sums_over_partitions() -> Result<(), Report> {
+    let previous: Vec<AncestralStateSnapshot> = vec![
+      btreemap! { GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("ACGT")?) },
+      btreemap! { GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("AAA")?) },
+    ];
+    let current: Vec<AncestralStateSnapshot> = vec![
+      btreemap! { GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("TCGT")?) },
+      btreemap! { GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("ACC")?) },
+    ];
+
+    assert_eq!(3, count_sequence_changes(&previous, &current));
     Ok(())
   }
 
@@ -47,7 +64,10 @@ mod tests {
       GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("ACGT")?),
     };
 
-    assert_eq!(0, count_sequence_changes(&snapshot, &snapshot.clone()));
+    assert_eq!(
+      0,
+      count_sequence_changes(std::slice::from_ref(&snapshot), std::slice::from_ref(&snapshot))
+    );
     Ok(())
   }
 
@@ -55,10 +75,7 @@ mod tests {
   fn test_capture_ancestral_states_without_reconstruction_is_empty() -> Result<(), Report> {
     let graph = nwk_read(TREE.as_bytes())?.graph;
 
-    assert_eq!(
-      BTreeMap::<GraphNodeKey, Seq>::new(),
-      helpers::materialize(&capture_ancestral_states(&graph, &BranchModel::Input))
-    );
+    assert_eq!(0, capture_ancestral_states(&graph, &BranchModel::Input).len());
     Ok(())
   }
 
@@ -75,7 +92,7 @@ mod tests {
       TCGTACGAAC
     "})?;
 
-    let actual = capture_ancestral_states(&graph, &branch_model);
+    let actual = helpers::single_partition(capture_ancestral_states(&graph, &branch_model));
 
     let internal: BTreeSet<GraphNodeKey> = graph
       .get_nodes()
@@ -102,7 +119,7 @@ mod tests {
       ACGTACGTAC
     "})?;
 
-    let actual = capture_ancestral_states(&graph, &branch_model);
+    let actual = helpers::single_partition(capture_ancestral_states(&graph, &branch_model));
 
     let shared = Seq::try_from_str("ACGTACGTAC")?;
     let expected: BTreeMap<GraphNodeKey, Seq> = graph
@@ -116,6 +133,10 @@ mod tests {
 
   mod helpers {
     use super::*;
+
+    pub(super) fn single_partition(snapshots: Vec<AncestralStateSnapshot>) -> AncestralStateSnapshot {
+      snapshots.into_iter().exactly_one().expect("one partition")
+    }
 
     pub(super) fn materialize(snapshot: &AncestralStateSnapshot) -> BTreeMap<GraphNodeKey, Seq> {
       snapshot.iter().map(|(key, seq)| (*key, seq.to_seq())).collect()
@@ -131,7 +152,7 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-      let reconstruction = build_marginal_partition(
+      let reconstruction = PartitionSet::from(build_marginal_partition(
         Representation::Sparse,
         GtrModelName::JC69,
         &graph,
@@ -139,7 +160,7 @@ mod tests {
         leaf_seq_inputs(&graph, &names, aln),
         &branch_lengths,
         &NoopProgress,
-      )?;
+      )?);
       let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths)?;
       Ok((graph, BranchModel::Marginal(reconstruction)))
     }

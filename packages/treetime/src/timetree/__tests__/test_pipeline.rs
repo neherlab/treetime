@@ -286,7 +286,7 @@ mod tests {
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
         names,
-        source: None,
+        sources: vec![],
         dates,
         branch_lengths: nwk_parsed.branch_lengths,
       };
@@ -337,7 +337,7 @@ mod tests {
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
         names,
-        source,
+        sources: source.into_iter().collect(),
         dates: Some(dates),
         branch_lengths: nwk_parsed.branch_lengths,
       };

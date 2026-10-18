@@ -15,8 +15,8 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::shared::update::MarginalEdges;
+  use crate::partition::set::PartitionSet;
   use crate::pretty_assert_abs_diff_eq;
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
@@ -33,6 +33,7 @@ mod tests {
   use crate::timetree::round::{RoundInputs, RoundOutcome, RoundState, TopologyOutcome, refinement_round};
   use eyre::Report;
   use indoc::indoc;
+  use itertools::Itertools;
   use maplit::btreemap;
   use ndarray::array;
   use pretty_assertions::assert_eq;
@@ -254,7 +255,7 @@ mod tests {
   #[test]
   fn test_round_unchanged_topology_keeps_the_relaxed_gammas() -> Result<(), Report> {
     let (state, context) = helpers::create_unary_state()?;
-    let total_length = state.branch_model.sequence_length();
+    let total_length = state.branch_model.total_length();
     let expected = apply_relaxed_clock(
       &state.graph,
       &state.branch_lengths,
@@ -355,12 +356,12 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-      let (partition, _) = MarginalReconstruction::Dense(DenseReconstruction {
+      let (partition, _) = PartitionSet::Dense(vec![DenseReconstruction {
         partition: PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),
-      })
+      }])
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let branch_model = BranchModel::Marginal(partition);
 
@@ -512,6 +513,9 @@ mod tests {
       assert_eq!(
         internal,
         capture_ancestral_states(&state.graph, &state.branch_model)
+          .iter()
+          .exactly_one()
+          .expect("one partition")
           .keys()
           .copied()
           .collect::<BTreeSet<_>>()

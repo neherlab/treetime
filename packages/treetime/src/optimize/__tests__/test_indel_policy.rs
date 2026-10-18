@@ -202,7 +202,7 @@ mod tests {
       inject_indels_on_first_edge, setup_identical_reconstruction,
     };
     use crate::optimize::indel::{EdgeIndels, IndelPolicy};
-    use crate::partition::marginal::reconstruction::MarginalReconstruction;
+    use crate::partition::set::PartitionSet;
     use crate::test_utils::deletion;
     use eyre::Report;
     use ndarray::Array1;
@@ -220,7 +220,7 @@ mod tests {
 
     pub(super) struct Fixture {
       pub graph: Graph,
-      pub reconstruction: MarginalReconstruction,
+      pub reconstruction: PartitionSet,
       pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
     }
 

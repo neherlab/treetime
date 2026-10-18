@@ -1,5 +1,5 @@
 use crate::branch_lengths::branch_lengths_or_zero;
-use crate::partition::marginal::reconstruction::MarginalReconstruction;
+use crate::partition::set::PartitionSet;
 use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::{Report, WrapErr};
@@ -8,20 +8,16 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::reroot::RerootResult;
 
-#[expect(
-  clippy::large_enum_variant,
-  reason = "one value per run moves between steps by value; it is never stored in a collection"
-)]
 pub(crate) enum BranchModel {
   Input,
-  Marginal(MarginalReconstruction),
+  Marginal(PartitionSet),
 }
 
 impl BranchModel {
-  pub(crate) fn sequence_length(&self) -> usize {
+  pub(crate) fn total_length(&self) -> usize {
     match self {
       Self::Input => 0,
-      Self::Marginal(partition) => partition.sequence_length(),
+      Self::Marginal(partitions) => partitions.total_length(),
     }
   }
 
@@ -36,7 +32,7 @@ impl BranchModel {
   ) -> Result<Self, Report> {
     Ok(match self {
       Self::Input => Self::Input,
-      Self::Marginal(partition) => Self::Marginal(partition.marginal_update(graph, branch_lengths)?.0),
+      Self::Marginal(partitions) => Self::Marginal(partitions.marginal_update(graph, branch_lengths)?.0),
     })
   }
 
@@ -44,7 +40,7 @@ impl BranchModel {
   pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
     match self {
       Self::Input => Self::Input,
-      Self::Marginal(partition) => Self::Marginal(partition.reconcile_topology(graph)),
+      Self::Marginal(partitions) => Self::Marginal(partitions.reconcile_topology(graph)),
     }
   }
 
@@ -55,16 +51,16 @@ impl BranchModel {
     reroot: &RerootResult,
     log: &dyn LogSink,
   ) -> Result<Self, Report> {
-    let Self::Marginal(partition) = self else {
+    let Self::Marginal(partitions) = self else {
       return Ok(self);
     };
     progress_info!(log, "Applying reroot changes to the marginal reconstruction");
-    let partition = partition
+    let partitions = partitions
       .apply_reroot(reroot)
-      .wrap_err("Failed to apply reroot changes to partition")?
+      .wrap_err("Failed to apply reroot changes to the partitions")?
       .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))
       .wrap_err("Failed to update marginal after reroot")?
       .0;
-    Ok(Self::Marginal(partition))
+    Ok(Self::Marginal(partitions))
   }
 }

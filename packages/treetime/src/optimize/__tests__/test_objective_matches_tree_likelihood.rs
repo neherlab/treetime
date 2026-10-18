@@ -2,6 +2,7 @@
 mod tests {
   use crate::optimize::likelihood::{evaluate_partitions, evaluate_partitions_log_lh_only};
   use crate::pretty_assert_abs_diff_eq;
+  use crate::test_utils::SingleReconstruction;
   use eyre::Report;
   use helpers::{five_point_derivative, setup_skewed_pi};
   use itertools::Itertools;
@@ -22,7 +23,7 @@ mod tests {
       .get_edges()
       .map(|edge| -> Result<(f64, f64), Report> {
         let key = edge.key();
-        let contribution = [tree.reconstruction.create_edge_contribution(key)?];
+        let contribution = [tree.reconstruction.single().create_edge_contribution(key)?];
         let objective_0 = evaluate_partitions_log_lh_only(&contribution, tree.branch_lengths[&key])?.value();
         let objective = evaluate_partitions_log_lh_only(&contribution, t)?.value();
         Ok((
@@ -49,7 +50,7 @@ mod tests {
       .get_edges()
       .map(|edge| -> Result<(f64, f64), Report> {
         let key = edge.key();
-        let contribution = [tree.reconstruction.create_edge_contribution(key)?];
+        let contribution = [tree.reconstruction.single().create_edge_contribution(key)?];
         let derivative = evaluate_partitions(&contribution, t)?.derivative;
         let numerical = five_point_derivative(|t| tree.log_lh_with_branch_length(key, t), t)?;
         Ok((numerical, derivative))
@@ -72,7 +73,7 @@ mod tests {
       .graph
       .get_edges()
       .map(|edge| -> Result<(f64, f64), Report> {
-        let contribution = [tree.reconstruction.create_edge_contribution(edge.key())?];
+        let contribution = [tree.reconstruction.single().create_edge_contribution(edge.key())?];
         let second_derivative = evaluate_partitions(&contribution, t)?.second_derivative;
         let numerical = five_point_derivative(|t| Ok(evaluate_partitions(&contribution, t)?.derivative), t)?;
         Ok((numerical, second_derivative))
@@ -87,9 +88,8 @@ mod tests {
     use crate::gtr::gtr::{GTR, Mu};
     use crate::partition::fitch::passes::create_fitch_partition;
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-    use crate::partition::marginal::reconstruction::{
-      DenseReconstruction, MarginalReconstruction, SparseReconstruction,
-    };
+    use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
+    use crate::partition::set::PartitionSet;
     use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
     use indoc::indoc;
@@ -104,7 +104,7 @@ mod tests {
     pub(super) struct SkewedPiTree {
       pub(super) graph: Graph,
       pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
-      pub(super) reconstruction: MarginalReconstruction,
+      pub(super) reconstruction: PartitionSet,
       pub(super) log_lh_0: f64,
     }
 
@@ -159,10 +159,10 @@ mod tests {
       let reconstruction = if sparse {
         let (partition, node_states) =
           create_fitch_partition(&graph, alphabet, inputs)?.into_marginal_sparse(&graph)?;
-        MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states))
+        PartitionSet::Sparse(vec![SparseReconstruction::seeded(partition, gtr, node_states)])
       } else {
         let partition = PartitionMarginalDense::new(alphabet, &graph, &inputs)?;
-        MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
+        PartitionSet::Dense(vec![DenseReconstruction::seeded(partition, gtr)])
       };
       let (reconstruction, log_lh_0) = reconstruction.marginal_update(&graph, &branch_lengths)?;
 

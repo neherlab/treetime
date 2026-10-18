@@ -30,7 +30,7 @@ mod tests {
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      let total_length = reconstruction.sequence_length();
+      let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
@@ -81,7 +81,7 @@ mod tests {
     assert!(initial_lh.is_finite(), "Initial log-LH should be finite");
 
     for _ in 0..10 {
-      let total_length = reconstruction.sequence_length();
+      let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;

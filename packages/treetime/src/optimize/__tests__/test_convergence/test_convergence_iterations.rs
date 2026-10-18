@@ -27,7 +27,7 @@ mod tests {
       let graph_ref = nwk_parsed.graph;
       let mut branch_lengths_ref = nwk_parsed.branch_lengths;
       let recon_ref = setup_reconstruction(&graph_ref, &graph_ref_names, &aln, &mut branch_lengths_ref)?;
-      let total_length_ref = recon_ref.sequence_length();
+      let total_length_ref = recon_ref.total_length();
       let contributions_ref = gather_edge_contributions(&graph_ref, &recon_ref)?;
       let indels_ref = IndelPolicy::Include.edge_indels(&graph_ref, &recon_ref, &branch_lengths_ref);
       for _ in 0..max_iter {
@@ -44,7 +44,7 @@ mod tests {
 
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     for _ in 0..max_iter {
@@ -78,7 +78,7 @@ mod tests {
     let (reconstruction, initial_lh) = compute_total_lh(&graph, reconstruction, &branch_lengths)?;
     assert!(initial_lh < 0.0, "Initial log-LH should be negative: {initial_lh}");
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
     for _ in 0..10 {
@@ -118,7 +118,7 @@ mod tests {
       .sum();
 
     for _ in 0..10 {
-      let total_length = reconstruction.sequence_length();
+      let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;

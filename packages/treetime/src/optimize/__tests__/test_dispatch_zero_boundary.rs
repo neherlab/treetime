@@ -12,6 +12,7 @@ mod tests {
   use crate::optimize::zero_boundary::{ZeroLength, is_zero_branch_optimal};
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::test_utils::SingleReconstruction;
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use helpers::{
@@ -35,7 +36,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
@@ -73,13 +74,13 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     assert_eq!(
       None,
-      reconstruction.gtr().certified_decay_rate(),
+      reconstruction.single().gtr().certified_decay_rate(),
       "precondition: {model:?} must have no certified single decay rate"
     );
 
@@ -116,12 +117,12 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
     assert!(
-      reconstruction.gtr().certified_decay_rate().is_some(),
+      reconstruction.single().gtr().certified_decay_rate().is_some(),
       "precondition: {model:?} must have a certified single decay rate"
     );
 
@@ -256,7 +257,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
@@ -410,9 +411,10 @@ mod tests {
     use crate::optimize::params::ExistingBranchLengths;
     use crate::optimize::zero_boundary::{ZeroLength, reconcile_zero_boundary};
     use crate::partition::fitch::passes::create_fitch_partition;
-    use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
+    use crate::partition::marginal::reconstruction::SparseReconstruction;
     use crate::partition::optimize;
     use crate::partition::optimize::contribution::OptimizationContribution;
+    use crate::partition::set::PartitionSet;
     use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
     use indoc::indoc;
@@ -440,7 +442,7 @@ mod tests {
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       model: GtrModelName,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-    ) -> Result<MarginalReconstruction, Report> {
+    ) -> Result<PartitionSet, Report> {
       let aln: Vec<AlignmentRecord> = fasta_read(IDENTICAL_ALIGNMENT.as_bytes(), &Alphabet::default())?
         .into_iter()
         .map(AlignmentRecord::from)
@@ -452,11 +454,11 @@ mod tests {
         leaf_seq_inputs(graph, names, aln),
       )?;
       let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
-      let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+      let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(
         sparse_partition,
         get_gtr_by_name(model)?,
         sparse_node_states,
-      ));
+      )]);
       let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
       let indels = IndelPolicy::Include.edge_indels(graph, &reconstruction, branch_lengths);

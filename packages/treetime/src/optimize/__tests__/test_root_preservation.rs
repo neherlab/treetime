@@ -40,7 +40,7 @@ mod tests {
     let total_before = bl0_before + bl1_before;
     let ratio_before = bl0_before / total_before;
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     optimize_edge_lengths(
       &graph,
@@ -70,7 +70,7 @@ mod tests {
       ..
     } = DenseSetup::new(tree, ALIGNMENT)?;
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     optimize_edge_lengths(
       &graph,
@@ -122,7 +122,7 @@ mod tests {
       assert_eq!(3, children.len());
     }
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     optimize_edge_lengths(
       &graph,
@@ -151,7 +151,7 @@ mod tests {
 
     assert!(ratio_before > 0.9, "pre-condition: asymmetric ratio");
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     optimize_edge_lengths(
       &graph,
@@ -276,7 +276,8 @@ mod tests {
     use crate::optimize::indel::EdgeIndels;
     use crate::optimize::params::BranchOptMethod;
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-    use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
+    use crate::partition::marginal::reconstruction::DenseReconstruction;
+    use crate::partition::set::PartitionSet;
     use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
     use std::collections::BTreeMap;
@@ -288,7 +289,7 @@ mod tests {
 
     pub(super) struct DenseSetup {
       pub(super) graph: Graph,
-      pub(super) reconstruction: MarginalReconstruction,
+      pub(super) reconstruction: PartitionSet,
       pub(super) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
       pub(super) edges_by_child_name: BTreeMap<String, GraphEdgeKey>,
     }
@@ -306,7 +307,7 @@ mod tests {
         let branch_lengths = nwk_parsed.branch_lengths;
         let gtr = jc69(JC69Params::default())?;
         let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
-        let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr));
+        let reconstruction = PartitionSet::Dense(vec![DenseReconstruction::seeded(partition, gtr)]);
         let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
         let edges_by_child_name = graph
           .get_edges()
@@ -342,7 +343,7 @@ mod tests {
       let contributions = gather_edge_contributions(&setup.graph, &setup.reconstruction)?;
       optimize_edge_lengths(
         &setup.graph,
-        setup.reconstruction.sequence_length(),
+        setup.reconstruction.total_length(),
         &contributions,
         &EdgeIndels::Included {
           counts: indel_counts.clone(),

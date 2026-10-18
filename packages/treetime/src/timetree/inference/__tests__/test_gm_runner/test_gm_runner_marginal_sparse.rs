@@ -14,8 +14,8 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::indel::IndelPolicy;
   use crate::partition::fitch::passes::create_fitch_partition;
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
+  use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
   use crate::test_utils::leaf_seq_inputs;
@@ -70,7 +70,7 @@ mod tests {
       .collect();
     let fitch = create_fitch_partition(&graph, ALPHABET.clone(), leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let sparse_partition = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states));
+    let sparse_partition = PartitionSet::Sparse(vec![SparseReconstruction::seeded(partition, jc69(JC69Params::default())?, node_states)]);
 
     let (partition, _) = sparse_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 

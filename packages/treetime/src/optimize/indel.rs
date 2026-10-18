@@ -1,6 +1,7 @@
 use crate::optimize::branch_length::validate_branch_length_value;
-use crate::optimize::gather::{SequencePartitions, gather_edge_indel_counts, gather_partition_edge_indel_counts};
+use crate::optimize::gather::{gather_edge_indel_counts, gather_partition_edge_indel_counts};
 use crate::optimize::likelihood::OptimizationMetrics;
+use crate::partition::set::PartitionSet;
 use eyre::Report;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -23,7 +24,7 @@ impl IndelPolicy {
   pub(crate) fn edge_indels(
     self,
     graph: &Graph,
-    partitions: &impl SequencePartitions,
+    partitions: &PartitionSet,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> EdgeIndels {
     match self {
@@ -52,20 +53,13 @@ pub(crate) enum EdgeIndels {
 }
 
 impl EdgeIndels {
-  pub(crate) fn recount(&self, graph: &Graph, partitions: &impl SequencePartitions) -> Self {
+  pub(crate) fn recount(&self, graph: &Graph, partitions: &PartitionSet) -> Self {
     match self {
       Self::Included { partition_rates, .. } => Self::Included {
         counts: gather_edge_indel_counts(graph, partitions),
         partition_rates: partition_rates.clone(),
       },
       Self::Excluded => Self::Excluded,
-    }
-  }
-
-  pub(crate) fn included_rate(&self) -> Option<f64> {
-    match self {
-      Self::Included { partition_rates, .. } => Some(partition_rates.iter().sum()),
-      Self::Excluded => None,
     }
   }
 

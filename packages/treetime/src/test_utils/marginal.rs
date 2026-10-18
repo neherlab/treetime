@@ -6,7 +6,9 @@ use crate::gtr::get_gtr::{JC69Params, jc69};
 use crate::gtr::gtr::GTR;
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
+use crate::partition::marginal::reconstruction::{
+  DenseReconstruction, MarginalReconstruction, ReconstructionRef, SparseReconstruction,
+};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::set::PartitionSet;
@@ -102,31 +104,80 @@ pub(crate) fn emitted_sequences_by_name(
     .collect()
 }
 
-pub(crate) fn sparse_reconstruction(reconstruction: &MarginalReconstruction) -> &SparseReconstruction {
-  match reconstruction {
-    MarginalReconstruction::Sparse(sparse) => sparse,
-    MarginalReconstruction::Dense(_) => panic!("expected a sparse reconstruction, got a dense one"),
+pub(crate) fn sparse_reconstruction(reconstruction: &impl SingleReconstruction) -> &SparseReconstruction {
+  match reconstruction.single() {
+    ReconstructionRef::Sparse(sparse) => sparse,
+    ReconstructionRef::Dense(_) => panic!("expected a sparse reconstruction, got a dense one"),
   }
 }
 
-pub(crate) fn sparse_reconstruction_mut(reconstruction: &mut MarginalReconstruction) -> &mut SparseReconstruction {
-  match reconstruction {
-    MarginalReconstruction::Sparse(sparse) => sparse,
-    MarginalReconstruction::Dense(_) => panic!("expected a sparse reconstruction, got a dense one"),
+pub(crate) fn sparse_reconstruction_mut(reconstruction: &mut impl SingleReconstruction) -> &mut SparseReconstruction {
+  match reconstruction.single_mut() {
+    ReconstructionMut::Sparse(sparse) => sparse,
+    ReconstructionMut::Dense(_) => panic!("expected a sparse reconstruction, got a dense one"),
   }
 }
 
-pub(crate) fn dense_reconstruction_mut(reconstruction: &mut MarginalReconstruction) -> &mut DenseReconstruction {
-  match reconstruction {
-    MarginalReconstruction::Dense(dense) => dense,
-    MarginalReconstruction::Sparse(_) => panic!("expected a dense reconstruction, got a sparse one"),
+pub(crate) fn dense_reconstruction_mut(reconstruction: &mut impl SingleReconstruction) -> &mut DenseReconstruction {
+  match reconstruction.single_mut() {
+    ReconstructionMut::Dense(dense) => dense,
+    ReconstructionMut::Sparse(_) => panic!("expected a dense reconstruction, got a sparse one"),
   }
 }
 
-pub(crate) fn dense_reconstruction(reconstruction: &MarginalReconstruction) -> &DenseReconstruction {
-  match reconstruction {
-    MarginalReconstruction::Dense(dense) => dense,
-    MarginalReconstruction::Sparse(_) => panic!("expected a dense reconstruction, got a sparse one"),
+pub(crate) fn dense_reconstruction(reconstruction: &impl SingleReconstruction) -> &DenseReconstruction {
+  match reconstruction.single() {
+    ReconstructionRef::Dense(dense) => dense,
+    ReconstructionRef::Sparse(_) => panic!("expected a dense reconstruction, got a sparse one"),
+  }
+}
+
+pub(crate) trait SingleReconstruction {
+  fn single(&self) -> ReconstructionRef<'_>;
+
+  fn single_mut(&mut self) -> ReconstructionMut<'_>;
+
+  fn gtr_mut(&mut self) -> &mut GTR {
+    match self.single_mut() {
+      ReconstructionMut::Dense(dense) => &mut dense.gtr,
+      ReconstructionMut::Sparse(sparse) => &mut sparse.gtr,
+    }
+  }
+}
+
+pub(crate) enum ReconstructionMut<'a> {
+  Dense(&'a mut DenseReconstruction),
+  Sparse(&'a mut SparseReconstruction),
+}
+
+impl SingleReconstruction for MarginalReconstruction {
+  fn single(&self) -> ReconstructionRef<'_> {
+    self.view()
+  }
+
+  fn single_mut(&mut self) -> ReconstructionMut<'_> {
+    match self {
+      Self::Dense(dense) => ReconstructionMut::Dense(dense),
+      Self::Sparse(sparse) => ReconstructionMut::Sparse(sparse),
+    }
+  }
+}
+
+impl SingleReconstruction for PartitionSet {
+  fn single(&self) -> ReconstructionRef<'_> {
+    self
+      .iter()
+      .exactly_one()
+      .ok()
+      .expect("expected a partition set with exactly one partition")
+  }
+
+  fn single_mut(&mut self) -> ReconstructionMut<'_> {
+    let single = match self {
+      Self::Dense(dense) => dense.iter_mut().exactly_one().ok().map(ReconstructionMut::Dense),
+      Self::Sparse(sparse) => sparse.iter_mut().exactly_one().ok().map(ReconstructionMut::Sparse),
+    };
+    single.expect("expected a partition set with exactly one partition")
   }
 }
 
@@ -236,29 +287,6 @@ impl From<MarginalReconstruction> for PartitionSet {
       MarginalReconstruction::Dense(dense) => Self::Dense(vec![dense]),
       MarginalReconstruction::Sparse(sparse) => Self::Sparse(vec![sparse]),
     }
-  }
-}
-
-impl MarginalReconstruction {
-  pub(crate) fn gtr_mut(&mut self) -> &mut GTR {
-    match self {
-      Self::Dense(dense) => &mut dense.gtr,
-      Self::Sparse(sparse) => &mut sparse.gtr,
-    }
-  }
-}
-
-impl PartitionSet {
-  pub(crate) fn into_single_reconstruction(self) -> MarginalReconstruction {
-    let single = match self {
-      Self::Dense(dense) => dense.into_iter().exactly_one().ok().map(MarginalReconstruction::Dense),
-      Self::Sparse(sparse) => sparse
-        .into_iter()
-        .exactly_one()
-        .ok()
-        .map(MarginalReconstruction::Sparse),
-    };
-    single.expect("expected a partition set with exactly one partition")
   }
 }
 

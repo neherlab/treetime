@@ -121,7 +121,7 @@ pub(crate) fn refinement_round(
   rng: &mut dyn Rng,
   log: &dyn LogSink,
 ) -> Result<(RoundState, RoundOutcome), Report> {
-  let total_length = state.branch_model.sequence_length();
+  let total_length = state.branch_model.total_length();
   let state = relax_clock(&inputs.params.relax, state, total_length, log)?;
 
   let previous_times = capture_node_times(&state.graph, &state.time_inference);

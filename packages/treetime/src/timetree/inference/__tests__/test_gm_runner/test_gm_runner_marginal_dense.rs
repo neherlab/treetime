@@ -15,7 +15,7 @@ mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
+  use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
   use crate::test_utils::leaf_seq_inputs;
@@ -68,10 +68,10 @@ mod tests {
       .into_iter()
       .map(AlignmentRecord::from)
       .collect();
-    let dense_partition = MarginalReconstruction::Dense(DenseReconstruction::seeded(
+    let dense_partition = PartitionSet::Dense(vec![DenseReconstruction::seeded(
       PartitionMarginalDense::new(ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?,
       jc69(JC69Params::default())?,
-    ));
+    )]);
 
     let (partition, _) = dense_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 

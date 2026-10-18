@@ -32,14 +32,14 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
       missing_leaves: MissingLeafLimit::Enforced,
     };
     let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?;
-    Some(single_source(sources)?)
+    vec![single_source(sources)?]
   } else if args.branch_length_mode != BranchLengthMode::Input {
     return make_error!(
       "Alignment required when branch_length_mode is not 'input'. \
        Provide FASTA files or use --branch-length-mode=input"
     );
   } else {
-    None
+    vec![]
   };
 
   let dates = args
@@ -72,6 +72,6 @@ pub(crate) struct InputData {
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub input_leaf_order: Vec<GraphNodeKey>,
-  pub sequences: Option<AlignmentSource>,
+  pub sequences: Vec<AlignmentSource>,
   pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
 }

@@ -62,7 +62,7 @@ mod tests {
     let names_tt_4 = graph_with_names.clone();
     let result_with = run_optimize_loop(
       &mut graph_with,
-      reconstruction_with.into(),
+      reconstruction_with,
       &OptimizeLoopSettings {
         max_iter: 1,
         dp: 0.0,
@@ -78,7 +78,7 @@ mod tests {
     let names_tt_3 = graph_without_names.clone();
     let result_without = run_optimize_loop(
       &mut graph_without,
-      reconstruction_without.into(),
+      reconstruction_without,
       &OptimizeLoopSettings {
         max_iter: 1,
         dp: 0.0,
@@ -122,7 +122,7 @@ mod tests {
 
     let bl_before = branch_lengths.clone();
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     optimize_edge_lengths(
       &graph,
@@ -155,7 +155,7 @@ mod tests {
     let names_tt_2 = graph_no_flag_names.clone();
     let result_no_flag = run_optimize_loop(
       &mut graph_no_flag,
-      reconstruction_nf.into(),
+      reconstruction_nf,
       &OptimizeLoopSettings {
         max_iter: 3,
         dp: 0.1,
@@ -171,7 +171,7 @@ mod tests {
     let names_tt_1 = graph_flag_names.clone();
     let result_flag = run_optimize_loop(
       &mut graph_flag,
-      reconstruction_f.into(),
+      reconstruction_f,
       &OptimizeLoopSettings {
         max_iter: 3,
         dp: 0.1,

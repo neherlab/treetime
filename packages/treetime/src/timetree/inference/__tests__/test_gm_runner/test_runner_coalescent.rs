@@ -18,8 +18,8 @@ mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::shared::update::MarginalEdges;
+  use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::test_utils::constraint_coalescent_node_times;
   use crate::test_utils::dates_by_node;
@@ -94,7 +94,7 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
   type TimetreeSetup = (
     Graph,
     BTreeMap<GraphNodeKey, Option<String>>,
-    MarginalReconstruction,
+    PartitionSet,
     ClockModel,
     DateConstraints,
     BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -118,12 +118,12 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
         .into_iter()
         .map(AlignmentRecord::from)
         .collect();
-      let dense_partition = MarginalReconstruction::Dense(DenseReconstruction {
+      let dense_partition = PartitionSet::Dense(vec![DenseReconstruction {
         partition: PartitionMarginalDense::new(ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),
-      });
+      }]);
 
       let (partition, _) = dense_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 

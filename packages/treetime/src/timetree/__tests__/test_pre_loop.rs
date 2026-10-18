@@ -8,6 +8,7 @@ mod tests {
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::{Representation, build_marginal_partition};
+  use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{marginal_timetree_params, point_date_constraints};
@@ -53,7 +54,7 @@ mod tests {
     .into_iter()
     .map(AlignmentRecord::from)
     .collect();
-    let reconstruction = build_marginal_partition(
+    let reconstruction = PartitionSet::from(build_marginal_partition(
       Representation::Sparse,
       GtrModelName::JC69,
       &graph,
@@ -61,7 +62,7 @@ mod tests {
       leaf_seq_inputs(&graph, &names, aln),
       &branch_lengths_or_zero(&branch_lengths),
       &NoopProgress,
-    )?;
+    )?);
     let date_constraints = point_date_constraints(&graph, &names, &[("A", 2010.0), ("B", 2011.0), ("C", 2012.0)]);
     let context = TimetreeContext {
       final_sequences: FinalSequences::Skip,

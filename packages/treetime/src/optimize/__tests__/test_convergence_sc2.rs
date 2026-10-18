@@ -11,7 +11,8 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::run_optimize_loop;
   use crate::partition::fitch::passes::create_fitch_partition;
-  use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
+  use crate::partition::marginal::reconstruction::SparseReconstruction;
+  use crate::partition::set::PartitionSet;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use std::path::Path;
@@ -40,11 +41,11 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+    let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,
       node_states,
-    ));
+    )]);
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
@@ -61,7 +62,7 @@ mod tests {
     let names_tt_2 = names;
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter,
         dp: 0.1,
@@ -104,11 +105,11 @@ mod tests {
 
     let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+    let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,
       node_states,
-    ));
+    )]);
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
@@ -124,7 +125,7 @@ mod tests {
     let names_tt_1 = names;
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter: 10,
         dp: 0.1,

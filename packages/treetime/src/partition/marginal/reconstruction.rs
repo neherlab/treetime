@@ -53,10 +53,6 @@ impl MarginalReconstruction {
     self.view().gtr()
   }
 
-  pub(crate) fn sequence_length(&self) -> usize {
-    self.view().length()
-  }
-
   pub fn alphabet(&self) -> &Alphabet {
     self.view().alphabet()
   }
@@ -114,18 +110,8 @@ impl MarginalReconstruction {
       .stream_sequences(graph, impute, track, include_leaves, report_unknown, sink)
   }
 
-  pub(crate) fn extract_ancestral_sequence(&self, node_key: GraphNodeKey) -> SeqOverlay {
-    each_kind!(self, |reconstruction| reconstruction
-      .partition
-      .extract_ancestral_sequence(&reconstruction.node_states, node_key))
-  }
-
   pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
     self.view().root_sequence(graph)
-  }
-
-  pub(crate) fn edge_sub_count(&self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Option<usize>, Report> {
-    self.view().edge_sub_count(graph, edge_key)
   }
 
   pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
@@ -139,25 +125,6 @@ impl MarginalReconstruction {
     track: &MutationTrack,
   ) -> Result<Vec<Mutation>, Report> {
     self.view().edge_mutations(graph, edge_key, track)
-  }
-
-  pub(crate) fn create_edge_contribution(&self, edge_key: GraphEdgeKey) -> Result<OptimizationContribution, Report> {
-    self.view().create_edge_contribution(edge_key)
-  }
-
-  pub(crate) fn apply_reroot(self, changes: &RerootResult) -> Result<Self, Report> {
-    Ok(match self {
-      Self::Dense(reconstruction) => Self::Dense(reconstruction.reseeded()),
-      Self::Sparse(reconstruction) => Self::Sparse(reconstruction.apply_reroot(changes)?),
-    })
-  }
-
-  #[must_use]
-  pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
-    match self {
-      Self::Dense(reconstruction) => Self::Dense(reconstruction.reseeded()),
-      Self::Sparse(reconstruction) => Self::Sparse(reconstruction.reconcile_topology(graph)),
-    }
   }
 }
 
@@ -245,6 +212,12 @@ impl<'a> ReconstructionRef<'a> {
       root_sequence,
       edge_mutations,
     })
+  }
+
+  pub(crate) fn extract_ancestral_sequence(self, node_key: GraphNodeKey) -> SeqOverlay {
+    each_kind!(self, |reconstruction| reconstruction
+      .partition
+      .extract_ancestral_sequence(&reconstruction.node_states, node_key))
   }
 
   pub(crate) fn root_sequence(self, graph: &Graph) -> Result<Seq, Report> {

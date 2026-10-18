@@ -12,11 +12,11 @@ pub(crate) use clock::{dates_by_node, half_residual_sum_of_squares};
 pub(crate) use graph_lookup::{find_edge_key, find_node_key_by_name, node_keys_named};
 pub(crate) use indel::{deletion, insertion};
 pub(crate) use marginal::{
-  NUC_ALPHABET, RecordingSeqSink, ancestral_input_for_tree, complete_leaf_sequences, complete_sequence_source,
-  dense_partition_with_constant_leaves, dense_reconstruction, dense_reconstruction_mut, emitted_sequences_by_name,
-  internal_node_keys, leaf_seq_inputs, node_keys, run_dense_marginal_with_newick, run_sparse_marginal_with_newick,
-  sequence_source, sparse_reconstruction, sparse_reconstruction_mut, sparse_topology_partition,
-  sparse_topology_partitions,
+  NUC_ALPHABET, ReconstructionMut, RecordingSeqSink, SingleReconstruction, ancestral_input_for_tree,
+  complete_leaf_sequences, complete_sequence_source, dense_partition_with_constant_leaves, dense_reconstruction,
+  dense_reconstruction_mut, emitted_sequences_by_name, internal_node_keys, leaf_seq_inputs, node_keys,
+  run_dense_marginal_with_newick, run_sparse_marginal_with_newick, sequence_source, sparse_reconstruction,
+  sparse_reconstruction_mut, sparse_topology_partition, sparse_topology_partitions,
 };
 pub(crate) use mugration::{TraitsByNode, traits_by_node};
 pub(crate) use sparse::{fitch_edge_obs, sparse_edge_obs};

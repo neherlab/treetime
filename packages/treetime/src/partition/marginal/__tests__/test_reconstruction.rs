@@ -29,7 +29,7 @@ mod tests {
     let (graph, seeded) = helpers::seeded_sparse()?;
     let partition = MarginalReconstruction::Sparse(seeded);
     for edge in graph.get_edges() {
-      assert_eq!(None, partition.edge_sub_count(&graph, edge.key())?);
+      assert_eq!(None, partition.view().edge_sub_count(&graph, edge.key())?);
     }
     Ok(())
   }
@@ -41,7 +41,7 @@ mod tests {
     let partition = MarginalReconstruction::Sparse(updated);
     for edge in graph.get_edges() {
       let expected = partition.view().edge_subs(&graph, edge.key())?.len();
-      assert_eq!(Some(expected), partition.edge_sub_count(&graph, edge.key())?);
+      assert_eq!(Some(expected), partition.view().edge_sub_count(&graph, edge.key())?);
     }
     Ok(())
   }

@@ -34,7 +34,7 @@ mod tests {
       .remove(&edge_key)
       .expect("first edge present in gathered contributions");
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let one_mutation = 1.0 / total_length.to_f64_exact();
     let branch_length = 0.01;
 
@@ -74,7 +74,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 

@@ -9,7 +9,7 @@ pub(super) mod tests {
   use crate::optimize::likelihood::{OptimizationMetrics, evaluate_partitions, evaluate_partitions_log_lh_only};
   use crate::optimize::method_newton::{chain_rule_sqrt, newton_tolerance_sqrt};
   use crate::optimize::params::BranchOptMethod;
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
+  use crate::partition::set::PartitionSet;
   use crate::seq::indel::InDel;
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use eyre::Report;
@@ -35,7 +35,7 @@ pub(super) mod tests {
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let aln = simple_alignment()?;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 
@@ -168,7 +168,7 @@ pub(super) mod tests {
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       n_indels: usize,
-    ) -> Result<(MarginalReconstruction, f64), Report> {
+    ) -> Result<(PartitionSet, f64), Report> {
       let aln = simple_alignment()?;
       let mut reconstruction = setup_reconstruction(graph, names, &aln, branch_lengths)?;
 
@@ -200,7 +200,7 @@ pub(super) mod tests {
       let graph = nwk_parsed.graph;
       let mut branch_lengths = nwk_parsed.branch_lengths;
       let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
-      let total_length = reconstruction.sequence_length();
+      let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
       let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
       optimize_edge_lengths(
@@ -222,7 +222,7 @@ pub(super) mod tests {
 
     pub(crate) struct OptimizedFirstEdge {
       pub graph: Graph,
-      pub reconstruction: MarginalReconstruction,
+      pub reconstruction: PartitionSet,
       pub indel_rate: f64,
       pub branch_length: f64,
     }
@@ -235,7 +235,7 @@ pub(super) mod tests {
 
     pub(crate) fn eval_combined_first_edge(
       graph: &Graph,
-      reconstruction: &MarginalReconstruction,
+      reconstruction: &PartitionSet,
       indel_rate: f64,
       t: f64,
     ) -> Result<f64, Report> {
@@ -257,7 +257,7 @@ pub(super) mod tests {
 
     pub(crate) fn eval_metrics_first_edge(
       graph: &Graph,
-      reconstruction: &MarginalReconstruction,
+      reconstruction: &PartitionSet,
       indel_rate: f64,
       t: f64,
     ) -> Result<OptimizationMetrics, Report> {

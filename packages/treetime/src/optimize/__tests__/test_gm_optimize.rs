@@ -164,7 +164,8 @@ mod tests {
     use crate::optimize::params::{BranchOptMethod, TopologyOps};
     use crate::optimize::run_loop::run_optimize_loop;
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-    use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
+    use crate::partition::marginal::reconstruction::DenseReconstruction;
+    use crate::partition::set::PartitionSet;
     use crate::test_utils::leaf_seq_inputs;
     use deser::Deserialize;
     use eyre::Report;
@@ -237,8 +238,10 @@ mod tests {
       let mut branch_lengths = nwk_parsed.branch_lengths;
 
       let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
-      let reconstruction =
-        MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
+      let reconstruction = PartitionSet::Dense(vec![DenseReconstruction::seeded(
+        partition,
+        jc69(JC69Params::default())?,
+      )]);
       let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
       {
@@ -257,7 +260,7 @@ mod tests {
       let names_tt_1 = names.clone();
       let result = run_optimize_loop(
         &mut graph,
-        reconstruction.into(),
+        reconstruction,
         &OptimizeLoopSettings {
           max_iter: case.max_iter,
           dp,
@@ -274,7 +277,6 @@ mod tests {
       let mut lh_history = result.lh_history.into_iter().map(LogLh::value).collect_vec();
       let (_, final_lh) = result
         .partitions
-        .into_single_reconstruction()
         .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       lh_history.push(final_lh.value());
 

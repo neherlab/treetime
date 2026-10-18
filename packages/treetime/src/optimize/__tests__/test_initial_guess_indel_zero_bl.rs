@@ -8,7 +8,8 @@ mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
+  use crate::partition::marginal::reconstruction::DenseReconstruction;
+  use crate::partition::set::PartitionSet;
   use crate::seq::indel::InDel;
   use crate::test_utils::dense_reconstruction_mut;
   use crate::test_utils::leaf_seq_inputs;
@@ -93,7 +94,7 @@ mod tests {
 
     pub(super) fn setup_dense(
       newick: &str,
-    ) -> Result<(Graph, MarginalReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    ) -> Result<(Graph, PartitionSet, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln: Vec<AlignmentRecord> = fasta_read(
         indoc! {r#"
@@ -116,8 +117,10 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
 
       let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
-      let reconstruction =
-        MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
+      let reconstruction = PartitionSet::Dense(vec![DenseReconstruction::seeded(
+        partition,
+        jc69(JC69Params::default())?,
+      )]);
 
       let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 

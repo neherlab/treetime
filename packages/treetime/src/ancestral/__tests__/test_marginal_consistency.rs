@@ -527,7 +527,7 @@ mod tests {
     let edge_key = graph.get_edges().next().expect("tree has an edge").key();
 
     assert_error!(
-      reconstruction.create_edge_contribution(edge_key),
+      reconstruction.view().create_edge_contribution(edge_key),
       "Branch length likelihood does not support per-site rates: the substitution model has site rates, but the branch length objective applies one rate to all sites"
     );
 

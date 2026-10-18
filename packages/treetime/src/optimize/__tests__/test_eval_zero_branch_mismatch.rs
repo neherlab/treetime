@@ -8,7 +8,8 @@ mod tests {
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::BranchOptMethod;
   use crate::partition::fitch::passes::create_fitch_partition;
-  use crate::partition::marginal::reconstruction::{MarginalReconstruction, SparseReconstruction};
+  use crate::partition::marginal::reconstruction::SparseReconstruction;
+  use crate::partition::set::PartitionSet;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
@@ -48,14 +49,14 @@ mod tests {
       leaf_seq_inputs(&graph, &names, aln),
     )?;
     let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(&graph)?;
-    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+    let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(
       sparse_partition,
       jc69(JC69Params::default())?,
       sparse_node_states,
-    ));
+    )]);
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
-    let total_length = reconstruction.sequence_length();
+    let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
     let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
 

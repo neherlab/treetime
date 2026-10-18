@@ -8,6 +8,7 @@ mod tests {
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
+  use crate::test_utils::SingleReconstruction;
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -32,7 +33,7 @@ mod tests {
     let names_tt_6 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter,
         dp: 0.0,
@@ -77,7 +78,7 @@ mod tests {
     let names_tt_5 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter: 1,
         dp: 0.0,
@@ -110,7 +111,7 @@ mod tests {
     let names_tt_4 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter,
         dp,
@@ -140,7 +141,7 @@ mod tests {
     let names_tt_3 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter: 0,
         dp: 1e-2,
@@ -170,7 +171,7 @@ mod tests {
     let names_tt_2 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter: 10,
         dp: 0.0,
@@ -213,7 +214,7 @@ mod tests {
     let names_tt_1 = names.clone();
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter: 10,
         dp: 0.0,
@@ -229,7 +230,6 @@ mod tests {
 
     let (reconstruction, final_sparse_lh) = result
       .partitions
-      .into_single_reconstruction()
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let final_lh = final_sparse_lh.value() + manual_total_indel_log_lh(&graph, &reconstruction, &branch_lengths);
 
@@ -269,7 +269,7 @@ mod tests {
 
     let result = run_optimize_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &OptimizeLoopSettings {
         max_iter,
         dp,
@@ -293,7 +293,7 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::partition::marginal::reconstruction::MarginalReconstruction;
+    use crate::partition::set::PartitionSet;
     use crate::test_utils::sparse_reconstruction;
     use eyre::Report;
     use indoc::indoc;
@@ -335,7 +335,7 @@ mod tests {
       -0.75 * (1.0 - 4.0 / 3.0 * mismatch_fraction).ln()
     }
 
-    fn manual_indel_count_on_edge(reconstruction: &MarginalReconstruction, edge_key: GraphEdgeKey) -> usize {
+    fn manual_indel_count_on_edge(reconstruction: &PartitionSet, edge_key: GraphEdgeKey) -> usize {
       sparse_reconstruction(reconstruction)
         .partition
         .obs_edges
@@ -360,7 +360,7 @@ mod tests {
 
     pub(super) fn manual_total_indel_log_lh(
       graph: &Graph,
-      reconstruction: &MarginalReconstruction,
+      reconstruction: &PartitionSet,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     ) -> f64 {
       let total_indels: usize = graph

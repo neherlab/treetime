@@ -37,7 +37,7 @@ mod tests {
     let input = TimetreeInput {
       graph: nwk_parsed.graph,
       names,
-      source: Some(sequence_source(ALPHABET.clone(), aln_nodes)?),
+      sources: vec![sequence_source(ALPHABET.clone(), aln_nodes)?],
       dates: Some(dates),
       branch_lengths: nwk_parsed.branch_lengths,
     };

@@ -9,7 +9,9 @@ mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
+  use crate::partition::set::PartitionSet;
+  use crate::test_utils::SingleReconstruction;
   use crate::test_utils::leaf_seq_inputs;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -84,15 +86,15 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
+  ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
-    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+    let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,
       node_states,
-    ));
+    )]);
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
     Ok(reconstruction)
@@ -103,11 +105,13 @@ mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
+  ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
-    let reconstruction =
-      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
+    let reconstruction = PartitionSet::Dense(vec![DenseReconstruction::seeded(
+      partition,
+      jc69(JC69Params::default())?,
+    )]);
 
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
@@ -132,7 +136,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = reconstruction.view().edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.single().edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
 
@@ -150,7 +154,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = reconstruction.view().edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.single().edge_effective_length(&graph, edge_key)?;
       assert_eq!(16, effective);
     }
 
@@ -171,7 +175,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = reconstruction.view().edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.single().edge_effective_length(&graph, edge_key)?;
       assert_eq!(12, effective);
     }
 
@@ -192,7 +196,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = reconstruction.view().edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.single().edge_effective_length(&graph, edge_key)?;
       assert_eq!(12, effective);
     }
 
@@ -214,7 +218,7 @@ mod tests {
     let mut found_reduced = false;
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let effective = reconstruction.view().edge_effective_length(&graph, edge_key)?;
+      let effective = reconstruction.single().edge_effective_length(&graph, edge_key)?;
       if effective < 16 {
         found_reduced = true;
       }
@@ -238,7 +242,7 @@ mod tests {
 
     for edge_ref in graph.get_edges() {
       let edge_key = edge_ref.key();
-      let subs = reconstruction.view().edge_subs(&graph, edge_key)?;
+      let subs = reconstruction.single().edge_subs(&graph, edge_key)?;
       for sub in &subs {
         assert!(sub.pos() < 4 || sub.pos() >= 8);
       }
@@ -256,7 +260,7 @@ mod tests {
     let mut branch_lengths_clean = nwk_parsed.branch_lengths;
     let reconstruction_clean = setup_sparse(&graph_clean, &graph_clean_names, &aln_clean, &branch_lengths_clean)?;
     {
-      let total_length = reconstruction_clean.sequence_length();
+      let total_length = reconstruction_clean.total_length();
       let indels = IndelPolicy::Include.edge_indels(&graph_clean, &reconstruction_clean, &branch_lengths_clean);
       let evidence = InitialGuessEvidence::gather(&graph_clean, &reconstruction_clean)?;
       guess_initial_branch_lengths(

@@ -9,7 +9,8 @@ pub(crate) mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
+  use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
+  use crate::partition::set::PartitionSet;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
@@ -52,18 +53,18 @@ pub(crate) mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
+  ) -> Result<PartitionSet, Report> {
     let fitch = create_fitch_partition(
       graph,
       Alphabet::new(AlphabetName::Nuc)?,
       leaf_seq_inputs(graph, names, aln.to_vec()),
     )?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
-    let reconstruction = MarginalReconstruction::Sparse(SparseReconstruction::seeded(
+    let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(
       partition,
       jc69(JC69Params::default())?,
       node_states,
-    ));
+    )]);
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     apply_initial_guess(graph, &reconstruction, branch_lengths)?;
     Ok(reconstruction)
@@ -74,14 +75,16 @@ pub(crate) mod tests {
     names: &BTreeMap<GraphNodeKey, Option<String>>,
     aln: &[AlignmentRecord],
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<MarginalReconstruction, Report> {
+  ) -> Result<PartitionSet, Report> {
     let partition = PartitionMarginalDense::new(
       Alphabet::new(AlphabetName::Nuc)?,
       graph,
       &leaf_seq_inputs(graph, names, aln.to_vec()),
     )?;
-    let reconstruction =
-      MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
+    let reconstruction = PartitionSet::Dense(vec![DenseReconstruction::seeded(
+      partition,
+      jc69(JC69Params::default())?,
+    )]);
     let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     apply_initial_guess(graph, &reconstruction, branch_lengths)?;
     Ok(reconstruction)
@@ -89,16 +92,16 @@ pub(crate) mod tests {
 
   pub(crate) fn compute_total_lh(
     graph: &Graph,
-    reconstruction: MarginalReconstruction,
+    reconstruction: PartitionSet,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<(MarginalReconstruction, f64), Report> {
+  ) -> Result<(PartitionSet, f64), Report> {
     let (reconstruction, log_lh) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     Ok((reconstruction, log_lh.value()))
   }
 
   fn apply_initial_guess(
     graph: &Graph,
-    reconstruction: &MarginalReconstruction,
+    reconstruction: &PartitionSet,
     branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(), Report> {
     guess_initial_branch_lengths(

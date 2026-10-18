@@ -4,7 +4,7 @@ mod tests {
   use crate::optimize::__tests__::test_topology_cleanup::tests::helpers::*;
   use crate::optimize::params::TopologyOps;
   use crate::optimize::run_loop::prune_and_merge_in_loop;
-  use crate::partition::marginal::reconstruction::MarginalReconstruction;
+  use crate::partition::set::PartitionSet;
   use crate::partition::storage::sparse::SparseEdgeObs;
   use crate::test_utils::{find_edge_key, find_node_key_by_name, fitch_edge_obs, sparse_reconstruction};
   use eyre::Report;
@@ -17,18 +17,18 @@ mod tests {
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
-    let reconstruction = MarginalReconstruction::Sparse(empty_sparse_recon()?);
+    let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
 
     let mut names_tt_13 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &[],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_13,
     )?;
-    let reconstruction = cleanup.partitions.into_single_reconstruction();
+    let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
     assert!(!changed);
     assert_eq!(graph.get_nodes().count(), 4);
@@ -72,20 +72,20 @@ mod tests {
       .obs_edges
       .insert(rd_key, fitch_edge_obs(vec![sub(b'G', 5, b'C')]));
 
-    let reconstruction = MarginalReconstruction::Sparse(partition);
+    let reconstruction = PartitionSet::Sparse(vec![partition]);
 
     branch_lengths.insert(ri_key, Some(0.0));
 
     let mut names_tt_12 = names.clone();
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &[ri_key],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_12,
     )?;
-    let reconstruction = cleanup.partitions.into_single_reconstruction();
+    let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
     assert!(changed);
 
@@ -128,18 +128,18 @@ mod tests {
       .insert(vc2, fitch_edge_obs(vec![sub(b'T', 0, b'A')]));
     partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
 
-    let reconstruction = MarginalReconstruction::Sparse(partition);
+    let reconstruction = PartitionSet::Sparse(vec![partition]);
 
     let mut names_tt_9 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &[],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_9,
     )?;
-    let reconstruction = cleanup.partitions.into_single_reconstruction();
+    let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
     assert!(changed, "reversion polytomy must be resolved even without a collapse");
 
@@ -197,20 +197,20 @@ mod tests {
       .obs_edges
       .insert(rd_key, fitch_edge_obs(vec![sub(b'G', 5, b'C')]));
 
-    let reconstruction = MarginalReconstruction::Sparse(partition);
+    let reconstruction = PartitionSet::Sparse(vec![partition]);
 
     branch_lengths.insert(ri_key, Some(0.0));
 
     let mut names_tt_6 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &[ri_key],
       TopologyOps::default(),
       &mut branch_lengths,
       &mut names_tt_6,
     )?;
-    let reconstruction = cleanup.partitions.into_single_reconstruction();
+    let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
     assert!(changed);
 
@@ -259,7 +259,7 @@ mod tests {
       .obs_edges
       .insert(rd_key, fitch_edge_obs(vec![sub(b'G', 5, b'C')]));
 
-    let reconstruction = MarginalReconstruction::Sparse(partition);
+    let reconstruction = PartitionSet::Sparse(vec![partition]);
 
     branch_lengths.insert(ri_key, Some(0.0));
 
@@ -270,13 +270,13 @@ mod tests {
     let mut names_tt_5 = names.clone();
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &[ri_key],
       ops,
       &mut branch_lengths,
       &mut names_tt_5,
     )?;
-    let reconstruction = cleanup.partitions.into_single_reconstruction();
+    let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
     assert!(changed, "collapse still fires even with merge disabled");
 
@@ -317,7 +317,7 @@ mod tests {
       .insert(vc2, fitch_edge_obs(vec![sub(b'T', 0, b'A')]));
     partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
 
-    let reconstruction = MarginalReconstruction::Sparse(partition);
+    let reconstruction = PartitionSet::Sparse(vec![partition]);
 
     let ops = TopologyOps {
       flip_parent_child: false,
@@ -326,13 +326,13 @@ mod tests {
     let mut names_tt_4 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &[],
       ops,
       &mut branch_lengths,
       &mut names_tt_4,
     )?;
-    let reconstruction = cleanup.partitions.into_single_reconstruction();
+    let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
     assert!(changed, "merge still groups the reverting siblings");
 
@@ -377,7 +377,7 @@ mod tests {
       .insert(vc2, fitch_edge_obs(vec![sub(b'T', 0, b'A')]));
     partition.partition.obs_edges.insert(vc3, SparseEdgeObs::default());
 
-    let reconstruction = MarginalReconstruction::Sparse(partition);
+    let reconstruction = PartitionSet::Sparse(vec![partition]);
 
     let node_count_before = graph.get_nodes().count();
     let ops = TopologyOps {
@@ -388,13 +388,13 @@ mod tests {
     let mut names_tt_3 = names;
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
-      reconstruction.into(),
+      reconstruction,
       &[],
       ops,
       &mut branch_lengths,
       &mut names_tt_3,
     )?;
-    let reconstruction = cleanup.partitions.into_single_reconstruction();
+    let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
     assert!(!changed, "no topology step runs when all are disabled");
     assert_eq!(graph.get_nodes().count(), node_count_before);

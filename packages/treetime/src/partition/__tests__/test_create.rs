@@ -33,7 +33,7 @@ mod tests {
     &NoopProgress,)?;
 
     assert_eq!(expected_dense, matches!(reconstruction, MarginalReconstruction::Dense(_)));
-    assert_eq!(4, reconstruction.sequence_length());
+    assert_eq!(4, reconstruction.view().length());
     assert_eq!(
       format!("{:#?}", expected_gtr(&input)?),
       format!("{:#?}", reconstruction.gtr())
