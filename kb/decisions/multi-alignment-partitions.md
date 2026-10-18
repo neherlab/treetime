@@ -1,6 +1,6 @@
 # Several alignment files: one partition per file, one relative rate per file
 
-Every command with an alignment input accepts several `--alignment` files. Each file is one partition with its own substitution model, and all partitions of a run share one tree. In optimize and timetree they also share the branch lengths, and each file has one relative rate that scales the branch lengths for its sites.
+Ancestral, optimize, timetree and prune accept several `--alignment` files. Homoplasy stops with an error when it gets more than one file, and clock accepts `--alignment` but does not read the sequences. Each file is one partition with its own substitution model, and all partitions of a run share one tree. In optimize and timetree they also share the branch lengths, and each file has one relative rate that scales the branch lengths for its sites.
 
 **Type**: Scientific and large design choice for v1.
 
@@ -57,7 +57,7 @@ v0 accepts one alignment and has no counterpart, so the evidence comes from test
 
 - **Split equality**: one alignment and the same alignment cut into two column blocks give the same branch lengths, dates and pruned trees with `--model jc69` and `--partition-rates equal` when no gap touches the cut. Optimize and timetree are checked in dense and in sparse mode; prune always uses the sparse representation
 - **Order**: the most likely results do not depend on the order of the files
-- **Ancestral factorization**: an ancestral run with two files equals two single-file runs, and its log-likelihood equals their sum
+- **Ancestral factorization**: for the most likely reconstruction, an ancestral run with two files equals two single-file runs, and its log-likelihood equals their sum. Posterior sampling (`--sample-from-profile` with `root` or `all`) draws from one random generator per run, file after file in the order of the `--alignment` list. A sampled result therefore depends on the order of the files, and every file after the first draws other values than in a separate run with the same seed
 - **Scale**: the normalized rates and branch lengths do not depend on the scale of the starting rates, and one normalization keeps the likelihood on branches above the floor
 - **Rate recovery**: with 20 replicates of three files of 3000 sites simulated on `data/zika/86/tree.nwk` under JC69 with the rates 0.3, 1.0 and 2.0, the mean estimate of each file lies within three standard errors of its normalized rate (3/11, 10/11, 20/11) (`packages/treetime/src/optimize/__tests__/test_pipeline_partition_rate_recovery.rs`)
 

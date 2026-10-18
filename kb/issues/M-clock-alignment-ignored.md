@@ -1,6 +1,6 @@
 # `clock` ignores the alignment
 
-`treetime clock` accepts `--aln`/`--alignment` and never reads it. v1 `clock` always works on the input branch lengths of the tree: it fits the root-to-tip regression, filters outliers, and reroots on those lengths. The alignment changes nothing, and `--covariation` still requires `--sequence-length`, although the help text of `--sequence-length` says it is "Not required if alignment is provided" ([packages/app-commands/src/commands/clock/args.rs#L185-L187](../../packages/app-commands/src/commands/clock/args.rs#L185-L187)).
+`treetime clock` accepts `--aln`/`--alignment` and never reads it. v1 `clock` always works on the input branch lengths of the tree: it fits the root-to-tip regression, filters outliers, and reroots on those lengths. The alignment changes nothing, and `--covariation` still requires `--sequence-length` ([packages/app-commands/src/commands/clock/args.rs#L115-L117](../../packages/app-commands/src/commands/clock/args.rs#L115-L117)).
 
 The flag has existed since the first v1 command skeleton, which copied the v0 argument list. No commit has wired it, and no decision drops it: it is an unported v0 feature, not an intentional change.
 
