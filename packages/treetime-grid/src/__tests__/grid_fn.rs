@@ -125,4 +125,63 @@ mod tests {
   fn test_boundary_behavior_is_soft(#[case] behavior: BoundaryBehavior, #[case] expected: bool) {
     assert_eq!(expected, behavior.is_soft());
   }
+
+  // Negative-log values of a density that vanishes as a power law at a hard boundary t_b = 10 inside the grid,
+  // y(t) = 1 - 2 ln(10 - t), stored on t = 0, 1, ..., 10 with +inf at t_b. Inside the boundary cell [9, 10] the
+  // interpolation must follow the law, not the line from y(9) = 1 to +inf.
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::cell_midpoint(  9.5)]
+  #[case::near_boundary(  9.99)]
+  #[case::near_anchor(    9.01)]
+  #[trace]
+  fn test_gridfn_interp_boundary_cell_follows_the_hard_approach_law(#[case] query: f64) -> Result<(), Report> {
+    let law = |t: f64| 1.0 - 2.0 * (10.0 - t).ln();
+    let t = Array1::linspace(0.0, 10.0, 11);
+    let y = t.mapv(|ti: f64| if ti < 10.0 { law(ti) } else { f64::INFINITY });
+    let grid_fn = GridFn::from_range_values((0.0, 10.0), y)?;
+
+    let actual = grid_fn.interp(query)?;
+
+    approx::assert_abs_diff_eq!(law(query), actual, epsilon = 1e-9);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_interp_boundary_cell_uses_the_stored_law_of_its_side() -> Result<(), Report> {
+    // the stored values are flat; the stored law of the right side has b = 3 and ends at the boundary point
+    let y = array![0.0, 0.0, 0.0, 0.0, f64::INFINITY];
+    let grid_fn = GridFn::from_range_values((0.0, 4.0), y)?;
+    let law = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 4.0, b: 3.0 });
+
+    let actual = grid_fn.interp_with_extrap(3.5, BoundaryBehavior::Hard, law)?;
+
+    approx::assert_abs_diff_eq!(-3.0 * 0.5_f64.ln(), actual, epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::grid_point_next_to_the_boundary(  2.0 + 1e-13, 0.0)]
+  #[case::left_end_infinite(                0.5,         f64::NAN)]
+  #[case::both_ends_infinite(               3.5,         f64::INFINITY)]
+  #[trace]
+  fn test_gridfn_interp_never_returns_nan_next_to_zero_probability(
+    #[case] query: f64,
+    #[case] expected: f64,
+  ) -> Result<(), Report> {
+    // +inf (zero probability) at both ends, finite in between
+    let y = array![f64::INFINITY, 2.0, 0.0, f64::INFINITY, f64::INFINITY];
+    let grid_fn = GridFn::from_range_values((0.0, 4.0), y)?;
+
+    let actual = grid_fn.interp(query)?;
+
+    assert!(!actual.is_nan(), "interpolation at {query} returned NaN");
+    if expected.is_infinite() {
+      assert!(actual.is_infinite() && actual > 0.0, "expected +inf at {query}, got {actual}");
+    } else if !expected.is_nan() {
+      assert_ulps_eq!(expected, actual, max_ulps = 4);
+    }
+    Ok(())
+  }
 }
