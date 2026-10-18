@@ -8,41 +8,27 @@ mod tests {
   use crate::test_utils::half_residual_sum_of_squares;
   use eyre::Report;
   use helpers::{
-    NEGATIVE_RATE_DATES, OPTIMAL_ROOT_CD_SPLIT, POSITIVE_RATE_DATES, RootSearch, dates_negative_rate,
-    dates_positive_rate, divs_on_root_ab_edge, divs_on_root_cd_edge, search_root,
+    NEGATIVE_RATE_DATES, OPTIMAL_ROOT_CD_SPLIT, POSITIVE_RATE_DATES, dates_negative_rate, dates_positive_rate,
+    divs_on_root_ab_edge, divs_on_root_cd_edge, search_root,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::assert_error;
   use treetime_utils::least_squares::LineFit;
 
+  // With the default variance model the regression is ordinary least squares, the score along an edge is a quadratic
+  // in the split and the search places the root at its vertex, whatever split optimizer is configured: 6.18 / 45 is the
+  // analytic optimum on the root-CD edge.
   #[rustfmt::skip]
   #[rstest]
-  #[case::grid(                     BranchPointOptimizationParams::Grid(GridSearchParams::default()),                                                     0.1)]
-  #[case::grid_with_params(         BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }),                                           0.14)]
-  #[case::brent(                    BranchPointOptimizationParams::Brent(BrentParams::default()),                                                         OPTIMAL_ROOT_CD_SPLIT)]
-  #[case::brent_with_params(        BranchPointOptimizationParams::brent_with(BrentParams { brent_max_iters: 25, brent_tolerance: 1e-8 }),                OPTIMAL_ROOT_CD_SPLIT)]
-  #[trace]
-  fn test_find_best_root_splits_the_root_to_cd_branch(
-    #[case] params: BranchPointOptimizationParams,
-    #[case] expected_split: f64,
-  ) -> Result<(), Report> {
-    let expected_chisq = half_residual_sum_of_squares(&POSITIVE_RATE_DATES, &divs_on_root_cd_edge(expected_split));
-
-    let search = search_root(&dates_positive_rate(), &params, true, None)?;
-
-    assert_eq!(Some((o!("root"), o!("CD"))), search.split_edge);
-    pretty_assert_abs_diff_eq!(expected_split, search.split, epsilon = 1e-7);
-    pretty_assert_abs_diff_eq!(expected_chisq, search.result.regression().unwrap().chisq(), epsilon = 1e-12);
-    Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::golden_section(            BranchPointOptimizationParams::GoldenSection(GoldenSectionParams::default()))]
+  #[case::grid(                     BranchPointOptimizationParams::Grid(GridSearchParams::default()))]
+  #[case::grid_with_params(         BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }))]
+  #[case::brent(                    BranchPointOptimizationParams::Brent(BrentParams::default()))]
+  #[case::brent_with_params(        BranchPointOptimizationParams::brent_with(BrentParams { brent_max_iters: 25, brent_tolerance: 1e-8 }))]
+  #[case::golden_section(           BranchPointOptimizationParams::GoldenSection(GoldenSectionParams::default()))]
   #[case::golden_section_with_params(BranchPointOptimizationParams::golden_section_with(GoldenSectionParams { golden_max_iters: 25, golden_tolerance: 1e-8 }))]
   #[trace]
-  fn test_find_best_root_golden_section_splits_the_root_to_cd_branch(
+  fn test_find_best_root_splits_the_root_to_cd_branch_at_the_exact_optimum(
     #[case] params: BranchPointOptimizationParams,
   ) -> Result<(), Report> {
     let expected_chisq = half_residual_sum_of_squares(&POSITIVE_RATE_DATES, &divs_on_root_cd_edge(OPTIMAL_ROOT_CD_SPLIT));
@@ -50,44 +36,8 @@ mod tests {
     let search = search_root(&dates_positive_rate(), &params, true, None)?;
 
     assert_eq!(Some((o!("root"), o!("CD"))), search.split_edge);
-    pretty_assert_abs_diff_eq!(OPTIMAL_ROOT_CD_SPLIT, search.split, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(OPTIMAL_ROOT_CD_SPLIT, search.split, epsilon = 1e-12);
     pretty_assert_abs_diff_eq!(expected_chisq, search.result.regression().unwrap().chisq(), epsilon = 1e-12);
-    Ok(())
-  }
-
-  #[test]
-  fn test_optimization_methods_improve_on_grid() -> Result<(), Report> {
-    let dates = dates_positive_rate();
-    let grid = search_root(
-      &dates,
-      &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
-      true,
-      None,
-    )?;
-    let brent = search_root(
-      &dates,
-      &BranchPointOptimizationParams::Brent(BrentParams::default()),
-      true,
-      None,
-    )?;
-    let golden = search_root(
-      &dates,
-      &BranchPointOptimizationParams::GoldenSection(GoldenSectionParams::default()),
-      true,
-      None,
-    )?;
-
-    let chisq = |search: &RootSearch| search.result.regression().unwrap().chisq();
-    assert!(chisq(&brent) <= chisq(&grid), "Brent should achieve <= chisq than grid");
-    assert!(
-      chisq(&golden) <= chisq(&grid),
-      "Golden section should achieve <= chisq than grid"
-    );
-    assert_eq!(grid.split_edge, brent.split_edge, "Brent should find same edge as grid");
-    assert_eq!(
-      grid.split_edge, golden.split_edge,
-      "Golden section should find same edge as grid"
-    );
     Ok(())
   }
 

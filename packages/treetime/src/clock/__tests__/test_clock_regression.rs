@@ -190,7 +190,6 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "outlier leaves still enter the regression through their parent edge: kb/issues/H-clock-regression-includes-filtered-outliers.md"]
   fn test_clock_regression_outliers_are_left_out_of_the_fit() -> Result<(), Report> {
     let (model, _) = helpers::fit(TREE_5, &dates_5(), &["E"], true, None)?;
     let (model_without_e_date, _) = helpers::fit(TREE_5, &leaf_dates(), &[], true, None)?;
