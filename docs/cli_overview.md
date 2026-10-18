@@ -32,11 +32,10 @@ missing parts of sequence.
 
 ## `clock`
 
-`clock` requires date information and in its basic usage does not require sequence information.
-It only needs sequence information when run with the flag `--covariation`.
-In this case, a more complicated algorithm is run that tries to estimate a clock model while accounting for shared
-ancestry of samples.
-In practice, the latter algorithm has not been very useful.
+`clock` requires date information and does not require sequence information.
+v0 needs sequence information with the flag `--covariation`, which runs a more complicated algorithm that tries to
+estimate a clock model while accounting for shared ancestry of samples.
+In practice, that algorithm has not been very useful, and v1 removed it: the regression is ordinary least squares.
 
 #### Inputs:
 
@@ -45,7 +44,7 @@ In practice, the latter algorithm has not been very useful.
 #### Steps:
 
 - (optional): run clock-filter to label/exclude tips that are outliers
-- (optional/only with `--covariation`): run a single iteration timetree analysis
+- (v0 only, with `--covariation`): run a single iteration timetree analysis
 - reroot the tree using `TreeTime.reroot`
 - estimate clock model using `TreeTime.get_clock_model`
 

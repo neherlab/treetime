@@ -1,8 +1,8 @@
 # Clock reroot boolean selects incompatible workflows
 
-`fn estimate_clock_model_with_reroot_policy()` accepts `keep_root: bool` to select between backward regression alone and backward regression followed by forward regression and topology mutation [`packages/treetime/src/clock/clock_regression.rs#L238`](../../packages/treetime/src/clock/clock_regression.rs#L238).
+`fn estimate_clock_model_with_reroot_policy()` accepts `keep_root: bool` to select between backward regression alone and backward regression followed by forward regression and topology mutation [`packages/treetime/src/clock/clock_regression.rs#L24`](../../packages/treetime/src/clock/clock_regression.rs#L24).
 
-Reroot and optimization parameters remain mandatory when `keep_root` makes them irrelevant. Call sites pass raw booleans, so the selected scientific workflow and ignored arguments are not visible at the call site.
+Reroot parameters remain mandatory when `keep_root` makes them irrelevant. Call sites pass raw booleans, so the selected scientific workflow and ignored arguments are not visible at the call site.
 
 ## Workflow difference
 
@@ -24,5 +24,4 @@ The result should likewise identify whether topology was retained or optimized i
 
 ## Related issues
 
-- [N-reroot-clock-search-duplicates-generic-module.md](N-reroot-clock-search-duplicates-generic-module.md)
 - [M-core-units-of-measurement-not-tracked.md](M-core-units-of-measurement-not-tracked.md)

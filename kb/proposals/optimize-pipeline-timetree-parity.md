@@ -20,14 +20,10 @@ Timetree-only steps requiring time (not applicable): date constraints, clock reg
 
 ### 1. Generic reroot scoring architecture
 
-Extract the root search algorithm from `clock/find_best_root/` into a new `reroot/` module. Make scoring pluggable via a `RootStats` trait so root-finding works without date information. Prerequisite for optimize reroot support.
+Root-finding without date information for optimize. Prerequisite for optimize reroot support.
 
-- Proposal: [reroot-generic-scoring-architecture.md](reroot-generic-scoring-architecture.md)
-- Status: implemented. The generic `reroot/` module (`RootStats` trait, `EdgeCostFn<S>`, generic search) and `DivStats` scoring live in `packages/treetime/src/reroot/`.
-- Clock `min-dev` now uses its fixed-zero-rate variance objective; the v0 scoring defect is documented in [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md).
-- Remaining issues:
-  - [kb/issues/N-reroot-clock-search-duplicates-generic-module.md](../issues/N-reroot-clock-search-duplicates-generic-module.md) -- preserve the approved clock statistics boundary while migrating callers
-  - [kb/issues/N-reroot-split-optimizer-default-diverges-from-v0.md](../issues/N-reroot-split-optimizer-default-diverges-from-v0.md) -- decide split-position optimizer parity independently
+- Status: implemented, then superseded. A generic `reroot/` search with pluggable `RootStats` scoring was built and later removed: `optimize --reroot=min-dev` now runs the clock's exact least-squares root search at a fixed rate of zero, every tip at the same date ([kb/algo/reroot.md](../algo/reroot.md), [kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)); `reroot/` keeps the shared topology moves.
+- Clock `min-dev` uses its fixed-zero-rate variance objective; the v0 scoring defect is documented in [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md).
 
 ### 2. Optimize reroot support
 

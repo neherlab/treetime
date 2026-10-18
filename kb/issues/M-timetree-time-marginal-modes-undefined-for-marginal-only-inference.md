@@ -18,7 +18,7 @@ The CLI accepts `never`, `always`, and `only-final` (`enum TimeMarginalModeCli` 
 - `never` and `always` give identical dates
 - `always` and `only-final` write `confidence_intervals.tsv` from the marginal posteriors; `never` does not (`fn gather_results` in [packages/treetime/src/timetree/pipeline.rs](../../packages/treetime/src/timetree/pipeline.rs))
 - `only-final` also runs one extra inference round after the loop, commits the clock branch lengths without damping, and runs a marginal update of the sequence partition; v0's final round has no ancestral update
-- `--confidence` changes `never` to `only-final` when `--clock-std-dev` or `--covariation` is given, and warns otherwise (`fn compute_effective_time_marginal` in [packages/treetime/src/timetree/params.rs](../../packages/treetime/src/timetree/params.rs))
+- `--confidence` changes `never` to `only-final` (`fn compute_effective_time_marginal` in [packages/treetime/src/timetree/params.rs](../../packages/treetime/src/timetree/params.rs))
 
 The flag name and the values `never` and `always` suggest a choice of inference method that no longer exists.
 

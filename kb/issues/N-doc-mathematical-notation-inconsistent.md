@@ -7,7 +7,6 @@ Algorithm Markdown, proposals, generated CLI reference text, and reroot rustdoc 
 - `kb/algo/ancestral.md`
 - `kb/algo/reroot.md`
 - `kb/algo/timetree.md`
-- `kb/proposals/reroot-generic-scoring-architecture.md`
 - `docs/docs/reference.md`
 - reroot and optimize rustdoc under `packages/treetime/src`
 

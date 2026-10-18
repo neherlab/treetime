@@ -18,12 +18,6 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 - `fn propagate_distributions_forward`: zero dedicated unit tests (forward pass tested only through GM)
 - `fn load_input_data` / `fn initialize_partitions`: no direct tests
 - `fn run_timetree_estimation()`: no branch coverage for input mode, confidence, skyline, rerooting, failure paths
-- `fn build_covariation_clock_params()` [packages/treetime/src/timetree/params.rs#L64-L94](../../packages/treetime/src/timetree/params.rs#L64-L94): no unit tests. It encodes the v0 covariation variance $\left(\ell + s^2/L\right)/L$ ([packages/legacy/treetime/treetime/clock_tree.py#L277-L285](../../packages/legacy/treetime/treetime/clock_tree.py#L277-L285)) as `variance_factor = 1/L`, `variance_offset = 0`, `variance_offset_leaf = s²/L²`, where $\ell$ is the branch length, $s$ the tip slack, and $L$ the sequence length. Tests in `packages/treetime/src/timetree/__tests__/test_params.rs`, with expected values from the v0 formula, not from running the function:
-  - `covariation=false` returns `None`
-  - `covariation=true, seq_len=Some(1000), tip_slack=None`: `variance_factor=1e-3`, `variance_offset=0.0`, `variance_offset_leaf = s²/1000²` for the default tip slack. The default value is undecided: [M-timetree-covariation-tip-slack-default-differs-from-v0.md](M-timetree-covariation-tip-slack-default-differs-from-v0.md)
-  - `covariation=true, seq_len=Some(500), tip_slack=Some(5.0)`: exact values
-  - `covariation=true, aln=Some(records)`: sequence length derived from the alignment
-  - `covariation=true, seq_len=None, aln=None`: error
 
 ### Clock command
 
@@ -112,9 +106,9 @@ Production defects remain in their domain issues; this issue owns the cross-cutt
 
 ### No property tests for ClockSet algebraic identities
 
-`struct ClockSet` algebra and propagation [packages/treetime/src/clock/clock_set.rs#L55-L182](../../packages/treetime/src/clock/clock_set.rs#L55-L182)
+`struct ClockSet` algebra and propagation [packages/treetime/src/clock/clock_set.rs](../../packages/treetime/src/clock/clock_set.rs)
 
-Addition and `+=` lack coverage for associativity, commutativity, and the zero identity. Subtraction and `-=` require inverse-law properties such as `(a - b) + b = a`; subtraction is neither associative nor commutative. `fn propagate_averages` needs separately derived invariants for its valid input domain.
+Addition and `+=` lack coverage for associativity, commutativity, and the zero identity. Subtraction and `-=` require inverse-law properties such as `(a - b) + b = a`; subtraction is neither associative nor commutative. `fn ClockSet::shift` should compose additively (`shift(a).shift(b) = shift(a + b)`) and commute with addition.
 
 ### No property tests for Fitch parsimony invariants
 

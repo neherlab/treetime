@@ -12,7 +12,7 @@ The order of rerooting, clock filtering, branch-length optimization and time inf
 | 4   | clock filter                                                                                                                         | clock filter                                                    |
 | 5   | reroot with covariation ([treetime.py#L512-L513](../../packages/legacy/treetime/treetime/treetime.py#L512-L513))                     | -                                                               |
 | 6   | ML branch-length optimization ([treetime.py#L266](../../packages/legacy/treetime/treetime/treetime.py#L266))                         | ML branch-length post-step                                      |
-| 7   | -                                                                                                                                    | reroot with covariation                                         |
+| 7   | -                                                                                                                                    | reroot, outliers excluded (v1 has no covariation)              |
 | 8   | time tree, no coalescent prior ([treetime.py#L270](../../packages/legacy/treetime/treetime/treetime.py#L270))                        | time tree, then again with the coalescent prior when one is set |
 | 9   | reroot, ancestral reconstruction, time tree ([treetime.py#L278-L285](../../packages/legacy/treetime/treetime/treetime.py#L278-L285)) | -                                                               |
 

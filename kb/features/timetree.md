@@ -123,9 +123,8 @@
 - [x] Inverse CDF of the posterior grid for regions with the peak on a boundary
 - [x] Rate susceptibility analysis (`compute_rate_susceptibility()`)
 - [x] `date_uncertainty_due_to_rate()` via probit function (erfinv)
-- [x] Rate susceptibility activated via `--confidence` with `--covariation` or `--clock-std-dev`
+- [x] Rate susceptibility activated via `--confidence`, with `--clock-std-dev` or the Gaussian rate standard deviation of an estimated rate (v0: `--clock-std-dev` or `--covariation`; see [kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] `--confidence` promotion of `time_marginal` from `never` to `only-final`
-- [x] `--covariation` wired into timetree clock regression
 - [x] Clock rate stepped toward the maximum of the marginal likelihood of the node times in each refinement round when a coalescent prior is active - new in v1, see [timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md)
 - [x] Reroot method and tip/MRCA selection passed into clock rerooting
 
@@ -156,8 +155,7 @@
 
 - [x] `--clock-std-dev` (rate susceptibility)
 - [x] `--confidence` (time_marginal promotion, rate susceptibility)
-- [x] `--covariation` (GLS clock regression, rate susceptibility)
-- [x] `--tip-slack` (covariation variance computation)
+- [ ] `--covariation`, `--tip-slack`: removed in v1 ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] `--reroot` / `--reroot-tips`
 - [ ] `--n-iqd`
 - [ ] `--tip-labels` / `--no-tip-labels`

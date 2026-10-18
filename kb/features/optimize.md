@@ -19,7 +19,7 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 
 The optimize command has no sampling dates, so only date-free rooting policies are available. Rerooting is opt-in; the input root is kept by default.
 
-- [x] `--reroot=min-dev`: minimize the variance of root-to-tip distances (`DivStats`) using a generic, date-free root search. This implements v0's documented fixed-zero-slope meaning; actual v0 candidate scoring retains an estimated-rate term ([kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md)).
+- [x] `--reroot=min-dev`: minimize the variance of root-to-tip distances with the clock root search at a fixed rate of zero, every tip at the same date ([kb/algo/reroot.md](../algo/reroot.md)). This implements v0's documented fixed-zero-slope meaning; actual v0 candidate scoring retains an estimated-rate term ([kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md)).
 - [x] `--reroot-tips=A,B,...`: root on the branch leading to the MRCA of the named tips (midpoint), no scoring.
 - [x] `--keep-root`: explicit form of the default (keep the input root); mutually exclusive with the reroot options.
 - [x] Date-dependent methods (`least-squares`, `oldest`, `clock-filter`) rejected at argument validation

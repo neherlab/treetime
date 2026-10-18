@@ -1,9 +1,9 @@
 # Clock command collapses date intervals to their mean
 
 > [!IMPORTANT]
-> **Decision required.** v0 also regresses on the interval mean (see v0 comparison), so weighting intervals by their width would diverge from v0 and needs approval. Options: (a) keep v0 parity and treat the interval midpoint as an exact observation; (b) add a date-uncertainty term to the leaf variance, for example proportional to the squared interval width, so that wider date ranges carry less weight in the regression.
+> **Decision required.** v0 also regresses on the interval mean (see v0 comparison), so weighting intervals by their width would diverge from v0 and needs approval. Options: (a) keep v0 parity and treat the interval midpoint as an exact observation; (b) weight each tip by its date uncertainty, for example inversely to the squared interval width, so that wider date ranges carry less weight in the regression. The regression is ordinary least squares with unit tip weights ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)), so (b) would reintroduce per-tip weights in `ClockSet::leaf_contribution`.
 
-`assign_dates` at [packages/treetime/src/clock/assign_dates.rs#L28-L32](../../packages/treetime/src/clock/assign_dates.rs#L28-L32) collapses every `DateOrRange` to its scalar mean via `DateOrRange::mean` and stores only an `f64` in the node's `time` field. Date intervals (e.g., "2020.0-2020.5") lose their range information and are treated identically to point dates.
+`assign_dates` at [packages/treetime/src/clock/assign_dates.rs#L25-L28](../../packages/treetime/src/clock/assign_dates.rs#L25-L28) collapses every `DateOrRange` to its scalar mean via `DateOrRange::mean` and stores only an `f64` in the node's `time` field. Date intervals (e.g., "2020.0-2020.5") lose their range information and are treated identically to point dates.
 
 ## Impact
 
@@ -17,10 +17,9 @@ A public support thread documents mixed-granularity sampling dates and recommend
 
 ## Affected code
 
-- Date collapse: [packages/treetime/src/clock/assign_dates.rs#L28-L32](../../packages/treetime/src/clock/assign_dates.rs#L28-L32)
-- Downstream consumer: leaf date and leaf variance in the backward regression [packages/treetime/src/clock/clock_regression.rs#L341-L369](../../packages/treetime/src/clock/clock_regression.rs#L341-L369)
-- Leaf variance parameter: `ClockVarianceParams::variance_offset_leaf` [packages/treetime/src/clock/clock_regression.rs#L452-L461](../../packages/treetime/src/clock/clock_regression.rs#L452-L461)
+- Date collapse: [packages/treetime/src/clock/assign_dates.rs#L25-L28](../../packages/treetime/src/clock/assign_dates.rs#L25-L28)
+- Downstream consumer: leaf date in the backward regression, `fn clock_regression_backward_node()` [packages/treetime/src/clock/clock_regression.rs#L285](../../packages/treetime/src/clock/clock_regression.rs#L285), and the tip sums `fn ClockSet::leaf_contribution()` [packages/treetime/src/clock/clock_set.rs#L19](../../packages/treetime/src/clock/clock_set.rs#L19)
 
 ## Possible fix
 
-If option (b) is approved: incorporate interval width into the variance model by adding a per-leaf date-uncertainty term to the leaf variance, proportional to the interval width squared, so that wider date ranges contribute less weight to the regression.
+If option (b) is approved: give each tip a weight that decreases with the squared interval width, carried in the tip sums of `ClockSet`, so that wider date ranges contribute less weight to the regression.
