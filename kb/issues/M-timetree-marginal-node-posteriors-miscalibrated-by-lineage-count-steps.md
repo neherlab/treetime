@@ -86,6 +86,41 @@ node, so $k(t)$ enters as a mean field and some approximation remains.
 - Score each candidate with the exact three-tip comparison (and a four- or five-tip extension) before running the
   calibration suite.
 
+## Mean-field prior: first implementation
+
+Branch `claude-meanfield-prior` replaces the prior of the time passes by the mean-field prior of the second option
+([`mean_field.rs`](../../packages/treetime/src/coalescent/mean_field.rs)): the expectations come from the prior-free
+pass, are rebuilt once from the first prior pass and then frozen. On `((A,B)X,(C,D)Y)R` with overlapping sibling clades
+the node marginals match the exact Kingman posterior to within 0.03 in CDF (`test_marginal_exact.rs`), where the frozen
+lineage counts were off by 0.08-0.38.
+
+Validation suite, keep root, true topology, against the same code with the frozen lineage counts (calibration: 80-240
+runs per row, all nodes pooled; accuracy: per-cell means of `keep-{opt,skyline}`):
+
+| | frozen $\hat k$ | mean field |
+| --- | --- | --- |
+| true $T_c$ fixed, true rate: 90% coverage / mean PIT / PIT > 0.9 | 0.870 / 0.585 / 0.170 | 0.888 / 0.537 / 0.133 |
+| `opt`, true rate: 90% coverage / mean PIT / PIT < 0.1 | 0.868 / 0.561 / 0.084 | 0.822 / 0.414 / 0.213 |
+| `skyline`, true rate: 90% coverage / mean PIT / PIT < 0.1 | 0.830 / 0.588 / 0.085 | 0.811 / 0.408 / 0.222 |
+| estimated rate, $L = 10^4$, $\mu = 3 \cdot 10^{-4}$: mean rate error / mean $\lvert\log\rvert$ rate error | $-12.1\%$ / 0.131 | $+3.2\%$ / 0.049 |
+| same: root error / date RMSE, years | 1.99 / 0.215 | 1.43 / 0.184 |
+| true rate, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$: root error / date RMSE, years | 6.14 / 0.539 | 8.60 / 0.642 |
+| `opt`, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$, estimated rate: $T_c$ log bias | +0.61 | -0.21 |
+| run time, all 2880 runs | 16594 s | 17429 s |
+
+- With the true $T_c$ the posteriors in the sampling window are calibrated (mean PIT 0.50-0.52 by estimated age, was
+  0.60-0.63); nodes estimated older than 4 years are now too young (mean PIT 0.64-0.69, about 2100 of 32000 nodes).
+- The clock-rate bias of the frozen lineage counts at high signal is gone, and accuracy at $L = 10^4$ is equal or
+  better in every cell.
+- With $T_c$ estimated, the posteriors overshoot to too young, most at low signal (`opt`, $L = 10^3$,
+  $\mu = 3 \cdot 10^{-4}$: mean PIT 0.25), and root error and date RMSE at $L = 10^3$, $\mu \le 10^{-3}$ get worse.
+  $T_c$ is fitted to the lineage counts at the point times while the prior uses expectations; with the mean field the
+  fitted $T_c$ drops by 0.3-0.8 in log at low signal, which strengthens the prior and pulls the nodes younger.
+- `data/ebola/{20,100,362}`: no failures and no oscillation; `opt` converges in 6, 3 and 8 rounds (was 7, 12, 12).
+
+Open: fit $T_c$ to expected statistics under the same posteriors, $\hat T_c = \int E[\binom{k}{2}] dt / n_{\text{mergers}}$,
+instead of the point times; then rerun the calibration and accuracy comparison.
+
 ## Related
 
 - [N-coalescent-smoothing-frozen-lineage-counts.md](N-coalescent-smoothing-frozen-lineage-counts.md): the step
