@@ -15,9 +15,11 @@ the slope of the root-to-tip regression. Without a coalescent prior the regressi
 - The branch-time distributions are a rate-independent likelihood on a branch-length grid divided by the rate, so a
   candidate rate rescales their time axis (`fn Distribution.scale_time()`) and costs one backward pass.
 - One parabolic step in log rate: `log_lh_time` at the round's rate and at that rate divided and multiplied by 1.25
-  gives a parabola, whose maximum, at most 2-fold away, is the target; without a maximum the target is that bound on
-  the side of the better probe. The rate moves 2/3 of the way to the target in log rate (`STEP_FRACTION`), so at
-  most by a factor of $2^{2/3} \approx 1.59$ per round.
+  gives a parabola. In the first round its maximum, at most 2-fold away, is the target; without a maximum the target
+  is that bound on the side of the better probe (`RateWindow::FollowSlope`). From the second round on, only a maximum
+  between the probes counts, and otherwise the rate stays (`RateWindow::InteriorMaximum`); see
+  [Rate window](#rate-window). The rate moves 2/3 of the way to the target in log rate (`STEP_FRACTION`), so at most
+  by a factor of $2^{2/3} \approx 1.59$ in the first round and $1.25^{2/3} \approx 1.16$ after it.
 - The step does not optimize precisely: the refinement loop repeats it every round, with the coalescent timescale and
   the node times re-estimated in between. A full Brent search (to `1e-3` within a 3-fold window) made the loop
   oscillate: on a flat `log_lh_time` the rate moved a few percent per round, and node times jumped by up to 1.8 years
@@ -94,6 +96,41 @@ last two rounds, bounded to $[0.25, 1]$, was about half a round faster than 2/3 
 (mean $|\ln$ rate error$|$ after round 2: 0.32 against 0.26), and no more stable on `data/ebola/{20,100,362}`, so it
 was not kept. The rate error against the truth after round 2 differs between the three rules by at most 0.02 in
 $\ln$ rate at high signal, against 0.11 left after 12 rounds, most of it the lineage-count bias below.
+
+## Rate window
+
+At low signal the rate drifted with the number of rounds: at $L=10^3$, $\mu=3\cdot10^{-4}$ the median
+$\lvert\ln\rvert$ rate error grew from 0.51 after two rounds to 1.26 after six, and the node date RMSE from 0.49 to
+1.1 years. The probes see the mean-field prior frozen in calendar time while the tree stretches, which tilts
+`log_lh_time` toward low rates by about 77 per unit of $\ln$ rate, round after round, without an interior maximum
+([M-timetree-rate-step-window-and-rate-prior.md](../issues/M-timetree-rate-step-window-and-rate-prior.md)). Following
+that slope to the 2-fold bound every round accumulates the tilt.
+
+Moving the rate only toward a maximum between the probes stops the drift, but alone it also stops the first round from
+correcting a poor start: on `const/rep03` at $L=10^3$, $\mu=10^{-2}$ the regression starts at half the true rate, the
+probes rise monotonically toward it, and the rate stayed at $4.85\cdot10^{-3}$ against a true $10^{-2}$, which tripled
+the date RMSE of the high-signal sets. The first round therefore keeps the slope-following window, and the later
+rounds use the interior one. A Gaussian-timetree start rate instead of the regression's fixed `rep03` but raised the
+date RMSE at $L=10^3$, $\mu=3\cdot10^{-3}$ from 0.155 to 0.191, so the regression start stays.
+
+Gate: 240 validation sets (`const`, `exp`, `piecewise`, replicates 0-9), true topology and root, `--coalescent-opt`,
+`--clock-filter 0`; median $\lvert\ln\rvert$ rate error / date RMSE in years / 90% coverage, two and six rounds:
+
+| set | slope every round, 2 rounds | 6 rounds | slope in round 1 only, 2 rounds | 6 rounds |
+| --- | --- | --- | --- | --- |
+| $L=10^3$, $\mu=3\cdot10^{-4}$ | 0.505 / 0.494 / 0.830 | 1.259 / 1.109 / 0.856 | 0.281 / 0.503 / 0.820 | 0.290 / 0.536 / 0.776 |
+| $L=10^3$, $\mu=10^{-3}$ | 0.143 / 0.273 / 0.875 | 0.191 / 0.345 / 0.837 | 0.191 / 0.272 / 0.873 | 0.208 / 0.343 / 0.833 |
+| $L=10^3$, $\mu=3\cdot10^{-3}$ | 0.052 / 0.155 / 0.895 | 0.048 / 0.172 / 0.885 | 0.052 / 0.159 / 0.894 | 0.048 / 0.160 / 0.883 |
+| $L=10^3$, $\mu=10^{-2}$ | 0.043 / 0.125 / 0.899 | 0.038 / 0.102 / 0.896 | 0.043 / 0.125 / 0.899 | 0.038 / 0.102 / 0.896 |
+| $L=10^4$, $\mu=3\cdot10^{-4}$ | 0.058 / 0.160 / 0.897 | 0.060 / 0.219 / 0.867 | 0.062 / 0.158 / 0.898 | 0.060 / 0.173 / 0.872 |
+| $L=10^4$, $\mu=10^{-3}$ | 0.022 / 0.098 / 0.896 | 0.025 / 0.093 / 0.897 | 0.022 / 0.098 / 0.896 | 0.025 / 0.093 / 0.897 |
+| $L=10^4$, $\mu=3\cdot10^{-3}$ | 0.018 / 0.056 / 0.903 | 0.018 / 0.056 / 0.902 | 0.018 / 0.056 / 0.903 | 0.018 / 0.056 / 0.902 |
+| $L=10^4$, $\mu=10^{-2}$ | 0.010 / 0.039 / 0.907 | 0.012 / 0.034 / 0.907 | 0.010 / 0.039 / 0.907 | 0.012 / 0.034 / 0.907 |
+
+Six rounds no longer degrade the low-signal sets, and the high-signal sets ($\mu \ge 3\cdot10^{-3}$) are unchanged.
+Costs: the rate error at $L=10^3$, $\mu=10^{-3}$ (0.143 to 0.191 after two rounds, at the same date RMSE), and the
+90% coverage at $L=10^3$, $\mu=3\cdot10^{-4}$ after six rounds (0.856 to 0.776), where the intervals of the drifted
+runs had been wide enough to cover dates more than a year off.
 
 ## Accepted limitations
 
