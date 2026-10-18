@@ -40,6 +40,11 @@ build_one() {
     if [[ -n "${run}" && -z "${lib}" && "${target}" != *-apple-darwin ]]; then
       CROSS_COMPILE="${target}" dev/docker/run dev/cross/run "${bin}" "${target}" --help >/dev/null
     fi
+    # aarch64 Linux kernels run with 4K, 16K, or 64K pages; QEMU emulates the
+    # largest.
+    if [[ -n "${run}" && -z "${lib}" && "${target}" == aarch64-*-linux-* ]]; then
+      CROSS_COMPILE="${target}" dev/docker/run env QEMU_PAGESIZE=65536 dev/cross/run "${bin}" "${target}" --help >/dev/null
+    fi
   done
 }
 

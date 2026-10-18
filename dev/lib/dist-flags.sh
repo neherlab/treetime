@@ -24,6 +24,10 @@ export_dist_flags() {
     # Features of -C target-feature=+v8.2a, which is unstable, listed explicitly.
     c_arch="-march=armv8.2-a"
     rust_arch="-C target-cpu=generic -C target-feature=+crc,+dpb,+lor,+lse,+neon,+pan,+ras,+rdm,+vh"
+    # jemalloc fixes its page size at build time and aborts at startup on a
+    # kernel with larger pages. 64K pages also work on kernels with 4K and 16K
+    # pages (Raspberry Pi 5, Asahi Linux, Arm servers with 64K kernels).
+    export JEMALLOC_SYS_WITH_LG_PAGE=16
     ;;
   x86_64-*)
     c_arch="-march=haswell"
