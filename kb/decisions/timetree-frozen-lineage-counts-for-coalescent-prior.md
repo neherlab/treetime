@@ -20,7 +20,8 @@ the feedback to matter.
 > lineage counts and `CoalescentModel`, both removed in phase 2 of
 > [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md).
 > The prior is now the mean-field prior of the expected lineage counts `LineageExpectation`, seeded in the init phase
-> from the Gaussian node marginals and rebuilt once from the posteriors of its time pass; the statistic ($T_c$ fit,
+> from the Gaussian node marginals and rebuilt once from the posteriors of its time pass, and again after a round in
+> which polytomy resolution changed the topology (the new mergers enter as points for that round's pass); the statistic ($T_c$ fit,
 > reported likelihood, convergence metric) is the expectation of the current posteriors. Phase 5 supersedes this file.
 
 ## The two roles
