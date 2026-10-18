@@ -114,7 +114,78 @@ mod tests {
     Ok(())
   }
 
+  // Seed of the expectation from a Gaussian root marginal N(m, s^2) truncated at the tips' date u: the median solves
+  // Phi(z) = Phi(z_u) / 2, z = (t - m) / s, so it is the mean when the truncation is far, and m + s Phi^-1(Phi(z_u) / 2)
+  // otherwise. Beyond 8 deviations the tail is exponential with rate (m - u) / s^2 and the median u - ln 2 (s^2 / (m - u)).
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::far_truncation(   2000.0, 2.0, 2000.0)]
+  #[case::strong_truncation(2015.0, 1.0, 2015.0 + statrs::distribution::ContinuousCDF::inverse_cdf(&statrs::distribution::Normal::standard(), statrs::distribution::ContinuousCDF::cdf(&statrs::distribution::Normal::standard(), -5.0) / 2.0))]
+  #[case::exponential_tail( 2050.0, 1.0, 2010.0 - std::f64::consts::LN_2 / 40.0)]
+  #[trace]
+  fn test_mean_field_gaussian_seed_median_is_that_of_the_truncated_normal(
+    #[case] mean: f64,
+    #[case] std: f64,
+    #[case] expected: f64,
+  ) -> Result<(), Report> {
+    let (graph, names, expectation) = helpers::gaussian_cherry(mean, std, &[])?;
+    let root = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
+
+    pretty_assert_abs_diff_eq!(expected, expectation.median_times()[&root], epsilon = 2e-3 * std);
+    Ok(())
+  }
+
+  // Far from the truncation, half of the root's merger falls before its mean and half after
+  #[test]
+  fn test_mean_field_gaussian_seed_splits_the_merger_at_the_mean() -> Result<(), Report> {
+    let (_, _, expectation) = helpers::gaussian_cherry(2000.0, 2.0, &[])?;
+
+    let (_, mergers) = expectation.segment_statistics(&[1990.0, 2000.0, 2020.0]);
+
+    pretty_assert_abs_diff_eq!(0.5, mergers[0], epsilon = 1e-4);
+    pretty_assert_abs_diff_eq!(0.5, mergers[1], epsilon = 1e-4);
+    Ok(())
+  }
+
+  #[test]
+  fn test_mean_field_gaussian_seed_leaves_out_excluded_and_undated_tips() -> Result<(), Report> {
+    let (graph, names, expectation) = helpers::gaussian_cherry(2000.0, 2.0, &["B"])?;
+    let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
+
+    let medians = expectation.median_times();
+
+    assert_eq!(
+      (true, false, true),
+      (
+        medians.contains_key(&key("A")),
+        medians.contains_key(&key("B")),
+        medians.contains_key(&key("root"))
+      )
+    );
+    Ok(())
+  }
+
   mod helpers {
+    use crate::clock::gaussian::NodeTimeGaussian;
+
+    /// Cherry `(A, B)root` with both tips at 2010 and the root marginal N(`mean`, `std`^2); `excluded` tips are
+    /// flagged
+    pub(super) fn gaussian_cherry(
+      mean: f64,
+      std: f64,
+      excluded: &[&str],
+    ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, Arc<LineageExpectation>), Report> {
+      let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
+      let names = parsed.names();
+      let graph = parsed.graph;
+      let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
+      let marginals = BTreeMap::from([(key("root"), NodeTimeGaussian { mean, std })]);
+      let tip_times = BTreeMap::from([(key("A"), Some(2010.0)), (key("B"), Some(2010.0)), (key("root"), None)]);
+      let excluded = excluded.iter().map(|name| (key(name), true)).collect();
+      let expectation = LineageExpectation::from_gaussian(&graph, &marginals, &tip_times, &excluded)?;
+      Ok((graph, names, expectation))
+    }
+
     use super::*;
 
     /// Expectation from point times of the `points` nodes and the posteriors of the `distributions` nodes
