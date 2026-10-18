@@ -501,10 +501,18 @@ fn setup_coalescent(
   let coalescent_node_times = time_inference.coalescent_node_times();
   let lineage_counts =
     compute_lineage_counts(graph, &coalescent_node_times).wrap_err("Failed to compute coalescent lineage counts")?;
-  let timescale = coalescent_timescale(mode, graph, &skyline_params, &coalescent_node_times, names, log)?;
   let lineage_expectation =
     LineageExpectation::from_posterior(graph, &time_inference.posterior, &time_inference.bad_branches)
       .wrap_err("Failed to compute the expected coalescent lineage counts")?;
+  let timescale = coalescent_timescale(
+    mode,
+    graph,
+    &skyline_params,
+    &coalescent_node_times,
+    Some(&lineage_expectation),
+    names,
+    log,
+  )?;
   let setup = CoalescentSetup {
     mode,
     skyline_params,

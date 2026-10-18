@@ -1,6 +1,7 @@
 use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::edge_data::{CoalescentEdgeData, coalescent_log_likelihood, collect_coalescent_edges};
 use crate::coalescent::lineage_counts::compute_lineage_counts;
+use crate::coalescent::mean_field::LineageExpectation;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::make_error;
 use crate::progress::LogSink;
@@ -18,10 +19,14 @@ use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::exp;
 use treetime_utils::cast::ToF64Exact;
 
+/// Fits Tc(t) to the coalescent statistics of the node times: those of `expectation` when given (the expected
+/// statistics under the node posteriors), else those of the lineage counts at `node_times`. The segments come from
+/// the lineage counts at `node_times` either way.
 pub(crate) fn optimize_skyline(
   graph: &Graph,
   params: &SkylineParams,
   node_times: &CoalescentNodeTimes,
+  expectation: Option<&LineageExpectation>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<SkylineResult, Report> {
@@ -60,7 +65,10 @@ pub(crate) fn optimize_skyline(
 
   let boundaries = equal_width_boundaries(t_min, t_max, params.n_points);
 
-  let (i_seg, m_seg) = accumulate_segment_terms(&lineage_counts, &edges, &boundaries, log);
+  let (i_seg, m_seg) = match expectation {
+    Some(expectation) => expectation.segment_statistics(&boundaries),
+    None => accumulate_segment_terms(&lineage_counts, &edges, &boundaries, log),
+  };
 
   let i_tot: f64 = i_seg.iter().sum();
   let m_tot: f64 = m_seg.iter().sum();
