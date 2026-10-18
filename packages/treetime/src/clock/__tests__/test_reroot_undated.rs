@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
+  use crate::clock::reroot::reroot_undated;
   use crate::progress::NoopProgress;
-  use crate::reroot::orchestrate::{RerootTopologyParams, reroot_min_dev};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use pretty_assertions::assert_eq;
@@ -38,16 +39,16 @@ mod tests {
   }
 
   #[test]
-  fn test_orchestrate_reroot_reduces_rtt_variance() -> Result<(), Report> {
+  fn test_reroot_undated_min_dev_roots_a_cherry_at_equal_distances() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.3)root;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    reroot_min_dev(
+    reroot_undated(
       &mut graph,
-      RerootTopologyParams::default(),
       &mut branch_lengths,
+      &RerootSpec::Method(RerootMethod::MinDev),
       &names,
       &NoopProgress,
     )?;
@@ -62,16 +63,16 @@ mod tests {
   // Root at distance x up the branch to C of the star (A:1, B:2, C:6): 3 Var = 14 - 12 x + 8 x^2 / 3, minimal at x = 9/4
   // with distances 3.25, 4.25, 3.75; on the branches to A and B the variance only grows.
   #[test]
-  fn test_orchestrate_reroot_min_dev_places_the_root_at_the_analytic_minimum_of_the_variance() -> Result<(), Report> {
+  fn test_reroot_undated_min_dev_places_the_root_at_the_analytic_minimum_of_the_variance() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1,B:2,C:6)R;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    reroot_min_dev(
+    reroot_undated(
       &mut graph,
-      RerootTopologyParams::default(),
       &mut branch_lengths,
+      &RerootSpec::Method(RerootMethod::MinDev),
       &names,
       &NoopProgress,
     )?;
@@ -82,7 +83,7 @@ mod tests {
   }
 
   #[test]
-  fn test_orchestrate_reroot_min_dev_removes_an_undated_stem_before_the_root_search() -> Result<(), Report> {
+  fn test_reroot_undated_min_dev_removes_an_undated_stem_before_the_root_search() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((A:0.1,B:0.3)X:0.05,C:0.4)R:0.7)STEM;".as_slice())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
@@ -92,17 +93,17 @@ mod tests {
     let mut unstemmed_graph = unstemmed.graph;
     let mut unstemmed_branch_lengths = unstemmed.branch_lengths;
 
-    let result = reroot_min_dev(
+    let result = reroot_undated(
       &mut graph,
-      RerootTopologyParams::default(),
       &mut branch_lengths,
+      &RerootSpec::Method(RerootMethod::MinDev),
       &names,
       &NoopProgress,
     )?;
-    reroot_min_dev(
+    reroot_undated(
       &mut unstemmed_graph,
-      RerootTopologyParams::default(),
       &mut unstemmed_branch_lengths,
+      &RerootSpec::Method(RerootMethod::MinDev),
       &unstemmed_names,
       &NoopProgress,
     )?;
@@ -112,33 +113,6 @@ mod tests {
     let expected = root_to_tip_distances(&unstemmed_graph, &unstemmed_branch_lengths);
     let actual = root_to_tip_distances(&graph, &branch_lengths);
     assert_abs_diff_eq!(expected.as_slice(), actual.as_slice(), epsilon = 1e-12);
-    Ok(())
-  }
-
-  #[test]
-  fn test_orchestrate_no_split_snaps_to_nearer_endpoint() -> Result<(), Report> {
-    let nwk_parsed = nwk_read(b"((A:0.1,B:0.5)i:0.02,C:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
-    let mut graph = nwk_parsed.graph;
-    let mut branch_lengths = nwk_parsed.branch_lengths;
-    let root_before = graph.get_exactly_one_root().unwrap().key();
-
-    reroot_min_dev(
-      &mut graph,
-      RerootTopologyParams {
-        split_edge: false,
-        remove_trivial_root: true,
-      },
-      &mut branch_lengths,
-      &names,
-      &NoopProgress,
-    )?;
-
-    let root_after = graph.get_exactly_one_root().unwrap().key();
-    assert_ne!(
-      root_before, root_after,
-      "split_edge=false should reroot to the nearer endpoint"
-    );
     Ok(())
   }
 }

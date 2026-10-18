@@ -2,11 +2,13 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
+  use crate::clock::find_best_root::params::RerootSpec;
+  use crate::clock::reroot::reroot_undated;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
   use crate::pretty_assert_abs_diff_eq;
-  use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node};
+  use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{NUC_ALPHABET, find_node_key_by_name};
   use eyre::Report;
@@ -45,14 +47,14 @@ mod tests {
     let reconstruction = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr.clone()));
     let (reconstruction, log_lh_before) =
       reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let ab_key = find_node_key_by_name(&graph, &names, "AB").expect("AB exists");
+    let tips = ["A", "B"].map(|name| find_node_key_by_name(&graph, &names, name).expect("tip exists"));
 
-    let reroot = reroot_at_node(
+    let reroot = reroot_undated(
       &mut graph,
-      ab_key,
-      RerootTopologyParams::default(),
       &mut branch_lengths,
+      &RerootSpec::Tips(tips.to_vec()),
       &names,
+      &NoopProgress,
     )?;
     let (_, log_lh_rerooted) = reconstruction
       .apply_reroot(&reroot)?
