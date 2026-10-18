@@ -5,6 +5,7 @@ use crate::progress_info;
 use crate::timetree::coalescent_timescale::{CoalescentSetup, CoalescentTimescale, coalescent_timescale};
 use crate::timetree::convergence::metrics::IterationClock;
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer, TraceSink};
+use crate::timetree::optimization::marginal_clock_rate::RateWindow;
 use crate::timetree::round::{RoundInputs, RoundState, refinement_round};
 use eyre::{Report, WrapErr};
 use std::sync::Arc;
@@ -60,6 +61,13 @@ pub(crate) fn run_refinement_loop(
       inputs,
       &merger_rate,
       coalescent.prior_wanted().then_some(&coalescent_prior),
+      // the first step (i counts from 1) may correct the start rate; later the prior frozen in calendar time tilts the
+      // slope
+      if i == 1 {
+        RateWindow::FollowSlope
+      } else {
+        RateWindow::InteriorMaximum
+      },
       state,
       &mut rng,
       log,
