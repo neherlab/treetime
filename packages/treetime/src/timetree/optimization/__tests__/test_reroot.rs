@@ -154,15 +154,18 @@ mod tests {
     assert!(r_squared > 0.5, "R² should be > 0.5 for this tree, got {r_squared}");
 
     let chisq = clock_model.chisq().expect("Clock model should have chisq");
+    // the least-squares root lies 6.18 / 45 of the way down the root-CD edge (length 0.05), which moves A and B
+    // further from the root and C and D closer
     let dates = [2013.0, 2022.0, 2017.0, 2005.0];
-    let divs_after_split_at_a_tenth_of_root_cd = [0.205, 0.305, 0.245, 0.165];
+    let shift = 0.05 * 6.18 / 45.0;
+    let divs_after_split = [0.2 + shift, 0.3 + shift, 0.25 - shift, 0.17 - shift];
     pretty_assert_abs_diff_eq!(
-      half_residual_sum_of_squares(&dates, &divs_after_split_at_a_tenth_of_root_cd),
+      half_residual_sum_of_squares(&dates, &divs_after_split),
       chisq,
       epsilon = 1e-12
     );
     pretty_assert_abs_diff_eq!(
-      LineFit::least_squares(&dates, &divs_after_split_at_a_tenth_of_root_cd).slope,
+      LineFit::least_squares(&dates, &divs_after_split).slope,
       clock_model.clock_rate(),
       epsilon = 1e-12
     );

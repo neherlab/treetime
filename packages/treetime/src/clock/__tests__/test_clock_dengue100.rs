@@ -51,25 +51,28 @@ mod tests {
     Ok(())
   }
 
+  // The rate, intercept and r are reproduced by an independent ordinary least-squares root search (`rtt_ols.py` of
+  // neherlab/gaussian-timetree, rerooting on every node and branch) on the tree with these outliers pruned: rate
+  // 6.460054e-4, root time 1623.80, r 0.966705.
   #[test]
   fn test_dengue100_clock_pipeline_golden_master() -> Result<(), Report> {
     let output = run_clock(ClockVarianceParams::default(), 3.0, false)?;
     let clock_model = &output.clock_model;
     let outlier_names = get_outlier_names(&output);
 
-    assert_abs_diff_eq!(clock_model.clock_rate(), 6.787225349993138e-04, epsilon = 1e-10);
-    assert_abs_diff_eq!(clock_model.intercept(), -1.116032990518721, epsilon = 1e-7);
+    assert_abs_diff_eq!(clock_model.clock_rate(), 6.460054526225851e-04, epsilon = 1e-10);
+    assert_abs_diff_eq!(clock_model.intercept(), -1.0489843878244214, epsilon = 1e-7);
 
     let r_val = clock_model.r_val().expect("should have r_val");
-    assert_abs_diff_eq!(r_val, 0.810694218745354, epsilon = 1e-7);
+    assert_abs_diff_eq!(r_val, 0.9667050948340442, epsilon = 1e-7);
 
     let chisq = clock_model.chisq().expect("should have chisq");
-    assert_abs_diff_eq!(chisq, 3.297162543922308e-03, epsilon = 1e-9);
+    assert_abs_diff_eq!(chisq, 3.279828724500099e-04, epsilon = 1e-9);
 
     #[rustfmt::skip]
     let expected_outliers = vec![
-      o!("EF105383"), o!("EF105387"), o!("GQ398268"), o!("HQ891024"), o!("KF704357"),
-      o!("KY586699"), o!("MW946564"), o!("OR389309"), o!("OR389321"), o!("OR389326"),
+      o!("GQ398257"), o!("GQ398268"), o!("HM582102"), o!("HQ891024"), o!("KF704357"),
+      o!("KY586699"), o!("OQ101603"), o!("OR389309"), o!("OR389321"), o!("OR389326"),
     ];
     assert_eq!(outlier_names, expected_outliers);
 
