@@ -1,7 +1,7 @@
+use crate::clock::clock_regression::ClockRegressionPoint;
 use auto_ops::impl_op_ex;
 use deser::Serialize;
 use getset::CopyGetters;
-use ndarray::{Array2, array};
 
 #[must_use]
 #[derive(Debug, Default, Clone, PartialEq, CopyGetters, Serialize)]
@@ -50,6 +50,16 @@ impl ClockSet {
     }
   }
 
+  /// Sums over the dated tips of a regression that are not outliers, at their divergences from the root
+  pub(crate) fn from_points(points: &[ClockRegressionPoint]) -> Self {
+    points
+      .iter()
+      .filter(|point| !point.is_outlier)
+      .fold(Self::default(), |acc, point| {
+        acc + Self::leaf_contribution(point.date).shift(point.div)
+      })
+  }
+
   pub(crate) fn determinant(&self) -> f64 {
     self.tsq_sum() * self.norm() - self.t_sum().powi(2)
   }
@@ -60,18 +70,6 @@ impl ClockSet {
 
   pub(crate) fn intercept(&self, rate: f64) -> f64 {
     (self.d_sum() - self.t_sum() * rate) / self.norm()
-  }
-
-  pub(crate) fn hessian(&self) -> Array2<f64> {
-    array![[self.tsq_sum(), self.t_sum()], [self.t_sum(), self.norm()]]
-  }
-
-  pub(crate) fn cov(&self) -> Array2<f64> {
-    let det_inv = 1.0 / self.determinant();
-    array![
-      [self.norm() * det_inv, -self.t_sum() * det_inv],
-      [-self.t_sum() * det_inv, self.tsq_sum() * det_inv],
-    ]
   }
 
   pub(crate) fn chisq(&self) -> f64 {
