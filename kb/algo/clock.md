@@ -1,22 +1,24 @@
 # Clock Inference Algorithms
 
-## WLS Sufficient Statistics
+## Least-Squares Sufficient Statistics
 
-TreeTime estimates the molecular clock rate via weighted least squares (WLS) regression of root-to-tip divergence against sampling dates (<a id="cite-1"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/10.1093/ve/vex042) [[1](#ref-1)], Equations 11-14). Rather than materializing the full N x N covariance matrix for generalized least squares, TreeTime propagates six sufficient statistics through the tree in O(N) time using the `ClockSet` data structure:
+TreeTime estimates the molecular clock rate by an ordinary least-squares (OLS) regression of root-to-tip divergence against sampling date (<a id="cite-1"></a>[Sagulenko, Puller, and Neher 2018](https://doi.org/10.1093/ve/vex042) [[1](#ref-1)], Equations 11-14), with one unit weight per dated tip that is not an outlier ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)). The `ClockSet` data structure holds six sums over those tips:
 
-- `t_sum`: sum of weighted dates
-- `tsq_sum`: sum of weighted squared dates
-- `d_sum`: sum of weighted divergences
-- `dsq_sum`: sum of weighted squared divergences
-- `dt_sum`: sum of weighted date-divergence cross products
-- `norm`: sum of weights (effective sample size)
+- `t_sum`: sum of dates
+- `tsq_sum`: sum of squared dates
+- `d_sum`: sum of divergences
+- `dsq_sum`: sum of squared divergences
+- `dt_sum`: sum of date-divergence products
+- `norm`: number of tips
 
-From these six values at any node, the clock rate and intercept follow directly: `rate = (norm * dt_sum - t_sum * d_sum) / (norm * tsq_sum - t_sum^2)`. The chi-squared statistic, R-value, and parameter covariance matrix (2x2 Hessian inverse) are also derivable from the sufficient statistics without additional tree traversal.
+From these six values, the clock rate and intercept follow directly: `rate = (norm * dt_sum - t_sum * d_sum) / (norm * tsq_sum - t_sum^2)`; the chi-squared statistic (half the residual sum of squares) and the R-value need no further traversal. Moving the root by $\ell$ lengthens the divergences of all tips in a set by $\ell$, which `ClockSet::shift()` applies to the sums: $\sum d \mathrel{+}= \ell n$, $\sum td \mathrel{+}= \ell \sum t$, $\sum d^2 \mathrel{+}= 2\ell\sum d + \ell^2 n$.
 
-v1: `struct ClockSet` [packages/treetime/src/clock/clock_set.rs#L9-L142](../../packages/treetime/src/clock/clock_set.rs#L9-L142).
+v1: `struct ClockSet` [packages/treetime/src/clock/clock_set.rs](../../packages/treetime/src/clock/clock_set.rs).
 v0: [`packages/legacy/treetime/treetime/treeregression.py#L7-L300`](../../packages/legacy/treetime/treetime/treeregression.py#L7-L300).
 
-Key functions: `ClockSet::clock_rate()` (`#ClockSet`, `#clock_rate`), `ClockSet::chisq()` (`#chisq`), `ClockSet::propagate_averages()` (`#propagate_averages`).
+Key functions: `ClockSet::clock_rate()`, `ClockSet::chisq()`, `ClockSet::chisq_fixed_rate()`, `ClockSet::shift()`.
+
+The regression reports no covariance: OLS treats the tips as independent while they share ancestry. The rate uncertainty comes from the Gaussian timetree at the final rate (`fn gaussian_clock()`, [packages/treetime/src/clock/gaussian.rs](../../packages/treetime/src/clock/gaussian.rs)) and is reported as `rate_std` of an estimated rate when the sequence length is known.
 
 ### References
 
@@ -26,50 +28,24 @@ Key functions: `ClockSet::clock_rate()` (`#ClockSet`, `#clock_rate`), `ClockSet:
 
 ## Tree Regression
 
-Two-pass message passing that implements phylogenetic GLS regression (<a id="cite-2"></a>[Felsenstein 1985](https://doi.org/10.1086/284325) [[2](#ref-2)]) in O(N) time. Standard OLS assumes independent residuals, but in phylogenetic data, samples sharing internal branches have correlated root-to-tip distances. The tree regression accounts for this by propagating weighted statistics along the tree structure, equivalent to GLS with a phylogenetic covariance matrix but without materializing the N x N matrix.
+Two-pass message passing gives the regression sums for every root position in O(N) time. The backward pass (postorder) accumulates `ClockSet` sums from the leaves: each dated, non-outlier leaf contributes its date, and every node passes its sums to its parent shifted by the branch length. The forward pass (preorder) passes the complementary sums down, so that every edge holds the sums of the tips on both of its sides, from which the root search evaluates any root position without another traversal.
 
-The backward pass (postorder) accumulates `ClockSet` statistics from leaves toward the root. Each leaf contributes its date and divergence. Internal nodes merge children's statistics via `propagate_averages()`. The forward pass (preorder) propagates root-level statistics back down, enabling the best root position search: at each node, the regression can be re-evaluated as if that node were the root by combining the subtree statistics (from the backward pass) with the complement statistics (from the forward pass).
-
-v1: [`packages/treetime/src/clock/clock_regression.rs#L47-L125`](../../packages/treetime/src/clock/clock_regression.rs#L47-L125).
+v1: `fn clock_regression()` [packages/treetime/src/clock/clock_regression.rs#L260](../../packages/treetime/src/clock/clock_regression.rs#L260).
 v0: [`packages/legacy/treetime/treetime/treeregression.py#L192-L283`](../../packages/legacy/treetime/treetime/treeregression.py#L192-L283).
 
-Re-estimation mode: when `prev_clock_rate` is provided (during iterative timetree refinement), the regression uses solver-updated time lengths converted to divergence (`time_length * rate * gamma`) instead of input branch lengths. The `edge_divergence()` helper (`#edge_divergence`, [`packages/treetime/src/clock/clock_regression.rs#L238-L250`](../../packages/treetime/src/clock/clock_regression.rs#L238-L250)) handles this fallback logic.
+Re-estimation mode: when `prev_clock_rate` is provided (during iterative timetree refinement), the regression uses solver-updated time lengths converted to divergence (`time_length * rate * gamma`) instead of input branch lengths (`fn edge_length()`, [packages/treetime/src/clock/clock_regression.rs#L384](../../packages/treetime/src/clock/clock_regression.rs#L384)).
 
-### Variance model
+v0 can weight the regression by branch variances (`--covariation`, `--tip-slack`); v1 removed these options ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)).
 
-The `ClockParams` (`#ClockParams`) struct at [`packages/treetime/src/clock/clock_regression.rs#L18-L34`](../../packages/treetime/src/clock/clock_regression.rs#L18-L34) controls the variance model: `variance_factor` (branch-length-proportional term), `variance_offset` (constant term for internal branches), `variance_offset_leaf` (additional offset for terminal branches, controlled by `--tip-slack`). When `--covariation` is active, these parameters are set to account for phylogenetic correlation in the regression.
-
-Key functions: `clock_regression_backward()` (`#clock_regression_backward`), `clock_regression_forward()` (`#clock_regression_forward`), `estimate_clock_model_with_reroot()` (`#estimate_clock_model_with_reroot`), `estimate_clock_model_with_reroot_policy()` (`#estimate_clock_model_with_reroot_policy`).
-
-### References
-
-- <a id="ref-2"></a>Felsenstein, Joseph. 1985. "Phylogenies and the Comparative Method." _American Naturalist_ 125(1):1-15. https://doi.org/10.1086/284325 [↩](#cite-2)
-- Sagulenko, Puller, and Neher 2018 [[1](#ref-1)]
+Key functions: `clock_regression()`, `estimate_clock_model_with_reroot_policy()`.
 
 ---
 
-## Brent's Method
+## Exact Root Position
 
-Hybrid 1D optimization (<a id="cite-3"></a>[Brent 1973](https://maths-people.anu.edu.au/brent/pub/pub011.html) [[3](#ref-3)]) combining parabolic interpolation (fast convergence near minimum) with golden section search (guaranteed convergence). Used for optimizing the root position along a branch: given a branch with endpoints, Brent's method finds the split point that minimizes the clock regression chi-squared.
+With the root at fraction $x$ of an edge of length $\ell$, the tips below the edge are $(1 - x)\ell$ and all others $x\ell$ further from the root. The date sums do not change and the divergence sums are linear or quadratic in $x$, so the score is a quadratic in $x$ and the parabola through $x = 0, \tfrac12, 1$ is exact; its vertex clamped to $[0, 1]$ is the optimum on that edge. v0 brackets the split on a grid and refines it with bounded Brent minimization (`scipy.optimize.minimize_scalar`); v1 needs no 1D optimizer.
 
-v1: [`packages/treetime/src/clock/find_best_root/method_brent.rs#L19-L70`](../../packages/treetime/src/clock/find_best_root/method_brent.rs#L19-L70).
-v0: `scipy.optimize.minimize_scalar` with `method='bounded'`.
-
-### References
-
-- <a id="ref-3"></a>Brent, Richard P. 1973. _Algorithms for Minimization Without Derivatives._ Prentice-Hall. ISBN 0-13-022335-2. https://maths-people.anu.edu.au/brent/pub/pub011.html [↩](#cite-3)
-
----
-
-## Golden Section Search
-
-Bracket-based 1D optimization (<a id="cite-4"></a>[Kiefer 1953](https://doi.org/10.2307/2032012) [[4](#ref-4)]) with O(log(1/epsilon)) convergence. At each step, the bracket is narrowed by the golden ratio phi = (1+sqrt(5))/2, maintaining the ratio between the two sub-intervals. Slower than Brent's method (which uses parabolic acceleration) but simpler and guaranteed to converge without requiring derivative information.
-
-v1: [`packages/treetime/src/clock/find_best_root/method_golden_section.rs#L19-L73`](../../packages/treetime/src/clock/find_best_root/method_golden_section.rs#L19-L73).
-
-### References
-
-- <a id="ref-4"></a>Kiefer, Jack. 1953. "Sequential Minimax Search for a Maximum." _Proceedings of the American Mathematical Society_ 4(3):502-506. https://doi.org/10.2307/2032012 [↩](#cite-4)
+v1: `fn optimize_exact()` [packages/treetime/src/clock/find_best_root/method_exact.rs#L19](../../packages/treetime/src/clock/find_best_root/method_exact.rs#L19), cost function `struct BranchPointCostFunction` [cost_function.rs](../../packages/treetime/src/clock/find_best_root/cost_function.rs).
 
 ---
 
@@ -90,35 +66,27 @@ v0: [`packages/legacy/treetime/treetime/clock_filter_methods.py#L5-L40`](../../p
 
 ## Tree Rerooting
 
-Edge inversion along the path from the old root to the new root position, with cleanup of trivial (single-child) nodes. Rerooting changes which node is the root of the tree without altering the unrooted topology. All edges along the old-root-to-new-root path are inverted (parent becomes child and vice versa), and the old root is removed if it becomes a trivial single-child node. An old root with one child would become a leaf after the inversion. When it has no date, the reroot removes it first and its child becomes the root, which is exact because a branch to a node without data contributes a factor of 1 to the likelihood and root-to-tip distances add along a path. A dated one becomes a dated leaf. `--keep-root` leaves the tree unchanged. A reroot that turns an internal node without a date into a leaf fails with an error ([packages/treetime/src/reroot/placement.rs](../../packages/treetime/src/reroot/placement.rs)).
+Edge inversion along the path from the old root to the new root position, with cleanup of trivial (single-child) nodes. Rerooting changes which node is the root of the tree without altering the unrooted topology. All edges along the old-root-to-new-root path are inverted (parent becomes child and vice versa), and the old root is removed if it becomes a trivial single-child node. An old root with one child would become a leaf after the inversion. When it has no date, the reroot removes it first and its child becomes the root, which is exact because a branch to a node without data contributes a factor of 1 to the likelihood and root-to-tip distances add along a path. A dated one becomes a dated leaf. `--keep-root` leaves the tree unchanged. A reroot that turns an internal node without a date into a leaf fails with an error ([packages/treetime/src/reroot/placement.rs](../../packages/treetime/src/reroot/placement.rs)). After the move, the clock reruns the backward regression pass on the new tree.
 
-v1: [`packages/treetime/src/clock/reroot.rs#L27-L383`](../../packages/treetime/src/clock/reroot.rs#L27-L383).
-
-Key functions: `reroot_clock_tree()` (`#reroot_clock_tree`), `place_new_root()` (`#place_new_root`), `move_root()` (`#move_root`), `apply_reroot()` (`#apply_reroot`), `create_new_root_node()` (`#create_new_root_node`).
+v1: `fn reroot_clock_tree()` [packages/treetime/src/clock/reroot.rs#L20](../../packages/treetime/src/clock/reroot.rs#L20), shared topology move `fn apply_root_at_edge()` [packages/treetime/src/reroot/orchestrate.rs#L100](../../packages/treetime/src/reroot/orchestrate.rs#L100). See [reroot.md](reroot.md).
 
 ---
 
 ## Best Root Search
 
-Scans all nodes to find the root position that maximizes temporal signal (positive clock rate, minimal chi-squared residuals from the WLS regression). For each candidate node, the regression is evaluated using the pre-computed forward-pass statistics (no re-traversal needed). Only candidates with positive clock rates are considered; negative rates indicate the tree cannot be clock-like when rooted at that position.
-
-After finding the best node, the algorithm refines the root position along the parent and child branches via `find_best_split()`, which uses Brent's method or golden section search to optimize the exact split point along the edge.
+Every edge is searched for its exact optimum (above), and the minimum over the current root and all edges wins. With a required positive rate, an edge whose optimum has a non-positive rate is rejected; the rate is checked on the optimum rather than imposed as a constraint, so data without temporal signal stop with an error instead of fitting a rate near zero.
 
 The positive-rate restriction is controlled by `force_positive_rate`. `--allow-negative-rate` relaxes it so negative-slope roots are accepted (approaching midpoint rooting). When a non-positive rate survives to model construction (via `--keep-root`, `--allow-negative-rate`, or all-negative root positions), the boundary policy differs by command: timetree errors (time inference needs `time = div / rate`), while the clock command warns and continues (it only reports the regression). See [decisions/timetree-rejects-negative-clock-rate.md](../decisions/timetree-rejects-negative-clock-rate.md).
 
-v1: [`packages/treetime/src/clock/find_best_root/find_best_root.rs#L19-L135`](../../packages/treetime/src/clock/find_best_root/find_best_root.rs#L19-L135).
-
-Key functions: `find_best_root()` (`#find_best_root`), `has_positive_clock_rate()` (`#has_positive_clock_rate`).
+v1: `fn find_best_root()` [packages/treetime/src/clock/find_best_root/find_best_root.rs#L16](../../packages/treetime/src/clock/find_best_root/find_best_root.rs#L16), positive-rate check `RootObjective::has_positive_rate()` [params.rs](../../packages/treetime/src/clock/find_best_root/params.rs).
 
 ---
 
 ## Additional Algorithms
 
-- Grid Search: [`packages/treetime/src/clock/find_best_root/method_grid_search.rs`](../../packages/treetime/src/clock/find_best_root/method_grid_search.rs) - Brute-force 1D optimization over a uniform grid of split positions. Fallback when bracket-based methods cannot be applied.
-- Branch Point Cost Function: [`packages/treetime/src/clock/find_best_root/cost_function.rs`](../../packages/treetime/src/clock/find_best_root/cost_function.rs) - Chi-squared objective function for root position optimization, computing regression residuals at a candidate split point.
 - Root-to-Tip Distance: [`packages/treetime/src/clock/rtt.rs`](../../packages/treetime/src/clock/rtt.rs) - Tree traversal accumulating branch lengths from root to each leaf, producing the divergence values used in clock regression.
-- Clock Model: [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs) - Rate/intercept estimation with `ClockModelStats::Estimated` (from regression) or `ClockModelStats::Fixed` (from `--clock-rate`) variants.
-- Clock Traits: [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs) - `ClockNode` and `ClockEdge` trait definitions. `ClockEdge::gamma()` provides per-branch relaxed clock rate multiplier (default 1.0).
+- Clock Model: [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs) - Rate and intercept with `ClockModelStats::Estimated` (chi-squared, R-value and, when known, `rate_std`) or `ClockModelStats::Fixed` (from `--clock-rate`). A timetree rate from the marginal-likelihood step counts as estimated.
+- Gaussian timetree: [`packages/treetime/src/clock/gaussian.rs`](../../packages/treetime/src/clock/gaussian.rs) - Gaussian message passing at a given rate: node-time marginals and the rate and root-time standard deviations.
 - Date Constraints: [`packages/treetime/src/clock/date_constraints.rs`](../../packages/treetime/src/clock/date_constraints.rs) - `load_date_constraints()` (`#load_date_constraints`) assigns date distributions to tree nodes with validation.
 
 ---
@@ -128,24 +96,23 @@ Key functions: `find_best_root()` (`#find_best_root`), `has_positive_clock_rate(
 See [unimplemented](unimplemented.md) for full details:
 
 - Local outlier filter (z-score based)
-- Full covariance matrix computation (TreeRegression)
+- Full covariance matrix computation (TreeRegression), intentionally removed with `--covariation`
 - Numerical Hessian for root position uncertainty
 
 ---
 
 ## File Index
 
-| File                                                                                                                                 | Algorithms                                               |
-| ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| [`packages/treetime/src/clock/clock_set.rs`](../../packages/treetime/src/clock/clock_set.rs)                                         | Sufficient statistics WLS                                |
-| [`packages/treetime/src/clock/clock_regression.rs`](../../packages/treetime/src/clock/clock_regression.rs)                           | Tree message passing, edge divergence, reroot estimation |
-| [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs)                                     | Clock model estimation                                   |
-| [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs)                                     | ClockNode, ClockEdge traits                              |
-| [`packages/treetime/src/clock/find_best_root/`](../../packages/treetime/src/clock/find_best_root/)                                   | Best root search, Brent, golden section, grid search     |
-| [`packages/treetime/src/clock/find_best_root/find_best_root.rs`](../../packages/treetime/src/clock/find_best_root/find_best_root.rs) | Best root node selection                                 |
-| [`packages/treetime/src/clock/clock_filter.rs`](../../packages/treetime/src/clock/clock_filter.rs)                                   | IQD outlier detection                                    |
-| [`packages/treetime/src/clock/reroot.rs`](../../packages/treetime/src/clock/reroot.rs)                                               | Tree rerooting                                           |
-| [`packages/treetime/src/clock/date_constraints.rs`](../../packages/treetime/src/clock/date_constraints.rs)                           | Date constraint loading and validation                   |
-| [`packages/treetime/src/clock/rtt.rs`](../../packages/treetime/src/clock/rtt.rs)                                                     | Root-to-tip distance computation                         |
-| [`packages/treetime/src/clock/pipeline.rs`](../../packages/treetime/src/clock/pipeline.rs)                                           | Clock pipeline                                           |
-| [`packages/app-commands/src/commands/clock/run.rs`](../../packages/app-commands/src/commands/clock/run.rs)                           | Clock command orchestration                              |
+| File                                                                                                       | Algorithms                                               |
+| ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| [`packages/treetime/src/clock/clock_set.rs`](../../packages/treetime/src/clock/clock_set.rs)               | Least-squares sums                                       |
+| [`packages/treetime/src/clock/clock_regression.rs`](../../packages/treetime/src/clock/clock_regression.rs) | Tree message passing, edge divergence, reroot estimation |
+| [`packages/treetime/src/clock/clock_model.rs`](../../packages/treetime/src/clock/clock_model.rs)           | Clock model and its statistics                           |
+| [`packages/treetime/src/clock/gaussian.rs`](../../packages/treetime/src/clock/gaussian.rs)                 | Gaussian timetree, rate and root uncertainty             |
+| [`packages/treetime/src/clock/find_best_root/`](../../packages/treetime/src/clock/find_best_root/)         | Root search, exact optimum on an edge                    |
+| [`packages/treetime/src/clock/clock_filter.rs`](../../packages/treetime/src/clock/clock_filter.rs)         | IQD outlier detection                                    |
+| [`packages/treetime/src/clock/reroot.rs`](../../packages/treetime/src/clock/reroot.rs)                     | Root method dispatch, tree rerooting                     |
+| [`packages/treetime/src/clock/date_constraints.rs`](../../packages/treetime/src/clock/date_constraints.rs) | Date constraint loading and validation                   |
+| [`packages/treetime/src/clock/rtt.rs`](../../packages/treetime/src/clock/rtt.rs)                           | Root-to-tip distance computation                         |
+| [`packages/treetime/src/clock/pipeline.rs`](../../packages/treetime/src/clock/pipeline.rs)                 | Clock pipeline                                           |
+| [`packages/app-commands/src/commands/clock/run.rs`](../../packages/app-commands/src/commands/clock/run.rs) | Clock command orchestration                              |

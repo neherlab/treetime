@@ -8,33 +8,26 @@
   - [x] Internal node aggregation
   - [x] Root assignment
 - [x] Forward regression pass for reroot search
-- [x] Variance propagation (branch length proportional + offset)
-- [x] Covariation mode (`--covariation` for regression)
-  - [x] Uses `--sequence-length`
-  - [x] Uses `--tip-slack` or default `3.0`
-  - [x] Builds custom variance parameters
-  - [/] Missing `--sequence-length` does not raise explicit error
+- [x] Ordinary least squares with unit tip weights (v0 splits a tip's unit variance along a terminal branch; see [kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
+- [ ] Covariation mode (`--covariation`, `--tip-slack`, variance parameters): removed in v1 ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 
 ## Rerooting
 
-- [x] Node scan for best positive-rate root candidate
-- [x] Parent-branch split optimization around best node
-- [x] Child-branch split optimization around best node
+- [x] Exact least-squares root position on every edge (v0: grid and bounded Brent per edge; see [kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] Reroot rejects candidates with non-positive inferred clock rate
 - [x] `--keep-root` (disable rerooting; v0 still reroots in its clock filter, see [kb/v0-errata/clock-keep-root-ignored-by-clock-filter.md](../v0-errata/clock-keep-root-ignored-by-clock-filter.md))
 
 ## Reroot Modes (4 modes)
 
 - [x] Least-squares (minimize RTT regression residuals)
-- [x] Min-dev (fixed-zero-rate WLS; minimize RTT variance independently of sampling-date values; see [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md))
+- [x] Min-dev (fixed-zero-rate least squares; minimize RTT variance independently of sampling-date values; see [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md))
 - [x] Oldest (root at oldest node)
 - [x] Tip/MRCA mode (`--reroot-tips`)
 
-## Edge Split Optimization (3 methods)
+## Edge Split Optimization
 
-- [x] Grid search (configurable grid points)
-- [x] Brent's method (configurable tolerance/max-iter)
-- [x] Golden section search (configurable tolerance/max-iter)
+- [x] Closed-form optimum of the quadratic score on each edge
+- [ ] Configurable 1D optimizers (`--branch-split-*`): removed in v1, the optimum is exact ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 
 ## Edge Operations for Rerooting
 
@@ -55,7 +48,8 @@
 
 ## Clock Model Output
 
-- [x] Rate, intercept, chisq, R-value, hessian, covariance
+- [x] Rate, intercept, chisq, R-value
+- [ ] Regression covariance: not reported; the regression treats tips as independent ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] Rerooted Newick tree (plain node names; v0 fuses input support into them, see [kb/v0-errata/clock-newick-support-fused-into-node-names.md](../v0-errata/clock-newick-support-fused-into-node-names.md))
 - [x] Graph JSON and Graphviz DOT
 - [x] Clock model JSON
@@ -67,7 +61,7 @@
 
 - [x] `--clock-rate` (fixed rate bypasses estimation)
 - [x] `--allow-negative-rate` (for midpoint rooting)
-- [x] `--tip-slack` (terminal node excess variance)
+- [ ] `--tip-slack`, `--covariation`, `--sequence-length`: removed in v1 ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] `--reroot` / `--reroot-tips`
 - [ ] `--aln` (parsed but not wired: [kb/issues/M-clock-alignment-ignored.md](../issues/M-clock-alignment-ignored.md))
 - [ ] `--vcf-reference` (parsed but not wired)

@@ -12,9 +12,9 @@ A detailed item-by-item audit with code locations, callers, callees, and converg
 
 | ID  | Location                                                                                                                          | Solver                    | Objective              |
 | :-- | :-------------------------------------------------------------------------------------------------------------------------------- | :------------------------ | :--------------------- |
-| E1  | [method_brent.rs#L36-L78](../../../packages/treetime/src/clock/find_best_root/method_brent.rs#L36-L78)                   | `BrentOpt`                | Root-split chi-squared |
-| E2  | [method_golden_section.rs#L36-L81](../../../packages/treetime/src/clock/find_best_root/method_golden_section.rs#L36-L81) | `GoldenSectionSearch`     | Root-split chi-squared |
-| E3  | [method_grid_search.rs#L10-L58](../../../packages/treetime/src/clock/find_best_root/method_grid_search.rs#L10-L58)       | Grid search (hand-rolled) | Root-split chi-squared |
+| E1  | `clock/find_best_root/method_brent.rs#L36-L78` (removed)                   | `BrentOpt`                | Root-split chi-squared |
+| E2  | `clock/find_best_root/method_golden_section.rs#L36-L81` (removed) | `GoldenSectionSearch`     | Root-split chi-squared |
+| E3  | `clock/find_best_root/method_grid_search.rs#L10-L58` (removed)       | Grid search (hand-rolled) | Root-split chi-squared |
 | E4  | [optimize_tc.rs#L47-L87](../../../packages/treetime/src/coalescent/optimize_tc.rs#L47-L87)                      | `BrentOpt`                | Coalescent Tc          |
 
 ### Hand-rolled optimization (H1-H11)

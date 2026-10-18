@@ -28,4 +28,4 @@ After filtering, the final clock model estimation warns on a non-positive rate b
 
 ## v1 Implementation
 
-`packages/treetime/src/commands/clock/run.rs`: `estimate_clock_model_with_prefilter()` uses `RerootParams { force_positive_rate: false }` for the pre-filter step. The final step uses `force_positive_rate: !allow_negative_rate`.
+`packages/treetime/src/clock/pipeline.rs`: `estimate_clock_model_with_prefilter()` uses `RerootParams { force_positive_rate: false }` for the pre-filter step. The final step uses `force_positive_rate: !allow_negative_rate`.

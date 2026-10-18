@@ -1,8 +1,6 @@
 # Reroot support for optimize command
 
-Add `--reroot`, `--reroot-tips`, and `--keep-root` to the `optimize` command. Uses the generic root search architecture with `DivStats` scoring (divergence-only, no dates required). Implements a two-phase branch-length optimization pattern around the reroot step, matching timetree's pipeline structure.
-
-Depends on [reroot-generic-scoring-architecture.md](reroot-generic-scoring-architecture.md).
+Add `--reroot`, `--reroot-tips`, and `--keep-root` to the `optimize` command. Uses the clock root search at a fixed rate of zero, with every tip at the same date (divergence-only, no dates required; [kb/algo/reroot.md](../algo/reroot.md)). Implements a two-phase branch-length optimization pattern around the reroot step, matching timetree's pipeline structure.
 
 ## Available methods
 
@@ -10,7 +8,7 @@ The optimize command has no date information. Only divergence-based rooting meth
 
 | Method              | Valid                | Scoring                                                  |
 | ------------------- | -------------------- | -------------------------------------------------------- |
-| `MinDev`            | yes                  | `DivStats` -- minimize variance of root-to-tip distances |
+| `MinDev`            | yes                  | rate-zero least squares -- minimize variance of root-to-tip distances |
 | `--reroot-tips=A,B` | yes                  | topology-only -- root at MRCA of named tips              |
 | `LeastSquares`      | no -- requires dates | --                                                       |
 | `Oldest`            | no -- requires dates | --                                                       |
@@ -50,8 +48,8 @@ New pipeline when `--reroot` is set and `--keep-root` is not:
 3. Normalize rates
 4. Apply initial guess
 5. Pre-reroot BL optimization pass (single `run_optimize_mixed` with damping 0.75)
-6. Compute `DivStats` edge statistics (two-pass traversal over branch lengths)
-7. `reroot_in_place::<DivStats>` with no-op fixup
+6. Compute the regression sums on every edge (two-pass traversal over branch lengths)
+7. `reroot_min_dev` (`reroot/orchestrate.rs`): exact rate-zero root search and topology move
 8. Apply reroot changes to partitions (`PartitionRerootOps::apply_reroot`)
 9. Re-run `update_marginal` (root position changed, messages invalidated)
 10. `run_optimize_loop` (main convergence loop)
@@ -72,7 +70,6 @@ When no reroot flags are given, steps 5-9 are skipped and behavior is identical 
 
 ## Related
 
-- [kb/proposals/reroot-generic-scoring-architecture.md](reroot-generic-scoring-architecture.md) -- prerequisite
 - [kb/proposals/optimize-pipeline-timetree-parity.md](optimize-pipeline-timetree-parity.md) -- parent proposal
 - Status: implemented in `packages/treetime/src/commands/optimize/` and `packages/treetime/src/optimize/pipeline.rs`
 - Sibling pattern: `commands/timetree/args.rs`, `commands/clock/args.rs` (both have `RerootArgs`)

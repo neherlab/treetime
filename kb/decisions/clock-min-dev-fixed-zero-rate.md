@@ -6,7 +6,7 @@ Clock `min-dev` ranks candidate roots with weighted least squares at a fixed clo
 
 **v0 erratum**: [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md).
 
-**v1 location**: `fn select_root()` dispatches `RerootMethod::MinDev` to `RootObjective::FixedRate(0.0)` [packages/treetime/src/clock/reroot.rs#L152-L184](../../packages/treetime/src/clock/reroot.rs#L152-L184).
+**v1 location**: `fn select_root()` dispatches `RerootMethod::MinDev` to `RootObjective::FixedRate(0.0)` [packages/treetime/src/clock/reroot.rs#L79-L105](../../packages/treetime/src/clock/reroot.rs#L79-L105).
 
 ## Decision
 

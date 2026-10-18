@@ -52,10 +52,10 @@ v1: not ported. v1 only has the global IQD-based filter.
 
 ## Full Covariance Matrix
 
-Computes the N x N tip covariance matrix for phylogenetic GLS regression, where `M[i,j]` equals the sum of shared branch variances for tips i and j. v1's `ClockSet` achieves equivalent regression results via sufficient statistics propagation in O(N) without materializing the O(N^2) matrix. The full matrix computation exists in v0 for the `--covariation` mode and for producing `valid_confidence=True` (required by rate susceptibility analysis).
+Computes the N x N tip covariance matrix for phylogenetic GLS regression, where `M[i,j]` equals the sum of shared branch variances for tips i and j. The full matrix computation exists in v0 for the `--covariation` mode and for producing `valid_confidence=True` (required by rate susceptibility analysis).
 
 v0: `Cov()` (`#Cov`), `CovInv()` (`#CovInv`), `recurse()` (`#recurse`) in [`packages/legacy/treetime/treetime/treeregression.py#L125-L155`](../../packages/legacy/treetime/treetime/treeregression.py#L125-L155).
-v1: not needed for basic regression (sufficient statistics approach), but missing for covariation-aware confidence estimation.
+v1: intentionally removed. The regression is ordinary least squares and `--covariation` is retired; the rate uncertainty for rate susceptibility comes from the Gaussian timetree ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)).
 
 ### Algorithm
 
@@ -70,7 +70,7 @@ v1: not needed for basic regression (sufficient statistics approach), but missin
 Augments the 2x2 Hessian (rate, intercept) with a third parameter (root position) via finite differences, enabling root position uncertainty quantification.
 
 v0: within `find_best_root()` (`#find_best_root`) in [`packages/legacy/treetime/treetime/treeregression.py#L355-L382`](../../packages/legacy/treetime/treetime/treeregression.py#L355-L382).
-v1: not ported. v1 Hessian is 2x2 (rate, intercept) only.
+v1: not ported. The regression reports no Hessian; the Gaussian timetree gives a root-time standard deviation ([`packages/treetime/src/clock/gaussian.rs`](../../packages/treetime/src/clock/gaussian.rs)), not the uncertainty of the root position on the tree.
 
 ### Algorithm
 
