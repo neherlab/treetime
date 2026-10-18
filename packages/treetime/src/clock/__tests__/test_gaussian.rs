@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::gaussian::{GaussianClock, gaussian_clock};
+  use crate::clock::gaussian::{GaussianClock, gaussian_clock, gaussian_rate};
   use crate::pretty_assert_ulps_eq;
   use crate::timetree::inference::result::NodeTimes;
   use eyre::Report;
@@ -136,6 +136,44 @@ mod tests {
 
     approx::assert_relative_eq!(clock.rate_std.unwrap(), cov[0][0].sqrt(), max_relative = 1e-5);
     approx::assert_relative_eq!(clock.root_time_std.unwrap(), cov[1][1].sqrt(), max_relative = 1e-5);
+    Ok(())
+  }
+
+  // The rate estimate maximizes the likelihood with V integrated out and the root at its optimum, which is the root's
+  // marginal mean at that rate: the profile is stationary at the estimate and lower one percent to either side
+  #[test]
+  fn test_gaussian_rate_maximizes_the_profile_likelihood() -> Result<(), Report> {
+    let tree = Tree3::new();
+    let parsed = nwk_read(TREE_3.as_bytes())?;
+    let names = parsed.names();
+    let tip_dates: NodeTimes = names
+      .iter()
+      .map(|(key, name)| {
+        let date = DATES_3
+          .iter()
+          .find(|(tip, _)| Some(*tip) == name.as_deref())
+          .map(|(_, t)| *t);
+        (*key, date)
+      })
+      .collect();
+    let rate = gaussian_rate(
+      &parsed.graph,
+      &parsed.branch_lengths,
+      SEQUENCE_LENGTH,
+      &tip_dates,
+      &BTreeMap::new(),
+    )?;
+
+    let profile = |rate: f64| {
+      let (q, h) = tree.joint(tree.eta(rate));
+      let cov = invert(q);
+      tree.log_likelihood(rate, cov[0][0] * h[0] + cov[0][1] * h[1])
+    };
+    let step = 1e-4 * rate;
+    let slope = (profile(rate + step) - profile(rate - step)) / (2.0 * step);
+    let curvature = (profile(rate + step) - 2.0 * profile(rate) + profile(rate - step)) / (step * step);
+    approx::assert_abs_diff_eq!(0.0, slope / (curvature.abs() * rate), epsilon = 1e-6);
+    assert!(profile(rate) > profile(0.99 * rate) && profile(rate) > profile(1.01 * rate));
     Ok(())
   }
 

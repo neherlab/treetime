@@ -2,7 +2,7 @@
 mod tests {
   use crate::clock::__tests__::test_reroot::tests::helpers::leaf_dates;
   use crate::clock::clock_model::{ClockModel, ClockRegression};
-  use crate::clock::clock_regression::{ClockTree, estimate_clock_model_with_reroot_policy};
+  use crate::clock::clock_regression::{ClockRerootResult, ClockTree, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_set::ClockSet;
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::divergence::root_to_node_divergences;
@@ -20,6 +20,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::cast::ToF64Exact;
 
   fn compute_naive_rate(dates: &BTreeMap<String, f64>, div: &BTreeMap<String, f64>) -> f64 {
     let t: f64 = dates.values().sum();
@@ -53,6 +54,44 @@ mod tests {
     let regression = helpers::root_regression(TREE_4, &dates)?;
     pretty_assert_abs_diff_eq!(naive_rate, regression.clock_rate(), epsilon = 1e-10);
 
+    Ok(())
+  }
+
+  // A regression rate that is not positive gives way to the fallback rate, with the intercept of the least-squares
+  // line at that rate, (sum d - rate sum t) / n; a positive regression rate is kept and the fallback not asked for
+  #[test]
+  fn test_clock_regression_fallback_replaces_only_a_non_positive_rate() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(TREE_4.as_bytes())?;
+    let names = nwk_parsed.names();
+    let branch_lengths = nwk_parsed.branch_lengths;
+    let divergences = root_to_node_divergences(&nwk_parsed.graph, |edge_key| {
+      branch_lengths[&edge_key].unwrap_or_default()
+    })?;
+    let divs: BTreeMap<String, f64> = nwk_parsed
+      .graph
+      .get_leaves()
+      .map(|leaf| (names[&leaf.key()].clone().unwrap(), divergences[&leaf.key()]))
+      .collect();
+    let falling: BTreeMap<String, f64> = divs
+      .iter()
+      .map(|(name, d)| (name.clone(), 2030.0 - 100.0 * d))
+      .collect();
+    let rate = 1e-3;
+
+    let negative = helpers::root_fit(TREE_4, &falling)?;
+    assert!(negative.regression().unwrap().clock_rate() < 0.0);
+    let model = negative.into_clock_fit_or(|| Ok(rate))?.model;
+    let n = divs.len().to_f64_exact();
+    let expected_intercept = (divs.values().sum::<f64>() - rate * falling.values().sum::<f64>()) / n;
+    pretty_assert_abs_diff_eq!(rate, model.clock_rate(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(expected_intercept, model.intercept(), epsilon = 1e-10);
+
+    let positive = helpers::root_fit(TREE_4, &leaf_dates())?;
+    let regression_rate = positive.regression().unwrap().clock_rate();
+    let model = positive
+      .into_clock_fit_or(|| panic!("the fallback must not be asked for"))?
+      .model;
+    pretty_assert_abs_diff_eq!(regression_rate, model.clock_rate(), epsilon = 0.0);
     Ok(())
   }
 
@@ -258,6 +297,11 @@ mod tests {
     }
 
     pub(super) fn root_regression(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockRegression, Report> {
+      Ok(root_fit(tree, dates)?.regression().unwrap().clone())
+    }
+
+    /// Clock fit at the root of `tree`, without rerooting
+    pub(super) fn root_fit(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockRerootResult, Report> {
       let nwk_parsed = nwk_read(tree.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
@@ -277,7 +321,7 @@ mod tests {
         &names,
         &NoopProgress,
       )?;
-      Ok(result.regression().unwrap().clone())
+      Ok(result)
     }
 
     pub(super) fn rows_and_divs(
