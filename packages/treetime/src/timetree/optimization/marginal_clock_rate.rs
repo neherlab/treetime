@@ -5,7 +5,7 @@
 //! candidate rate costs one backward pass, not a new branch-likelihood computation.
 
 use crate::clock::date_constraints::DateConstraints;
-use crate::coalescent::coalescent::CoalescentModel;
+use crate::coalescent::mean_field::CoalescentPrior;
 use crate::make_report;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::result::BranchLikelihood;
@@ -27,7 +27,7 @@ pub(crate) const STEP_FRACTION: f64 = 2.0 / 3.0;
 pub(crate) struct MarginalRateInputs<'a> {
   pub graph: &'a Graph,
   pub date_constraints: &'a DateConstraints,
-  pub coalescent: Option<&'a CoalescentModel>,
+  pub coalescent: Option<&'a CoalescentPrior>,
   pub bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
   /// Branch-time distributions computed at `reference_rate`
   pub branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,

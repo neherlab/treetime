@@ -9,7 +9,7 @@ use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
-use crate::coalescent::coalescent::CoalescentModel;
+use crate::coalescent::mean_field::CoalescentPrior;
 use crate::coalescent::population_size::effective_population_size;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
@@ -376,7 +376,7 @@ fn refine_final_times(
     None
   };
 
-  let final_model = CoalescentModel::new(&coalescent.lineage_counts, &timescale.distribution)?;
+  let final_model = CoalescentPrior::new(&coalescent.lineage_expectation, &timescale.distribution)?;
   let final_prior = coalescent.prior_wanted().then_some(&final_model);
 
   let (central, rate_susceptibility_dates) = if let Some(rate_std) = rate_std {

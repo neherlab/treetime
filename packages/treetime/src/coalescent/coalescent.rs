@@ -6,7 +6,6 @@ use eyre::{Context, Report};
 use treetime_distribution::Distribution;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_grid::piecewise_linear_fn::PiecewiseLinearFn;
-use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
 #[derive(Clone, Debug)]
@@ -35,20 +34,6 @@ impl CoalescentModel {
       expected_mergers,
       merger_rate_before: compute_merger_rate_per_lineage_scalar(lineage_counts.values()[0], tc_first),
     })
-  }
-
-  pub(crate) fn leaf_contribution(&self, time: f64) -> f64 {
-    -self.expected_mergers_at(time)
-  }
-
-  pub(crate) fn internal_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
-    let n_mergers = n_children.saturating_sub(1).to_f64_exact();
-    let total_merger_rate = self.total_merger_rate(time)?;
-    Ok(n_mergers * (self.expected_mergers_at(time) - total_merger_rate.ln()))
-  }
-
-  pub(crate) fn root_contribution(&self, time: f64, n_children: usize) -> Result<f64, Report> {
-    Ok(self.internal_contribution(time, n_children)? + self.expected_mergers_at(time))
   }
 
   pub(crate) fn edge_contribution(&self, edge: &CoalescentEdgeData) -> Result<f64, Report> {

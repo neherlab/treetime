@@ -1,5 +1,5 @@
 use crate::clock::date_constraints::DateConstraints;
-use crate::coalescent::coalescent::CoalescentModel;
+use crate::coalescent::mean_field::CoalescentPrior;
 use crate::timetree::inference::result::{BranchLikelihood, TimeBackward, TimeDistribution};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use eyre::{Report, WrapErr};
@@ -24,7 +24,7 @@ use treetime_utils::make_internal_report;
 pub(crate) fn propagate_distributions_backward(
   graph: &Graph,
   constraints: &DateConstraints,
-  coalescent_model: Option<&CoalescentModel>,
+  coalescent_model: Option<&CoalescentPrior>,
   bad_branches: &BTreeMap<GraphNodeKey, bool>,
   branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
   max_points: MaxGridPoints,
@@ -44,14 +44,14 @@ pub(crate) fn propagate_distributions_backward(
 
 fn propagate_distributions_backward_node(
   constraints: &DateConstraints,
-  coalescent_model: Option<&CoalescentModel>,
+  coalescent_model: Option<&CoalescentPrior>,
   context: &GraphPassBackwardContext<'_, &bool, BranchLikelihood, TimeDistribution, TimeDistribution>,
   max_points: MaxGridPoints,
 ) -> Result<GraphPassNodeOutput<TimeDistribution, TimeDistribution>, Report> {
   let date_constraint = constraints.date_constraint(context.key);
   let messages = gather_child_messages(context.children)?;
   let distribution = combine_child_messages(&messages, max_points)?;
-  let distribution = apply_coalescent_prior(coalescent_model, context.is_root, context.children.len(), distribution)?;
+  let distribution = apply_coalescent_prior(coalescent_model, context.key, context.children.len(), distribution)?;
   let distribution = apply_date_constraint(date_constraint.as_ref(), distribution, max_points)?;
 
   let subtree = if matches!(distribution, Distribution::Empty) {
@@ -70,6 +70,7 @@ fn propagate_distributions_backward_node(
     .map(|(edge_key, branch)| {
       send_backward_message(
         coalescent_model,
+        context.key,
         context.is_leaf,
         bad_branch,
         subtree.as_deref(),
@@ -110,25 +111,21 @@ fn combine_child_messages(
   distribution_product(&factors, max_points)
 }
 
+/// Multiplies the subtree distribution of an internal node by its coalescent prior factor; a tip's factor is applied
+/// to the message it sends, in `fn send_backward_message()`
 fn apply_coalescent_prior(
-  coalescent_model: Option<&CoalescentModel>,
-  is_root: bool,
+  coalescent_model: Option<&CoalescentPrior>,
+  key: GraphNodeKey,
   n_children: usize,
   distribution: Distribution<NegLog>,
 ) -> Result<Distribution<NegLog>, Report> {
   let Some(model) = coalescent_model else {
     return Ok(distribution);
   };
-  if matches!(distribution, Distribution::Empty) {
+  if n_children == 0 || matches!(distribution, Distribution::Empty) {
     return Ok(distribution);
   }
-  distribution_multiply_by_fn(&distribution, |time| {
-    if is_root {
-      model.root_contribution(time, n_children)
-    } else {
-      model.internal_contribution(time, n_children)
-    }
-  })
+  distribution_multiply_by_fn(&distribution, |time| model.node_contribution(key, n_children, time))
 }
 
 fn apply_date_constraint(
@@ -146,7 +143,8 @@ fn apply_date_constraint(
 }
 
 fn send_backward_message(
-  coalescent_model: Option<&CoalescentModel>,
+  coalescent_model: Option<&CoalescentPrior>,
+  key: GraphNodeKey,
   is_leaf: bool,
   bad_branch: bool,
   subtree: Option<&Distribution<NegLog>>,
@@ -163,7 +161,7 @@ fn send_backward_message(
 
   let leaf_weighted = if is_leaf && let Some(model) = coalescent_model {
     Some(distribution_multiply_by_fn(distribution, |time| {
-      Ok(model.leaf_contribution(time))
+      model.node_contribution(key, 0, time)
     })?)
   } else {
     None

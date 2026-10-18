@@ -1,5 +1,6 @@
 use crate::cancel::Cancel;
 use crate::coalescent::coalescent::CoalescentModel;
+use crate::coalescent::mean_field::CoalescentPrior;
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
 use crate::timetree::coalescent_timescale::{CoalescentSetup, CoalescentTimescale, coalescent_timescale};
@@ -53,12 +54,13 @@ pub(crate) fn run_refinement_loop(
     }
     let coalescent_model = CoalescentModel::new(&coalescent.lineage_counts, &timescale.distribution)?;
     let merger_rate = coalescent_model.branch_merger_rate_schedule(&timescale.schedule)?;
+    let coalescent_prior = CoalescentPrior::new(&coalescent.lineage_expectation, &timescale.distribution)?;
 
     let iteration_clock = IterationClock::of(&state.clock_model);
     let (next_state, outcome) = refinement_round(
       inputs,
       &merger_rate,
-      coalescent.prior_wanted().then_some(&coalescent_model),
+      coalescent.prior_wanted().then_some(&coalescent_prior),
       state,
       &mut rng,
       log,
