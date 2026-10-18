@@ -102,7 +102,7 @@ runs per row, all nodes pooled; accuracy: per-cell means of `keep-{opt,skyline}`
 | true $T_c$ fixed, true rate: 90% coverage / mean PIT / PIT > 0.9 | 0.870 / 0.585 / 0.170 | 0.888 / 0.537 / 0.133 |
 | `opt`, true rate: 90% coverage / mean PIT / PIT < 0.1 | 0.868 / 0.561 / 0.084 | 0.822 / 0.414 / 0.213 |
 | `skyline`, true rate: 90% coverage / mean PIT / PIT < 0.1 | 0.830 / 0.588 / 0.085 | 0.811 / 0.408 / 0.222 |
-| estimated rate, $L = 10^4$, $\mu = 3 \cdot 10^{-4}$: mean rate error / mean $\lvert\log\rvert$ rate error | $-12.1\%$ / 0.131 | $+3.2\%$ / 0.049 |
+| estimated rate, $L = 10^4$, $\mu = 3 \cdot 10^{-4}$: median rate error / mean $\lvert\log\rvert$ rate error | $-12.1\%$ / 0.131 | $+3.2\%$ / 0.049 |
 | same: root error / date RMSE, years | 1.99 / 0.215 | 1.43 / 0.184 |
 | true rate, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$: root error / date RMSE, years | 6.14 / 0.539 | 8.60 / 0.642 |
 | `opt`, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$, estimated rate: $T_c$ log bias | +0.61 | -0.21 |
@@ -132,7 +132,7 @@ $E[k(k-1)] = \bar k^2 - \bar k + V$, $V = \sum_u w_u^2 S_u (1 - S_u)$, and $M_i 
 | `opt`, estimated rate: same | 0.863 / 0.583 / 0.072 / 0.170 | 0.831 / 0.426 / 0.199 / 0.081 | 0.889 / 0.500 / 0.108 / 0.106 |
 | true rate, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$: root error / date RMSE, years | 6.14 / 0.539 | 8.60 / 0.642 | 4.13 / 0.434 |
 | true rate, $L = 10^3$, $\mu = 10^{-3}$: same | 2.07 / 0.281 | 2.66 / 0.317 | 1.68 / 0.231 |
-| estimated rate, $L = 10^4$, $\mu = 3 \cdot 10^{-4}$: mean rate error / mean $\lvert\log\rvert$ rate error | $-12.1\%$ / 0.131 | $+3.2\%$ / 0.049 | $-5.5\%$ / 0.070 |
+| estimated rate, $L = 10^4$, $\mu = 3 \cdot 10^{-4}$: median rate error / mean $\lvert\log\rvert$ rate error | $-12.1\%$ / 0.131 | $+3.2\%$ / 0.049 | $-5.5\%$ / 0.070 |
 | same: root error / date RMSE, years | 1.99 / 0.215 | 1.43 / 0.184 | 1.36 / 0.171 |
 | estimated rate, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$: mean $\lvert\log\rvert$ rate error | 0.499 | 0.563 | 0.653 |
 | `skyline` $T_c$ log bias, $L = 10^4$ | $-0.18$ to $-0.24$ | $-0.19$ to $-0.32$ | $-0.02$ to $+0.05$ |
