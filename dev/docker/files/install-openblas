@@ -9,7 +9,7 @@ set -euxo pipefail
 triplet="${1:?triplet}"
 dest="${2:?prefix}"
 version="0.3.34"
-build_time="2026-10-17_19-46-58"
+build_time="2026-10-18_02-46-54"
 release="openblas-${version}-${build_time}"
 archive="/tmp/openblas.tar.xz"
 mkdir -p "${dest}"
