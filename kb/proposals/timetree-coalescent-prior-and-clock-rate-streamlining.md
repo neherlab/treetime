@@ -255,7 +255,7 @@ coverage, so the rate step comes before the coalescent statistics and the root.
 | 0a (done) | OLS regression on two-way sums, exact root search, outliers out of the fit, IQR filter; `clock` and `timetree` on it | identical rate, intercept and root wherever the old search found the optimum (OLS default); differences only where the local split search missed it or outliers leaked in; validation suite rate and root recovery |
 | 0b (done) | Gaussian message passing at the final rate: node marginals, rate and root covariance; replaces `--covariation` for `rate_std` | analytic tests (joint Gaussian, finite-difference Hessian); `--confidence` coverage on the validation data, see below |
 | 0c (done) | retire the old machinery and flags; outputs, contracts, app (with the engineer) | tests and dengue/100 golden master unchanged; smoke snapshots re-baselined by the engineer ([M-smoke-clock-ols-retired-flags-and-snapshots.md](../issues/M-smoke-clock-ols-retired-flags-and-snapshots.md)) |
-| 1 (init done) | merge `claude-hard-cell-interp`; init phase: seed the expectation and $T_c$ from the Gaussian marginals, one time pass under that prior, no prior-free pass; Gaussian rate as the start when the regression rate is not positive | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
+| 1 (done) | merge `claude-hard-cell-interp`; init phase: seed the expectation and $T_c$ from the Gaussian marginals, one time pass under that prior, no prior-free pass; Gaussian rate as the start when the regression rate is not positive | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
 | 2 | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests against analytic expected statistics; outputs documented as a v0 divergence |
 | 3 | root: median versus peak under the mean-field prior | `data/ebola/20` root stable over rounds |
 | 4 | rate: curvature-scaled probe window; optional log-normal rate prior; one source for `rate_std` | rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date coverage |
@@ -307,8 +307,10 @@ the loop: Gaussian timetree at the regression rate, expected lineage counts from
 truncated at its earliest tip, `LineageExpectation::from_gaussian`), $T_c$ fitted to them, one time pass under that
 prior, expectation rebuilt from its posteriors and frozen. The prior-free pass is gone; it remains only as the
 fallback when the Gaussian timetree degenerates. `timetree` now requires an alignment or `--sequence-length`, as v0
-does. Open in phase 1: the start from the Gaussian rate when the regression rate is not positive
-([M-timetree-non-positive-regression-rate-stops-the-run.md](../issues/M-timetree-non-positive-regression-rate-stops-the-run.md)).
+does. When the regression rate is not positive and no `--clock-rate` is set, timetree starts from the rate that
+maximizes the Gaussian likelihood with the root free, $\eta = (B + \sqrt{B^2 + 4A\kappa})/2A$; the four gate runs
+that stopped on a non-positive regression rate complete with rate errors 0.46, 0.03, 0.03, 0.76 and node RMSEs of
+0.18-0.66 years, in line with their sets.
 
 Gate, 240 validation sets, `--coalescent-opt`, estimated rate, `--keep-root`, against the prior-free seed:
 
@@ -342,9 +344,8 @@ frozen and rebuilt expectation waits for a stable rate step (phase 4).
   $\bar k$ in place of integer $k$ does not change its event model beyond the rate.
 - v0 parity: the reported coalescent likelihood, the initial round and the root handling all diverge from v0 and need
   decision files.
-- Issues: 0a to 0c done (branch `claude-clock-exact-root`, decision
+- Issues: 0a to 1 done (branch `claude-clock-exact-root`, decision
   [clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)),
-  [M-timetree-non-positive-regression-rate-stops-the-run.md](../issues/M-timetree-non-positive-regression-rate-stops-the-run.md) (1),
   [M-coalescent-one-expected-lineage-statistics.md](../issues/M-coalescent-one-expected-lineage-statistics.md) (2),
   [N-timetree-root-median-under-mean-field-prior.md](../issues/N-timetree-root-median-under-mean-field-prior.md) (3),
   [M-timetree-rate-step-window-and-rate-prior.md](../issues/M-timetree-rate-step-window-and-rate-prior.md) (4).
