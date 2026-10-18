@@ -152,8 +152,6 @@ $E[k(k-1)] = \bar k^2 - \bar k + V$, $V = \sum_u w_u^2 S_u (1 - S_u)$, and $M_i 
 
 ## Related
 
-- [N-coalescent-smoothing-frozen-lineage-counts.md](N-coalescent-smoothing-frozen-lineage-counts.md): the step
-  function as a suspected cause of bistable nodes
 - [M-timetree-confidence-interval-deficiencies.md](M-timetree-confidence-interval-deficiencies.md): how the reported
   interval is built from these posteriors
 - Without a coalescent prior the posteriors are far too old (mean PIT up to 0.97, 90% coverage 0.18 at $L = 10^3$,

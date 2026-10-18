@@ -29,4 +29,9 @@
 
 ## v1 status
 
-[packages/treetime/src/coalescent/edge_data.rs#L55-L62](../../packages/treetime/src/coalescent/edge_data.rs#L55-L62) records the parent's actual child count as `n_siblings` for each edge. The total likelihood weights the merger term by `(n_siblings - 1.0) / n_siblings` in [packages/treetime/src/coalescent/coalescent.rs#L49-L50](../../packages/treetime/src/coalescent/coalescent.rs#L49-L50), and the constant and skyline $T_c$ solve accumulates the same weight in [packages/treetime/src/coalescent/skyline.rs#L193-L194](../../packages/treetime/src/coalescent/skyline.rs#L193-L194).
+v1 no longer evaluates the edge-based total likelihood: since phase 2 of
+[timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md)
+the reported likelihood and the $T_c$ objective are the expected complete-data log-likelihood of the expected
+lineage counts, in which each node contributes its actual number of mergers $m_v$
+([packages/treetime/src/coalescent/mean_field.rs](../../packages/treetime/src/coalescent/mean_field.rs),
+`LineageExpectation::segment_statistics`). The v0 defect therefore has no counterpart in v1.

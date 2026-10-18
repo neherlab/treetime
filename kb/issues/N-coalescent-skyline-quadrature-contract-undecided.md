@@ -1,20 +1,22 @@
-# Skyline merger-rate quadrature lacks an accuracy contract
+# Coalescent quadrature over the expected lineage counts lacks an accuracy contract
 
 > [!IMPORTANT]
-> **Decision required.** The integration method and its error contract for continuous $T_c(t)$ are undecided, and the method needs an explicit parity disposition against the different v0 integration rule. The options are under "Design axis: integration method".
+> **Decision required.** The integration method and its error contract for the integrals over the expected lineage counts are undecided, and the method needs an explicit parity disposition against the different v0 integration rule. The options are under "Design axis: integration method".
 
-> [!WARNING]
-> **Needs review.** The skyline is now piecewise-_constant_, and its optimizer attributes each lineage-count interval wholly to the segment of its midpoint (the same midpoint convention the model uses), so the midpoint rule is _exact_ for the piecewise-constant skyline (no quadrature error, and the analytic optimum matches the model-evaluated likelihood). See [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md). The contract below still applies to continuous $T_c(t)$ (e.g. a `Formula` distribution), which the ignored smooth-$T_c$ test exercises.
+The coalescent statistics are integrals over the expected lineage counts: the pair-rate integral
+$I_i = \int_i \tfrac12(\bar k^2 - \bar k + V)\,dt$ and, through the prior, $\int \bar k(t)/T_c(t)\,dt$
+(`LineageExpectation::segment_statistics` and `CoalescentPrior::new` in
+[packages/treetime/src/coalescent/mean_field.rs](../../packages/treetime/src/coalescent/mean_field.rs)). Both use the
+trapezoid rule on a uniform grid of 4001 points over the span of the node distributions, with $T_c$ evaluated at cell
+midpoints. The rule has no stated error bound: a step of $\bar k$ at point node times costs half a grid cell (the
+tests allow a relative error of $10^{-4}$ on $T_c = I/M$ for that reason), and the grid spacing scales with the span of
+the deepest node distribution rather than with the variation of $\bar k$ or $T_c$. Since phase 2 of
+[timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md)
+the removed midpoint quadrature of the point-time lineage counts (`compute_integral_merger_rate`) no longer applies.
+V0 uses a different numerical integration rule, so the selected algorithm also requires an explicit parity
+disposition.
 
-`fn compute_integral_merger_rate()` evaluates $T_c(t)$ once at each lineage-count interval midpoint [packages/treetime/src/coalescent/integration.rs#L44-L71](../../packages/treetime/src/coalescent/integration.rs#L44-L71). The approximation has no stated convergence order, refinement rule, or error bound for a varying skyline.
-
-The ignored analytical test integrates $1/(0.01+0.004t)$ on $[0,10]$ and observes an error of approximately $1.6\times10^{-4}$ [`packages/treetime/src/coalescent/__tests__/test_integration.rs#L157-L164`](../../packages/treetime/src/coalescent/__tests__/test_integration.rs#L157-L164). V0 uses a different numerical integration rule, so the selected algorithm also requires an explicit parity disposition.
-
-Let $\kappa(t)$ be the per-branch merger rate and let $I(t)$ be its cumulative integral:
-
-$$I(t) = \int_0^t \kappa(s)\,ds.$$
-
-The numerical method must define an observable error contract for approximating $I(t)$ over each interval.
+The numerical method must define an observable error contract for these integrals over each segment.
 
 ## Design axis: integration method
 

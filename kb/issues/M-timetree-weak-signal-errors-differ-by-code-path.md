@@ -11,7 +11,7 @@ On simulated data with weak temporal signal, the same case fails with three diff
 
 - [H-timetree-empty-distribution-division.md](H-timetree-empty-distribution-division.md): division by an empty distribution on real datasets
 - [H-timetree-backward-pass-nan-time-distribution.md](H-timetree-backward-pass-nan-time-distribution.md): a `NaN` time distribution, raised with and without round and node context
-- `fn collect_tree_events` [packages/treetime/src/coalescent/events.rs#L72-L77](../../packages/treetime/src/coalescent/events.rs#L72-L77): an undated node, reported as a stale coalescent model
+- an undated node, reported as a stale coalescent model by the point-time lineage counts, which phase 2 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md) removed; the expected lineage counts count an undated node as surviving at all times
 
 ## Fix direction
 

@@ -55,9 +55,9 @@ Other failures of this suite produce different errors on other paths: [M-timetre
 
 The combined backward message at the node is the product of the child messages, the coalescent prior, and the date constraint, so the `NaN` comes from one of those factors or from their product. In negative-log space a product is a sum, and `+inf + -inf` is `NaN`; a message with `-inf` or `NaN` values would produce this result. The source has not been traced.
 
-When the `NaN` is removed, two contracts still meet here. The forward pass tolerates an empty posterior: when the message from the rest of the tree and the node's own date constraint have disjoint support, it warns and leaves the node undated. `fn collect_tree_events()` [packages/treetime/src/coalescent/events.rs#L72-L77](../../packages/treetime/src/coalescent/events.rs#L72-L77) then requires a time on every node to order the coalescent events, and errors on the first undated one. Its error text blames a stale coalescent model, which is misleading when the posterior is empty.
+When the `NaN` is removed, the forward pass still tolerates an empty posterior: when the message from the rest of the tree and the node's own date constraint have disjoint support, it warns and leaves the node undated. The coalescent no longer errors on such a node: since phase 2 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md) its statistics come from the expected lineage counts, which count an undated node as surviving at all times (`LineageExpectation::from_posterior`), where the removed point-time lineage counts stopped with an error that blamed a stale coalescent model.
 
-Deciding the intended behavior for that case is part of the fix: either an empty posterior must be resolved to a time (falling back to the constraint or to the parent's implied time), or the coalescent must define what an undated node contributes to the lineage count, or the disjoint-support condition must fail earlier with a diagnosis naming the conflicting dates.
+Deciding the intended behavior for that case is part of the fix: either an empty posterior must be resolved to a time (falling back to the constraint or to the parent's implied time), or the disjoint-support condition must fail earlier with a diagnosis naming the conflicting dates.
 
 ## Related issues
 

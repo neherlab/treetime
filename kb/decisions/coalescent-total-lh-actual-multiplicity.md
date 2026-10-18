@@ -2,6 +2,13 @@
 
 v1 uses the parent node's child count for the per-edge multiplicity parameter in the coalescent total log-likelihood formula. v0 uses a fixed default of 2.0 for all edges.
 
+> [!WARNING]
+> **Needs review.** The edge-based total likelihood this decision describes (`collect_coalescent_edges`,
+> `compute_coalescent_total_lh`, `CoalescentModel`) was removed in phase 2 of
+> [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md).
+> The reported coalescent likelihood and the convergence metric are now the expected complete-data log-likelihood
+> $-\sum_i I_i/T_{c,i} - \sum_i M_i \ln T_{c,i}$, where each node contributes its actual number of mergers $m_v$.
+
 **Type**: Bug fix (v0 erratum correction).
 
 **v0 location**: `MergerModel.total_LH()` at `packages/legacy/treetime/treetime/merger_models.py#L252-L257`. Calls `self.cost(node.time_before_present, node.branch_length)` without passing `multiplicity`, getting the default `multiplicity=2.0`.

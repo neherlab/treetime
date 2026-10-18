@@ -1,68 +1,62 @@
 # Coalescent contribution model
 
-The coalescent subsystem represents lineage state, time-varying $T_c$, and the cumulative expected merger count in decimal calendar years. One immutable `CoalescentModel` supplies node contributions during inference and endpoint-derived edge contributions for likelihood and optimization.
+The coalescent subsystem represents lineage state, time-varying $T_c$ and the coalescent statistics in decimal calendar years. One object, the expected lineage counts `LineageExpectation`, carries the lineage state for every consumer: the mean-field prior on node times, the $T_c$ fit, the polytomy merger rates, the reported coalescent log-likelihood and the convergence trace.
 
-## Refactor status
+## Expected lineage counts
 
-The contribution refactor is complete. One shared `CoalescentModel` replaces per-node formula closures and contribution maps; merger rates are evaluated with scalar calendar-coordinate arithmetic; the backward pass combines all child messages before applying the role-specific contribution on the completed support; and leaf contributions affect only temporary outgoing messages while endpoint-derived edge contributions supply the whole-tree likelihood. The coalescent path therefore does not use formula/function multiplication or perform time-before-present conversion during contribution evaluation.
-
-## Calendar-coordinate state
-
-Let $t$ be a decimal calendar year and $P$ the most recent event. The model stores
+With merger indicators $I_u(t) = [t_u > t]$ and node weights $w_u = 1 - n_{\text{children}}(u)$, the lineage count is $k(t) = \sum_u w_u I_u(t)$. Its expectation under the node-time distributions $S_u(t) = P(t_u > t)$ is
 
 $$
-H(t)=\int_t^P \kappa(s)\,ds,
+\bar k(t) = \sum_u w_u S_u(t),
 \qquad
-\kappa(t)=\frac{\max(0.5,k(t)-1)}{2T_c(t)},
+V(t) = \sum_u w_u^2 S_u(t)\,(1 - S_u(t)),
 $$
 
-where $k(t)$ is the lineage count. In code, $H(t)$ is the model's `expected_mergers` field, the expected number of merger events a branch experiences up to $t$, and $\lambda(t)$ is `total_merger_rate`. Tree events are aggregated in ascending calendar order. The oldest tail, before the earliest merger, counts two lineages, and $H(t)$ continues there at their per-lineage rate $1/(2T_c)$; v0 counts one lineage and keeps $H$ flat (see [timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md#before-the-root)). Applying retained event deltas toward the present leaves zero lineages for a clean tree and one lineage per excluded bad-branch subtree after the newest retained sample, matching v0. Calendar right-continuity at merger breakpoints exposes the sampled-tree-side lineage count, equivalent to v0's left-sided evaluation in time-before-present coordinates.
+on a uniform grid over the span of the node distributions. The survival functions come from node posteriors (`LineageExpectation::from_posterior`) or, in the init phase, from the Gaussian node-time marginals truncated at each node's earliest tip (`LineageExpectation::from_gaussian`). Nodes on bad branches and nodes without a time count as surviving at all times, as the lineage count counts them at the present.
 
-Constants are coordinate-independent. A nonconstant `Distribution` used as $T_c(t)$ is evaluated in decimal calendar years. Coordinate enforcement by a dedicated type remains tracked in [kb/issues/N-coalescent-time-scale-coordinate-not-type-enforced.md](../issues/N-coalescent-time-scale-coordinate-not-type-enforced.md).
+## Mean-field prior
 
-## Node-grouped objective
-
-For a node with $m$ children and total merger rate $\lambda(t)$, the negative-log contributions are
-
-- leaf: $-H(t)$;
-- non-root internal node: $(m-1)(H(t)-\log\lambda(t))$;
-- root: $(m-1)(H(t)-\log\lambda(t))+H(t)$.
-
-These signed local terms are meaningful as one telescoped whole-tree objective. They reproduce v0's leaf, internal, and root grouping while preserving actual parent multiplicity at multifurcations. In code they are `leaf_contribution`, `internal_contribution`, and `root_contribution`, matching v0's signed `node_contribution`.
-
-The backward pass combines every child message first, then applies one role-specific contribution on the completed distribution's coordinates through `distribution_multiply_by_fn` in the distribution layer. That application accumulates in negative-log space, shifting by the combined minimum of contribution minus log-amplitude, so the contribution's own dynamic range does not underflow the peak to zero. The child-message product that feeds it runs in negative-log space, where multiplication is addition, so the earlier plain-space tail underflow no longer applies; [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) defines the product's uniform-grid resampling. Point support remains a point; range endpoints and function pivots are retained; empty distributions remain empty. Formula inputs are rejected because applying a contribution must not choose a new grid. A leaf contribution affects only the temporary message sent to its parent, leaving the stored date constraint unchanged across repeated inference passes.
-
-## Endpoint-derived objective
-
-Likelihood and $T_c$ optimization use inferred child and parent calendar dates. For an edge from parent $p$ to child $c$, the survival cost is
+The Kingman log-density couples all node times through $k(t)$. Linearized in the indicators of the other nodes around their expectations, the terms of node $v$ are local:
 
 $$
-H(t_p)-H(t_c).
+-\log f_v(x) = \int^x \frac{w_v(w_v-1)/2 + w_v \bar k_{-v}(t)}{T_c(t)}\,dt + m_v \ln T_c(x),
+\qquad \bar k_{-v} = \bar k - w_v S_v,
 $$
 
-The parent's merger-density term is divided among its outgoing edges so their sum equals the node-grouped objective. Reversed finite endpoints are rejected rather than clamped. This path does not use sequence-derived branch-distribution modes as elapsed coalescent time.
+with $m_v$ the mergers at $v$. `CoalescentPrior::node_contribution` evaluates it; the backward pass combines every child message first, then applies the contribution on the completed distribution's coordinates through `distribution_multiply_by_fn` in negative-log space. A leaf contribution affects only the temporary message sent to its parent.
 
-## Shared implementation
+## Coalescent statistics
 
-- [`packages/treetime/src/coalescent/coalescent.rs`](../../packages/treetime/src/coalescent/coalescent.rs): `CoalescentModel`, and the node and edge contributions (`leaf`/`internal`/`root`/`edge_contribution`).
-- [`packages/treetime/src/coalescent/events.rs`](../../packages/treetime/src/coalescent/events.rs): v0-compatible event collection, including bad-branch exclusion and the resulting terminal lineage count.
+For segments $i$ of $T_c$, the expected pair-rate integral and merger count are
+
+$$
+I_i = \int_i \tfrac12\left(\bar k^2 - \bar k + V\right) dt,
+\qquad
+M_i = \sum_v m_v\, P(t_v \in i)
+$$
+
+(`LineageExpectation::segment_statistics`). The $T_c$ fit maximizes the expected complete-data log-likelihood
+
+$$
+\ell(T_c) = -\sum_i \frac{I_i}{T_{c,i}} - \sum_i M_i \ln T_{c,i}
+$$
+
+(with a smoothness penalty on $\ln T_c$ between skyline segments), which is also the reported coalescent log-likelihood and the `log_lh_coal` of the convergence trace (`fn expected_log_likelihood`, `CoalescentTimescale::expected_log_likelihood`). The segments span from where $\bar k$ rises half a lineage above its value before every node, near the root, to the latest tip (`LineageExpectation::span`). Polytomy resolution draws mergers at the per-lineage rate $\max(1/2, \bar k - 1)/(2T_c)$ (`LineageExpectation::merger_rate_schedule`); before the grid, $\bar k$ is its value before every node.
+
+Constants are coordinate-independent. A nonconstant $T_c$ is evaluated in decimal calendar years; enforcing the coordinate by a type remains tracked in [kb/issues/N-coalescent-time-scale-coordinate-not-type-enforced.md](../issues/N-coalescent-time-scale-coordinate-not-type-enforced.md).
+
+## Implementation
+
+- [`packages/treetime/src/coalescent/mean_field.rs`](../../packages/treetime/src/coalescent/mean_field.rs): `LineageExpectation` and `CoalescentPrior`.
+- [`packages/treetime/src/coalescent/skyline.rs`](../../packages/treetime/src/coalescent/skyline.rs): the $T_c$ fit (`optimize_skyline`), its confidence band from the Hessian of $\ell$, and `expected_log_likelihood`.
+- [`packages/treetime/src/timetree/coalescent_timescale.rs`](../../packages/treetime/src/timetree/coalescent_timescale.rs): the fixed, constant and skyline time scales and their report.
 - [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs): `distribution_multiply_by_fn`, the log-space pointwise application of a per-time contribution to a distribution.
-- [`packages/treetime/src/coalescent/lineage_dynamics.rs`](../../packages/treetime/src/coalescent/lineage_dynamics.rs): calendar lineage state.
-- [`packages/treetime/src/coalescent/integration.rs`](../../packages/treetime/src/coalescent/integration.rs): shared scalar rates and the checked cumulative merger integral (`expected_mergers`).
-- [`packages/treetime/src/coalescent/edge_data.rs`](../../packages/treetime/src/coalescent/edge_data.rs): inferred endpoint collection and total log-likelihood (`coalescent_log_likelihood`).
-- [`packages/treetime/src/timetree/inference/backward_pass.rs`](../../packages/treetime/src/timetree/inference/backward_pass.rs): child-first application via the distribution layer.
+- [`packages/treetime/src/timetree/inference/backward_pass.rs`](../../packages/treetime/src/timetree/inference/backward_pass.rs): child-first application of the prior.
 
-Fixed-$T_c$, optimized-$T_c$, and skyline paths all bind their candidate $T_c$ to the same model primitives.
+The point-time lineage counts, the edge-based coalescent likelihood and `CoalescentModel` were removed in phase 2 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md); the reported likelihood is no longer v0's edge-based total.
 
 ## Remaining work
 
-### Core model
-
 - Enforce the calendar coordinate of nonconstant $T_c$ values in the type system: [kb/issues/N-coalescent-time-scale-coordinate-not-type-enforced.md](../issues/N-coalescent-time-scale-coordinate-not-type-enforced.md).
-
-### Skyline
-
-- Decide and enforce the extrapolation policy: [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md).
-- Define an accuracy contract for cumulative-hazard quadrature: [kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md](../issues/N-coalescent-skyline-quadrature-contract-undecided.md).
+- Decide and enforce the skyline extrapolation policy: [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md).
 - Validate the internally derived skyline boundaries: [kb/issues/N-coalescent-skyline-grid-validation-incomplete.md](../issues/N-coalescent-skyline-grid-validation-incomplete.md).
-- Validate skyline grid shape and domain before endpoint access: [kb/issues/N-coalescent-skyline-grid-validation-incomplete.md](../issues/N-coalescent-skyline-grid-validation-incomplete.md).

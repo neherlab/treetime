@@ -64,6 +64,13 @@ size.
   node-time attribution as `CoalescentModel`, so the analytic optimum is the true
   maximizer of the model-evaluated likelihood, and the reported LH matches
   `compute_coalescent_total_lh`.
+
+  > [!WARNING]
+  > **Needs review.** `CoalescentModel` and `compute_coalescent_total_lh` were removed in phase 2 of
+  > [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md):
+  > $I_i$ and $M_i$ are now the expected statistics of `LineageExpectation`, and the reported likelihood is the
+  > expected complete-data log-likelihood $-\sum_i I_i/T_{c,i} - \sum_i M_i \ln T_{c,i}$ that the solve maximizes,
+  > so the self-consistency holds by construction.
 - **Simpler.** Removes the Nelder-Mead executor, the initial-simplex construction,
   the boundary penalty, and the piecewise-linear knot interpolation.
 

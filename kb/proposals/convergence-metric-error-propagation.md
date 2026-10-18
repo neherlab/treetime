@@ -1,7 +1,7 @@
 # Propagate convergence metric evaluation errors instead of swallowing them
 
 > [!WARNING]
-> **Needs review.** `log_lh_total` and `log_lh_pos` were removed; `ConvergenceMetrics` now carries `log_lh_seq`, `log_lh_time` and `log_lh_coal`. The composition problem below no longer arises for a total, but a failed `log_lh_coal` still disappears from a row silently.
+> **Needs review.** `log_lh_total` and `log_lh_pos` were removed; `ConvergenceMetrics` now carries `log_lh_seq`, `log_lh_time` and `log_lh_coal`. The composition problem below no longer arises for a total. Since phase 2 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](timetree-coalescent-prior-and-clock-rate-streamlining.md), `log_lh_coal` is the expected complete-data log-likelihood (`CoalescentTimescale::expected_log_likelihood`), which cannot fail, and `compute_coalescent_total_lh` and `compute_coalescent_log_lh` are gone; only a failed `log_lh_seq` (`compute_sequence_log_lh`, logged at debug level) still disappears from a row silently.
 
 When a configured coalescent model's log-likelihood evaluation fails, the error is downgraded to `None` and the component is excluded from `log_lh_total`. This makes trace rows with failed components numerically incomparable to rows where all components succeeded.
 
