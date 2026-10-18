@@ -34,6 +34,7 @@ case "${target}" in
 x86_64-unknown-linux-gnu) app="${output}/linux-unpacked/treetime" resources="${output}/linux-unpacked/resources" ;;
 aarch64-unknown-linux-gnu) app="${output}/linux-arm64-unpacked/treetime" resources="${output}/linux-arm64-unpacked/resources" ;;
 x86_64-pc-windows-gnullvm) app="${output}/win-unpacked/TreeTime.exe" resources="${output}/win-unpacked/resources" ;;
+aarch64-pc-windows-gnullvm) app="${output}/win-arm64-unpacked/TreeTime.exe" resources="${output}/win-arm64-unpacked/resources" ;;
 x86_64-apple-darwin) app="${output}/mac/TreeTime.app" resources="${app}/Contents/Resources" ;;
 aarch64-apple-darwin) app="${output}/mac-arm64/TreeTime.app" resources="${app}/Contents/Resources" ;;
 *)

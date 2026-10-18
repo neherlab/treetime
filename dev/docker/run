@@ -78,6 +78,7 @@ jupyter)
 x86_64-unknown-linux-gnu | x86_64-unknown-linux-musl) cross_image cross-linux CROSS_ARCH_DEBIAN=amd64 CROSS_RUNNER=qemu-x86_64 ;;
 aarch64-unknown-linux-gnu | aarch64-unknown-linux-musl) cross_image cross-linux CROSS_ARCH_DEBIAN=arm64 CROSS_RUNNER=qemu-aarch64 ;;
 x86_64-pc-windows-gnullvm) cross_image cross-windows CROSS_MINGW_TRIPLET=x86_64-w64-mingw32 CROSS_RUNNER=/usr/lib/wine/wine64 ;;
+aarch64-pc-windows-gnullvm) cross_image cross-windows CROSS_MINGW_TRIPLET=aarch64-w64-mingw32 CROSS_RUNNER= ;;
 x86_64-apple-darwin) cross_image cross-darwin CROSS_APPLE_TRIPLET=x86_64-apple-darwin20.2 CROSS_MACOS_DEPLOYMENT_TARGET=10.12 ;;
 aarch64-apple-darwin) cross_image cross-darwin CROSS_APPLE_TRIPLET=arm64-apple-darwin20.2 CROSS_MACOS_DEPLOYMENT_TARGET=11.0 ;;
 *)

@@ -18,7 +18,7 @@
 #   --target=<triple>   Build this target only (repeatable)
 #   --serial            Build one target after another, with output streamed
 #   --run               Run each binary with `--help` after building (QEMU, Wine);
-#                       macOS binaries are only built and checked
+#                       macOS and aarch64 Windows binaries are only built and checked
 #
 # Examples:
 #   $0 treetime
@@ -64,6 +64,7 @@ build_one() {
 no_run_reason() {
   case "${1}" in
   *-apple-darwin) printf 'macOS programs do not run on Linux\n' ;;
+  aarch64-*-windows-*) printf 'Wine runs only x86_64 Windows programs\n' ;;
   esac
 }
 
