@@ -1,7 +1,7 @@
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::clock_filter::{ClockFilterResult, clock_filter};
-use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
+use crate::clock::clock_regression::ClockFit;
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::reroot::RerootParams;
 use crate::optimize::dispatch::{run_optimize_mixed, run_optimize_mixed_inner};
@@ -41,14 +41,7 @@ pub(crate) fn run_pre_loop(
     state
   } else {
     progress_info!(log, "First reroot (pre-ancestral)");
-    reroot(
-      inputs,
-      state,
-      RerootOutliers::None,
-      &ClockVarianceParams::default(),
-      log,
-    )
-    .wrap_err("Failed to reroot tree (pre-ancestral)")?
+    reroot(inputs, state, RerootOutliers::None, log).wrap_err("Failed to reroot tree (pre-ancestral)")?
   };
   let state = if params.clock_filter > 0.0 {
     filter_clock_outliers(inputs, state, log)?
@@ -70,14 +63,7 @@ pub(crate) fn run_pre_loop(
     return Ok(state);
   }
   progress_info!(log, "Reroot (post-ancestral)");
-  reroot(
-    inputs,
-    state,
-    RerootOutliers::Filtered,
-    &inputs.context.covariation_clock_params,
-    log,
-  )
-  .wrap_err("Failed to reroot tree (post-ancestral)")
+  reroot(inputs, state, RerootOutliers::Filtered, log).wrap_err("Failed to reroot tree (post-ancestral)")
 }
 
 fn ml_optimize(state: PreLoopState, no_indels: bool, label: &str, log: &dyn LogSink) -> Result<PreLoopState, Report> {
@@ -99,7 +85,6 @@ fn reroot(
   inputs: &PreLoopInputs<'_>,
   state: PreLoopState,
   outliers: RerootOutliers,
-  clock_params: &ClockVarianceParams,
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
@@ -119,9 +104,7 @@ fn reroot(
     state.branch_model,
     &inputs.context.date_constraints,
     outliers,
-    clock_params,
     params.clock_rate,
-    &inputs.context.branch_params,
     &RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate),
     inputs.names,
     log,

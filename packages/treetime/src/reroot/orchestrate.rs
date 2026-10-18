@@ -1,13 +1,12 @@
-use crate::reroot::div_stats::DivStats;
-use crate::reroot::div_stats_traversal::compute_div_stats;
-use crate::reroot::params::BrentParams;
+use crate::clock::clock_regression::clock_regression;
+use crate::clock::clock_state::ClockInputs;
+use crate::clock::find_best_root::find_best_root::{FindRootResult, find_best_root};
+use crate::clock::find_best_root::params::RootObjective;
+use crate::progress::LogSink;
 use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves, root_moves};
-use crate::reroot::search::find_best_root;
-use crate::reroot::split::FindRootResult;
-use crate::reroot::variance::VarianceModel;
 use eyre::Report;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -16,26 +15,35 @@ use treetime_graph::reroot::{
   remove_stem_root, split_edge, trivial_node_branch_lengths,
 };
 
+/// Reroots at the position that minimizes the variance of the root-to-tip divergences
 pub(crate) fn reroot_min_dev(
   graph: &mut Graph,
-  variance: &VarianceModel,
-  opt_params: &BrentParams,
   topo: RerootTopologyParams,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
 ) -> Result<RerootResult, Report> {
-  let best = min_dev_root(graph, variance, opt_params, branch_lengths)?;
+  let best = min_dev_root(graph, branch_lengths, log)?;
   let stem_removal = if root_moves(graph, best.edge, best.split, topo.split_edge)? {
     remove_stem(graph, branch_lengths)?
   } else {
     None
   };
   let best = if stem_removal.is_some() {
-    min_dev_root(graph, variance, opt_params, branch_lengths)?
+    min_dev_root(graph, branch_lengths, log)?
   } else {
     best
   };
-  apply_root_at_edge(graph, best.edge, best.split, topo, branch_lengths, stem_removal, names)
+  apply_root_at_edge(
+    graph,
+    best.edge,
+    best.split,
+    topo,
+    branch_lengths,
+    stem_removal,
+    |_| false,
+    names,
+  )
 }
 
 pub(crate) fn reroot_at_node(
@@ -56,24 +64,20 @@ pub(crate) fn reroot_at_node(
   } else {
     edge
   };
-  apply_root_at_edge(graph, edge, 0.5, topo, branch_lengths, stem_removal, names)
+  apply_root_at_edge(graph, edge, 0.5, topo, branch_lengths, stem_removal, |_| false, names)
 }
 
+/// The least-squares root at rate zero: with every tip at the same date, `chi^2 = (sum d^2 - (sum d)^2 / n) / 2n` is
+/// the variance of the root-to-tip divergences over two
 fn min_dev_root(
   graph: &Graph,
-  variance: &VarianceModel,
-  opt_params: &BrentParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
-  let field = compute_div_stats(graph, branch_lengths, variance)?;
-  find_best_root::<DivStats>(
-    graph,
-    &field.edge_stats,
-    &field.root_stats,
-    variance,
-    branch_lengths,
-    opt_params,
-  )
+  let tip_dates = graph.get_leaves().map(|leaf| (leaf.key(), Some(0.0))).collect();
+  let inputs = ClockInputs::from_times(graph, &tip_dates, &BTreeMap::new());
+  let state = clock_regression(graph, &inputs, &BTreeSet::new(), branch_lengths, None)?;
+  find_best_root(graph, &state, branch_lengths, false, RootObjective::FixedRate(0.0), log)
 }
 
 fn remove_stem(
@@ -87,13 +91,20 @@ fn remove_stem(
   Ok(stem)
 }
 
-fn apply_root_at_edge(
+/// Moves the root onto `edge` at fraction `split` from its parent, splitting the edge or snapping to an end as `topo`
+/// says; a leaf that the move creates must satisfy `is_dated`
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of the move; a parameter struct would be built only for this call"
+)]
+pub(crate) fn apply_root_at_edge(
   graph: &mut Graph,
   edge: Option<GraphEdgeKey>,
   split: f64,
   topo: RerootTopologyParams,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   stem_removal: Option<StemRemovalInfo>,
+  is_dated: impl Fn(GraphNodeKey) -> bool,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<RerootResult, Report> {
   let old_root_key = graph.root_key()?;
@@ -132,7 +143,7 @@ fn apply_root_at_edge(
     record_merge(branch_lengths, merge);
   }
 
-  require_dated_new_leaves(graph, &leaves_before, |_| false, names)?;
+  require_dated_new_leaves(graph, &leaves_before, is_dated, names)?;
 
   Ok(RerootResult {
     new_root_key,

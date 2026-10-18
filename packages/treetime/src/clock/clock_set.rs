@@ -38,46 +38,15 @@ impl ClockSet {
     }
   }
 
-  pub(crate) fn leaf_contribution_to_parent(date: Option<f64>, branch_length: f64, variance: f64) -> Self {
-    let Some(date) = date else {
-      return Self::outlier_contribution();
-    };
+  /// Sums with every divergence in the set lengthened by `branch_length`, as seen from the parent end of a branch:
+  /// `d -> d + l`, so `sum d += l n`, `sum t d += l sum t`, `sum d^2 += 2 l sum d + l^2 n`; the date sums stay.
+  pub(crate) fn shift(&self, branch_length: f64) -> Self {
+    let l = branch_length;
     Self {
-      t_sum: date / variance,
-      tsq_sum: date.powi(2) / variance,
-      d_sum: branch_length / variance,
-      dt_sum: branch_length * date / variance,
-      dsq_sum: branch_length.powi(2) / variance,
-      norm: 1.0 / variance,
-    }
-  }
-
-  pub(crate) fn propagate_averages(&self, branch_value: f64, branch_variance: f64) -> Self {
-    let denom = 1.0 / (1.0 + branch_variance * self.norm);
-
-    let t_sum = self.t_sum * denom;
-
-    let tsq_sum = self.tsq_sum - branch_variance * self.t_sum.powi(2) * denom;
-
-    let d_sum = (self.d_sum + branch_value * self.norm) * denom;
-
-    let dt_sum = self.dt_sum + branch_value * self.t_sum
-      - branch_variance * self.t_sum * (self.d_sum + self.norm * branch_value) * denom;
-
-    let dsq_sum = self.dsq_sum + 2.0 * branch_value * self.d_sum + branch_value.powi(2) * self.norm
-      - branch_variance
-        * (self.d_sum.powi(2) + 2.0 * branch_value * self.d_sum * self.norm + branch_value.powi(2) * self.norm.powi(2))
-        * denom;
-
-    let norm = self.norm * denom;
-
-    Self {
-      t_sum,
-      tsq_sum,
-      d_sum,
-      dsq_sum,
-      dt_sum,
-      norm,
+      d_sum: self.d_sum + l * self.norm,
+      dt_sum: self.dt_sum + l * self.t_sum,
+      dsq_sum: self.dsq_sum + 2.0 * l * self.d_sum + l * l * self.norm,
+      ..self.clone()
     }
   }
 

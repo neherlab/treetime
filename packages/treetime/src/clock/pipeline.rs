@@ -3,10 +3,10 @@ use crate::cancel::Cancel;
 use crate::clock::assign_dates::assign_dates;
 use crate::clock::clock_filter::clock_filter;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_regression::{ClockTree, estimate_clock_model_with_reroot_policy};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::divergence::root_to_node_divergences;
-use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
+use crate::clock::find_best_root::params::RerootSpec;
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::error::OperationError;
@@ -51,9 +51,7 @@ pub fn run(
     filter_outliers,
   ) = estimate_clock_model_with_prefilter(
     tree,
-    &params.clock_params,
     params.keep_root,
-    &params.branch_params,
     params.clock_filter,
     params.allow_negative_rate,
     &params.reroot_spec,
@@ -83,11 +81,9 @@ pub fn run(
 }
 
 pub struct ClockParams {
-  pub clock_params: ClockVarianceParams,
   pub clock_filter: f64,
   pub keep_root: bool,
   pub allow_negative_rate: bool,
-  pub branch_params: BranchPointOptimizationParams,
   pub reroot_spec: RerootSpec,
 }
 
@@ -109,15 +105,9 @@ pub struct ClockOutput {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
-#[expect(
-  clippy::too_many_arguments,
-  reason = "each argument is an independent input of this step; a parameter struct would be built only for this call"
-)]
 fn estimate_clock_model_with_prefilter(
   tree: ClockTree,
-  options: &ClockVarianceParams,
   keep_root: bool,
-  branch_params: &BranchPointOptimizationParams,
   clock_filter_threshold: f64,
   allow_negative_rate: bool,
   reroot_spec: &RerootSpec,
@@ -129,10 +119,8 @@ fn estimate_clock_model_with_prefilter(
     let (tree, result) = estimate_clock_model_with_reroot_policy(
       tree,
       &BTreeSet::new(),
-      options,
       None,
       keep_root,
-      branch_params,
       &reroot_params,
       None,
       names,
@@ -171,18 +159,8 @@ fn estimate_clock_model_with_prefilter(
   } else {
     "Clock model estimation failed"
   };
-  let (tree, result) = estimate_clock_model_with_reroot_policy(
-    tree,
-    outliers,
-    options,
-    None,
-    keep_root,
-    branch_params,
-    &reroot_params,
-    None,
-    names,
-    log,
-  )
-  .wrap_err(failure)?;
+  let (tree, result) =
+    estimate_clock_model_with_reroot_policy(tree, outliers, None, keep_root, &reroot_params, None, names, log)
+      .wrap_err(failure)?;
   Ok((tree, result.into_clock_model_allow_negative(log), filter_outliers))
 }

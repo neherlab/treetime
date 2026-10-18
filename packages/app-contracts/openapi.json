@@ -5655,7 +5655,7 @@
             "x-cli-flag": "--time-marginal"
           },
           "confidence": {
-            "description": "Add rate-uncertainty to confidence intervals.\n\n`--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.\nThis flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined\nvia quadrature sum. Requires `--covariation` or `--clock-std-dev`.\nWhen set with `--time-marginal=never` (default), automatically promotes to `only-final`.",
+            "description": "Add rate-uncertainty to confidence intervals.\n\n`--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.\nThis flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined\nvia quadrature sum. The rate std. dev. is `--clock-std-dev` if given, else estimated by a Gaussian\napproximation of the timetree, which needs the alignment or `--sequence-length`.\nWhen set with `--time-marginal=never` (default), automatically promotes to `only-final`.",
             "type": "boolean",
             "x-cli-flag": "--confidence"
           },
@@ -5809,18 +5809,6 @@
             "description": "By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.",
             "type": "boolean",
             "x-cli-flag": "--allow-negative-rate"
-          },
-          "tip_slack": {
-            "description": "excess variance associated with terminal nodes accounting for overdispersion of the molecular\nclock",
-            "type": "number",
-            "format": "double",
-            "x-unset": true,
-            "x-cli-flag": "--tip-slack"
-          },
-          "covariation": {
-            "description": "Account for covariation when estimating rates or rerooting using root-to-tip regression",
-            "type": "boolean",
-            "x-cli-flag": "--covariation"
           },
           "model": {
             "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
@@ -6121,96 +6109,6 @@
           "clock-chart-png"
         ]
       },
-      "BranchSplitArgs": {
-        "description": "Branch split optimization parameters",
-        "type": "object",
-        "properties": {
-          "method": {
-            "description": "Optimization method to use for finding the best root position",
-            "$ref": "#/components/schemas/OptimizationMethod",
-            "x-cli-flag": "--branch-split-method"
-          },
-          "n_points": {
-            "description": "Number of equally-spaced points to evaluate (grid method only)",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0,
-            "x-cli-flag": "--branch-split-grid-n-points"
-          },
-          "brent_max_iters": {
-            "description": "Maximum number of iterations for Brent's method",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0,
-            "x-cli-flag": "--branch-split-brent-max-iters"
-          },
-          "brent_tolerance": {
-            "description": "Convergence tolerance for Brent's method",
-            "type": "number",
-            "format": "double",
-            "x-cli-flag": "--branch-split-brent-tolerance"
-          },
-          "golden_max_iters": {
-            "description": "Maximum number of iterations for golden section search",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0,
-            "x-cli-flag": "--branch-split-golden-max-iters"
-          },
-          "golden_tolerance": {
-            "description": "Convergence tolerance for golden section search",
-            "type": "number",
-            "format": "double",
-            "x-cli-flag": "--branch-split-golden-tolerance"
-          }
-        },
-        "additionalProperties": false
-      },
-      "OptimizationMethod": {
-        "description": "Optimization method selection",
-        "oneOf": [
-          {
-            "description": "Grid search with equally-spaced evaluation points",
-            "type": "string",
-            "const": "grid"
-          },
-          {
-            "description": "Brent's method for robust 1D optimization",
-            "type": "string",
-            "const": "brent"
-          },
-          {
-            "description": "Golden section search optimization",
-            "type": "string",
-            "const": "golden-section"
-          }
-        ]
-      },
-      "ClockRegressionArgs": {
-        "description": "Clock regression model parameters",
-        "type": "object",
-        "properties": {
-          "variance_factor": {
-            "description": "Variance scaling factor proportional to branch length",
-            "type": "number",
-            "format": "double",
-            "x-cli-flag": "--variance-factor"
-          },
-          "variance_offset": {
-            "description": "Constant variance offset for all branches",
-            "type": "number",
-            "format": "double",
-            "x-cli-flag": "--variance-offset"
-          },
-          "variance_offset_leaf": {
-            "description": "Additional variance offset for leaf (terminal) nodes",
-            "type": "number",
-            "format": "double",
-            "x-cli-flag": "--variance-offset-leaf"
-          }
-        },
-        "additionalProperties": false
-      },
       "ClockConfig": {
         "description": "Sequence alignment input shared by all commands that read sequences.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are\naccepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard\ninput.",
         "type": "object",
@@ -6293,14 +6191,6 @@
             "type": "string",
             "x-cli-flag": "--date-format"
           },
-          "sequence_length": {
-            "description": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0,
-            "x-unset": true,
-            "x-cli-flag": "--sequence-length"
-          },
           "model": {
             "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
             "$ref": "#/components/schemas/GtrModelName",
@@ -6352,18 +6242,6 @@
           "prune_short": {
             "type": "boolean",
             "x-cli-flag": "--prune-short"
-          },
-          "tip_slack": {
-            "description": "excess variance associated with terminal nodes accounting for overdispersion of the molecular\nclock",
-            "type": "number",
-            "format": "double",
-            "x-unset": true,
-            "x-cli-flag": "--tip-slack"
-          },
-          "covariation": {
-            "description": "Account for covariation when estimating rates or rerooting using root-to-tip regression",
-            "type": "boolean",
-            "x-cli-flag": "--covariation"
           },
           "allow_negative_rate": {
             "description": "By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.",
@@ -6517,14 +6395,6 @@
             "description": "Prune clock outlier tips from the tree (not yet implemented)",
             "type": "boolean",
             "x-cli-flag": "--prune-outliers"
-          },
-          "branch_split": {
-            "description": "Branch split optimization parameters",
-            "$ref": "#/components/schemas/BranchSplitArgs"
-          },
-          "clock_regression": {
-            "description": "Clock regression model parameters",
-            "$ref": "#/components/schemas/ClockRegressionArgs"
           }
         },
         "additionalProperties": false

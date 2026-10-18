@@ -3,8 +3,8 @@ use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockEdgeState, ClockInputs, ClockState};
 use crate::clock::divergence::root_to_node_divergences;
-use crate::clock::find_best_root::find_best_split::FindRootResult;
-use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RootObjective};
+use crate::clock::find_best_root::find_best_root::FindRootResult;
+use crate::clock::find_best_root::params::RootObjective;
 use crate::clock::reroot::{RerootParams, remove_undated_stem, reroot_clock_tree, select_root};
 use crate::node_label::node_label;
 use crate::progress::LogSink;
@@ -12,7 +12,6 @@ use crate::progress_info;
 use crate::reroot::placement::root_moves;
 use eyre::Report;
 use log::debug;
-use smart_default::SmartDefault;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 use std::mem;
@@ -25,10 +24,8 @@ use treetime_graph::reroot::{RerootResult, StemRemovalInfo};
 pub(crate) fn estimate_clock_model_with_reroot_policy(
   tree: ClockTree,
   outliers: &BTreeSet<GraphNodeKey>,
-  options: &ClockVarianceParams,
   clock_rate: Option<f64>,
   keep_root: bool,
-  optimization_params: &BranchPointOptimizationParams,
   reroot_params: &RerootParams,
   prev_clock_rate: Option<f64>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
@@ -48,7 +45,6 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
     &tree.graph,
     &tree.inputs,
     outliers,
-    options,
     &tree.branch_lengths,
     prev_clock_rate,
   )?;
@@ -64,8 +60,6 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
     );
     let reroot = RootSearch {
       outliers,
-      options,
-      optimization_params,
       reroot_params: &reroot_params,
       prev_clock_rate,
     };
@@ -127,7 +121,6 @@ fn reroot_at_best_root(
     &tree.graph,
     &tree.inputs,
     state,
-    search.options,
     &tree.branch_lengths,
     search.prev_clock_rate,
   )?;
@@ -135,24 +128,23 @@ fn reroot_at_best_root(
 
   progress_info!(log, "### Finding best root and rerooting tree");
   let best_root = search_root(&tree, &state, search, names, log)?;
-  let (tree, state, best_root, stem_removal) = if root_moves(
+  let (tree, best_root, stem_removal) = if root_moves(
     &tree.graph,
     best_root.edge,
     best_root.split,
     search.reroot_params.split_edge,
   )? {
-    without_undated_stem(tree, state, best_root, search, names, log)?
+    without_undated_stem(tree, best_root, search, names, log)?
   } else {
-    (tree, state, best_root, None)
+    (tree, best_root, None)
   };
-  let (tree, state, reroot_result) = reroot_clock_tree(
-    tree,
-    state,
-    best_root,
-    search.options,
-    search.reroot_params,
-    stem_removal,
-    names,
+  let (tree, reroot_result) = reroot_clock_tree(tree, &best_root, search.reroot_params, stem_removal, names)?;
+  let state = clock_regression_backward(
+    &tree.graph,
+    &tree.inputs,
+    search.outliers,
+    &tree.branch_lengths,
+    search.prev_clock_rate,
   )?;
   progress_info!(log, "Rerooted to {}", node_label(names, reroot_result.new_root_key));
   debug!("Rerooting completed");
@@ -161,33 +153,23 @@ fn reroot_at_best_root(
 
 fn without_undated_stem(
   mut tree: ClockTree,
-  state: ClockState,
   best_root: FindRootResult,
   search: &RootSearch<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
-) -> Result<(ClockTree, ClockState, FindRootResult, Option<StemRemovalInfo>), Report> {
+) -> Result<(ClockTree, FindRootResult, Option<StemRemovalInfo>), Report> {
   let Some(stem) = remove_undated_stem(&mut tree)? else {
-    return Ok((tree, state, best_root, None));
+    return Ok((tree, best_root, None));
   };
-  let state = clock_regression_backward(
+  let state = clock_regression(
     &tree.graph,
     &tree.inputs,
     search.outliers,
-    search.options,
-    &tree.branch_lengths,
-    search.prev_clock_rate,
-  )?;
-  let state = clock_regression_forward(
-    &tree.graph,
-    &tree.inputs,
-    state,
-    search.options,
     &tree.branch_lengths,
     search.prev_clock_rate,
   )?;
   let best_root = search_root(&tree, &state, search, names, log)?;
-  Ok((tree, state, best_root, Some(stem)))
+  Ok((tree, best_root, Some(stem)))
 }
 
 fn search_root(
@@ -201,8 +183,6 @@ fn search_root(
     &tree.graph,
     &tree.inputs,
     state,
-    search.options,
-    search.optimization_params,
     search.reroot_params,
     &tree.branch_lengths,
     names,
@@ -212,8 +192,6 @@ fn search_root(
 
 struct RootSearch<'a> {
   outliers: &'a BTreeSet<GraphNodeKey>,
-  options: &'a ClockVarianceParams,
-  optimization_params: &'a BranchPointOptimizationParams,
   reroot_params: &'a RerootParams,
   prev_clock_rate: Option<f64>,
 }
@@ -278,39 +256,41 @@ pub(crate) struct ClockFit {
   pub points: Vec<ClockRegressionPoint>,
 }
 
+/// Backward and forward regression passes: every node holds the sums of all dated tips with divergences measured from
+/// it, and every edge the sums of the tips on either side, which the root search combines
+pub(crate) fn clock_regression(
+  graph: &Graph,
+  inputs: &ClockInputs,
+  outliers: &BTreeSet<GraphNodeKey>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  prev_clock_rate: Option<f64>,
+) -> Result<ClockState, Report> {
+  let state = clock_regression_backward(graph, inputs, outliers, branch_lengths, prev_clock_rate)?;
+  clock_regression_forward(graph, inputs, state, branch_lengths, prev_clock_rate)
+}
+
 fn clock_regression_backward(
   graph: &Graph,
   inputs: &ClockInputs,
   outliers: &BTreeSet<GraphNodeKey>,
-  options: &ClockVarianceParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockState, Report> {
   let mut state = ClockState::new(graph);
   state.map_backward(graph, |context| {
-    clock_regression_backward_node(options, prev_clock_rate, branch_lengths, inputs, outliers, &context)
+    clock_regression_backward_node(prev_clock_rate, branch_lengths, inputs, outliers, &context)
   })?;
   Ok(state)
 }
 
 fn clock_regression_backward_node(
-  options: &ClockVarianceParams,
   prev_clock_rate: Option<f64>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   inputs: &ClockInputs,
   outliers: &BTreeSet<GraphNodeKey>,
   context: &GraphPassBackwardContext<'_, &ClockSet, ClockEdgeState, ClockSet, ClockEdgeState>,
 ) -> Result<GraphPassNodeOutput<ClockSet, ClockEdgeState>, Report> {
-  let mut node = context.input.clone();
-  let is_leaf = context.is_leaf;
-  let date = inputs.likely_time(context.key);
-  let q_to_parent = if is_leaf {
-    if outliers.contains(&context.key) {
-      ClockSet::outlier_contribution()
-    } else {
-      ClockSet::leaf_contribution(date)
-    }
-  } else {
+  let q_to_parent = if !context.is_leaf {
     context
       .children
       .iter()
@@ -318,68 +298,51 @@ fn clock_regression_backward_node(
         total += &child.edge_message()?.clock_from_child;
         Ok::<_, Report>(total)
       })?
-  };
-
-  let parent_message = if let Some((edge_key, edge)) = context.parent_edge {
-    let mut edge = edge.clone();
-    edge.clock_to_parent = q_to_parent;
-    let edge_input = inputs.edge(edge_key);
-    let edge_len = edge_divergence(
-      branch_length_or_zero(branch_lengths, edge_key),
-      edge_input.time_length,
-      edge_input.gamma,
-      prev_clock_rate,
-    );
-    let mut branch_variance = options.variance_factor * edge_len + options.variance_offset;
-    edge.clock_from_child = if is_leaf && outliers.contains(&context.key) {
-      ClockSet::outlier_contribution()
-    } else if is_leaf {
-      branch_variance += options.variance_offset_leaf;
-      ClockSet::leaf_contribution_to_parent(date, edge_len, branch_variance)
-    } else {
-      edge.clock_to_parent.propagate_averages(edge_len, branch_variance)
-    };
-    Some(edge)
+  } else if outliers.contains(&context.key) {
+    ClockSet::outlier_contribution()
   } else {
-    node = q_to_parent;
-    None
+    ClockSet::leaf_contribution(inputs.likely_time(context.key))
   };
 
-  Ok(GraphPassNodeOutput { node, parent_message })
+  let Some((edge_key, edge)) = context.parent_edge else {
+    return Ok(GraphPassNodeOutput {
+      node: q_to_parent,
+      parent_message: None,
+    });
+  };
+  let mut edge = edge.clone();
+  edge.clock_from_child = q_to_parent.shift(edge_length(inputs, branch_lengths, edge_key, prev_clock_rate));
+  edge.clock_to_parent = q_to_parent;
+  Ok(GraphPassNodeOutput {
+    node: context.input.clone(),
+    parent_message: Some(edge),
+  })
 }
 
 fn clock_regression_forward(
   graph: &Graph,
   inputs: &ClockInputs,
   mut state: ClockState,
-  options: &ClockVarianceParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockState, Report> {
   state.map_forward(graph, |context| {
-    let mut node = context.input.clone();
-    let parent_message = if let (Some((edge_key, edge)), Some(parent)) = (context.parent_edge, context.parent) {
-      let mut edge = edge.clone();
-      let mut q_to_child = parent.clone();
-      q_to_child -= &edge.clock_from_child;
-      edge.clock_to_child = q_to_child;
-
-      let edge_input = inputs.edge(edge_key);
-      let edge_len = edge_divergence(
-        branch_length_or_zero(branch_lengths, edge_key),
-        edge_input.time_length,
-        edge_input.gamma,
-        prev_clock_rate,
-      );
-      let branch_variance = options.variance_factor * edge_len + options.variance_offset;
-      let mut q_dest = edge.clock_to_parent.clone();
-      q_dest += edge.clock_to_child.propagate_averages(edge_len, branch_variance);
-      node = q_dest;
-      Some(edge)
-    } else {
-      None
+    let (Some((edge_key, edge)), Some(parent)) = (context.parent_edge, context.parent) else {
+      return Ok(GraphPassNodeOutput {
+        node: context.input.clone(),
+        parent_message: None,
+      });
     };
-    Ok(GraphPassNodeOutput { node, parent_message })
+    let mut edge = edge.clone();
+    edge.clock_to_child = parent - &edge.clock_from_child;
+    let node = &edge.clock_to_parent
+      + edge
+        .clock_to_child
+        .shift(edge_length(inputs, branch_lengths, edge_key, prev_clock_rate));
+    Ok(GraphPassNodeOutput {
+      node,
+      parent_message: Some(edge),
+    })
   })?;
   Ok(state)
 }
@@ -392,13 +355,7 @@ fn clock_regression_points(
   prev_clock_rate: Option<f64>,
 ) -> Result<Vec<ClockRegressionPoint>, Report> {
   let divergences = root_to_node_divergences(graph, |edge_key| {
-    let edge_input = inputs.edge(edge_key);
-    edge_divergence(
-      branch_length_or_zero(branch_lengths, edge_key),
-      edge_input.time_length,
-      edge_input.gamma,
-      prev_clock_rate,
-    )
+    edge_length(inputs, branch_lengths, edge_key, prev_clock_rate)
   })?;
   let mut points = vec![];
   graph.iter_depth_first_preorder_forward(|node| {
@@ -423,30 +380,17 @@ pub(crate) struct ClockRegressionPoint {
   pub is_outlier: bool,
 }
 
-#[derive(Debug, Clone, SmartDefault)]
-pub struct ClockVarianceParams {
-  #[default = 0.0]
-  pub variance_factor: f64,
-
-  #[default = 0.0]
-  pub variance_offset: f64,
-
-  #[default = 1.0]
-  pub variance_offset_leaf: f64,
-}
-
-impl ClockVarianceParams {
-  /// No variance on internal edges and the same weight for every tip: the regression is ordinary least squares
-  pub(crate) fn is_ordinary_least_squares(&self) -> bool {
-    self.variance_factor == 0.0 && self.variance_offset == 0.0
+/// Divergence along an edge: the branch length, or once a rate is known, its time length times rate and the edge's
+/// relative rate
+pub(crate) fn edge_length(
+  inputs: &ClockInputs,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  edge_key: GraphEdgeKey,
+  prev_clock_rate: Option<f64>,
+) -> f64 {
+  let edge_input = inputs.edge(edge_key);
+  match (prev_clock_rate, edge_input.time_length) {
+    (Some(rate), Some(time_length)) => time_length * rate * edge_input.gamma,
+    _ => branch_length_or_zero(branch_lengths, edge_key),
   }
-}
-
-fn edge_divergence(branch_length: f64, time_length: Option<f64>, gamma: f64, prev_clock_rate: Option<f64>) -> f64 {
-  if let Some(rate) = prev_clock_rate {
-    if let Some(tl) = time_length {
-      return tl * rate * gamma;
-    }
-  }
-  branch_length
 }

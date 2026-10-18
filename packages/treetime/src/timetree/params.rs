@@ -1,19 +1,12 @@
-use crate::clock::clock_regression::ClockVarianceParams;
 use crate::clock::date_constraints::DateConstraints;
-use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
+use crate::clock::find_best_root::params::RerootSpec;
 use crate::gtr::get_gtr::GtrModelName;
-use crate::make_report;
 use crate::optimize::params::BranchLengthMode;
 use crate::progress::LogSink;
 use crate::progress_info;
-use crate::seq::alignment::{NodeSeqInput, get_common_length_of_node_inputs};
-use eyre::Report;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
 use std::fmt::Debug;
-use treetime_graph::node::GraphNodeKey;
 use treetime_grid::MaxGridPoints;
-use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn compute_effective_time_marginal(
   time_marginal: TimeMarginalMode,
@@ -31,38 +24,6 @@ pub(crate) fn compute_effective_time_marginal(
   }
 }
 
-pub(crate) fn build_covariation_clock_params(
-  covariation: bool,
-  sequence_length: Option<usize>,
-  tip_slack: Option<f64>,
-  aln: Option<&BTreeMap<GraphNodeKey, NodeSeqInput>>,
-  log: &dyn LogSink,
-) -> Result<Option<ClockVarianceParams>, Report> {
-  if !covariation {
-    return Ok(None);
-  }
-
-  let seq_len = if let Some(aln_data) = aln {
-    (get_common_length_of_node_inputs(aln_data)?).to_f64_exact()
-  } else {
-    (sequence_length.ok_or_else(|| make_report!("--sequence-length required for --covariation without alignment"))?)
-      .to_f64_exact()
-  };
-
-  let tip_slack = tip_slack.unwrap_or(10.0);
-
-  progress_info!(
-    log,
-    "Covariation-aware clock regression: seq_len={seq_len}, tip_slack={tip_slack}"
-  );
-
-  Ok(Some(ClockVarianceParams {
-    variance_factor: 1.0 / seq_len,
-    variance_offset: 0.0,
-    variance_offset_leaf: tip_slack * tip_slack / (seq_len * seq_len),
-  }))
-}
-
 pub struct TimetreeParams {
   pub model: GtrModelName,
   pub dense: Option<bool>,
@@ -75,8 +36,6 @@ pub struct TimetreeParams {
   pub reroot_spec: RerootSpec,
   pub allow_negative_rate: bool,
   pub clock_filter: f64,
-  pub covariation: bool,
-  pub tip_slack: Option<f64>,
   pub max_iter: usize,
   pub resolve_polytomies: bool,
   pub relax: Vec<f64>,
@@ -102,8 +61,6 @@ pub(crate) struct TimetreeContext {
   pub final_sequences: FinalSequences,
   pub time_marginal: TimeMarginalMode,
   pub date_constraints: DateConstraints,
-  pub covariation_clock_params: ClockVarianceParams,
-  pub branch_params: BranchPointOptimizationParams,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

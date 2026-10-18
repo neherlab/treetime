@@ -14,8 +14,6 @@ use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::{LogSink, StageSink};
 use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_min_dev};
-use crate::reroot::params::BrentParams;
-use crate::reroot::variance::VarianceModel;
 use crate::seq::alignment::NodeSeqInput;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
@@ -122,7 +120,7 @@ pub fn run(
       &mut branch_lengths,
     )
     .map_err(OperationError::classify)?;
-    reconstruction = reroot_optimize(&mut input.graph, spec, reconstruction, &mut branch_lengths, names)
+    reconstruction = reroot_optimize(&mut input.graph, spec, reconstruction, &mut branch_lengths, names, log)
       .map_err(OperationError::classify)?;
   }
 
@@ -240,15 +238,12 @@ fn reroot_optimize(
   reconstruction: MarginalReconstruction,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
 ) -> Result<MarginalReconstruction, Report> {
-  let variance = VarianceModel::default();
   let topo = RerootTopologyParams::default();
-  let opt_params = BrentParams::default();
 
   let reroot_result = match spec {
-    RerootSpec::Method(RerootMethod::MinDev) => {
-      reroot_min_dev(graph, &variance, &opt_params, topo, branch_lengths, names)?
-    },
+    RerootSpec::Method(RerootMethod::MinDev) => reroot_min_dev(graph, topo, branch_lengths, names, log)?,
     RerootSpec::Tips(tips) => {
       let mrca = common_ancestor(graph, tips)?;
       reroot_at_node(graph, mrca, topo, branch_lengths, names)?

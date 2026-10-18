@@ -78,7 +78,6 @@
         "clock_rate",
         "clock_std_dev",
         "confidence",
-        "covariation",
         "coalescent",
         "coalescent_opt",
         "coalescent_skyline",
@@ -818,49 +817,6 @@
           "more": ""
         },
         {
-          "key": "tip_slack",
-          "path": [
-            "tip_slack"
-          ],
-          "label": "Tip slack",
-          "flag": "--tip-slack",
-          "group": "Molecular clock",
-          "role": "setting",
-          "kind": "number",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "TIP_SLACK"
-          ],
-          "conflicts": [],
-          "help": "excess variance associated with terminal nodes accounting for overdispersion of the molecular clock",
-          "more": ""
-        },
-        {
-          "key": "covariation",
-          "path": [
-            "covariation"
-          ],
-          "label": "Covariation-aware regression",
-          "flag": "--covariation",
-          "group": "Molecular clock",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "COVARIATION"
-          ],
-          "conflicts": [],
-          "help": "Account for covariation when estimating rates or rerooting using root-to-tip regression",
-          "more": ""
-        },
-        {
           "key": "clock_filter_method",
           "path": [
             "clock_filter_method"
@@ -989,7 +945,7 @@
           ],
           "conflicts": [],
           "help": "Add rate-uncertainty to confidence intervals.",
-          "more": "`--time-marginal=always` and `only-final` already write mutation-stochasticity CIs. This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined via quadrature sum. Requires `--covariation` or `--clock-std-dev`. When set with `--time-marginal=never` (default), automatically promotes to `only-final`."
+          "more": "`--time-marginal=always` and `only-final` already write mutation-stochasticity CIs. This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined via quadrature sum. The rate std. dev. is `--clock-std-dev` if given, else estimated by a Gaussian approximation of the timetree, which needs the alignment or `--sequence-length`. When set with `--time-marginal=never` (default), automatically promotes to `only-final`."
         },
         {
           "key": "max_grid_points",
@@ -2575,15 +2531,12 @@
         "Rooting",
         "Output",
         "Tree ordering",
-        "Plots",
-        "Branch split optimization",
-        "Clock regression"
+        "Plots"
       ],
       "main_settings": [
         "reroot",
         "keep_root",
         "clock_filter",
-        "covariation",
         "allow_negative_rate",
         "metadata_id_columns"
       ],
@@ -2886,28 +2839,6 @@
           "more": ""
         },
         {
-          "key": "sequence_length",
-          "path": [
-            "sequence_length"
-          ],
-          "label": "Sequence length",
-          "flag": "--sequence-length",
-          "group": "Input data",
-          "role": "setting",
-          "kind": "integer",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "minimum": 0.0,
-          "examples": [],
-          "value_names": [
-            "SEQUENCE_LENGTH"
-          ],
-          "conflicts": [],
-          "help": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
-          "more": ""
-        },
-        {
           "key": "model",
           "path": [
             "model"
@@ -3088,49 +3019,6 @@
           ],
           "conflicts": [],
           "help": "ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.",
-          "more": ""
-        },
-        {
-          "key": "tip_slack",
-          "path": [
-            "tip_slack"
-          ],
-          "label": "Tip slack",
-          "flag": "--tip-slack",
-          "group": "Molecular clock",
-          "role": "setting",
-          "kind": "number",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "TIP_SLACK"
-          ],
-          "conflicts": [],
-          "help": "excess variance associated with terminal nodes accounting for overdispersion of the molecular clock",
-          "more": ""
-        },
-        {
-          "key": "covariation",
-          "path": [
-            "covariation"
-          ],
-          "label": "Covariation-aware regression",
-          "flag": "--covariation",
-          "group": "Molecular clock",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "COVARIATION"
-          ],
-          "conflicts": [],
-          "help": "Account for covariation when estimating rates or rerooting using root-to-tip regression",
           "more": ""
         },
         {
@@ -3865,229 +3753,6 @@
           ],
           "conflicts": [],
           "help": "Filename to save root-to-tip regression plot (not yet implemented)",
-          "more": ""
-        },
-        {
-          "key": "branch_split.method",
-          "path": [
-            "branch_split",
-            "method"
-          ],
-          "label": "Branch split: Method",
-          "flag": "--branch-split-method",
-          "group": "Branch split optimization",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": false,
-          "options": [
-            {
-              "value": "grid",
-              "help": "Grid search with equally-spaced evaluation points"
-            },
-            {
-              "value": "brent",
-              "help": "Brent's method for robust 1D optimization"
-            },
-            {
-              "value": "golden-section",
-              "help": "Golden section search optimization"
-            }
-          ],
-          "item_kind": "string",
-          "default_value": "grid",
-          "examples": [],
-          "value_names": [
-            "METHOD"
-          ],
-          "conflicts": [],
-          "help": "Optimization method to use for finding the best root position",
-          "more": ""
-        },
-        {
-          "key": "branch_split.n_points",
-          "path": [
-            "branch_split",
-            "n_points"
-          ],
-          "label": "Branch split: Number of points",
-          "flag": "--branch-split-grid-n-points",
-          "group": "Branch split optimization",
-          "role": "setting",
-          "kind": "integer",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 11,
-          "minimum": 0.0,
-          "examples": [],
-          "value_names": [
-            "N_POINTS"
-          ],
-          "conflicts": [],
-          "help": "Number of equally-spaced points to evaluate (grid method only)",
-          "more": ""
-        },
-        {
-          "key": "branch_split.brent_max_iters",
-          "path": [
-            "branch_split",
-            "brent_max_iters"
-          ],
-          "label": "Branch split: Brent max iters",
-          "flag": "--branch-split-brent-max-iters",
-          "group": "Branch split optimization",
-          "role": "setting",
-          "kind": "integer",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 50,
-          "minimum": 0.0,
-          "examples": [],
-          "value_names": [
-            "BRENT_MAX_ITERS"
-          ],
-          "conflicts": [],
-          "help": "Maximum number of iterations for Brent's method",
-          "more": ""
-        },
-        {
-          "key": "branch_split.brent_tolerance",
-          "path": [
-            "branch_split",
-            "brent_tolerance"
-          ],
-          "label": "Branch split: Brent tolerance",
-          "flag": "--branch-split-brent-tolerance",
-          "group": "Branch split optimization",
-          "role": "setting",
-          "kind": "number",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 1e-12,
-          "examples": [],
-          "value_names": [
-            "BRENT_TOLERANCE"
-          ],
-          "conflicts": [],
-          "help": "Convergence tolerance for Brent's method",
-          "more": ""
-        },
-        {
-          "key": "branch_split.golden_max_iters",
-          "path": [
-            "branch_split",
-            "golden_max_iters"
-          ],
-          "label": "Branch split: Golden max iters",
-          "flag": "--branch-split-golden-max-iters",
-          "group": "Branch split optimization",
-          "role": "setting",
-          "kind": "integer",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 50,
-          "minimum": 0.0,
-          "examples": [],
-          "value_names": [
-            "GOLDEN_MAX_ITERS"
-          ],
-          "conflicts": [],
-          "help": "Maximum number of iterations for golden section search",
-          "more": ""
-        },
-        {
-          "key": "branch_split.golden_tolerance",
-          "path": [
-            "branch_split",
-            "golden_tolerance"
-          ],
-          "label": "Branch split: Golden tolerance",
-          "flag": "--branch-split-golden-tolerance",
-          "group": "Branch split optimization",
-          "role": "setting",
-          "kind": "number",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 1e-12,
-          "examples": [],
-          "value_names": [
-            "GOLDEN_TOLERANCE"
-          ],
-          "conflicts": [],
-          "help": "Convergence tolerance for golden section search",
-          "more": ""
-        },
-        {
-          "key": "clock_regression.variance_factor",
-          "path": [
-            "clock_regression",
-            "variance_factor"
-          ],
-          "label": "Clock regression: Variance factor",
-          "flag": "--variance-factor",
-          "group": "Clock regression",
-          "role": "setting",
-          "kind": "number",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 0.0,
-          "examples": [],
-          "value_names": [
-            "VARIANCE_FACTOR"
-          ],
-          "conflicts": [],
-          "help": "Variance scaling factor proportional to branch length",
-          "more": ""
-        },
-        {
-          "key": "clock_regression.variance_offset",
-          "path": [
-            "clock_regression",
-            "variance_offset"
-          ],
-          "label": "Clock regression: Variance offset",
-          "flag": "--variance-offset",
-          "group": "Clock regression",
-          "role": "setting",
-          "kind": "number",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 0.0,
-          "examples": [],
-          "value_names": [
-            "VARIANCE_OFFSET"
-          ],
-          "conflicts": [],
-          "help": "Constant variance offset for all branches",
-          "more": ""
-        },
-        {
-          "key": "clock_regression.variance_offset_leaf",
-          "path": [
-            "clock_regression",
-            "variance_offset_leaf"
-          ],
-          "label": "Clock regression: Variance offset leaf",
-          "flag": "--variance-offset-leaf",
-          "group": "Clock regression",
-          "role": "setting",
-          "kind": "number",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 1.0,
-          "examples": [],
-          "value_names": [
-            "VARIANCE_OFFSET_LEAF"
-          ],
-          "conflicts": [],
-          "help": "Additional variance offset for leaf (terminal) nodes",
           "more": ""
         }
       ]

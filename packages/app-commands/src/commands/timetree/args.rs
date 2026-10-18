@@ -318,15 +318,6 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub allow_negative_rate: bool,
 
-  /// excess variance associated with terminal nodes accounting for overdispersion of the molecular
-  /// clock
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
-  pub tip_slack: Option<f64>,
-
-  /// Account for covariation when estimating rates or rerooting using root-to-tip regression
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
-  pub covariation: bool,
-
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]

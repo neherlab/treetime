@@ -207,8 +207,6 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--reroot-tips <REROOT_TIPS>` — Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list
 * `--keep-root` — don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of root-to-tip distance and sampling time
 * `--allow-negative-rate` — By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting
-* `--tip-slack <TIP_SLACK>` — excess variance associated with terminal nodes accounting for overdispersion of the molecular clock
-* `--covariation` — Account for covariation when estimating rates or rerooting using root-to-tip regression
 * `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
 
    `--model infer` infers a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use `--model-params` to specify those.
@@ -1044,7 +1042,6 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 * `--date-format <FORMAT>` — Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
 
   Default value: `%Y-%m-%d`
-* `--sequence-length <SEQUENCE_LENGTH>` — Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided
 * `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
 
    `--model infer` infers a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use `--model-params` to specify those.
@@ -1089,8 +1086,6 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 * `--reroot-tips <REROOT_TIPS>` — Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list
 * `--keep-root` — don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of root-to-tip distance and sampling time
 * `--prune-short`
-* `--tip-slack <TIP_SLACK>` — excess variance associated with terminal nodes accounting for overdispersion of the molecular clock
-* `--covariation` — Account for covariation when estimating rates or rerooting using root-to-tip regression
 * `--allow-negative-rate` — By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.
 
@@ -1193,42 +1188,6 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
   Possible values: `mean`, `median`
 
-* `--branch-split-method <METHOD>` — Optimization method to use for finding the best root position
-
-  Default value: `grid`
-
-  Possible values:
-  - `grid`:
-    Grid search with equally-spaced evaluation points
-  - `brent`:
-    Brent's method for robust 1D optimization
-  - `golden-section`:
-    Golden section search optimization
-
-* `--branch-split-grid-n-points <N_POINTS>` — Number of equally-spaced points to evaluate (grid method only)
-
-  Default value: `11`
-* `--branch-split-brent-max-iters <BRENT_MAX_ITERS>` — Maximum number of iterations for Brent's method
-
-  Default value: `50`
-* `--branch-split-brent-tolerance <BRENT_TOLERANCE>` — Convergence tolerance for Brent's method
-
-  Default value: `0.000000000001`
-* `--branch-split-golden-max-iters <GOLDEN_MAX_ITERS>` — Maximum number of iterations for golden section search
-
-  Default value: `50`
-* `--branch-split-golden-tolerance <GOLDEN_TOLERANCE>` — Convergence tolerance for golden section search
-
-  Default value: `0.000000000001`
-* `--variance-factor <VARIANCE_FACTOR>` — Variance scaling factor proportional to branch length
-
-  Default value: `0`
-* `--variance-offset <VARIANCE_OFFSET>` — Constant variance offset for all branches
-
-  Default value: `0`
-* `--variance-offset-leaf <VARIANCE_OFFSET_LEAF>` — Additional variance offset for leaf (terminal) nodes
-
-  Default value: `1`
 
 
 
