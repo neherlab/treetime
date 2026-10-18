@@ -75,6 +75,7 @@ mod tests {
       &graph,
       &params,
       &node_times,
+      None,
       &BTreeMap::new(),
       &NoopProgress,
     )?
@@ -212,12 +213,13 @@ mod tests {
     };
 
     let node_times = constraint_coalescent_node_times(&graph, &constraints)?;
-    let solve = optimize_skyline(&graph, &params, &node_times, &BTreeMap::new(), &NoopProgress)?;
+    let solve = optimize_skyline(&graph, &params, &node_times, None, &BTreeMap::new(), &NoopProgress)?;
     let timescale = estimate_coalescent_tc(
       CoalescentMode::Skyline,
       &graph,
       &params,
       &node_times,
+      None,
       &BTreeMap::new(),
       &NoopProgress,
     )?

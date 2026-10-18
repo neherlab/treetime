@@ -41,6 +41,7 @@ mod tests {
       &graph,
       &params,
       &coalescent_node_times(&graph, &constraints),
+      None,
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -73,7 +74,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    assert_error!(optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints), &BTreeMap::new(), &NoopProgress), expected);
+    assert_error!(optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints), None, &BTreeMap::new(), &NoopProgress), expected);
     Ok(())
   }
 
@@ -89,6 +90,7 @@ mod tests {
       &graph,
       &params,
       &coalescent_node_times(&graph, &constraints),
+      None,
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -115,6 +117,7 @@ mod tests {
       &graph,
       &params,
       &coalescent_node_times(&graph, &constraints),
+      None,
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -161,6 +164,7 @@ mod tests {
       &graph,
       &params,
       &coalescent_node_times(&graph, &constraints),
+      None,
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -180,7 +184,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &node_times, &BTreeMap::new(), &NoopProgress)?;
+    let result = optimize_skyline(&graph, &params, &node_times, None, &BTreeMap::new(), &NoopProgress)?;
     let expected = compute_coalescent_total_lh(
       &graph,
       &result.tc_distribution,
@@ -211,7 +215,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &node_times, &BTreeMap::new(), &NoopProgress)?;
+    let result = optimize_skyline(&graph, &params, &node_times, None, &BTreeMap::new(), &NoopProgress)?;
     let expected = compute_coalescent_total_lh(
       &graph,
       &result.tc_distribution,
@@ -236,7 +240,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &node_times, &BTreeMap::new(), &NoopProgress)?;
+    let result = optimize_skyline(&graph, &params, &node_times, None, &BTreeMap::new(), &NoopProgress)?;
 
     let constant_tc = constant_skyline(&graph, &node_times)?;
     assert!(
@@ -266,6 +270,7 @@ mod tests {
       &g1,
       &params,
       &coalescent_node_times(&g1, &c1),
+      None,
       &BTreeMap::new(),
       &NoopProgress,
     )?;
@@ -273,6 +278,7 @@ mod tests {
       &gs,
       &params,
       &coalescent_node_times(&gs, &cs),
+      None,
       &BTreeMap::new(),
       &NoopProgress,
     )?;
