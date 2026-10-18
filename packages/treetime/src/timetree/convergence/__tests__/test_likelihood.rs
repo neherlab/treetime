@@ -1,21 +1,17 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::coalescent::node_time::CoalescentNodeTimes;
-  use crate::coalescent::total_lh::compute_coalescent_total_lh;
+
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::set::PartitionSet;
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::progress::NoopProgress;
-  use crate::test_utils::dates_by_node;
-  use crate::test_utils::{
-    constraint_coalescent_node_times, dense_partition_with_constant_leaves, empty_time_inference, find_node_key_by_name,
-  };
+
+  use crate::test_utils::{dense_partition_with_constant_leaves, empty_time_inference, find_node_key_by_name};
   use crate::timetree::branch_model::BranchModel;
-  use crate::timetree::convergence::likelihood::{compute_coalescent_log_lh, compute_sequence_log_lh};
+  use crate::timetree::convergence::likelihood::compute_sequence_log_lh;
   use crate::timetree::convergence::node_times::NodeTimeChange;
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
   use crate::timetree::inference::result::TimeInference;
@@ -23,13 +19,13 @@ mod tests {
   use maplit::btreemap;
   use ndarray::array;
   use std::collections::BTreeMap;
-  use treetime_distribution::Distribution;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::dates_csv::DateConstraint;
+
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::LogLh;
-  use treetime_utils::{o, pretty_assert_ulps_eq};
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_likelihood_sequence_log_lh_is_the_root_log_lh_of_the_partition() -> Result<(), Report> {
@@ -56,21 +52,6 @@ mod tests {
   }
 
   #[test]
-  fn test_likelihood_coalescent_log_lh_matches_total_lh() -> Result<(), Report> {
-    let (graph, constraints) = helpers::coalescent_graph()?;
-    let tc = Distribution::constant(1.0);
-    let node_times = helpers::coalescent_node_times(&graph, &constraints);
-    let expected = compute_coalescent_total_lh(&graph, &tc, &node_times, &BTreeMap::new(), &NoopProgress)?.value();
-
-    let actual = compute_coalescent_log_lh(&graph, &tc, &node_times, &BTreeMap::new(), &NoopProgress)
-      .expect("coalescent log-likelihood must be available")
-      .value();
-
-    pretty_assert_ulps_eq!(expected, actual, max_ulps = 10);
-    Ok(())
-  }
-
-  #[test]
   fn test_likelihood_optimizer_records_sequence_and_time_log_lh() -> Result<(), Report> {
     let (graph, names) = helpers::two_node_graph()?;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
@@ -91,7 +72,6 @@ mod tests {
       &state,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
     let metrics = optimizer
@@ -149,25 +129,6 @@ mod tests {
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
       Ok((graph, names))
-    }
-
-    pub(super) fn coalescent_graph() -> Result<(Graph, DateConstraints), Report> {
-      let dates = btreemap! {
-        o!("root") => Some(DateConstraint::exact(2000.0)),
-        o!("internal1") => Some(DateConstraint::exact(2005.0)),
-        o!("leaf1") => Some(DateConstraint::exact(2010.0)),
-        o!("leaf2") => Some(DateConstraint::exact(2010.0)),
-        o!("leaf3") => Some(DateConstraint::exact(2012.0)),
-      };
-      let nwk_parsed = nwk_read(b"((leaf1:0.01,leaf2:0.01)internal1:0.01,leaf3:0.02)root:0.0;".as_slice())?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
-      Ok((graph, constraints))
-    }
-
-    pub(super) fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
-      constraint_coalescent_node_times(graph, constraints).unwrap()
     }
   }
 }

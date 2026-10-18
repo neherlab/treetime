@@ -2,8 +2,9 @@
 mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
+  use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
-  use crate::test_utils::constraint_coalescent_node_times;
+  use crate::test_utils::constraint_expectation;
   use crate::test_utils::dates_by_node;
   use crate::timetree::coalescent::{
     CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
@@ -69,17 +70,9 @@ mod tests {
       n_std: N_STD,
       ..SkylineParams::default()
     };
-    let node_times = constraint_coalescent_node_times(&graph, &constraints)?;
-    let timescale = estimate_coalescent_tc(
-      CoalescentMode::Fixed(2.5),
-      &graph,
-      &params,
-      &node_times,
-      None,
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?
-    .expect("a fixed Tc yields a coalescent timescale");
+    let expectation = constraint_expectation(&graph, &constraints)?;
+    let timescale = estimate_coalescent_tc(CoalescentMode::Fixed(2.5), &params, &expectation, &NoopProgress)?
+      .expect("a fixed Tc yields a coalescent timescale");
 
     let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, &params)?
       .expect("a fixed Tc writes a coalescent output");
@@ -212,18 +205,11 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let node_times = constraint_coalescent_node_times(&graph, &constraints)?;
-    let solve = optimize_skyline(&graph, &params, &node_times, None, &BTreeMap::new(), &NoopProgress)?;
-    let timescale = estimate_coalescent_tc(
-      CoalescentMode::Skyline,
-      &graph,
-      &params,
-      &node_times,
-      None,
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?
-    .expect("skyline mode yields a coalescent timescale");
+    let expectation = constraint_expectation(&graph, &constraints)?;
+    let solve = optimize_skyline(&params, &expectation, &NoopProgress)?;
+    let timescale = estimate_coalescent_tc(CoalescentMode::Skyline, &params, &expectation, &NoopProgress)?
+      .expect("skyline mode yields a coalescent timescale");
+    let metric = timescale.expected_log_likelihood(&expectation).value();
     let report = timescale
       .report
       .expect("an inferred skyline carries a per-segment report");
@@ -231,6 +217,8 @@ mod tests {
     pretty_assert_array_eq!(solve.segment_boundaries, report.segment_boundaries);
     pretty_assert_array_eq!(solve.tc_schedule.values().clone(), timescale.schedule.values().clone());
     assert_eq!(Some(solve.log_likelihood.value()), report.log_likelihood);
+    // the convergence metric evaluates the same expected log-likelihood
+    pretty_assert_ulps_eq!(solve.log_likelihood.value(), metric, max_ulps = 16);
     let band = report.band.expect("an inferred skyline carries a confidence band");
     pretty_assert_array_eq!(solve.tc_lower_bounds, band.lower);
     pretty_assert_array_eq!(solve.tc_upper_bounds, band.upper);

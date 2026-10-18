@@ -1,7 +1,6 @@
 use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::RerootSpec;
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
-use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
@@ -22,23 +21,25 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::MaxGridPoints;
 
-pub(crate) fn constraint_coalescent_node_times(
+/// Expected lineage counts of point node times at the dates of `constraints`
+pub(crate) fn constraint_expectation(
   graph: &Graph,
   constraints: &DateConstraints,
-) -> Result<CoalescentNodeTimes, Report> {
+) -> Result<Arc<LineageExpectation>, Report> {
   let bad_branches = derive_bad_branches(graph, constraints, &bad_leaves(graph, constraints, &BTreeSet::new()))?;
-  let times = given_times(graph, constraints)?
+  let posterior = given_times(graph, constraints)?
     .into_iter()
-    .map(|(key, time_dist_likely)| {
-      let entry = CoalescentNodeTime {
-        time: None,
-        time_dist_likely,
-        bad_branch: bad_branches[&key],
+    .map(|(key, time)| {
+      let entry = NodePosterior {
+        distribution: None,
+        likely_time: time,
+        time,
+        contradicted: false,
       };
       (key, entry)
     })
     .collect();
-  Ok(times)
+  LineageExpectation::from_posterior(graph, &posterior, &bad_branches)
 }
 
 pub(crate) fn empty_time_inference(graph: &Graph) -> TimeInference {

@@ -9,7 +9,7 @@ mod tests {
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::clock::reroot::RerootParams;
-  use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
+  use crate::coalescent::mean_field::CoalescentPrior;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::indel::IndelPolicy;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -17,12 +17,12 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
-  use crate::test_utils::constraint_coalescent_node_times;
+  use crate::test_utils::constraint_expectation;
   use crate::test_utils::dates_by_node;
   use crate::test_utils::leaf_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
-  use crate::timetree::inference::result::NodePosterior;
+
   use crate::timetree::inference::result::given_times;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
@@ -50,20 +50,7 @@ mod tests {
     let case = &OUTPUTS[dataset];
 
 let (graph, names, partition, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
-    let node_times = constraint_coalescent_node_times(&graph, &constraints)?;
-    let posterior = node_times
-      .iter()
-      .map(|(key, entry)| {
-        let posterior = NodePosterior {
-          time: entry.time_dist_likely,
-          likely_time: entry.time_dist_likely,
-          ..NodePosterior::default()
-        };
-        (*key, posterior)
-      })
-      .collect();
-    let bad_branches = node_times.iter().map(|(key, entry)| (*key, entry.bad_branch)).collect();
-    let expectation = LineageExpectation::from_posterior(&graph, &posterior, &bad_branches)?;
+    let expectation = constraint_expectation(&graph, &constraints)?;
     let coalescent = CoalescentPrior::new(&expectation, &Distribution::constant(tc))?;
     let run_names = names.clone();
     let inference = run_timetree(

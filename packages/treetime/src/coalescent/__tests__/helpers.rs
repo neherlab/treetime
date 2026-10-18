@@ -1,14 +1,15 @@
 #[cfg(test)]
 pub(crate) mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::coalescent::node_time::CoalescentNodeTimes;
+  use crate::coalescent::mean_field::LineageExpectation;
   use crate::coalescent::skyline::{SkylineParams, SkylineResult, optimize_skyline};
   use crate::progress::NoopProgress;
-  use crate::test_utils::constraint_coalescent_node_times;
+  use crate::test_utils::constraint_expectation;
   use crate::test_utils::dates_by_node;
   use eyre::Report;
   use maplit::btreemap;
   use std::collections::BTreeMap;
+  use std::sync::Arc;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::DateConstraint;
@@ -33,20 +34,17 @@ pub(crate) mod tests {
     Ok((graph, names, constraints))
   }
 
-  pub(crate) fn coalescent_node_times(graph: &Graph, constraints: &DateConstraints) -> CoalescentNodeTimes {
-    constraint_coalescent_node_times(graph, constraints).unwrap()
+  pub(crate) fn expectation(graph: &Graph, constraints: &DateConstraints) -> Arc<LineageExpectation> {
+    constraint_expectation(graph, constraints).unwrap()
   }
 
-  pub(crate) fn constant_skyline(graph: &Graph, node_times: &CoalescentNodeTimes) -> Result<SkylineResult, Report> {
+  pub(crate) fn constant_skyline(expectation: &LineageExpectation) -> Result<SkylineResult, Report> {
     optimize_skyline(
-      graph,
       &SkylineParams {
         n_points: 1,
         ..SkylineParams::default()
       },
-      node_times,
-      None,
-      &BTreeMap::new(),
+      expectation,
       &NoopProgress,
     )
   }

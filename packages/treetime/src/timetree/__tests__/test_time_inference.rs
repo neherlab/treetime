@@ -10,7 +10,7 @@ mod tests {
   use maplit::btreemap;
   use ndarray::array;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::graph::Graph;
@@ -99,50 +99,6 @@ mod tests {
       key("root") => None,
     };
     assert_eq!(expected, inference.node_times());
-    Ok(())
-  }
-
-  #[test]
-  fn test_time_inference_coalescent_node_times_pair_the_committed_time_with_the_distribution_peak() -> Result<(), Report>
-  {
-    let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
-    let graph = nwk_parsed.graph;
-    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
-    let mut inference = empty_time_inference(&graph);
-    inference.posterior.insert(
-      key("I"),
-      NodePosterior {
-        distribution: Some(Arc::new(Distribution::range((2004.0, 2006.0), 0.0))),
-        likely_time: Some(2005.0),
-        time: Some(2006.5),
-        contradicted: false,
-      },
-    );
-    inference.posterior.insert(
-      key("A"),
-      NodePosterior {
-        distribution: None,
-        likely_time: None,
-        time: Some(2010.0),
-        contradicted: false,
-      },
-    );
-    inference.bad_branches.insert(key("B"), true);
-
-    let actual = inference
-      .coalescent_node_times()
-      .into_iter()
-      .map(|(key, entry)| (key, (entry.time, entry.time_dist_likely, entry.bad_branch)))
-      .collect::<BTreeMap<_, _>>();
-
-    let expected = btreemap! {
-      key("A") => (Some(2010.0), None, false),
-      key("B") => (None, None, true),
-      key("I") => (Some(2006.5), Some(2005.0), false),
-      key("root") => (None, None, false),
-    };
-    assert_eq!(expected, actual);
     Ok(())
   }
 

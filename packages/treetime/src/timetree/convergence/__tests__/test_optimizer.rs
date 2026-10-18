@@ -9,7 +9,7 @@ mod tests {
   use eyre::Report;
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use std::sync::Arc;
 
   #[test]
@@ -28,7 +28,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -55,7 +54,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -69,7 +67,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -96,7 +93,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -110,7 +106,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -136,7 +131,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -150,7 +144,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -164,7 +157,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -197,7 +189,6 @@ mod tests {
         &inference,
         None,
         helpers::fixed_clock(),
-        &BTreeMap::new(),
         &NoopProgress,
       )?;
     }
@@ -225,7 +216,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -239,7 +229,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -270,7 +259,6 @@ mod tests {
         clock_rate: 2e-3,
         r_squared: Some(0.25),
       },
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
@@ -284,7 +272,6 @@ mod tests {
       &inference,
       None,
       helpers::fixed_clock(),
-      &BTreeMap::new(),
       &NoopProgress,
     )?;
 
