@@ -19,6 +19,12 @@ pub(crate) enum TestDataset {
   Flu20,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Columns {
+  All,
+  Leading(usize),
+}
+
 struct DatasetFiles {
   tree: &'static str,
   alignment_xz: &'static [u8],
@@ -68,10 +74,15 @@ impl TestDataset {
     fasta_xz_read(self.files().alignment_xz)
   }
 
-  pub(crate) fn leading_columns(self, count: usize) -> Result<Vec<AlignmentRecord>, Report> {
+  pub(crate) fn alignment_columns(self, selection: Columns) -> Result<Vec<AlignmentRecord>, Report> {
     let records = self.alignment()?;
-    let length = get_common_length(&records)?;
-    Ok(columns(&records, 0..length.min(count)))
+    match selection {
+      Columns::All => Ok(records),
+      Columns::Leading(count) => {
+        let length = get_common_length(&records)?;
+        Ok(columns(&records, 0..length.min(count)))
+      },
+    }
   }
 
   pub(crate) fn dates(self) -> Result<BTreeMap<String, Option<DateConstraint>>, Report> {

@@ -1,29 +1,28 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::partition_rates::PartitionRates;
-  use crate::test_utils::{TestDataset, split_at_gap_free_column};
+  use crate::test_utils::{Columns, TestDataset, split_at_gap_free_column};
   use eyre::Report;
   use helpers::timetree;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_map_abs_diff_eq};
 
-  const BLOCK_COLUMNS: usize = 200;
-
   #[rustfmt::skip]
   #[rstest]
-  #[case::zika_dense(  TestDataset::Zika20,  true )]
-  #[case::zika_sparse( TestDataset::Zika20,  false)]
-  #[case::flu_dense(   TestDataset::Flu20,   true )]
-  #[case::flu_sparse(  TestDataset::Flu20,   false)]
-  #[case::ebola_dense( TestDataset::Ebola20, true )]
-  #[case::ebola_sparse(TestDataset::Ebola20, false)]
+  #[case::zika_dense(  TestDataset::Zika20,  true,  Columns::Leading(200))]
+  #[case::zika_sparse( TestDataset::Zika20,  false, Columns::All          )]
+  #[case::flu_dense(   TestDataset::Flu20,   true,  Columns::Leading(200))]
+  #[case::flu_sparse(  TestDataset::Flu20,   false, Columns::All          )]
+  #[case::ebola_dense( TestDataset::Ebola20, true,  Columns::Leading(200))]
+  #[case::ebola_sparse(TestDataset::Ebola20, false, Columns::All          )]
   #[trace]
   fn test_timetree_two_column_blocks_give_the_dates_of_one_alignment(
     #[case] dataset: TestDataset,
     #[case] dense: bool,
+    #[case] selection: Columns,
   ) -> Result<(), Report> {
-    let records = dataset.leading_columns(BLOCK_COLUMNS)?;
+    let records = dataset.alignment_columns(selection)?;
     let [first, second] = split_at_gap_free_column(&records)?;
     let whole = timetree(dataset, vec![records], dense, PartitionRates::Equal)?;
     let split = timetree(dataset, vec![first, second], dense, PartitionRates::Equal)?;

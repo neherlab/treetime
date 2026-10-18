@@ -7,7 +7,7 @@ mod tests {
   use crate::optimize::partition_rates::{fix_equal_rates, normalize_partition_rates, update_partition_rates};
   use crate::optimize::run_loop::record_if_best;
   use crate::progress::NoopProgress;
-  use crate::test_utils::TestDataset;
+  use crate::test_utils::{Columns, TestDataset};
   use eyre::Report;
   use helpers::{
     Dataset, SmallSet, blocks_from_strings, build_set, build_set_with_model, column_blocks, internal_edge_above,
@@ -20,20 +20,23 @@ mod tests {
   use treetime_utils::pretty_assert_map_abs_diff_eq;
   use treetime_utils::pretty_assert_ulps_eq;
 
+  const BLOCK: Columns = Columns::Leading(400);
+
   #[rustfmt::skip]
   #[rstest]
-  #[case::zika_dense(      TestDataset::Zika20,  true )]
-  #[case::zika_sparse(     TestDataset::Zika20,  false)]
-  #[case::flu_dense(       TestDataset::Flu20,   true )]
-  #[case::flu_sparse(      TestDataset::Flu20,   false)]
-  #[case::ebola_dense(     TestDataset::Ebola20, true )]
-  #[case::ebola_sparse(    TestDataset::Ebola20, false)]
+  #[case::zika_dense(  TestDataset::Zika20,  true,  BLOCK       )]
+  #[case::zika_sparse( TestDataset::Zika20,  false, Columns::All)]
+  #[case::flu_dense(   TestDataset::Flu20,   true,  BLOCK       )]
+  #[case::flu_sparse(  TestDataset::Flu20,   false, Columns::All)]
+  #[case::ebola_dense( TestDataset::Ebola20, true,  BLOCK       )]
+  #[case::ebola_sparse(TestDataset::Ebola20, false, Columns::All)]
   #[trace]
   fn test_optimize_two_column_blocks_give_the_branch_lengths_of_one_alignment(
     #[case] dataset: TestDataset,
     #[case] dense: bool,
+    #[case] selection: Columns,
   ) -> Result<(), Report> {
-    let dataset = Dataset::block_of(dataset)?;
+    let dataset = Dataset::new(dataset, selection)?;
     let whole = optimize(&dataset, &[dataset.whole()], dense, PartitionRates::Equal)?;
     let split = optimize(&dataset, &column_blocks(&dataset)?, dense, PartitionRates::Equal)?;
     assert_eq!(whole.edges, split.edges);
@@ -50,7 +53,7 @@ mod tests {
     #[case] dataset: TestDataset,
     #[case] dense: bool,
   ) -> Result<(), Report> {
-    let dataset = Dataset::block_of(dataset)?;
+    let dataset = Dataset::new(dataset, BLOCK)?;
     let blocks = column_blocks(&dataset)?;
     let forward = optimize(&dataset, &blocks, dense, PartitionRates::Estimate)?;
     let backward = optimize(&dataset, &reversed(&blocks), dense, PartitionRates::Estimate)?;
@@ -135,7 +138,7 @@ mod tests {
     #[case] dense: bool,
     #[case] factor: f64,
   ) -> Result<(), Report> {
-    let dataset = Dataset::block_of(dataset)?;
+    let dataset = Dataset::new(dataset, BLOCK)?;
     let blocks = column_blocks(&dataset)?;
     let reference = rate_step_from_rates(&dataset, &blocks, dense, 1.0)?;
     let scaled = rate_step_from_rates(&dataset, &blocks, dense, factor)?;
@@ -235,7 +238,7 @@ mod tests {
     use crate::progress::NoopProgress;
     use crate::seq::alignment::SequenceSource;
     use crate::test_utils::{
-      TestDataset, find_node_key_by_name, leaf_seq_inputs, sequence_source, split_at_gap_free_column,
+      Columns, TestDataset, find_node_key_by_name, leaf_seq_inputs, sequence_source, split_at_gap_free_column,
     };
     use eyre::Report;
     use std::collections::{BTreeMap, BTreeSet};
@@ -247,18 +250,16 @@ mod tests {
     use treetime_primitives::{AlignmentRecord, Seq};
     use treetime_utils::o;
 
-    const BLOCK_COLUMNS: usize = 400;
-
     pub(super) struct Dataset {
       dataset: TestDataset,
       records: Vec<AlignmentRecord>,
     }
 
     impl Dataset {
-      pub(super) fn block_of(dataset: TestDataset) -> Result<Self, Report> {
+      pub(super) fn new(dataset: TestDataset, selection: Columns) -> Result<Self, Report> {
         Ok(Self {
           dataset,
-          records: dataset.leading_columns(BLOCK_COLUMNS)?,
+          records: dataset.alignment_columns(selection)?,
         })
       }
 
