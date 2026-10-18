@@ -123,6 +123,14 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_grid_point_limit_mass_window_equal_to_an_input_grid_above_the_limit() {
+    assert_error!(
+      resample_to_mass_window(&flat_function(0.0, 1000.0, 1_001), 0.0, 1000.0, 2, limit()),
+      ONE_ABOVE
+    );
+  }
+
   mod helpers {
     use crate::__tests__::aliases::DistributionNegLog;
     use crate::distribution_core::function::DistributionFunction;

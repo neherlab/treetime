@@ -6,12 +6,15 @@
 #[cfg(test)]
 mod tests {
   use crate::distribution_ops::mass_domain::{
-    mass_bounded_domain, mass_profile, mass_sizable_profile, peak_normalized_if_mass_sizable, rewindow_to_mass,
+    mass_bounded_domain, mass_profile, mass_sizable_profile, peak_normalized_if_mass_sizable, resample_to_mass_window,
+    rewindow_to_mass,
   };
   use crate::policy::NegLog;
   use crate::{Distribution, DistributionFunction};
   use approx::assert_abs_diff_eq;
   use ndarray::Array1;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
 
@@ -143,6 +146,25 @@ mod tests {
       .map(|f| mass_bounded_domain(&mass_sizable_profile(f).unwrap(), EPS).unwrap())
       .collect();
     assert_eq!(expected, actual);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::target_spacing_quotient_one_ulp_above_integer((4001,  5.0), (0.0,  0.14600000000000002), 300, 300)]
+  #[case::input_spacing_quotient_one_ulp_above_integer( ( 101, 10.0), (0.03, 2.43),                  2,  25)]
+  #[case::window_equal_to_input_grid(                   ( 101, 10.0), (0.0,  10.0),                  2, 101)]
+  #[trace]
+  fn test_mass_domain_resample_to_mass_window_point_count_is_exact(
+    #[case] (input_points, t_max): (usize, f64),
+    #[case] (lo, hi): (f64, f64),
+    #[case] grid_points: usize,
+    #[case] expected: usize,
+  ) {
+    let f = helpers::exponential_neglog(1.0, t_max, input_points);
+    let resampled = helpers::as_function(
+      resample_to_mass_window(&f, lo, hi, grid_points, MaxGridPoints::default()).unwrap(),
+    );
+    assert_eq!(expected, resampled.len());
   }
 
   mod helpers {

@@ -1,3 +1,4 @@
+use crate::distribution_ops::time_bounds::distribution_support_n_points;
 use crate::policy::{NegLog, YAxisPolicy};
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
@@ -95,11 +96,18 @@ pub(crate) fn resample_to_mass_window(
   let mass_width = hi - lo;
   let floor_dx = normalized.dx();
   let target_dx = mass_width / grid_points.saturating_sub(1).max(1).to_f64_exact();
-  let dx = target_dx.min(floor_dx);
-  let required = ((mass_width / dx).ceil() + 1.0)
-    .max(grid_points.to_f64_exact())
-    .max(2.0);
-  let n_points = max_points.point_count(required, (lo, hi), dx)?;
+  #[expect(
+    clippy::float_cmp,
+    reason = "a window bounded by the hard edges of the input grid is that grid, and only identical edges give its point count"
+  )]
+  let window_is_input_grid = lo == normalized.x_min() && hi == normalized.x_max();
+  let n_points = if target_dx <= floor_dx {
+    max_points.point_count(grid_points.max(2).to_f64_exact(), (lo, hi), target_dx)?
+  } else if window_is_input_grid {
+    max_points.point_count(normalized.len().to_f64_exact(), (lo, hi), floor_dx)?
+  } else {
+    distribution_support_n_points((lo, hi), floor_dx, max_points)?
+  };
   let resampled = normalized.resample_range_n_points((lo, hi), n_points)?;
   let resampled = refit_soft_tails(resampled)?;
   Ok(Distribution::Function(resampled))
