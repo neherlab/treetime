@@ -44,7 +44,7 @@ pub(crate) fn refinement_round(
   rng: &mut dyn RngCore,
   log: &dyn LogSink,
 ) -> Result<(RoundState, RoundOutcome), Report> {
-  let total_length = state.branch_model.sequence_length();
+  let total_length = inputs.context.sequence_length;
   let state = relax_clock(&inputs.params.relax, state, total_length, log)?;
 
   let previous_times = capture_node_times(&state.graph, &state.time_inference);
@@ -98,13 +98,6 @@ pub(crate) struct RoundOutcome {
 
 fn relax_clock(relax: &[f64], state: RoundState, total_length: usize, log: &dyn LogSink) -> Result<RoundState, Report> {
   if relax.is_empty() {
-    return Ok(state);
-  }
-  if total_length == 0 {
-    progress_info!(
-      log,
-      "Skipping relaxed clock: no sequence data (no alignment or zero sequence length)"
-    );
     return Ok(state);
   }
 

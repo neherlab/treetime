@@ -19,13 +19,6 @@ pub(crate) enum BranchModel {
 }
 
 impl BranchModel {
-  pub(crate) fn sequence_length(&self) -> usize {
-    match self {
-      Self::Input => 0,
-      Self::Marginal(partition) => partition.sequence_length(),
-    }
-  }
-
   pub(crate) fn is_marginal(&self) -> bool {
     matches!(self, Self::Marginal(_))
   }
