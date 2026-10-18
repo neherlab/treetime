@@ -20,8 +20,8 @@ following `rtt_ols.py` and `gaussian_timetree.py` of
   [packages/treetime/src/clock/clock_regression.rs](../../packages/treetime/src/clock/clock_regression.rs)
 - root search: `fn find_best_root()` and `fn optimize_exact()`
   [packages/treetime/src/clock/find_best_root/](../../packages/treetime/src/clock/find_best_root/)
-- min-dev rooting of `optimize`: `fn reroot_min_dev()`
-  [packages/treetime/src/reroot/orchestrate.rs](../../packages/treetime/src/reroot/orchestrate.rs)
+- reroot driver of every command, and its date-free entry for `optimize`: `fn reroot_at_best_root()`,
+  `fn reroot_undated()` [packages/treetime/src/clock/reroot.rs](../../packages/treetime/src/clock/reroot.rs)
 - rate uncertainty: `fn gaussian_clock()` [packages/treetime/src/clock/gaussian.rs](../../packages/treetime/src/clock/gaussian.rs)
 
 ## Decision

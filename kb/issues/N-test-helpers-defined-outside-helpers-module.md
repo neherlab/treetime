@@ -82,7 +82,7 @@ Files with at least one non-test function that is a direct item of `mod tests`, 
 - `packages/treetime/src/partition/marginal/sparse/__tests__/test_partition_marginal_sparse.rs`
 - `packages/treetime/src/partition/marginal/sparse/__tests__/test_sparse_transition_counting.rs`
 - `packages/treetime/src/reroot/__tests__/test_cost_function.rs`
-- `packages/treetime/src/reroot/__tests__/test_orchestrate.rs`
+- `packages/treetime/src/clock/__tests__/test_reroot_undated.rs`
 - `packages/treetime/src/seq/__tests__/test_composition.rs`
 - `packages/treetime/src/seq/__tests__/test_gap_fill.rs`
 - `packages/treetime/src/timetree/__tests__/test_coalescent_timescale.rs`
