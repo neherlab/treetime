@@ -31,6 +31,16 @@ These are the `timetree/dengue/500/basic` and `timetree/lassa/L/200/basic` cases
 
 The division fails when one operand of a message division has empty support. An empty posterior arises when the message from the rest of the tree and a node's date constraint have disjoint support, the condition described in [H-timetree-backward-pass-nan-time-distribution.md](H-timetree-backward-pass-nan-time-distribution.md). The source of the empty operand has not been traced.
 
+## Simulated reproducer without an abort
+
+Validation suite, `piecewise` rep09, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$ (no usable temporal signal), `--reroot least-squares
+--coalescent-opt --clock-filter 0`: the root-to-tip regression after rerooting gives a rate of $1.67 \cdot 10^{-5}$
+(true $3 \cdot 10^{-4}$). With the mean-field coalescent prior (branch `claude-meanfield-prior`) the marginal-likelihood
+rate steps continue to $1.03 \cdot 10^{-5}$, about 100 years per substitution on a 1000-site alignment, and the forward
+pass leaves 46 internal nodes with an empty posterior ("has an empty time distribution; no date was assigned"); the run
+exits 0 and writes those nodes without a date. No node is flagged as a bad branch. With the frozen lineage counts the
+rate stays at $1.65 \cdot 10^{-5}$ and every node gets a date.
+
 ## Related issues
 
 - [H-timetree-backward-pass-nan-time-distribution.md](H-timetree-backward-pass-nan-time-distribution.md)
