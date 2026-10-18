@@ -18,7 +18,7 @@ use crate::timetree::inference::runner::{
 };
 use crate::timetree::init::gaussian_start_rate;
 use crate::timetree::optimization::marginal_clock_rate::{
-  MarginalRateInputs, MarginalRateStep, step_marginal_clock_rate,
+  MarginalRateInputs, MarginalRateStep, RateWindow, step_marginal_clock_rate,
 };
 use crate::timetree::optimization::polytomy::resolve::{
   PolytomyResolution, require_internal_node_times, resolve_polytomies,
@@ -40,6 +40,7 @@ pub(crate) fn refinement_round(
   inputs: &RoundInputs<'_>,
   merger_rate: &PiecewiseConstantFn,
   prior: Option<&CoalescentPrior>,
+  rate_window: RateWindow,
   state: RoundState,
   rng: &mut dyn RngCore,
   log: &dyn LogSink,
@@ -64,7 +65,7 @@ pub(crate) fn refinement_round(
     time_change: measure_node_time_change(&previous_times, &current_times),
     topology,
   };
-  let state = update_clock_model(inputs, prior, state, log)?;
+  let state = update_clock_model(inputs, prior, rate_window, state, log)?;
   Ok((state, outcome))
 }
 
@@ -253,11 +254,12 @@ fn infer_times(
 fn update_clock_model(
   inputs: &RoundInputs<'_>,
   prior: Option<&CoalescentPrior>,
+  rate_window: RateWindow,
   state: RoundState,
   log: &dyn LogSink,
 ) -> Result<RoundState, Report> {
   let clock_rate = match (inputs.params.clock_rate, prior) {
-    (None, Some(prior)) => Some(marginal_clock_rate(inputs, prior, &state, log)?),
+    (None, Some(prior)) => Some(marginal_clock_rate(inputs, prior, rate_window, &state, log)?),
     (fixed, _) => fixed,
   };
   let edge_inputs: BTreeMap<GraphEdgeKey, (Option<f64>, f64)> = state
@@ -304,6 +306,7 @@ fn update_clock_model(
 fn marginal_clock_rate(
   inputs: &RoundInputs<'_>,
   prior: &CoalescentPrior,
+  window: RateWindow,
   state: &RoundState,
   log: &dyn LogSink,
 ) -> Result<f64, Report> {
@@ -319,6 +322,7 @@ fn marginal_clock_rate(
     bad_branches: &state.time_inference.bad_branches,
     branches: &state.time_inference.branches,
     reference_rate,
+    window,
     max_points: inputs.params.max_grid_points,
   })
   .wrap_err("Failed to estimate the clock rate from the marginal likelihood of the node times")?;
