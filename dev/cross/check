@@ -4,20 +4,30 @@
 #        $0 --lib <package> [target]
 #
 # Check a cross-compiled binary in .out/: print its format and linkage, and fail
-# when a binary that must be static is not (musl and Windows targets).
+# when it needs a library that is not part of the operating system, or when a
+# binary that must be static is not (musl targets).
 #
 # With --lib, check the shared library .out/<package>-<target>.node built by
-# `dev/cross/build --lib`: print its format and linkage, and fail when it needs
-# a library that a user system does not provide: OpenBLAS or the Fortran runtime
-# on every target, a MinGW runtime DLL (lib*.dll) or a Node DLL on Windows, and
-# a library outside /usr/lib and /System on macOS. Linux libraries of the C and
-# GCC runtime (libc, libm, libgcc_s) are allowed: Electron needs them too.
+# `dev/cross/build --lib` the same way.
+#
+# The operating system libraries are:
+# - Linux (gnu): the libraries of glibc 2.17 or older; the Node addon may also
+#   need libgcc_s.so.1, which Electron needs too
+# - Windows: KERNEL32.dll, the Universal C Runtime (api-ms-win-crt-*.dll), and
+#   the other system DLLs listed in windows_system_dlls
+# - macOS: libraries in /usr/lib and frameworks in /System/Library
 #
 set -euo pipefail
 shopt -s inherit_errexit
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "${root}"
+
+glibc_max="2.17"
+glibc_libs='^(libc\.so\.6|libm\.so\.6|libpthread\.so\.0|libdl\.so\.2|librt\.so\.1|libutil\.so\.1|ld-linux-x86-64\.so\.2|ld-linux-aarch64\.so\.1)$'
+electron_libs='^libgcc_s\.so\.1$'
+windows_system_dlls='^(api-ms-win-[a-z0-9-]+|kernel32|ntdll|advapi32|bcrypt|bcryptprimitives|combase|crypt32|ncrypt|secur32|ws2_32|userenv|user32|shell32|ole32|oleaut32|iphlpapi|powrprof|dbghelp|synchronization)\.dll$'
+darwin_system_libs='^(/usr/lib/|/system/library/)'
 
 lib=""
 if [[ "${1:-}" == "--lib" ]]; then
@@ -28,7 +38,7 @@ name="${1:?binary or package name}"
 target="${2:-${CROSS_COMPILE:?target}}"
 target_safe="${target//-/_}"
 
-# Print the libraries a shared library needs, one per line.
+# Print the libraries a binary or shared library needs, one per line.
 dependencies() {
   local file="${1}" objdump otool
   objdump="$(printenv "OBJDUMP_${target_safe}" || printenv "OBJDUMP" || echo "objdump")"
@@ -39,41 +49,74 @@ dependencies() {
     id="$("${otool}" -D "${file}" | awk 'NR > 1')"
     "${otool}" -L "${file}" | awk -v id="${id}" 'NR > 1 && $1 != id {print $1}'
     ;;
-  *-windows-gnullvm) "${objdump}" -p "${file}" | awk '/DLL Name:/ {print $3}' ;;
+  *-windows-*) "${objdump}" -p "${file}" | awk '/DLL Name:/ {print $3}' ;;
   *) "${objdump}" -p "${file}" | awk '$1 == "NEEDED" {print $2}' ;;
   esac
 }
 
-# Print the dependencies that a user system does not provide.
+# Print the dependencies that are not libraries of the operating system.
 foreign_dependencies() {
-  local allowed="" denied=""
+  local allowed extra=""
   case "${target}" in
-  *-apple-darwin) allowed='^(/usr/lib/|/system/)' ;;
-  *-windows-gnullvm) denied='^(lib|node)' ;;
+  *-apple-darwin) allowed="${darwin_system_libs}" ;;
+  *-windows-*) allowed="${windows_system_dlls}" ;;
+  *-linux-gnu)
+    allowed="${glibc_libs}"
+    if [[ -n "${lib}" ]]; then
+      extra="${electron_libs}"
+    fi
+    ;;
+  *) allowed='^$' ;;
   esac
-  dependencies "${1}" | awk -v allowed="${allowed}" -v denied="${denied}" '
+  dependencies "${1}" | allowed="${allowed}" extra="${extra}" awk '
     { name = tolower($0) }
-    name ~ /openblas|gfortran|quadmath/ || (allowed != "" && name !~ allowed) || (denied != "" && name ~ denied)
+    name !~ ENVIRON["allowed"] && (ENVIRON["extra"] == "" || name !~ ENVIRON["extra"])
   '
 }
 
-if [[ -z "${lib}" ]]; then
+# Print the glibc symbol versions above the oldest supported glibc.
+glibc_too_new() {
+  local objdump version
+  objdump="$(printenv "OBJDUMP_${target_safe}" || printenv "OBJDUMP" || echo "objdump")"
+  "${objdump}" -T "${1}" |
+    awk '{ while (match($0, /GLIBC_[0-9][0-9.]*/)) { print substr($0, RSTART + 6, RLENGTH - 6); $0 = substr($0, RSTART + RLENGTH) } }' |
+    sort -u -V | while read -r version; do
+    if [[ "$(printf '%s\n%s\n' "${glibc_max}" "${version}" | sort -V | tail -n 1)" != "${glibc_max}" ]]; then
+      printf 'GLIBC_%s\n' "${version}"
+    fi
+  done
+}
+
+if [[ -n "${lib}" ]]; then
+  file=".out/${name}-${target}.node"
+  file -h "${file}"
+  printf 'Needs:\n'
+  dependencies "${file}" | sed 's/^/  * /'
+else
   ext=""
   [[ "${target}" == *windows* ]] && ext=".exe"
-  file -h ".out/${name}-${target}${ext}"
-  dev/is-static-binary ".out/${name}-${target}${ext}" "${target}"
-  exit 0
+  file=".out/${name}-${target}${ext}"
+  file -h "${file}"
+  dev/is-static-binary "${file}" "${target}"
 fi
 
-file=".out/${name}-${target}.node"
-file -h "${file}"
-printf 'Needs:\n'
-dependencies "${file}" | sed 's/^/  * /'
+failed=""
 foreign="$(foreign_dependencies "${file}")"
 if [[ -n "${foreign}" ]]; then
-  printf '%s needs libraries that user systems do not provide:\n' "${file}" >&2
+  printf '%s needs libraries that are not part of the operating system:\n' "${file}" >&2
   while IFS= read -r dependency; do
     printf '  * %s\n' "${dependency}" >&2
   done <<<"${foreign}"
-  exit 1
+  failed=1
 fi
+if [[ "${target}" == *-linux-gnu ]]; then
+  too_new="$(glibc_too_new "${file}")"
+  if [[ -n "${too_new}" ]]; then
+    printf '%s needs symbols of a glibc newer than %s:\n' "${file}" "${glibc_max}" >&2
+    while IFS= read -r version; do
+      printf '  * %s\n' "${version}" >&2
+    done <<<"${too_new}"
+    failed=1
+  fi
+fi
+[[ -z "${failed}" ]]
