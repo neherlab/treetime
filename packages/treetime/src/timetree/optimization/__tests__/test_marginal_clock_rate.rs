@@ -1,14 +1,16 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
+  use crate::pretty_assert_ulps_eq;
   use crate::test_utils::{find_node_key_by_name, parent_edge_key, unknown_branches};
   use crate::timetree::inference::result::BranchLikelihood;
   use crate::timetree::optimization::marginal_clock_rate::{
-    MarginalRateInputs, STEP_FRACTION, branches_at_rate, marginal_log_lh_at_rate, step_marginal_clock_rate,
+    MarginalRateInputs, RateWindow, STEP_FRACTION, branches_at_rate, marginal_log_lh_at_rate, step_marginal_clock_rate,
   };
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
+  use rstest::rstest;
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
@@ -36,21 +38,32 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_marginal_clock_rate_steps_the_step_fraction_toward_the_parabola_maximum() -> Result<(), Report> {
-    let setup = helpers::cherry()?;
-    let reference = 2.5;
-    let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
-    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference))?;
-
-    // parabola in x = ln(mu / 2.5) through the closed-form curve at x = -h, 0, h
+  // at mu_ref = 2.5 the parabola peaks between the probes 2.0 and 3.125, though the upper probe beats the reference
+  /// Maximum of the parabola in x = ln(mu / reference) through the closed-form curve at x = -h, 0, h, h = ln 1.25
+  fn parabola_maximum(reference: f64) -> f64 {
     let h = 1.25_f64.ln();
     let curve = |x: f64| {
       let mu = reference * x.exp();
       -mu.ln() - (mu - 3.0).powi(2)
     };
     let (below, at, above) = (curve(-h), curve(0.0), curve(h));
-    let target = h * (below - above) / (2.0 * (above + below - 2.0 * at));
+    h * (below - above) / (2.0 * (above + below - 2.0 * at))
+  }
+
+  // at mu_ref = 2.5 the parabola peaks between the probes 2.0 and 3.125, though the upper probe beats the reference
+  #[rstest]
+  #[case::follow_slope(RateWindow::FollowSlope)]
+  #[case::interior_maximum(RateWindow::InteriorMaximum)]
+  #[trace]
+  fn test_marginal_clock_rate_steps_the_step_fraction_toward_the_parabola_maximum(
+    #[case] window: RateWindow,
+  ) -> Result<(), Report> {
+    let setup = helpers::cherry()?;
+    let reference = 2.5;
+    let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
+    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))?;
+
+    let target = parabola_maximum(reference);
     assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-2);
     assert_abs_diff_eq!(
       reference * (STEP_FRACTION * target).exp(),
@@ -60,14 +73,46 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_marginal_clock_rate_without_a_maximum_steps_toward_the_window_bound_of_the_better_probe() -> Result<(), Report>
-  {
-    // at mu = 1 the curve -ln(mu) - (mu - 3)^2 is convex in ln(mu) over the probes and rises toward faster rates
+  // In x = ln(mu / mu_ref) the probes sit at x = -h, 0, h with h = ln 1.25. At mu_ref = 1 the curve is convex over the
+  // probes and rises toward faster rates; at mu_ref = 2 it is concave, but its parabola peaks at x = 0.65 > h, past the
+  // upper probe (the maximum of the curve, mu = 2.82, lies there too). Neither has a maximum between the probes.
+  #[rstest]
+  #[case::convex(1.0)]
+  #[case::concave_maximum_past_the_window(2.0)]
+  #[trace]
+  fn test_marginal_clock_rate_interior_maximum_window_without_a_maximum_between_the_probes_keeps_the_rate(
+    #[case] reference: f64,
+  ) -> Result<(), Report> {
     let setup = helpers::cherry()?;
-    let step = step_marginal_clock_rate(&setup.inputs())?;
+    let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
+    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, RateWindow::InteriorMaximum))?;
+    // a step of zero leaves the rate bit-identical
+    pretty_assert_ulps_eq!(reference, step.target_rate, max_ulps = 0);
+    pretty_assert_ulps_eq!(reference, step.clock_rate, max_ulps = 0);
+    Ok(())
+  }
+
+  #[test]
+  fn test_marginal_clock_rate_follow_slope_window_without_a_maximum_steps_toward_the_bound_of_the_better_probe()
+  -> Result<(), Report> {
+    // at mu = 1 the curve is convex over the probes and rises toward faster rates
+    let setup = helpers::cherry()?;
+    let step = step_marginal_clock_rate(&setup.inputs_at(&setup.branches, 1.0, RateWindow::FollowSlope))?;
     assert_abs_diff_eq!(2.0, step.target_rate, epsilon = 1e-12);
     assert_abs_diff_eq!(2.0_f64.powf(STEP_FRACTION), step.clock_rate, epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[test]
+  fn test_marginal_clock_rate_follow_slope_window_takes_a_maximum_past_the_probes() -> Result<(), Report> {
+    // at mu = 2 the parabola peaks at x = 0.65, past the upper probe (h = 0.22) but within the bound ln 2 = 0.69
+    let setup = helpers::cherry()?;
+    let reference = 2.0;
+    let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
+    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, RateWindow::FollowSlope))?;
+    let target = parabola_maximum(reference);
+    assert!(target > 1.25_f64.ln() && target < 2.0_f64.ln());
+    assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-2);
     Ok(())
   }
 
@@ -85,13 +130,14 @@ mod tests {
 
     impl Cherry {
       pub(super) fn inputs(&self) -> MarginalRateInputs<'_> {
-        self.inputs_at(&self.branches, 1.0)
+        self.inputs_at(&self.branches, 1.0, RateWindow::FollowSlope)
       }
 
       pub(super) fn inputs_at<'a>(
         &'a self,
         branches: &'a BTreeMap<treetime_graph::edge::GraphEdgeKey, BranchLikelihood>,
         reference_rate: f64,
+        window: RateWindow,
       ) -> MarginalRateInputs<'a> {
         MarginalRateInputs {
           graph: &self.graph,
@@ -100,6 +146,7 @@ mod tests {
           bad_branches: &self.bad_branches,
           branches,
           reference_rate,
+          window,
           max_points: MaxGridPoints::default(),
         }
       }
