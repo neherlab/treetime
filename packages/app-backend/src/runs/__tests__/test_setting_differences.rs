@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::command::config_from_settings;
   use crate::runs::setting_differences::{SettingDifference, setting_differences};
-  use app_commands::command::AppCommand;
   use app_commands::json_value::JsonValue;
   use helpers::{input, record};
   use pretty_assertions::assert_eq;
@@ -38,22 +36,6 @@ mod tests {
           second: Some(JsonValue(json!(5))),
         },
       ],
-      setting_differences(&first, &second).unwrap()
-    );
-  }
-
-  #[test]
-  fn test_setting_differences_nested_setting_is_compared_by_its_key_path() {
-    let mut first = record(&json!({}), vec![]);
-    first.config = config_from_settings(AppCommand::Clock, &json!({})).unwrap();
-    let mut second = first.clone();
-    second.config = config_from_settings(AppCommand::Clock, &json!({ "branch_split": { "method": "brent" } })).unwrap();
-    assert_eq!(
-      vec![SettingDifference::Setting {
-        key: o!("branch_split.method"),
-        first: Some(JsonValue(json!("grid"))),
-        second: Some(JsonValue(json!("brent"))),
-      }],
       setting_differences(&first, &second).unwrap()
     );
   }

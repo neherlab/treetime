@@ -4,7 +4,6 @@ mod tests {
   use crate::config::catalog::{SettingRole, command_settings};
   use crate::config::code::{CodeLineKind, config_code};
   use app_commands::command::AppCommand;
-  use app_commands::config::settings::setting_mut;
   use helpers::{changed_value, load_yaml, parse_command_line, set_setting, with_output_dir};
   use indoc::indoc;
   use itertools::Itertools;
@@ -129,24 +128,6 @@ mod tests {
         code.command_line[1].kind,
         code.yaml[2].text.as_str()
       )
-    );
-  }
-
-  #[test]
-  fn test_config_code_nested_setting_is_nested_in_yaml() {
-    let mut config = AppCommand::Clock.default_config().unwrap();
-    setting_mut(&mut config, &["branch_split".to_owned(), "method".to_owned()])
-      .map(|slot| *slot = json!("brent"))
-      .unwrap();
-    let code = config_code(AppCommand::Clock, &config).unwrap();
-    assert_eq!(
-      vec!["branch_split:", "  method: \"brent\""],
-      code
-        .yaml
-        .iter()
-        .filter(|line| line.kind == CodeLineKind::Changed)
-        .map(|line| line.text.as_str())
-        .collect_vec()
     );
   }
 

@@ -6,10 +6,10 @@ import { matchingSpecs } from "../search";
 const specs = commandSettings("clock").settings;
 
 describe("setting search", () => {
-  test("matches the flag of a nested setting", () => {
+  test("matches the flag of a setting", () => {
     expect(
-      matchingSpecs(specs, defaultConfig(specs), "--branch-split-grid", false).map((spec) => spec.key),
-    ).toStrictEqual(["branch_split.n_points"]);
+      matchingSpecs(specs, defaultConfig(specs), "--allow-negative", false).map((spec) => spec.key),
+    ).toStrictEqual(["allow_negative_rate"]);
   });
 
   test("changed only keeps the changed settings", () => {

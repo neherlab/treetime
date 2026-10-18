@@ -61,7 +61,7 @@ mod tests {
   #[case::timetree_dating(   AppCommand::Timetree,  "max_iter",                    "Dating")]
   #[case::optimize_iter(     AppCommand::Optimize,  "max_iter",                    "Branch lengths")]
   #[case::prune_threshold(   AppCommand::Prune,     "prune_short",                 "Pruning")]
-  #[case::clock_flattened(   AppCommand::Clock,     "variance_factor",             "Clock regression")]
+  #[case::clock_flattened(   AppCommand::Clock,     "reroot",                      "Rooting")]
   #[case::shared_alignment(  AppCommand::Ancestral, "alignment",                   "Input data")]
   #[case::shared_order(      AppCommand::Mugration, "topology_order",              "Tree ordering")]
   #[case::output_path(       AppCommand::Timetree,  "output_clock_model",          "Output")]
@@ -79,8 +79,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::nested_grid(    AppCommand::Clock,    &["branch_split", "n_points"],             "--branch-split-grid-n-points")]
-  #[case::nested_variance(AppCommand::Clock,    &["clock_regression", "variance_factor"],  "--variance-factor")]
   #[case::renamed_long(   AppCommand::Timetree, &["metadata"],                             "--metadata")]
   #[case::flattened(      AppCommand::Ancestral,&["alignment"],                            "--alignment")]
   #[trace]

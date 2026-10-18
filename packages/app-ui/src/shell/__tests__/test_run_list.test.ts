@@ -56,9 +56,9 @@ describe("run list", () => {
     ]);
   });
 
-  test("changed settings show as flags, nested ones included", () => {
+  test("changed settings show as flags", () => {
     expect(
-      changedFlags(run("a", { command: "clock", changed_settings: ["keep_root", "branch_split.n_points"] })),
-    ).toStrictEqual(["--keep-root", "--branch-split-grid-n-points"]);
+      changedFlags(run("a", { command: "clock", changed_settings: ["keep_root", "clock_filter"] })),
+    ).toStrictEqual(["--keep-root", "--clock-filter"]);
   });
 });

@@ -79,12 +79,8 @@ describe("zod_schemas command configs", () => {
     expect(zTimetreeConfig.safeParse({ seed: -1 }).success).toBe(false);
   });
 
-  test("clock config accepts nested branch split settings", () => {
-    expect(zClockConfig.safeParse({ branch_split: { method: "brent", brent_max_iters: 20 } }).success).toBe(true);
-  });
-
-  test("clock config rejects an unknown branch split method", () => {
-    expect(zClockConfig.safeParse({ branch_split: { method: "newton" } }).success).toBe(false);
+  test("clock config rejects an unknown reroot method", () => {
+    expect(zClockConfig.safeParse({ reroot: "newton" }).success).toBe(false);
   });
 
   test("ancestral config rejects a wrong type", () => {

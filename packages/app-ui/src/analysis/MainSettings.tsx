@@ -42,7 +42,7 @@ const CLOCK_FILTER_STEP = 0.5;
 
 const NO_CHECKS: readonly RunCheck[] = [];
 
-const INTERVAL_KEYS = ["confidence", "covariation"] as const satisfies readonly TimetreeKey[];
+const INTERVAL_KEYS = ["confidence"] as const satisfies readonly TimetreeKey[];
 
 const CLOCK_FILTER_KEYS = ["clock_filter"] as const satisfies readonly TimetreeKey[];
 
@@ -223,7 +223,6 @@ function IntervalsRow({ context }: { context: RowContext }) {
     <MainRow context={context} label="Date intervals" sub="Marginal intervals on every node" keys={INTERVAL_KEYS}>
       <Inline>
         <SwitchLabel context={context} settingKey="confidence" text="Compute date intervals" />
-        <SwitchLabel context={context} settingKey="covariation" text="Covariation-aware regression" />
       </Inline>
     </MainRow>
   );
