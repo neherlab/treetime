@@ -96,8 +96,7 @@ variance model (zero on internal edges, unit weight per tip) is OLS. What differ
 - The root search scores every node's `ClockSet`, then optimizes the split only on the edges next to the best node,
   by an 11-point grid (or Brent, golden section; `--branch-split-*`). `reroot/` duplicates the search generically for
   `optimize`.
-- Outliers still enter the fit through `clock_from_child`
-  ([H-clock-regression-includes-filtered-outliers.md](../issues/H-clock-regression-includes-filtered-outliers.md)).
+- Outliers entered the fit through `clock_from_child`; fixed in 0a.
 - The covariance is the unscaled $H^{-1}$; `determine_rate_std` uses it only with `--covariation`, while the augur
   node data report $\sqrt{(H^{-1})_{00}}$ as `rate_std` regardless.
 
@@ -130,7 +129,7 @@ both are easy to adapt later, and keeping them limits the change surface.
 - Tests: the frozen-value dengue/100 clock golden master and every clock and covariation snapshot in `dev/smoke.toml`
   change; the v0 runner golden masters (`test_gm_runner/`) call `estimate_clock_model_with_reroot_policy` at a fixed
   v0 rate and keep the root, so they move to the new API with unchanged expectations.
-- kb: resolves or obsoletes H-clock-regression-includes-filtered-outliers, M-clock-covariation-variance-diverges-from-v0,
+- kb: resolves or obsoletes M-clock-covariation-variance-diverges-from-v0,
   M-clock-filter-regression-uses-covariation, M-timetree-covariation-tip-slack-default-differs-from-v0,
   N-clock-regression-all-negative-rate, N-reroot-clock-search-duplicates-generic-module,
   N-reroot-split-optimizer-default-diverges-from-v0, N-reroot-leaf-variance-offset-diverges-from-v0; needs decisions
@@ -251,7 +250,7 @@ The baseline for each phase is the previous one.
 
 | phase | content | gate |
 | --- | --- | --- |
-| 0a | OLS regression on two-way sums, exact root search, outliers out of the fit, IQR filter; `clock` and `timetree` on it | identical rate, intercept and root wherever the old search found the optimum (OLS default); differences only where the local split search missed it or outliers leaked in; validation suite rate and root recovery |
+| 0a (done) | OLS regression on two-way sums, exact root search, outliers out of the fit, IQR filter; `clock` and `timetree` on it | identical rate, intercept and root wherever the old search found the optimum (OLS default); differences only where the local split search missed it or outliers leaked in; validation suite rate and root recovery |
 | 0b | Gaussian message passing at the regression rate: node marginals, rate and root covariance; replaces `--covariation` for `rate_std` | node RMSE, coverage and lineage-curve distance reproduce section 1; `--confidence` coverage on the validation data |
 | 0c | retire the old machinery and flags; outputs, contracts, app (with the engineer) | smoke snapshots re-baselined with the reason recorded; dengue/100 golden master rebuilt |
 | 1 | merge `claude-hard-cell-interp`; seed the expectation and $T_c$ from the Gaussian marginals; one loop, initial round removed | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
@@ -270,7 +269,7 @@ The baseline for each phase is the previous one.
   $\bar k$ in place of integer $k$ does not change its event model beyond the rate.
 - v0 parity: the reported coalescent likelihood, the initial round and the root handling all diverge from v0 and need
   decision files.
-- Issues: [M-clock-root-search-exact-on-every-edge.md](../issues/M-clock-root-search-exact-on-every-edge.md) (0a),
+- Issues: 0a done (branch `claude-clock-exact-root`),
   [M-clock-gaussian-rate-uncertainty-and-node-marginals.md](../issues/M-clock-gaussian-rate-uncertainty-and-node-marginals.md) (0b),
   [M-clock-retire-covariation-and-split-optimizers.md](../issues/M-clock-retire-covariation-and-split-optimizers.md) (0c),
   [M-timetree-loop-starts-from-gaussian-marginals.md](../issues/M-timetree-loop-starts-from-gaussian-marginals.md) (1),

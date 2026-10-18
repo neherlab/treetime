@@ -11,8 +11,9 @@ Decided: `--covariation` and `--tip-slack` are retired, not remapped.
   search in `reroot/` (the `optimize` min-dev search becomes the fixed-rate-0 case of the clock search).
 - Outputs: the clock-model JSON statistics, the augur `rate_std` (from 0b), contracts, JSON schemas and the app's
   covariation switch, with the engineer.
-- Tests: the dengue/100 clock golden master and the clock and covariation snapshots of `dev/smoke.toml` are
-  re-baselined with the reason recorded; the v0 runner golden masters move to the new API.
+- Tests: the clock and covariation snapshots of `dev/smoke.toml` are re-baselined with the reason recorded (the clock
+  and reroot snapshots already change with 0a, which places the least-squares root exactly and keeps outliers out of
+  the fit); the v0 runner golden masters move to the new API.
 
 ## kb
 
