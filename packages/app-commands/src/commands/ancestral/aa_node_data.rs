@@ -19,6 +19,7 @@ pub(crate) fn validate_aa_args(
   cdses: &[String],
   annotation: Option<&Path>,
   aa_root_sequence: Option<&Path>,
+  n_alignments: usize,
 ) -> Result<(), Report> {
   if translations.is_none() && cdses.is_empty() && annotation.is_none() && aa_root_sequence.is_none() {
     return Ok(());
@@ -27,6 +28,13 @@ pub(crate) fn validate_aa_args(
   let Some(template) = translations else {
     return make_error!("--translations is required when using --cdses, --annotation, or --aa-root-sequence");
   };
+
+  if n_alignments > 1 {
+    return make_error!(
+      "--translations and --annotation need exactly one --alignment file, but {n_alignments} were given: \
+       CDS coordinates refer to the positions of one nucleotide alignment"
+    );
+  }
 
   #[expect(
     clippy::literal_string_with_formatting_args,

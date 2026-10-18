@@ -55,6 +55,22 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_args_homoplasy_rejects_two_alignments() -> Result<(), Report> {
+    let raw = TreetimeHomoplasyArgsRaw::try_parse_from([
+      "homoplasy",
+      "--tree=tree.nwk",
+      "--alignment=a.fasta",
+      "--alignment=b.fasta",
+    ])?;
+    assert_error!(
+      TreetimeHomoplasyArgs::try_from(raw),
+      "homoplasy reads exactly one --alignment file, but 2 were given: \
+       the reported positions refer to the coordinates of one alignment"
+    );
+    Ok(())
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::zero(    "0",    "--rescale must be a positive finite number, but got 0")]

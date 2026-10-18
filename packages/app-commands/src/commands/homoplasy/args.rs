@@ -59,6 +59,13 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
     if !raw.rescale.is_finite() || raw.rescale <= 0.0 {
       return make_error!("--rescale must be a positive finite number, but got {}", raw.rescale);
     }
+    let n_alignments = raw.alignment.alignment.len();
+    if n_alignments > 1 {
+      return make_error!(
+        "homoplasy reads exactly one --alignment file, but {n_alignments} were given: \
+         the reported positions refer to the coordinates of one alignment"
+      );
+    }
     Ok(Self {
       tree,
       method_anc: raw.method_anc.into(),

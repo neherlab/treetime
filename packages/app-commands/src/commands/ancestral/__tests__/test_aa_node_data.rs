@@ -16,20 +16,20 @@ mod tests {
   #[test]
   fn test_validate_aa_args_requires_cds_placeholder() {
     assert_error!(
-      validate_aa_args(Some("translations.fasta"), &[o!("S")], None, None),
+      validate_aa_args(Some("translations.fasta"), &[o!("S")], None, None, 1),
       "--translations must contain a CDS placeholder ('{cds}' or '%GENE')"
     );
   }
 
   #[test]
   fn test_validate_aa_args_accepts_percent_gene_placeholder() {
-    let result = validate_aa_args(Some("out/%GENE.fasta"), &["S".to_owned()], None, None);
+    let result = validate_aa_args(Some("out/%GENE.fasta"), &["S".to_owned()], None, None, 1);
     result.unwrap();
   }
 
   #[test]
   fn test_validate_aa_args_accepts_cds_placeholder() {
-    let result = validate_aa_args(Some(CDS_TEMPLATE), &["S".to_owned()], None, None);
+    let result = validate_aa_args(Some(CDS_TEMPLATE), &["S".to_owned()], None, None, 1);
     result.unwrap();
   }
 
@@ -40,6 +40,7 @@ mod tests {
       &[],
       Some(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))),
       None,
+      1,
     );
     result.unwrap();
   }
@@ -47,8 +48,17 @@ mod tests {
   #[test]
   fn test_validate_aa_args_empty_cdses_no_annotation_errors() {
     assert_error!(
-      validate_aa_args(Some(CDS_TEMPLATE), &[], None, None),
+      validate_aa_args(Some(CDS_TEMPLATE), &[], None, None, 1),
       "--cdses must list at least one CDS, or pass --annotation to derive the CDS set"
+    );
+  }
+
+  #[test]
+  fn test_validate_aa_args_rejects_translations_with_two_alignments() {
+    assert_error!(
+      validate_aa_args(Some(CDS_TEMPLATE), &[o!("S")], None, None, 2),
+      "--translations and --annotation need exactly one --alignment file, but 2 were given: \
+       CDS coordinates refer to the positions of one nucleotide alignment"
     );
   }
 

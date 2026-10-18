@@ -44,6 +44,7 @@ pub fn run_ancestral_reconstruction(
     &args.cdses,
     args.annotation.as_deref(),
     args.aa_root_sequence.as_deref(),
+    args.alignment.alignment.len(),
   )?;
 
   let sequence_args = SequenceInputArgs {
