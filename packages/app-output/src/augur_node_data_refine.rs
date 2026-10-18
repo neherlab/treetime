@@ -136,17 +136,12 @@ fn refine_dates(dates: &TreeDates<'_>, key: GraphNodeKey, is_leaf: bool) -> Refi
 fn build_clock(clock_model: &ClockModel) -> AugurNodeDataJsonClock {
   let rate = clock_model.clock_rate();
   let intercept = clock_model.intercept();
-  let cov = clock_model
-    .cov()
-    .map(|cov| cov.outer_iter().map(|row| row.to_vec()).collect());
-  let rate_std = clock_model.cov().map(|cov| cov[[0, 0]].sqrt());
-
   AugurNodeDataJsonClock {
     rate,
     intercept,
     rtt_tmrca: -intercept / rate,
-    cov,
-    rate_std,
+    cov: None,
+    rate_std: clock_model.rate_std(),
     other: BTreeMap::new(),
   }
 }

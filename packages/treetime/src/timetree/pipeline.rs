@@ -3,6 +3,7 @@ use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree};
+use crate::clock::clock_set::ClockSet;
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::gaussian::gaussian_clock;
@@ -350,19 +351,15 @@ fn report_coalescent_size(
   }
 }
 
-/// Rate uncertainty of the Gaussian timetree at the final rate, or `None` with a warning when the sequence length is
-/// unknown or the approximation degenerates
+/// Rate uncertainty of the Gaussian timetree at the final rate, or `None` when the sequence length is unknown or the
+/// approximation degenerates
 fn gaussian_rate_std(inputs: &RoundInputs<'_>, state: &RoundState, log: &dyn LogSink) -> Result<Option<f64>, Report> {
   let sequence_length = match state.branch_model.total_length() {
     0 => inputs.params.sequence_length.unwrap_or(0),
     length => length,
   };
   if sequence_length == 0 {
-    progress_warn!(
-      log,
-      "Cannot estimate the clock rate uncertainty without a sequence length. \
-       Specify --clock-std-dev or --sequence-length. Proceeding without rate uncertainty."
-    );
+    debug!("No sequence length: the clock rate uncertainty is not estimated");
     return Ok(None);
   }
   let tip_dates = given_times(&state.graph, &inputs.context.date_constraints)?;
@@ -384,7 +381,7 @@ fn gaussian_rate_std(inputs: &RoundInputs<'_>, state: &RoundState, log: &dyn Log
       Ok(Some(clock.rate_std))
     },
     Err(report) => {
-      progress_warn!(log, "Proceeding without rate uncertainty: {report}");
+      progress_warn!(log, "The clock rate uncertainty is not estimated: {report}");
       Ok(None)
     },
   }
@@ -398,8 +395,31 @@ fn refine_final_times(
   log: &dyn LogSink,
 ) -> Result<FinalTimes, Report> {
   let params = inputs.params;
+  let estimated_rate_std = if params.clock_rate.is_none() {
+    gaussian_rate_std(inputs, &state, log)?
+  } else {
+    None
+  };
+  let state = if params.clock_rate.is_none() {
+    RoundState {
+      clock_model: state
+        .clock_model
+        .estimated_at_rate(&ClockSet::from_points(&state.clock_points), estimated_rate_std),
+      ..state
+    }
+  } else {
+    state
+  };
   let rate_std = if params.confidence {
-    determine_rate_std(params.clock_std_dev, || gaussian_rate_std(inputs, &state, log))?
+    let rate_std = determine_rate_std(params.clock_std_dev, || Ok(estimated_rate_std))?;
+    if rate_std.is_none() {
+      progress_warn!(
+        log,
+        "Date intervals leave out the rate uncertainty: it needs --clock-std-dev, or an estimated rate with the \
+         alignment or --sequence-length."
+      );
+    }
+    rate_std
   } else {
     None
   };

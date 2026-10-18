@@ -6,8 +6,6 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use getset::Getters;
 use log::debug;
-use ndarray::Array2;
-use treetime_utils::adapters::Array2Rows;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
 
@@ -79,8 +77,7 @@ impl ClockModel {
       stats: ClockModelStats::Estimated(RegressionStats {
         chisq: regression.chisq,
         r_val: regression.r_val,
-        hessian: regression.hessian.clone(),
-        cov: regression.cov.clone(),
+        rate_std: None,
       }),
     }
   }
@@ -102,6 +99,21 @@ impl ClockModel {
     })
   }
 
+  /// The model at an estimated rate that did not come from the regression (the marginal-likelihood rate of a timetree):
+  /// chi-squared and r of the clock line through the dated, included tips of `set`, and the rate's standard deviation.
+  /// The chi-squared is half the residual sum of squares, as the regression reports it; the fixed-rate root score is
+  /// the same divided by the number of tips.
+  pub(crate) fn estimated_at_rate(&self, set: &ClockSet, rate_std: Option<f64>) -> Self {
+    Self {
+      stats: ClockModelStats::Estimated(RegressionStats {
+        chisq: set.chisq_fixed_rate(self.clock_rate) * set.norm(),
+        r_val: set.r_val(),
+        rate_std,
+      }),
+      ..self.clone()
+    }
+  }
+
   fn get_regression_stat<T>(&self, f: impl FnOnce(&RegressionStats) -> T) -> Option<T> {
     match &self.stats {
       ClockModelStats::Estimated(stats) => Some(f(stats)),
@@ -121,11 +133,9 @@ impl ClockModel {
     self.r_val().map(r_squared)
   }
 
-  pub fn cov(&self) -> Option<&Array2<f64>> {
-    match &self.stats {
-      ClockModelStats::Estimated(stats) => Some(&stats.cov),
-      ClockModelStats::Fixed => None,
-    }
+  /// Standard deviation of an estimated rate, when known
+  pub fn rate_std(&self) -> Option<f64> {
+    self.get_regression_stat(|s| s.rate_std).flatten()
   }
 
   pub(crate) fn date(&self, div: f64) -> f64 {
@@ -189,8 +199,6 @@ pub struct ClockRegression {
   intercept: f64,
   chisq: f64,
   r_val: f64,
-  hessian: Array2<f64>,
-  cov: Array2<f64>,
 }
 
 impl ClockLine for ClockRegression {
@@ -226,8 +234,6 @@ impl TryFrom<&ClockSet> for ClockRegression {
       intercept: clock_set.intercept(clock_rate),
       chisq: clock_set.chisq(),
       r_val: clock_set.r_val(),
-      hessian: clock_set.hessian(),
-      cov: clock_set.cov(),
     })
   }
 }
@@ -252,10 +258,6 @@ impl ClockRegression {
   pub(crate) fn r_squared(&self) -> f64 {
     r_squared(self.r_val)
   }
-
-  pub(crate) fn hessian(&self) -> &Array2<f64> {
-    &self.hessian
-  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -269,10 +271,9 @@ pub enum ClockModelStats {
 pub struct RegressionStats {
   pub(crate) chisq: f64,
   pub(crate) r_val: f64,
-  #[deser(as = Array2Rows)]
-  pub(crate) hessian: Array2<f64>,
-  #[deser(as = Array2Rows)]
-  pub(crate) cov: Array2<f64>,
+  /// Standard deviation of the rate from the Gaussian timetree, when a sequence length is known
+  #[deser(skip_serializing_if = Option::is_none, default)]
+  pub(crate) rate_std: Option<f64>,
 }
 
 fn r_squared(r_val: f64) -> f64 {

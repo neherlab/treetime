@@ -98,7 +98,6 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
   if let ClockEstimate::Estimated(reg) = &estimate {
     progress_info!(log, "**R²:** {:.4}", reg.r_squared());
     progress_info!(log, "**χ²:** {:.4}", reg.chisq());
-    progress_info!(log, "**Hessian:**\n{}", reg.hessian());
   }
 
   Ok((
