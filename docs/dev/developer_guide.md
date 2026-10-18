@@ -23,23 +23,24 @@ cd treetime
 
 - The checkout is mounted at its host path, and the git metadata is mounted read-only. Commit on the host
 - Build output goes to `.build/container/`, the cargo home and caches to `.cache/`
-- The images link the C libraries of `liblzma-sys` and `zstd-sys` as prebuilt archives of [binarylandia/staticbourg](https://github.com/binarylandia/staticbourg) instead of compiling them in every new target directory. `/.cargo/config.toml` of the image points the crates' links at the archives (`dev/docker/files/install-compression-libs`), so host builds still compile the bundled C sources. The archives have the C versions that the crates bundle; `just prebuilt-libs-check` fails when `Cargo.lock` moves to a crate that bundles another version, which then needs a new staticbourg release
+- The images link the C libraries of `liblzma-sys` and `zstd-sys` as prebuilt archives of [binarylandia/staticbourg](https://github.com/binarylandia/staticbourg) instead of compiling them in every new target directory. `/.cargo/config.toml` of the image points the crates' links at the archives (`dev/docker/files/install-compression-libs`), so host builds still compile the bundled C sources, and so do the Windows images, because staticbourg has no archives for the Universal C Runtime. The archives have the C versions that the crates bundle; `just prebuilt-libs-check` fails when `Cargo.lock` moves to a crate that bundles another version, which then needs a new staticbourg release
+- The images link OpenBLAS the same way: the static archives of [binarylandia/build_openblas](https://github.com/binarylandia/build_openblas), built from one OpenBLAS develop commit with clang and flang of LLVM 22, with the Fortran runtime of flang (`libflang_rt.runtime.a`) that its LAPACK calls. `dev/docker/files/install-openblas` installs them into a folder named after the archive and writes the folder into the target rustflags and the override of the `openblas` link in `/.cargo/config.toml`. A new archive therefore changes the flags, and cargo rebuilds the workspace and relinks every binary, test, and addon
 - Commands run as your user, with all Linux capabilities dropped
 - On Apple Silicon and other arm64 hosts the image runs under x86_64 emulation, which is slower
 - The container uses host networking, so the dev servers are reachable from the host browser. On Docker Desktop, turn on host networking in the settings
 
 ### Host
 
-Requirements: [mise](https://mise.jdx.dev), [rustup](https://rustup.rs), bash 4 or later (on macOS: `brew install bash`), a C toolchain with gfortran, OpenBLAS, and libclang. On Debian and Ubuntu:
+Requirements: [mise](https://mise.jdx.dev), [rustup](https://rustup.rs), bash 4 or later (on macOS: `brew install bash`), a C toolchain, and the static OpenBLAS archive of the containers. On Debian and Ubuntu:
 
 ```bash
-sudo apt-get install build-essential gfortran libclang-dev libfontconfig-dev libopenblas-dev pkg-config
+sudo apt-get install build-essential libfontconfig-dev pkg-config
 mise install
 just setup
 just check
 ```
 
-Host builds go to `.build/host/`. Host builds of the Rust code work on Linux x86_64 only; on macOS, build in the container. Every build links OpenBLAS statically: `.cargo/config.toml` makes the linker take `libopenblas.a` even where `libopenblas-dev` also installs the shared library, so no binary and no Node addon depends on a system OpenBLAS. On macOS, the pinned `openblas-src` links Homebrew's OpenBLAS, which also needs the gfortran and OpenMP runtimes, and the configuration passes no link flags for them. The dylint and IQ-TREE tools are available on Linux only; run the recipes that need them in the container on other hosts.
+Host builds go to `.build/host/`. Host builds of the Rust code work on Linux x86_64 only; on macOS, build in the container. Every build links OpenBLAS and the Fortran runtime of flang statically, so no binary and no Node addon depends on a shared OpenBLAS. The OpenBLAS packages of Linux distributions need the Fortran runtime of GCC and do not link. Unpack the `x86_64-unknown-linux-gnu` archive of the release that `dev/docker/files/install-openblas` names, and write the entries that the script writes into `/.cargo/config.toml` of the image, with the folder of the archive, into `~/.cargo/config.toml`. The dylint and IQ-TREE tools are available on Linux only; run the recipes that need them in the container on other hosts.
 
 ### Machine settings
 
@@ -262,7 +263,7 @@ Every key is optional, and an unknown key is an error that names the file. When 
 `just package-desktop [target]` packages the desktop app with [electron-builder](https://www.electron.build) into `.out/treetime-desktop-<target>.<ext>`:
 
 - Linux (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`): an AppImage, which runs without installation
-- Windows (`x86_64-pc-windows-gnu`): a zip archive; users extract it and start `TreeTime.exe`
+- Windows (`x86_64-pc-windows-gnullvm`, `aarch64-pc-windows-gnullvm`): a zip archive; users extract it and start `TreeTime.exe`
 - macOS (`x86_64-apple-darwin`, `aarch64-apple-darwin`): a dmg
 
 The recipe builds the addon for the native target `x86_64-unknown-linux-gnu` itself; the other targets take the addon from `just cross-napi` (see [Cross-compilation and releases](#cross-compilation-and-releases)). Linux and Windows packages build in the container; electron-builder downloads Electron, the AppImage tools, and 7-Zip into `.build/desktop/cache/`. macOS packages build only on macOS, because the dmg tools and `codesign` exist only there. `dev/desktop/package --help` describes the steps: `dev/desktop/stage` puts the bundles, a minimal `package.json`, and the addon into `.build/desktop/<target>/app`, electron-builder packages that directory with `packages/app-desktop/electron-builder.config.ts`, and `dev/desktop/check` checks the Electron fuses and that the addon sits outside `app.asar`. `dev/desktop/start-test <target>` starts a package and fails when it exits early or logs an error.
@@ -353,7 +354,7 @@ A full run writes large outputs; the `.dot` files of the larger datasets reach a
 
 ### TreeTime v0 and Python scripts
 
-TreeTime v0 (`packages/legacy/treetime`), the golden-master capture scripts, and the research scripts in `test_scripts/` share one Python environment, defined in `pixi.toml` and locked in `pixi.lock`. It pins every package and uses OpenBLAS 0.3.34 on a single thread, the same BLAS as the Rust build, so v0 and v1 run the same linear algebra kernels. The environment puts v0 of the checkout on `PYTHONPATH`, so both the v0 `treetime` command and `import treetime` in scripts work.
+TreeTime v0 (`packages/legacy/treetime`), the golden-master capture scripts, and the research scripts in `test_scripts/` share one Python environment, defined in `pixi.toml` and locked in `pixi.lock`. It pins every package and uses the OpenBLAS 0.3.34 release of conda-forge on a single thread. The Rust build links OpenBLAS develop `de5d4914`, 432 commits after 0.3.34, with LAPACK compiled by flang, so v0 and v1 run close but not identical linear algebra kernels. The environment puts v0 of the checkout on `PYTHONPATH`, so both the v0 `treetime` command and `import treetime` in scripts work.
 
 In the Python image:
 
@@ -428,7 +429,15 @@ The dependency recipes run in the main checkout only. `just audit` checks both d
 
 `just cross` (host) builds the shipped CLI (`dist` profile) for every target in `dev/cross/targets` in its cross image, in parallel, into `.out/`. `just cross --target=aarch64-apple-darwin` builds one target. Without `just` on the host, run `./dev/cross/all treetime`.
 
-`just cross-napi` (host) builds the Node addon of the desktop app the same way, with the same profile and CPU flags, for every target in `dev/cross/targets-desktop`, the targets Electron supports (no musl), into `.out/app-napi-<target>.node` (`./dev/cross/all --lib app-napi` without `just`). `dev/cross/check --lib` fails when an addon needs OpenBLAS, the Fortran runtime, a MinGW runtime DLL, or a macOS library outside the system. The Windows addon is built with MinGW, like the CLI, and loads into Electron, which is built with MSVC: Node-API reaches the addon through the functions that `napi-sys` looks up in the running executable, not through an import library.
+`just cross-napi` (host) builds the Node addon of the desktop app the same way, with the same profile and CPU flags, for every target in `dev/cross/targets-desktop`, the targets Electron supports (no musl), into `.out/app-napi-<target>.node` (`./dev/cross/all --lib app-napi` without `just`). The Windows addon is built with llvm-mingw, like the CLI, and loads into Electron, which is built with MSVC: Node-API reaches the addon through the functions that `napi-sys` looks up in the running executable, not through an import library.
+
+Each target family has its own cross image, with every toolchain component pinned as a separate archive:
+
+- Linux (`dev/docker/cross-linux.dockerfile`): clang and lld of LLVM 22 ([binarylandia/build_llvm](https://github.com/binarylandia/build_llvm)) on the sysroot, crt files, libgcc, and libstdc++ of a GCC 16 toolchain of [binarylandia/build_crosstool-ng](https://github.com/binarylandia/build_crosstool-ng): glibc 2.17 for the gnu targets, musl 1.2.6 for the musl targets. The musl binaries are static
+- Windows (`dev/docker/cross-windows.dockerfile`): llvm-mingw of the same LLVM release, with the static mingw-w64 sysroot on the Universal C Runtime (UCRT), compiler-rt, and libunwind, for `x86_64-pc-windows-gnullvm` and `aarch64-pc-windows-gnullvm`. The binaries run on Windows 10 and later
+- macOS (`dev/docker/cross-darwin.dockerfile`): the llvm flavor of osxcross ([binarylandia/build_osxcross](https://github.com/binarylandia/build_osxcross)) with the macOS 11.1 SDK, which runs clang and `ld64.lld` of the LLVM release, and compiler-rt. The deployment targets are macOS 10.12 (x86_64) and 11.0 (arm64)
+
+`dev/cross/check` fails when a binary or addon needs a library that is not part of the operating system: anything beyond glibc 2.17 on the Linux gnu targets (the addon may also need `libgcc_s.so.1`, as Electron does), any library on the musl targets, a DLL other than the Windows system DLLs (`KERNEL32.dll`, `api-ms-win-crt-*.dll`, and others) on Windows, and a library outside `/usr/lib` and `/System/Library` on macOS. `dev/cross/all --run` runs each Linux binary under QEMU and each x86_64 Windows binary under Wine; macOS and aarch64 Windows binaries are only built and checked there. CI runs the Windows binaries on `windows-2022` and `windows-11-arm`, and the macOS binaries on macOS runners.
 
 The release binaries require an x86_64 CPU with AVX2 (Haswell or newer) and, on Linux aarch64, ARMv8.2.
 
