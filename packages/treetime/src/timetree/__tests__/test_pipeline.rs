@@ -138,6 +138,7 @@ mod tests {
       branch_length_mode: BranchLengthMode::Input,
       keep_root: false,
       clock_filter: CLOCK_FILTER_IQD,
+      sequence_length: Some(10_807),
       ..marginal_timetree_params()
     };
 

@@ -496,6 +496,7 @@ mod tests {
         final_sequences: FinalSequences::Skip,
         time_marginal: TimeMarginalMode::Never,
         date_constraints,
+        sequence_length: 16,
       }
     }
   }
