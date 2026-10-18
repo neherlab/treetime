@@ -1,6 +1,6 @@
 use crate::cli::pipeline::inputs::input_paths;
 use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep};
-use app_commands::commands::ancestral::aa_node_data::is_cds_output_template;
+use app_output::output_plan::PathPlaceholder;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -103,7 +103,7 @@ fn output_paths(step: &ResolvedStep) -> Vec<String> {
     .by_selection
     .values()
     .flatten()
-    .filter(|path| !is_cds_output_template(path))
+    .filter(|path| !PathPlaceholder::Cds.is_in_file_name(path))
     .map(|path| path.to_string_lossy().into_owned())
     .collect()
 }
@@ -135,6 +135,21 @@ mod tests {
     assert_error!(
       result,
       "steps `a` and `b` both write `/pipeline/shared.nwk`; each output path must be written by only one step"
+    );
+  }
+
+  #[test]
+  fn test_safety_output_collision_of_a_partition_file_rejected() {
+    let pipeline = resolve(json!({
+      "steps": [
+        { "name": "a", "ancestral": { "tree": "in.nwk", "alignment": ["x.fasta", "y.fasta"], "output_reconstructed_nuc_fasta": "seq.{partition}.fasta" } },
+        { "name": "b", "ancestral": { "tree": "in.nwk", "output_reconstructed_nuc_fasta": "seq.2.fasta" } }
+      ]
+    }));
+    let result = validate_plan(&pipeline, None);
+    assert_error!(
+      result,
+      "steps `a` and `b` both write `/pipeline/seq.2.fasta`; each output path must be written by only one step"
     );
   }
 

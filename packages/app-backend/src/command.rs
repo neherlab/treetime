@@ -3,7 +3,6 @@ use crate::config::cli_rules::cli_rule_diagnostics;
 use crate::runs::errors::invalid;
 use app_commands::command::{AppCommand, CommandArgs, RawConfig, settings_map};
 use app_commands::command_config::CommandConfig;
-use app_commands::commands::ancestral::aa_node_data::CDS_PLACEHOLDERS;
 use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use app_commands::commands::clock::args::TreetimeClockArgsRaw;
 use app_commands::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
@@ -21,7 +20,7 @@ use app_commands::config::schema::command_schema;
 use app_commands::config::settings::{remove_setting, setting_ref};
 use app_commands::config::source::{ConfigSource, render_and_bail};
 use app_commands::json_value::SparseConfig;
-use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+use app_output::output_plan::{CommandKind, OutputSelection, PathPlaceholder, ResolvedOutputs};
 use deser::adapters::As;
 use deser::{Deserialize, Serialize};
 use deser_serde::Serde;
@@ -339,7 +338,7 @@ fn run_output_selection<S: Copy + PartialEq + Into<OutputSelection> + IntoEnumIt
   [chosen, missing].concat()
 }
 
-fn written_files(outputs: &ResolvedOutputs) -> Result<Vec<OutputFile>, Report> {
+pub(crate) fn written_files(outputs: &ResolvedOutputs) -> Result<Vec<OutputFile>, Report> {
   let mut files = vec![];
   for (kind, paths) in outputs.paths_by_selection() {
     for path in paths {
@@ -354,7 +353,8 @@ fn existing_files(planned: &Path) -> Result<Vec<PathBuf>, Report> {
     .file_name()
     .map(|name| name.to_string_lossy().into_owned())
     .unwrap_or_default();
-  let Some((prefix, suffix)) = CDS_PLACEHOLDERS
+  let Some((prefix, suffix)) = PathPlaceholder::Cds
+    .tokens()
     .iter()
     .find_map(|placeholder| name.split_once(placeholder))
   else {

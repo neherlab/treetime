@@ -312,6 +312,8 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
+
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -463,6 +465,8 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
+
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -659,6 +663,8 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
+
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -906,6 +912,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
+
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -1099,6 +1107,8 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
+
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -1352,6 +1362,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
+
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -1514,6 +1526,8 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
    Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or supplement the files produced by `--output-all`.
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
+
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.

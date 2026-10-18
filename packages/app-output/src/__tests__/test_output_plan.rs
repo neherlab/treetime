@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::output_plan::{OutputSelection, PlannedFile, Requested, output_unavailable, plan};
+  use crate::output_plan::{
+    CommandKind, OutputSelection, PlannedFile, Requested, TreeWriteKind, output_unavailable, plan,
+  };
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -10,6 +12,7 @@ mod tests {
   use std::str::FromStr;
   use strum::IntoEnumIterator;
   use treetime::progress::LogLevel;
+  use treetime_io::nwk::NwkStyle;
   use treetime_utils::io::json::to_json_value;
   use treetime_utils::{assert_error, o};
 
@@ -183,12 +186,237 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_output_plan_one_partition_keeps_default_names() -> Result<(), Report> {
+    let resolved = plan(&helpers::partitioned_request(
+      1,
+      Some("out"),
+      btreemap! {},
+      btreemap! {},
+    ))?;
+
+    let expected = btreemap! {
+      OutputSelection::Nwk => vec![PathBuf::from("out/ancestral.annotated.nwk"), PathBuf::from("out/ancestral.nwk")],
+      OutputSelection::Auspice => vec![PathBuf::from("out/ancestral.auspice.json")],
+      OutputSelection::MatPb => vec![PathBuf::from("out/ancestral.mat.pb")],
+      OutputSelection::AugurNodeData => vec![PathBuf::from("out/ancestral.augur-node-data.json")],
+      OutputSelection::Gtr => vec![PathBuf::from("out/ancestral.gtr.json")],
+      OutputSelection::ReconstructedNucFasta => vec![PathBuf::from("out/ancestral.reconstructed-nuc.fasta")],
+    };
+    assert_eq!(expected, resolved.paths_by_selection());
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_two_partitions_number_default_names_after_the_stem() -> Result<(), Report> {
+    let resolved = plan(&helpers::partitioned_request(
+      2,
+      Some("out"),
+      btreemap! {},
+      btreemap! {},
+    ))?;
+
+    let expected = btreemap! {
+      OutputSelection::Nwk => vec![
+        PathBuf::from("out/ancestral.1.annotated.nwk"),
+        PathBuf::from("out/ancestral.2.annotated.nwk"),
+        PathBuf::from("out/ancestral.nwk"),
+      ],
+      OutputSelection::Auspice => vec![
+        PathBuf::from("out/ancestral.1.auspice.json"),
+        PathBuf::from("out/ancestral.2.auspice.json"),
+      ],
+      OutputSelection::MatPb => vec![PathBuf::from("out/ancestral.1.mat.pb"), PathBuf::from("out/ancestral.2.mat.pb")],
+      OutputSelection::AugurNodeData => vec![
+        PathBuf::from("out/ancestral.1.augur-node-data.json"),
+        PathBuf::from("out/ancestral.2.augur-node-data.json"),
+      ],
+      OutputSelection::Gtr => vec![PathBuf::from("out/ancestral.gtr.json")],
+      OutputSelection::ReconstructedNucFasta => vec![
+        PathBuf::from("out/ancestral.1.reconstructed-nuc.fasta"),
+        PathBuf::from("out/ancestral.2.reconstructed-nuc.fasta"),
+      ],
+    };
+    assert_eq!(expected, resolved.paths_by_selection());
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_partition_lookups_return_the_path_of_each_partition() -> Result<(), Report> {
+    let resolved = plan(&helpers::partitioned_request(
+      2,
+      Some("out"),
+      btreemap! {},
+      btreemap! {},
+    ))?;
+
+    let actual = (
+      [1, 2, 3].map(|partition| resolved.partition_path(OutputSelection::ReconstructedNucFasta, partition)),
+      [0, 2].map(|partition| resolved.tree_partition_path(TreeWriteKind::Nwk(NwkStyle::Beast), partition)),
+      resolved.tree_partition_path(TreeWriteKind::Nwk(NwkStyle::Plain), 1),
+      resolved.partition_path(OutputSelection::Gtr, 1),
+      resolved.path(OutputSelection::ReconstructedNucFasta),
+    );
+
+    let expected = (
+      [
+        Some(Path::new("out/ancestral.1.reconstructed-nuc.fasta")),
+        Some(Path::new("out/ancestral.2.reconstructed-nuc.fasta")),
+        None,
+      ],
+      [None, Some(Path::new("out/ancestral.2.annotated.nwk"))],
+      None,
+      None,
+      Some(Path::new("out/ancestral.1.reconstructed-nuc.fasta")),
+    );
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_explicit_paths_expand_the_partition_placeholder() -> Result<(), Report> {
+    let resolved = plan(&helpers::partitioned_request(
+      2,
+      None,
+      btreemap! {
+        OutputSelection::Nwk => PathBuf::from("trees/{partition}.nwk"),
+        OutputSelection::Auspice => PathBuf::from("auspice/segment-{partition}.json"),
+        OutputSelection::GraphJson => PathBuf::from("graph.json"),
+        OutputSelection::Dot => PathBuf::from("graph.{partition}.dot"),
+      },
+      btreemap! {
+        OutputSelection::ReconstructedNucFasta => PathBuf::from("seq.{partition}.fasta"),
+        OutputSelection::Gtr => PathBuf::from("gtr.json"),
+      },
+    ))?;
+
+    let expected = btreemap! {
+      OutputSelection::Nwk => vec![
+        PathBuf::from("trees/1.annotated.nwk"),
+        PathBuf::from("trees/1.nwk"),
+        PathBuf::from("trees/2.annotated.nwk"),
+        PathBuf::from("trees/2.nwk"),
+      ],
+      OutputSelection::Auspice => vec![
+        PathBuf::from("auspice/segment-1.json"),
+        PathBuf::from("auspice/segment-2.json"),
+      ],
+      OutputSelection::GraphJson => vec![PathBuf::from("graph.json")],
+      OutputSelection::Dot => vec![PathBuf::from("graph.1.dot"), PathBuf::from("graph.2.dot")],
+      OutputSelection::Gtr => vec![PathBuf::from("gtr.json")],
+      OutputSelection::ReconstructedNucFasta => vec![PathBuf::from("seq.1.fasta"), PathBuf::from("seq.2.fasta")],
+    };
+    assert_eq!(expected, resolved.paths_by_selection());
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_one_partition_expands_the_placeholder_to_one() -> Result<(), Report> {
+    let resolved = plan(&helpers::partitioned_request(
+      1,
+      None,
+      btreemap! {},
+      btreemap! { OutputSelection::ReconstructedNucFasta => PathBuf::from("seq.{partition}.fasta") },
+    ))?;
+
+    assert_eq!(
+      Some(Path::new("seq.1.fasta")),
+      resolved.path(OutputSelection::ReconstructedNucFasta)
+    );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::fasta(   OutputSelection::ReconstructedNucFasta, "seq.fasta",    "--output-reconstructed-nuc-fasta")]
+  #[case::node_data(OutputSelection::AugurNodeData,        "node.json",    "--output-augur-node-data")]
+  #[case::stdout(  OutputSelection::ReconstructedNucFasta, "-",            "--output-reconstructed-nuc-fasta")]
+  #[case::folder(  OutputSelection::ReconstructedNucFasta, "{partition}/seq.fasta", "--output-reconstructed-nuc-fasta")]
+  #[trace]
+  fn test_output_plan_two_partitions_need_the_placeholder_in_explicit_paths(
+    #[case] selection: OutputSelection,
+    #[case] path: &str,
+    #[case] flag: &str,
+  ) {
+    assert_error!(
+      plan(&helpers::partitioned_request(2, None, btreemap! {}, btreemap! { selection => PathBuf::from(path) })),
+      format!(
+        "{flag} needs a partition placeholder ('{{partition}}') in its file name when the run has several \
+         alignment files, otherwise each partition overwrites the same output file"
+      )
+    );
+  }
+
+  #[test]
+  fn test_output_plan_two_partitions_need_the_placeholder_in_styled_tree_paths() {
+    assert_error!(
+      plan(&helpers::partitioned_request(
+        2,
+        None,
+        btreemap! { OutputSelection::Nwk => PathBuf::from("tree.nwk") },
+        btreemap! {},
+      )),
+      "--output-tree-nwk (style beast) needs a partition placeholder ('{partition}') in its file name when the run \
+       has several alignment files, otherwise each partition overwrites the same output file"
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::one_partition( 1)]
+  #[case::two_partitions(2)]
+  #[trace]
+  fn test_output_plan_single_file_output_rejects_the_placeholder(#[case] partition_count: usize) {
+    assert_error!(
+      plan(&helpers::partitioned_request(
+        partition_count,
+        Some("out"),
+        btreemap! {},
+        btreemap! { OutputSelection::Gtr => PathBuf::from("gtr.{partition}.json") },
+      )),
+      "--output-gtr is written once per run, so its file name cannot contain '{partition}'"
+    );
+  }
+
+  #[test]
+  fn test_output_plan_partition_path_colliding_with_another_output_fails() {
+    assert_error!(
+      plan(&helpers::partitioned_request(
+        2,
+        None,
+        btreemap! {},
+        btreemap! {
+          OutputSelection::ReconstructedNucFasta => PathBuf::from("out.{partition}.fasta"),
+          OutputSelection::Gtr => PathBuf::from("out.2.fasta"),
+        },
+      )),
+      "Output destination 'out.2.fasta' is selected more than once (--output-gtr and --output-reconstructed-nuc-fasta for partition 2)"
+    );
+  }
+
+  #[test]
+  fn test_output_plan_timetree_node_data_stays_one_file_with_two_partitions() -> Result<(), Report> {
+    let mut request = helpers::partitioned_request(2, Some("out"), btreemap! {}, btreemap! {});
+    request.command = CommandKind::Timetree;
+    request.selection = vec![OutputSelection::AugurNodeData];
+
+    let resolved = plan(&request)?;
+
+    let expected = btreemap! {
+      OutputSelection::AugurNodeData => vec![PathBuf::from("out/timetree.augur-node-data.json")],
+    };
+    assert_eq!(expected, resolved.paths_by_selection());
+    Ok(())
+  }
+
   mod helpers {
     use crate::output_plan::{CommandKind, OutputPlanRequest, OutputSelection};
     use std::collections::BTreeMap;
+    use std::num::NonZeroUsize;
     use std::path::PathBuf;
     use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
     use treetime::progress::{LogLevel, LogSink};
+    use treetime_io::nwk::NwkStyle;
 
     pub(super) fn request(
       selection: Vec<OutputSelection>,
@@ -196,6 +424,7 @@ mod tests {
     ) -> OutputPlanRequest {
       OutputPlanRequest {
         command: CommandKind::Ancestral,
+        partition_count: NonZeroUsize::MIN,
         output_all: Some(PathBuf::from("out")),
         nwk_styles: vec![],
         selection,
@@ -204,9 +433,38 @@ mod tests {
       }
     }
 
+    pub(super) fn partitioned_request(
+      partition_count: usize,
+      output_all: Option<&str>,
+      tree_overrides: BTreeMap<OutputSelection, PathBuf>,
+      non_tree_overrides: BTreeMap<OutputSelection, PathBuf>,
+    ) -> OutputPlanRequest {
+      OutputPlanRequest {
+        command: CommandKind::Ancestral,
+        partition_count: NonZeroUsize::new(partition_count).expect("tests plan at least one partition"),
+        selection: if output_all.is_some() {
+          vec![
+            OutputSelection::Nwk,
+            OutputSelection::Auspice,
+            OutputSelection::MatPb,
+            OutputSelection::AugurNodeData,
+            OutputSelection::Gtr,
+            OutputSelection::ReconstructedNucFasta,
+          ]
+        } else {
+          vec![]
+        },
+        output_all: output_all.map(PathBuf::from),
+        nwk_styles: vec![NwkStyle::Plain, NwkStyle::Beast],
+        tree_overrides,
+        non_tree_overrides,
+      }
+    }
+
     pub(super) fn homoplasy_request(non_tree_overrides: BTreeMap<OutputSelection, PathBuf>) -> OutputPlanRequest {
       OutputPlanRequest {
         command: CommandKind::Homoplasy,
+        partition_count: NonZeroUsize::MIN,
         output_all: Some(PathBuf::from("out")),
         nwk_styles: vec![],
         selection: vec![],

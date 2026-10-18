@@ -2,10 +2,9 @@ use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve
 use crate::cli::pipeline::types::{RawStep, step_config};
 use app_commands::command::AppCommand;
 use app_commands::command_config::CommandConfig;
-use app_commands::commands::ancestral::aa_node_data::is_cds_output_template;
 use app_commands::config::resolve_paths::resolve_config_paths;
 use app_commands::config::suggest::{suggestion_suffix, valid_values};
-use app_output::output_plan::{MissingOutputs, OutputSelection};
+use app_output::output_plan::{MissingOutputs, OutputSelection, PathPlaceholder};
 use eyre::Report;
 use itertools::Itertools;
 use regex::{Regex, regex};
@@ -257,7 +256,7 @@ fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) 
       producer.name,
       valid_values(&produced_tags)
     ),
-    Some([path]) if is_cds_output_template(path) => make_error!(
+    Some([path]) if PathPlaceholder::Cds.is_in_file_name(path) => make_error!(
       "step `{step}` references `{selection}` from step `{}`, which resolves to a per-CDS template (`{}`); \
        reference a specific CDS output path instead",
       producer.name,
@@ -369,6 +368,22 @@ mod tests {
     });
     let resolved = resolve(config).unwrap();
     assert_eq!("/pipeline/out/tt/timetree.nwk", tree_of(step(&resolved, "anc")));
+  }
+
+  #[test]
+  fn test_resolve_chain_reference_to_a_per_partition_output_is_ambiguous() {
+    let config = json!({
+      "output_all": "tmp/run",
+      "steps": [
+        { "name": "anc", "ancestral": { "tree": "in.nwk", "alignment": ["a.fasta", "b.fasta"] } },
+        { "name": "opt", "optimize": { "tree": "in.nwk", "alignment": ["{{ steps.anc.outputs.reconstructed-nuc-fasta }}"] } }
+      ]
+    });
+    let result = resolve(config);
+    assert_error!(
+      result,
+      "step `opt` references `reconstructed-nuc-fasta` from step `anc`, which resolves to more than one file (`/pipeline/tmp/run/anc/ancestral.1.reconstructed-nuc.fasta`, `/pipeline/tmp/run/anc/ancestral.2.reconstructed-nuc.fasta`); pin a single style or CDS, or reference a specific path"
+    );
   }
 
   #[test]

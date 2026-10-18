@@ -311,6 +311,8 @@ pub(super) mod tests {
         TreeWriteKind::Nwk(NwkStyle::Plain) => nwk_path.clone(),
       },
       non_tree_outputs: btreemap! {},
+      tree_outputs_by_partition: btreemap! {},
+      non_tree_outputs_by_partition: btreemap! {},
     };
     let annotated = annotated(&topology);
 
@@ -336,6 +338,8 @@ pub(super) mod tests {
     let outputs = ResolvedOutputs {
       tree_outputs: btreemap! { TreeWriteKind::Dot => PathBuf::from("tree.dot") },
       non_tree_outputs: btreemap! {},
+      tree_outputs_by_partition: btreemap! {},
+      non_tree_outputs_by_partition: btreemap! {},
     };
     let annotated = annotated(&topology);
 

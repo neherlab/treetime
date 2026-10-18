@@ -2989,6 +2989,14 @@ export type TimetreeConfig = {
    *
    * An output that the run has no data for is skipped without a message, for example the
    * substitution model of a run that fits none. A per-file flag for such an output fails.
+   *
+   * With several `--alignment` files, the outputs that carry sequence positions are written
+   * once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
+   * MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the
+   * order of the `--alignment` list. Their default names carry the number after the command
+   * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
+   * must contain `{partition}`, which is replaced by the number. Other tree outputs with
+   * `{partition}` in their file name are also written once per file.
    */
   output_all?: string;
   /**
@@ -3319,6 +3327,14 @@ export type ClockConfig = {
    *
    * An output that the run has no data for is skipped without a message, for example the
    * substitution model of a run that fits none. A per-file flag for such an output fails.
+   *
+   * With several `--alignment` files, the outputs that carry sequence positions are written
+   * once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
+   * MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the
+   * order of the `--alignment` list. Their default names carry the number after the command
+   * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
+   * must contain `{partition}`, which is replaced by the number. Other tree outputs with
+   * `{partition}` in their file name are also written once per file.
    */
   output_all?: string;
   /**
@@ -3689,6 +3705,14 @@ export type AncestralConfig = {
    *
    * An output that the run has no data for is skipped without a message, for example the
    * substitution model of a run that fits none. A per-file flag for such an output fails.
+   *
+   * With several `--alignment` files, the outputs that carry sequence positions are written
+   * once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
+   * MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the
+   * order of the `--alignment` list. Their default names carry the number after the command
+   * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
+   * must contain `{partition}`, which is replaced by the number. Other tree outputs with
+   * `{partition}` in their file name are also written once per file.
    */
   output_all?: string;
   /**
@@ -4033,6 +4057,14 @@ export type HomoplasyConfig = {
    *
    * An output that the run has no data for is skipped without a message, for example the
    * substitution model of a run that fits none. A per-file flag for such an output fails.
+   *
+   * With several `--alignment` files, the outputs that carry sequence positions are written
+   * once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
+   * MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the
+   * order of the `--alignment` list. Their default names carry the number after the command
+   * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
+   * must contain `{partition}`, which is replaced by the number. Other tree outputs with
+   * `{partition}` in their file name are also written once per file.
    */
   output_all?: string;
   /**
@@ -4291,6 +4323,14 @@ export type MugrationConfig = {
    *
    * An output that the run has no data for is skipped without a message, for example the
    * substitution model of a run that fits none. A per-file flag for such an output fails.
+   *
+   * With several `--alignment` files, the outputs that carry sequence positions are written
+   * once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
+   * MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the
+   * order of the `--alignment` list. Their default names carry the number after the command
+   * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
+   * must contain `{partition}`, which is replaced by the number. Other tree outputs with
+   * `{partition}` in their file name are also written once per file.
    */
   output_all?: string;
   /**
@@ -4507,6 +4547,14 @@ export type OptimizeConfig = {
    *
    * An output that the run has no data for is skipped without a message, for example the
    * substitution model of a run that fits none. A per-file flag for such an output fails.
+   *
+   * With several `--alignment` files, the outputs that carry sequence positions are written
+   * once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
+   * MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the
+   * order of the `--alignment` list. Their default names carry the number after the command
+   * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
+   * must contain `{partition}`, which is replaced by the number. Other tree outputs with
+   * `{partition}` in their file name are also written once per file.
    */
   output_all?: string;
   /**
@@ -4798,6 +4846,14 @@ export type PruneConfig = {
    *
    * An output that the run has no data for is skipped without a message, for example the
    * substitution model of a run that fits none. A per-file flag for such an output fails.
+   *
+   * With several `--alignment` files, the outputs that carry sequence positions are written
+   * once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
+   * MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the
+   * order of the `--alignment` list. Their default names carry the number after the command
+   * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
+   * must contain `{partition}`, which is replaced by the number. Other tree outputs with
+   * `{partition}` in their file name are also written once per file.
    */
   output_all?: string;
   /**

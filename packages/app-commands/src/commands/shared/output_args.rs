@@ -13,13 +13,14 @@ use itertools::Itertools;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use treetime_io::nwk::NwkStyle;
 #[cfg(feature = "clap")]
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 macro_rules! command_outputs {
-  ($name:ident for $raw:ty, $kind:ident { $($extra:ident: $field:ident),* $(,)? }) => {
+  ($name:ident for $raw:ty, $kind:ident $(alignment: $alignment:ident)? { $($extra:ident: $field:ident),* $(,)? }) => {
     #[derive(Copy, Clone, Debug, Eq, PartialEq, schemars::JsonSchema, strum_macros::EnumIter, Serialize, Deserialize)]
     #[schemars(rename_all = "kebab-case")]
     #[deser(rename_all = "kebab-case")]
@@ -55,8 +56,10 @@ macro_rules! command_outputs {
     impl ResolveOutputs for $raw {
       fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
         let selection = self.output_selection.iter().copied().map(OutputSelection::from).collect_vec();
+        let alignment_count = 0 $(+ self.$alignment.alignment.len())?;
         self.output.resolve(
           CommandKind::$kind,
+          partition_count(alignment_count),
           &selection,
           &[$((OutputSelection::$extra, self.$field.as_deref())),*],
         )
@@ -69,13 +72,17 @@ pub trait ResolveOutputs {
   fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report>;
 }
 
-command_outputs!(AncestralOutputSelection for TreetimeAncestralArgsRaw, Ancestral {
+fn partition_count(alignment_count: usize) -> NonZeroUsize {
+  NonZeroUsize::new(alignment_count).unwrap_or(NonZeroUsize::MIN)
+}
+
+command_outputs!(AncestralOutputSelection for TreetimeAncestralArgsRaw, Ancestral alignment: alignment {
   AugurNodeData: output_augur_node_data,
   Gtr: output_gtr,
   ReconstructedNucFasta: output_reconstructed_nuc_fasta,
   ReconstructedAaFasta: output_reconstructed_aa_fasta,
 });
-command_outputs!(TimetreeOutputSelection for TreetimeTimetreeArgsRaw, Timetree {
+command_outputs!(TimetreeOutputSelection for TreetimeTimetreeArgsRaw, Timetree alignment: alignment {
   AugurNodeData: output_augur_node_data,
   Gtr: output_gtr,
   ReconstructedNucFasta: output_reconstructed_nuc_fasta,
@@ -99,11 +106,11 @@ command_outputs!(MugrationOutputSelection for TreetimeMugrationArgsRaw, Mugratio
   ConfidenceCsv: output_confidence_csv,
   TraitsCsv: output_traits_csv,
 });
-command_outputs!(OptimizeOutputSelection for TreetimeOptimizeArgsRaw, Optimize {
+command_outputs!(OptimizeOutputSelection for TreetimeOptimizeArgsRaw, Optimize alignment: alignment {
   AugurNodeData: output_augur_node_data,
   Gtr: output_gtr,
 });
-command_outputs!(PruneOutputSelection for TreetimePruneArgsRaw, Prune { Gtr: output_gtr });
+command_outputs!(PruneOutputSelection for TreetimePruneArgsRaw, Prune alignment: alignment { Gtr: output_gtr });
 command_outputs!(HomoplasyOutputSelection for TreetimeHomoplasyArgsRaw, Homoplasy {
   HomoplasyStats: output_homoplasy_stats,
   HomoplasyReport: output_homoplasy_report,
@@ -131,6 +138,14 @@ pub struct OutputCoreArgs {
   ///
   /// An output that the run has no data for is skipped without a message, for example the
   /// substitution model of a run that fits none. A per-file flag for such an output fails.
+  ///
+  /// With several `--alignment` files, the outputs that carry sequence positions are written
+  /// once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
+  /// MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the
+  /// order of the `--alignment` list. Their default names carry the number after the command
+  /// name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
+  /// must contain `{partition}`, which is replaced by the number. Other tree outputs with
+  /// `{partition}` in their file name are also written once per file.
   #[cfg_attr(feature = "clap", clap(long, short = 'O', value_hint = ValueHint::DirPath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_all: Option<PathBuf>,
@@ -233,11 +248,13 @@ impl OutputCoreArgs {
   pub fn resolve(
     &self,
     command: CommandKind,
+    partition_count: NonZeroUsize,
     selection: &[OutputSelection],
     non_tree_fields: &[(OutputSelection, Option<&Path>)],
   ) -> Result<ResolvedOutputs, Report> {
     let request = OutputPlanRequest {
       command,
+      partition_count,
       output_all: self.output_all.clone(),
       nwk_styles: self.output_nwk_style.iter().copied().map(NwkStyle::from).collect(),
       selection: selection.to_vec(),

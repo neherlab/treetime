@@ -127,8 +127,8 @@ mod tests {
   fn test_cds_output_paths_two_cdses_to_one_path_fail(#[case] template: &str) {
     assert_error!(
       cds_output_paths(Path::new(template), &vec_of_owned!["S", "ORF1a"]),
-      "--output-reconstructed-aa-fasta template needs a CDS placeholder in its file name when reconstructing \
-       multiple CDSes, otherwise each CDS overwrites the same output file"
+      "--output-reconstructed-aa-fasta needs a CDS placeholder ('{cds}' or '%GENE') in its file name when \
+       reconstructing several CDSes, otherwise each CDS overwrites the same output file"
     );
   }
 

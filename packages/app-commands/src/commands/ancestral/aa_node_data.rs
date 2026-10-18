@@ -1,9 +1,8 @@
-use app_output::output_plan::OutputSelection;
+use app_output::output_plan::{OutputSelection, PathPlaceholder, expand_path_template};
 use deser_value::Value;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf, is_separator};
+use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::attach::sanitize_to_alphabet;
 use treetime::make_error;
@@ -11,8 +10,6 @@ use treetime_io::fasta::fasta_read_file;
 use treetime_io::gff::{GffCdsFeature, gff3_cds_read_file};
 use treetime_primitives::Seq;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
-
-pub const CDS_PLACEHOLDERS: [&str; 2] = ["{cds}", "%GENE"];
 
 pub(crate) fn validate_aa_args(
   translations: Option<&str>,
@@ -36,12 +33,11 @@ pub(crate) fn validate_aa_args(
     );
   }
 
-  #[expect(
-    clippy::literal_string_with_formatting_args,
-    reason = "the braces are a path template placeholder, not a format argument"
-  )]
-  if !template_has_cds_placeholder(template) {
-    return make_error!("--translations must contain a CDS placeholder ('{{cds}}' or '%GENE')");
+  if !PathPlaceholder::Cds.is_in(template) {
+    return make_error!(
+      "--translations must contain a CDS placeholder ({})",
+      PathPlaceholder::Cds.quoted_tokens()
+    );
   }
 
   if cdses.is_empty() && annotation.is_none() {
@@ -98,55 +94,14 @@ pub(crate) fn selected_cdses(
   }
 }
 
-pub fn is_cds_output_template(path: &Path) -> bool {
-  cds_output_template_name(path).is_some()
-}
-
 pub(crate) fn cds_output_paths(template: &Path, cdses: &[String]) -> Result<BTreeMap<String, PathBuf>, Report> {
   let flag = OutputSelection::ReconstructedAaFasta.flag_name();
-  let Some(name) = cds_output_template_name(template) else {
-    if cdses.len() > 1 {
-      return make_error!(
-        "{flag} template needs a CDS placeholder in its file name when reconstructing multiple CDSes, \
-         otherwise each CDS overwrites the same output file"
-      );
-    }
-    return Ok(cdses.iter().map(|cds| (cds.clone(), template.to_path_buf())).collect());
-  };
-  cdses
-    .iter()
-    .map(|cds| {
-      if cds.chars().any(is_separator) {
-        return make_error!("CDS '{cds}' contains a path separator and cannot be part of the file name of {flag}");
-      }
-      Ok((cds.clone(), template.with_file_name(expand_cds_placeholders(name, cds))))
-    })
-    .collect()
+  let paths = expand_path_template(flag, template, PathPlaceholder::Cds, cdses)?;
+  Ok(cdses.iter().cloned().zip(paths).collect())
 }
 
 pub(crate) fn translation_path(template: &str, cds: &str) -> PathBuf {
-  PathBuf::from(expand_cds_placeholders(template, cds))
-}
-
-fn cds_output_template_name(path: &Path) -> Option<&str> {
-  path
-    .file_name()
-    .and_then(OsStr::to_str)
-    .filter(|name| template_has_cds_placeholder(name))
-}
-
-fn template_has_cds_placeholder(template: &str) -> bool {
-  CDS_PLACEHOLDERS
-    .iter()
-    .any(|placeholder| template.contains(placeholder))
-}
-
-fn expand_cds_placeholders(template: &str, cds: &str) -> String {
-  CDS_PLACEHOLDERS
-    .iter()
-    .fold(template.to_owned(), |expanded, placeholder| {
-      expanded.replace(placeholder, cds)
-    })
+  PathBuf::from(PathPlaceholder::Cds.substitute(template, cds))
 }
 
 pub(crate) fn read_aa_root_sequences(

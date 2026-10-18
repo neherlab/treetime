@@ -205,6 +205,10 @@ mod tests {
             requested,
           },
         },
+        tree_outputs_by_partition: btreemap! {},
+        non_tree_outputs_by_partition: btreemap! {
+          OutputSelection::ReconstructedNucFasta => vec![PathBuf::from("out.fasta")],
+        },
       }
     }
   }
