@@ -1,5 +1,4 @@
 use crate::branch_lengths::branch_lengths_or_zero;
-use crate::gtr::gtr::GTR;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::progress::LogSink;
 use crate::progress_info;
@@ -28,13 +27,6 @@ impl BranchModel {
 
   pub(crate) fn is_marginal(&self) -> bool {
     matches!(self, Self::Marginal(_))
-  }
-
-  pub(crate) fn gtr(&self) -> Option<&GTR> {
-    match self {
-      Self::Input => None,
-      Self::Marginal(reconstruction) => Some(reconstruction.gtr()),
-    }
   }
 
   pub(crate) fn marginal_update(

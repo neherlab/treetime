@@ -74,12 +74,7 @@ mod tests {
     run_command(&prepared.args, &NoopCancel, &progress, &NoopProgress).unwrap();
     let stages: Vec<String> = progress.events().into_iter().map(|event| event.stage).collect();
     assert_eq!(
-      vec![
-        "Reading input",
-        "Fitch parsimony",
-        "Writing output",
-        "Done"
-      ],
+      vec!["Reading input", "Fitch parsimony", "Writing output", "Done"],
       stages
     );
   }

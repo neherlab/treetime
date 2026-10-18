@@ -4,18 +4,18 @@ use crate::gtr::gtr::GTR;
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::seq::indel::InDel;
-use crate::seq::mutation::{MutationTrack, SequenceMutations, stream_sequence_mutations};
-use crate::seq::sink::SeqSink;
+use crate::seq::mutation::{SequenceMutations, stream_sequence_mutations};
+use crate::seq::sink::{SeqSink, SeqTrack};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::Seq;
+use treetime_primitives::{LogLh, Seq};
 
 #[expect(
   clippy::large_enum_variant,
-  reason = "one value per run moves between steps by value; it is never stored in a collection"
+  reason = "a run holds one value per alignment file, a handful at most, so boxing the large variant saves no meaningful memory"
 )]
 pub(crate) enum AncestralPartition {
   Fitch(PartitionFitch),
@@ -34,6 +34,13 @@ impl AncestralPartition {
     }
   }
 
+  pub(crate) fn log_lh(&self, graph: &Graph) -> Result<Option<LogLh>, Report> {
+    match self {
+      Self::Fitch(_) => Ok(None),
+      Self::Marginal { reconstruction, .. } => reconstruction.graph_log_lh(graph).map(Some),
+    }
+  }
+
   pub(crate) fn alphabet(&self) -> &Alphabet {
     match self {
       Self::Fitch(partition) => &partition.alphabet,
@@ -44,7 +51,7 @@ impl AncestralPartition {
   pub(crate) fn stream_sequences(
     &self,
     graph: &Graph,
-    track: &MutationTrack,
+    track: SeqTrack<'_>,
     include_leaves: bool,
     report_unknown: bool,
     sink: Option<&mut (dyn SeqSink + '_)>,

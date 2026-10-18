@@ -13,10 +13,12 @@ use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::sample::SampleMode;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
+use crate::partition::result::{PartitionSource, SplitSource};
 use crate::progress::{LogSink, StageSink};
-use crate::progress_warn;
 use crate::seq::alignment::NodeSeqInput;
+use crate::{progress_info, progress_warn};
 use eyre::Report;
+use itertools::izip;
 use rand::Rng;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -55,6 +57,72 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPla
   clippy::too_many_arguments,
   reason = "the partition inputs come from the command and the random generator, cancellation, stage and log sinks are run services of the caller; no type holds both groups"
 )]
+pub(crate) fn reconstruct_partitions(
+  graph: &Graph,
+  plan: &ReconstructionPlan,
+  sources: Vec<SplitSource>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  options: &ReconstructionOptions,
+  rng: &mut dyn Rng,
+  cancel: &dyn Cancel,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<Vec<(PartitionSource, AncestralPartition)>, Report> {
+  let n_sources = sources.len();
+  match *plan {
+    ReconstructionPlan::Fitch => {
+      let (sources, inputs): (Vec<_>, Vec<_>) = sources
+        .into_iter()
+        .map(
+          |SplitSource {
+             source,
+             alphabet,
+             nodes,
+           }| (source, (alphabet, nodes)),
+        )
+        .unzip();
+      let partitions = reconstruct_fitch(graph, inputs, options.impute, cancel, stages, log)?;
+      Ok(izip!(sources, partitions).collect())
+    },
+    ReconstructionPlan::Marginal { .. } => sources
+      .into_iter()
+      .map(
+        |SplitSource {
+           source,
+           alphabet,
+           nodes,
+         }| {
+          if n_sources > 1 {
+            progress_info!(
+              log,
+              "Partition {}: alignment '{}'",
+              source.number,
+              source.path.display()
+            );
+          }
+          let partition = reconstruct_partition(
+            graph,
+            plan,
+            alphabet,
+            nodes,
+            branch_lengths,
+            options,
+            rng,
+            cancel,
+            stages,
+            log,
+          )?;
+          Ok((source, partition))
+        },
+      )
+      .collect(),
+  }
+}
+
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the partition inputs come from the command and the random generator, cancellation, stage and log sinks are run services of the caller; no type holds both groups"
+)]
 pub(crate) fn reconstruct_partition(
   graph: &Graph,
   plan: &ReconstructionPlan,
@@ -68,7 +136,16 @@ pub(crate) fn reconstruct_partition(
   log: &dyn LogSink,
 ) -> Result<AncestralPartition, Report> {
   match *plan {
-    ReconstructionPlan::Fitch => reconstruct_fitch(graph, alphabet, node_inputs, options.impute, cancel, stages, log),
+    ReconstructionPlan::Fitch => reconstruct_fitch(
+      graph,
+      vec![(alphabet, node_inputs)],
+      options.impute,
+      cancel,
+      stages,
+      log,
+    )?
+    .pop()
+    .ok_or_else(|| make_internal_report!("Fitch reconstruction lost its partition")),
     ReconstructionPlan::Marginal {
       representation,
       model,
@@ -105,15 +182,17 @@ pub(crate) enum ReconstructionPlan {
 
 fn reconstruct_fitch(
   graph: &Graph,
-  alphabet: Alphabet,
-  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  inputs: Vec<(Alphabet, BTreeMap<GraphNodeKey, NodeSeqInput>)>,
   impute: bool,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<AncestralPartition, Report> {
+) -> Result<Vec<AncestralPartition>, Report> {
   checkpoint(cancel, stages, "Fitch parsimony", 0.3)?;
-  let mut partitions = vec![create_fitch_partition(graph, alphabet, node_inputs)?];
+  let mut partitions = inputs
+    .into_iter()
+    .map(|(alphabet, node_inputs)| create_fitch_partition(graph, alphabet, node_inputs))
+    .collect::<Result<Vec<_>, Report>>()?;
 
   if impute {
     progress_warn!(
@@ -124,10 +203,7 @@ fn reconstruct_fitch(
   }
 
   ancestral_reconstruction_fitch(graph, &mut partitions)?;
-  let partition = partitions
-    .pop()
-    .ok_or_else(|| make_internal_report!("Fitch reconstruction lost its partition"))?;
-  Ok(AncestralPartition::Fitch(partition))
+  Ok(partitions.into_iter().map(AncestralPartition::Fitch).collect())
 }
 
 #[expect(

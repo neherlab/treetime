@@ -10,7 +10,8 @@ mod tests {
   use crate::partition::create::Representation;
   use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
-  use crate::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
+  use crate::seq::mutation::{Mutation, MutationEvent, Sub};
+  use crate::seq::sink::SeqTrack;
   use crate::test_utils::RecordingSeqSink;
   use crate::test_utils::complete_leaf_sequences;
   use crate::test_utils::leaf_seq_inputs;
@@ -47,7 +48,7 @@ mod tests {
       dataset,
       "aln.fasta.xz",
       Alphabet::default(),
-      &MutationTrack::Nucleotide,
+      SeqTrack::Nuc(1),
       plan,
       impute,
       include_leaves,
@@ -65,7 +66,7 @@ mod tests {
       "rsv/a/20",
       "translations/G.fasta.xz",
       Alphabet::new(AlphabetName::Aa)?,
-      &MutationTrack::AminoAcid("G".to_owned()),
+      SeqTrack::Aa("G"),
       helpers::marginal(representation, GtrModelName::Infer),
       impute,
       true,
@@ -150,7 +151,7 @@ mod tests {
       dataset: &str,
       alignment: &str,
       alphabet: Alphabet,
-      track: &MutationTrack,
+      track: SeqTrack<'_>,
       plan: ReconstructionPlan,
       impute: bool,
       include_leaves: bool,
@@ -161,8 +162,8 @@ mod tests {
       let parse = nwk_read_file(root.join("tree.nwk"))?;
       let names = parse.names();
       let read_alphabet = match track {
-        MutationTrack::Nucleotide => alphabet.clone(),
-        MutationTrack::AminoAcid(_) => Alphabet::new(AlphabetName::Aa)?,
+        SeqTrack::Nuc(_) => alphabet.clone(),
+        SeqTrack::Aa(_) => Alphabet::new(AlphabetName::Aa)?,
       };
       let sequences = fasta_read_file(root.join(alignment), &read_alphabet)?
         .into_iter()
@@ -308,8 +309,7 @@ mod tests {
         &NoopProgress,
       )?;
       let mut sink = RecordingSeqSink::default();
-      let derived =
-        partition.stream_sequences(graph, &MutationTrack::Nucleotide, include_leaves, true, Some(&mut sink))?;
+      let derived = partition.stream_sequences(graph, SeqTrack::Nuc(1), include_leaves, true, Some(&mut sink))?;
       let node_sequences: BTreeMap<GraphNodeKey, Seq> =
         sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
       let name = |key: GraphNodeKey| names[&key].clone().expect("all test nodes are named");

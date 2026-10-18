@@ -1,3 +1,4 @@
+use crate::seq::mutation::MutationTrack;
 use eyre::Report;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -18,8 +19,17 @@ pub struct SeqItem<'a> {
   pub emitted: bool,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SeqTrack<'a> {
-  Nuc,
+  Nuc(usize),
   Aa(&'a str),
+}
+
+impl SeqTrack<'_> {
+  pub(crate) fn mutation_track(self) -> MutationTrack {
+    match self {
+      Self::Nuc(_) => MutationTrack::Nucleotide,
+      Self::Aa(cds) => MutationTrack::AminoAcid(cds.to_owned()),
+    }
+  }
 }

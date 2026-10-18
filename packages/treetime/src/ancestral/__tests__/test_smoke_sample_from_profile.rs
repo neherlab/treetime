@@ -10,9 +10,8 @@ mod tests {
   use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
 
-  use crate::seq::alignment::{AncestralInput, EdgeSeqInput};
   use crate::test_utils::RecordingSeqSink;
-  use crate::test_utils::{CompletedSequences, complete_leaf_sequences};
+  use crate::test_utils::{ancestral_input_for_tree, complete_sequence_source};
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
@@ -62,19 +61,8 @@ mod tests {
       sample_from_profile: SampleMode::Root,
     };
     let names = parse.names();
-    let CompletedSequences { nodes, mask } =
-      complete_leaf_sequences(&parse.graph, &names, sequences, &alphabet).unwrap();
-    let input = AncestralInput {
-      nodes,
-      edges: parse
-        .branch_lengths
-        .into_iter()
-        .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
-        .collect(),
-      graph: parse.graph,
-      alphabet,
-      mask,
-    };
+    let source = complete_sequence_source(&parse.graph, &names, sequences, &alphabet, "aln.fasta").unwrap();
+    let input = ancestral_input_for_tree(parse, vec![source]);
 
     let result = pipeline::run(&params, input, None, &NoopCancel, &NoopProgress, &NoopProgress);
     assert!(result.is_err(), "parsimony with posterior sampling must be rejected");
@@ -121,18 +109,8 @@ mod tests {
         sample_from_profile: mode,
       };
       let names = parse.names();
-      let CompletedSequences { nodes, mask } = complete_leaf_sequences(&parse.graph, &names, sequences, &alphabet)?;
-      let input = AncestralInput {
-        nodes,
-        edges: parse
-          .branch_lengths
-          .into_iter()
-          .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
-          .collect(),
-        graph: parse.graph,
-        alphabet,
-        mask,
-      };
+      let source = complete_sequence_source(&parse.graph, &names, sequences, &alphabet, "aln.fasta")?;
+      let input = ancestral_input_for_tree(parse, vec![source]);
 
       let mut sink = RecordingSeqSink::default();
       pipeline::run(

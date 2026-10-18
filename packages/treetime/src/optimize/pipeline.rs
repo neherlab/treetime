@@ -1,10 +1,8 @@
-use crate::alphabet::alphabet::Alphabet;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
-use crate::gtr::gtr::GTR;
 use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::indel::IndelPolicy;
@@ -15,11 +13,13 @@ use crate::optimize::run_loop::{apply_initial_guess_mode, normalize_partition_ra
 use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
+use crate::partition::result::{PartitionResult, PartitionSequences, PartitionSource, SplitSource, split_source};
 use crate::progress::{LogSink, StageSink};
 use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_min_dev};
 use crate::reroot::params::BrentParams;
 use crate::reroot::variance::VarianceModel;
-use crate::seq::alignment::NodeSeqInput;
+use crate::seq::alignment::SequenceSource;
+use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use crate::{progress_info, progress_warn};
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -56,14 +56,18 @@ pub fn run(
   }
 
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
-  let sequences = std::mem::take(&mut input.sequences);
+  let SplitSource {
+    source,
+    alphabet,
+    nodes,
+  } = split_source(1, input.source);
 
   let reconstruction = build_marginal_partition(
     Representation::resolve(params.dense),
     params.model,
     &input.graph,
-    input.alphabet,
-    sequences,
+    alphabet,
+    nodes,
     &branch_lengths_or_zero(&branch_lengths),
     log,
   )
@@ -152,11 +156,18 @@ pub fn run(
     .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))
     .map_err(OperationError::classify)?;
 
+  let result = optimize_result(
+    &input.graph,
+    source,
+    &reconstruction,
+    params.model,
+    loop_result.indel_rate,
+  )
+  .map_err(OperationError::InferenceFailed)?;
+
   Ok(OptimizeOutput {
     graph: input.graph,
-    gtr: reconstruction.gtr().clone(),
-    model_name: params.model,
-    reconstruction,
+    results: vec![result],
     branch_lengths,
     names: loop_result.names,
   })
@@ -172,19 +183,52 @@ pub struct OptimizeParams {
 
 pub struct OptimizeInput {
   pub graph: Graph,
-  pub alphabet: Alphabet,
-  pub sequences: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  pub source: SequenceSource,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 #[derive(Debug)]
 pub struct OptimizeOutput {
   pub graph: Graph,
-  pub gtr: GTR,
-  pub model_name: GtrModelName,
-  pub reconstruction: MarginalReconstruction,
+  pub results: Vec<PartitionResult>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
+}
+
+fn optimize_result(
+  graph: &Graph,
+  source: PartitionSource,
+  reconstruction: &MarginalReconstruction,
+  model_name: GtrModelName,
+  indel_rate: Option<f64>,
+) -> Result<PartitionResult, Report> {
+  let edge_mutations = graph
+    .get_edges()
+    .map(|edge| {
+      let edge_key = edge.key();
+      Ok((
+        edge_key,
+        reconstruction.edge_mutations(graph, edge_key, &MutationTrack::Nucleotide)?,
+      ))
+    })
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+  let mutations = SequenceMutations {
+    root_sequence: reconstruction.root_sequence(graph)?,
+    edge_mutations,
+  };
+  let alphabet = reconstruction.alphabet().clone();
+  Ok(PartitionResult {
+    number: source.number,
+    path: source.path,
+    length: source.length,
+    mask: source.mask,
+    model_name,
+    gtr: Some(reconstruction.gtr().clone()),
+    indel_rate,
+    log_lh: Some(reconstruction.graph_log_lh(graph)?),
+    sequences: Some(PartitionSequences::new(mutations, &alphabet)?),
+    alphabet,
+  })
 }
 
 fn pre_reroot_optimize(

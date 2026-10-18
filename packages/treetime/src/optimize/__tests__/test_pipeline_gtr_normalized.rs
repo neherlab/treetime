@@ -8,7 +8,7 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
   use crate::progress::NoopProgress;
-  use crate::test_utils::leaf_seq_inputs;
+  use crate::test_utils::{leaf_seq_inputs, sequence_source};
   use approx::assert_ulps_eq;
   use eyre::Report;
   use std::path::Path;
@@ -54,17 +54,17 @@ mod tests {
     };
     let input = OptimizeInput {
       graph,
-      alphabet,
-      sequences,
+      source: sequence_source(alphabet, sequences)?,
       branch_lengths,
     };
 
     let output = run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
-    assert_ulps_eq!(output.gtr.mu(), 1.0, max_ulps = 4);
-
-    let partition_mu = output.reconstruction.gtr().mu();
-    assert_ulps_eq!(output.gtr.mu(), partition_mu, max_ulps = 4);
+    let [result] = output.results.as_slice() else {
+      panic!("one alignment gives one result");
+    };
+    let gtr = result.gtr.as_ref().expect("optimize fits a model");
+    assert_ulps_eq!(gtr.mu(), 1.0, max_ulps = 4);
 
     Ok(())
   }

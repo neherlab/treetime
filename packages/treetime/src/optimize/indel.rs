@@ -57,6 +57,13 @@ impl EdgeIndels {
     }
   }
 
+  pub(crate) fn included_rate(&self) -> Option<f64> {
+    match self {
+      Self::Included { rate, .. } => Some(*rate),
+      Self::Excluded => None,
+    }
+  }
+
   pub(crate) fn rate(&self) -> f64 {
     match self {
       Self::Included { rate, .. } => *rate,

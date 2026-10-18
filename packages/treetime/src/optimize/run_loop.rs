@@ -109,6 +109,7 @@ pub(crate) fn run_optimize_loop(
 
   Ok(OptimizeLoopResult {
     reconstruction,
+    indel_rate: indels.included_rate(),
     branch_lengths: state.branch_lengths,
     names: state.names,
     lh_history,
@@ -126,6 +127,8 @@ struct LoopState {
 #[derive(Clone, Debug)]
 pub(crate) struct OptimizeLoopResult {
   pub reconstruction: MarginalReconstruction,
+
+  pub indel_rate: Option<f64>,
 
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 

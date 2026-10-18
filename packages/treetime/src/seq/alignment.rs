@@ -14,17 +14,11 @@ use treetime_primitives::{AlignmentRecord, Seq};
 #[derive(Debug)]
 pub struct AncestralInput {
   pub graph: Graph,
-  pub nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
   pub edges: BTreeMap<GraphEdgeKey, EdgeSeqInput>,
-  pub alphabet: Alphabet,
-  pub mask: Vec<bool>,
+  pub sources: Vec<SequenceSource>,
 }
 
 impl AncestralInput {
-  pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
-    self.nodes.iter().map(|(key, node)| (*key, node.name.clone())).collect()
-  }
-
   pub fn branch_lengths(&self) -> BTreeMap<GraphEdgeKey, Option<f64>> {
     self
       .edges

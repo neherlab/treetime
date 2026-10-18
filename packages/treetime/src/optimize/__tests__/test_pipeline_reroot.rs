@@ -4,6 +4,7 @@ mod tests {
   use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use crate::optimize::pipeline::{OptimizeInput, run};
   use crate::progress::NoopProgress;
+  use crate::test_utils::sequence_source;
   use eyre::Report;
   use helpers::{
     assert_branch_lengths_valid, leaf_names, load, load_with_unary_root, params_with, root_child_keys, root_key,
@@ -21,8 +22,7 @@ mod tests {
       &params_with(Some(RerootSpec::Method(RerootMethod::MinDev))),
       OptimizeInput {
         graph,
-        alphabet,
-        sequences,
+        source: sequence_source(alphabet, sequences)?,
         branch_lengths,
       },
       &names,
@@ -51,8 +51,7 @@ mod tests {
       &params_with(Some(RerootSpec::Tips(tips))),
       OptimizeInput {
         graph,
-        alphabet,
-        sequences,
+        source: sequence_source(alphabet, sequences)?,
         branch_lengths,
       },
       &names,
@@ -79,8 +78,7 @@ mod tests {
       &params,
       OptimizeInput {
         graph,
-        alphabet,
-        sequences,
+        source: sequence_source(alphabet, sequences)?,
         branch_lengths,
       },
       &names,
@@ -114,8 +112,7 @@ mod tests {
       &params,
       OptimizeInput {
         graph,
-        alphabet,
-        sequences,
+        source: sequence_source(alphabet, sequences)?,
         branch_lengths,
       },
       &names,
@@ -146,8 +143,7 @@ mod tests {
       &params_with(None),
       OptimizeInput {
         graph,
-        alphabet,
-        sequences,
+        source: sequence_source(alphabet, sequences)?,
         branch_lengths,
       },
       &names,

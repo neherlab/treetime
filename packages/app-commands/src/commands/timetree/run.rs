@@ -18,6 +18,7 @@ use treetime::cancel::Cancel;
 use treetime::clock::divergence::root_to_node_divergences;
 use treetime::clock::find_best_root::params::RerootSpec;
 use treetime::optimize::params::BranchLengthMode;
+use treetime::partition::result::PartitionSequences;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::mutation::Mutation;
@@ -25,7 +26,7 @@ use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime::timetree::params::TimetreeParams;
-use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput, TimetreeSequences};
+use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
 use treetime::{make_error, make_internal_error};
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
@@ -68,17 +69,16 @@ pub fn run_timetree_estimation(
   let reroot_spec = args.reroot.spec(&input_data.graph, &parse_names)?;
   let params = timetree_params(args, reroot_spec, sequence_outputs_requested, seed);
 
-  let (sequences, aln_descs) = input_data
+  let (source, aln_descs) = input_data
     .sequences
-    .map(|aligned| (aligned.source.nodes, aligned.descs))
+    .map(|aligned| (aligned.source, aligned.descs))
     .unzip();
-  let alphabet = input_data.alphabet.clone();
+  let alphabet = input_data.alphabet;
   let unknown = alphabet.unknown();
   let input = TimetreeInput {
     graph: input_data.graph,
     names: parse_names.clone(),
-    alphabet: input_data.alphabet,
-    sequences,
+    source,
     dates: input_data.dates,
     branch_lengths: input_data.branch_lengths,
   };
@@ -219,7 +219,10 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
 
   write_gtr_output(
     resolved,
-    output.gtr.as_ref().zip(output.model_name),
+    output
+      .results
+      .first()
+      .and_then(|result| Some((result.gtr.as_ref()?, result.model_name))),
     "no GTR model was fitted (provide an alignment with --alignment)",
     log,
   )
@@ -273,9 +276,10 @@ fn write_result_outputs(
     clock_model,
     confidence_intervals,
     dates,
-    sequences,
+    results,
     ..
   } = output;
+  let sequences = results.into_iter().next().and_then(|result| result.sequences);
   let (maps, mutation_counts) = timetree_output_maps(&graph, sequences, inputs.filter, inputs.mutation_units)?;
 
   let topology_order = args.topology_order.resolve_topology_order(
@@ -430,8 +434,8 @@ impl SeqSink for ReconstructedNucSink {
 
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     match item.track {
-      SeqTrack::Nuc if !item.emitted => Ok(()),
-      SeqTrack::Nuc => {
+      SeqTrack::Nuc(_) if !item.emitted => Ok(()),
+      SeqTrack::Nuc(_) => {
         let name = self.names[&item.key].clone().unwrap_or_default();
         let desc = self.descs.get(&item.key).cloned().flatten();
         self.writer.write(&name, desc.as_deref(), item.seq)
@@ -445,11 +449,11 @@ impl SeqSink for ReconstructedNucSink {
 
 fn timetree_output_maps(
   graph: &Graph,
-  sequences: Option<TimetreeSequences>,
+  sequences: Option<PartitionSequences>,
   filter: UnknownMutationFilter,
   mutation_units: bool,
 ) -> Result<(TimetreeOutputMaps, Option<BTreeMap<GraphEdgeKey, usize>>), Report> {
-  let Some(TimetreeSequences {
+  let Some(PartitionSequences {
     root_sequence,
     edge_mutations,
     edge_mutation_counts,

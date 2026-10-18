@@ -5,6 +5,7 @@ mod tests {
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::sparse::mutations::sparse_edge_mutations;
   use crate::seq::mutation::{MutationTrack, stream_sequence_mutations};
+  use crate::seq::sink::SeqTrack;
   use proptest::prelude::*;
   use treetime_io::nwk::nwk_read;
 
@@ -41,7 +42,7 @@ mod tests {
       let expected = stream_sequence_mutations(
         &graph,
         reconstruction.alphabet(),
-        &track,
+        SeqTrack::Nuc(1),
         false,
         report_unknown,
         |node_key| reconstruction.node_sequence(&graph, impute, node_key),

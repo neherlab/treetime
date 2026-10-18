@@ -9,7 +9,8 @@ mod tests {
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sample::SampleMode;
-  use crate::seq::mutation::{MutationTrack, stream_sequence_mutations};
+  use crate::seq::mutation::stream_sequence_mutations;
+  use crate::seq::sink::SeqTrack;
   use crate::test_utils::RecordingSeqSink;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
@@ -82,7 +83,7 @@ mod tests {
     stream_sequence_mutations(
       &graph,
       reconstruction.alphabet(),
-      &MutationTrack::Nucleotide,
+      SeqTrack::Nuc(1),
       include_leaves,
       true,
       |key| reconstruction.node_sequence(&graph, false, key),

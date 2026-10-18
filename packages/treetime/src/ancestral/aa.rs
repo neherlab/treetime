@@ -9,8 +9,8 @@ use crate::partition::create::Representation;
 use crate::partition::marginal::sample::SampleMode;
 use crate::progress::{LogSink, NoopProgress};
 use crate::seq::alignment::LeafSequences;
-use crate::seq::mutation::{MutationEvent, MutationTrack, SequenceMutations, Sub};
-use crate::seq::sink::SeqSink;
+use crate::seq::mutation::{MutationEvent, SequenceMutations, Sub};
+use crate::seq::sink::{SeqSink, SeqTrack};
 use crate::{make_error, make_internal_report};
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -83,7 +83,7 @@ pub fn reconstruct_aa(
     let mutations = partition
       .stream_sequences(
         graph,
-        &MutationTrack::AminoAcid(name.clone()),
+        SeqTrack::Aa(&name),
         params.include_leaves,
         true,
         seq_sink.as_deref_mut(),

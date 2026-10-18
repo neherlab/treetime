@@ -1,0 +1,204 @@
+#[cfg(test)]
+mod tests {
+  use crate::ancestral::params::MethodAncestral;
+  use eyre::Report;
+  use helpers::{assert_same_partition, column_blocks, reconstruct, total_log_lh};
+  use itertools::{Itertools, izip};
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use std::slice;
+  use treetime_utils::pretty_assert_abs_diff_eq;
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::fitch(       MethodAncestral::Parsimony, None,        0)]
+  #[case::dense(       MethodAncestral::Marginal,  Some(true),  0)]
+  #[case::sparse(      MethodAncestral::Marginal,  Some(false), 0)]
+  #[case::dense_refit( MethodAncestral::Marginal,  Some(true),  2)]
+  #[case::sparse_refit(MethodAncestral::Marginal,  Some(false), 2)]
+  #[trace]
+  fn test_ancestral_two_alignments_equal_two_separate_runs(
+    #[case] method: MethodAncestral,
+    #[case] dense: Option<bool>,
+    #[case] gtr_iterations: usize,
+  ) -> Result<(), Report> {
+    let blocks = column_blocks()?;
+    let (joint, joint_tracks) = reconstruct(method, dense, gtr_iterations, &blocks)?;
+    let separate = blocks
+      .iter()
+      .map(|block| reconstruct(method, dense, gtr_iterations, slice::from_ref(block)))
+      .collect::<Result<Vec<_>, Report>>()?;
+
+    assert_eq!(
+      vec![1, 2],
+      joint.results.iter().map(|result| result.number).collect_vec()
+    );
+    for (joint_result, (single, _)) in izip!(&joint.results, &separate) {
+      let [single_result] = single.results.as_slice() else {
+        panic!("one alignment gives one result");
+      };
+      assert_same_partition(joint_result, single_result);
+    }
+
+    let node_count = joint.graph.num_nodes();
+    let expected_tracks = [vec![1; node_count], vec![2; node_count]].concat();
+    assert_eq!(expected_tracks, joint_tracks);
+
+    let separate_total = separate
+      .iter()
+      .map(|(single, _)| total_log_lh(&single.results))
+      .sum::<Option<f64>>();
+    match (total_log_lh(&joint.results), separate_total) {
+      (Some(joint_total), Some(separate_total)) => {
+        pretty_assert_abs_diff_eq!(separate_total, joint_total, epsilon = 1e-10);
+      },
+      (joint_total, separate_total) => {
+        assert_eq!(
+          (None, None, MethodAncestral::Parsimony),
+          (joint_total, separate_total, method)
+        );
+      },
+    }
+    Ok(())
+  }
+
+  mod helpers {
+    use crate::alphabet::alphabet::Alphabet;
+    use crate::ancestral::params::{AncestralParams, MethodAncestral};
+    use crate::ancestral::pipeline::{AncestralOutput, run};
+    use crate::cancel::NoopCancel;
+    use crate::gtr::get_gtr::GtrModelName;
+    use crate::partition::marginal::sample::SampleMode;
+    use crate::partition::result::PartitionResult;
+    use crate::progress::NoopProgress;
+    use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
+    use crate::test_utils::{ancestral_input_for_tree, complete_sequence_source};
+    use eyre::Report;
+    use pretty_assertions::assert_eq;
+    use std::ops::Range;
+    use std::path::{Path, PathBuf};
+    use std::sync::LazyLock;
+    use treetime_io::fasta::fasta_read_file;
+    use treetime_io::nwk::nwk_read_file;
+    use treetime_primitives::{AlignmentRecord, LogLh, Seq};
+    use treetime_utils::make_internal_report;
+    use treetime_utils::pretty_assert_abs_diff_eq;
+
+    static DATASET: LazyLock<PathBuf> =
+      LazyLock::new(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/flu/h3n2/20"));
+
+    pub(super) fn column_blocks() -> Result<Vec<Block>, Report> {
+      let records: Vec<AlignmentRecord> = fasta_read_file(DATASET.join("aln.fasta.xz"), &Alphabet::default())?
+        .into_iter()
+        .map(AlignmentRecord::from)
+        .collect();
+      let length = records
+        .first()
+        .map(|record| record.seq.len())
+        .ok_or_else(|| make_internal_report!("The alignment has no records"))?;
+      let split = length.div_ceil(2);
+      let block = |path: &str, columns: Range<usize>| Block {
+        path: path.to_owned(),
+        records: records
+          .iter()
+          .map(|record| AlignmentRecord {
+            name: record.name.clone(),
+            seq: Seq::from(&record.seq.as_slice()[columns.clone()]),
+          })
+          .collect(),
+      };
+      Ok(vec![
+        block("first.fasta", 0..split),
+        block("second.fasta", split..length),
+      ])
+    }
+
+    #[derive(Clone)]
+    pub(super) struct Block {
+      path: String,
+      records: Vec<AlignmentRecord>,
+    }
+
+    pub(super) fn reconstruct(
+      method: MethodAncestral,
+      dense: Option<bool>,
+      gtr_iterations: usize,
+      blocks: &[Block],
+    ) -> Result<(AncestralOutput, Vec<usize>), Report> {
+      let alphabet = Alphabet::default();
+      let parse = nwk_read_file(DATASET.join("tree.nwk"))?;
+      let names = parse.names();
+      let sources = blocks
+        .iter()
+        .map(|block| complete_sequence_source(&parse.graph, &names, block.records.clone(), &alphabet, &block.path))
+        .collect::<Result<Vec<_>, Report>>()?;
+      let params = AncestralParams {
+        method,
+        model: GtrModelName::Infer,
+        dense,
+        include_leaves: true,
+        report_ambiguous: true,
+        impute_missing_data: false,
+        gtr_iterations,
+        site_specific_gtr: false,
+        seed: 0,
+        sample_from_profile: SampleMode::Argmax,
+      };
+      let mut sink = TrackSink::default();
+      let output = run(
+        &params,
+        ancestral_input_for_tree(parse, sources),
+        Some(&mut sink),
+        &NoopCancel,
+        &NoopProgress,
+        &NoopProgress,
+      )?;
+      Ok((output, sink.tracks))
+    }
+
+    pub(super) fn assert_same_partition(joint: &PartitionResult, single: &PartitionResult) {
+      assert_eq!(
+        (&single.path, single.length, &single.mask, single.model_name),
+        (&joint.path, joint.length, &joint.mask, joint.model_name)
+      );
+      let joint_sequences = joint.sequences.as_ref().expect("ancestral returns sequences");
+      let single_sequences = single.sequences.as_ref().expect("ancestral returns sequences");
+      assert_eq!(single_sequences.root_sequence, joint_sequences.root_sequence);
+      assert_eq!(single_sequences.edge_mutations, joint_sequences.edge_mutations);
+      assert_eq!(
+        single_sequences.edge_mutation_counts,
+        joint_sequences.edge_mutation_counts
+      );
+      let model = |result: &PartitionResult| {
+        result
+          .gtr
+          .as_ref()
+          .map(|gtr| (gtr.mu(), gtr.W().clone(), gtr.pi().clone()))
+      };
+      assert_eq!(model(single), model(joint));
+      match (single.log_lh, joint.log_lh) {
+        (Some(single), Some(joint)) => pretty_assert_abs_diff_eq!(single.value(), joint.value(), epsilon = 1e-10),
+        (single, joint) => assert_eq!((None, None), (single, joint)),
+      }
+    }
+
+    pub(super) fn total_log_lh(results: &[PartitionResult]) -> Option<f64> {
+      results.iter().map(|result| result.log_lh.map(LogLh::value)).sum()
+    }
+
+    #[derive(Default)]
+    struct TrackSink {
+      tracks: Vec<usize>,
+    }
+
+    impl SeqSink for TrackSink {
+      fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
+        let SeqTrack::Nuc(number) = item.track else {
+          panic!("ancestral reconstruction streams only nucleotide tracks");
+        };
+        self.tracks.push(number);
+        Ok(())
+      }
+    }
+  }
+}

@@ -9,6 +9,7 @@ use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::Alphabet;
@@ -17,15 +18,16 @@ use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::GtrOutput;
 use treetime::optimize::params::OptimizeLoopSettings;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
-use treetime::partition::marginal::reconstruction::MarginalReconstruction;
+use treetime::partition::result::PartitionSequences;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
-use treetime::seq::mutation::{Mutation, MutationTrack, edge_state_change_counts};
+use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
+use treetime_utils::make_internal_error;
 
 pub fn run_optimize(
   args: &TreetimeOptimizeArgs,
@@ -70,22 +72,24 @@ pub fn run_optimize(
   let unknown = alphabet.unknown();
   let input = OptimizeInput {
     graph,
-    alphabet: source.alphabet,
-    sequences: source.nodes,
+    source,
     branch_lengths,
   };
 
   let output = pipeline::run(&params, input, &names, cancel, stages, log).map_err(|err| err.into_report())?;
   let pipeline::OptimizeOutput {
     mut graph,
-    gtr,
-    model_name,
-    reconstruction,
+    results,
     branch_lengths,
     names,
   } = output;
-
-  let maps = gather_optimize_output_maps(&graph, &reconstruction, UnknownMutationFilter::hiding_unknown(unknown))?;
+  let Ok(mut result) = results.into_iter().exactly_one() else {
+    return make_internal_error!("Optimize is expected to return one partition result");
+  };
+  let Some(sequences) = result.sequences.take() else {
+    return make_internal_error!("Optimize returned no reconstructed sequences");
+  };
+  let maps = optimize_output_maps(&graph, sequences, UnknownMutationFilter::hiding_unknown(unknown))?;
 
   let topology_order = args
     .topology_order
@@ -93,14 +97,14 @@ pub fn run_optimize(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  if let Some(path) = resolved.path(OutputSelection::Gtr) {
-    let gtr_output = GtrOutput::builder().gtr(&gtr).model_name(model_name).build();
+  if let (Some(path), Some(gtr)) = (resolved.path(OutputSelection::Gtr), &result.gtr) {
+    let gtr_output = GtrOutput::builder().gtr(gtr).model_name(result.model_name).build();
     json_write_file(path, &gtr_output, JsonPretty(true))?;
   }
 
   let trees = OptimizeTrees {
     graph: &graph,
-    alphabet: reconstruction.alphabet(),
+    alphabet: &result.alphabet,
     names: &names,
     branch_lengths: &branch_lengths,
     maps: &maps,
@@ -164,24 +168,18 @@ struct OptimizeTrees<'a> {
   input_tree: &'a Path,
 }
 
-fn gather_optimize_output_maps(
+fn optimize_output_maps(
   graph: &Graph,
-  reconstruction: &MarginalReconstruction,
+  sequences: PartitionSequences,
   filter: UnknownMutationFilter,
 ) -> Result<OptimizeOutputMaps, Report> {
-  let edge_mutations = graph
-    .get_edges()
-    .map(|edge| {
-      let key = edge.key();
-      Ok((
-        key,
-        reconstruction.edge_mutations(graph, key, &MutationTrack::Nucleotide)?,
-      ))
-    })
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
-  let edge_mutation_counts = edge_state_change_counts(&edge_mutations, reconstruction.alphabet())?;
+  let PartitionSequences {
+    root_sequence,
+    edge_mutations,
+    edge_mutation_counts,
+  } = sequences;
   Ok(OptimizeOutputMaps {
-    root_sequence: reconstruction.root_sequence(graph)?,
+    root_sequence,
     edge_mutations: filter.reported_edge_mutations(graph, edge_mutations)?,
     edge_mutation_counts,
   })

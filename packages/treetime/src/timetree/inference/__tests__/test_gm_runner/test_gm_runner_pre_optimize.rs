@@ -6,7 +6,7 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::optimize::indel::IndelPolicy;
   use crate::progress::NoopProgress;
-  use crate::test_utils::{dates_by_node, leaf_seq_inputs, marginal_timetree_params};
+  use crate::test_utils::{dates_by_node, leaf_seq_inputs, marginal_timetree_params, sequence_source};
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline::{self, TimetreeInput};
   use eyre::Report;
@@ -37,8 +37,7 @@ mod tests {
     let input = TimetreeInput {
       graph: nwk_parsed.graph,
       names,
-      alphabet: ALPHABET.clone(),
-      sequences: Some(aln_nodes),
+      source: Some(sequence_source(ALPHABET.clone(), aln_nodes)?),
       dates: Some(dates),
       branch_lengths: nwk_parsed.branch_lengths,
     };

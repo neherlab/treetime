@@ -5,10 +5,11 @@ mod tests {
   use crate::clock::divergence::root_to_node_divergences;
   use crate::error::OperationError;
   use crate::optimize::params::BranchLengthMode;
+  use crate::partition::result::{PartitionResult, PartitionSequences};
   use crate::progress::NoopProgress;
   use crate::seq::sink::SeqSink;
   use crate::test_utils::{
-    RecordingSeqSink, dates_by_node, find_node_key_by_name, leaf_seq_inputs, marginal_timetree_params,
+    RecordingSeqSink, dates_by_node, find_node_key_by_name, leaf_seq_inputs, marginal_timetree_params, sequence_source,
   };
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
@@ -223,8 +224,8 @@ mod tests {
     let with_sink = helpers::run(&params, input, Some(&mut RecordingSeqSink::default()))?;
 
     let edge_count = without_sink.graph.get_edges().count();
-    let without_sink = without_sink.sequences.expect("sequence outputs were requested");
-    let with_sink = with_sink.sequences.expect("sequence outputs were requested");
+    let without_sink = helpers::only_sequences(without_sink);
+    let with_sink = helpers::only_sequences(with_sink);
     assert_eq!(edge_count, without_sink.edge_mutations.len());
     assert_eq!(without_sink.root_sequence, with_sink.root_sequence);
     assert_eq!(without_sink.edge_mutations, with_sink.edge_mutations);
@@ -273,6 +274,11 @@ mod tests {
       }
     }
 
+    pub(super) fn only_sequences(output: TimetreeOutput) -> PartitionSequences {
+      let [result] = <[PartitionResult; 1]>::try_from(output.results).expect("one alignment gives one result");
+      result.sequences.expect("sequence outputs were requested")
+    }
+
     pub(super) fn star_input(dates: Option<BTreeMap<String, Option<DateConstraint>>>) -> Result<TimetreeInput, Report> {
       let nwk_parsed = nwk_read(STAR_TREE.as_bytes())?;
       let names = nwk_parsed.names();
@@ -280,8 +286,7 @@ mod tests {
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
         names,
-        alphabet: Alphabet::default(),
-        sequences: None,
+        source: None,
         dates,
         branch_lengths: nwk_parsed.branch_lengths,
       };
@@ -318,10 +323,13 @@ mod tests {
       let alphabet = Alphabet::default();
       let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
-      let sequences = if with_alignment {
+      let source = if with_alignment {
         let records = fasta_read_file(zika_path("aln.fasta.xz"), &alphabet)?;
         let records = records.into_iter().map(AlignmentRecord::from).collect();
-        Some(leaf_seq_inputs(&nwk_parsed.graph, &names, records))
+        Some(sequence_source(
+          alphabet,
+          leaf_seq_inputs(&nwk_parsed.graph, &names, records),
+        )?)
       } else {
         None
       };
@@ -329,8 +337,7 @@ mod tests {
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
         names,
-        alphabet,
-        sequences,
+        source,
         dates: Some(dates),
         branch_lengths: nwk_parsed.branch_lengths,
       };

@@ -42,15 +42,15 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::test_utils::{CompletedSequences, complete_leaf_sequences};
+    use crate::test_utils::{ancestral_input_for_tree, complete_sequence_source};
 
     use crate::ancestral::params::{AncestralParams, MethodAncestral};
     use crate::cancel::NoopCancel;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::gtr::gtr::GTR;
     use crate::partition::marginal::sample::SampleMode;
+    use crate::partition::result::PartitionResult;
     use crate::progress::NoopProgress;
-    use crate::seq::alignment::{AncestralInput, EdgeSeqInput};
     use eyre::{OptionExt, Report};
     use std::path::PathBuf;
     use std::sync::LazyLock;
@@ -88,20 +88,11 @@ mod tests {
         sample_from_profile: SampleMode::Argmax,
       };
       let names = parse.names();
-      let CompletedSequences { nodes, mask } = complete_leaf_sequences(&parse.graph, &names, sequences, &alphabet)?;
-      let input = AncestralInput {
-        nodes,
-        edges: parse
-          .branch_lengths
-          .into_iter()
-          .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
-          .collect(),
-        graph: parse.graph,
-        alphabet,
-        mask,
-      };
+      let source = complete_sequence_source(&parse.graph, &names, sequences, &alphabet, "aln.fasta")?;
+      let input = ancestral_input_for_tree(parse, vec![source]);
 
       let result = crate::ancestral::pipeline::run(&params, input, None, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      let [result] = <[PartitionResult; 1]>::try_from(result.results).expect("one alignment gives one result");
       result.gtr.ok_or_eyre("GTR should be fitted with --model=infer")
     }
   }

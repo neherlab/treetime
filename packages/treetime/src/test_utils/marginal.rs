@@ -1,5 +1,6 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
+use crate::ancestral::mask::create_mask;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::gtr::GTR;
 use crate::partition::fitch::passes::create_fitch_partition;
@@ -7,15 +8,18 @@ use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::progress::NoopProgress;
-use crate::seq::alignment::{NodeSeqInput, pair_leaf_sequences};
+use crate::seq::alignment::{
+  AncestralInput, EdgeSeqInput, NodeSeqInput, SequenceSource, get_common_length_of_node_inputs, pair_leaf_sequences,
+};
 use crate::seq::sink::{SeqItem, SeqSink};
 use eyre::Report;
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 use std::sync::LazyLock;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::fasta_read;
-use treetime_io::nwk::nwk_read;
+use treetime_io::nwk::{NwkParse, nwk_read};
 use treetime_primitives::{AlignmentRecord, Seq, seq};
 
 pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -151,6 +155,50 @@ pub(crate) fn leaf_seq_inputs(
 pub(crate) struct CompletedSequences {
   pub(crate) nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
   pub(crate) mask: Vec<bool>,
+}
+
+pub(crate) fn complete_sequence_source(
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  aln: Vec<AlignmentRecord>,
+  alphabet: &Alphabet,
+  path: &str,
+) -> Result<SequenceSource, Report> {
+  let CompletedSequences { nodes, mask } = complete_leaf_sequences(graph, names, aln, alphabet)?;
+  Ok(SequenceSource {
+    path: PathBuf::from(path),
+    alphabet: alphabet.clone(),
+    length: mask.len(),
+    nodes,
+    mask,
+  })
+}
+
+pub(crate) fn sequence_source(
+  alphabet: Alphabet,
+  nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+) -> Result<SequenceSource, Report> {
+  let length = get_common_length_of_node_inputs(&nodes)?;
+  let mask = create_mask(nodes.values().filter_map(|node| node.seq.as_ref()), length, &alphabet);
+  Ok(SequenceSource {
+    path: PathBuf::from("aln.fasta"),
+    alphabet,
+    length,
+    nodes,
+    mask,
+  })
+}
+
+pub(crate) fn ancestral_input_for_tree(parse: NwkParse, sources: Vec<SequenceSource>) -> AncestralInput {
+  AncestralInput {
+    edges: parse
+      .branch_lengths
+      .into_iter()
+      .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
+      .collect(),
+    graph: parse.graph,
+    sources,
+  }
 }
 
 pub(crate) fn complete_leaf_sequences(

@@ -3,8 +3,8 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::cancel::CancelledError;
   use crate::error::OperationError;
-  use crate::seq::mutation::{MutationTrack, SequenceMutations, mutation_event_strings, stream_sequence_mutations};
-  use crate::seq::sink::{SeqItem, SeqSink};
+  use crate::seq::mutation::{SequenceMutations, mutation_event_strings, stream_sequence_mutations};
+  use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
   use eyre::Report;
   use helpers::{Failure, Stream, error_class, stream};
   use maplit::btreemap;
@@ -74,7 +74,7 @@ mod tests {
     let result = stream_sequence_mutations(
       &graph,
       &alphabet,
-      &MutationTrack::Nucleotide,
+      SeqTrack::Nuc(1),
       include_leaves,
       report_unknown,
       |_| Err::<Seq, _>(failure.report()),
@@ -149,7 +149,7 @@ mod tests {
       } = stream_sequence_mutations(
         &graph,
         &alphabet,
-        &MutationTrack::Nucleotide,
+        SeqTrack::Nuc(1),
         include_leaves,
         report_unknown,
         |key| Seq::try_from_str(sequences[names[&key].as_deref().unwrap()]),

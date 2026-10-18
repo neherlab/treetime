@@ -6,7 +6,8 @@ mod tests {
   };
   use crate::cancel::NoopCancel;
   use crate::progress::NoopProgress;
-  use crate::seq::mutation::{MutationEvent, MutationTrack, Sub};
+  use crate::seq::mutation::{MutationEvent, Sub};
+  use crate::seq::sink::SeqTrack;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -75,13 +76,7 @@ mod tests {
 
     let (include_leaves, report_unknown) = (false, true);
     let mutations = partition
-      .stream_sequences(
-        &graph,
-        &MutationTrack::AminoAcid(o!("S")),
-        include_leaves,
-        report_unknown,
-        None,
-      )
+      .stream_sequences(&graph, SeqTrack::Aa("S"), include_leaves, report_unknown, None)
       .unwrap();
     let unknown = partition.alphabet().unknown();
 

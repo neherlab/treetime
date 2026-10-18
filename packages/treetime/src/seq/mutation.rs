@@ -25,14 +25,14 @@ use treetime_utils::error::{report_to_string, to_eyre_error};
 pub(crate) fn stream_sequence_mutations(
   graph: &Graph,
   alphabet: &Alphabet,
-  track: &MutationTrack,
+  seq_track: SeqTrack<'_>,
   include_leaves: bool,
   report_unknown: bool,
   mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
   edge_indels: impl Fn(GraphEdgeKey) -> Vec<InDel>,
   mut sink: Option<&mut (dyn SeqSink + '_)>,
 ) -> Result<SequenceMutations, OperationError> {
-  let seq_track = track.seq_track();
+  let track = seq_track.mutation_track();
   let mut pending_parents: BTreeMap<GraphNodeKey, (Seq, usize)> = BTreeMap::new();
   let mut root_sequence = None;
   let mut edge_mutations = BTreeMap::new();
@@ -61,7 +61,10 @@ pub(crate) fn stream_sequence_mutations(
           if *pending_children == 0 {
             pending_parents.remove(parent_key);
           }
-          edge_mutations.insert(*edge_key, combine_edge_mutations(subs, &edge_indels(*edge_key), track)?);
+          edge_mutations.insert(
+            *edge_key,
+            combine_edge_mutations(subs, &edge_indels(*edge_key), &track)?,
+          );
         },
         _ => return make_internal_error!("Node {} has more than one parent", node.key),
       }
@@ -91,12 +94,11 @@ pub(crate) struct SequenceMutations {
 
 pub(crate) fn emit_sequences(
   graph: &Graph,
-  track: &MutationTrack,
+  seq_track: SeqTrack<'_>,
   include_leaves: bool,
   mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
   sink: &mut (dyn SeqSink + '_),
 ) -> Result<(), OperationError> {
-  let seq_track = track.seq_track();
   let mut sink_error = None;
   graph
     .iter_depth_first_preorder_forward(|node| {
@@ -210,15 +212,6 @@ impl Mutation {
 pub enum MutationTrack {
   Nucleotide,
   AminoAcid(String),
-}
-
-impl MutationTrack {
-  fn seq_track(&self) -> SeqTrack<'_> {
-    match self {
-      Self::Nucleotide => SeqTrack::Nuc,
-      Self::AminoAcid(cds) => SeqTrack::Aa(cds),
-    }
-  }
 }
 
 pub fn mutation_event_strings(event: &MutationEvent) -> Result<Vec<String>, Report> {

@@ -15,11 +15,10 @@ use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::cancel::Cancel;
-use treetime::gtr::get_gtr::GtrModelName;
-use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
+use treetime::partition::result::PartitionSequences;
 use treetime::progress::{LogSink, StageSink};
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
-use treetime::seq::mutation::{Mutation, MutationTrack};
+use treetime::seq::mutation::Mutation;
 use treetime::{make_error, make_report};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -50,16 +49,16 @@ pub fn run_prune(
   let resolved = args.resolve_outputs()?;
 
   let needs_sequences = args.prune_empty || args.merge_shared_mutations;
-  let sequences = if needs_sequences && !args.alignment.alignment.is_empty() {
+  let sources = if needs_sequences && !args.alignment.alignment.is_empty() {
     let settings = SourceSettings {
       alphabet: &alphabet,
       gap_fill: None,
       missing_leaves: MissingLeafLimit::Enforced,
     };
     let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?;
-    Some(single_source(sources)?.source.nodes)
+    vec![single_source(sources)?.source]
   } else {
-    None
+    vec![]
   };
 
   let node_names = parse_node_names(
@@ -79,8 +78,7 @@ pub fn run_prune(
   let unknown = alphabet.unknown();
   let input = PruneInput {
     graph,
-    alphabet: alphabet.clone(),
-    sequences,
+    sources,
     branch_lengths: branch_lengths_input,
   };
 
@@ -89,16 +87,18 @@ pub fn run_prune(
   let output = pipeline::run(&params, input, &names, cancel, log).map_err(|err| err.into_report())?;
   let pipeline::PruneOutput {
     mut graph,
-    gtr,
-    partitions,
+    results,
     names,
     branch_lengths: branch_lengths_opt,
   } = output;
+  let mut result = results.into_iter().next();
+  let sequences = result.as_mut().and_then(|result| result.sequences.take());
 
-  let maps = if resolved.tree_outputs.keys().copied().any(prune_output_consumes_maps) {
-    gather_prune_output_maps(&graph, &partitions, UnknownMutationFilter::hiding_unknown(unknown))?
-  } else {
-    PruneOutputMaps::default()
+  let maps = match sequences {
+    Some(sequences) if resolved.tree_outputs.keys().copied().any(prune_output_consumes_maps) => {
+      prune_output_maps(&graph, sequences, UnknownMutationFilter::hiding_unknown(unknown))?
+    },
+    _ => PruneOutputMaps::default(),
   };
 
   let topology_order =
@@ -115,7 +115,9 @@ pub fn run_prune(
 
   write_gtr_output(
     &resolved,
-    gtr.as_ref().map(|gtr| (gtr, GtrModelName::JC69)),
+    result
+      .as_ref()
+      .and_then(|result| Some((result.gtr.as_ref()?, result.model_name))),
     "no GTR model was fitted (prune fits it from the alignment only for --prune-empty or --merge-shared-mutations)",
     log,
   )?;
@@ -166,27 +168,14 @@ fn prune_output_consumes_maps(kind: TreeWriteKind) -> bool {
   }
 }
 
-fn gather_prune_output_maps(
+fn prune_output_maps(
   graph: &Graph,
-  partitions: &[PartitionMarginalSparse],
+  sequences: PartitionSequences,
   filter: UnknownMutationFilter,
 ) -> Result<PruneOutputMaps, Report> {
-  let Some(partition) = partitions.first() else {
-    return Ok(PruneOutputMaps::default());
-  };
-  let edge_mutations = graph
-    .get_edges()
-    .map(|edge| {
-      let edge_key = edge.key();
-      Ok((
-        edge_key,
-        partition.edge_fitch_mutations(edge_key, &MutationTrack::Nucleotide)?,
-      ))
-    })
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
   Ok(PruneOutputMaps {
-    root_sequence: Some(partition.fitch_root_sequence()),
-    edge_mutations: filter.reported_edge_mutations(graph, edge_mutations)?,
+    root_sequence: Some(sequences.root_sequence),
+    edge_mutations: filter.reported_edge_mutations(graph, sequences.edge_mutations)?,
   })
 }
 

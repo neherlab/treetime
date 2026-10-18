@@ -102,7 +102,7 @@ mod tests {
     use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
     use treetime::progress::NoopProgress;
-    use treetime::seq::alignment::pair_leaf_sequences;
+    use treetime::seq::alignment::{SequenceSource, pair_leaf_sequences};
     use treetime_io::fasta::fasta_read_file;
     use treetime_io::nwk::nwk_read_file;
 
@@ -132,11 +132,18 @@ mod tests {
         topology_ops: TopologyOps::default(),
       },
     };
-    let sequences = pair_leaf_sequences(&graph, &names, sequences).sequences.nodes;
+    let sequences = pair_leaf_sequences(&graph, &names, sequences).sequences;
+    let length = sequences.common_length().unwrap();
+    let mask = sequences.mask(length, &alphabet);
     let input = OptimizeInput {
       graph,
-      alphabet,
-      sequences,
+      source: SequenceSource {
+        path: root.join("data/flu/h3n2/20/aln.fasta.xz"),
+        alphabet,
+        length,
+        nodes: sequences.nodes,
+        mask,
+      },
       branch_lengths,
     };
 

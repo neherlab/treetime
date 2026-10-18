@@ -2,8 +2,10 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::cancel::NoopCancel;
+  use crate::partition::result::PartitionSequences;
   use crate::progress::NoopProgress;
   use crate::prune::pipeline::{PruneInput, PruneOutput, PruneParams, run};
+  use crate::seq::alignment::SequenceSource;
   use crate::seq::mutation::{Mutation, MutationTrack, Sub};
   use crate::test_utils::find_edge_key;
   use crate::test_utils::leaf_seq_inputs;
@@ -13,6 +15,7 @@ mod tests {
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
+  use std::path::PathBuf;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, AsciiChar, Seq};
 
@@ -34,7 +37,7 @@ mod tests {
   #[test]
   fn test_prune_pipeline_root_sequence_is_hand_derived_fitch_root() -> Result<(), Report> {
     let output = run_prune_empty()?;
-    assert_eq!(Seq::try_from_str("ACGG")?, output.partitions[0].fitch_root_sequence());
+    assert_eq!(Seq::try_from_str("ACGG")?, only_sequences(&output).root_sequence);
     Ok(())
   }
 
@@ -64,11 +67,16 @@ mod tests {
         merge_shared_mutations: false,
         node_keys: btreeset! {},
       };
-      let sequences = leaf_seq_inputs(&parsed.graph, &names, sequences);
+      let source = SequenceSource {
+        path: PathBuf::from("aln.fasta"),
+        alphabet: Alphabet::new(AlphabetName::Nuc)?,
+        length: 4,
+        nodes: leaf_seq_inputs(&parsed.graph, &names, sequences),
+        mask: vec![false; 4],
+      };
       let input = PruneInput {
         graph: parsed.graph,
-        alphabet: Alphabet::new(AlphabetName::Nuc)?,
-        sequences: Some(sequences),
+        sources: vec![source],
         branch_lengths: parsed.branch_lengths,
       };
       run(&params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
@@ -83,10 +91,17 @@ mod tests {
         .map(|(source, target)| {
           let edge_key = find_edge_key(&output.graph, &output.names, source, target)
             .ok_or_else(|| eyre::eyre!("edge {source}->{target} missing after pruning"))?;
-          let mutations = output.partitions[0].edge_fitch_mutations(edge_key, &MutationTrack::Nucleotide)?;
+          let mutations = only_sequences(output).edge_mutations[&edge_key].clone();
           Ok(((source, target), mutations))
         })
         .try_collect()
+    }
+
+    pub(super) fn only_sequences(output: &PruneOutput) -> &PartitionSequences {
+      let [result] = output.results.as_slice() else {
+        panic!("one alignment gives one result");
+      };
+      result.sequences.as_ref().expect("prune with sequences returns them")
     }
 
     pub(super) fn sub(reff: u8, pos: usize, qry: u8) -> Result<Mutation, Report> {

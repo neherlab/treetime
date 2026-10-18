@@ -13,6 +13,7 @@ use app_output::augur_node_data_ancestral::AncestralNodeSequences;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, output_unavailable};
 use eyre::Report;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -59,8 +60,8 @@ pub fn run_ancestral_reconstruction(
   };
   let TreeAndSources { tree, sources } = read_tree_and_sources(&sequence_args, cancel, stages, log)?;
   let AlignmentSource { source, descs, .. } = single_source(sources)?;
-  let input = ancestral_input(tree, source);
-  let names = input.names();
+  let names = tree.names();
+  let input = ancestral_input(tree, vec![source]);
   let branch_lengths = input.branch_lengths();
 
   let topology_order =
@@ -76,10 +77,16 @@ pub fn run_ancestral_reconstruction(
   let seed = args.seed_args.resolve(random_step, log);
   let params = ancestral_params(args, seed);
 
-  let alphabet = input.alphabet.clone();
   let output =
     pipeline::run(&params, input, Some(&mut seq_sink), cancel, stages, log).map_err(|err| err.into_report())?;
   let mut graph = output.graph;
+  let Ok(result) = output.results.into_iter().exactly_one() else {
+    return make_internal_error!("Ancestral reconstruction is expected to return one partition result");
+  };
+  let Some(sequences) = result.sequences else {
+    return make_internal_error!("Ancestral reconstruction returned no reconstructed sequences");
+  };
+  let ambiguous_char = result.alphabet.unknown();
   let AncestralSeqSink {
     fasta, node_sequences, ..
   } = seq_sink;
@@ -98,9 +105,9 @@ pub fn run_ancestral_reconstruction(
     .transpose()?;
 
   let maps = AncestralOutputMaps {
-    root_sequence: output.root_sequence,
-    edge_mutations: UnknownMutationFilter::new(output.ambiguous_char, args.report_ambiguous)
-      .reported_edge_mutations(&graph, output.edge_mutations)?,
+    root_sequence: sequences.root_sequence,
+    edge_mutations: UnknownMutationFilter::new(ambiguous_char, args.report_ambiguous)
+      .reported_edge_mutations(&graph, sequences.edge_mutations)?,
   };
 
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
@@ -108,14 +115,14 @@ pub fn run_ancestral_reconstruction(
 
   write_gtr_output(
     &resolved,
-    output.gtr.as_ref().map(|gtr| (gtr, output.model_name)),
+    result.gtr.as_ref().map(|gtr| (gtr, result.model_name)),
     "no GTR model was fitted (use --model=infer or --gtr-iterations)",
     log,
   )?;
 
   let trees = AncestralTrees {
     graph: &graph,
-    alphabet: &alphabet,
+    alphabet: &result.alphabet,
     names: &names,
     branch_lengths: &branch_lengths,
     maps: &maps,
@@ -123,9 +130,9 @@ pub fn run_ancestral_reconstruction(
   };
   let node_sequences = node_sequences.map(|node_sequences| AncestralNodeSequences {
     node_sequences,
-    alignment_length: output.sequence_length,
-    ambiguous_char: output.ambiguous_char,
-    mask: &output.mask,
+    alignment_length: result.length,
+    ambiguous_char,
+    mask: &result.mask,
   });
   write_ancestral_trees(&trees, node_sequences, &resolved, CommandKind::Ancestral, log)?;
 

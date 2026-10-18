@@ -66,7 +66,7 @@ pub(crate) fn read_tree_and_sources(
   Ok(TreeAndSources { tree, sources })
 }
 
-pub(crate) fn ancestral_input(tree: NwkParse, source: SequenceSource) -> AncestralInput {
+pub(crate) fn ancestral_input(tree: NwkParse, sources: Vec<SequenceSource>) -> AncestralInput {
   let edges = tree
     .branch_lengths
     .into_iter()
@@ -74,10 +74,8 @@ pub(crate) fn ancestral_input(tree: NwkParse, source: SequenceSource) -> Ancestr
     .collect();
   AncestralInput {
     graph: tree.graph,
-    nodes: source.nodes,
     edges,
-    alphabet: source.alphabet,
-    mask: source.mask,
+    sources,
   }
 }
 

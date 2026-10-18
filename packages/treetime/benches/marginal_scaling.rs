@@ -16,7 +16,7 @@ use treetime::cancel::NoopCancel;
 use treetime::gtr::get_gtr::GtrModelName;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::NoopProgress;
-use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, pair_leaf_sequences};
+use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource, pair_leaf_sequences};
 use treetime::seq::sink::{SeqItem, SeqSink};
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::nwk::nwk_read_file;
@@ -95,17 +95,22 @@ fn setup() -> AncestralInput {
     .map(AlignmentRecord::from)
     .collect();
   let sequences = pair_leaf_sequences(&nwk_parsed.graph, &names, alignment).sequences;
-  let mask = sequences.mask(sequences.common_length().unwrap(), &alphabet);
+  let length = sequences.common_length().unwrap();
+  let mask = sequences.mask(length, &alphabet);
   AncestralInput {
-    nodes: sequences.nodes,
     edges: nwk_parsed
       .branch_lengths
       .into_iter()
       .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
       .collect(),
     graph: nwk_parsed.graph,
-    alphabet,
-    mask,
+    sources: vec![SequenceSource {
+      path: project_root.join("data/flu/h3n2/200/aln.fasta.xz"),
+      alphabet,
+      length,
+      nodes: sequences.nodes,
+      mask,
+    }],
   }
 }
 

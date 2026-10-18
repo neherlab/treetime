@@ -6,17 +6,19 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::marginal::sample::SampleMode;
+  use crate::partition::result::PartitionSequences;
   use crate::progress::NoopProgress;
-  use crate::seq::alignment::{AncestralInput, EdgeSeqInput};
+  use crate::seq::alignment::SequenceSource;
   use crate::seq::mutation::MutationEvent;
   use crate::test_utils::RecordingSeqSink;
-  use crate::test_utils::leaf_seq_inputs;
+  use crate::test_utils::{ancestral_input_for_tree, leaf_seq_inputs};
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use std::path::PathBuf;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
@@ -45,7 +47,7 @@ mod tests {
       MethodAncestral::Marginal,
       dense,
     )?;
-    assert_eq!("CAAAGGGGAT", output.root_sequence.to_string());
+    assert_eq!("CAAAGGGGAT", helpers::sequences(&output).root_sequence.to_string());
     Ok(())
   }
 
@@ -58,7 +60,10 @@ mod tests {
     #[case] dense: Option<bool>,
   ) -> Result<(), Report> {
     let (output, emitted) = helpers::reconstruct(LONG_BRANCH_TREE, LONG_BRANCH_ALIGNMENT, method, dense)?;
-    assert_eq!(emitted[&output.graph.root_key()?], output.root_sequence);
+    assert_eq!(
+      emitted[&output.graph.root_key()?],
+      helpers::sequences(&output).root_sequence
+    );
     Ok(())
   }
 
@@ -92,18 +97,15 @@ mod tests {
         .into_iter()
         .map(AlignmentRecord::from)
         .collect_vec();
-      let mask = vec![false; sequences[0].seq.len()];
-      let input = AncestralInput {
+      let length = sequences[0].seq.len();
+      let source = SequenceSource {
+        path: PathBuf::from("aln.fasta"),
         nodes: leaf_seq_inputs(&parse.graph, &names, sequences),
-        edges: parse
-          .branch_lengths
-          .into_iter()
-          .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
-          .collect(),
-        graph: parse.graph,
         alphabet,
-        mask,
+        length,
+        mask: vec![false; length],
       };
+      let input = ancestral_input_for_tree(parse, vec![source]);
       let params = AncestralParams {
         method,
         model: GtrModelName::JC69,
@@ -129,15 +131,26 @@ mod tests {
       Ok((output, emitted))
     }
 
+    pub(super) fn sequences(output: &AncestralOutput) -> &PartitionSequences {
+      let [result] = output.results.as_slice() else {
+        panic!("one alignment gives one result");
+      };
+      result
+        .sequences
+        .as_ref()
+        .expect("ancestral reconstruction returns sequences")
+    }
+
     pub(super) fn rebuild_from_root(output: &AncestralOutput) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+      let sequences = sequences(output);
       let mut rebuilt: BTreeMap<GraphNodeKey, Seq> = BTreeMap::new();
       output.graph.iter_depth_first_preorder_forward(|node| {
         let seq = if node.is_root {
-          output.root_sequence.clone()
+          sequences.root_sequence.clone()
         } else {
           let (parent_key, edge_key) = get_exactly_one(&node.parent_keys)?;
           let mut seq: Seq = rebuilt[parent_key].clone();
-          for mutation in &output.edge_mutations[edge_key] {
+          for mutation in &sequences.edge_mutations[edge_key] {
             if let MutationEvent::Substitution(sub) = &mutation.event {
               seq[sub.pos()] = sub.qry();
             }
