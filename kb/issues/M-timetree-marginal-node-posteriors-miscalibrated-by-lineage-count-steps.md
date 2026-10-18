@@ -118,8 +118,36 @@ runs per row, all nodes pooled; accuracy: per-cell means of `keep-{opt,skyline}`
   fitted $T_c$ drops by 0.3-0.8 in log at low signal, which strengthens the prior and pulls the nodes younger.
 - `data/ebola/{20,100,362}`: no failures and no oscillation; `opt` converges in 6, 3 and 8 rounds (was 7, 12, 12).
 
-Open: fit $T_c$ to expected statistics under the same posteriors, $\hat T_c = \int E[\binom{k}{2}] dt / n_{\text{mergers}}$,
-instead of the point times; then rerun the calibration and accuracy comparison.
+## Tc from expected statistics
+
+The skyline fit, and the constant $T_c$ as its one-segment case, now take the expected statistics under the node
+posteriors of the round, for independent node times: $I_i = \int_i E[k(k-1)/2]\,dt$ with
+$E[k(k-1)] = \bar k^2 - \bar k + V$, $V = \sum_u w_u^2 S_u (1 - S_u)$, and $M_i = \sum_v m_v P(t_v \in i)$
+(`LineageExpectation::segment_statistics`), the M-step of an EM iteration for $T_c$. Same validation, keep root:
+
+| | frozen $\hat k$ | mean field | mean field, EM $T_c$ |
+| --- | --- | --- | --- |
+| `opt`, true rate: 90% coverage / mean PIT / PIT < 0.1 / PIT > 0.9 | 0.868 / 0.561 / 0.084 / 0.152 | 0.822 / 0.414 / 0.213 / 0.075 | 0.886 / 0.481 / 0.122 / 0.095 |
+| `skyline`, true rate: same | 0.830 / 0.588 / 0.085 / 0.194 | 0.811 / 0.408 / 0.222 / 0.075 | 0.883 / 0.480 / 0.124 / 0.095 |
+| `opt`, estimated rate: same | 0.863 / 0.583 / 0.072 / 0.170 | 0.831 / 0.426 / 0.199 / 0.081 | 0.889 / 0.500 / 0.108 / 0.106 |
+| true rate, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$: root error / date RMSE, years | 6.14 / 0.539 | 8.60 / 0.642 | 4.13 / 0.434 |
+| true rate, $L = 10^3$, $\mu = 10^{-3}$: same | 2.07 / 0.281 | 2.66 / 0.317 | 1.68 / 0.231 |
+| estimated rate, $L = 10^4$, $\mu = 3 \cdot 10^{-4}$: mean rate error / mean $\lvert\log\rvert$ rate error | $-12.1\%$ / 0.131 | $+3.2\%$ / 0.049 | $-5.5\%$ / 0.070 |
+| same: root error / date RMSE, years | 1.99 / 0.215 | 1.43 / 0.184 | 1.36 / 0.171 |
+| estimated rate, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$: mean $\lvert\log\rvert$ rate error | 0.499 | 0.563 | 0.653 |
+| `skyline` $T_c$ log bias, $L = 10^4$ | $-0.18$ to $-0.24$ | $-0.19$ to $-0.32$ | $-0.02$ to $+0.05$ |
+| run time, `keep-{opt,skyline}` | 6039 s | 6410 s | 6521 s |
+
+- Root error and date RMSE are equal or lower than with the frozen $\hat k$ in every cell but one ($L = 10^4$,
+  $\mu = 10^{-2}$, true rate: root error 0.255 against 0.246 years).
+- Calibration is close to nominal except at the lowest signal ($L = 10^3$, $\mu = 3 \cdot 10^{-4}$: mean PIT 0.40);
+  by estimated age the mean PIT is 0.47-0.52 throughout.
+- The constant $T_c$ (`opt`) stays about 0.3 high in log against the true $T_c(t)$ of the `exp` and `piecewise`
+  schedules, a misspecification; the skyline is now nearly unbiased.
+- The estimated rate at the lowest signal got worse. In one run without temporal signal (`reroot-opt-est`,
+  `piecewise`, rep09, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$, where the other variants stop on a non-positive starting
+  rate) the rate fell to $10^{-5}$ (true $3 \cdot 10^{-4}$) and 46 nodes were written without a date; the run
+  exited 0. Not yet investigated.
 
 ## Related
 
