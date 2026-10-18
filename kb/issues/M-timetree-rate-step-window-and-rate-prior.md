@@ -26,5 +26,16 @@ Phase 4 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposa
   of all variants at three rounds (90% coverage 0.900, 0.846 for nodes older than 10 years) but the worst
   low-signal rate (0.99). Once the rate step is stable, compare it again with the frozen expectation.
 
+- Cause of the low-signal drift (probe log Z at $L=10^3$, $\mu=3\cdot10^{-4}$, true rate $3\cdot10^{-4}$): the
+  marginal likelihood itself rises toward lower rates, by about +17 at the lower probe and -9 to -20 at the upper one
+  round after round, while at $\mu \ge 10^{-3}$ both probes fall off and the rate converges. The probes keep the
+  mean-field expectation fixed in calendar time while the tree stretches, so nodes pushed into the past, where
+  $\bar k \approx 1$, cost almost nothing. Stretching the expectation with the probe overcorrects: with $T_c$ fixed the
+  rate runs away upward (probe differences of 500-900), and with $T_c$ stretched along (which leaves the coalescent
+  measure unchanged but for the fixed tip dates) it still does (100-150; $1.8\cdot10^{-2}$ against a true
+  $10^{-2}$). The rate step therefore depends on how the prior follows a probe; settle it after the coalescent
+  statistics (phase 2) and the root (phase 3). Candidates: profile $T_c$ within each probe, an explicit log-normal
+  rate prior, or the Gaussian rate at low signal.
+
 Validation: rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date
 coverage on the calibration subset.
