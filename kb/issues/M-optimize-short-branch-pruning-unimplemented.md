@@ -33,7 +33,7 @@ The existing `fn find_zero_optimal_internal_edges()` [packages/treetime/src/opti
 - Pipeline insertion: `run_optimize_loop()` call and final `marginal_update()` [packages/treetime/src/optimize/pipeline.rs#L134-L153](../../packages/treetime/src/optimize/pipeline.rs#L134-L153)
 - Zero-branch predicate: `fn is_zero_branch_optimal()` [packages/treetime/src/optimize/zero_boundary.rs#L21-L40](../../packages/treetime/src/optimize/zero_boundary.rs#L21-L40)
 - Topology collapse: `fn collapse_edge()` [packages/treetime/src/optimize/topology/collapse.rs#L7-L43](../../packages/treetime/src/optimize/topology/collapse.rs#L7-L43)
-- Partition reconciliation: `fn MarginalReconstruction::reconcile_topology()` [packages/treetime/src/partition/marginal/reconstruction.rs#L260](../../packages/treetime/src/partition/marginal/reconstruction.rs#L260)
+- Partition reconciliation: `fn PartitionSet::reconcile_topology()` [packages/treetime/src/partition/set.rs#L133](../../packages/treetime/src/partition/set.rs#L133)
 
 ## Validation
 

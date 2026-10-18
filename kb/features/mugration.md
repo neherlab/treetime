@@ -32,7 +32,7 @@
 - [x] `traits.csv` (per-node trait assignments, all nodes)
 - [x] `annotated_tree.nexus` (Newick with trait annotations)
 - [x] `annotated_tree.nwk` (Newick with NHX-style annotations)
-- [x] `gtr.json` (GTR model parameters)
+- [x] `gtr.json` (model document with one `trait` entry: attribute, ordered state labels, model parameters)
 
 ## Additional Features
 

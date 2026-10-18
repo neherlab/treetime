@@ -5,7 +5,7 @@ input estimate; `clock_branch_length` is the length the inferred node times impl
 $b_e = \mu\,\gamma_e\,(t_{\text{child}} - t_{\text{parent}})$. Marginal reconstruction propagates
 profiles along the second. Without this the timetree refinement loop cannot iterate at all.
 
-**Type**: New v1 mechanism reproducing a v0 behavior that v0 obtains for free from its choice of
+**Type**: New v1 mechanism reproducing a v0 behavior that v0 obtains without extra work from its choice of
 units.
 
 **v0 location**: v0 runs the entire timetree in divergence units.
@@ -64,24 +64,24 @@ clock-constrained length and falls back to the ML or input length. Only timetree
 so the ancestral, optimize, and mugration commands are unaffected. It has two production callers:
 
 - `fn RoundState::marginal_update`
-  ([`packages/treetime/src/timetree/round.rs#L204-L208`](../../packages/treetime/src/timetree/round.rs#L204-L208)),
+  ([`packages/treetime/src/timetree/round.rs#L417-L421`](../../packages/treetime/src/timetree/round.rs#L417-L421)),
   called by `fn refresh_times` (in every `fn refinement_round`) and by `fn final_marginal_round`,
   passes the map to `BranchModel::marginal_update`
-  ([`packages/treetime/src/timetree/branch_model.rs#L32-L41`](../../packages/treetime/src/timetree/branch_model.rs#L32-L41))
-- `fn assemble_output` passes the map to `fn reconstruct_final_sequences`
-  ([`packages/treetime/src/timetree/pipeline.rs#L522`](../../packages/treetime/src/timetree/pipeline.rs#L522)),
-  which runs the final marginal update on the reconstruction directly
+  ([`packages/treetime/src/timetree/branch_model.rs#L28-L38`](../../packages/treetime/src/timetree/branch_model.rs#L28-L38))
+- `fn assemble_output` passes the map to `fn final_partition_results`
+  ([`packages/treetime/src/timetree/pipeline.rs#L152-L160`](../../packages/treetime/src/timetree/pipeline.rs#L152-L160)),
+  which runs the final marginal update on the partition set directly
 
-Both reach `MarginalReconstruction::marginal_update`
-([`packages/treetime/src/partition/marginal/reconstruction.rs#L72`](../../packages/treetime/src/partition/marginal/reconstruction.rs#L72))
+Both reach `PartitionSet::marginal_update`
+([`packages/treetime/src/partition/set.rs#L101-L118`](../../packages/treetime/src/partition/set.rs#L101-L118))
 and then `MarginalPasses::marginal_update`
-([`packages/treetime/src/partition/marginal/shared/update.rs#L49`](../../packages/treetime/src/partition/marginal/shared/update.rs#L49))
-through the dense or sparse reconstruction. Four propagation sites read the map:
+([`packages/treetime/src/partition/marginal/shared/update.rs#L48`](../../packages/treetime/src/partition/marginal/shared/update.rs#L48))
+through the dense or sparse reconstruction of each partition. Four propagation sites read the map:
 
 - Dense and discrete backward: `fn indexed_node_backward`
-  ([`packages/treetime/src/partition/marginal/shared/pass.rs#L131-L132`](../../packages/treetime/src/partition/marginal/shared/pass.rs#L131-L132))
+  ([`packages/treetime/src/partition/marginal/shared/pass.rs#L178-L179`](../../packages/treetime/src/partition/marginal/shared/pass.rs#L178-L179))
 - Dense and discrete forward: `fn indexed_node_forward`
-  ([`packages/treetime/src/partition/marginal/shared/pass.rs#L253`](../../packages/treetime/src/partition/marginal/shared/pass.rs#L253))
+  ([`packages/treetime/src/partition/marginal/shared/pass.rs#L302`](../../packages/treetime/src/partition/marginal/shared/pass.rs#L302))
 - Sparse backward: `fn process_node_backward_indexed`
   ([`packages/treetime/src/partition/marginal/sparse/backward.rs#L62`](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L62))
 - Sparse forward: `fn process_node_forward_indexed`
@@ -89,8 +89,10 @@ through the dense or sparse reconstruction. Four propagation sites read the map:
 
 Transition counting for GTR refinement (`MarginalPasses::count_transitions`) never sees the
 clock-constrained lengths: timetree infers its GTR model once, before the loop, from the input
-branch lengths (`fn build_marginal_partition` in
-[`packages/treetime/src/partition/create.rs`](../../packages/treetime/src/partition/create.rs)).
+branch lengths (`fn build_partition_set` in
+[`packages/treetime/src/partition/set.rs`](../../packages/treetime/src/partition/set.rs), which calls
+`fn build_marginal_partition` in
+[`packages/treetime/src/partition/create.rs`](../../packages/treetime/src/partition/create.rs) for each file).
 
 ## Commit points
 

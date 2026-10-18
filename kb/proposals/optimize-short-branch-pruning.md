@@ -34,7 +34,7 @@ The optimization loop already calls `find_zero_optimal_internal_edges` per itera
 - Pipeline insertion: `packages/treetime/src/optimize/pipeline.rs`
 - Probability calculation: use the same reconstructed states and pattern multiplicities as v0.
 - Topology collapse: `fn collapse_edge()` [`packages/treetime/src/optimize/topology/collapse.rs#L7-L43`](../../packages/treetime/src/optimize/topology/collapse.rs#L7-L43)
-- Partition reconciliation: `fn MarginalReconstruction::reconcile_topology` [packages/treetime/src/partition/marginal/reconstruction.rs#L241](../../packages/treetime/src/partition/marginal/reconstruction.rs#L241)
+- Partition reconciliation: `fn PartitionSet::reconcile_topology()` [packages/treetime/src/partition/set.rs#L133](../../packages/treetime/src/partition/set.rs#L133)
 
 ## Validation
 

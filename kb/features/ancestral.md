@@ -35,6 +35,15 @@
 - [x] Single `update_marginal()` pass after final GTR assignment
 - [/] Fitch passes leave the partition without nodes when a pass returns an error ([kb/issues/M-inference-fallible-parallel-passes-partially-commit.md](../issues/M-inference-fallible-parallel-passes-partially-commit.md))
 
+## Several Alignment Files
+
+- [x] One partition per `--alignment` file, each with its own model and reconstruction ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
+- [x] A run with several files equals separate single-file runs; the log-likelihood is their sum
+- [x] Each file keeps its own short-branch floor
+- [x] Missing-tip check per file (stop above one third unless `--ignore-missing-alns`)
+- [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, annotated Newick and Nexus, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{partition}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
+- [x] `--translations` and `--annotation` stop with an error on several files
+
 ## Per-CDS Amino-Acid Reconstruction
 
 - [x] Multi-partition marginal traversal on shared graph (one parse, key-join)

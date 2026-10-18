@@ -1,24 +1,24 @@
-# Partition creation is hardcoded instead of configured as complete partition sets
+# Partitions cannot be configured with site ranges or per-partition models
 
-`build_marginal_partition()` centralizes one dense/sparse/model branch, but callers still provide construction mechanics one partition at a time and independently decide attachment, trait-object ownership, and output handling.
+A run builds one partition per `--alignment` file, and all partitions take the one `--model` choice of the command. No input assigns a different substitution model to each file, and no input splits one file into several partitions by site ranges, for example genes or codon positions in one alignment.
 
 ## Current state
 
-- `fn build_marginal_partition()` accepts a representation, model, graph, alphabet, and node inputs, and returns one seeded `MarginalReconstruction` [`packages/treetime/src/partition/create.rs#L34`](../../packages/treetime/src/partition/create.rs#L34). Prune builds its sparse partition with `fn build_sparse_reconstruction()` [`packages/treetime/src/partition/create.rs#L66`](../../packages/treetime/src/partition/create.rs#L66).
-- Ancestral, optimize, prune, and timetree pipelines each build exactly one sequence partition. Partitions carry no index, because no code identifies a partition by position [`packages/treetime/src/ancestral/pipeline.rs#L38`](../../packages/treetime/src/ancestral/pipeline.rs#L38) [`packages/treetime/src/optimize/pipeline.rs#L58`](../../packages/treetime/src/optimize/pipeline.rs#L58) [`packages/treetime/src/prune/pipeline.rs#L41`](../../packages/treetime/src/prune/pipeline.rs#L41) [`packages/treetime/src/timetree/pipeline.rs#L346`](../../packages/treetime/src/timetree/pipeline.rs#L346).
-- Multi-partition infrastructure exists, while command configuration still creates one sequence partition.
+- Each file becomes one partition that covers all its sites, in the order of the `--alignment` list (`fn split_sources()`, [packages/treetime/src/partition/result.rs#L62](../../packages/treetime/src/partition/result.rs#L62)). [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md) records the rule
+- Optimize and timetree build their partitions with `fn build_partition_set()` [packages/treetime/src/partition/set.rs#L19](../../packages/treetime/src/partition/set.rs#L19), which passes the same representation and model to `fn build_marginal_partition()` for every file [packages/treetime/src/optimize/pipeline.rs#L68](../../packages/treetime/src/optimize/pipeline.rs#L68) [packages/treetime/src/timetree/pipeline.rs#L330](../../packages/treetime/src/timetree/pipeline.rs#L330)
+- Ancestral calls `fn build_marginal_partition()` once per file with the same model [packages/treetime/src/ancestral/plan.rs#L156](../../packages/treetime/src/ancestral/plan.rs#L156)
+- Prune builds sparse JC69 partitions with `fn build_sparse_reconstruction()`, because it counts parsimony substitutions only [packages/treetime/src/prune/pipeline.rs#L56](../../packages/treetime/src/prune/pipeline.rs#L56)
 
 ## Impact
 
-Adding multi-segment genomes, codon partitions, or configuration-file partitions requires coordinated changes in every pipeline.
+Segments or genes that need different models, for example a named model for one file and an inferred model for another, cannot share a run. Codon-position partitions and genes inside one alignment need a manual split into separate files first.
 
 ## Required boundary
 
-A partition configuration layer must consume complete partition descriptions and own index assignment, dense/sparse selection, GTR resolution, alignment attachment, and conversion into the capabilities requested by a pipeline. Configuration sources produce descriptions; they do not duplicate construction policy. Scientific defaults and automatic partitioning remain separate decisions.
+A partition configuration layer consumes complete partition descriptions: the source file, the site range, and the model of each partition. It owns the assignment of sites and models and hands the descriptions to the construction functions above, so the construction policy (representation, GTR resolution, total length) stays in one place. Configuration sources, such as a config file ([kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md)), produce descriptions and do not duplicate construction. Scientific defaults and automatic partitioning remain separate decisions.
 
 ## Related issues
 
 - [H-core-command-module-shared-ops-entanglement.md](H-core-command-module-shared-ops-entanglement.md)
-- [N-optimize-multi-alignment-input.md](N-optimize-multi-alignment-input.md)
 - [N-io-multi-segment-genome-input.md](N-io-multi-segment-genome-input.md)
 - [N-representation-infer-dense-stub.md](N-representation-infer-dense-stub.md)

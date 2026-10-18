@@ -5,15 +5,16 @@
 - [x] PartitionFitch (Fitch parsimony, sparse storage)
 - [x] PartitionMarginalDense (full probability vectors at all positions)
 - [x] PartitionMarginalSparse (variable positions only)
-- [x] Partition traits (PartitionMarginal, PartitionMarginalOps, PartitionCompressed, HasLogLh)
+- [x] PartitionMarginalDiscrete (discrete trait states for mugration)
+- [x] Marginal pass trait (`MarginalPasses`, shared by dense, sparse, and discrete partitions)
+- [x] Partition set: one partition per `--alignment` file, one representation per run (`enum PartitionSet`, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
 - [ ] Codon-position partitioning (1st/2nd/3rd position splits, requires GFF annotation input, probabilistic methods only)
 
 ## Payloads
 
-- [x] Dense payloads (DenseNodePartition, DenseEdgePartition, DenseSeqDistribution)
-- [x] Sparse payloads (SparseNodePartition, SparseEdgePartition, SparseSeqDistribution)
-- [x] Node payloads (NodeAncestral, NodeTimetree with time distributions)
-- [x] Edge payloads (EdgeAncestral, EdgeTimetree with branch distributions and messages)
+- [x] Dense state (`DenseNodeState`, edge messages, `DenseSeqDistribution`)
+- [x] Sparse state (`SparseNodeObs`, `SparseNodeState`, `SparseEdgeObs`, `SparseSeqDistribution`)
+- [x] Node and edge data outside the graph, in maps keyed by `GraphNodeKey` and `GraphEdgeKey` (time distributions, branch distributions, messages: [kb/decisions/graph-topology-only-value-pipeline.md](../decisions/graph-topology-only-value-pipeline.md))
 
 ## Operations
 

@@ -4,8 +4,8 @@
 
 - [x] FASTA (plain text)
 - [x] Compressed FASTA (gzip, xz, bzip2, zstd)
-- [x] Multiple FASTA files (concatenated)
-- [x] Stdin input
+- [x] Several FASTA files, one partition per file in the order of the `--alignment` list ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); homoplasy, `--translations` and `--annotation` accept one file
+- [/] Stdin input (`-` at most once in the `--alignment` list; `--tree -` together with `--alignment -` reads standard input twice: [kb/issues/M-io-stdin-tree-and-alignment-read-twice.md](../issues/M-io-stdin-tree-and-alignment-read-twice.md))
 - [x] Newick tree
 - [x] Nexus tree
 - [ ] PHYLIP alignment ([kb/issues/M-io-phylip-alignment-input-unsupported.md](../issues/M-io-phylip-alignment-input-unsupported.md))
@@ -20,7 +20,8 @@
 - [x] FASTA (ancestral sequences)
 - [x] Newick (annotated tree)
 - [x] Nexus (annotated tree)
-- [x] JSON (GTR model, clock model, graph)
+- [x] JSON (model document, clock model, graph)
+- [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, annotated Newick and Nexus, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{partition}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
 - [x] CSV (clock regression, confidence intervals)
 - [x] SVG/PNG charts (clock regression)
 - [x] Graphviz DOT

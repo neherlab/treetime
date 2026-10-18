@@ -183,8 +183,10 @@ tree at all.
 ### Mutation counts
 
 Use the substitution count of the edge from the marginal reconstruction,
-`fn MarginalReconstruction::edge_sub_count`
-([packages/treetime/src/partition/marginal/reconstruction.rs#L163-L168](../../packages/treetime/src/partition/marginal/reconstruction.rs#L163-L168)).
+`fn ReconstructionRef::edge_sub_count`
+([packages/treetime/src/partition/marginal/reconstruction.rs#L242-L247](../../packages/treetime/src/partition/marginal/reconstruction.rs#L242-L247)),
+summed over the partitions of a run by `fn PartitionSet::edge_sub_count`
+([packages/treetime/src/partition/set.rs#L94-L99](../../packages/treetime/src/partition/set.rs#L94-L99)).
 This is exact, and better than v0's `round(mutation_length * L)`
 ([packages/legacy/treetime/treetime/treetime.py#L885](../../packages/legacy/treetime/treetime/treetime.py#L885)).
 The sparse reconstruction has no count for an edge without substitution estimates, so

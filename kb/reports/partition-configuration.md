@@ -1,5 +1,8 @@
 # Partition Configuration for TreeTime v1
 
+> [!WARNING]
+> **Needs review.** Sections 1 and 5.1 describe the code before several alignment files became partitions. Every command with an alignment input now builds one partition per `--alignment` file, optimize and timetree hold them in `enum PartitionSet` ([packages/treetime/src/partition/set.rs#L49](../../packages/treetime/src/partition/set.rs#L49)) instead of a list of lock-guarded trait objects, and [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md) records the rules. Per-partition models and site ranges remain open ([kb/issues/M-core-partition-init-orchestration-duplication.md](../issues/M-core-partition-init-orchestration-duplication.md))
+
 ## 1. Current state
 
 Every command (ancestral, optimize, timetree, prune) creates exactly one sequence partition inline with hardcoded partition index `0`. The creation sequence is procedural code repeated per command: `create_fitch_partition` -> GTR resolution -> `log_gtr` -> conversion to marginal dense or sparse. Dense vs sparse is decided by a `--dense` CLI flag; when omitted, `infer_dense()` is called, which always returns `false` (stub).
@@ -28,15 +31,13 @@ When `--dense` is omitted, `infer_dense()` in `partition/algo/infer_dense.rs` de
 
 ### 2.3 Multiple alignment files
 
-The intended input is one partition per alignment, and complex inputs that combine several alignments, models, and discrete characters need a config file format. Currently only single `--aln` is accepted. Multiple alignments would create one partition per file.
+Each `--alignment` file is one partition, numbered by its position in the list, and all files take the one `--model` choice of the command. Optimize and timetree estimate one relative rate per file. Complex inputs that combine several alignments with different models, site ranges, and discrete characters still need a config file format (S2.5).
 
-Ambiguity: when two alignment files are given, are they different genes on the same tree (multi-partition) or replicate alignments? The config file approach (S2.5) resolves this.
-
-**Sources:** `kb/issues/N-optimize-multi-alignment-input.md`
+**Sources:** [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)
 
 ### 2.4 `--segment` flag (multi-segment genomes)
 
-For segmented viruses (influenza: 8 segments, same alphabet, independent evolution, shared tree), a `--segment` flag would load segment-aware FASTA and create one partition per segment. Branch `worktree/feat/multi-segment-genome-input` has 9 commits implementing this, unmerged. The open question is whether segments are separate partitions or one concatenated sequence.
+For segmented viruses (influenza: 8 segments, same alphabet, independent evolution), a `--segment` flag would load segment-aware FASTA and create one partition per segment. Segments that share one tree now run as one `--alignment` file per segment (S2.3); segments with different trees remain open.
 
 v0 handles segments via concatenation.
 
@@ -167,10 +168,8 @@ Commands operate on `Vec<Arc<RwLock<dyn PartitionTimetreeAll>>>` (type alias `Pa
 
 | Branch                                     | Content                                       | Status                 |
 | ------------------------------------------ | --------------------------------------------- | ---------------------- |
-| `worktree/feat/multi-segment-genome-input` | `--segment` flag, segment-aware FASTA loading | 9 commits, unmerged    |
-| `worktree/feat/optimize-multi-alignment`   | Config parsing, multi-partition tests         | Unmerged               |
 | `feat/abstract-partitions-enum`            | Partition abstraction via enum                | Historical, superseded |
-| `feat/abstract-partitions-trait-objs`      | Partition abstraction via trait objects       | Became current design  |
+| `feat/abstract-partitions-trait-objs`      | Partition abstraction via trait objects       | Historical, superseded |
 
 ## 6. Relationship to issue #2 (partition init duplication)
 
@@ -187,7 +186,6 @@ The fix is not "extract shared init helper" but "implement partition configurati
 
 ### Issues
 
-- [N-optimize-multi-alignment-input](../issues/N-optimize-multi-alignment-input.md)
 - [N-io-multi-segment-genome-input](../issues/N-io-multi-segment-genome-input.md)
 - [N-representation-infer-dense-stub](../issues/N-representation-infer-dense-stub.md)
 - [kb/issues/N-gtr-site-specific-model-not-implemented.md](../issues/N-gtr-site-specific-model-not-implemented.md)

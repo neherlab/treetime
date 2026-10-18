@@ -10,21 +10,21 @@ v0 source files:
 
 v1 source files:
 
-- Partition types and traits in `packages/treetime/src/partition/`
-- Per-node/edge data structs in `packages/treetime/src/payload/`
+- Partition types, the partition set, and the marginal passes in `packages/treetime/src/partition/`
+- Per-node and per-edge state structs in `packages/treetime/src/partition/storage/`
 
 ## Background: partition models in phylogenetics
 
 Phylogenetic trees represent evolutionary relationships inferred from molecular sequences. Ancestral sequence reconstruction estimates the sequences at internal nodes given observed sequences at leaf nodes. Two main algorithmic approaches exist: Fitch parsimony (minimizes character changes) and marginal maximum likelihood (computes probability distributions over ancestral states using a substitution model).
 
-Substitution models describe how nucleotides evolve over time via a rate matrix Q and equilibrium frequencies. These models form a nested hierarchy from simplest to most general:
+Substitution models describe how nucleotides evolve via a rate matrix Q and equilibrium frequencies. These models form a nested hierarchy from simplest to most general:
 
 - JC69 (Jukes & Cantor, 1969): Equal base frequencies (0.25 each), equal substitution rates. Single parameter.
 - K80/K2P (Kimura, 1980): Distinguishes transitions (A-G, C-T) from transversions. Equal base frequencies. Two parameters.
 - HKY85 (Hasegawa, Kishino & Yano, 1985): Variable base frequencies plus transition/transversion distinction. Five parameters.
 - GTR (Tavaré, 1986): General Time Reversible model with 6 exchangeability rates and 4 base frequencies. Nine free parameters. Most general time-reversible nucleotide model.
 
-Different genomic regions (genes, codon positions) can have different evolutionary patterns. Partition models address this by allowing each region to have its own substitution model parameters while sharing the same tree topology (Lanfear et al., 2012). This is standard practice in widely-used phylogenetic software including RAxML, IQ-TREE, and BEAST.
+Different genomic regions (genes, codon positions) can have different evolutionary patterns. Partition models address this by allowing each region to have its own substitution model parameters while sharing the same tree topology (Lanfear et al., 2012). This is standard practice in widely used phylogenetic software including RAxML, IQ-TREE, and BEAST.
 
 The molecular clock hypothesis (Zuckerkandl & Pauling, 1962) proposes that mutations accumulate at roughly constant rates, enabling divergence time estimation. Treetime combines ancestral reconstruction with molecular clock inference to estimate when internal nodes existed in time.
 
@@ -99,139 +99,57 @@ The class handles one alignment at a time. There is no mechanism for operating o
 
 ## What v1 does
 
-v1 separates tree structure from per-partition reconstruction state. The generic `Graph<N, E, D>` in `packages/treetime-graph/src/graph.rs` stores topology and node/edge payloads. Partition structs store reconstruction state indexed by node and edge keys, with each partition containing:
+v1 separates tree structure from per-partition reconstruction state. `struct Graph` in `packages/treetime-graph/src/graph.rs` stores the topology, branch lengths are maps keyed by `GraphEdgeKey`, and partition structs store reconstruction state in `BTreeMap` collections keyed by node and edge keys. Each partition holds:
 
-- `BTreeMap<GraphNodeKey, _>` for per-node data
-- `BTreeMap<GraphEdgeKey, _>` for per-edge data
-- Algorithm-specific configuration (GTR model, alphabet, sequence length)
+- The observations of its sites at the nodes and edges
+- Its alphabet and its number of sites
+- In a reconstruction, its GTR model and the node states and edge messages of the last marginal update
 
 ### Partition types
 
-The partition types in `packages/treetime/src/partition/` form a hierarchy matching the reconstruction pipeline:
+The partition types in `packages/treetime/src/partition/` follow the reconstruction pipeline:
 
-`PartitionFitch` in `packages/treetime/src/partition/fitch.rs:8-15:1:` stores parsimony reconstruction state:
+- `struct PartitionFitch` ([packages/treetime/src/partition/fitch/partition.rs#L17](../../packages/treetime/src/partition/fitch/partition.rs#L17)): Fitch parsimony state of one sequence partition. Its conversions produce the marginal partitions
+- `struct PartitionMarginalDense` ([packages/treetime/src/partition/marginal/dense/partition.rs#L31](../../packages/treetime/src/partition/marginal/dense/partition.rs#L31)): leaf observations at all sites
+- `struct PartitionMarginalSparse` ([packages/treetime/src/partition/marginal/sparse/partition.rs#L28](../../packages/treetime/src/partition/marginal/sparse/partition.rs#L28)): the root sequence and the observations at variable sites, and the total length of the run for the branch-length floor
+- `struct PartitionMarginalDiscrete` ([packages/treetime/src/partition/marginal/discrete/partition.rs#L14](../../packages/treetime/src/partition/marginal/discrete/partition.rs#L14)): leaf observations of one discrete trait (mugration)
 
-```rust
-pub struct PartitionFitch {
-  pub index: usize,
-  pub alphabet: Alphabet,
-  pub length: usize,
-  pub nodes: BTreeMap<GraphNodeKey, SparseNodePartition>,
-  pub edges: BTreeMap<GraphEdgeKey, SparseEdgePartition>,
-}
-```
+`struct DenseReconstruction` and `struct SparseReconstruction` ([packages/treetime/src/partition/marginal/reconstruction.rs#L317-L423](../../packages/treetime/src/partition/marginal/reconstruction.rs#L317-L423)) join a sequence partition with its GTR model, its node states, and its edge messages. `enum MarginalReconstruction` holds one of the two for a single partition, and `enum ReconstructionRef` borrows one of them for the operations that both representations have, for example the log-likelihood, the edge substitutions, the edge indels, and the branch-length contributions.
 
-`PartitionMarginalDense` in `packages/treetime/src/partition/marginal_dense.rs:23-31:1:` stores full probability matrices for all positions:
+The per-node and per-edge state structs are in `packages/treetime/src/partition/storage/`: `dense.rs` (`DenseNodeState`, `DenseSeqDistribution`, edge messages), `sparse.rs` (`SparseNodeObs`, `SparseNodeState`, `SparseEdgeObs`, `SparseSeqDistribution` with the profiles of the variable sites and per-character profiles of the fixed sites), and `discrete.rs`.
 
-```rust
-pub struct PartitionMarginalDense {
-  pub index: usize,
-  pub gtr: GTR,
-  pub alphabet: Alphabet,
-  pub length: usize,
-  pub nodes: BTreeMap<GraphNodeKey, DenseNodePartition>,
-  pub edges: BTreeMap<GraphEdgeKey, DenseEdgePartition>,
-}
-```
+### Marginal passes
 
-`PartitionMarginalSparse` in `packages/treetime/src/partition/marginal_sparse.rs:24-32:1:` stores only variable positions:
-
-```rust
-pub struct PartitionMarginalSparse {
-  pub index: usize,
-  pub gtr: GTR,
-  pub alphabet: Alphabet,
-  pub length: usize,
-  pub nodes: BTreeMap<GraphNodeKey, SparseNodePartition>,
-  pub edges: BTreeMap<GraphEdgeKey, SparseEdgePartition>,
-}
-```
-
-### Per-node and per-edge payload structures
-
-Dense payloads in `packages/treetime/src/partition/dense.rs`:
-
-- `DenseNodePartition` (`dense.rs:16-19:1:`) contains `seq: DenseSeqInfo` (gap positions and full sequence) and `profile: DenseSeqDistribution` (probability matrix over all positions)
-- `DenseEdgePartition` (`dense.rs:37-44:1:`) contains `msg_to_child`, `msg_to_parent`, `msg_from_child` (probability matrices for message passing) and `indels`
-- `DenseSeqDistribution` (`dense.rs:46-52:1:`) contains `dis: Array2<f64>` (positions x states) and `log_lh: f64`
-
-Sparse payloads in `packages/treetime/src/partition/sparse.rs`:
-
-- `SparseNodePartition` (`sparse.rs:16-19:1:`) contains `seq: SparseSeqInfo` (gap/unknown ranges, composition, Fitch state) and `profile: SparseSeqDistribution`
-- `SparseEdgePartition` (`sparse.rs:98-106:1:`) contains `subs: Vec<Sub>` (substitutions), `indels: Vec<InDel>`, and directional messages
-- `SparseSeqDistribution` (`sparse.rs:108-122:1:`) contains `variable: BTreeMap<usize, VarPos>` (probability vectors only at variable positions), `fixed: BTreeMap<AsciiChar, Array1<f64>>`, and `log_lh: f64`
-
-### Trait-based behavior
-
-Behavior is defined through traits in `packages/treetime/src/partition/traits.rs` and `packages/treetime/src/partition/timetree.rs`, not inheritance:
-
-`PartitionMarginalOps<N, E>` (`traits.rs:18-40:1:`) defines:
-
-- `attach_sequences()` - initialize partition from alignment
-- `process_node_backward()` - compute subtree likelihood (postorder pass)
-- `process_node_forward()` - compute full marginal profile (preorder pass)
-- `extract_ancestral_sequence()` - get reconstructed sequence from node
-- `reconstruct_node_sequence()` - assign sequence during tree traversal
-
-`PartitionCompressed` (`traits.rs:42-72:1:`) provides access to sparse node/edge maps, alphabet, and length.
-
-`HasLogLh` extracts a typed `LogLh` aggregate per node. Probability arrays and local numerical kernels remain native `f64`.
-
-`PartitionTimetreeOps<N, E>` (`partition_ops.rs:29-43:1:`) defines:
-
-- `create_edge_contribution()` - branch length likelihood for optimization
-- `reconcile_topology()` - add entries for new nodes/edges after topology changes
-
-`PartitionRerootOps` (`partition_ops.rs:14-24:1:`) handles mutation updates during rerooting. Default is no-op (dense); sparse partitions override to invert edge mutations.
-
-The combined trait `PartitionTimetreeAll` (`partition_ops.rs:48-54:1:`) uses a blanket implementation to compose these:
-
-```rust
-pub trait PartitionTimetreeAll<N, E>:
-  PartitionMarginalOps<N, E> + PartitionTimetreeOps<N, E> + PartitionRerootOps + HasLogLh
-```
+`trait MarginalPasses` ([packages/treetime/src/partition/marginal/shared/update.rs#L10](../../packages/treetime/src/partition/marginal/shared/update.rs#L10)) defines the backward pass, the forward pass, and the transition counts for GTR inference, with associated types for the node states and the messages of each representation. `PartitionMarginalSparse` implements it directly. The dense and discrete partitions implement it through `trait IndexedPartition` ([packages/treetime/src/partition/marginal/shared/pass.rs#L364](../../packages/treetime/src/partition/marginal/shared/pass.rs#L364)), because both store a profile matrix per node. Generic code such as GTR refinement and the rate step (`fn optimize_gtr_rate()` in `packages/treetime/src/gtr/refinement.rs`) takes any `P: MarginalPasses`, so the compiler resolves each call to one representation.
 
 ### Multi-partition operation
 
-Commands operate on `Vec<Arc<RwLock<dyn PartitionTimetreeAll<...>>>>`, iterating over partitions during each tree traversal. The graph log-likelihood sums across all partitions (`traits.rs:80-96:1:`):
+`enum PartitionSet` ([packages/treetime/src/partition/set.rs#L49-L52](../../packages/treetime/src/partition/set.rs#L49-L52)) holds the sequence partitions of a run in the order of the `--alignment` files:
 
 ```rust
-pub fn graph_log_lh<P, N, E, D>(graph: &Graph<N, E, D>, partitions: &[Arc<RwLock<P>>]) -> Result<LogLh, Report>
-where
-  P: HasLogLh + ?Sized,
-{
-  let root = graph.get_exactly_one_root()?;
-  let root_key = root.read_arc().key();
-  let log_lh = partitions
-    .iter()
-    .map(|partition| partition.read_arc().get_log_lh(root_key))
-    .sum();
-  Ok(log_lh)
+pub enum PartitionSet {
+  Dense(Vec<DenseReconstruction>),
+  Sparse(Vec<SparseReconstruction>),
 }
 ```
 
-Type aliases in `packages/treetime/src/partition/timetree.rs:8-9:1:` simplify common combinations:
-
-```rust
-pub type GraphTimetree = Graph<NodeTimetree, EdgeTimetree, ()>;
-pub type PartitionTimetreeAllVec = Vec<Arc<RwLock<dyn PartitionTimetreeAll<NodeTimetree, EdgeTimetree>>>>;
-```
+All partitions of a set use one representation, and construction rejects a mix. `fn build_partition_set()` ([packages/treetime/src/partition/set.rs#L19-L46](../../packages/treetime/src/partition/set.rs#L19-L46)) builds one reconstruction per file with `fn build_marginal_partition()` and gives every partition the total length of the set. The set owns the operations over all partitions: the marginal update returns the updated set and the summed log-likelihood, and the set sums the edge substitution counts, reconciles all partitions after a reroot or a topology change, and reads, sets, and estimates the relative rates. Optimize and timetree pass one set through their loops, so each loop step updates every partition with the same branch lengths. Ancestral reconstructs each file as its own `MarginalReconstruction`, because its partitions share no estimated parameters. [kb/decisions/multi-alignment-partitions.md](multi-alignment-partitions.md) records the rules for several files.
 
 ## Why v1 changes this
 
-**Separation of concerns.** v0's `TreeAnc` mixes tree topology management, sequence data storage, multiple reconstruction algorithms, GTR inference, and branch length optimization in a single 1800-line class. Each concern cannot be tested, replaced, or extended independently. v1 separates: `Graph` owns topology; partition structs own reconstruction state; traits define operations.
+**Separation of concerns.** v0's `TreeAnc` mixes tree topology management, sequence data storage, multiple reconstruction algorithms, GTR inference, and branch length optimization in a single 1800-line class. Each concern cannot be tested, replaced, or extended independently. v1 separates: `Graph` owns topology; partition structs own reconstruction state; the partition set owns the operations over all partitions.
 
-**Type safety.** v0 relies on dynamic attributes (`hasattr` checks at `clock_tree.py:348:1:`, `__delattr__` at `treeanc.py:353:1:`, monkey-patched properties at `treeanc.py:45-47:1:`). Whether `node.marginal_profile` exists depends on which method ran last. v1's partition structs make all data statically typed. `DenseNodePartition` always has `seq: DenseSeqInfo` and `profile: DenseSeqDistribution`. The compiler enforces field presence.
+**Type safety.** v0 relies on dynamic attributes (`hasattr` checks at `clock_tree.py:348:1:`, `__delattr__` at `treeanc.py:353:1:`, monkey-patched properties at `treeanc.py:45-47:1:`). Whether `node.marginal_profile` exists depends on which method ran last. v1's partition structs make all data statically typed, and a reconstruction holds its node states and edge messages as fields, so the compiler enforces their presence.
 
-**Multi-partition support.** v0 processes one alignment at a time with a single GTR model. v1 can attach multiple partitions to the same tree, each with its own alphabet, GTR model, and reconstruction state. Tree traversals visit each node once and update all partitions, enabling joint analysis of heterogeneous data (e.g., different genes with different substitution models).
+**Multi-partition support.** v0 processes one alignment at a time with a single GTR model. v1 attaches several partitions to the same tree, each with its own alphabet, GTR model, and reconstruction state, which enables joint analysis of heterogeneous data, for example genome segments or genes with different substitution models.
 
-**Dense/sparse interchangeability.** `PartitionMarginalDense` and `PartitionMarginalSparse` implement the same `PartitionMarginalOps` trait. Commands that accept `dyn PartitionMarginalOps` work with either representation without conditional logic. Dense stores full probability matrices; sparse stores only variable positions. The choice is made at partition construction time.
+**Dense/sparse interchangeability.** The dense and sparse representations implement the same `trait MarginalPasses`, and `enum PartitionSet` and `enum ReconstructionRef` dispatch the operations that commands use. Commands work with either representation without conditional logic. Dense stores full probability matrices; sparse stores only variable positions. The choice is made at partition construction time, once per run.
 
-**Memory layout.** v0 scatters reconstruction data across Biopython node objects as Python attributes with arbitrary lifetimes. v1 stores partition data in contiguous `BTreeMap` collections, separate from graph nodes, improving cache locality during tree traversals that access reconstruction state.
+**Memory layout.** v0 scatters reconstruction data across Biopython node objects as Python attributes with arbitrary lifetimes. v1 stores partition data in `BTreeMap` collections separate from the graph nodes, and each marginal update returns new state instead of changing shared state in place.
 
 ## Practical impact
 
-- No user-facing behavioral difference. The partition system is an internal architectural change.
-- Multiple partitions per tree enable future multi-gene analysis without re-traversing the tree per gene.
-- Adding a new reconstruction method requires implementing the relevant trait(s) on a new struct, without modifying existing partition types or the graph structure.
-- Dense and sparse modes are selected at partition construction time and dispatched through trait objects, transparent to command implementations.
+- The partition system is an internal architectural change. Single-file runs have no user-facing behavioral difference from it
+- Several alignment files give several partitions on one tree ([kb/decisions/multi-alignment-partitions.md](multi-alignment-partitions.md))
+- Adding a new reconstruction method requires a new partition struct that implements `trait MarginalPasses`, without changes to the existing partition types or the graph structure
+- Dense and sparse modes are selected at partition construction time and dispatched through `enum PartitionSet` and `enum ReconstructionRef`, transparent to command implementations

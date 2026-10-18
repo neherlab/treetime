@@ -45,8 +45,7 @@ Users with mismatched names must manually edit either the tree or the FASTA file
 
 - [M-dates-date-column-requires-exact-header-match.md](M-dates-date-column-requires-exact-header-match.md) - date column detection matches exact headers only
 - [M-mugration-column-detection-no-positional-fallback.md](M-mugration-column-detection-no-positional-fallback.md) - mugration column detection errors instead of falling back to header position
-- [Multi-segment genome input not wired](N-io-multi-segment-genome-input.md) - related input architecture gap
-- [Optimize command accepts only a single alignment](N-optimize-multi-alignment-input.md) - related input limitation
+- [N-io-multi-segment-genome-input.md](N-io-multi-segment-genome-input.md) - segments with different trees cannot share a run
 
 ## Related
 

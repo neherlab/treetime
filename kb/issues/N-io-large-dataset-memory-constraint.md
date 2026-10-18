@@ -4,13 +4,13 @@ The current input model loads all sequences into memory before attachment, then 
 
 ## Current flow
 
-Sequence loading at [packages/app-commands/src/commands/ancestral/run.rs#L293](../../packages/app-commands/src/commands/ancestral/run.rs#L293):
+Sequence loading in `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L96-L104](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L96-L104), called once per `--alignment` file:
 
 ```rust
-let mut aln = read_alignment(&args.alignment.alignment, &alphabet)?; // loads ALL sequences of every file
+let mut records = fasta_read_file(path, alphabet)?;
 ```
 
-The entire `Vec<FastaRecord>` must fit in memory. After attachment, sequences are copied/transformed into partition data structures, then the original vector is dropped.
+All records of a file must fit in memory, and the paired sequences of every file stay in memory until the partitions are built. After attachment, sequences are copied/transformed into partition data structures, then the original vector is dropped.
 
 ## Memory characteristics
 

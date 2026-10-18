@@ -3,7 +3,7 @@
 > [!WARNING]
 > **Needs review.** Line links point at the current locations of the symbols that still exist. The text still describes an older layout that the code no longer has:
 >
-> - `trait PartitionOptimizeOps`, `trait PartitionBranchOps`, `collect_optimize_partitions()`, and `run_optimize()` are gone. `MarginalReconstruction` ([partition/marginal/reconstruction.rs#L218](../../packages/treetime/src/partition/marginal/reconstruction.rs#L218), `fn create_edge_contribution()`) now supplies the contributions, and `optimize/pipeline.rs` with `optimize/run_loop.rs` run the loop
+> - `trait PartitionOptimizeOps`, `trait PartitionBranchOps`, `collect_optimize_partitions()`, and `run_optimize()` are gone. `enum ReconstructionRef` ([partition/marginal/reconstruction.rs#L278](../../packages/treetime/src/partition/marginal/reconstruction.rs#L278), `fn create_edge_contribution()`) now supplies the contributions, and `optimize/pipeline.rs` with `optimize/run_loop.rs` run the loop
 > - `OptimizationContribution::evaluate()` and the `evaluate_*_contribution_impl()` functions no longer exist, so asymmetries A1 and A2 describe code that has changed
 > - `OptimizationContribution::from_dense()` and `from_sparse()` both return `Result` (A5 is resolved)
 > - The solver files hold the square-root coordinate variants only (`solve_brent()`, `solve_newton()`), not three coordinate spaces
@@ -21,7 +21,7 @@ The branch-length optimizer needs per-site coefficients in eigenvalue space ($k_
 - [`optimize_eval.rs`](../../packages/treetime/src/optimize/eval.rs) - fn `evaluate_site_contributions()` ([optimize/eval.rs#L11](../../packages/treetime/src/optimize/eval.rs#L11)), the single shared evaluator that consumes that iterator and computes log-likelihood + derivatives
 - [`optimize_unified.rs`](../../packages/treetime/src/partition/optimize/contribution.rs) - enum `OptimizationContribution` ([partition/optimize/contribution.rs#L10](../../packages/treetime/src/partition/optimize/contribution.rs#L10)) wraps both modes so callers never see dense vs sparse. Contains the actual optimization loop, solvers dispatch, zero-branch detection, grid search
 
-**Is this arrangement optimal?** The two `_eval` adapter files are borderline redundant. They exist only because fn `sum_partition_metrics()` ([optimize/likelihood.rs#L42](../../packages/treetime/src/optimize/likelihood.rs#L42)) needs to pass a `compute_derivatives` flag that the enum's own fn `evaluate()` ([optimize/dispatch.rs#L130](../../packages/treetime/src/optimize/dispatch.rs#L130)) does not expose. Folding them into `dispatch.rs` or adding the flag to the enum method would eliminate two files. The two coefficient extraction files (`optimize_dense.rs`, `optimize_sparse.rs`) are genuinely necessary - the input data structures differ.
+**Is this arrangement optimal?** The two `_eval` adapter files are borderline redundant. They exist only because fn `sum_partition_metrics()` ([optimize/likelihood.rs#L42](../../packages/treetime/src/optimize/likelihood.rs#L42)) needs to pass a `compute_derivatives` flag that the enum's own fn `evaluate()` ([optimize/dispatch.rs#L130](../../packages/treetime/src/optimize/dispatch.rs#L130)) does not expose. Folding them into `dispatch.rs` or adding the flag to the enum method would eliminate two files. The two coefficient extraction files (`optimize_dense.rs`, `optimize_sparse.rs`) are necessary - the input data structures differ.
 
 ## Data flow
 

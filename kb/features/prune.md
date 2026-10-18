@@ -2,13 +2,14 @@
 
 - [x] **Prune command** (no v0 standalone equivalent)
 - [x] Tree input from `--tree`
-- [x] Optional alignment input from `--aln`
+- [x] Optional alignment input from `--alignment`, one or several files
+- [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips
 - [x] Output pruned Newick and Nexus trees
 
 ## Pruning Criteria
 
 - [x] Short branch pruning (`--prune-short` threshold)
-- [x] Empty branch pruning (`--prune-empty`, requires alignment)
+- [x] Empty branch pruning (`--prune-empty`, requires alignment; with several files a branch is empty only when no file has a substitution on it)
 - [x] Name-based pruning (`--prune-nodes-list`, `--prune-nodes-list-file`)
 - [x] Custom delimiters for node lists
 

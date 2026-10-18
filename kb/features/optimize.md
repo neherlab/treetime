@@ -5,11 +5,14 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 ## Standalone Command (v1-only)
 
 - [x] `optimize` command with `--tree`, `--aln`, `--output-all`
-- [x] Dense or sparse partition setup from the full alignment, selected by `--dense`
+- [x] Dense or sparse partition setup, one partition per `--alignment` file, selected by `--dense` for the whole run
+- [x] Several alignment files share the branch lengths, with one relative rate per file (`--partition-rates`, default `estimate`: a rate step and a site-weighted normalization after each iteration; `equal` fixes every rate at 1) and one indel rate per file in one combined Poisson term ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
+- [x] Short-branch floors use the total length of all files
+- [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips
 - [x] Initial branch-length guess from observed mutation counts (excludes deletion and ambiguous positions)
 - [x] `--branch-length-initial-guess` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing/NaN, and on zero branch length when indels are present)
 - [x] Output annotated Newick and Nexus trees
-- [x] GTR parameters written to JSON
+- [x] Model document (`--output-gtr`) with one entry per alignment file
 - [x] Augur-compatible node data JSON (`optimize.augur-node-data.json`, `--output-augur-node-data`): per-node optimized `branch_length` plus `alignment`/`input_tree` metadata, equivalent to `augur refine` without `--timetree`
 
 ## Rerooting (v1-only, date-free)

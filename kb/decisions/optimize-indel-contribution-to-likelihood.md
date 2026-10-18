@@ -20,7 +20,7 @@ Low for most datasets. Indels are rare in typical viral phylogenetics. The effec
 - `optimize/dispatch.rs`: indel contribution added to `optimize_edge_lengths`, `guess_initial_branch_lengths`, and the zero-branch optimality check
 - `optimize/run_loop.rs`: `run_optimize_loop()` estimates `indel_rate` once from the branch lengths it receives and passes it to both tree-level evaluation and per-edge optimization in every iteration
 - `optimize/likelihood.rs`: `evaluate_with_indels_log_lh_only()`, also used by the timetree branch-length distribution grid (`timetree/inference/branch_length_likelihood.rs`, `timetree/inference/runner.rs`), with `indel_rate` estimated once per pass and `indel_count` computed per edge
-- `edge_indel_count()` on the sparse and dense partitions and on `MarginalReconstruction`
+- `edge_indel_count()` on the sparse and dense partitions and on `ReconstructionRef`
 
 ## Convergence note
 

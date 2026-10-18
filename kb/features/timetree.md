@@ -5,6 +5,8 @@
 - [x] Load tree from `--tree`
 - [x] Optional date table from `--dates`
 - [x] Optional alignment when `--branch-length-mode=marginal`
+- [x] Several alignment files share the branch lengths, with one relative rate per file estimated at the end of each ML branch-length pass and fixed during the dating rounds (`--partition-rates`, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); the clock rate of a file is the clock rate times its rate
+- [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips
 - [ ] Gap handling matches v0: v0 timetree with the default `--gtr infer` uses the 5-state `nuc` alphabet, where the gap is a state ([packages/legacy/treetime/treetime/wrappers.py#L56](../../packages/legacy/treetime/treetime/wrappers.py#L56)); the v1 nucleotide alphabet puts the gap in the undetermined set together with the unknown character, so a gap carries no state information ([packages/treetime/src/alphabet/alphabet.rs#L131](../../packages/treetime/src/alphabet/alphabet.rs#L131)). Named models `JC69`, `F81` and `TN93` also use the 5-state alphabet, `K80`, `HKY85` and `T92` the 4-state one ([kb/issues/M-timetree-gap-state-v0-divergence.md](../issues/M-timetree-gap-state-v0-divergence.md))
 - [x] Initial node divergences always initialized
 - [x] Date assignment fails when no valid dates or fewer than three leaves have valid dates
@@ -132,6 +134,8 @@
 - [x] Timetree Nexus
 - [x] Tree-format topology ordering
 - [x] Clock model JSON with `timetree.*` basename
+- [x] Model document (`--output-gtr`) with one entry per alignment file, including the clock rate of each file
+- [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, annotated Newick and Nexus, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{partition}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
 - [x] Clock regression table (`--output-clock-csv`, opt-in; one row per sample with the date, date source (`input` or `inferred`), root-to-tip distance and clock-filter flag the final clock model was fitted on; new in v1, v0 has no table; app runs request it for the root-to-tip plot)
 - [x] Confidence TSV
 - [x] Coalescent time scale TSV/CSV/JSON (`--output-coalescent-{tsv,csv,json}`; per-segment $T_c$, $N_e$, and confidence band for skyline, optimized-constant, and fixed $T_c$; TSV in the default `--output-all` set, CSV and JSON opt-in; the `skyline.pdf` plot and the grid-points default remain, see [kb/issues/N-timetree-missing-skyline-output.md](../issues/N-timetree-missing-skyline-output.md))

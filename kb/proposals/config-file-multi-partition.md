@@ -2,13 +2,13 @@
 
 ## Motivation
 
-Complex inputs combine several alignments, their substitution models, and discrete characters, and need a config file format. Currently each command accepts a single alignment via `--aln`. Multi-segment genomes, mixed data types, and per-partition model specification all require a configuration system that the CLI flag approach cannot scale to.
+Complex inputs combine several alignments, their substitution models, and discrete characters, and need a config file format. Currently each `--alignment` file is one partition, and all files take the one `--model` choice of the command ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). Multi-segment genomes, mixed data types, and per-partition model specification all require a configuration system that the CLI flag approach cannot scale to.
 
 ## Use cases
 
 ### Multi-segment genomes
 
-Influenza has 8 genome segments, each with independent evolution but shared tree topology. Currently requires concatenation, losing per-segment model information. The v1 partition system already supports multiple independent partitions on the same tree -- the gap is input specification.
+Influenza has 8 genome segments, each with independent evolution but shared tree topology. One `--alignment` file per segment gives one partition per segment with its own fitted model and relative rate, but every segment takes the same `--model` choice. The v1 partition system already supports multiple independent partitions on the same tree -- the gap is input specification.
 
 ### Mixed data types
 
@@ -68,8 +68,7 @@ Open design questions:
 
 - YAML vs JSON vs TOML? The project already uses `serde` for all three. YAML is human-friendliest for nested config. JSON is simplest to validate. TOML is used for Cargo but less natural for lists-of-partitions.
 - Should the config file replace CLI flags or complement them? IQ-TREE uses partition file alongside CLI flags. BEAST uses XML for everything. A hybrid (config file for partitions, CLI for global options) is the lightest integration.
-- Edge-linked vs edge-unlinked partitions: should partitions share branch lengths (proportional scaling) or have independent branch lengths? IQ-TREE supports both via `-q` (linked) and `-sp` (unlinked). The v1 partition system currently shares branch lengths at the graph level.
-- The existing `worktree/feat/optimize-multi-alignment` branch has config parsing and multi-partition tests. The `worktree/feat/multi-segment-genome-input` branch has `--segment` flag for segment-aware FASTA loading. Both should be reviewed before starting fresh.
+- Edge-linked vs edge-unlinked partitions: should partitions share branch lengths (proportional scaling) or have independent branch lengths? IQ-TREE supports both via `-q` (linked) and `-sp` (unlinked). Several `--alignment` files currently share the branch lengths, with one relative rate per file (proportional scaling, as IQ-TREE `-p`).
 
 The `mugration` command already demonstrates multi-partition operation (discrete trait partition alongside sequence partition). Study its partition setup for patterns.
 
@@ -79,8 +78,8 @@ The `mugration` command already demonstrates multi-partition operation (discrete
 
 - [M-io-sequence-name-matching-unreliable](../issues/M-io-sequence-name-matching-unreliable.md) -- config file could include explicit name mappings
 - [N-io-large-dataset-memory-constraint](../issues/N-io-large-dataset-memory-constraint.md) -- config could specify lazy loading options
-- [N-optimize-multi-alignment-input](../issues/N-optimize-multi-alignment-input.md) -- optimize accepts only a single alignment
-- [N-io-multi-segment-genome-input](../issues/N-io-multi-segment-genome-input.md) -- multi-segment genome input not wired
+- [N-io-multi-segment-genome-input](../issues/N-io-multi-segment-genome-input.md) -- segments with different trees cannot share a run
+- [M-core-partition-init-orchestration-duplication](../issues/M-core-partition-init-orchestration-duplication.md) -- per-partition models and site ranges
 
 ### Proposals
 
