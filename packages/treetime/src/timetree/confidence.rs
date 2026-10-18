@@ -1,11 +1,10 @@
-use crate::clock::clock_model::{ClockModel, ClockModelStats};
 use crate::coalescent::mean_field::CoalescentPrior;
 use crate::make_error;
 use crate::progress::LogSink;
+use crate::progress_info;
 use crate::timetree::inference::result::{NodePosterior, TimeInference};
 use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
 use crate::timetree::max_posterior_region::{MaxPosteriorRegion, PeakLocation, max_posterior_region};
-use crate::{progress_info, progress_warn};
 use deser::Serialize;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -197,36 +196,16 @@ pub(crate) fn combine_in_quadrature(
   (limits.0.max(min_val), limits.1.min(max_val))
 }
 
+/// Standard deviation of the clock rate for the rate susceptibility: `--clock-std-dev` when given, otherwise the
+/// estimate of `estimated` (the Gaussian clock at the final rate), evaluated only then
 pub(crate) fn determine_rate_std(
   clock_std_dev: Option<f64>,
-  covariation: bool,
-  clock_model: &ClockModel,
-  log: &dyn LogSink,
+  estimated: impl FnOnce() -> Result<Option<f64>, Report>,
 ) -> Result<Option<f64>, Report> {
-  if let Some(std_dev) = clock_std_dev {
-    if std_dev <= 0.0 {
-      return make_error!("--clock-std-dev must be positive, got {std_dev}");
-    }
-    return Ok(Some(std_dev));
-  }
-
-  if !covariation {
-    return Ok(None);
-  }
-
-  match clock_model.stats() {
-    ClockModelStats::Estimated(stats) => {
-      let rate_variance = stats.cov[[0, 0]];
-      if rate_variance <= 0.0 {
-        progress_warn!(
-          log,
-          "Rate variance from regression covariance is non-positive ({rate_variance:.4e}), skipping rate susceptibility"
-        );
-        return Ok(None);
-      }
-      Ok(Some(rate_variance.sqrt()))
-    },
-    ClockModelStats::Fixed => Ok(None),
+  match clock_std_dev {
+    Some(std_dev) if std_dev <= 0.0 => make_error!("--clock-std-dev must be positive, got {std_dev}"),
+    Some(std_dev) => Ok(Some(std_dev)),
+    None => estimated(),
   }
 }
 

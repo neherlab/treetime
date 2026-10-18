@@ -279,23 +279,20 @@ fn confidence_without_rate_uncertainty(context: &CheckContext<'_>) -> Vec<RunChe
   };
   let setting = |key: &str| setting_ref(config, &[key.to_owned()]);
   let confidence = setting("confidence") == Some(&Value::Bool(true));
-  let covariation = setting("covariation") == Some(&Value::Bool(true));
+  let alignment = setting("alignment")
+    .and_then(Value::as_array)
+    .is_some_and(|files| !files.is_empty());
+  let sequence_length = setting("sequence_length").is_some_and(|value| !value.is_null());
   let clock_std_dev = setting("clock_std_dev").is_some_and(|value| !value.is_null());
-  if !confidence || covariation || clock_std_dev {
+  if !confidence || alignment || sequence_length || clock_std_dev {
     return vec![];
   }
   vec![RunCheck {
     id: "confidence-without-rate-uncertainty".to_owned(),
     level: CheckLevel::Warn,
-    text: "Date intervals need rate uncertainty: without the covariation-aware regression or a clock rate std. dev., this run writes no intervals.".to_owned(),
-    settings: vec_of_owned!["confidence", "covariation", "clock_std_dev"],
-    fix: Some(CheckFix {
-      label: "Use covariation".to_owned(),
-      patch: vec![SettingPatch {
-        path: vec!["covariation".to_owned()],
-        value: Some(JsonValue(Value::Bool(true))),
-      }],
-    }),
+    text: "Date intervals need rate uncertainty: without an alignment, a sequence length or a clock rate std. dev., this run writes no intervals.".to_owned(),
+    settings: vec_of_owned!["confidence", "sequence_length", "clock_std_dev"],
+    fix: None,
   }]
 }
 

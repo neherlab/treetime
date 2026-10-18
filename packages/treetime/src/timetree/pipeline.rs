@@ -6,6 +6,7 @@ use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree, ClockV
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+use crate::clock::gaussian::gaussian_clock;
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
 use crate::coalescent::mean_field::CoalescentPrior;
@@ -30,6 +31,7 @@ use crate::timetree::confidence::{
   extract_confidence_intervals,
 };
 use crate::timetree::convergence::optimizer::TraceSink;
+use crate::timetree::inference::result::given_times;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::optimization::reroot::fit_clock_to_dates;
 use crate::timetree::params::{
@@ -49,6 +51,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::date::DateConstraint;
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_report;
 
 pub fn run(
@@ -235,13 +238,7 @@ fn prepare_inputs(
     params.branch_length_mode, params.keep_root
   );
 
-  let time_marginal = compute_effective_time_marginal(
-    params.time_marginal,
-    params.confidence,
-    params.clock_std_dev,
-    params.covariation,
-    log,
-  );
+  let time_marginal = compute_effective_time_marginal(params.time_marginal, params.confidence, log);
 
   let covariation_clock_params = build_covariation_clock_params(
     params.covariation,
@@ -368,6 +365,46 @@ fn report_coalescent_size(
   }
 }
 
+/// Rate uncertainty of the Gaussian timetree at the final rate, or `None` with a warning when the sequence length is
+/// unknown or the approximation degenerates
+fn gaussian_rate_std(inputs: &RoundInputs<'_>, state: &RoundState, log: &dyn LogSink) -> Result<Option<f64>, Report> {
+  let sequence_length = match state.branch_model.total_length() {
+    0 => inputs.params.sequence_length.unwrap_or(0),
+    length => length,
+  };
+  if sequence_length == 0 {
+    progress_warn!(
+      log,
+      "Cannot estimate the clock rate uncertainty without a sequence length. \
+       Specify --clock-std-dev or --sequence-length. Proceeding without rate uncertainty."
+    );
+    return Ok(None);
+  }
+  let tip_dates = given_times(&state.graph, &inputs.context.date_constraints)?;
+  match gaussian_clock(
+    &state.graph,
+    &state.branch_lengths,
+    sequence_length.to_f64_exact(),
+    &tip_dates,
+    inputs.leaf_bad_branches,
+    state.clock_model.clock_rate(),
+  ) {
+    Ok(clock) => {
+      progress_info!(
+        log,
+        "Gaussian clock: rate std {:.4e}, root time std {:.4e}",
+        clock.rate_std,
+        clock.root_time_std
+      );
+      Ok(Some(clock.rate_std))
+    },
+    Err(report) => {
+      progress_warn!(log, "Proceeding without rate uncertainty: {report}");
+      Ok(None)
+    },
+  }
+}
+
 fn refine_final_times(
   inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,
@@ -377,7 +414,7 @@ fn refine_final_times(
 ) -> Result<FinalTimes, Report> {
   let params = inputs.params;
   let rate_std = if params.confidence {
-    determine_rate_std(params.clock_std_dev, params.covariation, &state.clock_model, log)?
+    determine_rate_std(params.clock_std_dev, || gaussian_rate_std(inputs, &state, log))?
   } else {
     None
   };
