@@ -100,13 +100,11 @@ impl ClockModel {
   }
 
   /// The model at an estimated rate that did not come from the regression (the marginal-likelihood rate of a timetree):
-  /// chi-squared and r of the clock line through the dated, included tips of `set`, and the rate's standard deviation.
-  /// The chi-squared is half the residual sum of squares, as the regression reports it; the fixed-rate root score is
-  /// the same divided by the number of tips.
+  /// chi-squared and r of the clock line through the dated, included tips of `set`, and the rate's standard deviation
   pub(crate) fn estimated_at_rate(&self, set: &ClockSet, rate_std: Option<f64>) -> Self {
     Self {
       stats: ClockModelStats::Estimated(RegressionStats {
-        chisq: set.chisq_fixed_rate(self.clock_rate) * set.norm(),
+        chisq: set.chisq_fixed_rate(self.clock_rate),
         r_val: set.r_val(),
         rate_std,
       }),

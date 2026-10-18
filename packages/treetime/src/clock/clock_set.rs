@@ -72,6 +72,8 @@ impl ClockSet {
     (self.d_sum() - self.t_sum() * rate) / self.norm()
   }
 
+  /// Half the residual sum of squares of the least-squares line, `(S_dd - S_d^2 / n - (S_td - S_t S_d / n)^2 /
+  /// (S_tt - S_t^2 / n)) / 2` in the sums of the set
   pub(crate) fn chisq(&self) -> f64 {
     let det = self.determinant();
     0.5
@@ -81,11 +83,12 @@ impl ClockSet {
       / self.norm()
   }
 
+  /// Half the residual sum of squares of the line of slope `rate` with the best intercept, `(sum (d - rate t)^2 -
+  /// (sum (d - rate t))^2 / n) / 2`; at rate zero, n / 2 times the variance of the divergences
   pub(crate) fn chisq_fixed_rate(&self, rate: f64) -> f64 {
     0.5
       * (self.dsq_sum() - 2.0 * rate * self.dt_sum() + rate.powi(2) * self.tsq_sum()
         - (self.d_sum() - rate * self.t_sum()).powi(2) / self.norm())
-      / self.norm()
   }
 
   pub(crate) fn r_val(&self) -> f64 {
