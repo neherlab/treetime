@@ -74,7 +74,10 @@ impl<'a> BranchPointCostFunction<'a> {
   }
 
   pub(crate) fn evaluate_clock_set(&self, x: f64) -> Result<ClockSet, Report> {
-    let child_contribution = if self.is_leaf {
+    let excluded_leaf = self.is_leaf && self.to_parent.norm() == 0.0;
+    let child_contribution = if excluded_leaf {
+      ClockSet::outlier_contribution()
+    } else if self.is_leaf {
       ClockSet::leaf_contribution_to_parent(
         self.node_time,
         self.branch_length * (1.0 - x),
