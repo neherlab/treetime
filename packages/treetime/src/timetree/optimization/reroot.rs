@@ -30,8 +30,8 @@ pub(crate) fn reroot_tree(
   progress_info!(
     log,
     "Reroot params: split_edge={}, remove_trivial_root={}, force_positive_rate={}",
-    reroot_params.split_edge,
-    reroot_params.remove_trivial_root,
+    reroot_params.topology.split_edge,
+    reroot_params.topology.remove_trivial_root,
     reroot_params.force_positive_rate
   );
 

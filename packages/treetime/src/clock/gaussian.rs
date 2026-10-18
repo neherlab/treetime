@@ -130,11 +130,13 @@ struct Below {
   ab: [f64; 2],
 }
 
-/// The part of the Gaussian timetree that does not depend on the rate: messages toward the root, the branch weights
-/// `nu`, the counts `D` (substitutions) and `D + M + N` (events) of the dated part of the tree, the number `kappa` of
-/// dated tips, and the sums `A`, `B` of the log-likelihood `kappa ln eta - A eta^2 / 2 + B eta - C / 2`
-struct Upward {
+/// The Gaussian timetree up to the rate: messages toward the root, the branch weights `nu`, the counts `D`
+/// (substitutions) and `D + M + N` (events) of the dated part of the tree, the number `kappa` of dated tips, and the
+/// sums `A`, `B` of the log-likelihood `kappa ln eta - A eta^2 / 2 + B eta - C / 2`
+pub(crate) struct GaussianTree {
   pass: GraphPass,
+  internal_nodes: Vec<GraphNodeKey>,
+  sequence_length: f64,
   tips: BTreeMap<GraphNodeKey, Option<Message>>,
   nu: BTreeMap<GraphEdgeKey, f64>,
   below: BTreeMap<GraphNodeKey, Below>,
@@ -147,18 +149,19 @@ struct Upward {
   b: f64,
 }
 
-impl Upward {
+impl GaussianTree {
   /// A tip takes part when it has a date in `tip_dates` and is not flagged in `excluded`; the others send no message.
-  fn new(
+  pub(crate) fn new(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    sequence_length: f64,
+    sequence_length: usize,
     tip_dates: &NodeTimes,
     excluded: &BTreeMap<GraphNodeKey, bool>,
   ) -> Result<Self, Report> {
-    if sequence_length.is_nan() || sequence_length <= 0.0 {
-      return make_error!("Gaussian clock needs a positive sequence length, got {sequence_length}");
+    if sequence_length == 0 {
+      return make_error!("Gaussian clock needs a positive sequence length");
     }
+    let sequence_length = sequence_length.to_f64_exact();
     let pass = GraphPass::new(graph)?;
     // a tip's own message: its date, known exactly
     let tips: BTreeMap<GraphNodeKey, Option<Message>> = graph
@@ -208,6 +211,8 @@ impl Upward {
       .fold([0.0; 2], |acc, node| [acc[0] + node.ab[0], acc[1] + node.ab[1]]);
     Ok(Self {
       pass,
+      internal_nodes: graph.get_nodes().filter(|n| !n.is_leaf()).map(Node::key).collect(),
+      sequence_length,
       tips,
       nu,
       below,
@@ -221,73 +226,57 @@ impl Upward {
     })
   }
 
-  /// `eta` of substitution rate `mu`: `mu L (D + M + N) / D`
-  fn eta(&self, mu: f64, sequence_length: f64) -> f64 {
-    mu * sequence_length * self.events / self.substitutions
-  }
+  /// Node-time marginals, rate std and root-time std at substitution rate `clock_rate` (per site and unit time)
+  pub(crate) fn clock(&self, clock_rate: f64) -> Result<GaussianClock, Report> {
+    if clock_rate.is_nan() || clock_rate <= 0.0 {
+      return make_error!("Gaussian clock needs a positive clock rate, got {clock_rate}");
+    }
+    let eta = self.eta(clock_rate);
+    let total = forward(&self.pass, &self.tips, &self.nu, &self.below, &self.up)?;
+    let stds = rate_and_root_std(self.a, self.kappa, self.root, eta);
 
-  fn mu(&self, eta: f64, sequence_length: f64) -> f64 {
-    eta * self.substitutions / (self.events * sequence_length)
-  }
-}
+    let node_times = self
+      .internal_nodes
+      .iter()
+      .filter_map(|key| {
+        let m = total[key].message()?;
+        Some((
+          *key,
+          NodeTimeGaussian {
+            mean: m.s - m.r / eta,
+            std: m.w.sqrt() / eta,
+          },
+        ))
+      })
+      .collect();
 
-/// Gaussian timetree at substitution rate `clock_rate` (per site and unit time). A tip takes part when it has a date in
-/// `tip_dates` and is not flagged in `excluded`; the others send no message.
-pub(crate) fn gaussian_clock(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  sequence_length: f64,
-  tip_dates: &NodeTimes,
-  excluded: &BTreeMap<GraphNodeKey, bool>,
-  clock_rate: f64,
-) -> Result<GaussianClock, Report> {
-  if clock_rate.is_nan() || clock_rate <= 0.0 {
-    return make_error!("Gaussian clock needs a positive clock rate, got {clock_rate}");
-  }
-  let upward = Upward::new(graph, branch_lengths, sequence_length, tip_dates, excluded)?;
-  let eta = upward.eta(clock_rate, sequence_length);
-  let total = forward(&upward.pass, &upward.tips, &upward.nu, &upward.below, &upward.up)?;
-  let stds = rate_and_root_std(upward.a, upward.kappa, upward.root, eta);
-
-  let node_times = graph
-    .get_nodes()
-    .filter(|n| !n.is_leaf())
-    .filter_map(|n| {
-      let m = total[&n.key()].message()?;
-      Some((
-        n.key(),
-        NodeTimeGaussian {
-          mean: m.s - m.r / eta,
-          std: m.w.sqrt() / eta,
-        },
-      ))
+    Ok(GaussianClock {
+      rate_std: stds.map(|(eta_std, _)| self.mu(eta_std)),
+      root_time_std: stds.map(|(_, root_std)| root_std),
+      node_times,
     })
-    .collect();
-
-  Ok(GaussianClock {
-    rate_std: stds.map(|(eta_std, _)| upward.mu(eta_std, sequence_length)),
-    root_time_std: stds.map(|(_, root_std)| root_std),
-    node_times,
-  })
-}
-
-/// Substitution rate that maximizes the Gaussian log-likelihood with the root time free,
-/// `kappa ln eta - A eta^2 / 2 + B eta - C / 2`: `eta = (B + sqrt(B^2 + 4 A kappa)) / 2A`, converted to the rate per
-/// site and unit time. Unlike the root-to-tip regression it is positive whenever `A > 0`.
-pub(crate) fn gaussian_rate(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  sequence_length: f64,
-  tip_dates: &NodeTimes,
-  excluded: &BTreeMap<GraphNodeKey, bool>,
-) -> Result<f64, Report> {
-  let upward = Upward::new(graph, branch_lengths, sequence_length, tip_dates, excluded)?;
-  let (a, b, kappa) = (upward.a, upward.b, upward.kappa);
-  if a.is_nan() || a <= 0.0 {
-    return make_error!("Gaussian clock rate is undefined: the dates of the tips do not vary along the tree");
   }
-  let eta = (b + (b * b + 4.0 * a * kappa).sqrt()) / (2.0 * a);
-  Ok(upward.mu(eta, sequence_length))
+
+  /// Substitution rate that maximizes the Gaussian log-likelihood with the root time free,
+  /// `kappa ln eta - A eta^2 / 2 + B eta - C / 2`: `eta = (B + sqrt(B^2 + 4 A kappa)) / 2A`, converted to the rate
+  /// per site and unit time. Unlike the root-to-tip regression it is positive whenever `A > 0`.
+  pub(crate) fn rate(&self) -> Result<f64, Report> {
+    let (a, b, kappa) = (self.a, self.b, self.kappa);
+    if a.is_nan() || a <= 0.0 {
+      return make_error!("Gaussian clock rate is undefined: the dates of the tips do not vary along the tree");
+    }
+    let eta = (b + (b * b + 4.0 * a * kappa).sqrt()) / (2.0 * a);
+    Ok(self.mu(eta))
+  }
+
+  /// `eta` of substitution rate `mu`: `mu L (D + M + N) / D`
+  fn eta(&self, mu: f64) -> f64 {
+    mu * self.sequence_length * self.events / self.substitutions
+  }
+
+  fn mu(&self, eta: f64) -> f64 {
+    eta * self.substitutions / (self.events * self.sequence_length)
+  }
 }
 
 /// Messages toward the root: per node the combination from its children, per edge the message it carries upward

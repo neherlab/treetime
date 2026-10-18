@@ -269,7 +269,7 @@ pub enum ClockModelStats {
 pub struct RegressionStats {
   pub(crate) chisq: f64,
   pub(crate) r_val: f64,
-  /// Standard deviation of the rate from the Gaussian timetree, when a sequence length is known
+  /// Standard deviation of the rate from the Gaussian timetree at the final rate, when it does not degenerate
   #[deser(skip_serializing_if = Option::is_none, default)]
   pub(crate) rate_std: Option<f64>,
 }

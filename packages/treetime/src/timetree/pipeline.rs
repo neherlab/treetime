@@ -358,12 +358,6 @@ fn report_coalescent_size(
   }
 }
 
-/// Rate uncertainty of the Gaussian timetree at the final rate, or `None` when the sequence length is unknown or the
-/// approximation degenerates
-fn gaussian_rate_std(inputs: &RoundInputs<'_>, state: &RoundState, log: &dyn LogSink) -> Result<Option<f64>, Report> {
-  Ok(timetree_gaussian_clock(inputs, state, log)?.and_then(|clock| clock.rate_std))
-}
-
 fn refine_final_times(
   inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,
@@ -372,28 +366,24 @@ fn refine_final_times(
   log: &dyn LogSink,
 ) -> Result<FinalTimes, Report> {
   let params = inputs.params;
-  let estimated_rate_std = if params.clock_rate.is_none() {
-    gaussian_rate_std(inputs, &state, log)?
-  } else {
-    None
-  };
   let state = if params.clock_rate.is_none() {
+    let rate_std = timetree_gaussian_clock(inputs, &state, log).and_then(|clock| clock.rate_std);
     RoundState {
       clock_model: state
         .clock_model
-        .estimated_at_rate(&ClockSet::from_points(&state.clock_points), estimated_rate_std),
+        .estimated_at_rate(&ClockSet::from_points(&state.clock_points), rate_std),
       ..state
     }
   } else {
     state
   };
   let rate_std = if params.confidence {
-    let rate_std = determine_rate_std(params.clock_std_dev, || Ok(estimated_rate_std))?;
+    let rate_std = determine_rate_std(params.clock_std_dev, state.clock_model.rate_std())?;
     if rate_std.is_none() {
       progress_warn!(
         log,
-        "Date intervals leave out the rate uncertainty: it needs --clock-std-dev, or an estimated rate with the \
-         alignment or --sequence-length."
+        "Date intervals leave out the rate uncertainty: a fixed rate needs --clock-std-dev, and the Gaussian \
+         approximation gave none for the estimated rate."
       );
     }
     rate_std

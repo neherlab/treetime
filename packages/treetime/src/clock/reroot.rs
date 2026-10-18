@@ -1,7 +1,5 @@
 use crate::clock::clock_regression::clock_regression;
-use crate::clock::clock_state::{ClockEdgeInput, ClockInputs, ClockNodeInput, ClockState};
-use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
-use crate::clock::find_best_root::find_best_root::FindRootResult;
+use crate::clock::clock_state::{ClockEdgeInput, ClockInputs, ClockNodeInput};
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec, RootObjective};
 use crate::error::input_error;
@@ -19,36 +17,32 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{RerootResult, StemRemovalInfo, remove_stem_root};
 
-/// What the root search fits and optimizes
-pub(crate) struct RootSearch<'a> {
-  pub outliers: &'a BTreeSet<GraphNodeKey>,
-  pub reroot_params: &'a RerootParams,
-  pub prev_clock_rate: Option<f64>,
-}
-
-/// Moves the root to the position that `search` selects. When the root moves and is an undated stem, the stem goes
-/// first and the search repeats without it. The nodes and edges that the move creates get default clock inputs.
+/// Moves the root to the position that `reroot_params` selects, with the regression on the input branch lengths and
+/// without the `outliers`. When the root moves and is an undated stem, the stem goes first and the search repeats
+/// without it. The nodes and edges that the move creates get default clock inputs.
 pub(crate) fn reroot_at_best_root(
   graph: &mut Graph,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   inputs: &mut ClockInputs,
-  search: &RootSearch<'_>,
+  outliers: &BTreeSet<GraphNodeKey>,
+  reroot_params: &RerootParams,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<RerootResult, Report> {
-  let mut best = search_root(graph, branch_lengths, inputs, search, log)?;
+  let split_edge = reroot_params.topology.split_edge;
+  let (mut edge, mut split) = select_root(graph, branch_lengths, inputs, outliers, reroot_params, log)?;
   let mut stem_removal = None;
-  if root_moves(graph, best.edge, best.split, search.reroot_params.split_edge)? {
+  if root_moves(graph, edge, split, split_edge)? {
     stem_removal = remove_undated_stem(graph, branch_lengths, inputs)?;
     if stem_removal.is_some() {
-      best = search_root(graph, branch_lengths, inputs, search, log)?;
+      (edge, split) = select_root(graph, branch_lengths, inputs, outliers, reroot_params, log)?;
     }
   }
   let result = apply_root_at_edge(
     graph,
-    best.edge,
-    best.split,
-    search.reroot_params.topology(),
+    edge,
+    split,
+    reroot_params.topology,
     branch_lengths,
     stem_removal,
     |key| inputs.likely_time(key).is_some(),
@@ -70,24 +64,16 @@ pub(crate) fn reroot_undated(
 ) -> Result<RerootResult, Report> {
   let tip_dates = graph.get_leaves().map(|leaf| (leaf.key(), Some(0.0))).collect();
   let mut inputs = ClockInputs::from_times(graph, &tip_dates, &BTreeMap::new());
-  let reroot_params = RerootParams::new(spec.clone(), false).with_objective(RootObjective::FixedRate(0.0));
-  let search = RootSearch {
-    outliers: &BTreeSet::new(),
-    reroot_params: &reroot_params,
-    prev_clock_rate: None,
-  };
-  reroot_at_best_root(graph, branch_lengths, &mut inputs, &search, names, log)
-}
-
-fn search_root(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  inputs: &ClockInputs,
-  search: &RootSearch<'_>,
-  log: &dyn LogSink,
-) -> Result<FindRootResult, Report> {
-  let state = clock_regression(graph, inputs, search.outliers, branch_lengths, search.prev_clock_rate)?;
-  select_root(graph, inputs, &state, search.reroot_params, branch_lengths, log)
+  let reroot_params = RerootParams::new(spec.clone(), false);
+  reroot_at_best_root(
+    graph,
+    branch_lengths,
+    &mut inputs,
+    &BTreeSet::new(),
+    &reroot_params,
+    names,
+    log,
+  )
 }
 
 fn apply_reroot_to_inputs(inputs: &mut ClockInputs, result: &RerootResult) {
@@ -127,31 +113,27 @@ fn remove_undated_stem(
   Ok(Some(stem))
 }
 
-pub(crate) fn select_root(
+/// The edge and the split along it, from its parent end, where `reroot_params` puts the root; no edge means the
+/// current root
+fn select_root(
   graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
-  reroot_params: &RerootParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  inputs: &ClockInputs,
+  outliers: &BTreeSet<GraphNodeKey>,
+  reroot_params: &RerootParams,
   log: &dyn LogSink,
-) -> Result<FindRootResult, Report> {
-  match &reroot_params.spec {
-    RerootSpec::Method(RerootMethod::LeastSquares | RerootMethod::ClockFilter) => find_best_root(
-      graph,
-      state,
-      branch_lengths,
-      reroot_params.force_positive_rate,
-      reroot_params.objective,
-      log,
-    ),
-    RerootSpec::Method(RerootMethod::MinDev) => {
-      find_best_root(graph, state, branch_lengths, false, RootObjective::FixedRate(0.0), log)
+) -> Result<(Option<GraphEdgeKey>, f64), Report> {
+  let (force_positive, objective) = match &reroot_params.spec {
+    RerootSpec::Method(RerootMethod::LeastSquares | RerootMethod::ClockFilter) => {
+      (reroot_params.force_positive_rate, reroot_params.objective)
     },
-    RerootSpec::Method(RerootMethod::Oldest) => {
-      find_oldest_root(graph, inputs, state, branch_lengths, reroot_params.objective)
-    },
-    RerootSpec::Tips(tips) => find_tip_group_root(graph, inputs, state, tips, branch_lengths, reroot_params.objective),
-  }
+    RerootSpec::Method(RerootMethod::MinDev) => (false, RootObjective::FixedRate(0.0)),
+    RerootSpec::Method(RerootMethod::Oldest) => return named_root_point(graph, oldest_tip(graph, inputs)?),
+    RerootSpec::Tips(tips) => return named_root_point(graph, tip_group_mrca(graph, tips)?),
+  };
+  let state = clock_regression(graph, inputs, outliers, branch_lengths, None)?;
+  let best = find_best_root(graph, &state, branch_lengths, force_positive, objective, log)?;
+  Ok((best.edge, best.split))
 }
 
 #[derive(Clone, Debug, SmartDefault)]
@@ -160,11 +142,7 @@ pub struct RerootParams {
 
   pub(crate) objective: RootObjective,
 
-  #[default = true]
-  pub(crate) split_edge: bool,
-
-  #[default = true]
-  pub(crate) remove_trivial_root: bool,
+  pub(crate) topology: RerootTopologyParams,
 
   #[default = true]
   pub(crate) force_positive_rate: bool,
@@ -180,13 +158,6 @@ impl RerootParams {
     }
   }
 
-  pub(crate) fn topology(&self) -> RerootTopologyParams {
-    RerootTopologyParams {
-      split_edge: self.split_edge,
-      remove_trivial_root: self.remove_trivial_root,
-    }
-  }
-
   #[must_use]
   pub(crate) fn with_objective(&self, objective: RootObjective) -> Self {
     Self {
@@ -196,14 +167,8 @@ impl RerootParams {
   }
 }
 
-fn find_oldest_root(
-  graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  objective: RootObjective,
-) -> Result<FindRootResult, Report> {
-  let Some(oldest_key) = graph
+fn oldest_tip(graph: &Graph, inputs: &ClockInputs) -> Result<GraphNodeKey, Report> {
+  graph
     .get_leaves()
     .filter_map(|node| {
       let key = node.key();
@@ -212,56 +177,20 @@ fn find_oldest_root(
     })
     .min_by(|(lhs, _), (rhs, _)| lhs.total_cmp(rhs))
     .map(|(_, key)| key)
-  else {
-    return Err(input_error(
-      "Cannot reroot to oldest tip because no dated leaves were found",
-    ));
-  };
-
-  find_named_root_point(graph, inputs, state, oldest_key, branch_lengths, objective)
+    .ok_or_else(|| input_error("Cannot reroot to oldest tip because no dated leaves were found"))
 }
 
-fn find_tip_group_root(
-  graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
-  tips: &[GraphNodeKey],
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  objective: RootObjective,
-) -> Result<FindRootResult, Report> {
+fn tip_group_mrca(graph: &Graph, tips: &[GraphNodeKey]) -> Result<GraphNodeKey, Report> {
   if tips.is_empty() {
     return Err(input_error("--reroot-tips requires at least one tip name"));
   }
-
-  let mrca_key = common_ancestor(graph, tips)?;
-  find_named_root_point(graph, inputs, state, mrca_key, branch_lengths, objective)
+  common_ancestor(graph, tips)
 }
 
-fn find_named_root_point(
-  graph: &Graph,
-  inputs: &ClockInputs,
-  state: &ClockState,
-  node_key: GraphNodeKey,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  objective: RootObjective,
-) -> Result<FindRootResult, Report> {
-  let Some(edge) = graph.parent_inbound_edge(node_key)? else {
-    let root = graph.get_exactly_one_root()?;
-    let clock_set = state.node(root.key()).clone();
-    return Ok(FindRootResult {
-      edge: None,
-      split: 0.0,
-      chisq: objective.score(&clock_set),
-      clock_set,
-    });
-  };
-
-  let split = 0.5;
-  let clock_set = BranchPointCostFunction::new(state, edge, branch_lengths, objective).evaluate_clock_set(split);
-  Ok(FindRootResult {
-    edge: Some(edge),
-    split,
-    chisq: objective.score(&clock_set),
-    clock_set,
+/// The midpoint of the edge above `node_key`, or the current root when `node_key` is the root
+fn named_root_point(graph: &Graph, node_key: GraphNodeKey) -> Result<(Option<GraphEdgeKey>, f64), Report> {
+  Ok(match graph.parent_inbound_edge(node_key)? {
+    Some(edge) => (Some(edge), 0.5),
+    None => (None, 0.0),
   })
 }

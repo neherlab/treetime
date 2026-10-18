@@ -1,5 +1,5 @@
 use crate::clock::clock_regression::ClockFit;
-use crate::clock::gaussian::{GaussianClock, gaussian_clock, gaussian_rate};
+use crate::clock::gaussian::{GaussianClock, GaussianTree};
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::coalescent::skyline::SkylineParams;
 use crate::progress::LogSink;
@@ -21,7 +21,6 @@ use treetime_graph::assign_node_names::restrict_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::cast::ToF64Exact;
 
 /// The state that the refinement loop starts from: node times inferred under the coalescent prior, the frozen
 /// expected lineage counts and the first coalescent time scale
@@ -85,10 +84,6 @@ pub(crate) fn initialize(
     ..SkylineParams::default()
   };
   let run = |prior: Option<&CoalescentPrior>| run_timetree(&state.time_inference_inputs(&inputs), prior, log);
-  let expectation_of = |time_inference: &TimeInference| {
-    LineageExpectation::from_posterior(&state.graph, &time_inference.posterior, &time_inference.bad_branches)
-      .wrap_err("Failed to compute the expected coalescent lineage counts")
-  };
 
   let gaussian_seed = if mode.wants_prior() {
     gaussian_seed(&inputs, &state, log)?
@@ -99,7 +94,10 @@ pub(crate) fn initialize(
     (expectation, None)
   } else {
     let time_inference = run(None)?;
-    (expectation_of(&time_inference)?, Some(time_inference))
+    (
+      LineageExpectation::of_inference(&state.graph, &time_inference)?,
+      Some(time_inference),
+    )
   };
   let timescale = coalescent_timescale(mode, &skyline_params, &seed_expectation, log)?;
 
@@ -108,7 +106,7 @@ pub(crate) fn initialize(
   } else {
     let prior = CoalescentPrior::new(&seed_expectation, &timescale.distribution)?;
     let time_inference = run(Some(&prior))?;
-    let expectation = expectation_of(&time_inference)?;
+    let expectation = LineageExpectation::of_inference(&state.graph, &time_inference)?;
     (time_inference, expectation)
   };
 
@@ -136,7 +134,7 @@ fn gaussian_seed(
   state: &RoundState,
   log: &dyn LogSink,
 ) -> Result<Option<Arc<LineageExpectation>>, Report> {
-  let Some(gaussian) = timetree_gaussian_clock(inputs, state, log)? else {
+  let Some(gaussian) = timetree_gaussian_clock(inputs, state, log) else {
     return Ok(None);
   };
   progress_info!(
@@ -155,28 +153,28 @@ pub(crate) fn timetree_gaussian_clock(
   inputs: &RoundInputs<'_>,
   state: &RoundState,
   log: &dyn LogSink,
-) -> Result<Option<GaussianClock>, Report> {
-  let tip_dates = given_times(&state.graph, &inputs.context.date_constraints)?;
-  match gaussian_clock(
+) -> Option<GaussianClock> {
+  let clock = gaussian_tree(
     &state.graph,
     &state.branch_lengths,
-    inputs.context.sequence_length.to_f64_exact(),
-    &tip_dates,
+    inputs.context,
     inputs.leaf_bad_branches,
-    state.clock_model.clock_rate(),
-  ) {
+  )
+  .and_then(|tree| tree.clock(state.clock_model.clock_rate()));
+  match clock {
     Ok(clock) => {
+      let fmt_std = |std: Option<f64>| std.map_or_else(|| "undefined".to_owned(), |std| format!("{std:.6e}"));
       progress_info!(
         log,
-        "Gaussian clock: rate std {:?}, root time std {:?}",
-        clock.rate_std,
-        clock.root_time_std
+        "Gaussian clock: rate std {}, root time std {}",
+        fmt_std(clock.rate_std),
+        fmt_std(clock.root_time_std)
       );
-      Ok(Some(clock))
+      Some(clock)
     },
     Err(report) => {
       progress_warn!(log, "The Gaussian timetree is not available: {report}");
-      Ok(None)
+      None
     },
   }
 }
@@ -191,18 +189,23 @@ pub(crate) fn gaussian_start_rate(
   log: &dyn LogSink,
 ) -> Result<f64, Report> {
   let excluded = bad_leaves(graph, &context.date_constraints, outliers);
-  let tip_dates = given_times(graph, &context.date_constraints)?;
-  let rate = gaussian_rate(
-    graph,
-    branch_lengths,
-    context.sequence_length.to_f64_exact(),
-    &tip_dates,
-    &excluded,
-  )
-  .wrap_err("The root-to-tip regression gives no positive clock rate, and the Gaussian timetree none either")?;
+  let rate = gaussian_tree(graph, branch_lengths, context, &excluded)
+    .and_then(|tree| tree.rate())
+    .wrap_err("The root-to-tip regression gives no positive clock rate, and the Gaussian timetree none either")?;
   progress_warn!(
     log,
     "The root-to-tip regression gives no positive clock rate; starting from the rate of the Gaussian timetree, {rate:.6e}"
   );
   Ok(rate)
+}
+
+/// Gaussian timetree of the tips dated by the constraints of `context`, without the `excluded` ones
+fn gaussian_tree(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  context: &TimetreeContext,
+  excluded: &BTreeMap<GraphNodeKey, bool>,
+) -> Result<GaussianTree, Report> {
+  let tip_dates = given_times(graph, &context.date_constraints)?;
+  GaussianTree::new(graph, branch_lengths, context.sequence_length, &tip_dates, excluded)
 }

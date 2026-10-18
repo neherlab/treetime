@@ -49,10 +49,10 @@ pub(crate) fn refinement_round(
 
   let previous_times = capture_node_times(&state.graph, &state.time_inference);
   let previous_states = capture_ancestral_states(&state.graph, &state.branch_model);
-  let (state, topology, merger_times) = refine_topology(inputs, state, total_length, merger_rate, rng, log)?;
+  let (state, topology) = refine_topology(inputs, state, total_length, merger_rate, rng, log)?;
   // the prior follows a topology change: the new mergers enter the expected lineage counts at their sampled times
-  let rebuilt = match prior {
-    Some(prior) if topology.changed() => Some(prior.with_topology(&state.graph, &merger_times)?),
+  let rebuilt = match (prior, &topology) {
+    (Some(prior), TopologyOutcome::Changed { merger_times }) => Some(prior.with_topology(&state.graph, merger_times)?),
     _ => None,
   };
   let state = refresh_times(inputs, rebuilt.as_ref().or(prior), topology.changed(), state, log)?;
@@ -122,9 +122,9 @@ fn refine_topology(
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn RngCore,
   log: &dyn LogSink,
-) -> Result<(RoundState, TopologyOutcome, BTreeMap<GraphNodeKey, f64>), Report> {
+) -> Result<(RoundState, TopologyOutcome), Report> {
   if !inputs.params.resolve_polytomies {
-    return Ok((state, TopologyOutcome::Unchanged, BTreeMap::new()));
+    return Ok((state, TopologyOutcome::Unchanged));
   }
 
   let total_mutation_rate = state.clock_model.clock_rate() * total_length.to_f64_exact();
@@ -151,7 +151,7 @@ fn refine_topology(
       branch_lengths,
       ..state
     };
-    return Ok((state, TopologyOutcome::Unchanged, BTreeMap::new()));
+    return Ok((state, TopologyOutcome::Unchanged));
   }
 
   let resolved_nodes = merger_times.len();
@@ -183,24 +183,26 @@ fn refine_topology(
     gammas,
     ..state
   };
-  Ok((state, TopologyOutcome::Changed { resolved_nodes }, merger_times))
+  Ok((state, TopologyOutcome::Changed { merger_times }))
 }
 
-#[derive(Clone, Copy)]
 pub(crate) enum TopologyOutcome {
   Unchanged,
-  Changed { resolved_nodes: usize },
+  /// The topology changed; `merger_times` holds the sampled times of the mergers that polytomy resolution created
+  Changed {
+    merger_times: BTreeMap<GraphNodeKey, f64>,
+  },
 }
 
 impl TopologyOutcome {
-  pub(crate) fn changed(self) -> bool {
+  pub(crate) fn changed(&self) -> bool {
     matches!(self, Self::Changed { .. })
   }
 
-  pub(crate) fn resolved_nodes(self) -> usize {
+  pub(crate) fn resolved_nodes(&self) -> usize {
     match self {
       Self::Unchanged => 0,
-      Self::Changed { resolved_nodes } => resolved_nodes,
+      Self::Changed { merger_times } => merger_times.len(),
     }
   }
 }

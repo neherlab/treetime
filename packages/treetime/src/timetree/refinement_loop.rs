@@ -32,15 +32,7 @@ pub(crate) fn run_refinement_loop(
   let max_iter = params.max_iter;
 
   let mut rng = get_random_number_generator(params.seed);
-  let expectation_of = |state: &RoundState| {
-    LineageExpectation::from_posterior(
-      &state.graph,
-      &state.time_inference.posterior,
-      &state.time_inference.bad_branches,
-    )
-    .wrap_err("Failed to compute the expected coalescent lineage counts")
-  };
-  let mut current = expectation_of(&state)?;
+  let mut current = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
 
   while let Some(IterationContext { i }) = optimizer.next_iter(log) {
     cancel.check()?;
@@ -70,7 +62,7 @@ pub(crate) fn run_refinement_loop(
     )
     .wrap_err_with(|| format!("When running round {i}"))?;
     state = next_state;
-    current = expectation_of(&state)?;
+    current = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
     if outcome.topology.changed() {
       // the mergers created by polytomy resolution have posteriors now; the expectation takes them in and stays
       // fixed again

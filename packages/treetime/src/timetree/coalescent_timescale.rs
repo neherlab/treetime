@@ -24,31 +24,17 @@ pub fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent
   }
 }
 
+/// The coalescent time scale of `mode` for the lineages of `expectation`: the fixed Tc, or the constant or skyline Tc
+/// fitted to them. Without a coalescent model, the constant fit still gives the merger rates of polytomy resolution.
 pub(crate) fn coalescent_timescale(
   mode: CoalescentMode,
   skyline_params: &SkylineParams,
   expectation: &LineageExpectation,
   log: &dyn LogSink,
 ) -> Result<CoalescentTimescale, Report> {
-  let mode = match mode {
-    CoalescentMode::Disabled => CoalescentMode::Constant,
-    mode @ (CoalescentMode::Fixed(_) | CoalescentMode::Constant | CoalescentMode::Skyline) => mode,
-  };
-  estimate_coalescent_tc(mode, skyline_params, expectation, log)
-    .wrap_err("Failed to estimate the coalescent timescale")?
-    .ok_or_else(|| make_report!("A coalescent Tc is required, but {mode:?} yielded none"))
-}
-
-pub(crate) fn estimate_coalescent_tc(
-  mode: CoalescentMode,
-  skyline_params: &SkylineParams,
-  expectation: &LineageExpectation,
-  log: &dyn LogSink,
-) -> Result<Option<CoalescentTimescale>, Report> {
   let n_points = match mode {
-    CoalescentMode::Disabled => return Ok(None),
-    CoalescentMode::Fixed(tc) => return Ok(Some(fixed_timescale(tc, expectation))),
-    CoalescentMode::Constant => 1,
+    CoalescentMode::Fixed(tc) => return Ok(fixed_timescale(tc, expectation)),
+    CoalescentMode::Disabled | CoalescentMode::Constant => 1,
     CoalescentMode::Skyline => skyline_params.n_points,
   };
   let result = optimize_skyline(
@@ -58,8 +44,9 @@ pub(crate) fn estimate_coalescent_tc(
     },
     expectation,
     log,
-  )?;
-  Ok(Some(CoalescentTimescale {
+  )
+  .wrap_err("Failed to estimate the coalescent timescale")?;
+  Ok(CoalescentTimescale {
     distribution: result.tc_distribution,
     schedule: result.tc_schedule,
     report: Some(CoalescentTcReport {
@@ -70,7 +57,7 @@ pub(crate) fn estimate_coalescent_tc(
       }),
       log_likelihood: Some(result.log_likelihood.value()),
     }),
-  }))
+  })
 }
 
 fn fixed_timescale(tc: f64, expectation: &LineageExpectation) -> CoalescentTimescale {
