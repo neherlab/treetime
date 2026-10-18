@@ -10,8 +10,7 @@ mod tests {
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
-  use crate::coalescent::coalescent::CoalescentModel;
-  use crate::coalescent::lineage_counts::compute_lineage_counts;
+  use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
@@ -23,6 +22,7 @@ mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
+  use crate::timetree::inference::result::NodePosterior;
   use crate::timetree::inference::result::given_times;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
@@ -51,7 +51,20 @@ mod tests {
 
 let (graph, names, partition, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
     let node_times = constraint_coalescent_node_times(&graph, &constraints)?;
-    let coalescent = CoalescentModel::new(&compute_lineage_counts(&graph, &node_times)?, &Distribution::constant(tc))?;
+    let posterior = node_times
+      .iter()
+      .map(|(key, entry)| {
+        let posterior = NodePosterior {
+          time: entry.time_dist_likely,
+          likely_time: entry.time_dist_likely,
+          ..NodePosterior::default()
+        };
+        (*key, posterior)
+      })
+      .collect();
+    let bad_branches = node_times.iter().map(|(key, entry)| (*key, entry.bad_branch)).collect();
+    let expectation = LineageExpectation::from_posterior(&graph, &posterior, &bad_branches)?;
+    let coalescent = CoalescentPrior::new(&expectation, &Distribution::constant(tc))?;
     let run_names = names.clone();
     let inference = run_timetree(
       &TimeInferenceInputs {

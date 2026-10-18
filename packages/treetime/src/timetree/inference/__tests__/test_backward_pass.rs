@@ -1,14 +1,13 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
-  use crate::coalescent::coalescent::CoalescentModel;
+  use crate::coalescent::mean_field::CoalescentPrior;
   use crate::pretty_assert_ulps_eq;
-  use crate::test_utils::{find_node_key_by_name, parent_edge_key, unknown_branches};
+  use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_coalescent_prior, unknown_branches};
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::result::{BranchLikelihood, TimeBackward};
   use eyre::Report;
   use ndarray::Array1;
-  use ndarray::array;
   use ordered_float::OrderedFloat;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
@@ -16,7 +15,6 @@ mod tests {
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_abs_diff_eq;
@@ -154,7 +152,12 @@ mod tests {
     set_edge_branch_dist(&graph, &mut inputs, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, &mut inputs, leaf_b_key, 2.0);
 
-    let coalescent_model = coalescent_model(0.01)?;
+    let coalescent_model = point_coalescent_prior(
+      &graph,
+      &names,
+      &[("A", 2015.0), ("B", 2014.0), ("I", 2012.0), ("root", 2011.0)],
+      0.01,
+    )?;
 
     let backward = run_backward_pass(&graph, &inputs, Some(&coalescent_model))?;
 
@@ -188,7 +191,12 @@ mod tests {
     set_edge_branch_dist(&graph, &mut inputs, leaf_a_key, 3.0);
     set_edge_branch_dist(&graph, &mut inputs, leaf_b_key, 2.0);
 
-    let coalescent_model = coalescent_model(1e-6)?;
+    let coalescent_model = point_coalescent_prior(
+      &graph,
+      &names,
+      &[("A", 2015.0), ("B", 2014.0), ("I", 2012.0), ("root", 2011.0)],
+      1e-6,
+    )?;
 
     let backward = run_backward_pass(&graph, &inputs, Some(&coalescent_model))?;
 
@@ -214,7 +222,12 @@ mod tests {
     set_leaf_time(&mut inputs, leaf_b_key, 2014.0);
     set_edge_branch_function(&graph, &mut inputs, leaf_a_key, 3.0)?;
     set_edge_branch_function(&graph, &mut inputs, leaf_b_key, 2.0)?;
-    let model = coalescent_model(0.5)?;
+    let model = point_coalescent_prior(
+      &graph,
+      &names,
+      &[("A", 2015.0), ("B", 2014.0), ("I", 2012.0), ("root", 2011.0)],
+      0.5,
+    )?;
 
     let without = run_backward_pass(&graph, &inputs, None)?;
     let with = run_backward_pass(&graph, &inputs, Some(&model))?;
@@ -227,8 +240,8 @@ mod tests {
     let n_children = 2;
     for &time in grid.iter().skip(1) {
       let added = (with.eval(time)? - with.eval(reference)?) - (without.eval(time)? - without.eval(reference)?);
-      let expected =
-        model.internal_contribution(time, n_children)? - model.internal_contribution(reference, n_children)?;
+      let expected = model.node_contribution(internal_key, n_children, time)?
+        - model.node_contribution(internal_key, n_children, reference)?;
       pretty_assert_abs_diff_eq!(added, expected, epsilon = 1e-9);
     }
     Ok(())
@@ -565,7 +578,7 @@ mod tests {
     pub(super) fn run_backward_pass(
       graph: &Graph,
       inputs: &BackwardInputs,
-      coalescent_model: Option<&CoalescentModel>,
+      coalescent_model: Option<&CoalescentPrior>,
     ) -> Result<TimeBackward, Report> {
       propagate_distributions_backward(
         graph,
@@ -657,11 +670,6 @@ mod tests {
       let dist = node_time_distribution(&backward, internal).expect("internal node should have a time distribution");
       let peak = dist.likely_time()?.expect("distribution should have a likely_time");
       Ok((dist, peak))
-    }
-
-    pub(super) fn coalescent_model(tc: f64) -> Result<CoalescentModel, Report> {
-      let lineage_counts = PiecewiseConstantFn::new(array![1900.0, 2100.0], array![1.0, 2.0, 0.0]);
-      CoalescentModel::new(&lineage_counts, &Distribution::constant(tc))
     }
   }
 

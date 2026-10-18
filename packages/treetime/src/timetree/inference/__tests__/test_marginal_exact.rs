@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::GTR;
   use crate::partition::optimize;
@@ -58,6 +59,44 @@ mod tests {
       assert!(
         difference < MAX_CDF_DIFFERENCE,
         "node {node}: max CDF difference {difference:.4} to the exact posterior"
+      );
+    }
+    Ok(())
+  }
+
+  // ((A,B)X,(C,D)Y)R with tips at 2012, 2010.5, 2011.5 and 2010: X and Y are sibling clades whose posteriors
+  // overlap. The exact Kingman prior for this topology at constant Tc, with n(t) the number of tips sampled after t, is
+  //   Tc log p = int^x (n - 1) + int^y (n - 1) + int^r (n - 1) - min(x, y) - 2 r   + const,
+  // whose pair term min(x, y) is not linear in either time. The time passes use the mean-field prior, built from the
+  // prior-free posteriors and rebuilt once from the first prior pass, as the initial round does.
+  const TIPS_4: [(&str, f64); 4] = [("A", 2012.0), ("B", 2010.5), ("C", 2011.5), ("D", 2010.0)];
+  const GRID_4_START: f64 = 2003.0;
+  const GRID_4_STEP: f64 = 0.02;
+  const GRID_4_LEN: usize = 376;
+  const MAX_CDF_DIFFERENCE_4: f64 = 0.03;
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::short_internal_branches_strong_prior(   [3, 0, 2, 1, 1, 2],  1.0)]
+  #[case::short_internal_branches_weak_prior(     [3, 0, 2, 1, 1, 2], 10.0)]
+  #[case::overlapping_clades_strong_prior(        [6, 3, 4, 3, 3, 4],  1.0)]
+  #[case::overlapping_clades_weak_prior(          [6, 3, 4, 3, 3, 4], 10.0)]
+  #[case::long_internal_branches_strong_prior(    [2, 1, 1, 2, 3, 3],  1.0)]
+  #[trace]
+  fn test_marginal_exact_mean_field_prior_matches_the_kingman_posterior(
+    #[case] counts: [usize; 6],
+    #[case] tc: f64,
+  ) -> Result<(), Report> {
+    let gtr = jc69(JC69Params::default())?;
+    let grid: Vec<f64> = (0..GRID_4_LEN).map(|i| GRID_4_START + GRID_4_STEP * i.to_f64_exact()).collect();
+    let exact = helpers::exact_kingman_marginals(&gtr, counts, tc, &grid);
+    let treetime = helpers::treetime_mean_field_marginals(&gtr, counts, tc, &grid)?;
+
+    for (node, exact, treetime) in ["X", "Y", "R"].iter().zip(&exact).zip(&treetime).map(|((n, e), t)| (n, e, t)) {
+      let difference = helpers::max_cdf_difference(&grid, exact, treetime);
+      assert!(
+        difference < MAX_CDF_DIFFERENCE_4,
+        "node {node}: max CDF difference {difference:.4} to the exact Kingman posterior"
       );
     }
     Ok(())
@@ -204,6 +243,135 @@ mod tests {
         1.0,
         MaxGridPoints::default(),
       )
+    }
+
+    /// Marginals of X, Y and R of ((A,B)X,(C,D)Y)R under the exact Kingman prior; `counts` are A, B, C, D, X, Y
+    pub(super) fn exact_kingman_marginals(gtr: &GTR, counts: [usize; 6], tc: f64, grid: &[f64]) -> [Vec<f64>; 3] {
+      let [ka, kb, kc, kd, kx, ky] = counts;
+      let n = grid.len();
+      let tip = |name: &str| TIPS_4.iter().find(|(tip, _)| *tip == name).expect("tip must exist").1;
+      let mut linear = vec![0.0; n];
+      for i in 1..n {
+        let mid = f64::midpoint(grid[i - 1], grid[i]);
+        let sampled_after = TIPS_4.iter().filter(|(_, date)| *date > mid).count().to_f64_exact();
+        linear[i] = linear[i - 1] + GRID_4_STEP * (sampled_after - 1.0) / tc;
+      }
+      let lag = |k: usize| {
+        (0..n)
+          .map(|i| branch_likelihood(gtr, i.to_f64_exact() * GRID_4_STEP, k))
+          .collect::<Vec<_>>()
+      };
+      let (branch_x, branch_y) = (lag(kx), lag(ky));
+      let factor_x: Vec<f64> = (0..n)
+        .map(|i| {
+          let x = grid[i];
+          branch_likelihood(gtr, tip("A") - x, ka) * branch_likelihood(gtr, tip("B") - x, kb) * linear[i].exp()
+        })
+        .collect();
+      let factor_y: Vec<f64> = (0..n)
+        .map(|j| {
+          let y = grid[j];
+          branch_likelihood(gtr, tip("C") - y, kc) * branch_likelihood(gtr, tip("D") - y, kd) * linear[j].exp()
+        })
+        .collect();
+      let factor_r: Vec<f64> = (0..n)
+        .map(|l| (linear[l] - 2.0 * (grid[l] - grid[0]) / tc).exp())
+        .collect();
+      let (mut px, mut py, mut pr) = (vec![0.0; n], vec![0.0; n], vec![0.0; n]);
+      for i in 0..n {
+        for j in 0..n {
+          let pair = factor_x[i] * factor_y[j] * (-(grid[i.min(j)] - grid[0]) / tc).exp();
+          if pair == 0.0 {
+            continue;
+          }
+          for l in 0..i.min(j) {
+            let weight = pair * branch_x[i - l] * branch_y[j - l] * factor_r[l];
+            px[i] += weight;
+            py[j] += weight;
+            pr[l] += weight;
+          }
+        }
+      }
+      [px, py, pr]
+    }
+
+    /// Marginals of X, Y and R from the time passes with the mean-field prior, built as the initial round builds it
+    pub(super) fn treetime_mean_field_marginals(
+      gtr: &GTR,
+      counts: [usize; 6],
+      tc: f64,
+      grid: &[f64],
+    ) -> Result<[Vec<f64>; 3], Report> {
+      let parsed = nwk_read(b"((A:1,B:1)X:1,(C:1,D:1)Y:1)R;".as_slice())?;
+      let names = parsed.names();
+      let graph = parsed.graph;
+      let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
+      let branches: BTreeMap<_, _> = ["A", "B", "C", "D", "X", "Y"]
+        .iter()
+        .zip(counts)
+        .map(|(name, k)| {
+          let distribution = branch_distribution(gtr, k)?;
+          let time_length = distribution.likely_time()?;
+          let branch = BranchLikelihood {
+            distribution: Some(distribution),
+            time_length,
+          };
+          Ok((parent_edge_key(&graph, key(name)), branch))
+        })
+        .collect::<Result<_, Report>>()?;
+      let constraints = point_date_constraints(&graph, &names, &TIPS_4);
+      let bad_branches = derive_bad_branches(
+        &graph,
+        &constraints,
+        &bad_leaves(&graph, &constraints, &BTreeSet::new()),
+      )?;
+      let passes = |prior: Option<&CoalescentPrior>| {
+        let backward = propagate_distributions_backward(
+          &graph,
+          &constraints,
+          prior,
+          &bad_branches,
+          &branches,
+          MaxGridPoints::default(),
+        )?;
+        propagate_distributions_forward(
+          &graph,
+          &constraints,
+          &names,
+          &branches,
+          &backward,
+          MaxGridPoints::default(),
+          &NoopProgress,
+        )
+      };
+      let tc = Distribution::constant(tc);
+      let prior_free = passes(None)?;
+      let seed = CoalescentPrior::new(
+        &LineageExpectation::from_posterior(&graph, &prior_free, &bad_branches)?,
+        &tc,
+      )?;
+      let first = passes(Some(&seed))?;
+      let rebuilt = CoalescentPrior::new(&LineageExpectation::from_posterior(&graph, &first, &bad_branches)?, &tc)?;
+      let posterior = passes(Some(&rebuilt))?;
+      let density = |name: &str| -> Result<Vec<f64>, Report> {
+        let distribution = posterior[&key(name)]
+          .distribution
+          .as_deref()
+          .expect("internal node must have a posterior")
+          .normalize()?;
+        let (lower, upper) = distribution.time_bounds().expect("posterior must have bounds");
+        grid
+          .iter()
+          .map(|&t| {
+            if t < lower || t > upper {
+              Ok(0.0)
+            } else {
+              distribution.eval(t).map(|neglog| (-neglog).exp())
+            }
+          })
+          .collect()
+      };
+      Ok([density("X")?, density("Y")?, density("R")?])
     }
 
     fn cdf(grid: &[f64], density: &[f64]) -> Vec<f64> {

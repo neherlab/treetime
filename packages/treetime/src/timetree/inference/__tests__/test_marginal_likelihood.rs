@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
-  use crate::coalescent::coalescent::CoalescentModel;
-  use crate::test_utils::{find_node_key_by_name, parent_edge_key, unknown_branches};
+  use crate::coalescent::mean_field::CoalescentPrior;
+  use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_coalescent_prior, unknown_branches};
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::result::BranchLikelihood;
   use crate::timetree::optimization::marginal_clock_rate::branches_at_rate;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
-  use ndarray::{Array1, array};
+  use ndarray::Array1;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::sync::Arc;
@@ -17,7 +17,6 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::f64_to_usize_saturating;
 
@@ -36,7 +35,7 @@ mod tests {
     let setup = helpers::setup()?;
     // branch distributions at `rate`, rescaled from those at the reference rate
     let branches = &branches_at_rate(&setup.branches, helpers::REFERENCE_RATE, rate)?;
-    let model = tc.map(helpers::coalescent).transpose()?;
+    let model = tc.map(|tc| helpers::coalescent(&setup, tc)).transpose()?;
     let backward = propagate_distributions_backward(
       &setup.graph,
       &setup.constraints,
@@ -49,8 +48,8 @@ mod tests {
       .log_marginal_likelihood(setup.graph.root_key()?)?
       .expect("root has a distribution");
     let expected = helpers::brute_force_log_z(&setup, branches, model.as_ref())?;
-    // without a prior the difference is below 5e-3 (mass windows, grids); with the coalescent prior it is 0.006-0.011,
-    // from the grid resolution of the coalescent factors' steps at the lineage-count breakpoints
+    // without a prior the difference is below 5e-3 (mass windows, grids); the coalescent prior adds the grid resolution
+    // of its factors
     assert_abs_diff_eq!(expected, actual, epsilon = 2e-2);
     Ok(())
   }
@@ -70,6 +69,7 @@ mod tests {
       pub bad_branches: BTreeMap<GraphNodeKey, bool>,
       pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
       pub keys: BTreeMap<&'static str, GraphNodeKey>,
+      pub names: BTreeMap<GraphNodeKey, Option<String>>,
     }
 
     pub(super) fn setup() -> Result<Setup, Report> {
@@ -102,6 +102,7 @@ mod tests {
         bad_branches,
         branches,
         keys,
+        names,
       })
     }
 
@@ -122,12 +123,15 @@ mod tests {
       })
     }
 
-    pub(super) fn coalescent(tc: f64) -> Result<CoalescentModel, Report> {
-      let lineage_counts = PiecewiseConstantFn::new(
-        array![2005.0, 2011.0, 2013.0, 2014.0, 2015.0],
-        array![1.0, 2.0, 3.0, 3.0, 2.0, 1.0],
-      );
-      CoalescentModel::new(&lineage_counts, &Distribution::constant(tc))
+    /// Mean-field prior whose lineage expectation has the root at 2005 and I at 2011
+    pub(super) fn coalescent(setup: &Setup, tc: f64) -> Result<CoalescentPrior, Report> {
+      let times = [("root", 2005.0), ("I", 2011.0)];
+      point_coalescent_prior(
+        &setup.graph,
+        &setup.names,
+        &[TIPS.as_slice(), times.as_slice()].concat(),
+        tc,
+      )
     }
 
     /// log of the integral over t_I < 2014 and t_root < min(t_I, 2013) of the product of the branch likelihoods and the
@@ -135,14 +139,17 @@ mod tests {
     pub(super) fn brute_force_log_z(
       setup: &Setup,
       branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
-      model: Option<&CoalescentModel>,
+      model: Option<&CoalescentPrior>,
     ) -> Result<f64, Report> {
       let neglog_branch = |name: &str, dt: f64| -> Result<f64, Report> {
         let branch = &branches[&parent_edge_key(&setup.graph, setup.keys[name])];
         branch.distribution.as_deref().expect("branch distribution").eval(dt)
       };
       let leaf_cost: f64 = match model {
-        Some(m) => TIPS.iter().map(|&(_, date)| m.leaf_contribution(date)).sum(),
+        Some(m) => TIPS
+          .iter()
+          .map(|&(name, date)| m.node_contribution(setup.keys[name], 0, date))
+          .sum::<Result<f64, Report>>()?,
         None => 0.0,
       };
       let n = 1601;
@@ -154,7 +161,7 @@ mod tests {
         let w_i = if i == 0 || i == n - 1 { 0.5 } else { 1.0 };
         let cost_i = neglog_branch("A", 2015.0 - ti)?
           + neglog_branch("B", 2014.0 - ti)?
-          + model.map_or(Ok(0.0), |m| m.internal_contribution(ti, 2))?;
+          + model.map_or(Ok(0.0), |m| m.node_contribution(setup.keys["I"], 2, ti))?;
         let r_hi = ti.min(2013.0);
         let n_r = f64_to_usize_saturating(((r_hi - t_lo) / dt).floor()).max(1) + 1;
         let t_r = Array1::linspace(t_lo, r_hi, n_r);
@@ -164,7 +171,7 @@ mod tests {
           let cost = cost_i
             + neglog_branch("I", ti - tr)?
             + neglog_branch("C", 2013.0 - tr)?
-            + model.map_or(Ok(0.0), |m| m.root_contribution(tr, 2))?
+            + model.map_or(Ok(0.0), |m| m.node_contribution(setup.keys["root"], 2, tr))?
             + leaf_cost;
           log_terms.push((w_i * w_r * dt * dr).ln() - cost);
         }

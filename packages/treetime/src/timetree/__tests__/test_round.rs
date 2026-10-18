@@ -11,7 +11,7 @@ mod tests {
   use crate::clock::reroot::RerootParams;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
-  use crate::coalescent::total_lh::compute_coalescent_total_lh;
+  use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
@@ -82,38 +82,6 @@ mod tests {
         .get_nodes()
         .all(|node| inference.posterior[&node.key()].distribution.is_some())
     );
-
-    let edge_lh = compute_coalescent_total_lh(
-      &state.graph,
-      &tc,
-      &inference.coalescent_node_times(),
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?;
-    let model = CoalescentModel::new(
-      &compute_lineage_counts(&state.graph, &inference.coalescent_node_times())?,
-      &tc,
-    )?;
-    let node_lh = -state
-      .graph
-      .get_nodes()
-      .map(|node| {
-        let time = inference.posterior[&node.key()]
-          .distribution
-          .as_ref()
-          .and_then(|distribution| distribution.likely_time().unwrap())
-          .expect("refined node must have a likely time");
-        if node.is_leaf() {
-          Ok(model.leaf_contribution(time))
-        } else if node.is_root() {
-          model.root_contribution(time, node.outbound().len())
-        } else {
-          model.internal_contribution(time, node.outbound().len())
-        }
-      })
-      .sum::<Result<f64, Report>>()?;
-
-    pretty_assert_abs_diff_eq!(node_lh, edge_lh.value(), epsilon = 1e-10);
 
     let (_, outcome) = helpers::refine(&context, state, Some(&tc))?;
     assert_eq!(0, outcome.topology.resolved_nodes());
@@ -454,6 +422,12 @@ mod tests {
         &compute_lineage_counts(&state.graph, &state.time_inference.coalescent_node_times())?,
         coalescent_tc.unwrap_or(&pinned_tc),
       )?;
+      let expectation = LineageExpectation::from_posterior(
+        &state.graph,
+        &state.time_inference.posterior,
+        &state.time_inference.bad_branches,
+      )?;
+      let prior = CoalescentPrior::new(&expectation, coalescent_tc.unwrap_or(&pinned_tc))?;
       let merger_rate =
         coalescent.branch_merger_rate_schedule(&PiecewiseConstantFn::new(array![], array![ROUND_TEST_TC]))?;
       let leaf_bad_branches = bad_leaves(&state.graph, &context.date_constraints, &BTreeSet::new());
@@ -468,7 +442,7 @@ mod tests {
       refinement_round(
         &inputs,
         &merger_rate,
-        coalescent_tc.is_some().then_some(&coalescent),
+        coalescent_tc.is_some().then_some(&prior),
         state,
         &mut get_random_number_generator(ROUND_TEST_SEED),
         &NoopProgress,
