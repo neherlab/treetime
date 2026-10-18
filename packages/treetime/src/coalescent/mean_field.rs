@@ -22,12 +22,14 @@ use crate::clock::gaussian::NodeTimeGaussian;
 use crate::timetree::inference::result::{NodePosterior, NodeTimes};
 use crate::timetree::max_posterior_region::posterior_survival;
 use eyre::{Report, WrapErr};
+use ndarray::Array1;
 use statrs::distribution::{ContinuousCDF, Normal};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
@@ -37,6 +39,8 @@ const EXPECTATION_GRID_POINTS: usize = 4001;
 const SURVIVAL_POINTS: usize = 256;
 /// Survival below this, or above one minus it, counts as 0 or 1 when a survival function is trimmed
 const SURVIVAL_TRIM: f64 = 1e-9;
+/// Grid cells per piece of the merger-rate schedule
+const MERGER_RATE_STRIDE: usize = 10;
 /// Standard deviations (or decay lengths of the exponential tail) that a truncated normal survival function spans
 const TRUNCATED_NORMAL_SPAN: f64 = 8.0;
 
@@ -124,18 +128,6 @@ impl NodeSurvival {
       survival,
       weight: 0.0,
     }
-  }
-
-  fn median(&self) -> f64 {
-    let i = self.survival.partition_point(|&s| s > 0.5);
-    if i == 0 {
-      return self.t[0];
-    }
-    if i == self.t.len() {
-      return self.t[self.t.len() - 1];
-    }
-    let (s0, s1) = (self.survival[i - 1], self.survival[i]);
-    self.t[i - 1] + (s0 - 0.5) / (s0 - s1) * (self.t[i] - self.t[i - 1])
   }
 
   fn at(&self, x: f64) -> f64 {
@@ -233,15 +225,6 @@ impl LineageExpectation {
     })
   }
 
-  /// Time at which each node's survival function crosses one half
-  pub(crate) fn median_times(&self) -> BTreeMap<GraphNodeKey, f64> {
-    self
-      .nodes
-      .iter()
-      .map(|(key, survival)| (*key, survival.median()))
-      .collect()
-  }
-
   /// `survival(key)` is the survival function of a node, or `None` for a node that survives at all times
   fn from_survivals(
     graph: &Graph,
@@ -302,6 +285,48 @@ impl LineageExpectation {
       expected_before,
       nodes,
     }))
+  }
+
+  /// Calendar span of the coalescent: from where `kbar` first rises half a lineage above its value before every node
+  /// (around the root's median) to the end of the grid (the latest tip)
+  pub(crate) fn span(&self) -> (f64, f64) {
+    let start = self
+      .expected
+      .iter()
+      .position(|&k| k - self.expected_before >= 0.5)
+      .map_or(self.grid[0], |i| self.grid[i]);
+    (start, self.grid[self.grid.len() - 1])
+  }
+
+  /// Merger rate of one lineage, `max(1/2, kbar - 1) / (2 Tc)`, constant on every `MERGER_RATE_STRIDE` cells of the
+  /// grid at its value in the middle and, before the grid, at `kbar` before every node; the floor keeps a lineage
+  /// mergeable where fewer than two are expected
+  pub(crate) fn merger_rate_schedule(&self, tc: &Distribution) -> Result<PiecewiseConstantFn, Report> {
+    let rate = |k: f64, t: f64| -> Result<f64, Report> {
+      let tc = tc
+        .eval(t)
+        .wrap_err_with(|| format!("When evaluating coalescent Tc at calendar time {t:.6e}"))?;
+      if !tc.is_finite() || tc <= 0.0 {
+        return make_error!("Coalescent Tc must be finite and positive at calendar time {t:.6e}, got {tc:.6e}");
+      }
+      Ok(0.5 * f64::max(0.5, k - 1.0) / tc)
+    };
+    let n = self.grid.len();
+    let mut edges: Vec<usize> = (0..n)
+      .step_by(MERGER_RATE_STRIDE)
+      .chain(std::iter::once(n - 1))
+      .collect();
+    edges.dedup();
+    let mut rates = vec![rate(self.expected_before, self.grid[0])?];
+    for (&start, &end) in edges.iter().zip(&edges[1..]) {
+      let k = self.expected[usize::midpoint(start, end)];
+      rates.push(rate(k, f64::midpoint(self.grid[start], self.grid[end]))?);
+    }
+    let breakpoints: Vec<f64> = edges[..edges.len() - 1].iter().map(|&i| self.grid[i]).collect();
+    Ok(PiecewiseConstantFn::new(
+      Array1::from_vec(breakpoints),
+      Array1::from_vec(rates),
+    ))
   }
 
   /// Expected coalescent statistics of the segments between `boundaries` (the first and last segments extend to the

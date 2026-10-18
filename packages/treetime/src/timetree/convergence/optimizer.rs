@@ -1,15 +1,13 @@
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
-use crate::timetree::convergence::likelihood::{compute_coalescent_log_lh, compute_sequence_log_lh};
+use crate::timetree::convergence::likelihood::compute_sequence_log_lh;
 use crate::timetree::convergence::metrics::{ConvergenceMetrics, IterationClock, IterationRecord};
 use crate::timetree::convergence::node_times::NodeTimeChange;
 use crate::timetree::inference::result::TimeInference;
 use eyre::Report;
-use std::collections::BTreeMap;
-use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_primitives::LogLh;
 
 pub(crate) struct TimetreeOptimizer<'a> {
   pub(crate) trace: Vec<ConvergenceMetrics>,
@@ -53,15 +51,12 @@ impl<'a> TimetreeOptimizer<'a> {
     graph: &Graph,
     branch_model: &BranchModel,
     inference: &TimeInference,
-    coalescent_tc: Option<&Distribution>,
+    log_lh_coal: Option<LogLh>,
     clock: IterationClock,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
     log: &dyn LogSink,
   ) -> Result<(), Report> {
     let log_lh_seq = compute_sequence_log_lh(graph, branch_model);
     let log_lh_time = inference.log_lh_time;
-    let log_lh_coal =
-      coalescent_tc.and_then(|tc| compute_coalescent_log_lh(graph, tc, &inference.coalescent_node_times(), names, log));
 
     let metric = ConvergenceMetrics {
       n_diff: sequence_changes,

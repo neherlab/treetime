@@ -1,5 +1,4 @@
 use crate::cancel::Cancel;
-use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
@@ -32,6 +31,15 @@ pub(crate) fn run_refinement_loop(
   let max_iter = params.max_iter;
 
   let mut rng = get_random_number_generator(params.seed);
+  let expectation_of = |state: &RoundState| {
+    LineageExpectation::from_posterior(
+      &state.graph,
+      &state.time_inference.posterior,
+      &state.time_inference.bad_branches,
+    )
+    .wrap_err("Failed to compute the expected coalescent lineage counts")
+  };
+  let mut current = expectation_of(&state)?;
 
   while let Some(IterationContext { i }) = optimizer.next_iter(log) {
     cancel.check()?;
@@ -43,24 +51,11 @@ pub(crate) fn run_refinement_loop(
     );
 
     if coalescent.mode.is_optimized() {
-      let expectation = LineageExpectation::from_posterior(
-        &state.graph,
-        &state.time_inference.posterior,
-        &state.time_inference.bad_branches,
-      )
-      .wrap_err("Failed to compute the expected coalescent lineage counts")?;
-      timescale = coalescent_timescale(
-        coalescent.mode,
-        &state.graph,
-        &coalescent.skyline_params,
-        &state.time_inference.coalescent_node_times(),
-        Some(&expectation),
-        &state.names,
-        log,
-      )?;
+      timescale = coalescent_timescale(coalescent.mode, &coalescent.skyline_params, &current, log)?;
     }
-    let coalescent_model = CoalescentModel::new(&coalescent.lineage_counts, &timescale.distribution)?;
-    let merger_rate = coalescent_model.branch_merger_rate_schedule(&timescale.schedule)?;
+    let merger_rate = coalescent
+      .lineage_expectation
+      .merger_rate_schedule(&timescale.distribution)?;
     let coalescent_prior = CoalescentPrior::new(&coalescent.lineage_expectation, &timescale.distribution)?;
 
     let iteration_clock = IterationClock::of(&state.clock_model);
@@ -74,6 +69,7 @@ pub(crate) fn run_refinement_loop(
     )
     .wrap_err_with(|| format!("When running round {i}"))?;
     state = next_state;
+    current = expectation_of(&state)?;
 
     optimizer
       .record(
@@ -83,9 +79,10 @@ pub(crate) fn run_refinement_loop(
         &state.graph,
         &state.branch_model,
         &state.time_inference,
-        coalescent.prior_wanted().then_some(&timescale.distribution),
+        coalescent
+          .prior_wanted()
+          .then(|| timescale.expected_log_likelihood(&current)),
         iteration_clock,
-        &state.names,
         log,
       )
       .wrap_err("Failed to record convergence metrics")

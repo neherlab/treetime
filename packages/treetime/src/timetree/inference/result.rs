@@ -1,5 +1,4 @@
 use crate::clock::date_constraints::DateConstraints;
-use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -74,21 +73,6 @@ impl TimeInference {
       .posterior
       .iter()
       .map(|(key, posterior)| (*key, posterior.time))
-      .collect()
-  }
-
-  pub(crate) fn coalescent_node_times(&self) -> CoalescentNodeTimes {
-    self
-      .posterior
-      .iter()
-      .map(|(key, posterior)| {
-        let entry = CoalescentNodeTime {
-          time: posterior.time,
-          time_dist_likely: posterior.likely_time,
-          bad_branch: self.bad_branches[key],
-        };
-        (*key, entry)
-      })
       .collect()
   }
 }
