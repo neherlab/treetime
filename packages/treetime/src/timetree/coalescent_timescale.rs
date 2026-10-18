@@ -193,7 +193,7 @@ pub(crate) struct CoalescentSetup {
 
 impl CoalescentSetup {
   pub(crate) fn prior_wanted(&self) -> bool {
-    self.mode != CoalescentMode::Disabled
+    self.mode.wants_prior()
   }
 }
 
@@ -206,6 +206,10 @@ pub enum CoalescentMode {
 }
 
 impl CoalescentMode {
+  pub(crate) fn wants_prior(self) -> bool {
+    self != CoalescentMode::Disabled
+  }
+
   pub(crate) fn is_optimized(self) -> bool {
     matches!(self, CoalescentMode::Constant | CoalescentMode::Skyline)
   }

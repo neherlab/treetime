@@ -4,6 +4,7 @@ pub mod coalescent_timescale;
 pub mod confidence;
 pub mod convergence;
 pub mod inference;
+pub(crate) mod init;
 pub mod max_posterior_region;
 pub mod optimization;
 pub mod params;

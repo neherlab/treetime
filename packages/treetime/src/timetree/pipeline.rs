@@ -6,7 +6,6 @@ use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::divergence::root_to_node_divergences;
-use crate::clock::gaussian::gaussian_clock;
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
 use crate::coalescent::mean_field::CoalescentPrior;
@@ -31,15 +30,15 @@ use crate::timetree::confidence::{
   extract_confidence_intervals,
 };
 use crate::timetree::convergence::optimizer::TraceSink;
-use crate::timetree::inference::result::given_times;
 use crate::timetree::inference::runner::timetree_branch_lengths;
+use crate::timetree::init::{initialize, timetree_gaussian_clock};
 use crate::timetree::optimization::reroot::fit_clock_to_dates;
 use crate::timetree::params::{
   FinalSequences, TimeMarginalMode, TimetreeContext, TimetreeParams, compute_effective_time_marginal,
 };
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
 use crate::timetree::refinement_loop::run_refinement_loop;
-use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, infer_final_times, run_initial_round};
+use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, infer_final_times};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use itertools::izip;
@@ -50,7 +49,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::date::DateConstraint;
-use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_report;
 
 pub fn run(
@@ -90,7 +88,7 @@ pub fn run(
   let pre_loop =
     run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, stages, log).map_err(OperationError::classify)?;
 
-  let initial = run_initial_round(params, &context, &names, pre_loop, log).map_err(OperationError::classify)?;
+  let initial = initialize(params, &context, &names, pre_loop, log).map_err(OperationError::classify)?;
   let round_inputs = RoundInputs {
     params,
     context: &context,
@@ -354,37 +352,7 @@ fn report_coalescent_size(
 /// Rate uncertainty of the Gaussian timetree at the final rate, or `None` when the sequence length is unknown or the
 /// approximation degenerates
 fn gaussian_rate_std(inputs: &RoundInputs<'_>, state: &RoundState, log: &dyn LogSink) -> Result<Option<f64>, Report> {
-  let sequence_length = match state.branch_model.total_length() {
-    0 => inputs.params.sequence_length.unwrap_or(0),
-    length => length,
-  };
-  if sequence_length == 0 {
-    debug!("No sequence length: the clock rate uncertainty is not estimated");
-    return Ok(None);
-  }
-  let tip_dates = given_times(&state.graph, &inputs.context.date_constraints)?;
-  match gaussian_clock(
-    &state.graph,
-    &state.branch_lengths,
-    sequence_length.to_f64_exact(),
-    &tip_dates,
-    inputs.leaf_bad_branches,
-    state.clock_model.clock_rate(),
-  ) {
-    Ok(clock) => {
-      progress_info!(
-        log,
-        "Gaussian clock: rate std {:.4e}, root time std {:.4e}",
-        clock.rate_std,
-        clock.root_time_std
-      );
-      Ok(Some(clock.rate_std))
-    },
-    Err(report) => {
-      progress_warn!(log, "The clock rate uncertainty is not estimated: {report}");
-      Ok(None)
-    },
-  }
+  Ok(timetree_gaussian_clock(inputs, state, log)?.map(|clock| clock.rate_std))
 }
 
 fn refine_final_times(
