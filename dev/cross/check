@@ -39,7 +39,7 @@ dependencies() {
     id="$("${otool}" -D "${file}" | awk 'NR > 1')"
     "${otool}" -L "${file}" | awk -v id="${id}" 'NR > 1 && $1 != id {print $1}'
     ;;
-  *-windows-gnu) "${objdump}" -p "${file}" | awk '/DLL Name:/ {print $3}' ;;
+  *-windows-gnullvm) "${objdump}" -p "${file}" | awk '/DLL Name:/ {print $3}' ;;
   *) "${objdump}" -p "${file}" | awk '$1 == "NEEDED" {print $2}' ;;
   esac
 }
@@ -49,7 +49,7 @@ foreign_dependencies() {
   local allowed="" denied=""
   case "${target}" in
   *-apple-darwin) allowed='^(/usr/lib/|/system/)' ;;
-  *-windows-gnu) denied='^(lib|node)' ;;
+  *-windows-gnullvm) denied='^(lib|node)' ;;
   esac
   dependencies "${1}" | awk -v allowed="${allowed}" -v denied="${denied}" '
     { name = tolower($0) }

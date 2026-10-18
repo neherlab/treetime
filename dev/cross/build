@@ -15,7 +15,7 @@
 #
 # Examples:
 #   CROSS_COMPILE=aarch64-apple-darwin dev/docker/run dev/cross/build treetime
-#   CROSS_COMPILE=x86_64-pc-windows-gnu dev/docker/run dev/cross/build --lib app-napi
+#   CROSS_COMPILE=x86_64-pc-windows-gnullvm dev/docker/run dev/cross/build --lib app-napi
 #
 set -euo pipefail
 shopt -s inherit_errexit
@@ -36,12 +36,11 @@ target_safe="${target//-/_}"
 source "${root}/dev/lib/dist-flags.sh"
 export_dist_flags "${target}"
 
+# OpenBLAS and the Fortran runtime of flang link statically through the
+# override of the `openblas` link in /.cargo/config.toml of the image
+# (dev/docker/files/install-openblas).
 static="-C target-feature=+crt-static -C link-arg=-static -C link-self-contained=yes"
 case "${target}" in
-*-apple-darwin)
-  # https://github.com/NixOS/nixpkgs/issues/177129
-  rustflags="${RUSTFLAGS} -C target-feature=+crt-static -C link-arg=-lgcc_eh"
-  ;;
 *-linux-gnu)
   rustflags="${RUSTFLAGS}"
   # The CLI links the GCC unwinder statically, so it needs no libgcc_s.so.1 and
@@ -60,62 +59,10 @@ case "${target}" in
   # The musl toolchains do not find these libraries on their own.
   rustflags="${RUSTFLAGS} -C link-args=-lpthread -C link-args=-lm -C link-args=-lc ${static}"
   ;;
-*-windows-gnu)
-  # The MinGW startup objects and libraries come from the toolchain of the
-  # image, which also built libgcc, libgfortran, and OpenBLAS. With the copies
-  # that rustc bundles (link-self-contained), even a minimal program built with
-  # the GCC 14 toolchain overflows its stack at startup.
-  rustflags="${RUSTFLAGS} -C target-feature=+crt-static -C link-arg=-static"
+*)
+  rustflags="${RUSTFLAGS}"
   ;;
 esac
-# OpenBLAS calls LAPACK routines written in Fortran, which need the Fortran
-# runtime; the openblas-src build script does not declare it. The static
-# archives of the Fortran compiler of the image are linked, so no binary depends
-# on a shared libgfortran, and libquadmath goes along where the target has it.
-fc_var="FC_${target_safe}"
-fc="${!fc_var:?the cross image sets ${fc_var}}"
-fortran_runtime=()
-for archive in libgfortran.a libquadmath.a; do
-  path="$("${fc}" -print-file-name="${archive}")"
-  if [[ "${path}" == /* ]]; then
-    fortran_runtime+=("${path}")
-  fi
-done
-[[ "${fortran_runtime[0]:-}" == */libgfortran.a ]] || {
-  printf 'ERROR: %s has no libgfortran.a\n' "${fc}" >&2
-  exit 1
-}
-
-# The Fortran runtime goes to the end of the link line, after the libraries
-# that rustc lists. The C libraries it needs come after it again, because a
-# linker resolves an archive only against the libraries that follow it; on
-# glibc this also brings in the loader that provides __tls_get_addr, and
-# libgcc provides the integer and float128 helpers of libgfortran and
-# libquadmath, because rustc links with -nodefaultlibs.
-case "${target}" in
-*-linux-gnu) runtime_deps=(-lm -lpthread -lc -lgcc) ;;
-*-linux-musl) runtime_deps=(-lc -lgcc) ;;
-*-windows-gnu) runtime_deps=(-l:libpthread.a -lmingw32 -lmingwex -lmsvcrt -lkernel32 -lgcc) ;;
-*) runtime_deps=() ;;
-esac
-if [[ "${target}" == *-windows-gnu ]]; then
-  rustflags="${rustflags} -C link-arg=-Wl,--start-group"
-fi
-for arg in "${fortran_runtime[@]}" "${runtime_deps[@]}"; do
-  rustflags="${rustflags} -C link-arg=${arg}"
-done
-if [[ "${target}" == *-windows-gnu ]]; then
-  rustflags="${rustflags} -C link-arg=-Wl,--end-group"
-fi
-
-# The cross images install the OpenBLAS archive into OPENBLAS_LIB_DIR. Only
-# this flag passes that directory to the linker: the openblas-src build script
-# names the library without a search path, and the cross linkers do not search
-# LIBRARY_PATH. The build script skips pkg-config, because the openblas.pc of
-# the archive names the directory that OpenBLAS was built in.
-rustflags="${rustflags} -L native=${OPENBLAS_LIB_DIR:?}"
-export OPENBLAS_NO_PKG_CONFIG=1
-
 export RUSTFLAGS="${rustflags}"
 
 # The optional kache compiler cache (KACHE_STORE in .env.example), one store per
@@ -143,7 +90,7 @@ fi
 mkdir -p "${target_dir}"
 printf '%s\n' "${TREETIME_IMAGE}" >"${image_record}"
 
-if [[ -n "${lib}" && "${target}" == *-windows-gnu ]]; then
+if [[ -n "${lib}" && "${target}" == *-windows-gnullvm ]]; then
   # napi-build assumes that a Windows GNU target means the MSYS2 build of Node,
   # which keeps Node-API in libnode.dll: the build scripts of the napi crate and
   # of the addon panic unless they find that file, then link it. Node and
@@ -163,7 +110,7 @@ if [[ -n "${lib}" ]]; then
   lib_name="${name//-/_}"
   case "${target}" in
   *-apple-darwin) lib_file="lib${lib_name}.dylib" ;;
-  *-windows-gnu) lib_file="${lib_name}.dll" ;;
+  *-windows-gnullvm) lib_file="${lib_name}.dll" ;;
   *) lib_file="lib${lib_name}.so" ;;
   esac
   cp "${out_dir}/${lib_file}" ".out/${name}-${target}.node"

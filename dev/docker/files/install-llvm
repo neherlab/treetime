@@ -1,17 +1,36 @@
 #!/usr/bin/env bash
 #
-# Usage: $0 <prefix>
+# Usage: $0 <prefix> [--mingw]
 #
-# Install LLVM and Clang 19 into a prefix.
+# Install LLVM 22 of binarylandia/build_llvm into a prefix: clang, lld, and the
+# LLVM binary tools. With --mingw, also install the llvm-mingw archive of the
+# same release over it: the static UCRT MinGW sysroots of x86_64-w64-mingw32 and
+# aarch64-w64-mingw32, compiler-rt for Windows, and the <triple>-clang drivers,
+# which load the sysroot, compiler-rt, libunwind, and lld from the
+# <triple>.cfg files next to them.
 #
 set -euxo pipefail
 
 dest="${1:?prefix}"
-release="llvm-19.1.5-2024-12-21_14-43-03"
-archive="/tmp/llvm.tar.gz"
+mingw="${2:-}"
+version="22.1.8"
+build_time="2026-10-18_10-26-24"
+release="llvm-${version}-${build_time}"
 mkdir -p "${dest}"
 
-/fetch "https://github.com/binarylandia/build_llvm/releases/download/${release}/${release}.tar.gz" "${archive}"
-pigz -dc -p "$(nproc)" "${archive}" | tar -C "${dest}" -x
-rm "${archive}"
+install_archive() {
+  local name="${1}" archive="/tmp/${1}"
+  /fetch "https://github.com/binarylandia/build_llvm/releases/download/${release}/${name}" "${archive}"
+  zstd -dc -T0 "${archive}" | tar -C "${dest}" -x
+  rm "${archive}"
+}
+
+install_archive "${release}.tar.zst"
 "${dest}/bin/clang" --version
+
+if [[ "${mingw}" == "--mingw" ]]; then
+  install_archive "llvm-mingw-${version}-${build_time}.tar.zst"
+  for triple in x86_64-w64-mingw32 aarch64-w64-mingw32; do
+    "${dest}/bin/${triple}-clang" --version
+  done
+fi

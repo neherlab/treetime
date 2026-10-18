@@ -51,7 +51,7 @@ case "${target}" in
     sleep 2
   fi
   ;;
-*-windows-gnu)
+*-windows-gnullvm)
   unzip -q ".out/treetime-desktop-${target}.zip" -d "${work}/app"
   app="${work}/app/TreeTime.exe"
   ;;

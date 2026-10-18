@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <llvm-prefix> <triplet> <gcc-prefix>
+#
+# Make the clang of an LLVM prefix compile and link for a Linux target on the
+# GCC toolchain that install-gcc-cross installed into a GCC prefix. clang reads
+# the configuration <triplet>.cfg next to it whenever it targets the triplet,
+# through --target or through the <triplet>-clang and <triplet>-clang++ links
+# that this script creates; the configuration names the sysroot of the
+# toolchain, its GCC installation (crt files, libgcc, libstdc++), and lld. The
+# <triplet>-ar, -nm, -ranlib, -strip, -objcopy, and -readelf links to the LLVM
+# tools serve build systems that look for the binary tools of the target by
+# their prefixed names, such as the configure script of jemalloc.
+#
+set -euxo pipefail
+
+llvm="${1:?llvm prefix}"
+triplet="${2:?triplet}"
+gcc="${3:?gcc prefix}"
+
+gcc_install_dir="$(find "${gcc}/lib/gcc/${triplet}" -mindepth 1 -maxdepth 1 -type d)"
+test -f "${gcc_install_dir}/crtbegin.o"
+
+printf -- '%s\n' \
+  "--sysroot=${gcc}/${triplet}/sysroot" \
+  "--gcc-install-dir=${gcc_install_dir}" \
+  "-fuse-ld=lld" \
+  >"${llvm}/bin/${triplet}.cfg"
+ln -sf clang "${llvm}/bin/${triplet}-clang"
+ln -sf clang++ "${llvm}/bin/${triplet}-clang++"
+for tool in ar nm ranlib strip objcopy readelf; do
+  ln -sf "llvm-${tool}" "${llvm}/bin/${triplet}-${tool}"
+done
+
+printf 'int main(void) { return 0; }\n' | "${llvm}/bin/${triplet}-clang" -x c -o /tmp/clang-target-check -
+rm /tmp/clang-target-check

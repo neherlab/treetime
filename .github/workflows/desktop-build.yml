@@ -50,7 +50,7 @@ jobs:
           - aarch64-apple-darwin
           - aarch64-unknown-linux-gnu
           - x86_64-apple-darwin
-          - x86_64-pc-windows-gnu
+          - x86_64-pc-windows-gnullvm
           - x86_64-unknown-linux-gnu
 
     steps:
@@ -134,7 +134,7 @@ jobs:
       matrix:
         target:
           - aarch64-unknown-linux-gnu
-          - x86_64-pc-windows-gnu
+          - x86_64-pc-windows-gnullvm
           - x86_64-unknown-linux-gnu
 
     steps:
@@ -249,8 +249,8 @@ jobs:
           if-no-files-found: error
 
   # Starts each package on a system of its target. Only a package that starts
-  # becomes the artifact treetime-desktop-<target>. The Windows start also
-  # proves that Electron loads the addon built with MinGW. The nightly uploads
+  # becomes the artifact treetime-desktop-<target>. The Windows starts also
+  # prove that Electron loads the addon built with llvm-mingw. The nightly uploads
   # the packages under that name directly and skips this job.
   start:
     name: "Start test (${{ matrix.target }})"
@@ -266,7 +266,7 @@ jobs:
             runner: ubuntu-24.04
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-24.04-arm
-          - target: x86_64-pc-windows-gnu
+          - target: x86_64-pc-windows-gnullvm
             runner: windows-2022
           - target: x86_64-apple-darwin
             runner: macos-15-intel

@@ -1,29 +1,27 @@
 # syntax=docker/dockerfile:1
 # check=experimental=all
+#
+# Cross image of a Linux release target. clang and lld of LLVM 22 compile and
+# link for the target and for the build machine, each on the sysroot, crt files,
+# libgcc, and libstdc++ of a crosstool-NG GCC 16 toolchain: glibc 2.17 for the
+# gnu targets and the build machine, musl 1.2.6 for the musl targets. QEMU runs
+# the binaries of the target.
 FROM debian:12.14-slim@sha256:60eac759739651111db372c07be67863818726f754804b8707c90979bda511df
 
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
-ENV HOST_TUPLE_DEBIAN="x86_64-linux-gnu"
-ENV HOST_TUPLE="x86_64-unknown-linux-gnu"
-ENV HOST_TUPLE_UPPER="X86_64_UNKNOWN_LINUX_GNU"
-ENV HOST_TUPLE_SAFE="x86_64_unknown_linux_gnu"
-ENV HOST_GCC_TRIPLET="x86_64-unknown-linux-gnu"
-
 ARG CROSS_ARCH_DEBIAN
-ARG CROSS_ARCH
 ARG CROSS_COMPILE
 ARG CROSS_COMPILE_UPPER
 ARG CROSS_COMPILE_SAFE
-ARG CROSS_GCC_TRIPLET
 ARG CROSS_RUNNER
 
-ENV CROSS_ARCH_DEBIAN="${CROSS_ARCH_DEBIAN}"
-ENV CROSS_ARCH="${CROSS_ARCH}"
+ENV HOST_TUPLE="x86_64-unknown-linux-gnu"
+ENV HOST_TUPLE_UPPER="X86_64_UNKNOWN_LINUX_GNU"
+ENV HOST_TUPLE_SAFE="x86_64_unknown_linux_gnu"
 ENV CROSS_COMPILE="${CROSS_COMPILE}"
 ENV CROSS_COMPILE_UPPER="${CROSS_COMPILE_UPPER}"
 ENV CROSS_COMPILE_SAFE="${CROSS_COMPILE_SAFE}"
-ENV CROSS_GCC_TRIPLET="${CROSS_GCC_TRIPLET}"
 ENV CROSS_RUNNER="${CROSS_RUNNER}"
 
 RUN set -euxo pipefail >/dev/null \
@@ -35,201 +33,64 @@ RUN set -euxo pipefail >/dev/null \
   curl \
   file \
   git \
+  "libc6:${CROSS_ARCH_DEBIAN}" \
   make \
   pigz \
   pixz \
   pkg-config \
+  qemu-user \
   unzip \
   xz-utils \
   zstd \
 >/dev/null \
-&& if [[ "${CROSS_COMPILE}" =~ (linux) ]]; then apt-get install --no-install-recommends --yes -qq \
-  "libc6:${CROSS_ARCH_DEBIAN}" \
-  qemu-user \
->/dev/null \
-;fi \
-&& if [[ "${CROSS_COMPILE}" =~ (mingw|windows) ]]; then apt-get install --no-install-recommends --yes -qq \
-  wine64 \
->/dev/null \
-;fi \
 && apt-get clean autoclean >/dev/null \
 && apt-get autoremove --yes >/dev/null \
 && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 COPY dev/docker/files/fetch dev/docker/files/checksums /
 
-ENV PREFIX_HOST="/opt/host"
-ENV HOST_GCC_DIR="${PREFIX_HOST}"
+# The target and the build machine get one GCC toolchain each, the same one when
+# the target is x86_64-unknown-linux-gnu.
+ENV LLVM_DIR="/opt/llvm"
+ENV HOST_GCC_DIR="/opt/gcc-${HOST_TUPLE}"
+ENV CROSS_GCC_DIR="/opt/gcc-${CROSS_COMPILE}"
 ENV PREFIX_CROSS="/opt/cross-${CROSS_COMPILE}"
-ENV CROSS_GCC_DIR="${PREFIX_CROSS}"
-ENV OPENBLAS_LIB_DIR="${PREFIX_CROSS}/lib"
-COPY dev/docker/files/install-gcc-cross dev/docker/files/install-llvm dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
+COPY dev/docker/files/install-llvm dev/docker/files/install-gcc-cross dev/docker/files/install-clang-target dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
 RUN set -euxo pipefail >/dev/null \
+&& /install-llvm "${LLVM_DIR}" \
 && /install-gcc-cross "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
-&& /install-llvm "/usr/local" \
-&& /install-gcc-cross "${CROSS_GCC_TRIPLET}" "${CROSS_GCC_DIR}" \
-&& /install-openblas "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
+&& /install-clang-target "${LLVM_DIR}" "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
+&& if [ "${CROSS_COMPILE}" != "${HOST_TUPLE}" ]; then \
+  /install-gcc-cross "${CROSS_COMPILE}" "${CROSS_GCC_DIR}" \
+  && /install-clang-target "${LLVM_DIR}" "${CROSS_COMPILE}" "${CROSS_GCC_DIR}"; \
+fi \
+&& /install-openblas "${CROSS_COMPILE}" "/opt/openblas" \
 && /install-compression-libs "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
-&& rm /install-gcc-cross /install-llvm /install-openblas /install-compression-libs
+&& rm /install-llvm /install-gcc-cross /install-clang-target /install-openblas /install-compression-libs
 
-ENV CROSS_SYSROOT="${CROSS_GCC_DIR}/${CROSS_GCC_TRIPLET}/sysroot"
+ENV PATH="${LLVM_DIR}/bin:${PATH}"
+ENV CROSS_SYSROOT="${CROSS_GCC_DIR}/${CROSS_COMPILE}/sysroot"
 
-ENV CROSS_GCC="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-gcc"
-ENV CROSS_GXX="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-g++"
-ENV CROSS_GFORTRAN="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-gfortran"
-ENV CROSS_CLANG="/usr/local/bin/clang"
-ENV CROSS_CLANGPP="/usr/local/bin/clang++"
-ENV CROSS_ADDR2LINE="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-addr2line"
-ENV CROSS_AR="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-gcc-ar"
-ENV CROSS_AS="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-as"
-ENV CROSS_CPP="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-cpp"
-ENV CROSS_ELFEDIT="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-elfedit"
-ENV CROSS_LD="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-ld"
-ENV CROSS_LDD="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-ldd"
-ENV CROSS_NM="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-gcc-nm"
-ENV CROSS_OBJCOPY="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-objcopy"
-ENV CROSS_OBJDUMP="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-objdump"
-ENV CROSS_RANLIB="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-gcc-ranlib"
-ENV CROSS_READELF="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-readelf"
-ENV CROSS_SIZE="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-size"
-ENV CROSS_STRINGS="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-strings"
-ENV CROSS_STRIP="${CROSS_GCC_DIR}/bin/${CROSS_GCC_TRIPLET}-strip"
-
-ENV CROSS_CC="${CROSS_GCC}"
-ENV CROSS_CXX="${CROSS_GXX}"
-ENV CROSS_FC="${CROSS_GFORTRAN}"
-
-ENV CROSSCC="${CROSS_CC}"
-ENV CROSSCXX="${CROSS_CXX}"
-ENV CROSSFC="${CROSS_FC}"
-ENV CROSSLD="${CROSS_LD}"
-
-ENV CC_${CROSS_COMPILE_SAFE}="$CROSS_GCC"
-ENV CXX_${CROSS_COMPILE_SAFE}="$CROSS_GXX"
-ENV GCC_${CROSS_COMPILE_SAFE}="$CROSS_GCC"
-ENV GXX_${CROSS_COMPILE_SAFE}="$CROSS_GXX"
-ENV CLANG_${CROSS_COMPILE_SAFE}="$CROSS_CLANG"
-ENV CLANGPP_${CROSS_COMPILE_SAFE}="$CROSS_CLANGPP"
-ENV FC_${CROSS_COMPILE_SAFE}="$CROSS_FC"
-ENV ADDR2LINE_${CROSS_COMPILE_SAFE}="$CROSS_ADDR2LINE"
-ENV AR_${CROSS_COMPILE_SAFE}="$CROSS_AR"
-ENV AS_${CROSS_COMPILE_SAFE}="$CROSS_AS"
-ENV CPP_${CROSS_COMPILE_SAFE}="$CROSS_CPP"
-ENV ELFEDIT_${CROSS_COMPILE_SAFE}="$CROSS_ELFEDIT"
-ENV LD_${CROSS_COMPILE_SAFE}="$CROSS_LD"
-ENV LDD_${CROSS_COMPILE_SAFE}="$CROSS_LDD"
-ENV NM_${CROSS_COMPILE_SAFE}="$CROSS_NM"
-ENV OBJCOPY_${CROSS_COMPILE_SAFE}="$CROSS_OBJCOPY"
-ENV OBJDUMP_${CROSS_COMPILE_SAFE}="$CROSS_OBJDUMP"
-ENV RANLIB_${CROSS_COMPILE_SAFE}="$CROSS_RANLIB"
-ENV READELF_${CROSS_COMPILE_SAFE}="$CROSS_READELF"
-ENV SIZE_${CROSS_COMPILE_SAFE}="$CROSS_SIZE"
-ENV STRINGS_${CROSS_COMPILE_SAFE}="$CROSS_STRINGS"
-ENV STRIP_${CROSS_COMPILE_SAFE}="$CROSS_STRIP"
-
-ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_AR="${CROSS_AR}"
-ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_LINKER="${CROSS_CC}"
-ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_STRIP="${CROSS_STRIP}"
+ENV CC_${CROSS_COMPILE_SAFE}="${LLVM_DIR}/bin/${CROSS_COMPILE}-clang"
+ENV CXX_${CROSS_COMPILE_SAFE}="${LLVM_DIR}/bin/${CROSS_COMPILE}-clang++"
+ENV AR_${CROSS_COMPILE_SAFE}="${LLVM_DIR}/bin/llvm-ar"
+ENV NM_${CROSS_COMPILE_SAFE}="${LLVM_DIR}/bin/llvm-nm"
+ENV RANLIB_${CROSS_COMPILE_SAFE}="${LLVM_DIR}/bin/llvm-ranlib"
+ENV STRIP_${CROSS_COMPILE_SAFE}="${LLVM_DIR}/bin/llvm-strip"
+ENV LDD_${CROSS_COMPILE_SAFE}="${CROSS_GCC_DIR}/bin/${CROSS_COMPILE}-ldd"
+ENV OBJDUMP_${CROSS_COMPILE_SAFE}="${CROSS_GCC_DIR}/bin/${CROSS_COMPILE}-objdump"
+ENV STRINGS_${CROSS_COMPILE_SAFE}="${CROSS_GCC_DIR}/bin/${CROSS_COMPILE}-strings"
+ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_LINKER="${LLVM_DIR}/bin/${CROSS_COMPILE}-clang"
 ENV CARGO_TARGET_${CROSS_COMPILE_UPPER}_RUNNER="${CROSS_RUNNER}"
 
-ENV HOST_SYSROOT="${HOST_GCC_DIR}/${HOST_GCC_TRIPLET}/sysroot"
+ENV HOST_CC="${LLVM_DIR}/bin/${HOST_TUPLE}-clang"
+ENV HOST_CXX="${LLVM_DIR}/bin/${HOST_TUPLE}-clang++"
+ENV HOST_AR="${LLVM_DIR}/bin/llvm-ar"
+ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_LINKER="${LLVM_DIR}/bin/${HOST_TUPLE}-clang"
 
-ENV HOST_GCC="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gcc"
-ENV HOST_GXX="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-g++"
-ENV HOST_GFORTRAN="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gfortran"
-ENV HOST_CLANG="/usr/local/bin/clang"
-ENV HOST_CLANGPP="/usr/local/bin/clang++"
-ENV HOST_ADDR2LINE="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-addr2line"
-ENV HOST_AR="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gcc-ar"
-ENV HOST_AS="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-as"
-ENV HOST_CPP="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-cpp"
-ENV HOST_ELFEDIT="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-elfedit"
-ENV HOST_LD="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-ld"
-ENV HOST_LDD="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-ldd"
-ENV HOST_NM="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gcc-nm"
-ENV HOST_OBJCOPY="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-objcopy"
-ENV HOST_OBJDUMP="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-objdump"
-ENV HOST_RANLIB="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-gcc-ranlib"
-ENV HOST_READELF="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-readelf"
-ENV HOST_SIZE="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-size"
-ENV HOST_STRINGS="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-strings"
-ENV HOST_STRIP="${HOST_GCC_DIR}/bin/${HOST_GCC_TRIPLET}-strip"
-
-ENV HOST_CC="${HOST_GCC}"
-ENV HOST_CXX="${HOST_GXX}"
-ENV HOST_FC="${HOST_GFORTRAN}"
-
-ENV HOSTCC="${HOST_CC}"
-ENV HOSTCXX="${HOST_CXX}"
-ENV HOSTFC="${HOST_FC}"
-ENV HOSTLD="${HOST_LD}"
-
-ENV CC_${HOST_TUPLE_SAFE}="$HOST_GCC"
-ENV CXX_${HOST_TUPLE_SAFE}="$HOST_GXX"
-ENV GCC_${HOST_TUPLE_SAFE}="$HOST_GCC"
-ENV GXX_${HOST_TUPLE_SAFE}="$HOST_GXX"
-ENV CLANG_${HOST_TUPLE_SAFE}="$HOST_CLANG"
-ENV CLANGPP_${HOST_TUPLE_SAFE}="$HOST_CLANGPP"
-ENV FC_${HOST_TUPLE_SAFE}="$HOST_FC"
-ENV ADDR2LINE_${HOST_TUPLE_SAFE}="$HOST_ADDR2LINE"
-ENV AR_${HOST_TUPLE_SAFE}="$HOST_AR"
-ENV AS_${HOST_TUPLE_SAFE}="$HOST_AS"
-ENV CPP_${HOST_TUPLE_SAFE}="$HOST_CPP"
-ENV ELFEDIT_${HOST_TUPLE_SAFE}="$HOST_ELFEDIT"
-ENV LD_${HOST_TUPLE_SAFE}="$HOST_LD"
-ENV LDD_${HOST_TUPLE_SAFE}="$HOST_LDD"
-ENV NM_${HOST_TUPLE_SAFE}="$HOST_NM"
-ENV OBJCOPY_${HOST_TUPLE_SAFE}="$HOST_OBJCOPY"
-ENV OBJDUMP_${HOST_TUPLE_SAFE}="$HOST_OBJDUMP"
-ENV RANLIB_${HOST_TUPLE_SAFE}="$HOST_RANLIB"
-ENV READELF_${HOST_TUPLE_SAFE}="$HOST_READELF"
-ENV SIZE_${HOST_TUPLE_SAFE}="$HOST_SIZE"
-ENV STRINGS_${HOST_TUPLE_SAFE}="$HOST_STRINGS"
-ENV STRIP_${HOST_TUPLE_SAFE}="$HOST_STRIP"
-
-ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_AR="${HOST_AR}"
-ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_LINKER="${HOST_GCC}"
-ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_STRIP="${HOST_STRIP}"
-
-ENV PATH="${PREFIX_CROSS}/bin:${PREFIX_HOST}/bin:${PATH}"
-
-ENV CROSS_C_INCLUDE_PATH="${PREFIX_CROSS}/include:${CROSS_GCC_DIR}/include"
-ENV HOST_C_INCLUDE_PATH="${PREFIX_HOST}/include:${HOST_GCC_DIR}/include"
-
-ENV CROSS_CPLUS_INCLUDE_PATH="${CROSS_C_INCLUDE_PATH}"
-ENV HOST_CPLUS_INCLUDE_PATH="${HOST_C_INCLUDE_PATH}"
-
-ENV CROSS_LIBRARY_PATH="${PREFIX_CROSS}/lib:${PREFIX_CROSS}/lib64:${CROSS_GCC_DIR}/lib:${CROSS_GCC_DIR}/lib64"
-ENV HOST_LIBRARY_PATH="${HOST_GCC_DIR}/lib:${HOST_GCC_DIR}/lib64"
-
-ENV C_INCLUDE_PATH="${CROSS_C_INCLUDE_PATH}:${HOST_C_INCLUDE_PATH}"
-ENV CPLUS_INCLUDE_PATH="${CROSS_CPLUS_INCLUDE_PATH}:${HOST_CPLUS_INCLUDE_PATH}"
-ENV LIBRARY_PATH="${CROSS_LIBRARY_PATH}:${HOST_LIBRARY_PATH}"
-
-ENV C_INCLUDE_PATH_${HOST_TUPLE_SAFE}="${HOST_C_INCLUDE_PATH}"
-ENV CPLUS_INCLUDE_PATH_${HOST_TUPLE_SAFE}="${HOST_CPLUS_INCLUDE_PATH}"
-ENV LIBRARY_PATH_${HOST_TUPLE_SAFE}="${HOST_LIBRARY_PATH}"
-
-ENV C_INCLUDE_PATH_${CROSS_COMPILE_SAFE}="${CROSS_C_INCLUDE_PATH}"
-ENV CPLUS_INCLUDE_PATH_${CROSS_COMPILE_SAFE}="${CROSS_CPLUS_INCLUDE_PATH}"
-ENV LIBRARY_PATH_${CROSS_COMPILE_SAFE}="${CROSS_LIBRARY_PATH}"
-
-ENV CROSS_PKG_CONFIG_PATH="${PREFIX_CROSS}/lib/pkgconfig:${PREFIX_CROSS}/lib64/pkgconfig"
-ENV HOST_PKG_CONFIG_PATH="${HOST_GCC_DIR}/lib/pkgconfig:${HOST_GCC_DIR}/lib64/pkgconfig"
-ENV PKG_CONFIG_PATH="${CROSS_PKG_CONFIG_PATH}:${HOST_PKG_CONFIG_PATH}"
 ENV PKG_CONFIG_ALLOW_CROSS="1"
-
-ENV PKG_CONFIG_PATH_${HOST_TUPLE_SAFE}="${HOST_PKG_CONFIG_PATH}"
-ENV PKG_CONFIG_SYSROOT_DIR_${HOST_TUPLE_SAFE}="${PREFIX_HOST}"
-
-ENV PKG_CONFIG_PATH_${CROSS_COMPILE_SAFE}="${CROSS_PKG_CONFIG_PATH}"
+ENV PKG_CONFIG_PATH_${CROSS_COMPILE_SAFE}="${PREFIX_CROSS}/lib/pkgconfig"
 ENV PKG_CONFIG_SYSROOT_DIR_${CROSS_COMPILE_SAFE}="${PREFIX_CROSS}"
-
-ENV PKG_CONFIG_SYSROOT_DIR="${PREFIX_CROSS}"
-
-ENV CMAKE_PREFIX_PATH="${PREFIX_CROSS}"
-
-ENV MINGW_LIB_DIR="${CROSS_SYSROOT}/lib"
 
 # The Rust toolchain of rust-toolchain.toml with the target. dev/docker/run runs
 # as the host user with HOME=/tmp/home and the cargo home in the checkout.
@@ -243,15 +104,6 @@ RUN set -euxo pipefail >/dev/null \
 && rm -rf /install-rust /tmp/rust \
 && mkdir -p "/tmp/home" \
 && chmod 1777 "/tmp/home"
-
-# Windows binaries run under Wine; dev/cross/run creates the Wine prefix and
-# copies this stub into it.
-ENV WINEARCH="win64"
-ENV WINEDEBUG="err+all,err-winediag,err-ole,fixme-all"
-COPY dev/docker/files/install-wine-bcryptprimitives /
-RUN set -euxo pipefail >/dev/null \
-&& if [[ "${CROSS_COMPILE}" =~ (mingw|windows) ]]; then /install-wine-bcryptprimitives "/opt/wine"; fi \
-&& rm /install-wine-bcryptprimitives
 
 # kache, the optional compiler cache of dev/cross/build, protoc, which prost-build
 # runs for the UShER protobuf schemas, and bun and node, which build the web UI

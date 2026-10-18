@@ -163,21 +163,32 @@ jobs:
           "${TREETIME}" pipeline --config data/flu/h3n2/500/pipeline.yaml --output-all out/flu
 
   compat-windows:
-    name: "Compat test (Windows)"
+    name: "Compat test (Windows, ${{ matrix.name }})"
     needs: [build-cli]
-    runs-on: windows-2022
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "x86_64, windows-2022"
+            runner: windows-2022
+            target: x86_64-pc-windows-gnullvm
+            arch: AMD64
+    env:
+      TREETIME: .out/treetime-${{ matrix.target }}.exe
     steps:
       - name: "Check out the example data"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
+            data/flu/h3n2/20
             data/zika
             data/flu/h3n2/500
 
       - name: "Download build artifacts"
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: treetime-x86_64-pc-windows-gnu
+          name: treetime-${{ matrix.target }}
           path: .out
 
       - name: "Run the binary"
@@ -185,6 +196,8 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $true
-          .\.out\treetime-x86_64-pc-windows-gnu.exe --help
-          .\.out\treetime-x86_64-pc-windows-gnu.exe pipeline --config data/zika/20/pipeline.yaml --output-all out/zika
-          .\.out\treetime-x86_64-pc-windows-gnu.exe pipeline --config data/flu/h3n2/500/pipeline.yaml --output-all out/flu
+          if ($env:PROCESSOR_ARCHITECTURE -ne "${{ matrix.arch }}") { throw "Runner architecture is $env:PROCESSOR_ARCHITECTURE" }
+          & $env:TREETIME --help
+          & $env:TREETIME ancestral --tree=data/flu/h3n2/20/tree.nwk --alignment=data/flu/h3n2/20/aln.fasta.xz --output-all=out/ancestral
+          & $env:TREETIME pipeline --config data/zika/20/pipeline.yaml --output-all out/zika
+          & $env:TREETIME pipeline --config data/flu/h3n2/500/pipeline.yaml --output-all out/flu

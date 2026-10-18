@@ -71,14 +71,14 @@ CLI_ROWS=(
   "<b>Linux</b> ARM64|aarch64-unknown-linux-gnu=glibc aarch64-unknown-linux-musl=musl*"
   "<b>macOS</b>** Apple Silicon|aarch64-apple-darwin=executable"
   "<b>macOS</b>** Intel|x86_64-apple-darwin=executable"
-  "<b>Windows</b> x86_64|x86_64-pc-windows-gnu=.exe"
+  "<b>Windows</b> x86_64|x86_64-pc-windows-gnullvm=.exe"
 )
 DESKTOP_ROWS=(
   "<b>Linux</b> x86_64|x86_64-unknown-linux-gnu="
   "<b>Linux</b> ARM64|aarch64-unknown-linux-gnu="
   "<b>macOS</b>** Apple Silicon|aarch64-apple-darwin="
   "<b>macOS</b>** Intel|x86_64-apple-darwin="
-  "<b>Windows</b> x86_64|x86_64-pc-windows-gnu="
+  "<b>Windows</b> x86_64|x86_64-pc-windows-gnullvm="
 )
 
 # Size in binary megabytes, labeled "MB" as in the asset list of the GitHub

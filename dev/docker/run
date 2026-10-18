@@ -52,19 +52,20 @@ platform="linux/amd64"
 target="${CROSS_COMPILE:-native}"
 kind="${TREETIME_DOCKER_IMAGE:-${target}}"
 
-# Cross images: the Dockerfile and the toolchain names of each release target.
+# Cross images: the Dockerfile of each release target and its build arguments,
+# given as NAME=VALUE.
 cross_image() {
   dockerfile="dev/docker/${1}.dockerfile"
+  shift
   build_args=(
     --build-arg="CROSS_COMPILE=${target}"
     --build-arg="CROSS_COMPILE_UPPER=$(printf '%s' "${target//-/_}" | tr '[:lower:]' '[:upper:]')"
     --build-arg="CROSS_COMPILE_SAFE=${target//-/_}"
-    --build-arg="CROSS_GCC_TRIPLET=${2}"
-    --build-arg="CROSS_ARCH=${3:-}"
-    --build-arg="CROSS_ARCH_DEBIAN=${4:-}"
-    --build-arg="CROSS_RUNNER=${5:-}"
-    --build-arg="CROSS_APPLE_TRIPLET=${6:-}"
   )
+  local arg
+  for arg in "$@"; do
+    build_args+=(--build-arg="${arg}")
+  done
 }
 
 build_args=()
@@ -74,13 +75,11 @@ jupyter)
   dockerfile="dev/docker/jupyter.dockerfile"
   build_args=(--build-arg="UID=$(id -u)" --build-arg="GID=$(id -g)")
   ;;
-x86_64-unknown-linux-gnu) cross_image cross-linux "${target}" x86_64 amd64 qemu-x86_64 ;;
-x86_64-unknown-linux-musl) cross_image cross-linux "${target}" x86_64 amd64 qemu-x86_64 ;;
-aarch64-unknown-linux-gnu) cross_image cross-linux "${target}" aarch64 arm64 qemu-aarch64 ;;
-aarch64-unknown-linux-musl) cross_image cross-linux "${target}" aarch64 arm64 qemu-aarch64 ;;
-x86_64-pc-windows-gnu) cross_image cross-linux x86_64-w64-mingw32 x86_64 amd64 /usr/lib/wine/wine64 ;;
-x86_64-apple-darwin) cross_image cross-darwin x86_64-apple-darwin20.2 "" "" "" x86_64-apple-darwin20.2 ;;
-aarch64-apple-darwin) cross_image cross-darwin aarch64-apple-darwin20.2 "" "" "" arm64-apple-darwin20.2 ;;
+x86_64-unknown-linux-gnu | x86_64-unknown-linux-musl) cross_image cross-linux CROSS_ARCH_DEBIAN=amd64 CROSS_RUNNER=qemu-x86_64 ;;
+aarch64-unknown-linux-gnu | aarch64-unknown-linux-musl) cross_image cross-linux CROSS_ARCH_DEBIAN=arm64 CROSS_RUNNER=qemu-aarch64 ;;
+x86_64-pc-windows-gnullvm) cross_image cross-windows CROSS_MINGW_TRIPLET=x86_64-w64-mingw32 CROSS_RUNNER=/usr/lib/wine/wine64 ;;
+x86_64-apple-darwin) cross_image cross-darwin CROSS_APPLE_TRIPLET=x86_64-apple-darwin20.2 CROSS_MACOS_DEPLOYMENT_TARGET=10.12 ;;
+aarch64-apple-darwin) cross_image cross-darwin CROSS_APPLE_TRIPLET=arm64-apple-darwin20.2 CROSS_MACOS_DEPLOYMENT_TARGET=11.0 ;;
 *)
   printf 'Unsupported image: %s. Supported: native, jupyter, and the targets in dev/cross/targets\n' "${kind}" >&2
   exit 1

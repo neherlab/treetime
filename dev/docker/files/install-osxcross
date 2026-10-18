@@ -1,16 +1,26 @@
 #!/usr/bin/env bash
 #
-# Usage: $0 <prefix>
+# Usage: $0 <prefix> <llvm-prefix>
 #
-# Install the osxcross toolchain and the macOS SDK into a prefix.
+# Install osxcross of binarylandia/build_osxcross (llvm flavor) with the macOS
+# 11.1 SDK into a prefix. Its <apple-triple>-clang wrappers run the clang,
+# ld64.lld, and LLVM tools that they find on PATH, which are those of the LLVM
+# release that install-llvm installs into the LLVM prefix. The compiler-rt of
+# the archive goes into the resource directory of that clang, where clang finds
+# libclang_rt.osx.a for every macOS link.
 #
 set -euxo pipefail
 
 dest="${1:?prefix}"
-release="2024-12-22_17-20-35"
-archive="/tmp/osxcross.tar.xz"
+llvm="${2:?llvm prefix}"
+build_time="2026-10-18_09-15-29"
+release="osxcross-27d21e4-sdk11.1-${build_time}"
+archive="/tmp/osxcross.tar.zst"
 mkdir -p "${dest}"
 
-/fetch "https://github.com/binarylandia/build_osxcross/releases/download/${release}/osxcross-full-41f3856-${release}.tar.xz" "${archive}"
-pixz -dp "$(nproc)" <"${archive}" | tar -C "${dest}" -x
+/fetch "https://github.com/binarylandia/build_osxcross/releases/download/${release}/osxcross-27d21e4-${build_time}.tar.zst" "${archive}"
+zstd -dc -T0 "${archive}" | tar -C "${dest}" -x
 rm "${archive}"
+
+cp -r "${dest}/compiler-rt/." "$("${llvm}/bin/clang" -print-resource-dir)/"
+test -f "${dest}/SDK/MacOSX11.1.sdk/usr/lib/libSystem.B.tbd"

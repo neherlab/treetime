@@ -17,11 +17,12 @@
 #   --lib               Build shared libraries of packages instead of binaries
 #   --target=<triple>   Build this target only (repeatable)
 #   --serial            Build one target after another, with output streamed
-#   --run               Run each binary with `--help` after building (QEMU, Wine)
+#   --run               Run each binary with `--help` after building (QEMU, Wine);
+#                       macOS binaries are only built and checked
 #
 # Examples:
 #   $0 treetime
-#   $0 --target=aarch64-apple-darwin --target=x86_64-pc-windows-gnu treetime
+#   $0 --target=aarch64-apple-darwin --target=x86_64-pc-windows-gnullvm treetime
 #   $0 --lib app-napi
 #
 set -euo pipefail
@@ -37,18 +38,33 @@ build_one() {
   for bin in "${bins[@]}"; do
     CROSS_COMPILE="${target}" dev/docker/run dev/cross/build "${mode[@]}" "${bin}" "${target}"
     CROSS_COMPILE="${target}" dev/docker/run dev/cross/check "${mode[@]}" "${bin}" "${target}"
-    if [[ -n "${run}" && -z "${lib}" && "${target}" != *-apple-darwin ]]; then
-      CROSS_COMPILE="${target}" dev/docker/run dev/cross/run "${bin}" "${target}" --help >/dev/null
+    if [[ -z "${run}" || -n "${lib}" ]]; then
+      continue
     fi
+    local reason
+    reason="$(no_run_reason "${target}")"
+    if [[ -n "${reason}" ]]; then
+      printf 'Not running %s for %s: %s\n' "${bin}" "${target}" "${reason}" >&2
+      continue
+    fi
+    CROSS_COMPILE="${target}" dev/docker/run dev/cross/run "${bin}" "${target}" --help >/dev/null
     # aarch64 Linux kernels run with 4K, 16K, or 64K pages; QEMU emulates the
     # largest.
-    if [[ -n "${run}" && -z "${lib}" && "${target}" == aarch64-*-linux-* ]]; then
+    if [[ "${target}" == aarch64-*-linux-* ]]; then
       CROSS_COMPILE="${target}" dev/docker/run env QEMU_PAGESIZE=65536 dev/cross/run "${bin}" "${target}" --help >/dev/null
     fi
-    if [[ -n "${run}" && -z "${lib}" && "${target}" == *-linux-* ]]; then
+    if [[ "${target}" == *-linux-* ]]; then
       check_old_cpu "${bin}" "${target}"
     fi
   done
+}
+
+# Print why the binaries of a target cannot run in its cross image, or nothing
+# when they can.
+no_run_reason() {
+  case "${1}" in
+  *-apple-darwin) printf 'macOS programs do not run on Linux\n' ;;
+  esac
 }
 
 # On a CPU below the build level (Haswell, Armv8.2), the binary must stop with

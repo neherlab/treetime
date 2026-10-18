@@ -2,16 +2,18 @@
 #
 # Usage: $0 <triplet> <prefix>
 #
-# Install a GCC 14 cross toolchain of binarylandia/build_crosstool-ng for a
-# target triplet into a prefix.
+# Install a GCC 16 toolchain of binarylandia/build_crosstool-ng for a Linux
+# target triplet into a prefix. The builds compile and link with clang, which
+# takes the sysroot (glibc 2.17 or musl 1.2.6), the crt files, libgcc, and
+# libstdc++ of the toolchain (install-clang-target).
 #
 set -euxo pipefail
 
 triplet="${1:?triplet}"
 dest="${2:?prefix}"
-version="14.4.0"
-build_time="2026-10-18_01-15-48"
-release="gcc-${version}-${build_time}"
+version="16.2.0"
+build_time="2026-10-18_08-33-54"
+release="gcc-15.3.0_${version}-${build_time}"
 archive="/tmp/gcc-cross.tar.xz"
 mkdir -p "${dest}"
 
@@ -19,12 +21,5 @@ mkdir -p "${dest}"
 pixz -dp "$(nproc)" <"${archive}" | tar -C "${dest}" -x
 rm "${archive}"
 
-# The MinGW toolchain comes with libgcc_eh.a, which rustc links, and with its
-# sysroot flattened out of the extra mingw/ directory, so Linux and Windows
-# targets share the sysroot variables; build_crosstool-ng adds both.
-if [[ "${triplet}" =~ (mingw|windows) ]]; then
-  test -e "${dest}/lib/gcc/${triplet}/${version}/libgcc_eh.a"
-  test -d "${dest}/${triplet}/sysroot/lib"
-fi
-
-test "$("${dest}/bin/${triplet}-gcc" -dumpmachine)" = "${triplet}"
+test -d "${dest}/lib/gcc/${triplet}/${version}"
+test -d "${dest}/${triplet}/sysroot"

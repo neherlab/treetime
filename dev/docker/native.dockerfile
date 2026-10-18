@@ -13,13 +13,16 @@ RUN set -euxo pipefail >/dev/null \
 && export DEBIAN_FRONTEND=noninteractive \
 && apt-get update -qq \
 && apt-get install --no-install-recommends --yes -qq \
+  binutils \
   ca-certificates \
   curl \
   file \
   git \
   libc6-dev \
   libfontconfig-dev \
+  libgcc-13-dev \
   libssl-dev \
+  libstdc++-13-dev \
   make \
   pigz \
   pixz \
@@ -71,22 +74,22 @@ RUN set -euxo pipefail >/dev/null \
 
 COPY dev/docker/files/fetch dev/docker/files/checksums /
 
-# GCC 14 is the C compiler and link driver; it also provides the static
-# libgfortran that the OpenBLAS archive needs. It does not know the Debian
-# multiarch layout, so the include and library paths name it.
-# OpenBLAS, liblzma, and libzstd are the prebuilt archives of binarylandia;
-# /.cargo/config.toml, which install-compression-libs writes, makes cargo link
-# liblzma and libzstd instead of compiling them.
-ENV C_INCLUDE_PATH="/usr/include/x86_64-linux-gnu"
-ENV CPLUS_INCLUDE_PATH="/usr/include/x86_64-linux-gnu"
-ENV LIBRARY_PATH="/usr/local/lib64:/usr/local/lib:/usr/lib/x86_64-linux-gnu"
-ENV LD_LIBRARY_PATH="/usr/local/lib64:/usr/local/lib"
-COPY dev/docker/files/install-gcc dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
+# clang of LLVM 22 is the C compiler and link driver (`cc` and `c++`), on the C
+# library and the GCC runtime of Ubuntu; the native builds link with mold.
+# OpenBLAS, liblzma, and libzstd are the prebuilt archives of binarylandia, and
+# /.cargo/config.toml, which their install scripts write, makes cargo link them
+# instead of compiling them or asking for shared libraries.
+ENV PATH="/opt/llvm/bin:${PATH}"
+COPY dev/docker/files/install-llvm dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
 RUN set -euxo pipefail >/dev/null \
-&& /install-gcc "/usr/local" \
-&& /install-openblas "x86_64-unknown-linux-gnu" "/usr/local" \
+&& /install-llvm "/opt/llvm" \
+&& ln -sf "/opt/llvm/bin/clang" "/usr/local/bin/cc" \
+&& ln -sf "/opt/llvm/bin/clang++" "/usr/local/bin/c++" \
+&& /install-openblas "x86_64-unknown-linux-gnu" "/opt/openblas" \
 && /install-compression-libs "x86_64-unknown-linux-gnu" "/usr/local" \
-&& rm /install-gcc /install-openblas
+&& rm /install-llvm /install-openblas \
+&& printf 'int main(void) { return 0; }\n' | cc -x c -o /tmp/cc-check - \
+&& rm /tmp/cc-check
 
 # The Rust toolchain of rust-toolchain.toml, then the pinned nightly of the lint
 # libraries and the toolchain that cargo-hawk is built against.
