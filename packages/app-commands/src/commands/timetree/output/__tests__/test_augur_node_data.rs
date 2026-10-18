@@ -34,8 +34,7 @@ mod tests {
     assert_relative_eq!(clock.rate, 0.002);
     assert_relative_eq!(clock.intercept, -4.0);
     assert_relative_eq!(clock.rtt_tmrca, 2000.0);
-    let cov = clock.cov.as_ref().unwrap();
-    assert_eq!(cov, &vec![vec![1e-8, 0.0], vec![0.0, 0.5]]);
+    assert!(clock.cov.is_none());
     assert_relative_eq!(clock.rate_std.unwrap(), 1e-4);
 
     assert_eq!(data.metadata.input_tree.as_deref(), Some("tree.nwk"));
@@ -274,8 +273,7 @@ mod tests {
           "estimated": {
             "chisq": 0.0,
             "r_val": 0.99,
-            "hessian": [[0.0, 0.0], [0.0, 0.0]],
-            "cov": [[1e-8, 0.0], [0.0, 0.5]]
+            "rate_std": 1e-4
           }
         }
       }"#})
