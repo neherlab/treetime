@@ -9,7 +9,7 @@ v0 and v1 apply the skyline coalescent prior at different points of the refineme
 
 ## v1 behavior
 
-- The initial round fits the skyline from the first node times (`fn setup_coalescent` in [packages/treetime/src/timetree/round.rs](../../packages/treetime/src/timetree/round.rs)), and every loop round re-fits it from the current node times before the round runs ([packages/treetime/src/timetree/refinement_loop.rs#L54-L63](../../packages/treetime/src/timetree/refinement_loop.rs#L54-L63)), so every round uses a skyline prior
+- The init phase fits the skyline to the expected lineage counts of the Gaussian node marginals (`fn initialize` in [packages/treetime/src/timetree/init.rs](../../packages/treetime/src/timetree/init.rs)), and every loop round re-fits it from the current node times before the round runs ([packages/treetime/src/timetree/refinement_loop.rs#L54-L63](../../packages/treetime/src/timetree/refinement_loop.rs#L54-L63)), so every round uses a skyline prior
 - No skyline step runs after the loop
 - The early convergence exit applies in skyline mode as in every other mode (`fn TimetreeOptimizer::next_iter` in [packages/treetime/src/timetree/convergence/optimizer.rs](../../packages/treetime/src/timetree/convergence/optimizer.rs)), so a skyline run can stop before `max_iter` with a skyline fitted to times that v0 would have refined further
 

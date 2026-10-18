@@ -314,8 +314,8 @@ End-to-end timetree estimation from input to output.
 v1: [`packages/treetime/src/timetree/pipeline.rs`](../../packages/treetime/src/timetree/pipeline.rs), called by the CLI command in [`packages/app-commands/src/commands/timetree/run.rs`](../../packages/app-commands/src/commands/timetree/run.rs).
 
 - `fn run_timetree_estimation` [packages/app-commands/src/commands/timetree/run.rs#L43](../../packages/app-commands/src/commands/timetree/run.rs#L43): loads the input data, builds `TimetreeParams` from the CLI arguments, runs the pipeline and writes the outputs
-- `fn run` [packages/treetime/src/timetree/pipeline.rs#L55-L141](../../packages/treetime/src/timetree/pipeline.rs#L55-L141): estimates the initial clock model, initializes the branch model, runs the pre-loop steps (ML branch-length optimization, rerooting, clock filter), runs the initial round, iterates refinement rounds with convergence monitoring, computes the final times and confidence data, and gathers the results
-- `fn run_initial_round` [packages/treetime/src/timetree/round.rs#L49-L113](../../packages/treetime/src/timetree/round.rs#L49-L113): runs one time inference without coalescent prior, sets up the coalescent time scale, and repeats the inference with the coalescent prior when the configuration requests one
+- `fn run` [packages/treetime/src/timetree/pipeline.rs#L55-L141](../../packages/treetime/src/timetree/pipeline.rs#L55-L141): estimates the initial clock model, initializes the branch model, runs the pre-loop steps (ML branch-length optimization, rerooting, clock filter), runs the init phase, iterates refinement rounds with convergence monitoring, computes the final times and confidence data, and gathers the results
+- `fn initialize` [packages/treetime/src/timetree/init.rs#L45](../../packages/treetime/src/timetree/init.rs#L45): seeds the expected lineage counts from the Gaussian node-time marginals at the regression rate, fits the coalescent time scale to them, runs one time inference under that prior (without a prior when the configuration requests none) and rebuilds the expected lineage counts from its posteriors
 
 ---
 
