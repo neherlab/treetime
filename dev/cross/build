@@ -70,17 +70,37 @@ esac
 # LIBRARY_PATH.
 rustflags="${rustflags} -L native=${OPENBLAS_LIB_DIR:?}"
 
+# OpenBLAS calls LAPACK routines written in Fortran, which need the Fortran
+# runtime; the openblas-src build script does not declare it. The static
+# archives of the Fortran compiler of the image are linked by path, so no
+# binary depends on a shared libgfortran, and libquadmath goes along where the
+# target has it.
+fc_var="FC_${target_safe}"
+fc="${!fc_var:?the cross image sets ${fc_var}}"
+fortran_runtime=()
+for archive in libgfortran.a libquadmath.a; do
+  path="$("${fc}" -print-file-name="${archive}")"
+  if [[ "${path}" == /* ]]; then
+    fortran_runtime+=("${path}")
+  fi
+done
+[[ "${fortran_runtime[0]:-}" == */libgfortran.a ]] || {
+  printf 'ERROR: %s has no libgfortran.a\n' "${fc}" >&2
+  exit 1
+}
+
 if [[ -n "${lib}" && "${target}" == *-windows-gnu ]]; then
-  # The addon pulls OpenBLAS LAPACK routines written in Fortran, which need the
-  # Fortran runtime; the openblas-src build script does not declare it. The
-  # runtime comes last on the link line, after the C runtime libraries that
+  # The runtime comes last on the link line, after the C runtime libraries that
   # rustc lists, so it is linked in one group with them again.
-  runtime="-lgfortran -l:libpthread.a -lmingw32 -lmingwex -lmsvcrt -lkernel32 -lgcc"
   rustflags="${rustflags} -C link-arg=-Wl,--start-group"
-  for arg in ${runtime}; do
+  for arg in "${fortran_runtime[@]}" -l:libpthread.a -lmingw32 -lmingwex -lmsvcrt -lkernel32 -lgcc; do
     rustflags="${rustflags} -C link-arg=${arg}"
   done
   rustflags="${rustflags} -C link-arg=-Wl,--end-group"
+else
+  for arg in "${fortran_runtime[@]}"; do
+    rustflags="${rustflags} -C link-arg=${arg}"
+  done
 fi
 
 export RUSTFLAGS="${rustflags}"
