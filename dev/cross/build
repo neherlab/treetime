@@ -61,7 +61,11 @@ case "${target}" in
   rustflags="${RUSTFLAGS} -C link-args=-lpthread -C link-args=-lm -C link-args=-lc ${static}"
   ;;
 *-windows-gnu)
-  rustflags="${RUSTFLAGS} ${static}"
+  # The MinGW startup objects and libraries come from the toolchain of the
+  # image, which also built libgcc, libgfortran, and OpenBLAS. With the copies
+  # that rustc bundles (link-self-contained), even a minimal program built with
+  # the GCC 14 toolchain overflows its stack at startup.
+  rustflags="${RUSTFLAGS} -C target-feature=+crt-static -C link-arg=-static"
   ;;
 esac
 # OpenBLAS calls LAPACK routines written in Fortran, which need the Fortran
