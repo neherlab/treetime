@@ -10,7 +10,14 @@ Phase 4 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposa
   to each probe; it would also replace the hard stop on a non-positive regression rate when given.
 
 - The Gaussian `rate_std` of 0b undercovers where the rate is biased: $\lvert z\rvert < 1.645$ for 0.21 and 0.00 of
-  the runs at $L=10^3$, $\mu \le 10^{-3}$, against 0.77–0.83 with signal (proposal, phase 0b result). A rate prior
-  or a curvature-based width from $\log Z$ should be compared against it.
+  the runs at $L=10^3$, $\mu \le 10^{-3}$, against 0.77–0.83 with signal (proposal, phase 0b result). The bias, not
+  the width, limits date coverage: `--confidence` raised the 90% coverage only from 0.885 to 0.887 overall and
+  0.854 to 0.866 for nodes older than 10 years, while the low-signal set stays at 0.83.
+- One source for `rate_std`: compare the Gaussian curvature with the curvature of $\log Z$ under the mean-field
+  prior on rate $z$-scores, and report the better calibrated one.
+- The rate susceptibility of `--confidence` reruns the time passes at $\mu \pm \sigma$ and at $\mu$ for little gain.
+  The Gaussian passes give $\partial m_v/\partial\mu$, so the rate term of a node's variance,
+  $(\partial m_v/\partial\mu)^2 \operatorname{var}(\mu)$, is available without them; compare coverage and run time.
 
-Validation: rounds to convergence; low-signal rate error with and without a prior.
+Validation: rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date
+coverage on the calibration subset.

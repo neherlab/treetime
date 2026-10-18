@@ -16,6 +16,12 @@ Merge `claude-hard-cell-interp`. Seed the expectation from the Gaussian node mar
 earliest tip, the root possibly at the regression's root time) and the first $T_c$ by the EM fit on it; the initial
 round becomes round 1 of the loop, with the expectation rebuilt once from its posteriors and then frozen.
 
+When the regression rate is not positive and no `--clock-rate` is given, start from the Gaussian rate estimate
+($\hat\mu$ from the $D{:}M{:}N$ split) instead of stopping: in the evaluation of the proposal it never failed and was
+less noisy than OLS, though 0.4-26% high, and the marginal-likelihood step corrects the rate from there. Four runs of
+the phase 0b gate (`const` rep03 and rep09, $L=10^3$, `--keep-root`) stop today on a non-positive regression rate.
+The regression stays the start whenever its rate is positive.
+
 ## Validation
 
 Calibration and accuracy equal or better than mean field + EM; one time pass fewer; `data/dengue/500` completes.
