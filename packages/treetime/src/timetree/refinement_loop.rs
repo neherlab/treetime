@@ -7,6 +7,7 @@ use crate::timetree::convergence::metrics::IterationClock;
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer, TraceSink};
 use crate::timetree::round::{RoundInputs, RoundState, refinement_round};
 use eyre::{Report, WrapErr};
+use std::sync::Arc;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::sync::random::get_random_number_generator;
 
@@ -16,14 +17,14 @@ use treetime_utils::sync::random::get_random_number_generator;
 )]
 pub(crate) fn run_refinement_loop(
   inputs: &RoundInputs<'_>,
-  coalescent: &CoalescentSetup,
+  mut coalescent: CoalescentSetup,
   mut timescale: CoalescentTimescale,
   mut state: RoundState,
   trace_sink: Option<&mut dyn TraceSink>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<(RoundState, CoalescentTimescale), Report> {
+) -> Result<(RoundState, CoalescentSetup, CoalescentTimescale), Report> {
   cancel.check()?;
   stages.report("Refinement loop", 0.3, "");
   progress_info!(log, "### TreeTime: refinement loop");
@@ -74,6 +75,14 @@ pub(crate) fn run_refinement_loop(
     .wrap_err_with(|| format!("When running round {i}"))?;
     state = next_state;
     current = expectation_of(&state)?;
+    if outcome.topology.changed() {
+      // the mergers created by polytomy resolution have posteriors now; the expectation takes them in and stays
+      // fixed again
+      coalescent = CoalescentSetup {
+        lineage_expectation: Arc::clone(&current),
+        ..coalescent
+      };
+    }
 
     optimizer
       .record(
@@ -93,5 +102,5 @@ pub(crate) fn run_refinement_loop(
       .wrap_err_with(|| format!("When running round {i}"))?;
   }
 
-  Ok((state, timescale))
+  Ok((state, coalescent, timescale))
 }

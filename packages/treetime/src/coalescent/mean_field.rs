@@ -16,7 +16,9 @@
 //!
 //! with `kbar_{-v}(t) = kbar(t) - w_v S_v(t)` and `kbar(t) = sum_u w_u S_u(t)`. For a binary internal node the slope
 //! is `(kbar_{-v} - 1) / Tc` and the merger factor `1 / Tc` carries no step, unlike a lineage count frozen at point
-//! times. The expectations come from the node posteriors of an earlier pass.
+//! times. The expectations come from the node posteriors of an earlier pass; `w_v` in `kbar_{-v}` is the weight the
+//! node has in `kbar`, while the other `w_v` follow the current tree, so that a node's share is removed exactly even
+//! when its number of children changed since.
 
 use crate::clock::gaussian::NodeTimeGaussian;
 use crate::timetree::inference::result::{NodePosterior, NodeTimes};
@@ -241,6 +243,38 @@ impl LineageExpectation {
         None => always_surviving += weight,
       }
     }
+    Self::aggregate(nodes, always_surviving)
+  }
+
+  /// The same node-time distributions on the topology of `graph`: every node keeps its distribution at its current
+  /// weight, a node new to the expectation (a merger that polytomy resolution created) enters at its time in
+  /// `merger_times`, and every other node counts as surviving at all times
+  pub(crate) fn with_topology(
+    &self,
+    graph: &Graph,
+    merger_times: &BTreeMap<GraphNodeKey, f64>,
+  ) -> Result<Arc<Self>, Report> {
+    let mut always_surviving = 0.0;
+    let mut nodes = BTreeMap::new();
+    for node in graph.get_nodes() {
+      let weight = 1.0 - node.outbound().len().to_f64_exact();
+      let survival = match (self.nodes.get(&node.key()), merger_times.get(&node.key())) {
+        (Some(survival), _) => Some(survival.clone()),
+        (None, Some(&time)) => Some(NodeSurvival::point(time)),
+        (None, None) => None,
+      };
+      match survival {
+        Some(survival) => {
+          nodes.insert(node.key(), NodeSurvival { weight, ..survival });
+        },
+        None => always_surviving += weight,
+      }
+    }
+    Self::aggregate(nodes, always_surviving)
+  }
+
+  /// `kbar(t)` and `V(t)` on a uniform grid over the span of the node survival functions
+  fn aggregate(nodes: BTreeMap<GraphNodeKey, NodeSurvival>, always_surviving: f64) -> Result<Arc<Self>, Report> {
     let weighted: Vec<(f64, &NodeSurvival)> = nodes.values().map(|survival| (survival.weight, survival)).collect();
     if weighted.is_empty() {
       return make_error!("Cannot build the expected lineage count: no node has a time");
@@ -420,12 +454,24 @@ impl CoalescentPrior {
     })
   }
 
+  /// The prior on the topology of `graph`, with the mergers that polytomy resolution created at `merger_times` (see
+  /// `LineageExpectation::with_topology`)
+  pub(crate) fn with_topology(
+    &self,
+    graph: &Graph,
+    merger_times: &BTreeMap<GraphNodeKey, f64>,
+  ) -> Result<Self, Report> {
+    Self::new(&self.expectation.with_topology(graph, merger_times)?, &self.tc)
+  }
+
   /// Negative log prior of node `key` with `n_children` children at time `x` (the module's `-log f_v`, up to a
   /// constant per node). Tips (no children) take the same form with weight 1 and no merger factor.
   pub(crate) fn node_contribution(&self, key: GraphNodeKey, n_children: usize, x: f64) -> Result<f64, Report> {
     let weight = 1.0 - n_children.to_f64_exact();
     let n_mergers = n_children.saturating_sub(1).to_f64_exact();
     let own = self.own_integral_at(key, x);
+    // the node's share of kbar, at the weight it entered with
+    let own_weight = self.expectation.nodes.get(&key).map_or(0.0, |survival| survival.weight);
     let merger = if n_mergers > 0.0 {
       let tc = self
         .tc
@@ -437,7 +483,7 @@ impl CoalescentPrior {
     };
     Ok(
       0.5 * weight * (weight - 1.0) * self.inverse_tc_integral_at(x) + weight * self.expected_integral_at(x)
-        - weight * weight * own
+        - weight * own_weight * own
         + merger,
     )
   }
