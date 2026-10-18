@@ -8,9 +8,10 @@ appeared, so the pipeline now carries two representations of the lineage count $
 prior-free pass, a prior pass and two rebuilds, and special cases for the root. This proposal replaces them with one
 design:
 
-1. **Initialize from the clock.** Once the tree is rooted and a rate is known, the clock regression implies a time for
-   every clade. These times seed the expected lineage counts and the first $T_c$, so the first time pass already runs
-   under the prior and the prior-free pass disappears.
+1. **Initialize from the Gaussian timetree.** A Gaussian approximation of the branch-time likelihood gives the rate,
+   the root, the outliers and a Gaussian marginal for every node in closed form. It replaces the regression, the
+   least-squares reroots and the clock filter, and its node marginals seed the expected lineage counts and the first
+   $T_c$, so the first time pass already runs under the prior and the prior-free pass disappears.
 2. **One representation of $k(t)$.** The expected lineage counts of the mean-field prior, $\bar k(t)$ with its
    variance, serve the prior, the $T_c$ fit, the reported coalescent likelihood, the skyline confidence band and the
    merger rates of polytomy resolution. The point-time lineage counts and `CoalescentModel` go.
@@ -78,32 +79,43 @@ Incoherences:
 
 ## Proposed design
 
-### 1. Clock-implied clade times
+### 1. Initialization by the Gaussian timetree
 
-After rooting, the regression gives a rate $\mu$ (or `--clock-rate`). For every node $v$ the tips $i$ below it with
-dates $t_i$, weights $w_i$ and divergences $d_{v,i}$ from $v$ imply
+The root-to-tip regression, the least-squares reroots of the pre-loop and the clock filter are replaced by the
+Gaussian timetree ([neherlab/gaussian-timetree](https://github.com/neherlab/gaussian-timetree), `gaussian_timetree.py`):
 
-$$\hat t_v = \frac{\sum_i w_i \,(t_i - d_{v,i}/\mu)}{\sum_i w_i}, \qquad
-\hat\sigma_v^2 = \frac{\sum_i w_i\,(t_i - d_{v,i}/\mu - \hat t_v)^2}{\sum_i w_i} \cdot \frac{1}{n_v^{\text{eff}}} .$$
+- **Branch model.** A branch with $d$ mutations has elapsed time $\sim \mathcal N((d+1)/\mu,\ (d+1+o)/\mu^2)$, the
+  moment match of the Gamma$(d+1, \mu)$ branch-time likelihood the time passes use.
+- **Messages** $(S, R, W)$ with mean $S - R/\mu$ and variance $W/\mu^2$, so $\mu$ factors out: one upward pass gives
+  $\log L(\mu) = \kappa \ln\mu - A\mu^2/2 + B\mu - C/2$ and the optimal rate in closed form.
+- **Root search** over all nodes and branch positions in $O(N)$, each scored at its own optimal rate.
+- **Node marginals** $(m_v, \sigma_v^2) = (S_v - R_v/\mu,\ W_v/\mu^2)$ from the combined upward and outside messages.
+- **Rate and root-time covariance** from the Hessian of $\log L$.
+- **Outliers**: per-edge z-scores between a subtree's message and the rest of the tree, cut greedily above a
+  threshold; the cut edges become the bad branches of the time passes.
 
-The sums are the `ClockSet` aggregates the regression already propagates up the tree (`t_sum`, `d_sum`, `norm`, and
-their squares), so this is a readout, not a new pass. The estimate is the least-squares root position of each clade at
-the global rate; it does not respect parent-child order, and a clade with heterochronous tips can place $\hat t_v$
-after its earliest tip.
+The node marginals seed the expectation: $S_v(t) = 1 - \Phi((t - m_v)/\sigma_v)$, truncated at the earliest tip below
+$v$ so that $\bar k \ge 1$. Their means need not respect parent-child order; the counts do not need it. Because the
+Gaussian marginals ignore the ordering constraints, they should not carry the flat-measure bias that makes the
+prior-free time passes too old; this is to be checked on the validation data before relying on it. The first $T_c$ is
+the EM fit on this expectation, and the rate standard deviation from the Hessian is available to `--confidence` and to
+the probe width of the rate step (section 5).
 
-For the prior only the counts matter, but they must stay valid: $k(t) \ge 1$ requires every clade time before its
-earliest tip. Options:
+To check:
 
-- **A. Points, clamped.** $\hat t_v \leftarrow \min(\hat t_v, \min_i t_i)$; survival $S_v$ a step. Simplest.
-- **B. Gaussian survival.** $S_v(t) = 1 - \Phi((t - \hat t_v)/\hat\sigma_v)$, truncated at the earliest tip. Smooths
-  $\bar k$ by the clade's own clock scatter, which is the information the regression has. Recommended.
+- The $+1$ pseudo-count biases the rate high on short branches (the script's Section 15; its `tension` option splits
+  $\eta = \mu + \gamma + \psi$ by the event counts). The loop's marginal-likelihood step refines the rate, so only the
+  starting point is affected; whether to apply the split at initialization is open.
+- The variance offset $o$ (0 by default) and the outlier threshold.
+- Rooting and outlier flagging diverge from v0's least-squares reroot and clock filter: decision files.
 
-From these, `LineageExpectation` and the first $T_c$ (EM statistics, or point statistics for option A).
+Fallback without the port: the per-clade least-squares times $\hat t_v = \sum_i w_i (t_i - d_{v,i}/\mu) / \sum_i w_i$
+from the `ClockSet` aggregates of the regression, clamped before the earliest tip.
 
 ### 2. One loop
 
 ```text
-initialize        rate (regression or given), clade times, expectation E_0, Tc_0 from E_0
+initialize        Gaussian timetree: root, rate (or given), outliers, node marginals -> E_0, Tc_0 from E_0
 round r = 1..     prior   = CoalescentPrior(E, Tc)
                   times   = time passes under prior           -> posteriors P_r
                   Tc      = EM fit on Expectation(P_r)
@@ -166,7 +178,8 @@ The baseline for each phase is the previous one.
 | phase | content | gate |
 | --- | --- | --- |
 | 0 | merge `claude-hard-cell-interp` into the mean-field branch | tests; dengue/500 completes |
-| 1 | clock-implied clade times (option B), one loop, initial round removed | calibration and accuracy equal or better than mean field + EM; one time pass fewer in run time |
+| 1a | port the Gaussian timetree as the pre-loop clock: rate, root search, outliers, node marginals, Hessian | rate, root and outlier recovery on the validation data against regression + least-squares reroot + clock filter; Gaussian marginal means against the truth and against the prior-free time passes |
+| 1b | seed the expectation and $T_c$ from the Gaussian marginals; one loop, initial round removed | calibration and accuracy equal or better than mean field + EM; one time pass fewer in run time |
 | 2 | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests rewritten against analytic expected statistics; outputs documented as a v0 divergence |
 | 3 | root: median versus peak under the mean-field prior | `data/ebola/20` root stable over rounds |
 | 4 | rate: curvature-scaled probe window; optional log-normal rate prior | rounds to convergence; low-signal rate error with and without a prior |
@@ -174,7 +187,8 @@ The baseline for each phase is the previous one.
 
 ## Open questions
 
-- Clade-time widths (option A or B), and whether $\hat\sigma_v$ should include the rate uncertainty of the regression.
+- Gaussian timetree at initialization: variance offset, outlier threshold, the rate split of the pseudo-counts, and
+  whether the node widths should include the rate uncertainty.
 - Expectation update: rebuild once and freeze, or a damped update every round.
 - Polytomy resolution: the sweep's merger rate is the only consumer that samples, not integrates; check that
   $\bar k$ in place of integer $k$ does not change its event model beyond the rate.
