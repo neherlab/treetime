@@ -18,9 +18,13 @@ the rest of the tree was still. Step-function $k(t)$ is a plausible cause of tha
 bistability, but it was not isolated, and the configuration is no longer reproducible now that
 fixed-$T_c$ runs converge.
 
+Stronger evidence that the steps distort the node posteriors, from calibration against simulated truth and an exact
+three-tip comparison:
+[M-timetree-marginal-node-posteriors-miscalibrated-by-lineage-count-steps.md](M-timetree-marginal-node-posteriors-miscalibrated-by-lineage-count-steps.md).
+
 ## Impact
 
-None demonstrated. Filed so the hypothesis is not rediscovered.
+None demonstrated for the bistability. Filed so the hypothesis is not rediscovered.
 
 ## Options
 
