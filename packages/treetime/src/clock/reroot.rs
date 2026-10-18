@@ -1,46 +1,93 @@
-use crate::clock::clock_regression::ClockTree;
+use crate::clock::clock_regression::clock_regression;
 use crate::clock::clock_state::{ClockEdgeInput, ClockInputs, ClockNodeInput, ClockState};
 use crate::clock::find_best_root::cost_function::BranchPointCostFunction;
 use crate::clock::find_best_root::find_best_root::FindRootResult;
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec, RootObjective};
 use crate::error::input_error;
+use crate::node_label::node_label;
 use crate::progress::LogSink;
+use crate::progress_info;
 use crate::reroot::orchestrate::{RerootTopologyParams, apply_root_at_edge};
+use crate::reroot::placement::root_moves;
 use eyre::Report;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{RerootResult, StemRemovalInfo, remove_stem_root};
 
-/// Moves the root of `tree` to `best_root` and gives the nodes and edges that the move creates default clock inputs
-pub(crate) fn reroot_clock_tree(
-  mut tree: ClockTree,
-  best_root: &FindRootResult,
-  reroot_params: &RerootParams,
-  stem_removal: Option<StemRemovalInfo>,
+/// What the root search fits and optimizes
+pub(crate) struct RootSearch<'a> {
+  pub outliers: &'a BTreeSet<GraphNodeKey>,
+  pub reroot_params: &'a RerootParams,
+  pub prev_clock_rate: Option<f64>,
+}
+
+/// Moves the root to the position that `search` selects. When the root moves and is an undated stem, the stem goes
+/// first and the search repeats without it. The nodes and edges that the move creates get default clock inputs.
+pub(crate) fn reroot_at_best_root(
+  graph: &mut Graph,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  inputs: &mut ClockInputs,
+  search: &RootSearch<'_>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<(ClockTree, RerootResult), Report> {
-  let ClockTree {
-    graph,
-    branch_lengths,
-    inputs,
-  } = &mut tree;
+  log: &dyn LogSink,
+) -> Result<RerootResult, Report> {
+  let mut best = search_root(graph, branch_lengths, inputs, search, log)?;
+  let mut stem_removal = None;
+  if root_moves(graph, best.edge, best.split, search.reroot_params.split_edge)? {
+    stem_removal = remove_undated_stem(graph, branch_lengths, inputs)?;
+    if stem_removal.is_some() {
+      best = search_root(graph, branch_lengths, inputs, search, log)?;
+    }
+  }
   let result = apply_root_at_edge(
     graph,
-    best_root.edge,
-    best_root.split,
-    reroot_params.topology(),
+    best.edge,
+    best.split,
+    search.reroot_params.topology(),
     branch_lengths,
     stem_removal,
     |key| inputs.likely_time(key).is_some(),
     names,
   )?;
   apply_reroot_to_inputs(inputs, &result);
-  Ok((tree, result))
+  progress_info!(log, "Rerooted to {}", node_label(names, result.new_root_key));
+  Ok(result)
+}
+
+/// Reroots a tree without dates by a `spec` that needs none (min-dev or tips). Every tip gets the same date and the
+/// search runs at rate zero, so min-dev ranks the roots by the variance of the root-to-tip divergences.
+pub(crate) fn reroot_undated(
+  graph: &mut Graph,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  spec: &RerootSpec,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
+) -> Result<RerootResult, Report> {
+  let tip_dates = graph.get_leaves().map(|leaf| (leaf.key(), Some(0.0))).collect();
+  let mut inputs = ClockInputs::from_times(graph, &tip_dates, &BTreeMap::new());
+  let reroot_params = RerootParams::new(spec.clone(), false).with_objective(RootObjective::FixedRate(0.0));
+  let search = RootSearch {
+    outliers: &BTreeSet::new(),
+    reroot_params: &reroot_params,
+    prev_clock_rate: None,
+  };
+  reroot_at_best_root(graph, branch_lengths, &mut inputs, &search, names, log)
+}
+
+fn search_root(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  inputs: &ClockInputs,
+  search: &RootSearch<'_>,
+  log: &dyn LogSink,
+) -> Result<FindRootResult, Report> {
+  let state = clock_regression(graph, inputs, search.outliers, branch_lengths, search.prev_clock_rate)?;
+  select_root(graph, inputs, &state, search.reroot_params, branch_lengths, log)
 }
 
 fn apply_reroot_to_inputs(inputs: &mut ClockInputs, result: &RerootResult) {
@@ -62,17 +109,21 @@ fn apply_reroot_to_inputs(inputs: &mut ClockInputs, result: &RerootResult) {
   }
 }
 
-pub(crate) fn remove_undated_stem(tree: &mut ClockTree) -> Result<Option<StemRemovalInfo>, Report> {
-  let root_key = tree.graph.root_key()?;
-  if tree.inputs.likely_time(root_key).is_some() {
+fn remove_undated_stem(
+  graph: &mut Graph,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  inputs: &mut ClockInputs,
+) -> Result<Option<StemRemovalInfo>, Report> {
+  let root_key = graph.root_key()?;
+  if inputs.likely_time(root_key).is_some() {
     return Ok(None);
   }
-  let Some(stem) = remove_stem_root(&mut tree.graph, root_key)? else {
+  let Some(stem) = remove_stem_root(graph, root_key)? else {
     return Ok(None);
   };
-  tree.branch_lengths.remove(&stem.removed_edge_key);
-  tree.inputs.nodes.remove(&stem.removed_node_key);
-  tree.inputs.edges.remove(&stem.removed_edge_key);
+  branch_lengths.remove(&stem.removed_edge_key);
+  inputs.nodes.remove(&stem.removed_node_key);
+  inputs.edges.remove(&stem.removed_edge_key);
   Ok(Some(stem))
 }
 
@@ -82,7 +133,6 @@ pub(crate) fn select_root(
   state: &ClockState,
   reroot_params: &RerootParams,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<FindRootResult, Report> {
   match &reroot_params.spec {
