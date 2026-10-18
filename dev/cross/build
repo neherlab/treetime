@@ -111,8 +111,10 @@ fi
 # The cross images install the OpenBLAS archive into OPENBLAS_LIB_DIR. Only
 # this flag passes that directory to the linker: the openblas-src build script
 # names the library without a search path, and the cross linkers do not search
-# LIBRARY_PATH.
+# LIBRARY_PATH. The build script skips pkg-config, because the openblas.pc of
+# the archive names the directory that OpenBLAS was built in.
 rustflags="${rustflags} -L native=${OPENBLAS_LIB_DIR:?}"
+export OPENBLAS_NO_PKG_CONFIG=1
 
 export RUSTFLAGS="${rustflags}"
 
