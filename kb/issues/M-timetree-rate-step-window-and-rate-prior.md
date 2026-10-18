@@ -19,5 +19,12 @@ Phase 4 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposa
   The Gaussian passes give $\partial m_v/\partial\mu$, so the rate term of a node's variance,
   $(\partial m_v/\partial\mu)^2 \operatorname{var}(\mu)$, is available without them; compare coverage and run time.
 
+- At low signal the rate drifts with the number of rounds, whatever the start: median $\lvert\ln\rvert$ rate error at
+  $L=10^3$, $\mu=3\cdot10^{-4}$ from 0.55 to 0.82 (prior-free seed) and 0.51 to 0.91 (init phase) going from two to
+  three rounds (proposal, phase 1 result). Rounds should improve the rate, not degrade it.
+- A rebuild of the expected lineage counts every round, from an init without a time pass, gave the best calibration
+  of all variants at three rounds (90% coverage 0.900, 0.846 for nodes older than 10 years) but the worst
+  low-signal rate (0.99). Once the rate step is stable, compare it again with the frozen expectation.
+
 Validation: rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date
 coverage on the calibration subset.

@@ -255,7 +255,7 @@ coverage, so the rate step comes before the coalescent statistics and the root.
 | 0a (done) | OLS regression on two-way sums, exact root search, outliers out of the fit, IQR filter; `clock` and `timetree` on it | identical rate, intercept and root wherever the old search found the optimum (OLS default); differences only where the local split search missed it or outliers leaked in; validation suite rate and root recovery |
 | 0b (done) | Gaussian message passing at the final rate: node marginals, rate and root covariance; replaces `--covariation` for `rate_std` | analytic tests (joint Gaussian, finite-difference Hessian); `--confidence` coverage on the validation data, see below |
 | 0c (done) | retire the old machinery and flags; outputs, contracts, app (with the engineer) | tests and dengue/100 golden master unchanged; smoke snapshots re-baselined by the engineer ([M-smoke-clock-ols-retired-flags-and-snapshots.md](../issues/M-smoke-clock-ols-retired-flags-and-snapshots.md)) |
-| 1 | merge `claude-hard-cell-interp`; seed the expectation and $T_c$ from the Gaussian marginals; one loop, initial round removed; Gaussian rate as the start when the regression rate is not positive | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
+| 1 (init done) | merge `claude-hard-cell-interp`; init phase: seed the expectation and $T_c$ from the Gaussian marginals, one time pass under that prior, no prior-free pass; Gaussian rate as the start when the regression rate is not positive | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
 | 2 | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests against analytic expected statistics; outputs documented as a v0 divergence |
 | 3 | root: median versus peak under the mean-field prior | `data/ebola/20` root stable over rounds |
 | 4 | rate: curvature-scaled probe window; optional log-normal rate prior; one source for `rate_std` | rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date coverage |
@@ -300,19 +300,51 @@ the nested-setting support of the app ([N-app-nested-settings-have-no-nested-set
 The pre-filter's relaxed positive rate lost its cause
 ([N-clock-prefilter-positive-rate-relaxation-without-its-cause.md](../issues/N-clock-prefilter-positive-rate-relaxation-without-its-cause.md)).
 
+## Phase 1 result
+
+`fn initialize()` ([`init.rs`](../../packages/treetime/src/timetree/init.rs)) is the init phase between the pre-loop and
+the loop: Gaussian timetree at the regression rate, expected lineage counts from its marginals (each internal node
+truncated at its earliest tip, `LineageExpectation::from_gaussian`), $T_c$ fitted to them, one time pass under that
+prior, expectation rebuilt from its posteriors and frozen. The prior-free pass is gone; it remains only as the
+fallback when the Gaussian timetree degenerates. `timetree` now requires an alignment or `--sequence-length`, as v0
+does. Open in phase 1: the start from the Gaussian rate when the regression rate is not positive
+([M-timetree-non-positive-regression-rate-stops-the-run.md](../issues/M-timetree-non-positive-regression-rate-stops-the-run.md)).
+
+Gate, 240 validation sets, `--coalescent-opt`, estimated rate, `--keep-root`, against the prior-free seed:
+
+| | prior-free seed, 2 rounds | init phase, 2 rounds |
+| --- | --- | --- |
+| 90% coverage | 0.885 | 0.889 |
+| node RMSE, years | 0.213 | 0.216 |
+| total run time | 2145 s | 1843 s |
+| median $\lvert\ln\rvert$ rate error, $L=10^3$, $\mu=10^{-3}$ / $3\cdot10^{-4}$ | 0.229 / 0.545 | 0.144 / 0.505 |
+| nodes older than 10 years: coverage / bias | 0.854 / +0.06 | 0.794 / +0.77 |
+
+At high signal the two agree. At $L=10^3$, $\mu=3\cdot10^{-4}$ the root turns from 2.3 years too old to 3.3 years
+too young: the frozen expectation keeps the young bias of the Gaussian root, as it kept the old bias of the prior-free
+pass. `data/dengue/500` completes (10 s); `data/ebola/{20,100,362}` stay stable, rates within 1-2% of before.
+
+An init without a time pass, with the loop rebuilding the expectation after its first round, was rejected: with the
+expectation rebuilt once it loses one settling pass and the low-signal rate collapses (RMSE 3.8 years at
+$L=10^3$, $\mu=3\cdot10^{-4}$); blending the clock lengths from the Gaussian times or rebuilding before the first rate
+step does not change that. Rebuilding every round recovers it and, at three rounds, calibrates best of all variants
+(coverage 0.900, 0.846 for nodes older than 10 years, about the run time of the init phase), but has the worst
+low-signal rate (0.99). Every variant's low-signal rate degrades from two to three rounds, so the choice between
+frozen and rebuilt expectation waits for a stable rate step (phase 4).
+
 ## Open questions
 
 - The variance offset $o$ for the node widths (0 here), and whether the root survival should be anchored at the
   regression's root time instead of the Gaussian root marginal.
 - Decided: `--covariation` and `--tip-slack` are retired; the outlier rule and its default stay for now.
-- Expectation update: rebuild once and freeze, or a damped update every round.
+- Expectation update: rebuild once and freeze (current), or every round; phase 1 evidence above, decided after phase 4.
 - Polytomy resolution: the sweep's merger rate is the only consumer that samples, not integrates; check that
   $\bar k$ in place of integer $k$ does not change its event model beyond the rate.
 - v0 parity: the reported coalescent likelihood, the initial round and the root handling all diverge from v0 and need
   decision files.
 - Issues: 0a to 0c done (branch `claude-clock-exact-root`, decision
   [clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)),
-  [M-timetree-loop-starts-from-gaussian-marginals.md](../issues/M-timetree-loop-starts-from-gaussian-marginals.md) (1),
+  [M-timetree-non-positive-regression-rate-stops-the-run.md](../issues/M-timetree-non-positive-regression-rate-stops-the-run.md) (1),
   [M-coalescent-one-expected-lineage-statistics.md](../issues/M-coalescent-one-expected-lineage-statistics.md) (2),
   [N-timetree-root-median-under-mean-field-prior.md](../issues/N-timetree-root-median-under-mean-field-prior.md) (3),
   [M-timetree-rate-step-window-and-rate-prior.md](../issues/M-timetree-rate-step-window-and-rate-prior.md) (4).
