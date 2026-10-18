@@ -1,3 +1,4 @@
+mod test_alignment_input;
 mod test_clock_csv;
 mod test_mutation_outputs;
 mod test_pipeline;

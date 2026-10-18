@@ -1,79 +1,96 @@
-use crate::commands::shared::alignment::{AlignmentArgs, PairedAlignment, pair_alignment, read_alignment};
+use crate::commands::shared::alignment::{AlignmentArgs, PairedAlignment, pair_alignment};
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::tree_input::read_input_tree;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use treetime::cancel::Cancel;
-use treetime::make_error;
 use treetime::progress::{LogSink, StageSink};
-use treetime::seq::alignment::{AncestralInput, EdgeSeqInput};
-use treetime::seq::gap_fill::apply_gap_fill;
+use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
+use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
+use treetime::{make_error, make_internal_report};
+use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_io::nwk::NewickDialect;
+use treetime_io::fasta::fasta_read_file;
+use treetime_io::nwk::{NewickDialect, NwkParse};
 
-pub(crate) fn read_nwk_fasta(
+pub(crate) fn read_sequence_sources(
+  alignment: &AlignmentArgs,
+  settings: &SourceSettings<'_>,
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
+) -> Result<Vec<AlignmentSource>, Report> {
+  alignment
+    .paths()?
+    .iter()
+    .map(|path| read_sequence_source(path, settings, graph, names, log))
+    .collect()
+}
+
+pub(crate) fn single_source(sources: Vec<AlignmentSource>) -> Result<AlignmentSource, Report> {
+  let n_sources = sources.len();
+  if n_sources > 1 {
+    return make_error!("Several --alignment files are not supported: {n_sources} were given");
+  }
+  sources
+    .into_iter()
+    .next()
+    .ok_or_else(|| make_internal_report!("No --alignment file was read"))
+}
+
+pub(crate) fn read_tree_and_sources(
   args: &SequenceInputArgs<'_>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<AncestralReadInputs, Report> {
-  let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
+) -> Result<TreeAndSources, Report> {
+  args.alignment.required_paths()?;
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
-
-  if args.alignment.alignment.is_empty() {
-    return make_error!("--alignment is required: pass one or more FASTA files, or '-' to read standard input");
-  }
-  let mut aln = read_alignment(&args.alignment.alignment, &alphabet)?;
-
-  for record in &mut aln {
-    apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
-  }
-  let n_records = aln.len();
-
-  cancel.check()?;
-  stages.report("Parsing tree", 0.1, "");
-  let parse = read_input_tree(args.tree, args.tree_dialect, log)?;
-
-  let names = parse.names();
-  let PairedAlignment { mut sequences, descs } =
-    pair_alignment(aln, &args.alignment.alignment, &parse.graph, &names, log);
-  let alignment_length = sequences.common_length()?;
-  complete_alignment_for_leaves(
-    &parse.graph,
-    &mut sequences.nodes,
-    alignment_length,
-    &alphabet,
-    MissingLeafLimit::Overridable {
+  let tree = read_input_tree(args.tree, args.tree_dialect, log)?;
+  let names = tree.names();
+  let settings = SourceSettings {
+    alphabet: &alphabet,
+    gap_fill: Some(args.gap_fill_args.effective_gap_fill()),
+    missing_leaves: MissingLeafLimit::Overridable {
       ignored: args.ignore_missing_alns,
     },
-    log,
-  )?;
-  let mask = sequences.mask(alignment_length, &alphabet);
+  };
+  let sources = read_sequence_sources(args.alignment, &settings, &tree.graph, &names, log)?;
+  Ok(TreeAndSources { tree, sources })
+}
 
-  let edges = parse
+pub(crate) fn ancestral_input(tree: NwkParse, source: SequenceSource) -> AncestralInput {
+  let edges = tree
     .branch_lengths
     .into_iter()
     .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
     .collect();
-  let input = AncestralInput {
-    graph: parse.graph,
-    nodes: sequences.nodes,
+  AncestralInput {
+    graph: tree.graph,
+    nodes: source.nodes,
     edges,
-    alphabet,
-    mask,
-  };
-  Ok(AncestralReadInputs {
-    input,
-    descs,
-    n_records,
-  })
+    alphabet: source.alphabet,
+    mask: source.mask,
+  }
+}
+
+pub(crate) struct SourceSettings<'a> {
+  pub(crate) alphabet: &'a Alphabet,
+  pub(crate) gap_fill: Option<GapFill>,
+  pub(crate) missing_leaves: MissingLeafLimit,
+}
+
+pub(crate) struct AlignmentSource {
+  pub(crate) source: SequenceSource,
+  pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
+  pub(crate) n_records: usize,
 }
 
 pub(crate) struct SequenceInputArgs<'a> {
@@ -85,8 +102,49 @@ pub(crate) struct SequenceInputArgs<'a> {
   pub(crate) ignore_missing_alns: bool,
 }
 
-pub(crate) struct AncestralReadInputs {
-  pub(crate) input: AncestralInput,
-  pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
-  pub(crate) n_records: usize,
+pub(crate) struct TreeAndSources {
+  pub(crate) tree: NwkParse,
+  pub(crate) sources: Vec<AlignmentSource>,
+}
+
+fn read_sequence_source(
+  path: &Path,
+  settings: &SourceSettings<'_>,
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
+) -> Result<AlignmentSource, Report> {
+  let alphabet = settings.alphabet;
+  let mut records = fasta_read_file(path, alphabet)?;
+  if let Some(gap_fill) = settings.gap_fill {
+    for record in &mut records {
+      apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
+    }
+  }
+  let n_records = records.len();
+  let PairedAlignment { mut sequences, descs } = pair_alignment(records, path, graph, names, log);
+  let in_file = || format!("In alignment '{}'", path.display());
+  let length = sequences.common_length().wrap_err_with(in_file)?;
+  complete_alignment_for_leaves(
+    graph,
+    &mut sequences.nodes,
+    length,
+    alphabet,
+    settings.missing_leaves,
+    &format!("alignment '{}'", path.display()),
+    log,
+  )
+  .wrap_err_with(in_file)?;
+  let mask = sequences.mask(length, alphabet);
+  Ok(AlignmentSource {
+    source: SequenceSource {
+      path: path.to_path_buf(),
+      alphabet: alphabet.clone(),
+      length,
+      nodes: sequences.nodes,
+      mask,
+    },
+    descs,
+    n_records,
+  })
 }

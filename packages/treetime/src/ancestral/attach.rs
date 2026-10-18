@@ -18,6 +18,7 @@ pub fn complete_alignment_for_leaves(
   alignment_length: usize,
   alphabet: &Alphabet,
   limit: MissingLeafLimit,
+  source: &str,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   let n_leaves = graph.num_leaves();
@@ -33,12 +34,12 @@ pub fn complete_alignment_for_leaves(
       let name = node_name_or_key(*key, nodes[key].name.as_deref());
       progress_warn!(
         log,
-        "No sequence found for leaf '{name}'; treating it as fully ambiguous (missing data)."
+        "No sequence found for leaf '{name}' in {source}; treating it as fully ambiguous (missing data)."
       );
     }
     progress_warn!(
       log,
-      "{n_missing} of {n_leaves} tips have no matching sequence in the alignment and are treated as fully ambiguous."
+      "{n_missing} of {n_leaves} tips have no matching sequence in {source} and are treated as fully ambiguous."
     );
   }
 

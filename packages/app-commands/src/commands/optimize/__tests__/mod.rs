@@ -1,3 +1,4 @@
+mod test_alignment_input;
 mod test_args_initial_guess;
 mod test_args_opt_method;
 mod test_args_reroot;

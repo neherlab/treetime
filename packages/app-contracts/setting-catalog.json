@@ -348,7 +348,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
+          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {
@@ -2653,7 +2653,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
+          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {
@@ -4171,7 +4171,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
+          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {
@@ -5566,7 +5566,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
+          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {
@@ -7774,7 +7774,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
+          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {
@@ -8978,7 +8978,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. The records of all files form one alignment. Use `-` to read uncompressed FASTA from standard input.",
+          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {

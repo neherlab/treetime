@@ -167,6 +167,7 @@ pub(crate) fn complete_leaf_sequences(
     length,
     alphabet,
     MissingLeafLimit::Enforced,
+    "the alignment",
     &NoopProgress,
   )?;
   let mask = sequences.mask(length, alphabet);

@@ -57,6 +57,7 @@ pub fn reconstruct_aa(
       MissingLeafLimit::Overridable {
         ignored: params.ignore_missing_alns,
       },
+      &format!("the translations of CDS '{name}'"),
       log,
     )?;
     validate_cds_length(&name, annotation.as_ref(), alignment_length)?;

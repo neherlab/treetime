@@ -76,7 +76,6 @@ mod tests {
     assert_eq!(
       vec![
         "Reading input",
-        "Parsing tree",
         "Fitch parsimony",
         "Writing output",
         "Done"

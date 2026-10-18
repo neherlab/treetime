@@ -1358,9 +1358,9 @@ export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export const zTimetreeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1509,9 +1509,9 @@ export const zClockRegressionArgs = z.strictObject({
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export const zClockConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1612,9 +1612,9 @@ export const zSampleMode = z.enum([
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export const zAncestralConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1696,9 +1696,9 @@ export const zHomoplasyOutputSelection = z.enum([
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export const zHomoplasyConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1869,9 +1869,9 @@ export const zOptimizeRerootMethod = z.enum(['min-dev']);
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export const zOptimizeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1943,9 +1943,9 @@ export const zPruneOutputSelection = z.enum([
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export const zPruneConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),

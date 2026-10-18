@@ -6,7 +6,9 @@ use crate::commands::shared::alignment::pair_alignment;
 use crate::commands::shared::ancestral_trees::{AncestralOutputMaps, AncestralTrees, write_ancestral_trees};
 use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::output_args::ResolveOutputs;
-use crate::commands::shared::sequence_inputs::{AncestralReadInputs, SequenceInputArgs, read_nwk_fasta};
+use crate::commands::shared::sequence_inputs::{
+  AlignmentSource, SequenceInputArgs, TreeAndSources, ancestral_input, read_tree_and_sources, single_source,
+};
 use app_output::augur_node_data_ancestral::AncestralNodeSequences;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, output_unavailable};
@@ -55,7 +57,9 @@ pub fn run_ancestral_reconstruction(
     gap_fill_args: &args.gap_fill_args,
     ignore_missing_alns: args.ignore_missing_alns,
   };
-  let AncestralReadInputs { input, descs, .. } = read_nwk_fasta(&sequence_args, cancel, stages, log)?;
+  let TreeAndSources { tree, sources } = read_tree_and_sources(&sequence_args, cancel, stages, log)?;
+  let AlignmentSource { source, descs, .. } = single_source(sources)?;
+  let input = ancestral_input(tree, source);
   let names = input.names();
   let branch_lengths = input.branch_lengths();
 
@@ -334,8 +338,7 @@ fn read_cds_translations(
       char::from(recon_alphabet.unknown())
     );
   }
-  let paths = [path];
-  Ok(pair_alignment(sequences, &paths, inputs.graph, inputs.names, log).sequences)
+  Ok(pair_alignment(sequences, &path, inputs.graph, inputs.names, log).sequences)
 }
 
 struct AaRunInputs<'a> {

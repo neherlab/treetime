@@ -104,6 +104,7 @@ mod tests {
       4,
       &alphabet,
       MissingLeafLimit::Enforced,
+      "alignment 'aln.fasta'",
       &NoopProgress,
     )
     .unwrap();
@@ -127,6 +128,7 @@ mod tests {
       length,
       &alphabet,
       MissingLeafLimit::Enforced,
+      "alignment 'aln.fasta'",
       &NoopProgress,
     )
     .unwrap();
@@ -149,6 +151,7 @@ mod tests {
       length,
       &alphabet,
       MissingLeafLimit::Overridable { ignored: true },
+      "alignment 'aln.fasta'",
       &NoopProgress,
     )
     .unwrap();
@@ -174,6 +177,7 @@ mod tests {
       4,
       &alphabet,
       MissingLeafLimit::Enforced,
+      "alignment 'aln.fasta'",
       &NoopProgress,
     )
     .unwrap();
@@ -250,7 +254,15 @@ mod tests {
     ) -> Result<BTreeMap<String, Seq>, Report> {
       let mut sequences = pair_leaf_sequences(graph, names, records).sequences;
       let length = sequences.common_length()?;
-      complete_alignment_for_leaves(graph, &mut sequences.nodes, length, alphabet, limit, &NoopProgress)?;
+      complete_alignment_for_leaves(
+        graph,
+        &mut sequences.nodes,
+        length,
+        alphabet,
+        limit,
+        "alignment 'aln.fasta'",
+        &NoopProgress,
+      )?;
       Ok(
         sequences
           .nodes

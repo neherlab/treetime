@@ -70,7 +70,7 @@ pub fn run_timetree_estimation(
 
   let (sequences, aln_descs) = input_data
     .sequences
-    .map(|paired| (paired.sequences.nodes, paired.descs))
+    .map(|aligned| (aligned.source.nodes, aligned.descs))
     .unzip();
   let alphabet = input_data.alphabet.clone();
   let unknown = alphabet.unknown();

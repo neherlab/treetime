@@ -5,7 +5,9 @@ use crate::commands::homoplasy::result::HomoplasyResult;
 use crate::commands::homoplasy::summary::{ResultContext, homoplasy_result};
 use crate::commands::shared::ancestral_trees::{AncestralOutputMaps, AncestralTrees, write_ancestral_trees};
 use crate::commands::shared::output_args::ResolveOutputs;
-use crate::commands::shared::sequence_inputs::{AncestralReadInputs, SequenceInputArgs, read_nwk_fasta};
+use crate::commands::shared::sequence_inputs::{
+  AlignmentSource, SequenceInputArgs, TreeAndSources, ancestral_input, read_tree_and_sources,
+};
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use eyre::{Report, WrapErr};
@@ -20,6 +22,7 @@ use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime_utils::io::file::write_file_with;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
+use treetime_utils::make_internal_report;
 
 pub fn run_homoplasy(
   args: &TreetimeHomoplasyArgs,
@@ -38,9 +41,10 @@ pub fn run_homoplasy(
     gap_fill_args: &args.gap_fill_args,
     ignore_missing_alns: args.ignore_missing_alns,
   };
-  let AncestralReadInputs {
-    mut input, n_records, ..
-  } = read_nwk_fasta(&sequence_args, cancel, stages, log)?;
+  let TreeAndSources { tree, sources } = read_tree_and_sources(&sequence_args, cancel, stages, log)?;
+  let [AlignmentSource { source, n_records, .. }] = <[AlignmentSource; 1]>::try_from(sources)
+    .map_err(|sources| make_internal_report!("Expected one alignment source, found {}", sources.len()))?;
+  let mut input = ancestral_input(tree, source);
   progress_info!(
     log,
     "Read {} sequences of length {} and a tree with {} leaves",

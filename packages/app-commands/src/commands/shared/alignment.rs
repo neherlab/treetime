@@ -6,7 +6,8 @@ use itertools::Itertools;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use treetime::make_error;
 use treetime::progress::{LogSink, RunWarningKind};
 use treetime::seq::alignment::LeafSequences;
 use treetime_graph::graph::Graph;
@@ -16,12 +17,13 @@ use treetime_io::fasta::{FastaRecord, fasta_read_file};
 use treetime_primitives::{AlphabetLike, Seq};
 #[cfg(feature = "clap")]
 use treetime_schema::schema_defaults;
+use treetime_utils::io::file::is_path_stdin;
 
 /// Sequence alignment input shared by all commands that read sequences.
 ///
-/// One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
-/// accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
-/// input.
+/// One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+/// partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+/// from standard input and may appear at most once.
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[schemars(default, deny_unknown_fields)]
 #[schemars(transform = schema_defaults::<Self>)]
@@ -29,8 +31,9 @@ use treetime_schema::schema_defaults;
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlignmentArgs {
   /// Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-  /// `xz`, `zstd`) files and detects compression by extension. The records of all
-  /// files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+  /// `xz`, `zstd`) files and detects compression by extension. Each file is one
+  /// partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+  /// uncompressed FASTA from standard input; `-` may appear at most once.
   #[cfg_attr(
     feature = "clap",
     clap(
@@ -47,9 +50,27 @@ pub struct AlignmentArgs {
   pub alignment: Vec<PathBuf>,
 }
 
+impl AlignmentArgs {
+  pub fn paths(&self) -> Result<&[PathBuf], Report> {
+    let n_stdin = self.alignment.iter().filter(|path| is_path_stdin(path)).count();
+    if n_stdin > 1 {
+      return make_error!("Standard input ('-') can be read only once, but --alignment lists it {n_stdin} times");
+    }
+    Ok(&self.alignment)
+  }
+
+  pub fn required_paths(&self) -> Result<&[PathBuf], Report> {
+    let paths = self.paths()?;
+    if paths.is_empty() {
+      return make_error!("--alignment is required: pass one or more FASTA files, or '-' to read standard input");
+    }
+    Ok(paths)
+  }
+}
+
 pub(crate) fn pair_alignment(
   records: Vec<FastaRecord>,
-  paths: &[PathBuf],
+  path: &Path,
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
@@ -61,11 +82,10 @@ pub(crate) fn pair_alignment(
       .into_iter()
       .map(|record| (record.seq_name, (record.seq, record.desc))),
   );
-  let files = paths.iter().map(|path| format!("'{}'", path.display())).join(", ");
   warn_duplicate_names(
     log,
     RunWarningKind::DuplicateSequenceNames,
-    &format!("The alignment {files} has more than one sequence named"),
+    &format!("The alignment '{}' has more than one sequence named", path.display()),
     "TreeTime uses the first sequence of each name.",
     &pairing.duplicate_entry_names,
   );

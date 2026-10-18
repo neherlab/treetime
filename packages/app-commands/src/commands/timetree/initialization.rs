@@ -1,15 +1,15 @@
-use crate::commands::shared::alignment::{PairedAlignment, pair_alignment, read_alignment};
 use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
+use crate::commands::shared::sequence_inputs::{AlignmentSource, SourceSettings, read_sequence_sources, single_source};
 use crate::commands::shared::tree_input::read_input_tree;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime::alphabet::alphabet::Alphabet;
+use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::make_error;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::LogSink;
-use treetime::seq::gap_fill::apply_gap_fill;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -26,12 +26,13 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
   let sequences = if !args.alignment.alignment.is_empty() {
-    let mut records = read_alignment(&args.alignment.alignment, &alphabet)?;
-    let gap_fill_mode = args.gap_fill_args.effective_gap_fill();
-    for record in &mut records {
-      apply_gap_fill(&mut record.seq, gap_fill_mode, alphabet.gap(), alphabet.unknown());
-    }
-    Some(pair_alignment(records, &args.alignment.alignment, &graph, &names, log))
+    let settings = SourceSettings {
+      alphabet: &alphabet,
+      gap_fill: Some(args.gap_fill_args.effective_gap_fill()),
+      missing_leaves: MissingLeafLimit::Enforced,
+    };
+    let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?;
+    Some(single_source(sources)?)
   } else if args.branch_length_mode != BranchLengthMode::Input {
     return make_error!(
       "Alignment required when branch_length_mode is not 'input'. \
@@ -73,6 +74,6 @@ pub(crate) struct InputData {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub input_leaf_order: Vec<GraphNodeKey>,
   pub alphabet: Alphabet,
-  pub sequences: Option<PairedAlignment>,
+  pub sequences: Option<AlignmentSource>,
   pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
 }

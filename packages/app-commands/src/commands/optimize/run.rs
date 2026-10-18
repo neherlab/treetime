@@ -1,7 +1,7 @@
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
-use crate::commands::shared::alignment::{PairedAlignment, pair_alignment, read_alignment};
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::output_args::ResolveOutputs;
+use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources, single_source};
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::augur_node_data_refine::{RefineRun, write_augur_node_data_refine};
@@ -12,6 +12,7 @@ use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::Alphabet;
+use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::GtrOutput;
 use treetime::optimize::params::OptimizeLoopSettings;
@@ -19,7 +20,6 @@ use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
 use treetime::partition::marginal::reconstruction::MarginalReconstruction;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
-use treetime::seq::gap_fill::apply_gap_fill;
 use treetime::seq::mutation::{Mutation, MutationTrack, edge_state_change_counts};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -33,19 +33,22 @@ pub fn run_optimize(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
+  args.alignment.required_paths()?;
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
-  let gap_fill = args.gap_fill_args.effective_gap_fill();
-  let mut aln = read_alignment(&args.alignment.alignment, &alphabet)?;
-  for record in &mut aln {
-    apply_gap_fill(&mut record.seq, gap_fill, alphabet.gap(), alphabet.unknown());
-  }
   let nwk_parsed = read_input_tree(args.tree(), args.tree_dialect.dialect(), log)?;
   let names = nwk_parsed.names();
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
+  let settings = SourceSettings {
+    alphabet: &alphabet,
+    gap_fill: Some(args.gap_fill_args.effective_gap_fill()),
+    missing_leaves: MissingLeafLimit::Enforced,
+  };
+  let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?;
+  let source = single_source(sources)?.source;
 
   let resolved = args.resolve_outputs()?;
 
@@ -65,11 +68,10 @@ pub fn run_optimize(
   };
 
   let unknown = alphabet.unknown();
-  let PairedAlignment { sequences, .. } = pair_alignment(aln, &args.alignment.alignment, &graph, &names, log);
   let input = OptimizeInput {
     graph,
-    alphabet,
-    sequences: sequences.nodes,
+    alphabet: source.alphabet,
+    sequences: source.nodes,
     branch_lengths,
   };
 

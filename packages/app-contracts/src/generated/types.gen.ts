@@ -2593,15 +2593,16 @@ export type TopologyOrderTargetAggregateArg = 'mean' | 'median';
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export type TimetreeConfig = {
   /**
    * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   * `xz`, `zstd`) files and detects compression by extension. Each file is one
+   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -3194,15 +3195,16 @@ export type ClockRegressionArgs = {
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export type ClockConfig = {
   /**
    * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   * `xz`, `zstd`) files and detects compression by extension. Each file is one
+   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -3499,15 +3501,16 @@ export type SampleMode = 'argmax' | 'root' | 'all';
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export type AncestralConfig = {
   /**
    * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   * `xz`, `zstd`) files and detects compression by extension. Each file is one
+   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -3857,15 +3860,16 @@ export type HomoplasyOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'ma
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export type HomoplasyConfig = {
   /**
    * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   * `xz`, `zstd`) files and detects compression by extension. Each file is one
+   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -4437,15 +4441,16 @@ export type OptimizeRerootMethod = 'min-dev';
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export type OptimizeConfig = {
   /**
    * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   * `xz`, `zstd`) files and detects compression by extension. Each file is one
+   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -4748,15 +4753,16 @@ export type PruneOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb
 /**
  * Sequence alignment input shared by all commands that read sequences.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Multiple files are
- * accepted; their records form one alignment. The path `-` reads uncompressed FASTA from standard
- * input.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
+ * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
+ * from standard input and may appear at most once.
  */
 export type PruneConfig = {
   /**
    * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. The records of all
-   * files form one alignment. Use `-` to read uncompressed FASTA from standard input.
+   * `xz`, `zstd`) files and detects compression by extension. Each file is one
+   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**

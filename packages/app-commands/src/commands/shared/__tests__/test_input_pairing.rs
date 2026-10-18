@@ -10,7 +10,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::fs;
-  use std::path::PathBuf;
+  use std::path::Path;
   use tempfile::tempdir;
   use treetime::progress::RunWarningKind;
   use treetime_io::dates_csv::DateConstraint;
@@ -54,7 +54,7 @@ mod tests {
     let log = RecordingLog::default();
 
     let PairedAlignment { sequences, descs } =
-      pair_alignment(records, &[PathBuf::from("aln.fasta")], &tree.graph, &names, &log);
+      pair_alignment(records, Path::new("aln.fasta"), &tree.graph, &names, &log);
 
     let [a1, a2] = leaf_keys(&tree, "A")[..] else {
       panic!("the tree has two leaves named A")

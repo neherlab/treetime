@@ -1,8 +1,8 @@
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::shared::alignment::{pair_alignment, read_alignment};
 use crate::commands::shared::gtr_output::write_gtr_output;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::output_args::ResolveOutputs;
+use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources, single_source};
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::mutation_filter::UnknownMutationFilter;
@@ -13,6 +13,7 @@ use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
+use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::GtrModelName;
 use treetime::partition::marginal::sparse::partition::PartitionMarginalSparse;
@@ -50,12 +51,13 @@ pub fn run_prune(
 
   let needs_sequences = args.prune_empty || args.merge_shared_mutations;
   let sequences = if needs_sequences && !args.alignment.alignment.is_empty() {
-    let records = read_alignment(&args.alignment.alignment, &alphabet)?;
-    Some(
-      pair_alignment(records, &args.alignment.alignment, &graph, &names, log)
-        .sequences
-        .nodes,
-    )
+    let settings = SourceSettings {
+      alphabet: &alphabet,
+      gap_fill: None,
+      missing_leaves: MissingLeafLimit::Enforced,
+    };
+    let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?;
+    Some(single_source(sources)?.source.nodes)
   } else {
     None
   };
@@ -195,6 +197,8 @@ struct PruneOutputMaps {
 }
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
+  args.alignment.paths()?;
+
   if args.prune_empty && args.alignment.alignment.is_empty() {
     return make_error!(
       "The --prune-empty requires --alignment. Without sequence data, it's not possible to determine which branches lack mutations."

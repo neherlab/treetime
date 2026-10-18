@@ -4,6 +4,7 @@ use crate::error::input_error;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -31,6 +32,15 @@ impl AncestralInput {
       .map(|(key, edge)| (*key, edge.branch_length))
       .collect()
   }
+}
+
+#[derive(Clone, Debug)]
+pub struct SequenceSource {
+  pub path: PathBuf,
+  pub alphabet: Alphabet,
+  pub length: usize,
+  pub nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  pub mask: Vec<bool>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
