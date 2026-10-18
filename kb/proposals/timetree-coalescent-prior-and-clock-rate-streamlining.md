@@ -258,7 +258,7 @@ coverage, so the rate step comes before the coalescent statistics and the root.
 | 1 (done) | merge `claude-hard-cell-interp`; init phase: seed the expectation and $T_c$ from the Gaussian marginals, one time pass under that prior, no prior-free pass; Gaussian rate as the start when the regression rate is not positive | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
 | 2 (done) | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests against analytic expected statistics; outputs documented as a v0 divergence |
 | 3 (done: median kept) | root: median versus peak under the mean-field prior | `data/ebola/20` root stable over rounds |
-| 4 | rate: curvature-scaled probe window; optional log-normal rate prior; one source for `rate_std` | rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date coverage |
+| 4 (in part) | rate: step window (done: slope only in the first round); curvature-scaled probe window; one source for `rate_std`; log-normal rate prior dropped | rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date coverage |
 | 5 | kb: decisions for the mean-field prior, the EM fit, the regression-and-Gaussian start; supersede the frozen-lineage-count and root-before-merger notes; close [M-timetree-initial-round-applies-coalescent-prior.md](../issues/M-timetree-initial-round-applies-coalescent-prior.md) | |
 
 ## Phase 0b result

@@ -56,5 +56,11 @@ Phase 4 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposa
   sits in the probes (the frozen prior), so the remaining lever is the step itself, e.g. accepting a rate move only
   when both probes fall below the centre (an interior maximum).
 
+- Done: the step follows a slope out of the probe window only in the first round and afterwards moves only toward a
+  maximum between the probes (`RateWindow`). Low-signal rate error after six rounds 1.26 to 0.29, node RMSE 1.1 to
+  0.54 years at $L=10^3$, $\mu=3\cdot10^{-4}$; high-signal sets unchanged. Evidence:
+  [timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md#rate-window).
+  Open: the curvature-scaled window and one source for `rate_std` (above).
+
 Validation: rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date
 coverage on the calibration subset.
