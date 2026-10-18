@@ -162,6 +162,10 @@ pub struct OutputCoreArgs {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`. With
   /// multiple `--output-nwk-style` values, a secondary extension is inserted per style.
   ///
+  /// With several `--alignment` files, the styles other than `plain` write one file per
+  /// alignment, and the file name must contain `{partition}`, which is replaced by the number
+  /// of the alignment (1, 2, ...).
+  ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
   ///
@@ -175,6 +179,10 @@ pub struct OutputCoreArgs {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`. With
   /// multiple `--output-nwk-style` values, a secondary extension is inserted per style.
   ///
+  /// With several `--alignment` files, the styles other than `plain` write one file per
+  /// alignment, and the file name must contain `{partition}`, which is replaced by the number
+  /// of the alignment (1, 2, ...).
+  ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
   ///
@@ -186,6 +194,9 @@ pub struct OutputCoreArgs {
   /// Path to output Auspice v2 JSON tree file.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  ///
+  /// With several `--alignment` files, one file is written per alignment, and the file name
+  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
@@ -199,6 +210,9 @@ pub struct OutputCoreArgs {
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   ///
+  /// With several `--alignment` files, one file is written per alignment, and the file name
+  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+  ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
   ///
@@ -210,6 +224,9 @@ pub struct OutputCoreArgs {
   /// Path to output UShER MAT JSON tree file.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  ///
+  /// With several `--alignment` files, one file is written per alignment, and the file name
+  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.

@@ -189,6 +189,9 @@ pub struct TreetimeAncestralArgsRaw {
   /// compatible with augur export v2 --node-data for Nextstrain pipeline integration.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  ///
+  /// With several `--alignment` files, one file is written per alignment, and the file name
+  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_augur_node_data: Option<PathBuf>,
@@ -203,6 +206,9 @@ pub struct TreetimeAncestralArgsRaw {
   /// Path to output reconstructed nucleotide FASTA.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  ///
+  /// With several `--alignment` files, one file is written per alignment, and the file name
+  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_reconstructed_nuc_fasta: Option<PathBuf>,

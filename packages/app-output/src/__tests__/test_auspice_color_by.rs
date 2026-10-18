@@ -51,7 +51,6 @@ mod tests {
         alphabet: &NUC_ALPHABET,
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
-        mutation_counts: None,
         amino_acids: None,
       }),
       ..dated_graph(&setup, None)
@@ -89,7 +88,6 @@ mod tests {
           alphabet: &NUC_ALPHABET,
           root_sequence: &root_sequence,
           edge_mutations: &edge_mutations,
-          mutation_counts: None,
           amino_acids: None,
         }),
         ..annotated(&topology)

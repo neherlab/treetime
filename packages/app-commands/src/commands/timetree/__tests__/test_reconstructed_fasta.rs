@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::run::reconstructed_nuc_fasta_path;
+  use crate::commands::timetree::run::reconstructed_nuc_fasta_paths;
   use app_output::output_plan::Requested;
   use eyre::Report;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeSet;
+  use std::collections::{BTreeMap, BTreeSet};
   use std::path::PathBuf;
   use treetime::alphabet::alphabet::Alphabet;
   use treetime::optimize::params::BranchLengthMode;
@@ -117,19 +118,19 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::marginal_named(  (BranchLengthMode::Marginal, Requested::Named), Some("out.fasta"))]
-  #[case::marginal_all(    (BranchLengthMode::Marginal, Requested::All),   Some("out.fasta"))]
-  #[case::input_all(       (BranchLengthMode::Input,    Requested::All),   None)]
+  #[case::marginal_named(  (BranchLengthMode::Marginal, Requested::Named), btreemap! { 1 => PathBuf::from("out.fasta") })]
+  #[case::marginal_all(    (BranchLengthMode::Marginal, Requested::All),   btreemap! { 1 => PathBuf::from("out.fasta") })]
+  #[case::input_all(       (BranchLengthMode::Input,    Requested::All),   btreemap! {})]
   #[trace]
   fn test_timetree_reconstructed_fasta_path_follows_reconstruction(
     #[case] (mode, requested): (BranchLengthMode, Requested),
-    #[case] expected: Option<&str>,
+    #[case] expected: BTreeMap<usize, PathBuf>,
   ) -> Result<(), Report> {
     let resolved = helpers::fasta_outputs(requested);
 
-    let actual = reconstructed_nuc_fasta_path(&resolved, mode, &NoopProgress)?;
+    let actual = reconstructed_nuc_fasta_paths(&resolved, mode, &NoopProgress)?;
 
-    assert_eq!(expected.map(PathBuf::from), actual);
+    assert_eq!(expected, actual);
     Ok(())
   }
 
@@ -138,7 +139,7 @@ mod tests {
     let resolved = helpers::fasta_outputs(Requested::Named);
 
     assert_error!(
-      reconstructed_nuc_fasta_path(&resolved, BranchLengthMode::Input, &NoopProgress),
+      reconstructed_nuc_fasta_paths(&resolved, BranchLengthMode::Input, &NoopProgress),
       "--output-reconstructed-nuc-fasta was requested, but --branch-length-mode=input reconstructs no ancestral sequences"
     );
   }
@@ -152,6 +153,7 @@ mod tests {
     use eyre::{Report, WrapErr};
     use maplit::btreemap;
     use std::collections::BTreeMap;
+    use std::num::NonZeroUsize;
     use std::path::PathBuf;
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::cancel::NoopCancel;
@@ -198,16 +200,15 @@ mod tests {
 
     pub(super) fn fasta_outputs(requested: Requested) -> ResolvedOutputs {
       ResolvedOutputs {
+        partition_count: NonZeroUsize::MIN,
         tree_outputs: btreemap! {},
-        non_tree_outputs: btreemap! {
-          OutputSelection::ReconstructedNucFasta => PlannedFile {
-            path: PathBuf::from("out.fasta"),
-            requested,
-          },
-        },
+        non_tree_outputs: btreemap! {},
         tree_outputs_by_partition: btreemap! {},
         non_tree_outputs_by_partition: btreemap! {
-          OutputSelection::ReconstructedNucFasta => vec![PathBuf::from("out.fasta")],
+          OutputSelection::ReconstructedNucFasta => vec![PlannedFile {
+            path: PathBuf::from("out.fasta"),
+            requested,
+          }],
         },
       }
     }

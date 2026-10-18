@@ -255,7 +255,6 @@ mod tests {
       [0, 2].map(|partition| resolved.tree_partition_path(TreeWriteKind::Nwk(NwkStyle::Beast), partition)),
       resolved.tree_partition_path(TreeWriteKind::Nwk(NwkStyle::Plain), 1),
       resolved.partition_path(OutputSelection::Gtr, 1),
-      resolved.path(OutputSelection::ReconstructedNucFasta),
     );
 
     let expected = (
@@ -267,10 +266,82 @@ mod tests {
       [None, Some(Path::new("out/ancestral.2.annotated.nwk"))],
       None,
       None,
-      Some(Path::new("out/ancestral.1.reconstructed-nuc.fasta")),
     );
     assert_eq!(expected, actual);
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::one_partition( 1)]
+  #[case::two_partitions(2)]
+  #[trace]
+  fn test_output_plan_per_partition_outputs_have_no_run_path(#[case] partition_count: usize) -> Result<(), Report> {
+    let resolved = plan(&helpers::partitioned_request(
+      partition_count,
+      Some("out"),
+      btreemap! {},
+      btreemap! {},
+    ))?;
+
+    let actual = (
+      resolved.path(OutputSelection::ReconstructedNucFasta),
+      resolved.path(OutputSelection::AugurNodeData),
+      resolved.path(OutputSelection::Gtr),
+      resolved.tree_outputs.keys().copied().collect_vec(),
+      resolved.partition_tree_outputs(partition_count).into_keys().collect_vec(),
+    );
+
+    let expected = (
+      None,
+      None,
+      Some(Path::new("out/ancestral.gtr.json")),
+      vec![TreeWriteKind::Nwk(NwkStyle::Plain)],
+      vec![TreeWriteKind::Nwk(NwkStyle::Beast), TreeWriteKind::Auspice, TreeWriteKind::MatPb],
+    );
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_trees_of_commands_without_alignments_are_written_once() -> Result<(), Report> {
+    let mut request = helpers::partitioned_request(1, Some("out"), btreemap! {}, btreemap! {});
+    request.command = CommandKind::Mugration;
+    request.selection = vec![OutputSelection::Nwk, OutputSelection::Auspice, OutputSelection::MatPb];
+
+    let resolved = plan(&request)?;
+
+    let expected = (
+      vec![
+        TreeWriteKind::Nwk(NwkStyle::Plain),
+        TreeWriteKind::Nwk(NwkStyle::Beast),
+        TreeWriteKind::Auspice,
+        TreeWriteKind::MatPb,
+      ],
+      true,
+    );
+    let actual = (
+      resolved.tree_outputs.keys().copied().collect_vec(),
+      resolved.tree_outputs_by_partition.is_empty(),
+    );
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_tree_of_a_command_without_alignments_rejects_the_placeholder() {
+    let mut request = helpers::partitioned_request(
+      1,
+      None,
+      btreemap! { OutputSelection::Auspice => PathBuf::from("tree.{partition}.json") },
+      btreemap! {},
+    );
+    request.command = CommandKind::Clock;
+
+    assert_error!(
+      plan(&request),
+      "--output-tree-auspice is written once per run, so its file name cannot contain '{partition}'"
+    );
   }
 
   #[test]
@@ -321,7 +392,7 @@ mod tests {
 
     assert_eq!(
       Some(Path::new("seq.1.fasta")),
-      resolved.path(OutputSelection::ReconstructedNucFasta)
+      resolved.partition_path(OutputSelection::ReconstructedNucFasta, 1)
     );
     Ok(())
   }

@@ -13,6 +13,7 @@ pub mod method_anc;
 pub mod mirror_enum;
 pub mod model;
 pub mod output_args;
+pub mod reconstructed_fasta;
 pub mod required;
 pub mod reroot;
 pub mod seed;

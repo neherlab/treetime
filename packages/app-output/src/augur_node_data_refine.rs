@@ -1,7 +1,8 @@
 use crate::annotated_graph::{AnnotatedTreeView, TreeDates};
 use eyre::Report;
+use itertools::Itertools;
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use treetime::clock::clock_model::ClockModel;
 use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::edge::GraphEdgeKey;
@@ -31,7 +32,7 @@ pub fn build_augur_node_data_refine(tree: &AnnotatedTreeView<'_>, run: &RefineRu
     .map(|node| {
       let key = node.key();
       let name = node_name_or_key(key, graph.names[&key].as_deref());
-      let lengths = refine_lengths(tree, key);
+      let lengths = refine_lengths(tree, run, key);
       let dates = graph
         .dates
         .as_ref()
@@ -58,7 +59,7 @@ pub fn build_augur_node_data_refine(tree: &AnnotatedTreeView<'_>, run: &RefineRu
       version: env!("CARGO_PKG_VERSION").to_owned(),
     }),
     metadata: AugurNodeDataJsonRefineMeta {
-      alignment: run.alignment.map(|path| path.display().to_string()),
+      alignment: (!run.alignments.is_empty()).then(|| run.alignments.iter().map(|path| path.display()).join(",")),
       input_tree: run.input_tree.map(|path| path.display().to_string()),
       clock: run.clock_model.map(build_clock),
       other: BTreeMap::new(),
@@ -67,13 +68,26 @@ pub fn build_augur_node_data_refine(tree: &AnnotatedTreeView<'_>, run: &RefineRu
   }
 }
 
+pub fn total_mutation_counts<'a>(
+  counts: impl IntoIterator<Item = &'a BTreeMap<GraphEdgeKey, usize>>,
+) -> BTreeMap<GraphEdgeKey, usize> {
+  counts
+    .into_iter()
+    .flatten()
+    .fold(BTreeMap::new(), |mut total, (&edge, &count)| {
+      *total.entry(edge).or_default() += count;
+      total
+    })
+}
+
 pub struct RefineRun<'a> {
-  pub alignment: Option<&'a Path>,
+  pub alignments: &'a [PathBuf],
+  pub mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
   pub input_tree: Option<&'a Path>,
   pub clock_model: Option<&'a ClockModel>,
 }
 
-fn refine_lengths(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey) -> RefineLengths {
+fn refine_lengths(tree: &AnnotatedTreeView<'_>, run: &RefineRun<'_>, key: GraphNodeKey) -> RefineLengths {
   let graph = tree.graph();
   let parent_edge = tree.tree().parent(key).map(|(_, edge_key)| edge_key);
   match (graph.time_branch_lengths, parent_edge) {
@@ -87,12 +101,12 @@ fn refine_lengths(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey) -> RefineLeng
       RefineLengths {
         branch_length: clock_length.unwrap_or(0.0),
         clock_length,
-        mutation_length: mutation_length(tree, edge_key),
+        mutation_length: mutation_length(tree, run, edge_key),
       }
     },
     (None, edge_key) => RefineLengths {
       branch_length: edge_key
-        .and_then(|edge_key| mutation_length(tree, edge_key))
+        .and_then(|edge_key| mutation_length(tree, run, edge_key))
         .unwrap_or(0.0),
       clock_length: None,
       mutation_length: None,
@@ -100,11 +114,10 @@ fn refine_lengths(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey) -> RefineLeng
   }
 }
 
-fn mutation_length(tree: &AnnotatedTreeView<'_>, edge_key: GraphEdgeKey) -> Option<f64> {
-  let graph = tree.graph();
-  match graph.sequences.as_ref().and_then(|sequences| sequences.mutation_counts) {
+fn mutation_length(tree: &AnnotatedTreeView<'_>, run: &RefineRun<'_>, edge_key: GraphEdgeKey) -> Option<f64> {
+  match run.mutation_counts {
     Some(counts) => Some(counts.get(&edge_key).copied().unwrap_or_default().to_f64_exact()),
-    None => graph.divergence_branch_lengths[&edge_key],
+    None => tree.graph().divergence_branch_lengths[&edge_key],
   }
 }
 

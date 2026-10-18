@@ -130,20 +130,17 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::test_support::tests::NUC_ALPHABET;
-    use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeDates, TreeSequences};
+    use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeDates};
     use app_output::augur_node_data_refine::{RefineRun, build_augur_node_data_refine};
     use indoc::indoc;
     use std::collections::{BTreeMap, BTreeSet};
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use treetime::clock::clock_model::ClockModel;
-    use treetime::seq::mutation::Mutation;
     use treetime::timetree::confidence::NodeConfidenceInterval;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
-    use treetime_primitives::Seq;
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
@@ -183,22 +180,13 @@ mod tests {
           .map(|interval| (interval.key, [interval.lower, interval.upper]))
           .collect();
         let excluded = BTreeSet::new();
-        let root_sequence = Seq::try_from_str("A").unwrap();
-        let edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>> =
-          self.graph.get_edges().map(|edge| (edge.key(), vec![])).collect();
         let annotated = AnnotatedGraph {
           graph: &self.graph,
           names: &self.names,
           divergence_branch_lengths: &self.branch_lengths,
           time_branch_lengths: Some(&time_lengths),
           divergence: Divergence::CumulativeBranchLength,
-          sequences: mutation_counts.map(|mutation_counts| TreeSequences {
-            alphabet: &NUC_ALPHABET,
-            root_sequence: &root_sequence,
-            edge_mutations: &edge_mutations,
-            mutation_counts: Some(mutation_counts),
-            amino_acids: None,
-          }),
+          sequences: None,
           dates: Some(TreeDates {
             num_date: &self.times,
             confidence: Some(&confidence),
@@ -207,8 +195,10 @@ mod tests {
           }),
           traits: None,
         };
+        let alignments = [PathBuf::from("aln.fasta")];
         let run = RefineRun {
-          alignment: Some(Path::new("aln.fasta")),
+          alignments: &alignments,
+          mutation_counts,
           input_tree: Some(Path::new("tree.nwk")),
           clock_model: Some(&self.clock_model),
         };

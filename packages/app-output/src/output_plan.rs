@@ -8,6 +8,7 @@ use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::num::NonZeroUsize;
+use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf, is_separator};
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 use treetime::progress::LogSink;
@@ -66,11 +67,11 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
           continue;
         }
         if variant.is_styled_tree() {
-          for (style, p) in expand_outputall_styles(dir, stem, partitioned, variant, &styles) {
+          for (style, p) in expand_outputall_styles(dir, stem, partitioned, command, variant, &styles) {
             tree_outputs.entry(styled_tree_write_kind(variant, style)).or_insert(p);
           }
         } else if let Some(kind) = variant.to_tree_write_kind() {
-          let stem = default_stem(stem, partitioned && kind.is_per_partition());
+          let stem = default_stem(stem, partitioned && command.is_per_partition_tree(kind));
           tree_outputs
             .entry(kind)
             .or_insert_with(|| dir.join(format!("{stem}{}", variant.extension())));
@@ -198,44 +199,48 @@ fn default_stem(stem: &str, per_partition: bool) -> Cow<'_, str> {
 fn expand_partitions(
   command: CommandKind,
   partition_count: NonZeroUsize,
-  mut tree_outputs: BTreeMap<TreeWriteKind, PathBuf>,
-  mut non_tree_outputs: BTreeMap<OutputSelection, PlannedFile>,
+  tree_outputs: BTreeMap<TreeWriteKind, PathBuf>,
+  non_tree_outputs: BTreeMap<OutputSelection, PlannedFile>,
 ) -> Result<ResolvedOutputs, Report> {
   let partitions = (1..=partition_count.get())
     .map(|partition| partition.to_string())
     .collect_vec();
-  let mut tree_outputs_by_partition = BTreeMap::new();
-  for (&kind, path) in &mut tree_outputs {
-    if kind.is_per_partition() || PathPlaceholder::Partition.is_in_file_name(path) {
-      let label = tree_write_kind_label(kind);
-      let paths = expand_path_template(&label, path, PathPlaceholder::Partition, &partitions)?;
-      set_first_partition_path(path, &paths);
-      tree_outputs_by_partition.insert(kind, paths);
+  let mut resolved = ResolvedOutputs {
+    partition_count,
+    tree_outputs: BTreeMap::new(),
+    non_tree_outputs: BTreeMap::new(),
+    tree_outputs_by_partition: BTreeMap::new(),
+    non_tree_outputs_by_partition: BTreeMap::new(),
+  };
+  for (kind, path) in tree_outputs {
+    let label = tree_write_kind_label(kind);
+    if command.is_per_partition_tree(kind)
+      || (command.reads_alignments() && PathPlaceholder::Partition.is_in_file_name(&path))
+    {
+      let paths = expand_path_template(&label, &path, PathPlaceholder::Partition, &partitions)?;
+      resolved.tree_outputs_by_partition.insert(kind, paths);
+    } else {
+      ensure_no_partition_placeholder(&label, &path)?;
+      resolved.tree_outputs.insert(kind, path);
     }
   }
-  let mut non_tree_outputs_by_partition = BTreeMap::new();
-  for (&selection, file) in &mut non_tree_outputs {
+  for (selection, file) in non_tree_outputs {
     let label = selection.flag_name();
     if command.is_per_partition(selection) {
-      let paths = expand_path_template(label, &file.path, PathPlaceholder::Partition, &partitions)?;
-      set_first_partition_path(&mut file.path, &paths);
-      non_tree_outputs_by_partition.insert(selection, paths);
+      let files = expand_path_template(label, &file.path, PathPlaceholder::Partition, &partitions)?
+        .into_iter()
+        .map(|path| PlannedFile {
+          path,
+          requested: file.requested,
+        })
+        .collect();
+      resolved.non_tree_outputs_by_partition.insert(selection, files);
     } else {
       ensure_no_partition_placeholder(label, &file.path)?;
+      resolved.non_tree_outputs.insert(selection, file);
     }
   }
-  Ok(ResolvedOutputs {
-    tree_outputs,
-    non_tree_outputs,
-    tree_outputs_by_partition,
-    non_tree_outputs_by_partition,
-  })
-}
-
-fn set_first_partition_path(path: &mut PathBuf, partition_paths: &[PathBuf]) {
-  if let Some(first) = partition_paths.first() {
-    path.clone_from(first);
-  }
+  Ok(resolved)
 }
 
 fn ensure_no_partition_placeholder(label: &str, path: &Path) -> Result<(), Report> {
@@ -306,6 +311,7 @@ fn expand_outputall_styles(
   dir: &Path,
   stem: &str,
   partitioned: bool,
+  command: CommandKind,
   variant: OutputSelection,
   styles: &[NwkStyle],
 ) -> Vec<(NwkStyle, PathBuf)> {
@@ -317,7 +323,7 @@ fn expand_outputall_styles(
       let secondary = if multi { nwk_style_secondary_ext(style) } else { "" };
       let stem = default_stem(
         stem,
-        partitioned && styled_tree_write_kind(variant, style).is_per_partition(),
+        partitioned && command.is_per_partition_tree(styled_tree_write_kind(variant, style)),
       );
       (style, dir.join(format!("{stem}{secondary}{primary}")))
     })
@@ -367,10 +373,11 @@ pub enum MissingOutputs {
 }
 
 pub struct ResolvedOutputs {
+  pub partition_count: NonZeroUsize,
   pub tree_outputs: BTreeMap<TreeWriteKind, PathBuf>,
   pub non_tree_outputs: BTreeMap<OutputSelection, PlannedFile>,
   pub tree_outputs_by_partition: BTreeMap<TreeWriteKind, Vec<PathBuf>>,
-  pub non_tree_outputs_by_partition: BTreeMap<OutputSelection, Vec<PathBuf>>,
+  pub non_tree_outputs_by_partition: BTreeMap<OutputSelection, Vec<PlannedFile>>,
 }
 
 impl ResolvedOutputs {
@@ -388,16 +395,53 @@ impl ResolvedOutputs {
     by_selection
   }
 
+  pub fn partitions(&self) -> RangeInclusive<usize> {
+    1..=self.partition_count.get()
+  }
+
   pub fn path(&self, selection: OutputSelection) -> Option<&Path> {
     self.non_tree_outputs.get(&selection).map(|file| file.path.as_path())
   }
 
+  pub fn partition_files(&self, selection: OutputSelection) -> &[PlannedFile] {
+    self
+      .non_tree_outputs_by_partition
+      .get(&selection)
+      .map_or(&[], Vec::as_slice)
+  }
+
+  pub fn partition_paths(&self, selection: OutputSelection) -> BTreeMap<usize, PathBuf> {
+    self
+      .partition_files(selection)
+      .iter()
+      .zip(1..)
+      .map(|(file, partition)| (partition, file.path.clone()))
+      .collect()
+  }
+
   pub fn partition_path(&self, selection: OutputSelection, partition: usize) -> Option<&Path> {
-    partition_entry(self.non_tree_outputs_by_partition.get(&selection), partition)
+    partition_entry(self.partition_files(selection), partition).map(|file| file.path.as_path())
   }
 
   pub fn tree_partition_path(&self, kind: TreeWriteKind, partition: usize) -> Option<&Path> {
-    partition_entry(self.tree_outputs_by_partition.get(&kind), partition)
+    let paths = self.tree_outputs_by_partition.get(&kind).map_or(&[][..], Vec::as_slice);
+    partition_entry(paths, partition).map(PathBuf::as_path)
+  }
+
+  pub fn partition_tree_outputs(&self, partition: usize) -> BTreeMap<TreeWriteKind, PathBuf> {
+    self
+      .tree_outputs_by_partition
+      .keys()
+      .filter_map(|&kind| Some((kind, self.tree_partition_path(kind, partition)?.to_path_buf())))
+      .collect()
+  }
+
+  pub fn tree_write_kinds(&self) -> impl Iterator<Item = TreeWriteKind> + '_ {
+    self
+      .tree_outputs
+      .keys()
+      .chain(self.tree_outputs_by_partition.keys())
+      .copied()
   }
 
   pub fn tree_based_paths(&self) -> Vec<&Path> {
@@ -424,38 +468,25 @@ impl ResolvedOutputs {
   }
 
   fn planned_paths(&self) -> Vec<PlannedPath<'_>> {
-    let trees = self.tree_outputs.iter().map(|(kind, path)| {
-      (
-        tree_write_kind_selection(*kind),
-        path.as_path(),
-        self.tree_outputs_by_partition.get(kind),
-      )
+    let run_trees = self
+      .tree_outputs
+      .iter()
+      .map(|(kind, path)| PlannedPath::run(tree_write_kind_selection(*kind), path));
+    let run_files = self
+      .non_tree_outputs
+      .iter()
+      .map(|(selection, file)| PlannedPath::run(*selection, &file.path));
+    let partition_trees = self.tree_outputs_by_partition.iter().flat_map(|(kind, paths)| {
+      PlannedPath::partitions(tree_write_kind_selection(*kind), paths.iter().map(PathBuf::as_path))
     });
-    let files = self.non_tree_outputs.iter().map(|(selection, file)| {
-      (
-        *selection,
-        file.path.as_path(),
-        self.non_tree_outputs_by_partition.get(selection),
-      )
-    });
-    trees
-      .chain(files)
-      .flat_map(|(selection, path, partition_paths)| match partition_paths {
-        Some(paths) if paths.len() > 1 => paths
-          .iter()
-          .enumerate()
-          .map(|(index, path)| PlannedPath {
-            selection,
-            label: Cow::Owned(format!("{} for partition {}", selection.flag_name(), index + 1)),
-            path,
-          })
-          .collect_vec(),
-        _ => vec![PlannedPath {
-          selection,
-          label: Cow::Borrowed(selection.flag_name()),
-          path,
-        }],
-      })
+    let partition_files = self
+      .non_tree_outputs_by_partition
+      .iter()
+      .flat_map(|(selection, files)| PlannedPath::partitions(*selection, files.iter().map(|file| file.path.as_path())));
+    run_trees
+      .chain(run_files)
+      .chain(partition_trees)
+      .chain(partition_files)
       .collect()
   }
 }
@@ -466,9 +497,32 @@ struct PlannedPath<'a> {
   path: &'a Path,
 }
 
-fn partition_entry(paths: Option<&Vec<PathBuf>>, partition: usize) -> Option<&Path> {
-  let index = partition.checked_sub(1)?;
-  paths?.get(index).map(PathBuf::as_path)
+impl<'a> PlannedPath<'a> {
+  fn run(selection: OutputSelection, path: &'a Path) -> Self {
+    Self {
+      selection,
+      label: Cow::Borrowed(selection.flag_name()),
+      path,
+    }
+  }
+
+  fn partitions(selection: OutputSelection, paths: impl ExactSizeIterator<Item = &'a Path>) -> Vec<Self> {
+    if paths.len() == 1 {
+      return paths.map(|path| Self::run(selection, path)).collect();
+    }
+    paths
+      .zip(1..)
+      .map(|(path, partition)| Self {
+        selection,
+        label: Cow::Owned(format!("{} for partition {partition}", selection.flag_name())),
+        path,
+      })
+      .collect()
+  }
+}
+
+fn partition_entry<T>(entries: &[T], partition: usize) -> Option<&T> {
+  entries.get(partition.checked_sub(1)?)
 }
 
 pub fn output_unavailable(
@@ -623,12 +677,23 @@ impl CommandKind {
     }
   }
 
+  fn reads_alignments(self) -> bool {
+    match self {
+      Self::Ancestral | Self::Timetree | Self::Optimize | Self::Prune | Self::Homoplasy => true,
+      Self::Mugration | Self::Clock => false,
+    }
+  }
+
   fn is_per_partition(self, selection: OutputSelection) -> bool {
     match selection {
       OutputSelection::ReconstructedNucFasta => true,
       OutputSelection::AugurNodeData => self == Self::Ancestral,
       _ => false,
     }
+  }
+
+  fn is_per_partition_tree(self, kind: TreeWriteKind) -> bool {
+    self.reads_alignments() && kind.is_per_partition()
   }
 
   fn default_nwk_styles(self) -> Vec<NwkStyle> {

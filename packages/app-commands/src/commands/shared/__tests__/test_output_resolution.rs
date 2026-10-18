@@ -2,7 +2,7 @@
 mod tests {
   use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs};
   use app_output::output_plan::TreeWriteKind;
-  use app_output::output_plan::{CommandKind, OutputSelection, PlannedFile, Requested};
+  use app_output::output_plan::{CommandKind, OutputSelection, PlannedFile, Requested, ResolvedOutputs};
   use helpers::{nexus, nwk};
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
@@ -25,14 +25,14 @@ mod tests {
       .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
       .unwrap();
 
-    assert!(resolved.tree_outputs.contains_key(&nwk(NwkStyle::Plain)));
-    assert!(resolved.tree_outputs.contains_key(&nexus(NwkStyle::Plain)));
+    assert!(helpers::tree_paths(&resolved).contains_key(&nwk(NwkStyle::Plain)));
+    assert!(helpers::tree_paths(&resolved).contains_key(&nexus(NwkStyle::Plain)));
     assert!(
-      !resolved.tree_outputs.contains_key(&TreeWriteKind::GraphJson),
+      !helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::GraphJson),
       "GraphJson is not a default output"
     );
     assert!(
-      !resolved.tree_outputs.contains_key(&TreeWriteKind::Dot),
+      !helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Dot),
       "Dot is not a default output"
     );
   }
@@ -48,8 +48,8 @@ mod tests {
       .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[OutputSelection::Nwk], &[])
       .unwrap();
 
-    assert_eq!(resolved.tree_outputs.len(), 1);
-    assert!(resolved.tree_outputs.contains_key(&nwk(NwkStyle::Plain)));
+    assert_eq!(helpers::tree_paths(&resolved).len(), 1);
+    assert!(helpers::tree_paths(&resolved).contains_key(&nwk(NwkStyle::Plain)));
   }
 
   #[test]
@@ -63,7 +63,7 @@ mod tests {
       .unwrap();
 
     assert_eq!(
-      resolved.tree_outputs,
+      helpers::tree_paths(&resolved),
       btreemap! { nwk(NwkStyle::Plain) => PathBuf::from("/tmp/test.nwk") }
     );
   }
@@ -198,7 +198,7 @@ mod tests {
       .resolve(CommandKind::Clock, NonZeroUsize::MIN, &[OutputSelection::Nwk], &[])
       .unwrap();
     assert_eq!(
-      &resolved.tree_outputs[&nwk(NwkStyle::Plain)],
+      &helpers::tree_paths(&resolved)[&nwk(NwkStyle::Plain)],
       &dir.path().join("clock.nwk")
     );
   }
@@ -213,7 +213,7 @@ mod tests {
     let resolved = args
       .resolve(CommandKind::Timetree, NonZeroUsize::MIN, &[], &[])
       .unwrap();
-    assert!(resolved.tree_outputs.contains_key(&TreeWriteKind::Auspice));
+    assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Auspice));
   }
 
   #[rustfmt::skip]
@@ -232,7 +232,7 @@ mod tests {
       ..Default::default()
     };
     let resolved = args.resolve(command, NonZeroUsize::MIN, &[OutputSelection::All], &[]).unwrap();
-    let actual = resolved.tree_outputs.keys().copied().collect();
+    let actual = helpers::tree_paths(&resolved).keys().copied().collect();
     let expected = btreeset! {
       nwk(NwkStyle::Plain),
       nexus(NwkStyle::Plain),
@@ -254,7 +254,7 @@ mod tests {
     let resolved = args.resolve(CommandKind::Clock, NonZeroUsize::MIN, &[], &[]).unwrap();
     assert_eq!(
       &PathBuf::from("/tmp/out.pb"),
-      &resolved.tree_outputs[&TreeWriteKind::MatPb]
+      &helpers::tree_paths(&resolved)[&TreeWriteKind::MatPb]
     );
   }
 
@@ -267,7 +267,7 @@ mod tests {
     let resolved = args.resolve(CommandKind::Clock, NonZeroUsize::MIN, &[], &[]).unwrap();
     assert_eq!(
       &PathBuf::from("/tmp/out.auspice.json"),
-      &resolved.tree_outputs[&TreeWriteKind::Auspice]
+      &helpers::tree_paths(&resolved)[&TreeWriteKind::Auspice]
     );
   }
 
@@ -290,7 +290,7 @@ mod tests {
       nwk(NwkStyle::Plain) => dir.path().join("ancestral.nwk"),
       nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
     };
-    assert_eq!(resolved.tree_outputs, expected);
+    assert_eq!(helpers::tree_paths(&resolved), expected);
   }
 
   #[test]
@@ -315,7 +315,7 @@ mod tests {
       nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
       nexus(NwkStyle::Beast) => dir.path().join("ancestral.annotated.nexus"),
     };
-    assert_eq!(resolved.tree_outputs, expected);
+    assert_eq!(helpers::tree_paths(&resolved), expected);
   }
 
   #[test]
@@ -328,7 +328,7 @@ mod tests {
       .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
       .unwrap();
     assert_eq!(
-      resolved.tree_outputs,
+      helpers::tree_paths(&resolved),
       btreemap! { nwk(NwkStyle::Plain) => PathBuf::from("my.nwk") }
     );
   }
@@ -344,7 +344,7 @@ mod tests {
       .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
       .unwrap();
     assert_eq!(
-      resolved.tree_outputs,
+      helpers::tree_paths(&resolved),
       btreemap! { nwk(NwkStyle::Beast) => PathBuf::from("my.nwk") }
     );
   }
@@ -363,7 +363,7 @@ mod tests {
       nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
       nwk(NwkStyle::Beast) => PathBuf::from("my.annotated.nwk"),
     };
-    assert_eq!(resolved.tree_outputs, expected);
+    assert_eq!(helpers::tree_paths(&resolved), expected);
   }
 
   #[test]
@@ -389,7 +389,7 @@ mod tests {
       nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
       nexus(NwkStyle::Beast) => dir.path().join("ancestral.annotated.nexus"),
     };
-    assert_eq!(resolved.tree_outputs, expected);
+    assert_eq!(helpers::tree_paths(&resolved), expected);
   }
 
   #[test]
@@ -412,7 +412,7 @@ mod tests {
       nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
       nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
     };
-    assert_eq!(resolved.tree_outputs, expected);
+    assert_eq!(helpers::tree_paths(&resolved), expected);
   }
 
   #[test]
@@ -432,7 +432,7 @@ mod tests {
       nexus(NwkStyle::Beast) => PathBuf::from("my.annotated.nexus"),
       nexus(NwkStyle::Nhx) => PathBuf::from("my.nhx.nexus"),
     };
-    assert_eq!(resolved.tree_outputs, expected);
+    assert_eq!(helpers::tree_paths(&resolved), expected);
   }
 
   #[test]
@@ -564,6 +564,12 @@ mod tests {
 
     pub(super) fn nexus(style: NwkStyle) -> TreeWriteKind {
       TreeWriteKind::Nexus(style)
+    }
+
+    pub(super) fn tree_paths(resolved: &ResolvedOutputs) -> BTreeMap<TreeWriteKind, PathBuf> {
+      let mut paths = resolved.partition_tree_outputs(1);
+      paths.extend(resolved.tree_outputs.clone());
+      paths
     }
   }
 }

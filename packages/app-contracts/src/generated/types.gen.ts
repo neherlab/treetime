@@ -2934,6 +2934,9 @@ export type TimetreeConfig = {
    * (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    */
   output_reconstructed_nuc_fasta?: string;
   /**
@@ -3020,6 +3023,10 @@ export type TimetreeConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -3032,6 +3039,10 @@ export type TimetreeConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -3042,6 +3053,9 @@ export type TimetreeConfig = {
    * Path to output Auspice v2 JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -3054,6 +3068,9 @@ export type TimetreeConfig = {
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -3064,6 +3081,9 @@ export type TimetreeConfig = {
    * Path to output UShER MAT JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -3358,6 +3378,10 @@ export type ClockConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -3370,6 +3394,10 @@ export type ClockConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -3380,6 +3408,9 @@ export type ClockConfig = {
    * Path to output Auspice v2 JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -3392,6 +3423,9 @@ export type ClockConfig = {
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -3402,6 +3436,9 @@ export type ClockConfig = {
    * Path to output UShER MAT JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -3649,6 +3686,9 @@ export type AncestralConfig = {
    * compatible with augur export v2 --node-data for Nextstrain pipeline integration.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    */
   output_augur_node_data?: string;
   /**
@@ -3661,6 +3701,9 @@ export type AncestralConfig = {
    * Path to output reconstructed nucleotide FASTA.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    */
   output_reconstructed_nuc_fasta?: string;
   /**
@@ -3736,6 +3779,10 @@ export type AncestralConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -3748,6 +3795,10 @@ export type AncestralConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -3758,6 +3809,9 @@ export type AncestralConfig = {
    * Path to output Auspice v2 JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -3770,6 +3824,9 @@ export type AncestralConfig = {
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -3780,6 +3837,9 @@ export type AncestralConfig = {
    * Path to output UShER MAT JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -4088,6 +4148,10 @@ export type HomoplasyConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4100,6 +4164,10 @@ export type HomoplasyConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4110,6 +4178,9 @@ export type HomoplasyConfig = {
    * Path to output Auspice v2 JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -4122,6 +4193,9 @@ export type HomoplasyConfig = {
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4132,6 +4206,9 @@ export type HomoplasyConfig = {
    * Path to output UShER MAT JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -4354,6 +4431,10 @@ export type MugrationConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4366,6 +4447,10 @@ export type MugrationConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4376,6 +4461,9 @@ export type MugrationConfig = {
    * Path to output Auspice v2 JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -4388,6 +4476,9 @@ export type MugrationConfig = {
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4398,6 +4489,9 @@ export type MugrationConfig = {
    * Path to output UShER MAT JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -4578,6 +4672,10 @@ export type OptimizeConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4590,6 +4688,10 @@ export type OptimizeConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4600,6 +4702,9 @@ export type OptimizeConfig = {
    * Path to output Auspice v2 JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -4612,6 +4717,9 @@ export type OptimizeConfig = {
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4622,6 +4730,9 @@ export type OptimizeConfig = {
    * Path to output UShER MAT JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -4877,6 +4988,10 @@ export type PruneConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4889,6 +5004,10 @@ export type PruneConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`. With
    * multiple `--output-nwk-style` values, a secondary extension is inserted per style.
    *
+   * With several `--alignment` files, the styles other than `plain` write one file per
+   * alignment, and the file name must contain `{partition}`, which is replaced by the number
+   * of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4899,6 +5018,9 @@ export type PruneConfig = {
    * Path to output Auspice v2 JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
@@ -4911,6 +5033,9 @@ export type PruneConfig = {
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.
    *
@@ -4921,6 +5046,9 @@ export type PruneConfig = {
    * Path to output UShER MAT JSON tree file.
    *
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   *
+   * With several `--alignment` files, one file is written per alignment, and the file name
+   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    *
    * Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
    * Use `-` to write uncompressed to stdout.

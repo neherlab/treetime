@@ -1,16 +1,18 @@
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::output_args::ResolveOutputs;
+use crate::commands::shared::reconstructed_fasta::NucFastaWriters;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::trace::TimetreeTraceSink;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates, TreeSequences};
-use app_output::augur_node_data_refine::{RefineRun, write_augur_node_data_refine};
+use app_output::augur_node_data_refine::{RefineRun, total_mutation_counts, write_augur_node_data_refine};
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, TreeWriteKind, output_unavailable};
 use app_output::table_output::table_write_file;
-use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
+use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
 use eyre::{Report, WrapErr};
+use maplit::btreemap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::Alphabet;
@@ -33,7 +35,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DateConstraint;
-use treetime_io::fasta::FastaWriter;
 use treetime_primitives::Seq;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -52,7 +53,7 @@ pub fn run_timetree_estimation(
   let parse_names = input_data.names;
 
   let resolved = args.resolve_outputs()?;
-  let reconstructed_nuc_fasta = reconstructed_nuc_fasta_path(&resolved, args.branch_length_mode, log)?;
+  let reconstructed_nuc_fasta = reconstructed_nuc_fasta_paths(&resolved, args.branch_length_mode, log)?;
   let mutation_units = matches!(args.divergence_units, DivergenceUnits::Mutations);
   if mutation_units && args.branch_length_mode == BranchLengthMode::Input {
     return make_error!(
@@ -61,7 +62,7 @@ pub fn run_timetree_estimation(
     );
   }
   let sequence_outputs_requested =
-    sequence_outputs_requested(&resolved, mutation_units, reconstructed_nuc_fasta.is_some());
+    sequence_outputs_requested(&resolved, mutation_units, !reconstructed_nuc_fasta.is_empty());
   let mut trace_sink = TimetreeTraceSink::new(resolved.path(OutputSelection::Tracelog), stages)?;
   let seed = args
     .seed_args
@@ -71,10 +72,8 @@ pub fn run_timetree_estimation(
 
   let (source, aln_descs) = input_data
     .sequences
-    .map(|aligned| (aligned.source, aligned.descs))
+    .map(|aligned| (aligned.source, btreemap! { 1 => aligned.descs }))
     .unzip();
-  let alphabet = input_data.alphabet;
-  let unknown = alphabet.unknown();
   let input = TimetreeInput {
     graph: input_data.graph,
     names: parse_names.clone(),
@@ -83,13 +82,11 @@ pub fn run_timetree_estimation(
     branch_lengths: input_data.branch_lengths,
   };
 
-  let mut recon_sink = reconstructed_nuc_fasta
-    .as_ref()
-    .map(|path| {
+  let mut recon_sink = (!reconstructed_nuc_fasta.is_empty())
+    .then(|| {
       Ok::<_, Report>(ReconstructedNucSink::new(
-        FastaWriter::create(path)?,
+        NucFastaWriters::create(reconstructed_nuc_fasta, aln_descs.unwrap_or_default())?,
         parse_names,
-        aln_descs.unwrap_or_default(),
       ))
     })
     .transpose()?;
@@ -105,22 +102,22 @@ pub fn run_timetree_estimation(
   )
   .map_err(|err| err.into_report())?;
   trace_sink.finish()?;
-  if let (Some(sink), Some(path)) = (recon_sink, &reconstructed_nuc_fasta) {
-    sink.writer.finish()?;
-    progress_info!(
-      log,
-      "Wrote reconstructed nucleotide FASTA to {path}",
-      path = path.display()
-    );
+  if let Some(sink) = recon_sink {
+    for path in sink.writers.finish()? {
+      progress_info!(
+        log,
+        "Wrote reconstructed nucleotide FASTA to {path}",
+        path = path.display()
+      );
+    }
   }
 
   stages.report("Writing output", 0.95, "");
   progress_info!(log, "### TreeTime: writing outputs");
   write_model_outputs(&resolved, &output, log)?;
   let tree_inputs = TreeOutputInputs {
-    alphabet,
     input_leaf_order,
-    filter: UnknownMutationFilter::new(unknown, args.report_ambiguous),
+    report_ambiguous: args.report_ambiguous,
     mutation_units,
   };
   write_result_outputs(args, &resolved, output, tree_inputs, log)?;
@@ -232,24 +229,23 @@ fn write_coalescent(selection: OutputSelection, coalescent: &CoalescentOutput, p
   }
 }
 
-pub(crate) fn reconstructed_nuc_fasta_path(
+pub(crate) fn reconstructed_nuc_fasta_paths(
   resolved: &ResolvedOutputs,
   branch_length_mode: BranchLengthMode,
   log: &dyn LogSink,
-) -> Result<Option<PathBuf>, Report> {
-  let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::ReconstructedNucFasta) else {
-    return Ok(None);
-  };
+) -> Result<BTreeMap<usize, PathBuf>, Report> {
   match branch_length_mode {
-    BranchLengthMode::Marginal => Ok(Some(file.path.clone())),
+    BranchLengthMode::Marginal => Ok(resolved.partition_paths(OutputSelection::ReconstructedNucFasta)),
     BranchLengthMode::Input => {
-      output_unavailable(
-        OutputSelection::ReconstructedNucFasta,
-        file,
-        "--branch-length-mode=input reconstructs no ancestral sequences",
-        log,
-      )?;
-      Ok(None)
+      for file in resolved.partition_files(OutputSelection::ReconstructedNucFasta) {
+        output_unavailable(
+          OutputSelection::ReconstructedNucFasta,
+          file,
+          "--branch-length-mode=input reconstructs no ancestral sequences",
+          log,
+        )?;
+      }
+      Ok(BTreeMap::new())
     },
   }
 }
@@ -273,11 +269,25 @@ fn write_result_outputs(
     clock_model,
     confidence_intervals,
     dates,
-    results,
+    mut results,
     ..
   } = output;
-  let sequences = results.into_iter().next().and_then(|result| result.sequences);
-  let (maps, mutation_counts) = timetree_output_maps(&graph, sequences, inputs.filter, inputs.mutation_units)?;
+  let maps = results
+    .iter_mut()
+    .filter_map(|result| {
+      let sequences = result.sequences.take()?;
+      Some(
+        timetree_output_maps(&graph, sequences, inputs.report_ambiguous, &result.alphabet)
+          .map(|maps| (result.number, maps)),
+      )
+    })
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+  if inputs.mutation_units && maps.is_empty() {
+    return make_internal_error!("Mutation divergence units were requested, but no ancestral reconstruction ran");
+  }
+  let mutation_counts = inputs
+    .mutation_units
+    .then(|| total_mutation_counts(maps.values().map(|maps| &maps.edge_mutation_counts)));
 
   let topology_order = args.topology_order.resolve_topology_order(
     &graph,
@@ -287,14 +297,26 @@ fn write_result_outputs(
   )?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
 
+  let sequences = results
+    .iter()
+    .filter_map(|result| {
+      let maps = maps.get(&result.number)?;
+      let sequences = TreeSequences {
+        alphabet: &result.alphabet,
+        root_sequence: &maps.root_sequence,
+        edge_mutations: &maps.edge_mutations,
+        amino_acids: None,
+      };
+      Some((result.number, sequences))
+    })
+    .collect();
   let trees = TimetreeTrees {
     graph: &graph,
-    alphabet: &inputs.alphabet,
     names: &names,
     branch_lengths: &branch_lengths,
     date_branch_lengths: &date_branch_lengths,
     divergences: &divergences,
-    maps: &maps,
+    sequences: &sequences,
     mutation_counts: mutation_counts.as_ref(),
     node_dates: &node_dates,
     confidence_intervals: confidence_intervals.as_deref(),
@@ -303,7 +325,8 @@ fn write_result_outputs(
     input_dates: dates.as_ref(),
   };
   let run = RefineRun {
-    alignment: args.alignment.alignment.first().map(PathBuf::as_path),
+    alignments: &args.alignment.alignment,
+    mutation_counts: mutation_counts.as_ref(),
     input_tree: Some(args.tree.as_path()),
     clock_model: Some(&clock_model),
   };
@@ -311,9 +334,8 @@ fn write_result_outputs(
 }
 
 struct TreeOutputInputs {
-  alphabet: Alphabet,
   input_leaf_order: Vec<GraphNodeKey>,
-  filter: UnknownMutationFilter,
+  report_ambiguous: bool,
   mutation_units: bool,
 }
 
@@ -345,13 +367,7 @@ fn write_timetree_trees(
     divergence_branch_lengths: trees.branch_lengths,
     time_branch_lengths: Some(trees.date_branch_lengths),
     divergence: Divergence::Values(mutation_divergences.as_ref().unwrap_or(trees.divergences)),
-    sequences: trees.maps.root_sequence.as_ref().map(|root_sequence| TreeSequences {
-      alphabet: trees.alphabet,
-      root_sequence,
-      edge_mutations: &trees.maps.edge_mutations,
-      mutation_counts: trees.mutation_counts,
-      amino_acids: None,
-    }),
+    sequences: None,
     dates: Some(TreeDates {
       num_date: trees.node_dates,
       confidence: date_confidence.as_ref(),
@@ -360,26 +376,21 @@ fn write_timetree_trees(
     }),
     traits: None,
   };
-  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
-  let Some(tree) = tree_view_for_outputs(&annotated, resolved)? else {
-    return Ok(());
-  };
-  write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Timetree, log)?;
-  if let Some(path) = resolved.path(OutputSelection::AugurNodeData) {
-    write_augur_node_data_refine(&tree, run, path)?;
+  let tree = write_run_tree_outputs(&annotated, resolved, CommandKind::Timetree, log)?;
+  if let (Some(tree), Some(path)) = (&tree, resolved.path(OutputSelection::AugurNodeData)) {
+    write_augur_node_data_refine(tree, run, path)?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
-  Ok(())
+  write_tree_outputs_per_partition(&annotated, trees.sequences, resolved, CommandKind::Timetree, log)
 }
 
 struct TimetreeTrees<'a> {
   graph: &'a Graph,
-  alphabet: &'a Alphabet,
   names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   date_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   divergences: &'a BTreeMap<GraphNodeKey, f64>,
-  maps: &'a TimetreeOutputMaps,
+  sequences: &'a BTreeMap<usize, TreeSequences<'a>>,
   mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
   node_dates: &'a BTreeMap<GraphNodeKey, Option<f64>>,
   confidence_intervals: Option<&'a [NodeConfidenceInterval]>,
@@ -402,22 +413,16 @@ fn mutation_divergences(
 }
 
 struct ReconstructedNucSink {
-  writer: FastaWriter,
+  writers: NucFastaWriters,
   parse_names: BTreeMap<GraphNodeKey, Option<String>>,
-  descs: BTreeMap<GraphNodeKey, Option<String>>,
   names: BTreeMap<GraphNodeKey, Option<String>>,
 }
 
 impl ReconstructedNucSink {
-  fn new(
-    writer: FastaWriter,
-    parse_names: BTreeMap<GraphNodeKey, Option<String>>,
-    descs: BTreeMap<GraphNodeKey, Option<String>>,
-  ) -> Self {
+  fn new(writers: NucFastaWriters, parse_names: BTreeMap<GraphNodeKey, Option<String>>) -> Self {
     Self {
-      writer,
+      writers,
       parse_names,
-      descs,
       names: BTreeMap::new(),
     }
   }
@@ -432,10 +437,9 @@ impl SeqSink for ReconstructedNucSink {
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     match item.track {
       SeqTrack::Nuc(_) if !item.emitted => Ok(()),
-      SeqTrack::Nuc(_) => {
-        let name = self.names[&item.key].clone().unwrap_or_default();
-        let desc = self.descs.get(&item.key).cloned().flatten();
-        self.writer.write(&name, desc.as_deref(), item.seq)
+      SeqTrack::Nuc(partition) => {
+        let name = self.names[&item.key].as_deref().unwrap_or("");
+        self.writers.write(partition, item.key, name, item.seq)
       },
       SeqTrack::Aa(cds) => {
         make_internal_error!("Timetree reconstructed-nucleotide FASTA sink received an amino-acid track '{cds}'")
@@ -446,42 +450,33 @@ impl SeqSink for ReconstructedNucSink {
 
 fn timetree_output_maps(
   graph: &Graph,
-  sequences: Option<PartitionSequences>,
-  filter: UnknownMutationFilter,
-  mutation_units: bool,
-) -> Result<(TimetreeOutputMaps, Option<BTreeMap<GraphEdgeKey, usize>>), Report> {
-  let Some(PartitionSequences {
+  sequences: PartitionSequences,
+  report_ambiguous: bool,
+  alphabet: &Alphabet,
+) -> Result<TimetreeOutputMaps, Report> {
+  let PartitionSequences {
     root_sequence,
     edge_mutations,
     edge_mutation_counts,
-  }) = sequences
-  else {
-    if mutation_units {
-      return make_internal_error!("Mutation divergence units were requested, but no ancestral reconstruction ran");
-    }
-    let maps = TimetreeOutputMaps {
-      root_sequence: None,
-      edge_mutations: BTreeMap::new(),
-    };
-    return Ok((maps, None));
-  };
-  let maps = TimetreeOutputMaps {
-    root_sequence: Some(root_sequence),
-    edge_mutations: filter.reported_edge_mutations(graph, edge_mutations)?,
-  };
-  Ok((maps, mutation_units.then_some(edge_mutation_counts)))
+  } = sequences;
+  Ok(TimetreeOutputMaps {
+    root_sequence,
+    edge_mutations: UnknownMutationFilter::new(alphabet.unknown(), report_ambiguous)
+      .reported_edge_mutations(graph, edge_mutations)?,
+    edge_mutation_counts,
+  })
 }
 
 fn sequence_outputs_requested(resolved: &ResolvedOutputs, mutation_units: bool, writes_fasta: bool) -> bool {
   mutation_units
     || writes_fasta
     || resolved
-      .tree_outputs
-      .keys()
+      .tree_write_kinds()
       .any(|kind| !matches!(kind, TreeWriteKind::GraphJson | TreeWriteKind::Dot))
 }
 
 struct TimetreeOutputMaps {
-  root_sequence: Option<Seq>,
+  root_sequence: Seq,
   edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
 }

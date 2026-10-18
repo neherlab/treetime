@@ -5,14 +5,12 @@ use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources, single_source};
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
-use app_output::augur_node_data_refine::{RefineRun, write_augur_node_data_refine};
+use app_output::augur_node_data_refine::{RefineRun, total_mutation_counts, write_augur_node_data_refine};
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
-use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
+use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
 use eyre::Report;
-use itertools::Itertools;
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::cancel::Cancel;
@@ -68,7 +66,6 @@ pub fn run_optimize(
     },
   };
 
-  let unknown = alphabet.unknown();
   let input = OptimizeInput {
     graph,
     source,
@@ -78,18 +75,21 @@ pub fn run_optimize(
   let output = pipeline::run(&params, input, &names, cancel, stages, log).map_err(|err| err.into_report())?;
   let pipeline::OptimizeOutput {
     mut graph,
-    results,
+    mut results,
     branch_lengths,
     names,
   } = output;
   let models = partition_models(&results, None);
-  let Ok(mut result) = results.into_iter().exactly_one() else {
-    return make_internal_error!("Optimize is expected to return one partition result");
-  };
-  let Some(sequences) = result.sequences.take() else {
-    return make_internal_error!("Optimize returned no reconstructed sequences");
-  };
-  let maps = optimize_output_maps(&graph, sequences, UnknownMutationFilter::hiding_unknown(unknown))?;
+  let maps = results
+    .iter_mut()
+    .map(|result| {
+      let Some(sequences) = result.sequences.take() else {
+        return make_internal_error!("Optimize returned no reconstructed sequences");
+      };
+      let filter = UnknownMutationFilter::hiding_unknown(result.alphabet.unknown());
+      Ok((result.number, optimize_output_maps(&graph, sequences, filter)?))
+    })
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
 
   let topology_order = args
     .topology_order
@@ -99,15 +99,32 @@ pub fn run_optimize(
 
   write_gtr_output(&resolved, models, "no GTR model was fitted", log)?;
 
+  let mutation_counts = matches!(args.divergence_units, DivergenceUnits::Mutations)
+    .then(|| total_mutation_counts(maps.values().map(|maps| &maps.edge_mutation_counts)));
+  let sequences = results
+    .iter()
+    .map(|result| {
+      let maps = &maps[&result.number];
+      let sequences = TreeSequences {
+        alphabet: &result.alphabet,
+        root_sequence: &maps.root_sequence,
+        edge_mutations: &maps.edge_mutations,
+        amino_acids: None,
+      };
+      (result.number, sequences)
+    })
+    .collect();
   let trees = OptimizeTrees {
     graph: &graph,
-    alphabet: &result.alphabet,
     names: &names,
     branch_lengths: &branch_lengths,
-    maps: &maps,
-    mutation_units: matches!(args.divergence_units, DivergenceUnits::Mutations),
-    alignment: args.alignment.alignment.first().map(PathBuf::as_path),
-    input_tree: args.tree(),
+    sequences: &sequences,
+    run: RefineRun {
+      alignments: &args.alignment.alignment,
+      mutation_counts: mutation_counts.as_ref(),
+      input_tree: Some(args.tree()),
+      clock_model: None,
+    },
   };
   write_optimize_trees(&trees, &resolved, log)?;
 
@@ -127,42 +144,24 @@ fn write_optimize_trees(
     divergence_branch_lengths: trees.branch_lengths,
     time_branch_lengths: None,
     divergence: Divergence::CumulativeBranchLength,
-    sequences: Some(TreeSequences {
-      alphabet: trees.alphabet,
-      root_sequence: &trees.maps.root_sequence,
-      edge_mutations: &trees.maps.edge_mutations,
-      mutation_counts: trees.mutation_units.then_some(&trees.maps.edge_mutation_counts),
-      amino_acids: None,
-    }),
+    sequences: None,
     dates: None,
     traits: None,
   };
-  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
-  let Some(tree) = tree_view_for_outputs(&annotated, resolved)? else {
-    return Ok(());
-  };
-  write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Optimize, log)?;
-  if let Some(path) = resolved.path(OutputSelection::AugurNodeData) {
-    let run = RefineRun {
-      alignment: trees.alignment,
-      input_tree: Some(trees.input_tree),
-      clock_model: None,
-    };
-    write_augur_node_data_refine(&tree, &run, path)?;
+  let tree = write_run_tree_outputs(&annotated, resolved, CommandKind::Optimize, log)?;
+  if let (Some(tree), Some(path)) = (&tree, resolved.path(OutputSelection::AugurNodeData)) {
+    write_augur_node_data_refine(tree, &trees.run, path)?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
-  Ok(())
+  write_tree_outputs_per_partition(&annotated, trees.sequences, resolved, CommandKind::Optimize, log)
 }
 
 struct OptimizeTrees<'a> {
   graph: &'a Graph,
-  alphabet: &'a Alphabet,
   names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &'a OptimizeOutputMaps,
-  mutation_units: bool,
-  alignment: Option<&'a Path>,
-  input_tree: &'a Path,
+  sequences: &'a BTreeMap<usize, TreeSequences<'a>>,
+  run: RefineRun<'a>,
 }
 
 fn optimize_output_maps(

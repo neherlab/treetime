@@ -49,7 +49,6 @@ mod tests {
         alphabet: &NUC_ALPHABET,
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
-        mutation_counts: None,
         amino_acids: None,
       }),
       dates: Some(TreeDates {

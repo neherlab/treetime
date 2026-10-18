@@ -2,12 +2,12 @@ use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::output_args::ResolveOutputs;
-use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources, single_source};
+use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources};
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
-use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
+use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
 use eyre::Report;
 use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet};
@@ -25,7 +25,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pair_by_name::first_key_by_name;
 use treetime_io::name_list::{name_list_read_file, name_list_read_str};
-use treetime_io::nwk::NwkStyle;
 use treetime_primitives::Seq;
 
 pub fn run_prune(
@@ -55,8 +54,10 @@ pub fn run_prune(
       gap_fill: None,
       missing_leaves: MissingLeafLimit::Enforced,
     };
-    let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?;
-    vec![single_source(sources)?.source]
+    read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?
+      .into_iter()
+      .map(|source| source.source)
+      .collect()
   } else {
     vec![]
   };
@@ -75,7 +76,6 @@ pub fn run_prune(
     node_keys: resolve_node_names(&node_names, &graph, &names),
   };
 
-  let unknown = alphabet.unknown();
   let input = PruneInput {
     graph,
     sources,
@@ -87,19 +87,22 @@ pub fn run_prune(
   let output = pipeline::run(&params, input, &names, cancel, log).map_err(|err| err.into_report())?;
   let pipeline::PruneOutput {
     mut graph,
-    results,
+    mut results,
     names,
     branch_lengths: branch_lengths_opt,
   } = output;
   let models = partition_models(&results, None);
-  let mut result = results.into_iter().next();
-  let sequences = result.as_mut().and_then(|result| result.sequences.take());
-
-  let maps = match sequences {
-    Some(sequences) if resolved.tree_outputs.keys().copied().any(prune_output_consumes_maps) => {
-      prune_output_maps(&graph, sequences, UnknownMutationFilter::hiding_unknown(unknown))?
-    },
-    _ => PruneOutputMaps::default(),
+  let maps = if resolved.tree_write_kinds().any(TreeWriteKind::is_per_partition) {
+    results
+      .iter_mut()
+      .filter_map(|result| {
+        let sequences = result.sequences.take()?;
+        let filter = UnknownMutationFilter::hiding_unknown(result.alphabet.unknown());
+        Some(prune_output_maps(&graph, sequences, filter).map(|maps| (result.number, maps)))
+      })
+      .collect::<Result<BTreeMap<_, _>, Report>>()?
+  } else {
+    BTreeMap::new()
   };
 
   let topology_order =
@@ -121,7 +124,20 @@ pub fn run_prune(
     log,
   )?;
 
-  write_prune_trees(&graph, &alphabet, &names, &branch_lengths, &maps, &resolved, log)?;
+  let sequences = results
+    .iter()
+    .filter_map(|result| {
+      let maps = maps.get(&result.number)?;
+      let sequences = TreeSequences {
+        alphabet: &result.alphabet,
+        root_sequence: &maps.root_sequence,
+        edge_mutations: &maps.edge_mutations,
+        amino_acids: None,
+      };
+      Some((result.number, sequences))
+    })
+    .collect();
+  write_prune_trees(&graph, &names, &branch_lengths, &sequences, &resolved, log)?;
 
   stages.report("Done", 1.0, "");
   Ok(())
@@ -129,10 +145,9 @@ pub fn run_prune(
 
 fn write_prune_trees(
   graph: &Graph,
-  alphabet: &Alphabet,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  maps: &PruneOutputMaps,
+  sequences: &BTreeMap<usize, TreeSequences<'_>>,
   resolved: &ResolvedOutputs,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
@@ -142,29 +157,12 @@ fn write_prune_trees(
     divergence_branch_lengths: branch_lengths,
     time_branch_lengths: None,
     divergence: Divergence::CumulativeBranchLength,
-    sequences: maps.root_sequence.as_ref().map(|root_sequence| TreeSequences {
-      alphabet,
-      root_sequence,
-      edge_mutations: &maps.edge_mutations,
-      mutation_counts: None,
-      amino_acids: None,
-    }),
+    sequences: None,
     dates: None,
     traits: None,
   };
-  write_graph_outputs(&annotated, &resolved.tree_outputs)?;
-  if let Some(tree) = tree_view_for_outputs(&annotated, resolved)? {
-    write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Prune, log)?;
-  }
-  Ok(())
-}
-
-fn prune_output_consumes_maps(kind: TreeWriteKind) -> bool {
-  match kind {
-    TreeWriteKind::Auspice | TreeWriteKind::MatPb | TreeWriteKind::MatJson => true,
-    TreeWriteKind::Nwk(style) | TreeWriteKind::Nexus(style) => style != NwkStyle::Plain,
-    TreeWriteKind::GraphJson | TreeWriteKind::Dot => false,
-  }
+  write_run_tree_outputs(&annotated, resolved, CommandKind::Prune, log)?;
+  write_tree_outputs_per_partition(&annotated, sequences, resolved, CommandKind::Prune, log)
 }
 
 fn prune_output_maps(
@@ -173,14 +171,13 @@ fn prune_output_maps(
   filter: UnknownMutationFilter,
 ) -> Result<PruneOutputMaps, Report> {
   Ok(PruneOutputMaps {
-    root_sequence: Some(sequences.root_sequence),
+    root_sequence: sequences.root_sequence,
     edge_mutations: filter.reported_edge_mutations(graph, sequences.edge_mutations)?,
   })
 }
 
-#[derive(Debug, Default)]
 struct PruneOutputMaps {
-  root_sequence: Option<Seq>,
+  root_sequence: Seq,
   edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
 }
 

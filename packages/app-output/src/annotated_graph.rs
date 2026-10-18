@@ -35,6 +35,7 @@ impl<'a> AnnotatedTreeView<'a> {
   }
 }
 
+#[derive(Clone, Copy)]
 pub struct AnnotatedGraph<'a> {
   pub graph: &'a Graph,
   pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
@@ -52,24 +53,27 @@ impl AnnotatedGraph<'_> {
   }
 }
 
+#[derive(Clone, Copy)]
 pub enum Divergence<'a> {
   CumulativeBranchLength,
   Values(&'a BTreeMap<GraphNodeKey, f64>),
 }
 
+#[derive(Clone, Copy)]
 pub struct TreeSequences<'a> {
   pub alphabet: &'a Alphabet,
   pub root_sequence: &'a Seq,
   pub edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  pub mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
   pub amino_acids: Option<TreeAminoAcids<'a>>,
 }
 
+#[derive(Clone, Copy)]
 pub struct TreeAminoAcids<'a> {
   pub node_data: &'a AaNodeData,
   pub cdses: &'a BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
 }
 
+#[derive(Clone, Copy)]
 pub struct TreeDates<'a> {
   pub num_date: &'a BTreeMap<GraphNodeKey, Option<f64>>,
   pub confidence: Option<&'a BTreeMap<GraphNodeKey, [f64; 2]>>,
@@ -77,6 +81,7 @@ pub struct TreeDates<'a> {
   pub input_dates: Option<&'a BTreeMap<GraphNodeKey, DateConstraint>>,
 }
 
+#[derive(Clone, Copy)]
 pub struct TreeTraits<'a> {
   pub attribute: &'a str,
   pub states: &'a DiscreteStates,

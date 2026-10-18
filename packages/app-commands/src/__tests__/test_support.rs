@@ -1,15 +1,18 @@
 #[cfg(test)]
 pub(crate) mod tests {
+  use eyre::Report;
+  use itertools::izip;
   use parking_lot::Mutex;
   use std::collections::BTreeMap;
-  use std::path::PathBuf;
+  use std::path::{Path, PathBuf};
   use std::sync::LazyLock;
   use treetime::alphabet::alphabet::Alphabet;
   use treetime::progress::{LogLevel, LogSink, RunWarning};
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_primitives::AsciiChar;
+  use treetime_io::fasta::{FastaWriter, fasta_read_file};
+  use treetime_primitives::{AsciiChar, Seq};
 
   pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -19,6 +22,24 @@ pub(crate) mod tests {
       .and_then(|p| p.parent())
       .map(PathBuf::from)
       .expect("project has workspace root")
+  }
+
+  pub(crate) fn write_column_blocks(alignment: &Path, cut: usize, dir: &Path) -> Result<[PathBuf; 2], Report> {
+    let records = fasta_read_file(alignment, &*NUC_ALPHABET)?;
+    let paths = [dir.join("columns-a.fasta"), dir.join("columns-b.fasta")];
+    for (path, first_block) in izip!(&paths, [true, false]) {
+      let mut writer = FastaWriter::create(path)?;
+      for record in &records {
+        let (start, end) = if first_block { (0, cut) } else { (cut, record.seq.len()) };
+        writer.write(
+          &record.seq_name,
+          record.desc.as_deref(),
+          &Seq::from(&record.seq[start..end]),
+        )?;
+      }
+      writer.finish()?;
+    }
+    Ok(paths)
   }
 
   pub(crate) fn c(b: u8) -> AsciiChar {

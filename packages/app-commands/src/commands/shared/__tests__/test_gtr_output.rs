@@ -162,6 +162,7 @@ mod tests {
     use eyre::Report;
     use maplit::btreemap;
     use serde_json::{Value, json};
+    use std::num::NonZeroUsize;
     use std::path::PathBuf;
     use tempfile::TempDir;
     use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -172,6 +173,7 @@ mod tests {
 
     pub(super) fn gtr_output(dir: &TempDir, requested: Requested) -> ResolvedOutputs {
       ResolvedOutputs {
+        partition_count: NonZeroUsize::MIN,
         tree_outputs: btreemap! {},
         non_tree_outputs: btreemap! {
           OutputSelection::Gtr => PlannedFile {

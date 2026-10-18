@@ -1837,7 +1837,7 @@
           ],
           "conflicts": [],
           "help": "Path to output reconstructed ancestral-sequence nucleotide FASTA.",
-          "more": "The v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences reconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves` (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`."
+          "more": "The v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences reconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves` (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...)."
         },
         {
           "key": "output_clock_model",
@@ -2061,7 +2061,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -2082,7 +2082,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -2103,7 +2103,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Auspice v2 JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_pb",
@@ -2124,7 +2124,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT protobuf tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_json",
@@ -2145,7 +2145,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_graph_json",
@@ -3364,7 +3364,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -3385,7 +3385,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -3406,7 +3406,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Auspice v2 JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_pb",
@@ -3427,7 +3427,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT protobuf tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_json",
@@ -3448,7 +3448,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_graph_json",
@@ -4923,7 +4923,7 @@
           ],
           "conflicts": [],
           "help": "Path to output augur-compatible node data JSON.",
-          "more": "Contains per-node nucleotide mutations, reconstructed sequences, the alignment mask, genome annotations, and the reference (root) sequence. The output is compatible with augur export v2 --node-data for Nextstrain pipeline integration.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`."
+          "more": "Contains per-node nucleotide mutations, reconstructed sequences, the alignment mask, genome annotations, and the reference (root) sequence. The output is compatible with augur export v2 --node-data for Nextstrain pipeline integration.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...)."
         },
         {
           "key": "output_gtr",
@@ -4965,7 +4965,7 @@
           ],
           "conflicts": [],
           "help": "Path to output reconstructed nucleotide FASTA.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...)."
         },
         {
           "key": "output_reconstructed_aa_fasta",
@@ -5063,7 +5063,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -5084,7 +5084,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -5105,7 +5105,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Auspice v2 JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_pb",
@@ -5126,7 +5126,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT protobuf tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_json",
@@ -5147,7 +5147,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_graph_json",
@@ -6239,7 +6239,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -6260,7 +6260,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -6281,7 +6281,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Auspice v2 JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_pb",
@@ -6302,7 +6302,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT protobuf tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_json",
@@ -6323,7 +6323,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_graph_json",
@@ -7118,7 +7118,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -7139,7 +7139,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -7160,7 +7160,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Auspice v2 JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_pb",
@@ -7181,7 +7181,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT protobuf tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_json",
@@ -7202,7 +7202,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_graph_json",
@@ -8137,7 +8137,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -8158,7 +8158,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -8179,7 +8179,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Auspice v2 JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_pb",
@@ -8200,7 +8200,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT protobuf tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_json",
@@ -8221,7 +8221,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_graph_json",
@@ -9182,7 +9182,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -9203,7 +9203,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -9224,7 +9224,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Auspice v2 JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_pb",
@@ -9245,7 +9245,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT protobuf tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_mat_json",
@@ -9266,7 +9266,7 @@
           ],
           "conflicts": [],
           "help": "Path to output UShER MAT JSON tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_graph_json",

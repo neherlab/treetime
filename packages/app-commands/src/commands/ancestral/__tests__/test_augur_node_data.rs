@@ -318,7 +318,6 @@ mod tests {
           alphabet: &NUC_ALPHABET,
           root_sequence: &maps.root_sequence,
           edge_mutations: &maps.edge_mutations,
-          mutation_counts: None,
           amino_acids,
         }),
         dates: None,

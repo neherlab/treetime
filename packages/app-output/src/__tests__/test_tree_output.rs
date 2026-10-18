@@ -19,6 +19,7 @@ pub(super) mod tests {
   use serde_json::json;
   use std::collections::BTreeMap;
   use std::iter::once;
+  use std::num::NonZeroUsize;
   use std::path::PathBuf;
   use tempfile::TempDir;
   use treetime::progress::NoopProgress;
@@ -140,7 +141,6 @@ pub(super) mod tests {
         alphabet: &NUC_ALPHABET,
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
-        mutation_counts: None,
         amino_acids: None,
       }),
       traits: Some(TreeTraits {
@@ -190,7 +190,6 @@ pub(super) mod tests {
         alphabet: &NUC_ALPHABET,
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
-        mutation_counts: None,
         amino_acids: None,
       }),
       dates: if with_dates { dates } else { None },
@@ -305,6 +304,7 @@ pub(super) mod tests {
     let json_path = dir.path().join("graph.json");
     let nwk_path = dir.path().join("tree.nwk");
     let outputs = ResolvedOutputs {
+      partition_count: NonZeroUsize::MIN,
       tree_outputs: btreemap! {
         TreeWriteKind::Dot => dot_path.clone(),
         TreeWriteKind::GraphJson => json_path.clone(),
@@ -336,6 +336,7 @@ pub(super) mod tests {
   fn test_tree_output_tree_view_is_not_built_without_tree_based_outputs() -> Result<(), Report> {
     let topology = topology()?;
     let outputs = ResolvedOutputs {
+      partition_count: NonZeroUsize::MIN,
       tree_outputs: btreemap! { TreeWriteKind::Dot => PathBuf::from("tree.dot") },
       non_tree_outputs: btreemap! {},
       tree_outputs_by_partition: btreemap! {},

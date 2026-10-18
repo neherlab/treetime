@@ -425,6 +425,9 @@ pub struct TreetimeTimetreeArgsRaw {
   /// (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  ///
+  /// With several `--alignment` files, one file is written per alignment, and the file name
+  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_reconstructed_nuc_fasta: Option<PathBuf>,

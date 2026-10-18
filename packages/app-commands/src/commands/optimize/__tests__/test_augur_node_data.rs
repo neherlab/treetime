@@ -4,6 +4,8 @@ mod tests {
   use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
   use serde_json::json;
+  use std::path::PathBuf;
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::io::json::{json_read_str, json_value_read_str, to_json_value};
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
@@ -45,6 +47,23 @@ mod tests {
     assert!(data.metadata.clock.is_none());
     assert_eq!(data.metadata.alignment.as_deref(), Some("aln.fasta"));
     assert_eq!(data.metadata.input_tree.as_deref(), Some("tree.nwk"));
+  }
+
+  #[test]
+  fn test_augur_node_data_optimize_metadata_joins_every_alignment_path() {
+    let parse = nwk_read(&b"(leaf_a:0.005,leaf_b:0.010)root;"[..]).unwrap();
+    let alignments = [PathBuf::from("ha/aln.fasta"), PathBuf::from("na/aln.fasta")];
+
+    let data = helpers::build(
+      &parse.graph,
+      &parse.names(),
+      &parse.branch_lengths,
+      None,
+      &alignments,
+      None,
+    );
+
+    assert_eq!(Some("ha/aln.fasta,na/aln.fasta"), data.metadata.alignment.as_deref());
   }
 
   #[test]
@@ -151,7 +170,7 @@ mod tests {
 
     let data = helpers::build_augur_node_data_json_from_output(
       &output,
-      Some(std::path::Path::new("aln.fasta")),
+      &[PathBuf::from("aln.fasta")],
       Some(std::path::Path::new("tree.nwk")),
     );
 
@@ -166,18 +185,15 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::test_support::tests::NUC_ALPHABET;
-    use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeSequences};
+    use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence};
     use app_output::augur_node_data_refine::{RefineRun, build_augur_node_data_refine};
     use std::collections::BTreeMap;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use treetime::optimize::pipeline::OptimizeOutput;
-    use treetime::seq::mutation::Mutation;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read;
-    use treetime_primitives::Seq;
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
@@ -188,7 +204,7 @@ mod tests {
         &parse.names(),
         &parse.branch_lengths,
         None,
-        Some(Path::new("aln.fasta")),
+        &[PathBuf::from("aln.fasta")],
         Some(Path::new("tree.nwk")),
       );
       json_write_str(&data, JsonPretty(true)).unwrap()
@@ -210,7 +226,7 @@ mod tests {
         &parse.names(),
         &parse.branch_lengths,
         Some(&counts),
-        Some(Path::new("aln.fasta")),
+        &[PathBuf::from("aln.fasta")],
         Some(Path::new("tree.nwk")),
       );
       json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
@@ -218,7 +234,7 @@ mod tests {
 
     pub(super) fn build_augur_node_data_json_from_output(
       output: &OptimizeOutput,
-      alignment: Option<&Path>,
+      alignments: &[PathBuf],
       input_tree: Option<&Path>,
     ) -> AugurNodeDataJsonRefine {
       let data = build(
@@ -226,41 +242,33 @@ mod tests {
         &output.names,
         &output.branch_lengths,
         None,
-        alignment,
+        alignments,
         input_tree,
       );
       json_read_str(json_write_str(&data, JsonPretty(true)).unwrap()).unwrap()
     }
 
-    fn build(
+    pub(super) fn build(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
       mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
-      alignment: Option<&Path>,
+      alignments: &[PathBuf],
       input_tree: Option<&Path>,
     ) -> AugurNodeDataJsonRefine {
-      let root_sequence = Seq::try_from_str("A").unwrap();
-      let edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>> =
-        graph.get_edges().map(|edge| (edge.key(), vec![])).collect();
       let annotated = AnnotatedGraph {
         graph,
         names,
         divergence_branch_lengths: branch_lengths,
         time_branch_lengths: None,
         divergence: Divergence::CumulativeBranchLength,
-        sequences: mutation_counts.map(|mutation_counts| TreeSequences {
-          alphabet: &NUC_ALPHABET,
-          root_sequence: &root_sequence,
-          edge_mutations: &edge_mutations,
-          mutation_counts: Some(mutation_counts),
-          amino_acids: None,
-        }),
+        sequences: None,
         dates: None,
         traits: None,
       };
       let run = RefineRun {
-        alignment,
+        alignments,
+        mutation_counts,
         input_tree,
         clock_model: None,
       };

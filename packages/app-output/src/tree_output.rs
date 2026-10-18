@@ -1,4 +1,4 @@
-use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView};
+use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
 use crate::auspice::auspice_tree;
 use crate::nwk_comments::nwk_node_comments;
 use crate::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
@@ -15,6 +15,58 @@ use treetime_io::nex::nex_write_file;
 use treetime_io::nwk::{NwkNodeComments, NwkStyle, NwkWriteOptions, nwk_write_file};
 use treetime_io::usher_mat::usher_mat_pb_write_file;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
+
+pub fn write_run_tree_outputs<'a>(
+  graph: &'a AnnotatedGraph<'a>,
+  resolved: &ResolvedOutputs,
+  command: CommandKind,
+  log: &dyn LogSink,
+) -> Result<Option<AnnotatedTreeView<'a>>, Report> {
+  write_tree_output_set(graph, &resolved.tree_outputs, resolved, command, log)
+}
+
+pub fn write_partition_tree_outputs<'a>(
+  graph: &'a AnnotatedGraph<'a>,
+  partition: usize,
+  resolved: &ResolvedOutputs,
+  command: CommandKind,
+  log: &dyn LogSink,
+) -> Result<Option<AnnotatedTreeView<'a>>, Report> {
+  let outputs = resolved.partition_tree_outputs(partition);
+  write_tree_output_set(graph, &outputs, resolved, command, log)
+}
+
+pub fn write_tree_outputs_per_partition<'a>(
+  run_graph: &AnnotatedGraph<'a>,
+  sequences: &BTreeMap<usize, TreeSequences<'a>>,
+  resolved: &ResolvedOutputs,
+  command: CommandKind,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  for partition in resolved.partitions() {
+    let graph = AnnotatedGraph {
+      sequences: sequences.get(&partition).copied(),
+      ..*run_graph
+    };
+    write_partition_tree_outputs(&graph, partition, resolved, command, log)?;
+  }
+  Ok(())
+}
+
+fn write_tree_output_set<'a>(
+  graph: &'a AnnotatedGraph<'a>,
+  outputs: &BTreeMap<TreeWriteKind, PathBuf>,
+  resolved: &ResolvedOutputs,
+  command: CommandKind,
+  log: &dyn LogSink,
+) -> Result<Option<AnnotatedTreeView<'a>>, Report> {
+  write_graph_outputs(graph, outputs)?;
+  let tree = tree_view_for_outputs(graph, resolved)?;
+  if let Some(tree) = &tree {
+    write_tree_outputs(tree, outputs, command, log)?;
+  }
+  Ok(tree)
+}
 
 pub fn write_graph_outputs(
   graph: &AnnotatedGraph<'_>,

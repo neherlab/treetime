@@ -189,7 +189,6 @@ pub(crate) mod tests {
         alphabet: &NUC_ALPHABET,
         root_sequence: &setup.root_sequence,
         edge_mutations: &setup.edge_mutations,
-        mutation_counts: None,
         amino_acids: setup.aa_node_data.as_ref().map(|node_data| TreeAminoAcids {
           node_data,
           cdses: &setup.aa_annotations,
@@ -209,7 +208,6 @@ pub(crate) mod tests {
         alphabet: &NUC_ALPHABET,
         root_sequence,
         edge_mutations,
-        mutation_counts: None,
         amino_acids: None,
       }),
       ..annotated(topology)
@@ -283,7 +281,6 @@ pub(crate) mod tests {
         alphabet: &NUC_ALPHABET,
         root_sequence,
         edge_mutations: &setup.edge_mutations,
-        mutation_counts: None,
         amino_acids: None,
       }),
       dates: Some(TreeDates {
@@ -353,7 +350,6 @@ pub(crate) mod tests {
           alphabet: &NUC_ALPHABET,
           root_sequence,
           edge_mutations: &no_mutations,
-          mutation_counts: None,
           amino_acids: None,
         }),
         ..annotated(&topology)

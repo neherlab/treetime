@@ -265,7 +265,8 @@ fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) 
     Some([path]) => Ok(path.to_string_lossy().into_owned()),
     Some(paths) => make_error!(
       "step `{step}` references `{selection}` from step `{}`, which resolves to more than one file ({}); \
-       pin a single style or CDS, or reference a specific path",
+       each output style, CDS, and alignment file gets its own file: pin a single style or CDS, \
+       or reference one of these paths, such as the file of one alignment",
       producer.name,
       paths.iter().map(|path| format!("`{}`", path.display())).join(", ")
     ),
@@ -382,7 +383,7 @@ mod tests {
     let result = resolve(config);
     assert_error!(
       result,
-      "step `opt` references `reconstructed-nuc-fasta` from step `anc`, which resolves to more than one file (`/pipeline/tmp/run/anc/ancestral.1.reconstructed-nuc.fasta`, `/pipeline/tmp/run/anc/ancestral.2.reconstructed-nuc.fasta`); pin a single style or CDS, or reference a specific path"
+      "step `opt` references `reconstructed-nuc-fasta` from step `anc`, which resolves to more than one file (`/pipeline/tmp/run/anc/ancestral.1.reconstructed-nuc.fasta`, `/pipeline/tmp/run/anc/ancestral.2.reconstructed-nuc.fasta`); each output style, CDS, and alignment file gets its own file: pin a single style or CDS, or reference one of these paths, such as the file of one alignment"
     );
   }
 
@@ -398,7 +399,7 @@ mod tests {
     let result = resolve(config);
     assert_error!(
       result,
-      "step `anc` references `nwk` from step `tt`, which resolves to more than one file (`/pipeline/tmp/run/tt/timetree.annotated.nwk`, `/pipeline/tmp/run/tt/timetree.nwk`); pin a single style or CDS, or reference a specific path"
+      "step `anc` references `nwk` from step `tt`, which resolves to more than one file (`/pipeline/tmp/run/tt/timetree.annotated.nwk`, `/pipeline/tmp/run/tt/timetree.nwk`); each output style, CDS, and alignment file gets its own file: pin a single style or CDS, or reference one of these paths, such as the file of one alignment"
     );
   }
 

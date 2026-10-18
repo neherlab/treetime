@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::__tests__::test_support::tests::{project_root, write_column_blocks};
   use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
   use crate::commands::prune::run::run_prune;
   use crate::commands::shared::alignment::AlignmentArgs;
@@ -8,7 +9,7 @@ mod tests {
   use helpers::*;
   use pretty_assertions::assert_eq;
   use std::collections::{BTreeMap, BTreeSet};
-  use std::path::Path;
+  use std::path::{Path, PathBuf};
   use tempfile::TempDir;
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
@@ -49,9 +50,72 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_prune_two_alignments_write_the_mutations_of_each_alignment_to_its_own_files() -> Result<(), Report> {
+    let dir = TempDir::new()?;
+    let alignment = project_root().join("data/zika/20/aln.fasta.xz");
+    let blocks = write_column_blocks(&alignment, ZIKA_CUT, dir.path())?;
+    let whole_out = dir.path().join("whole");
+    let split_out = dir.path().join("split");
+    run_zika_prune(vec![alignment], &whole_out)?;
+    run_zika_prune(blocks.to_vec(), &split_out)?;
+
+    let whole = auspice_mutations(&json_read_file(whole_out.join("prune.auspice.json"))?);
+    let [first, second] = [1, 2].map(|partition| {
+      let auspice = auspice_mutations(&json_read_file(
+        split_out.join(format!("prune.{partition}.auspice.json")),
+      )?);
+      let mat = mat_mutations(&json_read_file(split_out.join(format!("prune.{partition}.mat.json")))?)?;
+      eyre::ensure!(
+        auspice == mat,
+        "Auspice and MAT mutations of partition {partition} differ"
+      );
+      Ok::<_, Report>(auspice)
+    });
+    let (first, second) = (first?, second?);
+    let joined = first
+      .into_iter()
+      .map(|(name, mutations)| {
+        let shifted = second[&name].iter().map(|mutation| shift_position(mutation, ZIKA_CUT));
+        let mutations = mutations
+          .into_iter()
+          .map(Ok)
+          .chain(shifted)
+          .collect::<Result<BTreeSet<_>, Report>>()?;
+        Ok((name, mutations))
+      })
+      .collect::<Result<BTreeMap<_, _>, Report>>()?;
+
+    assert_eq!(whole, joined);
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
-    use crate::__tests__::test_support::tests::project_root;
+
+    pub(super) const ZIKA_CUT: usize = 5000;
+
+    pub(super) fn run_zika_prune(alignment: Vec<PathBuf>, outdir: &Path) -> Result<(), Report> {
+      let root = project_root();
+      let args = TreetimePruneArgs::try_from(TreetimePruneArgsRaw {
+        alignment: AlignmentArgs { alignment },
+        tree: Some(root.join("data/zika/20/tree.nwk")),
+        prune_empty: true,
+        output: OutputCoreArgs {
+          output_all: Some(outdir.to_path_buf()),
+          ..OutputCoreArgs::default()
+        },
+        output_selection: vec![PruneOutputSelection::Auspice, PruneOutputSelection::MatJson],
+        ..TreetimePruneArgsRaw::default()
+      })?;
+      run_prune(&args, &NoopCancel, &NoopProgress, &NoopProgress)
+    }
+
+    pub(super) fn shift_position(mutation: &str, offset: usize) -> Result<String, Report> {
+      let (from, rest) = mutation.split_at(1);
+      let (position, to) = rest.split_at(rest.len() - 1);
+      Ok(format!("{from}{}{to}", position.parse::<usize>()? + offset))
+    }
 
     pub(super) const FLU_H3N2_20_FITCH_SCORE: usize = 179;
 

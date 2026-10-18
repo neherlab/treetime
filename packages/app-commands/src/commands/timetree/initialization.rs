@@ -62,7 +62,6 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
     names,
     branch_lengths,
     input_leaf_order,
-    alphabet,
     sequences,
     dates,
   })
@@ -73,7 +72,6 @@ pub(crate) struct InputData {
   pub names: BTreeMap<GraphNodeKey, Option<String>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub input_leaf_order: Vec<GraphNodeKey>,
-  pub alphabet: Alphabet,
   pub sequences: Option<AlignmentSource>,
   pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
 }
