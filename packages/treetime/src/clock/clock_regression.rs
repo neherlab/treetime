@@ -139,6 +139,21 @@ impl ClockRerootResult {
     })
   }
 
+  /// The clock fit, with the rate of `fallback` in place of a regression rate that is not positive, the intercept then
+  /// that of the line at this rate through the points of the fit
+  pub(crate) fn into_clock_fit_or(self, fallback: impl FnOnce() -> Result<f64, Report>) -> Result<ClockFit, Report> {
+    match &self.estimate {
+      ClockEstimate::Estimated(regression) if regression.clock_rate() <= 0.0 => {
+        let model = ClockModel::with_fixed_rate(&ClockSet::from_points(&self.points), fallback()?)?;
+        Ok(ClockFit {
+          model,
+          points: self.points,
+        })
+      },
+      _ => self.into_clock_fit(),
+    }
+  }
+
   fn into_clock_model(self) -> Result<ClockModel, Report> {
     match self.estimate {
       ClockEstimate::Estimated(regression) => ClockModel::from_regression(&regression),

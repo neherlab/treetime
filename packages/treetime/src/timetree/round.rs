@@ -16,6 +16,7 @@ use crate::timetree::inference::runner::{
   CLOCK_BRANCH_LENGTH_DAMPING, CLOCK_BRANCH_LENGTH_UNDAMPED, TimeInferenceInputs, blended_clock_branch_lengths,
   run_timetree, timetree_branch_lengths,
 };
+use crate::timetree::init::gaussian_start_rate;
 use crate::timetree::optimization::marginal_clock_rate::{
   MarginalRateInputs, MarginalRateStep, step_marginal_clock_rate,
 };
@@ -291,7 +292,8 @@ fn update_clock_model(
     log,
   )
   .wrap_err("Failed to update clock model")?;
-  let ClockFit { model, points } = clock_reroot.into_clock_fit()?;
+  let ClockFit { model, points } = clock_reroot
+    .into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, inputs.context, inputs.outliers, log))?;
   Ok(RoundState {
     graph,
     branch_lengths,

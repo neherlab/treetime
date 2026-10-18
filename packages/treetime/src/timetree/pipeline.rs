@@ -31,7 +31,7 @@ use crate::timetree::confidence::{
 };
 use crate::timetree::convergence::optimizer::TraceSink;
 use crate::timetree::inference::runner::timetree_branch_lengths;
-use crate::timetree::init::{initialize, timetree_gaussian_clock};
+use crate::timetree::init::{gaussian_start_rate, initialize, timetree_gaussian_clock};
 use crate::timetree::optimization::reroot::fit_clock_to_dates;
 use crate::timetree::params::{
   FinalSequences, TimeMarginalMode, TimetreeContext, TimetreeParams, compute_effective_time_marginal,
@@ -297,7 +297,9 @@ fn estimate_initial_clock(
     clock_reroot,
   ) = fit_clock_to_dates(graph, branch_lengths, &context.date_constraints, &fit, names, log)
     .wrap_err("Failed to infer clock model")?;
-  Ok((graph, branch_lengths, clock_reroot.into_clock_fit()?))
+  let clock_fit =
+    clock_reroot.into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, context, &BTreeSet::new(), log))?;
+  Ok((graph, branch_lengths, clock_fit))
 }
 
 fn initialize_branch_model(
