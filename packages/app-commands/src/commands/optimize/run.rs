@@ -1,4 +1,5 @@
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
+use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources, single_source};
@@ -15,7 +16,6 @@ use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::cancel::Cancel;
-use treetime::gtr::get_gtr::GtrOutput;
 use treetime::optimize::params::OptimizeLoopSettings;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
 use treetime::partition::result::PartitionSequences;
@@ -26,7 +26,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
-use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_internal_error;
 
 pub fn run_optimize(
@@ -83,6 +82,7 @@ pub fn run_optimize(
     branch_lengths,
     names,
   } = output;
+  let models = partition_models(&results, None);
   let Ok(mut result) = results.into_iter().exactly_one() else {
     return make_internal_error!("Optimize is expected to return one partition result");
   };
@@ -97,10 +97,7 @@ pub fn run_optimize(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  if let (Some(path), Some(gtr)) = (resolved.path(OutputSelection::Gtr), &result.gtr) {
-    let gtr_output = GtrOutput::builder().gtr(gtr).model_name(result.model_name).build();
-    json_write_file(path, &gtr_output, JsonPretty(true))?;
-  }
+  write_gtr_output(&resolved, models, "no GTR model was fitted", log)?;
 
   let trees = OptimizeTrees {
     graph: &graph,

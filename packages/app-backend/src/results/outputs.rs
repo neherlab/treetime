@@ -10,7 +10,7 @@ use schemars::JsonSchema;
 use std::path::Path;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
-use treetime::gtr::get_gtr::GtrOutput;
+use treetime::gtr::get_gtr::ModelOutput;
 use treetime::timetree::coalescent::CoalescentSegmentRow;
 use treetime::timetree::convergence::metrics::ConvergenceMetrics;
 use treetime_io::auspice_types::AuspiceTree;
@@ -32,7 +32,7 @@ pub struct RunOutputs {
   pub clock_model: Option<ClockModel>,
   pub clock_rows: Option<Vec<ClockRegressionResult>>,
   pub node_data: Option<AugurNodeDataJsonRefine>,
-  pub gtr: Option<GtrOutput>,
+  pub gtr: Option<ModelOutput>,
   pub trace: Option<Vec<ConvergenceMetrics>>,
   pub coalescent: Option<Vec<CoalescentSegmentRow>>,
   pub homoplasy: Option<HomoplasyStatsFile>,

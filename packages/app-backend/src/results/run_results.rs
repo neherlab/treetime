@@ -15,8 +15,9 @@ use deser::Serialize;
 use eyre::Report;
 use schemars::JsonSchema;
 use std::path::Path;
+use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::gtr::get_gtr::GtrOutput;
+use treetime::gtr::get_gtr::{ModelEntry, ModelOutput};
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
 use util_augur_node_data_json::AugurNodeDataJsonRefine;
@@ -125,7 +126,7 @@ pub enum CommandResults {
 fn tree_summary(
   tree: Option<&ResultTree>,
   node_data: Option<&AugurNodeDataJsonRefine>,
-  gtr: Option<&GtrOutput>,
+  gtr: Option<&ModelOutput>,
 ) -> TreeSummary {
   let samples = tree.map_or(0, |tree| tree.tips().count());
   TreeSummary {
@@ -135,11 +136,24 @@ fn tree_summary(
     total_branch_length: node_data
       .filter(|data| !data.nodes.is_empty())
       .map(|data| data.nodes.values().map(|node| node.branch_length).sum()),
-    substitution_model: gtr.map(|gtr| SubstitutionModel {
-      name: gtr.model_name().to_string(),
-      mu: gtr.mu(),
-    }),
+    substitution_models: gtr.map_or_else(Vec::new, substitution_models),
   }
+}
+
+fn substitution_models(gtr: &ModelOutput) -> Vec<SubstitutionModel> {
+  gtr
+    .models
+    .iter()
+    .filter_map(|entry| match entry {
+      ModelEntry::Sequence(model) => Some(SubstitutionModel {
+        partition: model.partition,
+        alignment: model.alignment.clone(),
+        name: model.model.model_name().to_string(),
+        mu: model.model.mu(),
+      }),
+      ModelEntry::Trait(_) => None,
+    })
+    .collect()
 }
 
 /// Summary of a tree an `optimize` or `prune` run wrote.
@@ -155,13 +169,17 @@ pub struct TreeSummary {
   pub mutations: usize,
   /// Sum of the branch lengths in the node data file.
   pub total_branch_length: Option<f64>,
-  /// Substitution model the run fitted.
-  pub substitution_model: Option<SubstitutionModel>,
+  /// Substitution models the run fitted, one per alignment file, in partition order.
+  pub substitution_models: Vec<SubstitutionModel>,
 }
 
-/// A fitted substitution model.
+/// The substitution model fitted to one alignment file.
 #[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 pub struct SubstitutionModel {
+  /// Partition number: the position of the file in the `--alignment` list, starting at 1.
+  pub partition: usize,
+  /// Path of the alignment file.
+  pub alignment: PathBuf,
   /// Name of the model.
   pub name: String,
   /// Overall substitution rate.

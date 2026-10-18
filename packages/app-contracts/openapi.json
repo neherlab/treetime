@@ -4001,22 +4001,35 @@
             "format": "double",
             "x-unset": true
           },
-          "substitution_model": {
-            "description": "Substitution model the run fitted.",
-            "$ref": "#/components/schemas/SubstitutionModel",
-            "x-unset": true
+          "substitution_models": {
+            "description": "Substitution models the run fitted, one per alignment file, in partition order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubstitutionModel"
+            }
           }
         },
         "required": [
           "samples",
           "internal_nodes",
-          "mutations"
+          "mutations",
+          "substitution_models"
         ]
       },
       "SubstitutionModel": {
-        "description": "A fitted substitution model.",
+        "description": "The substitution model fitted to one alignment file.",
         "type": "object",
         "properties": {
+          "partition": {
+            "description": "Partition number: the position of the file in the `--alignment` list, starting at 1.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "alignment": {
+            "description": "Path of the alignment file.",
+            "type": "string"
+          },
           "name": {
             "description": "Name of the model.",
             "type": "string"
@@ -4028,6 +4041,8 @@
           }
         },
         "required": [
+          "partition",
+          "alignment",
           "name",
           "mu"
         ]

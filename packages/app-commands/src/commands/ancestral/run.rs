@@ -4,7 +4,7 @@ use crate::commands::ancestral::aa_node_data::{
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::shared::alignment::pair_alignment;
 use crate::commands::shared::ancestral_trees::{AncestralOutputMaps, AncestralTrees, write_ancestral_trees};
-use crate::commands::shared::gtr_output::write_gtr_output;
+use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::sequence_inputs::{
   AlignmentSource, SequenceInputArgs, TreeAndSources, ancestral_input, read_tree_and_sources, single_source,
@@ -80,6 +80,7 @@ pub fn run_ancestral_reconstruction(
   let output =
     pipeline::run(&params, input, Some(&mut seq_sink), cancel, stages, log).map_err(|err| err.into_report())?;
   let mut graph = output.graph;
+  let models = partition_models(&output.results, None);
   let Ok(result) = output.results.into_iter().exactly_one() else {
     return make_internal_error!("Ancestral reconstruction is expected to return one partition result");
   };
@@ -115,7 +116,7 @@ pub fn run_ancestral_reconstruction(
 
   write_gtr_output(
     &resolved,
-    result.gtr.as_ref().map(|gtr| (gtr, result.model_name)),
+    models,
     "no GTR model was fitted (use --model=infer or --gtr-iterations)",
     log,
   )?;

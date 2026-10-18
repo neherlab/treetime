@@ -832,9 +832,11 @@ export const zMugrationResults = z.object({
 });
 
 /**
- * A fitted substitution model.
+ * The substitution model fitted to one alignment file.
  */
 export const zSubstitutionModel = z.object({
+  partition: z.int().gte(0),
+  alignment: z.string(),
   name: z.string(),
   mu: z.number()
 });
@@ -847,7 +849,7 @@ export const zTreeSummary = z.object({
   internal_nodes: z.int().gte(0),
   mutations: z.int().gte(0),
   total_branch_length: z.number().optional(),
-  substitution_model: zSubstitutionModel.optional()
+  substitution_models: z.array(zSubstitutionModel)
 });
 
 /**

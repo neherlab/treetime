@@ -15,7 +15,9 @@ mod tests {
   use app_commands::json_value::JsonValue;
   use app_output::output_plan::OutputSelection;
   use eyre::Report;
-  use helpers::{auspice_path, clock_model, dataset, finished_run, homoplasy_config, timetree_config, zika};
+  use helpers::{
+    auspice_path, clock_model, dataset, finished_run, homoplasy_config, output_path, timetree_config, zika,
+  };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
@@ -256,6 +258,53 @@ mod tests {
         ancestral.mutations > 0,
         ancestral.recurrent_sites.iter().all(|site| site.branches > 1)
       )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_run_results_of_an_optimize_run_list_one_substitution_model_per_alignment_file() -> Result<(), Report> {
+    let root = tempdir()?;
+    let runs = RunManager::open(root.path())?;
+    let id = finished_run(
+      &runs,
+      AppCommand::Optimize,
+      json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")] }),
+    );
+    let model = |mu: f64| {
+      json!({
+        "model_type": "inferred",
+        "model_name": "infer",
+        "mu": mu,
+        "pi": [0.5, 0.5],
+        "W": [[0.0, 2.0], [2.0, 0.0]],
+        "n_states": 2,
+      })
+    };
+    let entry = |partition: usize, alignment: &str, mu: f64| {
+      let mut entry = json!({ "kind": "sequence", "partition": partition, "alignment": alignment, "sites": 100 });
+      entry
+        .as_object_mut()
+        .expect("entry is an object")
+        .extend(model(mu).as_object().expect("model is an object").clone());
+      entry
+    };
+    fs::write(
+      output_path(&runs, &id, OutputSelection::Gtr),
+      json!({ "models": [entry(1, "ha/aligned.fasta", 0.75), entry(2, "na/aligned.fasta", 1.25)] }).to_string(),
+    )?;
+
+    let results = run_results(&runs, &id)?;
+    let CommandResults::Optimize(summary) = &results.results else {
+      panic!("an optimize run has a tree summary");
+    };
+
+    assert_eq!(
+      json!([
+        { "partition": 1, "alignment": "ha/aligned.fasta", "name": "Infer", "mu": 0.75 },
+        { "partition": 2, "alignment": "na/aligned.fasta", "name": "Infer", "mu": 1.25 },
+      ]),
+      to_json_value(&summary.substitution_models)?
     );
     Ok(())
   }
@@ -568,12 +617,16 @@ mod tests {
     }
 
     pub(super) fn auspice_path(runs: &Arc<RunManager>, id: &JobId) -> PathBuf {
+      output_path(runs, id, OutputSelection::Auspice)
+    }
+
+    pub(super) fn output_path(runs: &Arc<RunManager>, id: &JobId, kind: OutputSelection) -> PathBuf {
       let record = runs.get(id).unwrap();
       let file = record
         .output_files
         .iter()
-        .find(|file| file.kind == OutputSelection::Auspice)
-        .expect("the run wrote an Auspice file");
+        .find(|file| file.kind == kind)
+        .expect("the run wrote the output file");
       runs.store().out_dir(id).join(&file.path)
     }
   }

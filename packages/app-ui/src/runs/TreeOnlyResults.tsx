@@ -18,7 +18,7 @@ export function TreeOnlyResults({
 }) {
   const summary = useMemo<SummaryEntry[]>(() => {
     const length = data.total_branch_length ?? undefined;
-    const model = data.substitution_model ?? undefined;
+    const models = data.substitution_models;
 
     return [
       { label: "Samples", value: tree === undefined ? "-" : String(data.samples) },
@@ -37,15 +37,11 @@ export function TreeOnlyResults({
               detail: "Sum of the branch lengths in the node data",
             },
           ]),
-      ...(model === undefined
-        ? []
-        : [
-            {
-              label: "Substitution model",
-              value: model.name,
-              detail: `Overall rate μ = ${model.mu.toPrecision(4)}`,
-            },
-          ]),
+      ...models.map((model) => ({
+        label: models.length === 1 ? "Substitution model" : `Substitution model ${model.partition}`,
+        value: model.name,
+        detail: `${model.alignment}, overall rate μ = ${model.mu.toPrecision(4)}`,
+      })),
       runTimeEntry(record),
     ];
   }, [data, record, tree]);

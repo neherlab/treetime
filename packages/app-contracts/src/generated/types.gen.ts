@@ -1702,15 +1702,23 @@ export type TreeSummary = {
    */
   total_branch_length?: number;
   /**
-   * Substitution model the run fitted.
+   * Substitution models the run fitted, one per alignment file, in partition order.
    */
-  substitution_model?: SubstitutionModel;
+  substitution_models: Array<SubstitutionModel>;
 };
 
 /**
- * A fitted substitution model.
+ * The substitution model fitted to one alignment file.
  */
 export type SubstitutionModel = {
+  /**
+   * Partition number: the position of the file in the `--alignment` list, starting at 1.
+   */
+  partition: number;
+  /**
+   * Path of the alignment file.
+   */
+  alignment: string;
   /**
    * Name of the model.
    */

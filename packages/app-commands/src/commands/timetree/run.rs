@@ -1,4 +1,4 @@
-use crate::commands::shared::gtr_output::write_gtr_output;
+use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
@@ -219,10 +219,7 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
 
   write_gtr_output(
     resolved,
-    output
-      .results
-      .first()
-      .and_then(|result| Some((result.gtr.as_ref()?, result.model_name))),
+    partition_models(&output.results, Some(output.clock_model.clock_rate())),
     "no GTR model was fitted (provide an alignment with --alignment)",
     log,
   )

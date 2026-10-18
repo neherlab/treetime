@@ -9,6 +9,7 @@ use eyre::{Report, WrapErr};
 use ndarray::{Array1, Array2, array};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
+use std::path::PathBuf;
 use strum_macros::Display;
 use treetime_utils::adapters::{Array2Rows, ArrayVec};
 use treetime_utils::cast::ToF64Exact;
@@ -21,32 +22,84 @@ pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName, log: &dyn LogSink) ->
   Ok(())
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+/// Substitution models of a run: one entry per partition that has a model, in partition order.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ModelOutput {
+  /// Model entries in partition order.
+  pub models: Vec<ModelEntry>,
+}
+
+/// Substitution model of one partition.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[deser(tag = "kind", rename_all = "kebab-case")]
+#[schemars(tag = "kind", rename_all = "kebab-case")]
+pub enum ModelEntry {
+  /// Model of the sites of one alignment file.
+  Sequence(SequenceModel),
+  /// Model of the states of one discrete trait.
+  Trait(TraitModel),
+}
+
+/// Substitution model of the sites of one alignment file.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct SequenceModel {
+  /// Partition number: the position of the file in the `--alignment` list, starting at 1.
+  pub partition: usize,
+  /// Path of the alignment file.
+  pub alignment: PathBuf,
+  /// Number of sites of the alignment file.
+  pub sites: usize,
+  /// Rate of insertion and deletion events per unit of branch length; absent when the run has no indel term.
+  #[deser(skip_serializing_if = Option::is_none)]
+  pub indel_rate: Option<f64>,
+  /// Substitutions per site per year in this file: the clock rate of the run multiplied by `mu`; timetree only.
+  #[deser(skip_serializing_if = Option::is_none)]
+  pub clock_rate: Option<f64>,
+  /// Model parameters.
+  #[deser(flatten)]
+  #[schemars(flatten)]
+  pub model: GtrOutput,
+}
+
+/// Substitution model of the states of one discrete trait.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct TraitModel {
+  /// Metadata column of the trait.
+  pub attribute: String,
+  /// Trait states in the order of the rows and columns of `W` and the entries of `pi`.
+  pub states: Vec<String>,
+  /// Model parameters.
+  #[deser(flatten)]
+  #[schemars(flatten)]
+  pub model: GtrOutput,
+}
+
+/// Parameters of a GTR substitution model.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GtrOutput {
+  /// Whether the model was inferred from the data or taken by name.
   pub(crate) model_type: GtrModelType,
+  /// Name of the model.
   pub(crate) model_name: GtrModelName,
+  /// Overall substitution rate.
   pub(crate) mu: f64,
+  /// Equilibrium frequencies of the states.
   #[deser(as = ArrayVec)]
+  #[schemars(with = "Vec<f64>")]
   pub(crate) pi: Array1<f64>,
+  /// Symmetric exchange rates between the states.
   #[deser(as = Array2Rows)]
   #[deser(rename = "W")]
+  #[schemars(with = "Vec<Vec<f64>>", rename = "W")]
   pub(crate) w: Array2<f64>,
+  /// Number of states.
   pub(crate) n_states: usize,
-  #[deser(skip_serializing_if = Option::is_none)]
-  pub(crate) attribute: Option<String>,
-  #[deser(skip_serializing_if = Option::is_none)]
-  pub(crate) states: Option<Vec<String>>,
 }
 
 #[bon]
 impl GtrOutput {
   #[builder]
-  pub fn new(
-    gtr: &GTR,
-    model_name: GtrModelName,
-    #[builder(into)] attribute: Option<String>,
-    states: Option<Vec<String>>,
-  ) -> Self {
+  pub fn new(gtr: &GTR, model_name: GtrModelName) -> Self {
     let model_type = match model_name {
       GtrModelName::Infer => GtrModelType::Inferred,
       _ => GtrModelType::Named,
@@ -58,8 +111,6 @@ impl GtrOutput {
       pi: gtr.pi().clone(),
       w: gtr.W().clone(),
       n_states: gtr.pi().len(),
-      attribute,
-      states,
     }
   }
 
@@ -72,8 +123,10 @@ impl GtrOutput {
   }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// Origin of the parameters of a GTR model.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[deser(rename_all = "kebab-case")]
+#[schemars(rename_all = "kebab-case")]
 pub enum GtrModelType {
   Named,
   Inferred,

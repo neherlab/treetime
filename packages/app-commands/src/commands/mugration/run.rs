@@ -1,4 +1,5 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
+use crate::commands::shared::gtr_output::{trait_model, write_gtr_output};
 use crate::commands::shared::input_warnings::warn_duplicate_names;
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
@@ -12,7 +13,6 @@ use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use treetime::cancel::Cancel;
-use treetime::gtr::get_gtr::{GtrModelName, GtrOutput};
 use treetime::mugration::pipeline::{self, MugrationInput, MugrationOutput, MugrationParams};
 use treetime::progress::RunWarningKind;
 use treetime::progress::{LogSink, StageSink};
@@ -22,7 +22,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_io::discrete_states_csv::discrete_attrs_read_file;
-use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_error;
 
 const UNMATCHED_NAMES_SHOWN: usize = 10;
@@ -102,15 +101,16 @@ pub fn run_mugration(
   topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 
-  if let Some(path) = resolved.path(OutputSelection::Gtr) {
-    let gtr_output = GtrOutput::builder()
-      .gtr(&output.gtr)
-      .model_name(GtrModelName::Infer)
-      .attribute(mugration_args.attribute())
-      .states(output.states.iter().map(ToOwned::to_owned).collect())
-      .build();
-    json_write_file(path, &gtr_output, JsonPretty(true))?;
-  }
+  write_gtr_output(
+    &resolved,
+    vec![trait_model(
+      &output.gtr,
+      mugration_args.attribute(),
+      output.states.iter().map(ToOwned::to_owned).collect(),
+    )],
+    "no trait model was fitted",
+    log,
+  )?;
 
   write_mugration_trees(
     &output,

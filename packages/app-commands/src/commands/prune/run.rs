@@ -1,5 +1,5 @@
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::shared::gtr_output::write_gtr_output;
+use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources, single_source};
@@ -91,6 +91,7 @@ pub fn run_prune(
     names,
     branch_lengths: branch_lengths_opt,
   } = output;
+  let models = partition_models(&results, None);
   let mut result = results.into_iter().next();
   let sequences = result.as_mut().and_then(|result| result.sequences.take());
 
@@ -115,9 +116,7 @@ pub fn run_prune(
 
   write_gtr_output(
     &resolved,
-    result
-      .as_ref()
-      .and_then(|result| Some((result.gtr.as_ref()?, result.model_name))),
+    models,
     "no GTR model was fitted (prune fits it from the alignment only for --prune-empty or --merge-shared-mutations)",
     log,
   )?;
