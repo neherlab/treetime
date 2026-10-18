@@ -21,6 +21,8 @@ use treetime_grid::MaxGridPoints;
 const PROBE_FACTOR: f64 = 1.25;
 /// The parabola's maximum is taken at most this factor away from the reference rate
 const MAX_TARGET_FACTOR: f64 = 2.0;
+/// Fraction of the way, in log rate, that the rate moves toward the target each round
+pub(crate) const STEP_FRACTION: f64 = 2.0 / 3.0;
 
 pub(crate) struct MarginalRateInputs<'a> {
   pub graph: &'a Graph,
@@ -35,7 +37,7 @@ pub(crate) struct MarginalRateInputs<'a> {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct MarginalRateStep {
-  /// Rate half-way, in log rate, from the reference rate to `target_rate`
+  /// Rate `STEP_FRACTION` of the way, in log rate, from the reference rate to `target_rate`
   pub clock_rate: f64,
   /// Maximum of the parabola through the probes, within `MAX_TARGET_FACTOR` of the reference rate
   pub target_rate: f64,
@@ -86,10 +88,13 @@ pub(crate) fn marginal_log_lh_at_rate(inputs: &MarginalRateInputs<'_>, clock_rat
 
 /// One damped step of the clock rate toward the maximum of the log marginal likelihood. A parabola in log rate through
 /// the reference rate and the rates `PROBE_FACTOR` below and above gives a target, at most `MAX_TARGET_FACTOR` away;
-/// without a maximum the target is that bound on the side of the better probe. The rate moves half-way to the target.
-/// The refinement loop repeats the step every round, with the times, Tc and the reconstruction re-estimated in between,
-/// so the rate needs no precise optimum, and the half step damps its coupling to the times. A probe whose backward pass
-/// fails or leaves the root without a distribution counts as impossible.
+/// without a maximum the target is that bound on the side of the better probe. The log rate x moves the fraction a =
+/// `STEP_FRACTION` of the way to the target T: x' = x + a (T - x). The refinement loop repeats the step every round,
+/// with the times, Tc and the reconstruction re-estimated in between, so the rate needs no precise optimum. Near the
+/// fixed point x* the target follows the rate, T = x* + s (x - x*), and the distance to x* shrinks by 1 - a (1 - s) per
+/// round: a full step (a = 1) oscillates where the target overshoots (s near -1), and a < 1 damps that at the cost of
+/// slower convergence where the target lags behind the rate (0 < s < 1). A probe whose backward pass fails or leaves
+/// the root without a distribution counts as impossible.
 pub(crate) fn step_marginal_clock_rate(inputs: &MarginalRateInputs<'_>) -> Result<MarginalRateStep, Report> {
   let reference = inputs.reference_rate;
   if !(reference.is_finite() && reference > 0.0) {
@@ -111,7 +116,7 @@ pub(crate) fn step_marginal_clock_rate(inputs: &MarginalRateInputs<'_>) -> Resul
   }
   let target = log_rate_target(probe(1.0 / PROBE_FACTOR), log_lh, probe(PROBE_FACTOR));
   Ok(MarginalRateStep {
-    clock_rate: reference * (0.5 * target).exp(),
+    clock_rate: reference * (STEP_FRACTION * target).exp(),
     target_rate: reference * target.exp(),
     log_lh,
   })
