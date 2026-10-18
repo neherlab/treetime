@@ -19,19 +19,12 @@ function spec(specs: readonly SettingSpec[], key: string): SettingSpec {
 }
 
 describe("form config", () => {
-  test("defaults fill nested settings from the catalog", () => {
+  test("defaults fill settings from the catalog", () => {
     const config = defaultConfig(clock);
 
-    expect({ branchSplit: config["branch_split"], clockFilter: config["clock_filter"] }).toStrictEqual({
-      branchSplit: {
-        method: "grid",
-        n_points: 11,
-        brent_max_iters: 50,
-        brent_tolerance: 1e-12,
-        golden_max_iters: 50,
-        golden_tolerance: 1e-12,
-      },
+    expect({ clockFilter: config["clock_filter"], keepRoot: config["keep_root"] }).toStrictEqual({
       clockFilter: 3,
+      keepRoot: false,
     });
   });
 
@@ -39,10 +32,10 @@ describe("form config", () => {
     expect(changedSpecs(timetree, defaultConfig(timetree))).toStrictEqual([]);
   });
 
-  test("a changed nested value is detected by its full key", () => {
-    const config = setAt(defaultConfig(clock), ["branch_split", "n_points"], 21);
+  test("a changed value is detected by its key", () => {
+    const config = setAt(defaultConfig(clock), ["clock_filter"], 2);
 
-    expect(changedSpecs(clock, config).map((found) => found.key)).toStrictEqual(["branch_split.n_points"]);
+    expect(changedSpecs(clock, config).map((found) => found.key)).toStrictEqual(["clock_filter"]);
   });
 
   test("a list in another order is a change", () => {

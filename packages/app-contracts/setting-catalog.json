@@ -78,7 +78,6 @@
         "clock_rate",
         "clock_std_dev",
         "confidence",
-        "covariation",
         "coalescent",
         "coalescent_opt",
         "coalescent_skyline",
@@ -2569,7 +2568,6 @@
         "reroot",
         "keep_root",
         "clock_filter",
-        "covariation",
         "allow_negative_rate",
         "metadata_id_columns"
       ],

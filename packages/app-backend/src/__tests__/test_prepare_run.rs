@@ -75,13 +75,13 @@ mod tests {
       "metadata": "m.tsv",
       "clock_filter": 2.0,
       "keep_root": true,
-      "branch_split": { "n_points": 7 },
+      "allow_negative_rate": true,
     });
     let prepared = AppCommand::Clock
       .prepare_run(&config, Path::new("/runs/r/out"))
       .unwrap();
     let mut changed = prepared.changed_settings;
     changed.sort();
-    assert_eq!(vec!["branch_split.n_points", "clock_filter", "keep_root"], changed);
+    assert_eq!(vec!["allow_negative_rate", "clock_filter", "keep_root"], changed);
   }
 }

@@ -1,12 +1,11 @@
 use itertools::Itertools;
 
-const LABELS: [(&str, &str); 13] = [
+const LABELS: [(&str, &str); 12] = [
   ("clock_std_dev", "Clock rate std. dev."),
   ("coalescent", "Coalescent time scale Tc"),
   ("coalescent_opt", "Optimize Tc"),
   ("coalescent_skyline", "Skyline coalescent"),
   ("confidence", "Date confidence intervals"),
-  ("covariation", "Covariation-aware regression"),
   ("max_iter", "Iterations"),
   ("method_anc", "Ancestral method"),
   ("model", "Substitution model"),

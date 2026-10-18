@@ -433,10 +433,10 @@ mod tests {
     );
     let config = &doc["components"]["schemas"]["ClockConfig"];
     assert_eq!(
-      (json!(false), json!("#/components/schemas/BranchSplitArgs")),
+      (json!(false), json!("#/components/schemas/RerootMethod")),
       (
         config["additionalProperties"].clone(),
-        config["properties"]["branch_split"]["$ref"].clone()
+        config["properties"]["reroot"]["$ref"].clone()
       )
     );
   }
@@ -446,10 +446,10 @@ mod tests {
     let doc = api_doc().unwrap();
     let schemas = &doc["components"]["schemas"];
     assert_eq!(
-      (json!("--relax"), json!("--branch-split-grid-n-points"), json!("input"),),
+      (json!("--relax"), json!("--clock-filter"), json!("input"),),
       (
         schemas["TimetreeConfig"]["properties"]["relax"]["x-cli-flag"].clone(),
-        schemas["BranchSplitArgs"]["properties"]["n_points"]["x-cli-flag"].clone(),
+        schemas["ClockConfig"]["properties"]["clock_filter"]["x-cli-flag"].clone(),
         schemas["ClockConfig"]["properties"]["tree"]["x-path"].clone(),
       )
     );

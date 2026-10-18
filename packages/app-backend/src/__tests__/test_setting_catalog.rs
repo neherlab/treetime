@@ -159,8 +159,6 @@ mod tests {
   #[case::number_list(    AppCommand::Timetree,  "relax",               SettingKind::List,     false, Some(json!([])))]
   #[case::string_list(    AppCommand::Clock,     "metadata_id_columns", SettingKind::List,     false, Some(json!(["strain", "name", "accession"])))]
   #[case::enum_list(      AppCommand::Clock,     "output_selection",    SettingKind::EnumList, false, Some(json!([])))]
-  #[case::nested_enum(    AppCommand::Clock,     "branch_split.method", SettingKind::Enum,     false, Some(json!("grid")))]
-  #[case::nested_integer( AppCommand::Clock,     "branch_split.n_points", SettingKind::Integer, false, Some(json!(11)))]
   #[trace]
   fn test_setting_catalog_kind_and_default(
     #[case] command: AppCommand,

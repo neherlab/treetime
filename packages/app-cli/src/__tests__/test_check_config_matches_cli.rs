@@ -8,7 +8,6 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::unknown_field(    AppCommand::Ancestral, "tree: t.nwk\ndefinitely_not_a_real_field: 1\n")]
-  #[case::unknown_nested(   AppCommand::Clock,     "tree: t.nwk\nmetadata: m.tsv\nbranch_split:\n  n_pointz: 3\n")]
   #[case::wrong_enum(       AppCommand::Ancestral, "tree: t.nwk\nmethod_anc: margnal\n")]
   #[case::wrong_type(       AppCommand::Timetree,  "clock_rate: fast\n")]
   #[case::duplicate_key(    AppCommand::Prune,     "tree: a.nwk\ntree: b.nwk\n")]
