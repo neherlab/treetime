@@ -22,6 +22,7 @@ mod tests {
   use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::result::given_times;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
+  use crate::timetree::optimization::marginal_clock_rate::RateWindow;
   use crate::timetree::optimization::relaxed_clock::{apply_relaxed_clock, unit_gammas};
   use crate::timetree::params::TimeMarginalMode;
   use crate::timetree::params::{FinalSequences, TimetreeContext, TimetreeParams};
@@ -469,6 +470,7 @@ mod tests {
         &inputs,
         &merger_rate,
         coalescent_tc.is_some().then_some(&prior),
+        RateWindow::FollowSlope,
         state,
         &mut get_random_number_generator(ROUND_TEST_SEED),
         &NoopProgress,
