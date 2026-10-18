@@ -1,4 +1,5 @@
 use crate::coalescent::lineage_counts::compute_lineage_counts;
+use crate::coalescent::mean_field::LineageExpectation;
 use crate::coalescent::node_time::CoalescentNodeTimes;
 use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
 use crate::make_error;
@@ -9,6 +10,7 @@ use crate::timetree::coalescent::{
 use eyre::{Report, WrapErr};
 use ndarray::{Array1, array};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -180,7 +182,10 @@ pub(crate) struct CoalescentReportBand {
 pub(crate) struct CoalescentSetup {
   pub mode: CoalescentMode,
   pub skyline_params: SkylineParams,
+  /// Lineage counts at point times, for the merger rates of polytomy resolution
   pub lineage_counts: PiecewiseConstantFn,
+  /// Expected lineage counts from node posteriors, for the mean-field prior on node times
+  pub lineage_expectation: Arc<LineageExpectation>,
 }
 
 impl CoalescentSetup {

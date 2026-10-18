@@ -1,7 +1,7 @@
 use crate::branch_lengths::one_mutation;
 use crate::clock::clock_model::ClockModel;
 use crate::clock::date_constraints::DateConstraints;
-use crate::coalescent::coalescent::CoalescentModel;
+use crate::coalescent::mean_field::CoalescentPrior;
 use crate::optimize::gather::EdgeContributions;
 use crate::optimize::indel::IndelPolicy;
 use crate::partition::set::PartitionSet;
@@ -37,7 +37,7 @@ pub(crate) const EPS: f64 = 5e-4;
 
 pub(crate) fn run_timetree(
   inputs: &TimeInferenceInputs<'_>,
-  coalescent: Option<&CoalescentModel>,
+  coalescent: Option<&CoalescentPrior>,
   log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
   infer_times(inputs, coalescent, log)
@@ -46,7 +46,7 @@ pub(crate) fn run_timetree(
 
 fn infer_times(
   inputs: &TimeInferenceInputs<'_>,
-  coalescent: Option<&CoalescentModel>,
+  coalescent: Option<&CoalescentPrior>,
   log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
   let TimeInferenceInputs {

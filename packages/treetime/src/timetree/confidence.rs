@@ -1,5 +1,5 @@
 use crate::clock::clock_model::{ClockModel, ClockModelStats};
-use crate::coalescent::coalescent::CoalescentModel;
+use crate::coalescent::mean_field::CoalescentPrior;
 use crate::make_error;
 use crate::progress::LogSink;
 use crate::timetree::inference::result::{NodePosterior, TimeInference};
@@ -24,7 +24,7 @@ const CI_UPPER_QUANTILE: f64 = 1.0 - (1.0 - CI_FRACTION) * 0.5;
 
 pub(crate) fn compute_rate_susceptibility(
   time_inputs: &TimeInferenceInputs<'_>,
-  coalescent: Option<&CoalescentModel>,
+  coalescent: Option<&CoalescentPrior>,
   rate_std: f64,
   log: &dyn LogSink,
 ) -> Result<RateSusceptibility, Report> {

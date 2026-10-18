@@ -5,8 +5,8 @@ use crate::clock::clock_regression::{
 };
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::reroot::RerootParams;
-use crate::coalescent::coalescent::CoalescentModel;
 use crate::coalescent::lineage_counts::compute_lineage_counts;
+use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::coalescent::skyline::SkylineParams;
 use crate::progress::LogSink;
 use crate::progress_info;
@@ -77,19 +77,23 @@ pub(crate) fn run_initial_round(
     indel_policy: params.indel_policy,
     max_grid_points: params.max_grid_points,
   };
-  let run = |prior: Option<&CoalescentModel>| run_timetree(&time_inputs, prior, log);
+  let run = |prior: Option<&CoalescentPrior>| run_timetree(&time_inputs, prior, log);
   let time_inference = run(None)?;
 
   let (coalescent, timescale) = setup_coalescent(params, &graph, &time_inference, &names, log)?;
   let (coalescent, time_inference) = if coalescent.prior_wanted() {
-    let prior = CoalescentModel::new(&coalescent.lineage_counts, &timescale.distribution)?;
+    let prior = CoalescentPrior::new(&coalescent.lineage_expectation, &timescale.distribution)?;
     let time_inference = run(Some(&prior))?;
     // k(t) from the prior-free times seeds the first prior pass; it is rebuilt once from the times inferred under that
     // prior and then frozen
     let lineage_counts = compute_lineage_counts(&graph, &time_inference.coalescent_node_times())
       .wrap_err("Failed to compute coalescent lineage counts")?;
+    let lineage_expectation =
+      LineageExpectation::from_posterior(&graph, &time_inference.posterior, &time_inference.bad_branches)
+        .wrap_err("Failed to compute the expected coalescent lineage counts")?;
     let coalescent = CoalescentSetup {
       lineage_counts,
+      lineage_expectation,
       ..coalescent
     };
     (coalescent, time_inference)
@@ -128,7 +132,7 @@ pub(crate) struct InitialRound {
 pub(crate) fn refinement_round(
   inputs: &RoundInputs<'_>,
   merger_rate: &PiecewiseConstantFn,
-  prior: Option<&CoalescentModel>,
+  prior: Option<&CoalescentPrior>,
   state: RoundState,
   rng: &mut dyn Rng,
   log: &dyn LogSink,
@@ -154,7 +158,7 @@ pub(crate) fn refinement_round(
 
 pub(crate) fn infer_final_times(
   inputs: &RoundInputs<'_>,
-  prior: Option<&CoalescentModel>,
+  prior: Option<&CoalescentPrior>,
   state: &RoundState,
   log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
@@ -298,7 +302,7 @@ impl TopologyOutcome {
 
 fn refresh_times(
   inputs: &RoundInputs<'_>,
-  prior: Option<&CoalescentModel>,
+  prior: Option<&CoalescentPrior>,
   topology_changed: bool,
   state: RoundState,
   log: &dyn LogSink,
@@ -320,7 +324,7 @@ fn refresh_times(
 
 fn infer_times(
   inputs: &RoundInputs<'_>,
-  prior: Option<&CoalescentModel>,
+  prior: Option<&CoalescentPrior>,
   topology_changed: bool,
   state: &RoundState,
   log: &dyn LogSink,
@@ -341,7 +345,7 @@ fn infer_times(
 /// prior, and the clock model is fitted with that rate fixed; otherwise the rate comes from the root-to-tip regression.
 fn update_clock_model(
   inputs: &RoundInputs<'_>,
-  prior: Option<&CoalescentModel>,
+  prior: Option<&CoalescentPrior>,
   state: RoundState,
   log: &dyn LogSink,
 ) -> Result<RoundState, Report> {
@@ -395,7 +399,7 @@ fn update_clock_model(
 
 fn marginal_clock_rate(
   inputs: &RoundInputs<'_>,
-  prior: &CoalescentModel,
+  prior: &CoalescentPrior,
   state: &RoundState,
   log: &dyn LogSink,
 ) -> Result<f64, Report> {
@@ -498,10 +502,14 @@ fn setup_coalescent(
   let lineage_counts =
     compute_lineage_counts(graph, &coalescent_node_times).wrap_err("Failed to compute coalescent lineage counts")?;
   let timescale = coalescent_timescale(mode, graph, &skyline_params, &coalescent_node_times, names, log)?;
+  let lineage_expectation =
+    LineageExpectation::from_posterior(graph, &time_inference.posterior, &time_inference.bad_branches)
+      .wrap_err("Failed to compute the expected coalescent lineage counts")?;
   let setup = CoalescentSetup {
     mode,
     skyline_params,
     lineage_counts,
+    lineage_expectation,
   };
   Ok((setup, timescale))
 }

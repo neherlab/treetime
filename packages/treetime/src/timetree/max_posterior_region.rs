@@ -41,6 +41,24 @@ pub(crate) fn posterior_median(distribution: &Distribution<NegLog>) -> Result<Op
   }
 }
 
+/// Survival function S(t) = P(T > t) of a posterior at its grid times, from the same grid CDF as the confidence
+/// intervals; `None` for an empty distribution. A point at `t0` gives the single time `t0` with S = 0.
+pub(crate) fn posterior_survival(distribution: &Distribution<NegLog>) -> Result<Option<(Vec<f64>, Vec<f64>)>, Report> {
+  let normalized = distribution.normalize()?;
+  match &normalized {
+    Distribution::Empty => Ok(None),
+    Distribution::Point(_) => Ok(Some((vec![normalized.t()[0]], vec![0.0]))),
+    Distribution::Range(_) | Distribution::Function(_) => {
+      let t = normalized.t();
+      let y = normalized.y()?;
+      let cdf = GridCdf::new(t.view(), y.iter().copied());
+      let survival = cdf.cumulative.iter().map(|c| 1.0 - c).collect();
+      Ok(Some((t.to_vec(), survival)))
+    },
+    Distribution::Formula(_) => make_internal_error!("Normalization left a formula distribution undiscretized"),
+  }
+}
+
 #[expect(
   clippy::needless_pass_by_value,
   reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"

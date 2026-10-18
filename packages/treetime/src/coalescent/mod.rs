@@ -4,6 +4,7 @@ mod events;
 mod integration;
 pub(crate) mod lineage_counts;
 mod lineage_dynamics;
+pub(crate) mod mean_field;
 pub mod node_time;
 pub(crate) mod population_size;
 pub mod skyline;
