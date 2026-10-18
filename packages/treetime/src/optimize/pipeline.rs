@@ -1,6 +1,7 @@
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
+use crate::clock::reroot::reroot_undated;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::dispatch::optimize_edge_lengths;
@@ -17,7 +18,6 @@ use crate::partition::marginal::reconstruction::ReconstructionRef;
 use crate::partition::result::{PartitionResult, PartitionSequences, PartitionSource};
 use crate::partition::set::{PartitionSet, build_partition_set};
 use crate::progress::{LogSink, StageSink};
-use crate::reroot::orchestrate::{RerootTopologyParams, reroot_at_node, reroot_min_dev};
 use crate::seq::alignment::SequenceSource;
 use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use crate::{progress_info, progress_warn};
@@ -25,7 +25,6 @@ use eyre::Report;
 use itertools::izip;
 use std::collections::BTreeMap;
 use treetime_graph::assign_node_names::restrict_node_names;
-use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -271,18 +270,12 @@ fn reroot_optimize(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
-  let topo = RerootTopologyParams::default();
-
-  let reroot_result = match spec {
-    RerootSpec::Method(RerootMethod::MinDev) => reroot_min_dev(graph, topo, branch_lengths, names, log)?,
-    RerootSpec::Tips(tips) => {
-      let mrca = common_ancestor(graph, tips)?;
-      reroot_at_node(graph, mrca, topo, branch_lengths, names)?
-    },
-    RerootSpec::Method(method) => {
-      return make_internal_error!("optimize cannot reroot with a date-dependent method: {method:?}");
-    },
-  };
+  if let RerootSpec::Method(method @ (RerootMethod::LeastSquares | RerootMethod::Oldest | RerootMethod::ClockFilter)) =
+    spec
+  {
+    return make_internal_error!("optimize cannot reroot with a date-dependent method: {method:?}");
+  }
+  let reroot_result = reroot_undated(graph, branch_lengths, spec, names, log)?;
 
   let partitions = partitions.apply_reroot(&reroot_result)?;
   Ok(
