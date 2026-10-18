@@ -197,15 +197,12 @@ pub(crate) fn combine_in_quadrature(
 }
 
 /// Standard deviation of the clock rate for the rate susceptibility: `--clock-std-dev` when given, otherwise the
-/// estimate of `estimated` (the Gaussian clock at the final rate), evaluated only then
-pub(crate) fn determine_rate_std(
-  clock_std_dev: Option<f64>,
-  estimated: impl FnOnce() -> Result<Option<f64>, Report>,
-) -> Result<Option<f64>, Report> {
+/// `estimated` one (the Gaussian clock at the final rate)
+pub(crate) fn determine_rate_std(clock_std_dev: Option<f64>, estimated: Option<f64>) -> Result<Option<f64>, Report> {
   match clock_std_dev {
     Some(std_dev) if std_dev <= 0.0 => make_error!("--clock-std-dev must be positive, got {std_dev}"),
     Some(std_dev) => Ok(Some(std_dev)),
-    None => estimated(),
+    None => Ok(estimated),
   }
 }
 

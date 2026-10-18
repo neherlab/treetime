@@ -21,7 +21,7 @@
 //! when its number of children changed since.
 
 use crate::clock::gaussian::NodeTimeGaussian;
-use crate::timetree::inference::result::{NodePosterior, NodeTimes};
+use crate::timetree::inference::result::{NodePosterior, NodeTimes, TimeInference};
 use crate::timetree::max_posterior_region::posterior_survival;
 use eyre::{Report, WrapErr};
 use ndarray::Array1;
@@ -146,9 +146,9 @@ impl NodeSurvival {
   }
 }
 
-/// Expected lineage count `kbar(t)` and the survival function of every node, from the node posteriors of one pass.
-/// Nodes on bad branches are counted as surviving at all times, as `compute_lineage_counts` counts them at the
-/// present.
+/// Expected lineage count `kbar(t)` and the survival function of every node, from the node posteriors of one pass or
+/// the Gaussian node-time marginals. Nodes without a time, such as those on bad branches, count as surviving at all
+/// times.
 #[derive(Clone, Debug)]
 pub(crate) struct LineageExpectation {
   grid: Vec<f64>,
@@ -161,6 +161,12 @@ pub(crate) struct LineageExpectation {
 }
 
 impl LineageExpectation {
+  /// From the node posteriors of `time_inference`, without its bad branches
+  pub(crate) fn of_inference(graph: &Graph, time_inference: &TimeInference) -> Result<Arc<Self>, Report> {
+    Self::from_posterior(graph, &time_inference.posterior, &time_inference.bad_branches)
+      .wrap_err("Failed to compute the expected coalescent lineage counts")
+  }
+
   pub(crate) fn from_posterior(
     graph: &Graph,
     posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
@@ -184,7 +190,7 @@ impl LineageExpectation {
     })
   }
 
-  /// From the Gaussian node-time marginals of [`gaussian_clock`](crate::clock::gaussian::gaussian_clock): an internal
+  /// From the Gaussian node-time marginals of [`GaussianTree::clock`](crate::clock::gaussian::GaussianTree::clock): an internal
   /// node's time is its marginal truncated at the earliest included tip below it, a tip in `tip_times` that is not
   /// `excluded` sits at its date, and every other node counts as surviving at all times.
   pub(crate) fn from_gaussian(
@@ -254,23 +260,13 @@ impl LineageExpectation {
     graph: &Graph,
     merger_times: &BTreeMap<GraphNodeKey, f64>,
   ) -> Result<Arc<Self>, Report> {
-    let mut always_surviving = 0.0;
-    let mut nodes = BTreeMap::new();
-    for node in graph.get_nodes() {
-      let weight = 1.0 - node.outbound().len().to_f64_exact();
-      let survival = match (self.nodes.get(&node.key()), merger_times.get(&node.key())) {
+    Self::from_survivals(graph, |key| {
+      Ok(match (self.nodes.get(&key), merger_times.get(&key)) {
         (Some(survival), _) => Some(survival.clone()),
         (None, Some(&time)) => Some(NodeSurvival::point(time)),
         (None, None) => None,
-      };
-      match survival {
-        Some(survival) => {
-          nodes.insert(node.key(), NodeSurvival { weight, ..survival });
-        },
-        None => always_surviving += weight,
-      }
-    }
-    Self::aggregate(nodes, always_surviving)
+      })
+    })
   }
 
   /// `kbar(t)` and `V(t)` on a uniform grid over the span of the node survival functions

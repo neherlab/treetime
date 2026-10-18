@@ -27,15 +27,9 @@ pub(crate) fn find_best_root(
 
   let root_clock_set = state.node(root.key()).clone();
   let root_acceptable = !force_positive || objective.has_positive_rate(&root_clock_set);
-  let best_chisq = if root_acceptable {
-    objective.score(&root_clock_set)
-  } else {
-    f64::INFINITY
-  };
-  debug!(
-    "Initial root chi-squared: {:.6e} (acceptable: {root_acceptable})",
-    objective.score(&root_clock_set)
-  );
+  let root_chisq = objective.score(&root_clock_set);
+  debug!("Initial root chi-squared: {root_chisq:.6e} (acceptable: {root_acceptable})");
+  let best_chisq = if root_acceptable { root_chisq } else { f64::INFINITY };
 
   let mut best_res = FindRootResult {
     edge: None,

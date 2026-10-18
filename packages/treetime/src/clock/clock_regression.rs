@@ -4,7 +4,7 @@ use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockEdgeState, ClockInputs, ClockState};
 use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::RootObjective;
-use crate::clock::reroot::{RerootParams, RootSearch, reroot_at_best_root};
+use crate::clock::reroot::{RerootParams, reroot_at_best_root};
 use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
@@ -18,6 +18,8 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::RerootResult;
 
+/// Fits the clock model, after moving the root unless `keep_root`. The root search regresses on the input branch
+/// lengths; `prev_clock_rate`, when given, turns the divergences of the final fit into time lengths times that rate.
 pub(crate) fn estimate_clock_model_with_reroot_policy(
   tree: ClockTree,
   params: &ClockFitParams<'_>,
@@ -50,17 +52,20 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
       || params.reroot_params.clone(),
       |rate| params.reroot_params.with_objective(RootObjective::FixedRate(rate)),
     );
-    let search = RootSearch {
-      outliers,
-      reroot_params: &reroot_params,
-      prev_clock_rate,
-    };
     let ClockTree {
       graph,
       branch_lengths,
       inputs,
     } = &mut tree;
-    Some(reroot_at_best_root(graph, branch_lengths, inputs, &search, names, log)?)
+    Some(reroot_at_best_root(
+      graph,
+      branch_lengths,
+      inputs,
+      outliers,
+      &reroot_params,
+      names,
+      log,
+    )?)
   };
 
   progress_info!(log, "### Running backward regression");
@@ -110,6 +115,7 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
       estimate,
       reroot_result,
       points,
+      root_clock_set,
     },
   ))
 }
@@ -128,6 +134,8 @@ pub struct ClockRerootResult {
   estimate: ClockEstimate,
   reroot_result: Option<RerootResult>,
   points: Vec<ClockRegressionPoint>,
+  /// Regression sums of the tips at the root, for a refit at another rate
+  root_clock_set: ClockSet,
 }
 
 impl ClockRerootResult {
@@ -140,11 +148,11 @@ impl ClockRerootResult {
   }
 
   /// The clock fit, with the rate of `fallback` in place of a regression rate that is not positive, the intercept then
-  /// that of the line at this rate through the points of the fit
+  /// that of the line at this rate through the tips of the fit
   pub(crate) fn into_clock_fit_or(self, fallback: impl FnOnce() -> Result<f64, Report>) -> Result<ClockFit, Report> {
     match &self.estimate {
       ClockEstimate::Estimated(regression) if regression.clock_rate() <= 0.0 => {
-        let model = ClockModel::with_fixed_rate(&ClockSet::from_points(&self.points), fallback()?)?;
+        let model = ClockModel::with_fixed_rate(&self.root_clock_set, fallback()?)?;
         Ok(ClockFit {
           model,
           points: self.points,
