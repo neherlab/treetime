@@ -16,13 +16,13 @@ the slope of the root-to-tip regression. Without a coalescent prior the regressi
   candidate rate rescales their time axis (`fn Distribution.scale_time()`) and costs one backward pass.
 - One parabolic step in log rate: `log_lh_time` at the round's rate and at that rate divided and multiplied by 1.25
   gives a parabola, whose maximum, at most 2-fold away, is the target; without a maximum the target is that bound on
-  the side of the better probe. The rate moves half-way to the target in log rate, so at most by a factor of $\sqrt 2$
-  per round.
+  the side of the better probe. The rate moves 2/3 of the way to the target in log rate (`STEP_FRACTION`), so at
+  most by a factor of $2^{2/3} \approx 1.59$ per round.
 - The step does not optimize precisely: the refinement loop repeats it every round, with the coalescent timescale and
   the node times re-estimated in between. A full Brent search (to `1e-3` within a 3-fold window) made the loop
   oscillate: on a flat `log_lh_time` the rate moved a few percent per round, and node times jumped by up to 1.8 years
-  between rounds on a 400-tip tree with true rate and topology. The half step damps that coupling, and its three
-  backward passes replace the 10-20 of the search.
+  between rounds on a 400-tip tree with true rate and topology. The partial step damps that coupling, and its three
+  backward passes replace the 10-20 of the search. See [Step fraction](#step-fraction) for the choice of 2/3.
 - The clock model is then fitted with that rate fixed (intercept and outputs as for `--clock-rate`).
 - The pre-loop and the initial round keep the regression, which supplies the starting rate and the rooting.
 
@@ -45,8 +45,9 @@ true topology and root, `--coalescent-opt`, `--clock-filter 0`, default number o
 These numbers are for the full Brent search. The rate is closer to the truth in 19 of 24 sets and the date RMSE lower
 in 20 of 24. Rates come out about 5% low on average, most at the lowest signal.
 
-The half step against the full search, 10 rounds, `const`, `exp` and `piecewise` schedules, replicates 0-9 (median
-date RMSE and root error; "late jump" is the largest node-time change after round 3, median over sets):
+The half step (the fraction before 2/3) against the full search, 10 rounds, `const`, `exp` and `piecewise` schedules,
+replicates 0-9 (median date RMSE and root error; "late jump" is the largest node-time change after round 3, median over
+sets):
 
 | set | rate step | rate bias, mean log | date RMSE | root error | late jump | run time |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -58,7 +59,41 @@ date RMSE and root error; "late jump" is the largest node-time change after roun
 | | half step | -0.723 | 0.406 | 5.41 | 0.41 | 41 s |
 
 On `data/ebola/20` the half step converges in 6 rounds with `--coalescent-opt` (6 with the search) and in 9 with
-`--coalescent 2.56` (3 with the search): halving makes the approach to a fixed point geometric.
+`--coalescent 2.56` (3 with the search): the partial step makes the approach to a fixed point geometric.
+
+## Step fraction
+
+With step fraction $a$, the log rate moves $x' = x + a\,(T - x)$ toward the target $T$. Between rounds $T$ follows the
+rate through the re-estimated times and Tc; near the fixed point $T = x^* + s\,(x - x^*)$, and the distance to $x^*$
+shrinks by $1 - a(1 - s)$ per round. A full step ($a = 1$) oscillates where the target overshoots ($s \approx -1$),
+which is what the Brent search did at low signal; a smaller step damps that but converges slowly where the target lags
+($0 < s < 1$).
+
+Measured slopes $s$ (within-run secant of $\ln T$ on $\ln$ rate, rounds 2-12, step 1/2, `keep-{opt,skyline}-est`, all
+schedules, replicates 0-9): median $+0.30$ at $L=10^4$, $\mu=3\cdot10^{-4}$; $+0.11$ at $L=10^4$, $\mu=3\cdot10^{-3}$;
+$-0.10$ at $L=10^3$, $\mu=10^{-3}$, with a quarter of the runs below $-0.5$. So the target lags at high signal and
+overshoots at low signal, and no single fraction is best for both.
+
+Same runs, 12 rounds (rounds to reach 5% / 2% of the step-1/2 fixed point, median; late jitter is the within-run SD of
+$\ln$ rate over rounds 6-12, median):
+
+| set | step | rounds to 5% / 2% | late jitter | late max node-time change, years |
+| --- | --- | --- | --- | --- |
+| $L=10^4$, $\mu=3\cdot10^{-4}$ | 1/2 | 4 / 6 | 0.008 | 0.26 |
+| | 2/3 | 3 / 4 | 0.007 | 0.28 |
+| | 3/4 | | 0.007 | 0.26 |
+| | 1 | | 0.011 | 0.30 |
+| $L=10^3$, $\mu=10^{-3}$ | 1/2 | 6 / 6.5 | 0.118 | 0.64 |
+| | 2/3 | 4 / 5.5 | 0.189 | 0.69 |
+| | 3/4 | | 0.243 | 0.81 |
+| | 1 | | 0.371 | 1.85 |
+
+2/3 reaches the high-signal fixed point about one round sooner than 1/2, at 1.6 times the late rate jitter at low
+signal; 3/4 and above bring the low-signal oscillation back. An adaptive fraction $a = 1/(1-s)$ from the secant of the
+last two rounds, bounded to $[0.25, 1]$, was about half a round faster than 2/3 at high signal, noisier at low signal
+(mean $|\ln$ rate error$|$ after round 2: 0.32 against 0.26), and no more stable on `data/ebola/{20,100,362}`, so it
+was not kept. The rate error against the truth after round 2 differs between the three rules by at most 0.02 in
+$\ln$ rate at high signal, against 0.11 left after 12 rounds, most of it the lineage-count bias below.
 
 ## Accepted limitations
 
