@@ -134,8 +134,8 @@ mod tests {
     let i_cross = -(ll(hm, ht) - ll(hm, -ht) - ll(-hm, ht) + ll(-hm, -ht)) / (4.0 * hm * ht);
     let cov = invert([[i_mm, i_cross], [i_cross, i_tt]]);
 
-    approx::assert_relative_eq!(clock.rate_std, cov[0][0].sqrt(), max_relative = 1e-5);
-    approx::assert_relative_eq!(clock.root_time_std, cov[1][1].sqrt(), max_relative = 1e-5);
+    approx::assert_relative_eq!(clock.rate_std.unwrap(), cov[0][0].sqrt(), max_relative = 1e-5);
+    approx::assert_relative_eq!(clock.root_time_std.unwrap(), cov[1][1].sqrt(), max_relative = 1e-5);
     Ok(())
   }
 
@@ -148,8 +148,12 @@ mod tests {
 
     let (expected, expected_times) = run(pruned, &dates, &[])?;
     for (clock, times) in [run(full, &with_d, &["D"])?, run(full, &dates, &[])?] {
-      pretty_assert_ulps_eq!(clock.rate_std, expected.rate_std, max_ulps = 16);
-      pretty_assert_ulps_eq!(clock.root_time_std, expected.root_time_std, max_ulps = 16);
+      pretty_assert_ulps_eq!(clock.rate_std.unwrap(), expected.rate_std.unwrap(), max_ulps = 16);
+      pretty_assert_ulps_eq!(
+        clock.root_time_std.unwrap(),
+        expected.root_time_std.unwrap(),
+        max_ulps = 16
+      );
       assert_eq!(
         times.keys().collect::<Vec<_>>(),
         expected_times.keys().collect::<Vec<_>>()
