@@ -100,8 +100,6 @@ $\ln$ rate at high signal, against 0.11 left after 12 rounds, most of it the lin
 - The coalescent prior's lineage counts are frozen
   ([timetree-frozen-lineage-counts-for-coalescent-prior.md](timetree-frozen-lineage-counts-for-coalescent-prior.md)),
   which biases the rate at low signal and makes the curvature of `log_lh_time` an overconfident rate uncertainty.
-- The fixed-rate clock model carries no regression covariance, so `--covariation` gives no rate uncertainty for these
-  runs; the rate-susceptibility analysis then needs `--clock-std-dev`.
 
 ## Related
 
