@@ -124,13 +124,16 @@ export const zTreeFacts = z.object({
 });
 
 /**
- * Facts about an alignment.
+ * Facts about one alignment file.
  */
 export const zAlignmentFacts = z.object({
+  partition: z.int().gte(0),
+  path: z.string(),
   sequences: z.int().gte(0),
   min_length: z.int().gte(0),
   max_length: z.int().gte(0),
-  duplicate_names: z.array(z.string())
+  duplicate_names: z.array(z.string()),
+  tips_without_sequence: z.array(z.string()).optional()
 });
 
 /**
@@ -159,6 +162,7 @@ export const zMetadataFacts = z.object({
  */
 export const zInputProblem = z.object({
   input: zInputKind,
+  partition: z.int().gte(0).optional(),
   message: z.string()
 });
 
@@ -167,10 +171,9 @@ export const zInputProblem = z.object({
  */
 export const zInputFacts = z.object({
   tree: zTreeFacts.optional(),
-  alignment: zAlignmentFacts.optional(),
+  alignments: z.array(zAlignmentFacts),
   metadata: zMetadataFacts.optional(),
   tips_without_metadata: z.array(z.string()).optional(),
-  tips_without_sequence: z.array(z.string()).optional(),
   problems: z.array(zInputProblem)
 });
 

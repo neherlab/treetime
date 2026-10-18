@@ -422,8 +422,8 @@ pub(crate) mod tests {
         facts["metadata"]["id_column"].clone(),
         facts["metadata"]["date_column"].clone(),
         facts["tips_without_metadata"].clone(),
-        facts["tips_without_sequence"].clone(),
-        facts["alignment"]["sequences"].clone(),
+        facts["alignments"][0]["tips_without_sequence"].clone(),
+        facts["alignments"][0]["sequences"].clone(),
       )
     );
   }

@@ -2,7 +2,6 @@ use crate::commands::shared::input_warnings::warn_duplicate_names;
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
-use itertools::Itertools;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
@@ -13,8 +12,8 @@ use treetime::seq::alignment::LeafSequences;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pair_by_name::pair_by_name;
-use treetime_io::fasta::{FastaRecord, fasta_read_file};
-use treetime_primitives::{AlphabetLike, Seq};
+use treetime_io::fasta::FastaRecord;
+use treetime_primitives::Seq;
 #[cfg(feature = "clap")]
 use treetime_schema::schema_defaults;
 use treetime_utils::io::file::is_path_stdin;
@@ -108,12 +107,4 @@ pub(crate) fn pair_alignment(
 pub(crate) struct PairedAlignment {
   pub(crate) sequences: LeafSequences,
   pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
-}
-
-pub fn read_alignment<A: AlphabetLike>(paths: &[PathBuf], alphabet: &A) -> Result<Vec<FastaRecord>, Report> {
-  paths
-    .iter()
-    .map(|path| fasta_read_file(path, alphabet))
-    .flatten_ok()
-    .collect()
 }

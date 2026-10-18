@@ -1,5 +1,6 @@
 use crate::check_inputs::{CommandInput, InputKind, InputNeed};
 use crate::config::cli_rules::cli_rule_diagnostics;
+use crate::run_checks::MissingSequences;
 use crate::runs::errors::invalid;
 use app_commands::command::{AppCommand, CommandArgs, RawConfig, settings_map};
 use app_commands::command_config::CommandConfig;
@@ -57,6 +58,14 @@ impl AppCommandExt for AppCommand {
 
   fn uses_dates(self) -> bool {
     matches!(self, Self::Timetree | Self::Clock)
+  }
+
+  fn missing_sequences(self) -> MissingSequences {
+    match self {
+      Self::Ancestral | Self::Homoplasy => MissingSequences::LimitedUnlessIgnored,
+      Self::Optimize | Self::Timetree | Self::Prune => MissingSequences::Limited,
+      Self::Clock | Self::Mugration => MissingSequences::Unread,
+    }
   }
 
   fn title(self) -> &'static str {
@@ -198,6 +207,8 @@ pub trait AppCommandExt {
   fn inputs(self) -> &'static [CommandInput];
 
   fn uses_dates(self) -> bool;
+
+  fn missing_sequences(self) -> MissingSequences;
 
   fn title(self) -> &'static str;
 

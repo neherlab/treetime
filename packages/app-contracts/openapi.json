@@ -1568,10 +1568,12 @@
             "$ref": "#/components/schemas/TreeFacts",
             "x-unset": true
           },
-          "alignment": {
-            "description": "Facts about the alignment, when it could be read.",
-            "$ref": "#/components/schemas/AlignmentFacts",
-            "x-unset": true
+          "alignments": {
+            "description": "Facts about each alignment file that could be read, in the order of the alignment setting.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlignmentFacts"
+            }
           },
           "metadata": {
             "description": "Facts about the metadata table, when it could be read.",
@@ -1580,14 +1582,6 @@
           },
           "tips_without_metadata": {
             "description": "Tree tips without a metadata row; present when both the tree and the metadata could be read.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "x-unset": true
-          },
-          "tips_without_sequence": {
-            "description": "Tree tips without a sequence; present when both the tree and the alignment could be read.",
             "type": "array",
             "items": {
               "type": "string"
@@ -1603,6 +1597,7 @@
           }
         },
         "required": [
+          "alignments",
           "problems"
         ]
       },
@@ -1651,9 +1646,19 @@
         ]
       },
       "AlignmentFacts": {
-        "description": "Facts about an alignment.",
+        "description": "Facts about one alignment file.",
         "type": "object",
         "properties": {
+          "partition": {
+            "description": "Partition number of the file: its position in the alignment setting, from 1.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "path": {
+            "description": "Path of the file, as the alignment setting gives it.",
+            "type": "string"
+          },
           "sequences": {
             "description": "Number of sequences.",
             "type": "integer",
@@ -1673,14 +1678,24 @@
             "minimum": 0
           },
           "duplicate_names": {
-            "description": "Sequence names that occur more than once.",
+            "description": "Sequence names that occur more than once in the file.",
             "type": "array",
             "items": {
               "type": "string"
             }
+          },
+          "tips_without_sequence": {
+            "description": "Tree tips without a sequence in the file; present when the tree could be read.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-unset": true
           }
         },
         "required": [
+          "partition",
+          "path",
           "sequences",
           "min_length",
           "max_length",
@@ -1769,6 +1784,13 @@
           "input": {
             "description": "Input the problem concerns.",
             "$ref": "#/components/schemas/InputKind"
+          },
+          "partition": {
+            "description": "Partition number of the alignment file the problem concerns, for an alignment problem.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0,
+            "x-unset": true
           },
           "message": {
             "description": "The error, with its causes.",

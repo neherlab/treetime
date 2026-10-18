@@ -48,7 +48,7 @@ mod tests {
       }),
     ))
     .unwrap();
-    let alignment = facts.alignment.clone().unwrap();
+    let alignment = facts.alignments[0].clone();
     assert_eq!(
       (
         Some(MetadataFacts {
@@ -63,21 +63,22 @@ mod tests {
             on_day_1_or_15: 54,
           }),
         }),
-        AlignmentFacts {
+        vec![AlignmentFacts {
+          partition: 1,
+          path: data("zika/86/aln.fasta.xz"),
           sequences: 86,
           min_length: alignment.max_length,
           max_length: alignment.max_length,
           duplicate_names: vec![],
-        },
-        Some(vec![]),
+          tips_without_sequence: Some(vec![]),
+        }],
         Some(vec![]),
         0,
       ),
       (
         facts.metadata,
-        alignment,
+        facts.alignments,
         facts.tips_without_metadata,
-        facts.tips_without_sequence,
         facts.problems.len(),
       )
     );
@@ -117,13 +118,10 @@ mod tests {
       ),
       (
         facts.tips_without_metadata,
-        facts.tips_without_sequence,
+        facts.alignments[0].tips_without_sequence.clone(),
         facts.tree.unwrap().polytomies,
         facts.metadata.unwrap().dates,
-        (
-          facts.alignment.as_ref().unwrap().min_length,
-          facts.alignment.as_ref().unwrap().max_length
-        ),
+        (facts.alignments[0].min_length, facts.alignments[0].max_length),
       )
     );
   }
@@ -138,9 +136,84 @@ mod tests {
       }),
     ))
     .unwrap();
+    assert_eq!((true, vec![]), (facts.tree.is_some(), facts.alignments));
+  }
+
+  #[test]
+  fn test_check_inputs_reports_facts_per_alignment_file() {
+    let dir = tempdir().unwrap();
+    fs::create_dir_all(dir.path().join("ha")).unwrap();
+    fs::create_dir_all(dir.path().join("na")).unwrap();
+    let tree = dir.path().join("tree.nwk");
+    let ha = dir.path().join("ha/aligned.fasta");
+    let na = dir.path().join("na/aligned.fasta");
+    let missing = dir.path().join("mp/aligned.fasta");
+    fs::write(&tree, "((A:1,B:1):1,C:1);\n").unwrap();
+    fs::write(&ha, ">A\nACGT\n>A\nACGA\n>B\nACGT\n").unwrap();
+    fs::write(&na, ">A\nAC\n>C\nACG\n").unwrap();
+
+    let facts = check_inputs(&request(
+      AppCommand::Optimize,
+      json!({ "tree": tree, "alignment": [ha, na, missing] }),
+    ))
+    .unwrap();
+
     assert_eq!(
-      (true, None, None),
-      (facts.tree.is_some(), facts.alignment, facts.tips_without_sequence)
+      (
+        vec![
+          AlignmentFacts {
+            partition: 1,
+            path: ha,
+            sequences: 3,
+            min_length: 4,
+            max_length: 4,
+            duplicate_names: vec!["A".to_owned()],
+            tips_without_sequence: Some(vec!["C".to_owned()]),
+          },
+          AlignmentFacts {
+            partition: 2,
+            path: na,
+            sequences: 2,
+            min_length: 2,
+            max_length: 3,
+            duplicate_names: vec![],
+            tips_without_sequence: Some(vec!["B".to_owned()]),
+          },
+        ],
+        vec![(InputKind::Alignment, Some(3))],
+      ),
+      (
+        facts.alignments,
+        facts
+          .problems
+          .iter()
+          .map(|problem| (problem.input, problem.partition))
+          .collect::<Vec<_>>()
+      )
+    );
+  }
+
+  #[test]
+  fn test_check_inputs_sequence_lengths_count_the_first_record_of_each_name() {
+    let dir = tempdir().unwrap();
+    let tree = dir.path().join("tree.nwk");
+    let aln = dir.path().join("aln.fasta");
+    fs::write(&tree, "(A:1,B:1);\n").unwrap();
+    fs::write(&aln, ">A\nACGT\n>A\nAC\n>B\nACGT\n").unwrap();
+
+    let facts = check_inputs(&request(
+      AppCommand::Optimize,
+      json!({ "tree": tree, "alignment": [aln] }),
+    ))
+    .unwrap();
+
+    assert_eq!(
+      vec![(4, 4, vec!["A".to_owned()])],
+      facts
+        .alignments
+        .iter()
+        .map(|file| (file.min_length, file.max_length, file.duplicate_names.clone()))
+        .collect::<Vec<_>>()
     );
   }
 

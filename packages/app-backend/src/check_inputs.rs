@@ -1,6 +1,5 @@
 use crate::command::AppCommandExt;
 use app_commands::command::AppCommand;
-use app_commands::commands::shared::alignment::read_alignment;
 use app_commands::commands::shared::tree_input::TreeDialectArg;
 use app_commands::json_value::SparseConfig;
 use chrono::Datelike;
@@ -16,7 +15,7 @@ use strum_macros::Display;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime_io::csv::{DELIMITED_EXTENSIONS, default_metadata_delimiters, default_name_candidates};
 use treetime_io::dates_csv::{DateConstraint, DateValue, MetadataTable, metadata_read_file};
-use treetime_io::fasta::FASTA_EXTENSIONS;
+use treetime_io::fasta::{FASTA_EXTENSIONS, fasta_read_file};
 use treetime_io::nwk::NewickDialect;
 use treetime_io::tree::{TREE_EXTENSIONS, tree_read_file};
 use treetime_schema::skip_serializing_optionals;
@@ -85,9 +84,10 @@ pub enum InputNeed {
 pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> {
   let request = InputSettings::of(request.command, &request.config)?;
   let mut facts = InputFacts::default();
-  let mut problem = |input: InputKind, report: &Report| {
+  let mut problem = |input: InputKind, partition: Option<usize>, report: &Report| {
     facts.problems.push(InputProblem {
       input,
+      partition,
       message: format!("{report:#}"),
     });
   };
@@ -99,17 +99,25 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
     .map(|path| read_tree(path, tree_dialect))
     .transpose();
   let tree = tree.unwrap_or_else(|report| {
-    problem(InputKind::Tree, &report);
+    problem(InputKind::Tree, None, &report);
     None
   });
 
-  let sequences = (!request.alignment.is_empty())
-    .then(|| read_sequence_names(&request.alignment))
-    .transpose()
-    .unwrap_or_else(|report| {
-      problem(InputKind::Alignment, &report);
-      None
-    });
+  let alignments = request
+    .alignment
+    .iter()
+    .enumerate()
+    .filter_map(|(index, path)| {
+      let partition = index + 1;
+      match read_sequence_names(path, partition) {
+        Ok(read) => Some(read),
+        Err(report) => {
+          problem(InputKind::Alignment, Some(partition), &report);
+          None
+        },
+      }
+    })
+    .collect_vec();
 
   let id_candidates = if request.metadata_id_columns.is_empty() {
     default_name_candidates()
@@ -127,7 +135,7 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
     .map(|path| read_metadata(path, &delimiters, &id_candidates, request.date_column.as_deref()))
     .transpose()
     .unwrap_or_else(|report| {
-      problem(InputKind::Metadata, &report);
+      problem(InputKind::Metadata, None, &report);
       None
     });
 
@@ -136,15 +144,21 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
     None => (None, None, None),
   };
   if let Some(report) = date_problem {
-    problem(InputKind::Metadata, &report);
+    problem(InputKind::Metadata, None, &report);
   }
 
-  if let Some((tree, tips)) = &tree {
-    facts.tips_without_metadata = metadata_names.as_ref().map(|names| missing(tips, names));
-    facts.tips_without_sequence = sequences.as_ref().map(|(_, names)| missing(tips, names));
-    facts.tree = Some(tree.clone());
+  let tips = tree.as_ref().map(|(_, tips)| tips);
+  facts.alignments = alignments
+    .into_iter()
+    .map(|(alignment, names)| AlignmentFacts {
+      tips_without_sequence: tips.map(|tips| missing(tips, &names)),
+      ..alignment
+    })
+    .collect();
+  if let Some((tree, tips)) = tree {
+    facts.tips_without_metadata = metadata_names.as_ref().map(|names| missing(&tips, names));
+    facts.tree = Some(tree);
   }
-  facts.alignment = sequences.map(|(alignment, _)| alignment);
   facts.metadata = metadata;
   Ok(facts)
 }
@@ -197,23 +211,25 @@ impl InputSettings {
 pub struct InputFacts {
   /// Facts about the tree, when it could be read.
   pub tree: Option<TreeFacts>,
-  /// Facts about the alignment, when it could be read.
-  pub alignment: Option<AlignmentFacts>,
+  /// Facts about each alignment file that could be read, in the order of the alignment setting.
+  pub alignments: Vec<AlignmentFacts>,
   /// Facts about the metadata table, when it could be read.
   pub metadata: Option<MetadataFacts>,
   /// Tree tips without a metadata row; present when both the tree and the metadata could be read.
   pub tips_without_metadata: Option<Vec<String>>,
-  /// Tree tips without a sequence; present when both the tree and the alignment could be read.
-  pub tips_without_sequence: Option<Vec<String>>,
   /// Inputs that could not be read, with the reason.
   pub problems: Vec<InputProblem>,
 }
 
 /// An input that could not be read.
 #[derive(Clone, Debug, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct InputProblem {
   /// Input the problem concerns.
   pub input: InputKind,
+  /// Partition number of the alignment file the problem concerns, for an alignment problem.
+  pub partition: Option<usize>,
   /// The error, with its causes.
   pub message: String,
 }
@@ -300,30 +316,45 @@ pub struct TreeFacts {
   pub duplicate_node_names: Vec<String>,
 }
 
-fn read_sequence_names(paths: &[PathBuf]) -> Result<(AlignmentFacts, BTreeSet<String>), Report> {
-  let records = read_alignment(paths, &Alphabet::default())?;
+fn read_sequence_names(path: &Path, partition: usize) -> Result<(AlignmentFacts, BTreeSet<String>), Report> {
+  let records = fasta_read_file(path, &Alphabet::default())?;
   let names = records.iter().map(|record| record.seq_name.clone()).collect_vec();
-  let lengths = records.iter().map(|record| record.seq.len()).collect_vec();
+  let lengths = records
+    .iter()
+    .unique_by(|record| &record.seq_name)
+    .map(|record| record.seq.len())
+    .collect_vec();
   let facts = AlignmentFacts {
+    partition,
+    path: path.to_path_buf(),
     sequences: records.len(),
     min_length: lengths.iter().copied().min().unwrap_or(0),
     max_length: lengths.iter().copied().max().unwrap_or(0),
     duplicate_names: duplicates(&names),
+    tips_without_sequence: None,
   };
   Ok((facts, names.into_iter().collect()))
 }
 
-/// Facts about an alignment.
+/// Facts about one alignment file.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 pub struct AlignmentFacts {
+  /// Partition number of the file: its position in the alignment setting, from 1.
+  pub partition: usize,
+  /// Path of the file, as the alignment setting gives it.
+  pub path: PathBuf,
   /// Number of sequences.
   pub sequences: usize,
   /// Length of the shortest sequence.
   pub min_length: usize,
   /// Length of the longest sequence; equal to `min_length` for an alignment.
   pub max_length: usize,
-  /// Sequence names that occur more than once.
+  /// Sequence names that occur more than once in the file.
   pub duplicate_names: Vec<String>,
+  /// Tree tips without a sequence in the file; present when the tree could be read.
+  pub tips_without_sequence: Option<Vec<String>>,
 }
 
 fn read_metadata(

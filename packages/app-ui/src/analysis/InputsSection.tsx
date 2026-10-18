@@ -8,7 +8,7 @@ import { pressedChoice } from "../components/toggleChoice";
 import { formatBytes } from "../format";
 import { useHost } from "../host-context";
 import { commandSettings } from "../settings/catalog";
-import { baseName, pathList, slotFactsText, slotProblem } from "../settings/inputs";
+import { baseName, pathList, slotFactsText, slotProblems } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { EXAMPLES_PANEL_KINDS, EXAMPLES_PANELS, ExamplesPanel, type ExamplesPanelKind } from "./ExamplesPanel";
@@ -74,11 +74,13 @@ function InputSlotRow({
   const { getRootProps, getInputProps, isDragActive } = useFileDrop(command, slot.kind, slot.list);
   const paths = pathList(watched === undefined ? undefined : fromFormValue(watched));
   const factsText = slotFactsText(slot.kind, facts, commandSettings(command).uses_dates);
-  const problem = slotProblem(slot.kind, facts);
+  const problems = slotProblems(slot.kind, facts);
 
   return (
     <div
       {...getRootProps({
+        role: "group",
+        "aria-label": slot.label,
         className: cn(
           "bg-card grid grid-cols-[7.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
           paths.length === 0 && "border-input border-dashed",
@@ -86,7 +88,7 @@ function InputSlotRow({
         ),
       })}
     >
-      <input {...getInputProps()} />
+      <input {...getInputProps()} aria-label={`Dropped ${slot.label} files`} />
       <div className="grid gap-0.5">
         <span className="font-bold">{slot.label}</span>
         <span className="text-muted-foreground text-xs">
@@ -101,16 +103,21 @@ function InputSlotRow({
               <span className="text-muted-foreground ml-2">{formatBytes(source.size)}</span>
             )}
           </div>
-          {problem === null ? (
-            <div className="text-muted-foreground text-xs">{factsText ?? "Checking..."}</div>
-          ) : (
-            <div className="text-destructive text-xs">{problem}</div>
-          )}
+          {(factsText ?? (problems.length === 0 ? ["Checking..."] : [])).map((line) => (
+            <div key={line} className="text-muted-foreground text-xs">
+              {line}
+            </div>
+          ))}
+          {problems.map((problem) => (
+            <div key={problem} className="text-destructive text-xs">
+              {problem}
+            </div>
+          ))}
         </div>
       ) : (
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <Upload aria-hidden className="size-4" />
-          Drop a file here or choose one
+          {slot.list ? "Drop files here or choose them" : "Drop a file here or choose one"}
         </div>
       )}
       <PathPicker

@@ -1,4 +1,5 @@
 import type {
+  AlignmentFacts,
   AppCommand,
   CheckInputsRequest,
   Dataset,
@@ -97,28 +98,30 @@ function stringOrNull(value: JsonValue | undefined): string | null {
   return parsed.success ? parsed.data : null;
 }
 
-export function slotFactsText(slot: InputKind, facts: InputFacts | undefined, usesDates: boolean): string | null {
+export function slotFactsText(slot: InputKind, facts: InputFacts | undefined, usesDates: boolean): string[] | null {
   if (slot === "tree") {
     const tree = facts?.tree;
 
     return tree === undefined
       ? null
-      : `${tree.tips} tips, ${tree.internal_nodes} internal nodes, ${tree.polytomies} polytomies`;
+      : [`${tree.tips} tips, ${tree.internal_nodes} internal nodes, ${tree.polytomies} polytomies`];
   }
 
   if (slot === "alignment") {
-    const alignment = facts?.alignment;
+    const alignments = facts?.alignments ?? [];
 
-    if (alignment === undefined) {
+    if (alignments.length === 0) {
       return null;
     }
 
-    const sites =
-      alignment.min_length === alignment.max_length
-        ? `${alignment.max_length.toLocaleString("en-US")} sites`
-        : `lengths ${alignment.min_length} to ${alignment.max_length}, so it is not aligned`;
+    const several =
+      alignments.length > 1 || facts?.problems.some((problem) => problem.partition !== undefined) === true;
 
-    return `${alignment.sequences} sequences, ${sites}`;
+    return alignments.map((alignment) => {
+      const text = alignmentFactsText(alignment);
+
+      return several ? `${alignmentName(alignment.partition, alignment.path)}: ${text}` : text;
+    });
   }
 
   const metadata = facts?.metadata;
@@ -132,9 +135,26 @@ export function slotFactsText(slot: InputKind, facts: InputFacts | undefined, us
 
   const dates = usesDates ? `; ${dateColumn}` : "";
 
-  return `${metadata.rows} rows; ID column ${metadata.id_column}${dates}`;
+  return [`${metadata.rows} rows; ID column ${metadata.id_column}${dates}`];
 }
 
-export function slotProblem(slot: InputKind, facts: InputFacts | undefined): string | null {
-  return facts?.problems.find((problem) => problem.input === slot)?.message ?? null;
+export function slotProblems(slot: InputKind, facts: InputFacts | undefined): string[] {
+  return (facts?.problems ?? [])
+    .filter((problem) => problem.input === slot)
+    .map((problem) =>
+      problem.partition === undefined ? problem.message : `Alignment ${problem.partition}: ${problem.message}`,
+    );
+}
+
+function alignmentFactsText(alignment: AlignmentFacts): string {
+  const sites =
+    alignment.min_length === alignment.max_length
+      ? `${alignment.max_length.toLocaleString("en-US")} sites`
+      : `lengths ${alignment.min_length} to ${alignment.max_length}, so it is not aligned`;
+
+  return `${alignment.sequences} sequences, ${sites}`;
+}
+
+function alignmentName(partition: number, path: string): string {
+  return `Alignment ${partition} (${baseName(path)})`;
 }

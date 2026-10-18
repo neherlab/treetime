@@ -7,7 +7,7 @@ import {
   pathList,
   runInputAssignments,
   slotFactsText,
-  slotProblem,
+  slotProblems,
 } from "../inputs";
 import { setAt } from "../json";
 
@@ -77,7 +77,16 @@ describe("inputs", () => {
 describe("slot facts", () => {
   const facts = {
     tree: { tips: 86, internal_nodes: 61, polytomies: 15, unnamed_tips: 0, duplicate_node_names: [] },
-    alignment: { sequences: 86, min_length: 10807, max_length: 10807, duplicate_names: [] },
+    alignments: [
+      {
+        partition: 1,
+        path: "zika/aln.fasta",
+        sequences: 86,
+        min_length: 10807,
+        max_length: 10807,
+        duplicate_names: [],
+      },
+    ],
     metadata: { rows: 86, columns: ["name", "date"], id_column: "name", date_column: "date" },
     problems: [{ input: "tree" as const, message: "bad" }],
   };
@@ -89,23 +98,59 @@ describe("slot facts", () => {
       slotFactsText("metadata", facts, true),
       slotFactsText("metadata", facts, false),
     ]).toStrictEqual([
-      "86 tips, 61 internal nodes, 15 polytomies",
-      "86 sequences, 10,807 sites",
-      "86 rows; ID column name; date column date",
-      "86 rows; ID column name",
+      ["86 tips, 61 internal nodes, 15 polytomies"],
+      ["86 sequences, 10,807 sites"],
+      ["86 rows; ID column name; date column date"],
+      ["86 rows; ID column name"],
     ]);
   });
 
   test("an unequal alignment says it is not aligned", () => {
-    const uneven = { ...facts, alignment: { sequences: 2, min_length: 9, max_length: 10, duplicate_names: [] } };
+    const uneven = {
+      ...facts,
+      alignments: [{ partition: 1, path: "a.fasta", sequences: 2, min_length: 9, max_length: 10, duplicate_names: [] }],
+    };
 
-    expect(slotFactsText("alignment", uneven, false)).toStrictEqual(
+    expect(slotFactsText("alignment", uneven, false)).toStrictEqual([
       "2 sequences, lengths 9 to 10, so it is not aligned",
-    );
+    ]);
   });
 
-  test("a slot shows the problem of its own input", () => {
-    expect([slotProblem("tree", facts), slotProblem("metadata", facts)]).toStrictEqual(["bad", null]);
+  test("several alignment files show their facts and problems per file", () => {
+    const several = {
+      ...facts,
+      alignments: [
+        {
+          partition: 1,
+          path: "/runs/r1/inputs/1/aligned.fasta",
+          sequences: 86,
+          min_length: 9,
+          max_length: 9,
+          duplicate_names: [],
+        },
+        {
+          partition: 2,
+          path: "/runs/r1/inputs/2/aligned.fasta",
+          sequences: 80,
+          min_length: 4,
+          max_length: 5,
+          duplicate_names: [],
+        },
+      ],
+      problems: [{ input: "alignment" as const, partition: 3, message: "When reading file 'mp.fasta': no such file" }],
+    };
+
+    expect([slotFactsText("alignment", several, false), slotProblems("alignment", several)]).toStrictEqual([
+      [
+        "Alignment 1 (aligned.fasta): 86 sequences, 9 sites",
+        "Alignment 2 (aligned.fasta): 80 sequences, lengths 4 to 5, so it is not aligned",
+      ],
+      ["Alignment 3: When reading file 'mp.fasta': no such file"],
+    ]);
+  });
+
+  test("a slot shows the problems of its own input", () => {
+    expect([slotProblems("tree", facts), slotProblems("metadata", facts)]).toStrictEqual([["bad"], []]);
   });
 });
 

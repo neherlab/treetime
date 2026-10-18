@@ -183,9 +183,9 @@ export type InputFacts = {
    */
   tree?: TreeFacts;
   /**
-   * Facts about the alignment, when it could be read.
+   * Facts about each alignment file that could be read, in the order of the alignment setting.
    */
-  alignment?: AlignmentFacts;
+  alignments: Array<AlignmentFacts>;
   /**
    * Facts about the metadata table, when it could be read.
    */
@@ -194,10 +194,6 @@ export type InputFacts = {
    * Tree tips without a metadata row; present when both the tree and the metadata could be read.
    */
   tips_without_metadata?: Array<string>;
-  /**
-   * Tree tips without a sequence; present when both the tree and the alignment could be read.
-   */
-  tips_without_sequence?: Array<string>;
   /**
    * Inputs that could not be read, with the reason.
    */
@@ -231,9 +227,17 @@ export type TreeFacts = {
 };
 
 /**
- * Facts about an alignment.
+ * Facts about one alignment file.
  */
 export type AlignmentFacts = {
+  /**
+   * Partition number of the file: its position in the alignment setting, from 1.
+   */
+  partition: number;
+  /**
+   * Path of the file, as the alignment setting gives it.
+   */
+  path: string;
   /**
    * Number of sequences.
    */
@@ -247,9 +251,13 @@ export type AlignmentFacts = {
    */
   max_length: number;
   /**
-   * Sequence names that occur more than once.
+   * Sequence names that occur more than once in the file.
    */
   duplicate_names: Array<string>;
+  /**
+   * Tree tips without a sequence in the file; present when the tree could be read.
+   */
+  tips_without_sequence?: Array<string>;
 };
 
 /**
@@ -308,6 +316,10 @@ export type InputProblem = {
    * Input the problem concerns.
    */
   input: InputKind;
+  /**
+   * Partition number of the alignment file the problem concerns, for an alignment problem.
+   */
+  partition?: number;
   /**
    * The error, with its causes.
    */

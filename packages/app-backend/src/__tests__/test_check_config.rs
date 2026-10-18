@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub(crate) mod tests {
   use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
-  use crate::check_inputs::{InputFacts, TreeFacts};
+  use crate::check_inputs::{AlignmentFacts, InputFacts, TreeFacts};
   use crate::run_checks::CheckLevel;
   use app_commands::command::AppCommand;
   use app_commands::config::source::{ConfigProblem, ConfigSpan};
@@ -428,7 +428,15 @@ pub(crate) mod tests {
   #[test]
   fn test_check_config_valid_classifies_the_input_facts() {
     let facts = InputFacts {
-      tips_without_sequence: Some(vec![o!("A")]),
+      alignments: vec![AlignmentFacts {
+        partition: 1,
+        path: PathBuf::from("a.fasta"),
+        sequences: 2,
+        min_length: 4,
+        max_length: 4,
+        duplicate_names: vec![],
+        tips_without_sequence: Some(vec![o!("A")]),
+      }],
       tree: Some(TreeFacts {
         tips: 3,
         internal_nodes: 2,
@@ -450,7 +458,9 @@ pub(crate) mod tests {
     };
     assert_eq!(
       (
-        vec![o!("1 of 3 tree tips have no sequence in the alignment: A")],
+        vec![o!(
+          "1 of 3 tree tips have no sequence in the alignment: A. TreeTime treats their sequences as unknown."
+        )],
         o!("treetime ancestral \\\n  --alignment a.fasta \\\n  --tree t.nwk \\\n  --output-all out")
       ),
       (

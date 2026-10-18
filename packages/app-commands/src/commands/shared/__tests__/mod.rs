@@ -1,4 +1,3 @@
-mod test_alignment;
 mod test_gap_fill_args;
 mod test_gtr_output;
 mod test_input_pairing;
