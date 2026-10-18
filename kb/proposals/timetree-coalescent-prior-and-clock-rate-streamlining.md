@@ -246,17 +246,19 @@ way to the target. Open points:
 
 Each phase is code, tests and kb in separate commits, with the core validation suite, the calibration runs
 (`--time-marginal only-final`, PIT and coverage), `data/ebola/{20,100,362}` and the exact posterior tests as gates.
-The baseline for each phase is the previous one.
+The baseline for each phase is the previous one. Order after phase 0: 1, 4, 2, 3, 5. Phase 0 showed that at low
+signal the rate is biased far beyond its uncertainty and that this bias, not the interval width, limits the date
+coverage, so the rate step comes before the coalescent statistics and the root.
 
 | phase | content | gate |
 | --- | --- | --- |
 | 0a (done) | OLS regression on two-way sums, exact root search, outliers out of the fit, IQR filter; `clock` and `timetree` on it | identical rate, intercept and root wherever the old search found the optimum (OLS default); differences only where the local split search missed it or outliers leaked in; validation suite rate and root recovery |
 | 0b (done) | Gaussian message passing at the final rate: node marginals, rate and root covariance; replaces `--covariation` for `rate_std` | analytic tests (joint Gaussian, finite-difference Hessian); `--confidence` coverage on the validation data, see below |
 | 0c (done) | retire the old machinery and flags; outputs, contracts, app (with the engineer) | tests and dengue/100 golden master unchanged; smoke snapshots re-baselined by the engineer ([M-smoke-clock-ols-retired-flags-and-snapshots.md](../issues/M-smoke-clock-ols-retired-flags-and-snapshots.md)) |
-| 1 | merge `claude-hard-cell-interp`; seed the expectation and $T_c$ from the Gaussian marginals; one loop, initial round removed | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
+| 1 | merge `claude-hard-cell-interp`; seed the expectation and $T_c$ from the Gaussian marginals; one loop, initial round removed; Gaussian rate as the start when the regression rate is not positive | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
 | 2 | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests against analytic expected statistics; outputs documented as a v0 divergence |
 | 3 | root: median versus peak under the mean-field prior | `data/ebola/20` root stable over rounds |
-| 4 | rate: curvature-scaled probe window; optional log-normal rate prior | rounds to convergence; low-signal rate error with and without a prior |
+| 4 | rate: curvature-scaled probe window; optional log-normal rate prior; one source for `rate_std` | rounds to convergence; low-signal rate error with and without a prior; rate $z$-scores and date coverage |
 | 5 | kb: decisions for the mean-field prior, the EM fit, the regression-and-Gaussian start; supersede the frozen-lineage-count and root-before-merger notes; close [M-timetree-initial-round-applies-coalescent-prior.md](../issues/M-timetree-initial-round-applies-coalescent-prior.md) | |
 
 ## Phase 0b result
@@ -313,7 +315,7 @@ The pre-filter's relaxed positive rate lost its cause
   [M-timetree-loop-starts-from-gaussian-marginals.md](../issues/M-timetree-loop-starts-from-gaussian-marginals.md) (1),
   [M-coalescent-one-expected-lineage-statistics.md](../issues/M-coalescent-one-expected-lineage-statistics.md) (2),
   [N-timetree-root-median-under-mean-field-prior.md](../issues/N-timetree-root-median-under-mean-field-prior.md) (3),
-  [N-timetree-rate-step-window-and-rate-prior.md](../issues/N-timetree-rate-step-window-and-rate-prior.md) (4).
+  [M-timetree-rate-step-window-and-rate-prior.md](../issues/M-timetree-rate-step-window-and-rate-prior.md) (4).
 
 ## Related
 

@@ -45,8 +45,10 @@ Every case below changes against a baseline from before the change, for the stat
 
 ## Fix direction
 
-Remove the rows, rebuild the baseline from this branch and record the reasons above with the re-baseline. Check
-that no other row relied on the removed flags through a config file (`[config]` cases).
+Remove the rows now, since they fail on argument parsing, and check that no other row relied on the removed flags
+through a config file (`[config]` cases). Rebuild the baseline after phase 1 of the proposal rather than now: that
+phase changes every `timetree` output again, and one re-baseline then records the reasons above together with its
+own.
 
 ## Validation
 
