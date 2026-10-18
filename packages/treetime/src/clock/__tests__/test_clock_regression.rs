@@ -2,15 +2,14 @@
 mod tests {
   use crate::clock::__tests__::test_reroot::tests::helpers::leaf_dates;
   use crate::clock::clock_model::{ClockModel, ClockRegression};
-  use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+  use crate::clock::clock_regression::{ClockTree, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_set::ClockSet;
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::divergence::root_to_node_divergences;
-  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
   use crate::o;
+  use crate::pretty_assert_abs_diff_eq;
   use crate::progress::NoopProgress;
-  use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -51,17 +50,8 @@ mod tests {
       .collect();
     let naive_rate = compute_naive_rate(&dates, &divs);
 
-    let regression = helpers::root_regression(TREE_4, &dates, &ClockVarianceParams::default())?;
+    let regression = helpers::root_regression(TREE_4, &dates)?;
     pretty_assert_abs_diff_eq!(naive_rate, regression.clock_rate(), epsilon = 1e-10);
-
-    let options = &ClockVarianceParams {
-      variance_factor: 1.0,
-      variance_offset: 0.0,
-      variance_offset_leaf: 1.0,
-    };
-
-    let regression = helpers::root_regression(TREE_4, &dates, options)?;
-    pretty_assert_ulps_eq!(0.007710610618916924, regression.clock_rate(), max_ulps = 4);
 
     Ok(())
   }
@@ -74,10 +64,8 @@ mod tests {
       o!("C") => 2017.0,
       o!("D") => 2005.0,
     };
-
-    let options = ClockVarianceParams::default();
-    let expected = helpers::root_regression("(A:0.1,B:0.2,C:0.2,D:0.12)root;", &dates, &options)?;
-    let actual = helpers::root_regression("(A:0.1,B:0.2,C:0.2,D:0.12,E:10.0)root;", &dates, &options)?;
+    let expected = helpers::root_regression("(A:0.1,B:0.2,C:0.2,D:0.12)root;", &dates)?;
+    let actual = helpers::root_regression("(A:0.1,B:0.2,C:0.2,D:0.12,E:10.0)root;", &dates)?;
 
     assert_eq!(helpers::regression_bits(&expected), helpers::regression_bits(&actual));
     Ok(())
@@ -85,17 +73,8 @@ mod tests {
 
   #[test]
   fn test_clock_regression_reads_a_missing_branch_length_as_zero() -> Result<(), Report> {
-    let options = ClockVarianceParams::default();
-    let expected = helpers::root_regression(
-      "((A:0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
-      &leaf_dates(),
-      &options,
-    )?;
-    let actual = helpers::root_regression(
-      "((A,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
-      &leaf_dates(),
-      &options,
-    )?;
+    let expected = helpers::root_regression("((A:0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &leaf_dates())?;
+    let actual = helpers::root_regression("((A,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &leaf_dates())?;
 
     assert_eq!(helpers::regression_bits(&expected), helpers::regression_bits(&actual));
     Ok(())
@@ -167,7 +146,7 @@ mod tests {
 
     let mut refit = ClockSet::default();
     for (_, date, div, _) in &points {
-      refit += ClockSet::leaf_contribution_to_parent(*date, *div, 1.0);
+      refit += ClockSet::leaf_contribution(*date).shift(*div);
     }
     let refit = ClockRegression::try_from(&refit)?;
 
@@ -244,10 +223,8 @@ mod tests {
           inputs,
         },
         &outliers,
-        &ClockVarianceParams::default(),
         None,
         keep_root,
-        &BranchPointOptimizationParams::default(),
         &RerootParams::default(),
         prev_clock_rate,
         &names,
@@ -280,11 +257,7 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn root_regression(
-      tree: &str,
-      dates: &BTreeMap<String, f64>,
-      options: &ClockVarianceParams,
-    ) -> Result<ClockRegression, Report> {
+    pub(super) fn root_regression(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockRegression, Report> {
       let nwk_parsed = nwk_read(tree.as_bytes())?;
       let names = nwk_parsed.names();
       let graph = nwk_parsed.graph;
@@ -297,10 +270,8 @@ mod tests {
           inputs,
         },
         &BTreeSet::new(),
-        options,
         None,
         true,
-        &BranchPointOptimizationParams::default(),
         &RerootParams::default(),
         None,
         &names,

@@ -2,12 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::{branch_lengths_or_zero, one_mutation};
-  use crate::clock::clock_regression::{
-    ClockFit, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
-  };
+  use crate::clock::clock_regression::{ClockFit, ClockTree, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
   use crate::coalescent::coalescent::CoalescentModel;
   use crate::coalescent::lineage_counts::compute_lineage_counts;
@@ -347,10 +344,8 @@ mod tests {
           inputs,
         },
         &BTreeSet::new(),
-        &ClockVarianceParams::default(),
         Some(CLOCK_RATE),
         true,
-        &BranchPointOptimizationParams::default(),
         &RerootParams::default(),
         None,
         &names,
@@ -494,8 +489,6 @@ mod tests {
         final_sequences: FinalSequences::Skip,
         time_marginal: TimeMarginalMode::Never,
         date_constraints,
-        covariation_clock_params: ClockVarianceParams::default(),
-        branch_params: BranchPointOptimizationParams::default(),
       }
     }
   }

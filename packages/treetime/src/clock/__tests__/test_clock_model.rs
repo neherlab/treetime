@@ -16,8 +16,8 @@ mod tests {
     let d1 = 0.0;
     let d2 = target_rate * (t2 - t1);
     let variance = 1.0;
-    let cs1 = ClockSet::leaf_contribution_to_parent(Some(t1), d1, variance);
-    let cs2 = ClockSet::leaf_contribution_to_parent(Some(t2), d2, variance);
+    let cs1 = ClockSet::leaf_contribution(Some(t1)).shift(d1);
+    let cs2 = ClockSet::leaf_contribution(Some(t2)).shift(d2);
     &cs1 + &cs2
   }
 

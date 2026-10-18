@@ -1,8 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::find_best_root::params::{
-    BranchPointOptimizationParams, BrentParams, GoldenSectionParams, GridSearchParams,
-  };
   use crate::o;
   use crate::pretty_assert_abs_diff_eq;
   use crate::test_utils::half_residual_sum_of_squares;
@@ -12,45 +9,37 @@ mod tests {
     divs_on_root_ab_edge, divs_on_root_cd_edge, search_root,
   };
   use pretty_assertions::assert_eq;
-  use rstest::rstest;
   use treetime_utils::assert_error;
   use treetime_utils::least_squares::LineFit;
 
-  // With the default variance model the regression is ordinary least squares, the score along an edge is a quadratic
-  // in the split and the search places the root at its vertex, whatever split optimizer is configured: 6.18 / 45 is the
-  // analytic optimum on the root-CD edge.
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::grid(                     BranchPointOptimizationParams::Grid(GridSearchParams::default()))]
-  #[case::grid_with_params(         BranchPointOptimizationParams::grid_with(GridSearchParams { n_points: 51 }))]
-  #[case::brent(                    BranchPointOptimizationParams::Brent(BrentParams::default()))]
-  #[case::brent_with_params(        BranchPointOptimizationParams::brent_with(BrentParams { brent_max_iters: 25, brent_tolerance: 1e-8 }))]
-  #[case::golden_section(           BranchPointOptimizationParams::GoldenSection(GoldenSectionParams::default()))]
-  #[case::golden_section_with_params(BranchPointOptimizationParams::golden_section_with(GoldenSectionParams { golden_max_iters: 25, golden_tolerance: 1e-8 }))]
-  #[trace]
-  fn test_find_best_root_splits_the_root_to_cd_branch_at_the_exact_optimum(
-    #[case] params: BranchPointOptimizationParams,
-  ) -> Result<(), Report> {
-    let expected_chisq = half_residual_sum_of_squares(&POSITIVE_RATE_DATES, &divs_on_root_cd_edge(OPTIMAL_ROOT_CD_SPLIT));
+  // Under ordinary least squares the score along an edge is a quadratic in the split and the search places the root at
+  // its vertex: 6.18 / 45 is the analytic optimum on the root-CD edge.
+  #[test]
+  fn test_find_best_root_splits_the_root_to_cd_branch_at_the_exact_optimum() -> Result<(), Report> {
+    let expected_chisq =
+      half_residual_sum_of_squares(&POSITIVE_RATE_DATES, &divs_on_root_cd_edge(OPTIMAL_ROOT_CD_SPLIT));
 
-    let search = search_root(&dates_positive_rate(), &params, true, None)?;
+    let search = search_root(&dates_positive_rate(), true, None)?;
 
     assert_eq!(Some((o!("root"), o!("CD"))), search.split_edge);
     pretty_assert_abs_diff_eq!(OPTIMAL_ROOT_CD_SPLIT, search.split, epsilon = 1e-12);
-    pretty_assert_abs_diff_eq!(expected_chisq, search.result.regression().unwrap().chisq(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(
+      expected_chisq,
+      search.result.regression().unwrap().chisq(),
+      epsilon = 1e-12
+    );
     Ok(())
   }
 
   #[test]
   fn test_find_best_root_fixed_rate_minimizes_the_residuals_around_the_fixed_slope() -> Result<(), Report> {
-    let brent = BranchPointOptimizationParams::Brent(BrentParams::default());
     let rate = 1e-3;
 
-    let fixed = search_root(&dates_positive_rate(), &brent, true, Some(rate))?;
-    let estimated = search_root(&dates_positive_rate(), &brent, true, None)?;
+    let fixed = search_root(&dates_positive_rate(), true, Some(rate))?;
+    let estimated = search_root(&dates_positive_rate(), true, None)?;
 
     assert_eq!(Some((o!("root"), o!("AB"))), fixed.split_edge);
-    pretty_assert_abs_diff_eq!(0.1675, fixed.split, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(0.1675, fixed.split, epsilon = 1e-12);
     assert_eq!(Some((o!("root"), o!("CD"))), estimated.split_edge);
     let intercept = (0.92 - rate * 8057.0) / 4.0;
     pretty_assert_abs_diff_eq!(
@@ -63,12 +52,7 @@ mod tests {
 
   #[test]
   fn test_find_best_root_force_positive_true_rejects_negative_rate() -> Result<(), Report> {
-    let result = search_root(
-      &dates_negative_rate(),
-      &BranchPointOptimizationParams::Grid(GridSearchParams::default()),
-      true,
-      None,
-    );
+    let result = search_root(&dates_negative_rate(), true, None);
 
     assert_error!(
       result,
@@ -82,12 +66,7 @@ mod tests {
     let expected_split = 0.0125;
     let expected_chisq = half_residual_sum_of_squares(&NEGATIVE_RATE_DATES, &divs_on_root_ab_edge(expected_split));
 
-    let search = search_root(
-      &dates_negative_rate(),
-      &BranchPointOptimizationParams::Brent(BrentParams::default()),
-      false,
-      None,
-    )?;
+    let search = search_root(&dates_negative_rate(), false, None)?;
 
     let regression = search.result.regression().unwrap();
     assert!(
@@ -96,7 +75,7 @@ mod tests {
       regression.clock_rate()
     );
     assert_eq!(Some((o!("root"), o!("AB"))), search.split_edge);
-    pretty_assert_abs_diff_eq!(expected_split, search.split, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(expected_split, search.split, epsilon = 1e-12);
     pretty_assert_abs_diff_eq!(expected_chisq, regression.chisq(), epsilon = 1e-12);
     Ok(())
   }
@@ -105,15 +84,10 @@ mod tests {
   fn test_find_best_root_force_positive_accepts_fixed_positive_rate() -> Result<(), Report> {
     let rate = 1e-3;
 
-    let search = search_root(
-      &dates_negative_rate(),
-      &BranchPointOptimizationParams::Brent(BrentParams::default()),
-      true,
-      Some(rate),
-    )?;
+    let search = search_root(&dates_negative_rate(), true, Some(rate))?;
 
     assert_eq!(Some((o!("root"), o!("AB"))), search.split_edge);
-    pretty_assert_abs_diff_eq!(0.225, search.split, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(0.225, search.split, epsilon = 1e-12);
     let fit = search.result.into_clock_fit()?;
     let intercept = (0.92 - rate * 8054.0) / 4.0;
     pretty_assert_abs_diff_eq!(intercept, fit.model.intercept(), epsilon = 1e-12);
@@ -128,11 +102,8 @@ mod tests {
   }
 
   mod helpers {
-    use crate::clock::clock_regression::{
-      ClockRerootResult, ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy,
-    };
+    use crate::clock::clock_regression::{ClockRerootResult, ClockTree, estimate_clock_model_with_reroot_policy};
     use crate::clock::clock_state::ClockInputs;
-    use crate::clock::find_best_root::params::BranchPointOptimizationParams;
     use crate::clock::reroot::RerootParams;
     use crate::o;
     use crate::progress::NoopProgress;
@@ -178,7 +149,6 @@ mod tests {
 
     pub(super) fn search_root(
       dates: &BTreeMap<String, f64>,
-      optimization_params: &BranchPointOptimizationParams,
       force_positive_rate: bool,
       clock_rate: Option<f64>,
     ) -> Result<RootSearch, Report> {
@@ -209,10 +179,8 @@ mod tests {
           inputs,
         },
         &BTreeSet::new(),
-        &ClockVarianceParams::default(),
         clock_rate,
         false,
-        optimization_params,
         &reroot_params,
         None,
         &names,

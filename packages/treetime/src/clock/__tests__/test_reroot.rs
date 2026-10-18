@@ -301,9 +301,8 @@ pub(crate) mod tests {
   }
 
   pub(crate) mod helpers {
-    use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+    use crate::clock::clock_regression::{ClockTree, estimate_clock_model_with_reroot_policy};
     use crate::clock::clock_state::ClockInputs;
-    use crate::clock::find_best_root::params::BranchPointOptimizationParams;
     use crate::clock::reroot::RerootParams;
     use crate::o;
     use crate::progress::NoopProgress;
@@ -375,10 +374,8 @@ pub(crate) mod tests {
       let (tree, result) = estimate_clock_model_with_reroot_policy(
         fixture.tree,
         &BTreeSet::new(),
-        &ClockVarianceParams::default(),
         None,
         keep_root,
-        &BranchPointOptimizationParams::default(),
         reroot_params,
         None,
         &fixture.names,

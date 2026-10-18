@@ -5,10 +5,9 @@ mod tests {
   };
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_regression::{ClockTree, ClockVarianceParams, estimate_clock_model_with_reroot_policy};
+  use crate::clock::clock_regression::{ClockTree, estimate_clock_model_with_reroot_policy};
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
   use crate::clock::reroot::RerootParams;
   use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
   use crate::gtr::get_gtr::{JC69Params, jc69};
@@ -151,10 +150,8 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
           inputs: clock_estimate_inputs,
         },
         &BTreeSet::new(),
-        &ClockVarianceParams::default(),
         Some(case.clock_rate()),
         true,
-        &BranchPointOptimizationParams::default(),
         &RerootParams::default(),
         None,
         &names,
