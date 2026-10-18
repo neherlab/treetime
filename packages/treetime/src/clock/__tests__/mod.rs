@@ -9,4 +9,5 @@ mod test_divergence;
 mod test_gaussian;
 mod test_pipeline_errors;
 mod test_reroot;
+mod test_reroot_undated;
 mod test_rtt;
