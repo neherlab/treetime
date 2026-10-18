@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::test_utils::{read_dataset_alignment, split_at_gap_free_column};
+  use crate::test_utils::{TestDataset, split_at_gap_free_column};
   use eyre::Report;
   use helpers::{
-    FILE_1, FILE_2, TIED_FILE_1, TIED_FILE_2, clades, dataset_tree, internal_node_names, records, run_prune,
-    run_prune_empty,
+    FILE_1, FILE_2, TIED_FILE_1, TIED_FILE_2, clades, internal_node_names, records, run_prune, run_prune_empty,
   };
   use maplit::btreeset;
   use pretty_assertions::assert_eq;
@@ -34,15 +33,15 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::zika( "zika/20")]
-  #[case::flu(  "flu/h3n2/20")]
-  #[case::ebola("ebola/20")]
+  #[case::zika( TestDataset::Zika20)]
+  #[case::flu(  TestDataset::Flu20)]
+  #[case::ebola(TestDataset::Ebola20)]
   #[trace]
-  fn test_prune_two_column_blocks_give_the_tree_of_one_alignment(#[case] dataset: &str) -> Result<(), Report> {
-    let whole = read_dataset_alignment(dataset)?;
+  fn test_prune_two_column_blocks_give_the_tree_of_one_alignment(#[case] dataset: TestDataset) -> Result<(), Report> {
+    let whole = dataset.alignment()?;
     let [first, second] = split_at_gap_free_column(&whole)?;
-    let whole = run_prune(&dataset_tree(dataset)?, &[whole])?;
-    let split = run_prune(&dataset_tree(dataset)?, &[first, second])?;
+    let whole = run_prune(dataset.tree(), &[whole])?;
+    let split = run_prune(dataset.tree(), &[first, second])?;
     assert_eq!(clades(&whole), clades(&split));
     pretty_assert_map_abs_diff_eq!(
       branch_lengths_or_zero(&whole.branch_lengths),
@@ -72,11 +71,10 @@ mod tests {
     use crate::cancel::NoopCancel;
     use crate::progress::NoopProgress;
     use crate::prune::pipeline::{PruneInput, PruneOutput, PruneParams, run};
-    use crate::test_utils::{dataset_dir, leaf_seq_inputs, sequence_source};
+    use crate::test_utils::{leaf_seq_inputs, sequence_source};
     use eyre::Report;
     use maplit::btreeset;
     use std::collections::BTreeSet;
-    use std::fs;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, Seq};
@@ -101,10 +99,6 @@ mod tests {
           })
         })
         .collect()
-    }
-
-    pub(super) fn dataset_tree(dataset: &str) -> Result<String, Report> {
-      Ok(fs::read_to_string(dataset_dir(dataset).join("tree.nwk"))?)
     }
 
     pub(super) fn run_prune(tree: &str, files: &[Vec<AlignmentRecord>]) -> Result<PruneOutput, Report> {

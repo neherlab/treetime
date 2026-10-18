@@ -72,30 +72,17 @@ mod tests {
     use crate::partition::result::PartitionResult;
     use crate::progress::NoopProgress;
     use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
-    use crate::test_utils::{ancestral_input_for_tree, complete_sequence_source};
+    use crate::test_utils::{TestDataset, ancestral_input_for_tree, complete_sequence_source, get_common_length};
     use eyre::Report;
     use pretty_assertions::assert_eq;
     use std::ops::Range;
-    use std::path::{Path, PathBuf};
-    use std::sync::LazyLock;
-    use treetime_io::fasta::fasta_read_file;
-    use treetime_io::nwk::nwk_read_file;
+    use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, LogLh, Seq};
-    use treetime_utils::make_internal_report;
     use treetime_utils::pretty_assert_abs_diff_eq;
 
-    static DATASET: LazyLock<PathBuf> =
-      LazyLock::new(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/flu/h3n2/20"));
-
     pub(super) fn column_blocks() -> Result<Vec<Block>, Report> {
-      let records: Vec<AlignmentRecord> = fasta_read_file(DATASET.join("aln.fasta.xz"), &Alphabet::default())?
-        .into_iter()
-        .map(AlignmentRecord::from)
-        .collect();
-      let length = records
-        .first()
-        .map(|record| record.seq.len())
-        .ok_or_else(|| make_internal_report!("The alignment has no records"))?;
+      let records = TestDataset::Flu20.alignment()?;
+      let length = get_common_length(&records)?;
       let split = length.div_ceil(2);
       let block = |path: &str, columns: Range<usize>| Block {
         path: path.to_owned(),
@@ -126,7 +113,7 @@ mod tests {
       blocks: &[Block],
     ) -> Result<(AncestralOutput, Vec<usize>), Report> {
       let alphabet = Alphabet::default();
-      let parse = nwk_read_file(DATASET.join("tree.nwk"))?;
+      let parse = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
       let names = parse.names();
       let sources = blocks
         .iter()

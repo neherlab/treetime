@@ -2,7 +2,7 @@
 mod tests {
   use crate::partition::create::Representation;
   use crate::partition::set::PartitionSet;
-  use crate::test_utils::{read_dataset_alignment, split_at_gap_free_column};
+  use crate::test_utils::{TestDataset, split_at_gap_free_column};
   use eyre::Report;
   use helpers::updated_set;
   use pretty_assertions::assert_eq;
@@ -17,7 +17,7 @@ mod tests {
   fn test_partition_set_of_two_column_blocks_sums_to_the_whole_alignment(
     #[case] representation: Representation,
   ) -> Result<(), Report> {
-    let whole = read_dataset_alignment("flu/h3n2/20")?;
+    let whole = TestDataset::Flu20.alignment()?;
     let [first, second] = split_at_gap_free_column(&whole)?;
     let (graph, whole) = updated_set(representation, vec![whole])?;
     let (_, split) = updated_set(representation, vec![first, second])?;
@@ -44,17 +44,17 @@ mod tests {
     use crate::partition::create::Representation;
     use crate::partition::set::{PartitionSet, build_partition_set};
     use crate::progress::NoopProgress;
-    use crate::test_utils::{dataset_dir, leaf_seq_inputs, sequence_source};
+    use crate::test_utils::{TestDataset, leaf_seq_inputs, sequence_source};
     use eyre::Report;
     use treetime_graph::graph::Graph;
-    use treetime_io::nwk::nwk_read_file;
+    use treetime_io::nwk::nwk_read;
     use treetime_primitives::AlignmentRecord;
 
     pub(super) fn updated_set(
       representation: Representation,
       files: Vec<Vec<AlignmentRecord>>,
     ) -> Result<(Graph, PartitionSet), Report> {
-      let parse = nwk_read_file(dataset_dir("flu/h3n2/20").join("tree.nwk"))?;
+      let parse = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
       let names = parse.names();
       let sources = files
         .into_iter()

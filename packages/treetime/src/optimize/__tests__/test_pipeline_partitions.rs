@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::indel::IndelPolicy;
+  use crate::test_utils::TestDataset;
   use eyre::Report;
   use helpers::{
     Dataset, SmallSet, blocks_from_strings, build_set, column_blocks, internal_edge_above, optimize, reversed,
@@ -12,18 +13,18 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::zika_dense(      "zika/20",      true )]
-  #[case::zika_sparse(     "zika/20",      false)]
-  #[case::flu_dense(       "flu/h3n2/20",  true )]
-  #[case::flu_sparse(      "flu/h3n2/20",  false)]
-  #[case::ebola_dense(     "ebola/20",     true )]
-  #[case::ebola_sparse(    "ebola/20",     false)]
+  #[case::zika_dense(      TestDataset::Zika20,  true )]
+  #[case::zika_sparse(     TestDataset::Zika20,  false)]
+  #[case::flu_dense(       TestDataset::Flu20,   true )]
+  #[case::flu_sparse(      TestDataset::Flu20,   false)]
+  #[case::ebola_dense(     TestDataset::Ebola20, true )]
+  #[case::ebola_sparse(    TestDataset::Ebola20, false)]
   #[trace]
   fn test_optimize_two_column_blocks_give_the_branch_lengths_of_one_alignment(
-    #[case] dataset: &str,
+    #[case] dataset: TestDataset,
     #[case] dense: bool,
   ) -> Result<(), Report> {
-    let dataset = Dataset::read(dataset)?;
+    let dataset = Dataset::block_of(dataset)?;
     let whole = optimize(&dataset, &[dataset.whole()], dense)?;
     let split = optimize(&dataset, &column_blocks(&dataset)?, dense)?;
     assert_eq!(whole.edges, split.edges);
@@ -33,14 +34,14 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::flu_dense(   "flu/h3n2/20", true )]
-  #[case::ebola_sparse("ebola/20",    false)]
+  #[case::flu_dense(   TestDataset::Flu20,  true )]
+  #[case::ebola_sparse(TestDataset::Ebola20,false)]
   #[trace]
   fn test_optimize_results_do_not_depend_on_the_order_of_the_alignments(
-    #[case] dataset: &str,
+    #[case] dataset: TestDataset,
     #[case] dense: bool,
   ) -> Result<(), Report> {
-    let dataset = Dataset::read(dataset)?;
+    let dataset = Dataset::block_of(dataset)?;
     let blocks = column_blocks(&dataset)?;
     let forward = optimize(&dataset, &blocks, dense)?;
     let backward = optimize(&dataset, &reversed(&blocks), dense)?;
@@ -94,8 +95,7 @@ mod tests {
     use crate::progress::NoopProgress;
     use crate::seq::alignment::SequenceSource;
     use crate::test_utils::{
-      dataset_dir, find_node_key_by_name, leaf_seq_inputs, read_dataset_alignment, sequence_source,
-      split_at_gap_free_column,
+      TestDataset, find_node_key_by_name, leaf_seq_inputs, sequence_source, split_at_gap_free_column,
     };
     use eyre::Report;
     use std::collections::{BTreeMap, BTreeSet};
@@ -103,20 +103,22 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::nwk::{NwkParse, nwk_read, nwk_read_file};
+    use treetime_io::nwk::{NwkParse, nwk_read};
     use treetime_primitives::{AlignmentRecord, Seq};
     use treetime_utils::o;
 
+    const BLOCK_COLUMNS: usize = 400;
+
     pub(super) struct Dataset {
-      name: String,
+      dataset: TestDataset,
       records: Vec<AlignmentRecord>,
     }
 
     impl Dataset {
-      pub(super) fn read(name: &str) -> Result<Self, Report> {
+      pub(super) fn block_of(dataset: TestDataset) -> Result<Self, Report> {
         Ok(Self {
-          name: name.to_owned(),
-          records: read_dataset_alignment(name)?,
+          dataset,
+          records: dataset.leading_columns(BLOCK_COLUMNS)?,
         })
       }
 
@@ -128,7 +130,7 @@ mod tests {
       }
 
       fn tree(&self) -> Result<NwkParse, Report> {
-        nwk_read_file(dataset_dir(&self.name).join("tree.nwk"))
+        nwk_read(self.dataset.tree().as_bytes())
       }
     }
 

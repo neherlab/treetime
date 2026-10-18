@@ -9,7 +9,8 @@ mod tests {
   use crate::progress::NoopProgress;
   use crate::seq::sink::SeqSink;
   use crate::test_utils::{
-    RecordingSeqSink, dates_by_node, find_node_key_by_name, leaf_seq_inputs, marginal_timetree_params, sequence_source,
+    RecordingSeqSink, TestDataset, dates_by_node, find_node_key_by_name, leaf_seq_inputs, marginal_timetree_params,
+    sequence_source,
   };
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
@@ -17,14 +18,10 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::{BTreeMap, BTreeSet};
-  use std::path::PathBuf;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::csv::default_name_candidates;
-  use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
-  use treetime_io::fasta::fasta_read_file;
+  use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read;
-  use treetime_primitives::AlignmentRecord;
   use treetime_utils::{assert_error, o, pretty_assert_abs_diff_eq};
 
   const STAR_TREE: &str = "(A:0.5,B:1.0,C:1.5,D:2.0)root;";
@@ -294,7 +291,7 @@ mod tests {
     }
 
     pub(super) fn zika_newick() -> Result<String, Report> {
-      Ok(std::fs::read_to_string(zika_path("tree.nwk"))?.trim().to_owned())
+      Ok(TestDataset::Zika20.tree().trim().to_owned())
     }
 
     pub(super) fn zika_newick_with_stem() -> Result<String, Report> {
@@ -304,15 +301,7 @@ mod tests {
     }
 
     pub(super) fn zika_dates() -> Result<BTreeMap<String, Option<DateConstraint>>, Report> {
-      metadata_read_file(
-        zika_path("metadata.tsv"),
-        &['\t'],
-        &default_name_candidates(),
-        None,
-        None,
-      )
-      .and_then(|table| table.dates())
-      .map(|rows| rows.into_iter().collect())
+      TestDataset::Zika20.dates()
     }
 
     pub(super) fn zika_input(
@@ -324,8 +313,7 @@ mod tests {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names();
       let source = if with_alignment {
-        let records = fasta_read_file(zika_path("aln.fasta.xz"), &alphabet)?;
-        let records = records.into_iter().map(AlignmentRecord::from).collect();
+        let records = TestDataset::Zika20.alignment()?;
         Some(sequence_source(
           alphabet,
           leaf_seq_inputs(&nwk_parsed.graph, &names, records),
@@ -349,12 +337,6 @@ mod tests {
         .get_leaves()
         .map(|leaf| names[&leaf.key()].clone().expect("every leaf is named"))
         .collect()
-    }
-
-    fn zika_path(file: &str) -> PathBuf {
-      PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data/zika/20")
-        .join(file)
     }
   }
 }
